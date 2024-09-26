@@ -28,3 +28,8 @@ export const login = async (
 
     }
 }
+
+export const getAuthenticatedUser = async (): Promise<string> => {
+    //return current user object
+    return "user";
+};
