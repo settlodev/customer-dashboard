@@ -35,6 +35,8 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+//import {useCallback, useTransition} from "react";
+import {CategoryResponse} from "@/types/product/category_response";
 
 const data: Payment[] = [
     {
@@ -167,8 +169,11 @@ export const columns: ColumnDef<Payment>[] = [
     },
 ]
 
-export function CategoriesTable() {
-    const [sorting, setSorting] = React.useState<SortingState>([])
+export function CategoriesTable({categories}: { categories: CategoryResponse[] }) {
+    console.log("categories: ", categories);
+    const [sorting, setSorting] = React.useState<SortingState>([]);
+    //const [isLoading, setIsLoading] = useTransition();
+
     const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
         []
     )
@@ -193,7 +198,7 @@ export function CategoriesTable() {
             columnVisibility,
             rowSelection,
         },
-    })
+    });
 
     return (
         <div className="w-full">
@@ -238,22 +243,33 @@ export function CategoriesTable() {
                     <TableHeader>
                         {table.getHeaderGroups().map((headerGroup) => (
                             <TableRow key={headerGroup.id}>
-                                {headerGroup.headers.map((header) => {
-                                    return (
-                                        <TableHead key={header.id}>
-                                            {header.isPlaceholder
-                                                ? null
-                                                : flexRender(
-                                                    header.column.columnDef.header,
-                                                    header.getContext()
-                                                )}
-                                        </TableHead>
-                                    )
-                                })}
+                                <TableHead>Name</TableHead>
                             </TableRow>
                         ))}
                     </TableHeader>
+
                     <TableBody>
+                        {categories.length ? (
+                            categories.map((row) => (
+                                <TableRow key={row.id}>
+                                    <TableCell key={row.id}>{row.name}</TableCell>
+
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow>
+                                <TableCell
+                                    colSpan={columns.length}
+                                    className="h-24 text-center"
+                                >
+                                    No results.
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+
+
+                    {/*<TableBody>
                         {table.getRowModel().rows?.length ? (
                             table.getRowModel().rows.map((row) => (
                                 <TableRow
@@ -280,7 +296,7 @@ export function CategoriesTable() {
                                 </TableCell>
                             </TableRow>
                         )}
-                    </TableBody>
+                    </TableBody>*/}
                 </Table>
             </div>
             <div className="flex items-center justify-end space-x-2 py-4">
