@@ -1,4 +1,6 @@
-
+import {UUID} from "node:crypto";
+import {Gender} from "@/types/enums";
+import {DefaultSession} from "next-auth";
 
 export declare interface LoginResponse {
     id: UUID,
@@ -51,3 +53,41 @@ export interface FormResponse {
     message: string;
     error?: Error | null;
 }
+
+export declare interface AuthToken {
+    id: string;
+    name: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    picture: string;
+    phoneNumber: string;
+    authToken: string;
+    refreshToken: string;
+    emailVerified: Date | null;
+    phoneNumberVerified: Date | null;
+    consent: boolean | null;
+    theme: string | null;
+    subscriptionStatus: string;
+    businessComplete: boolean;
+    businessId: UUID | null;
+}
+
+export type ExtendedUser = DefaultSession["user"] & {
+    id: string;
+    name: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    picture: string;
+    phoneNumber: string;
+    authToken: string;
+    refreshToken: string;
+    emailVerified: Date | null;
+    phoneNumberVerified: Date | null;
+    consent: boolean | null;
+    theme: string | null;
+    subscriptionStatus: string;
+    businessComplete: boolean;
+    businessId: UUID | null;
+};

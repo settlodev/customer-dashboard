@@ -1,7 +1,5 @@
-import LoginForm from "@/app/(auth)/login/login_form";
-import {getAuthenticatedUser} from "@/lib/actions/auth/login";
+import LoginForm from "@/components/forms/login_form";
 
-export default async function LoginPage() {
-    const userData = await getAuthenticatedUser();
-    return <LoginForm userData={userData}/>
+export default function LoginPage() {
+    return <LoginForm />;
 }
