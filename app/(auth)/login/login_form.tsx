@@ -10,6 +10,7 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {useCallback, useTransition} from "react";
 import {login} from "@/lib/actions/auth/login";
+import {cookies} from "next/headers";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
@@ -25,6 +26,11 @@ function LoginForm() {
                 login(values)
                     .then((data) => {
                         console.log("Login Response:", data);
+
+                        /*const myCookies = cookies();
+                        myCookies.set('authToken', data.authToken);
+                        myCookies.set('userData', JSON.stringify(data));
+*/
                     })
                     .catch((err) => {
                         console.log("Login Error:", err);

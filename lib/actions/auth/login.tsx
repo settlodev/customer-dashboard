@@ -6,6 +6,7 @@ import {LoginResponse} from "@/types/types";
 import {parseStringify} from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {endpoints} from "@/types/endpoints";
+import {cookies} from "next/headers";
 
 export const login = async (
     credentials: z.infer<typeof LoginSchema>,
@@ -27,9 +28,13 @@ export const login = async (
             const myEndpoints = endpoints();
             //console.log("credentials are:", validatedData.data);
 
-            const data = await apiClient.post(myEndpoints.auth.login.endpoint, validatedData.data);
+            const data:LoginResponse = await apiClient.post(myEndpoints.auth.login.endpoint, validatedData.data);
 
-            //console.log("Action response", data);
+            if(data) {
+                const myCookies = cookies();
+                myCookies.set('authToken', data.authToken);
+                myCookies.set('userData', JSON.stringify(data));
+            }
 
             return parseStringify({
                 type: "success",

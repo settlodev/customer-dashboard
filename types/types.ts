@@ -20,8 +20,20 @@ export declare interface Customer {
 }
 
 export declare interface LoginResponse {
-    emailAddress: string;
-    password: string;
+    id: UUID,
+    email: string,
+    firstName: string,
+    lastName: string,
+    picture: string,
+    phoneNumber: string,
+    authToken: string,
+    refreshToken: string,
+    phoneNumberVerified: string,
+    emailVerified: string,
+    consent: boolean,
+    theme: string,
+    subscriptionStatus: string,
+    businessId: UUID
 }
 
 export type ApiResponse<T> = {
