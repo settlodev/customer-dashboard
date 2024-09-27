@@ -1,6 +1,6 @@
 import {UUID} from "node:crypto";
 
-export const endpoints=(location: UUID, id: UUID) => {
+export const endpoints=(location?: UUID, id?: UUID) => {
     return {
         "categories": {
             "get": {method: 'GET', endpoint: `/categories/${location}/${id}`},
