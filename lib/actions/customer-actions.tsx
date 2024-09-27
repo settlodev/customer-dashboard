@@ -5,7 +5,7 @@ import {CustomerSchema} from "@/types/customer/schema";
 import ApiClient from "@/lib/settlo-api-client";
 import {getAuthToken} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
-import {FormResponse} from "@/types/types";
+import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {getAuthenticatedUser} from "@/lib/actions/auth-actions";
@@ -28,6 +28,47 @@ export const fectchAllCustomers = async () : Promise<Customer[]> => {
     catch (error){
         throw error;
     }
+}
+export const searchCustomer = async (
+    q:string,
+    page:number,
+    pageLimit:number
+): Promise<ApiResponse<Customer>> =>{
+    await getAuthenticatedUser();
+
+    const authToken = await getAuthToken();
+
+    try {
+        const apiClient = new ApiClient();
+        const query ={
+            filters: [
+                {
+                    key:"firstName",
+                    operator:"LIKE",
+                    field_type:"STRING",
+                    value:q
+                }
+            ],
+            sorts:[
+                {
+                    key:"firstName",
+                    direction:"ASC"
+                }
+            ],
+            page:page ? page - 1:0,
+            size:pageLimit ? pageLimit : 10
+        }
+        const customerData = await  apiClient.post(
+            '/api/customers/2e5a964c-41d4-46b7-9377-c547acbf7739',
+            query
+        );
+        console.log("Customer response",customerData);
+        return parseStringify(customerData);
+    }
+    catch (error){
+        throw error;
+    }
+
 }
 export const  createCustomer= async (
     customer: z.infer<typeof CustomerSchema>

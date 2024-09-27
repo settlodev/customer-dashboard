@@ -1,65 +1,70 @@
 
 
-import {Table, TableBody, TableCell, TableCaption, TableFooter, TableHead, TableRow,TableHeader} from '@/components/ui/table';
 import {Button} from "@/components/ui/button";
 import Link from "next/link";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {searchCustomer} from "@/lib/actions/customer-actions";
+import {Customer} from "@/types/customer/type";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import NoItems from "@/components/layouts/no-items";
+import {DataTable} from "@/components/tables/data-table";
+import {columns} from '@/components/tables/customer/column'
 
-const invoices = [
-    {
-        invoice: 'INV-001',
-        paymentStatus: 'Paid',
-        paymentMethod: 'Credit Card',
-        totalAmount: '$2,500.00',
-    },
-    {
-        invoice: 'INV-002',
-        paymentStatus: 'Pending',
-        paymentMethod: 'PayPal',
-        totalAmount: '$2,500.00',
-    },
-    {
-        invoice: 'INV-003',
-        paymentStatus: 'Paid',
-        paymentMethod: 'Bank Transfer',
-        totalAmount: '$2,500.00'
-    }
-]
-function CustomersPage() {
+
+const breadCrumbItems = [{title:"Customers",link:"/customers"}];
+ type ParamsProps ={
+     searchParams:{
+         [key:string]:string | undefined
+     }
+ };
+ async function CustomersPage({searchParams}:ParamsProps) {
+
+     const q = searchParams.search || "";
+     const page = Number(searchParams.page) || 0;
+     const pageLimit = Number(searchParams.limit);
+
+     const responseData = await searchCustomer(q,page,pageLimit);
+
+     const data:Customer[]=responseData.content;
+     const total =responseData.totalElements;
+     const pageCount = responseData.totalPages
+
     return (
         <div className={`flex-1 space-y-4 md:p-8 pt-6`}>
-            {/*<h1 className="text-3xl font-bold text-4xl leading-tight">Customers</h1>*/}
-            <div>
-               <Link href="/customers/create">
-                   <Button>Create customer</Button>
-               </Link>
+            <div className={`flex items-center justify-between mb-2`}>
+                <div className={`relative flex-1 md:max-w-md`}>
+                    <BreadcrumbsNav items={breadCrumbItems} />
+                </div>
+                <div className={`flex items-center space-x-2`}>
+                    <Button>
+                        <Link href={`/staff/create`}>
+                            Add Customer
+                        </Link>
+                    </Button>
+                </div>
             </div>
-            <Table>
-                <TableCaption>A list of your recent invoices.</TableCaption>
-                <TableHeader>
-                    <TableRow>
-                        <TableHead className="w-[100px]">Invoice</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Method</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {invoices.map((invoice) => (
-                        <TableRow key={invoice.invoice}>
-                            <TableCell className="font-medium">{invoice.invoice}</TableCell>
-                            <TableCell>{invoice.paymentStatus}</TableCell>
-                            <TableCell>{invoice.paymentMethod}</TableCell>
-                            <TableCell className="text-right">{invoice.totalAmount}</TableCell>
-                        </TableRow>
-                    ))}
-                </TableBody>
-                <TableFooter>
-                    <TableRow>
-                        <TableCell colSpan={3}>Total</TableCell>
-                        <TableCell className="text-right">$2,500.00</TableCell>
-                    </TableRow>
-                </TableFooter>
-            </Table>
+            {
+                total > 0 || q != "" ? (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Customer</CardTitle>
+                            <CardDescription>Manage customer in your business location</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <DataTable columns={columns}
+                                       data={data}
+                                       searchKey="name"
+                                       pageNo={page}
+                                       total={total}
+                                       pageCount={pageCount}
+                            />
+                        </CardContent>
+                    </Card>
+                ):
+                    (
+                        <NoItems newItemUrl={`/customer/create`} itemName={`customer`}/>
+                    )
+            }
         </div>
     );
 }
