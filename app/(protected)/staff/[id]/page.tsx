@@ -3,7 +3,7 @@ import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import { isNotFoundError } from "next/dist/client/components/not-found";
 
-import StaffForm from "@/components/forms/staff-form";
+import StaffForm from "@/components/forms/staff_form";
 import {
     Card,
     CardContent,
@@ -11,7 +11,7 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import BreadcrumbsNav from "@/components/layout/breadcrumbs-nav";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { getStaff } from "@/lib/actions/staff-actions";
 import {Staff} from "@/types/staff";
 import {ApiResponse} from "@/types/types";
@@ -32,7 +32,7 @@ export default async function StaffPage({
             // Ignore redirect error
             if (isNotFoundError(error)) throw error;
 
-            throw new Error("Failed to load product data");
+            throw new Error("Failed to load staff data");
         }
     }
 

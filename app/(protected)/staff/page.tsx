@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/staff/columns";
 import { searchStaff } from "@/lib/actions/staff-actions";
-import BreadcrumbsNav from "@/components/layout/breadcrumbs-nav";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Staff} from "@/types/staff";
 import NoItems from "@/components/layouts/no-items";
 
@@ -62,7 +62,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                             data={data}
                             pageCount={pageCount}
                             pageNo={page}
-                            searchKey="firstName"
+                            searchKey="name"
                             total={total}
                         />
                     </CardContent>

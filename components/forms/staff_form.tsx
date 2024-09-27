@@ -15,9 +15,9 @@ import {
 } from "@/components/ui/card";
 import {
     Form,
-    FormControl,
+    FormControl, FormDescription,
     FormField,
-    FormItem,
+    FormItem, FormLabel,
     FormMessage,
     FormError
 } from "@/components/ui/form";
@@ -28,16 +28,15 @@ import {Input} from "@/components/ui/input";
 import {cn} from "@/lib/utils";
 import {Switch} from "@radix-ui/react-switch";
 import {Textarea} from "@/components/ui/textarea";
-import {useToast} from "@/hooks/use-toast";
 import CancelButton from "@/components/widgets/cancel-button";
 import {SubmitButton} from "@/components/widgets/submit-button";
 import GenderSelector from "@/components/widgets/gender-selector";
+import { useToast } from "@/hooks/use-toast"
 
 const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
-    const [isActive, setIsActive] = React.useState(item ? item.status : true);
 
     const form = useForm<z.infer<typeof StaffSchema>>({
         resolver: zodResolver(StaffSchema),
@@ -77,7 +76,6 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
 
     return (
         <Form {...form}>
-            <FormError message={response?.message} />
             <form
                 className="space-y-8"
                 onSubmit={form.handleSubmit(submitData, onInvalid)}
@@ -149,10 +147,10 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormControl>
-                                                    <PhoneInput
-                                                        defaultCountry={"TZ"}
-                                                        placeholder="Enter staff phone number"
+                                                    <Input
                                                         {...field}
+                                                        disabled={isPending}
+                                                        placeholder="Enter phone number"
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -216,7 +214,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="branch"
+                                        name="location"
                                         render={({ field }) => {
                                             // eslint-disable-next-line @typescript-eslint/no-unused-vars
                                             const { ref: _ref, ...customSelectRef } = field;
@@ -224,12 +222,10 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             return (
                                                 <FormItem>
                                                     <FormControl>
-                                                        <LocationSelector
-                                                            {...customSelectRef}
-                                                            isRequired
-                                                            isDisabled={isPending}
-                                                            label="Branch"
-                                                            placeholder="Select branch where this space/section is"
+                                                        <Input
+                                                            {...field}
+                                                            disabled={isPending}
+                                                            placeholder="Enter staff location"
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -247,12 +243,10 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             return (
                                                 <FormItem>
                                                     <FormControl>
-                                                        <DepartmentSelector
-                                                            {...customSelectRef}
-                                                            isRequired
-                                                            isDisabled={isPending}
-                                                            label="Department"
-                                                            placeholder="Select department that attends to this section"
+                                                        <Input
+                                                            {...field}
+                                                            disabled={isPending}
+                                                            placeholder="Enter staff department"
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -288,12 +282,10 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             return (
                                                 <FormItem>
                                                     <FormControl>
-                                                        <CountrySelector
-                                                            {...customSelectRef}
-                                                            isRequired
-                                                            isDisabled={isPending}
-                                                            label="Nationality"
-                                                            placeholder="Select staff nationality"
+                                                        <Input
+                                                            {...field}
+                                                            disabled={isPending}
+                                                            placeholder="Enter staff nationality"
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -306,43 +298,21 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                         control={form.control}
                                         name="status"
                                         render={({ field }) => (
-                                            <FormItem>
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel className="text-base">Staff status</FormLabel>
+                                                    <FormDescription>
+                                                        Is staff account enabled
+                                                    </FormDescription>
+                                                </div>
                                                 <FormControl>
                                                     <Switch
-                                                        {...field}
                                                         checked={field.value}
-                                                        classNames={{
-                                                            base: cn(
-                                                                "inline-flex flex-row-reverse w-full max-w-full bg-content1 hover:bg-content2 items-center",
-                                                                "justify-between cursor-pointer rounded-lg gap-2 p-2 border-2 border-destructive",
-                                                                "data-[selected=true]:border-success",
-                                                            ),
-                                                            wrapper: "p-0 h-3 overflow-visible",
-                                                            thumb: cn(
-                                                                "w-6 h-6 border-2 shadow-lg",
-                                                                "group-data-[hover=true]:border-primary",
-                                                                //selected
-                                                                "group-data-[selected=true]:ml-6",
-                                                                // pressed
-                                                                "group-data-[pressed=true]:w-7",
-                                                                "group-data-[selected]:group-data-[pressed]:ml-4",
-                                                            ),
-                                                        }}
-                                                        color="success"
-                                                        isDisabled={isPending}
-                                                        isSelected={isActive}
-                                                        value={String(field.value)}
-                                                        onValueChange={setIsActive}
-                                                    >
-                                                        <div className="flex flex-col gap-1">
-                                                            <p className="text-sm">Staff status</p>
-                                                            <p className="text-tiny text-default-400">
-                                                                Staff will be visible on your POS devices
-                                                            </p>
-                                                        </div>
-                                                    </Switch>
+                                                        onCheckedChange={field.onChange}
+                                                        disabled
+                                                        aria-readonly
+                                                    />
                                                 </FormControl>
-                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />

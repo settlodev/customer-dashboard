@@ -1,13 +1,28 @@
+import { Toaster } from "@/components/ui/toaster"
+import {Suspense} from "react";
 
-
-function CustomerLayout({ children }: { children: React.ReactNode }) {
+export default async function Layout({
+                                         children,
+                                     }: {
+    children: React.ReactNode;
+}) {
     return (
-        <>
-        <main className="lg:pl-[256px]">
-            {children}
-        </main>
-        </>
-    )
-}
+        <Suspense fallback={"Loading..."}>
+            <div className="flex h-dvh w-full">
+                Sidebar
+                <div className="w-full flex-1 flex-col">
+                    <header className="flex rounded-medium">
+                        Navbar
+                    </header>
 
-export default CustomerLayout
+                    <main className="mt-2 max-h-full w-full overflow-visible">
+                        <div className="flex h-[80%] w-full flex-col gap-4 rounded-small border-sma/ll border-divider">
+                            {children}
+                        </div>
+                    </main>
+                </div>
+                <Toaster />
+            </div>
+        </Suspense>
+    );
+}

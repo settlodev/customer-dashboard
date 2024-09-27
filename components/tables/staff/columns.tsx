@@ -4,10 +4,10 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
 import { CellAction } from "@/components/tables/staff/cell-action";
-import { Staff } from "@/types";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
+import {Staff} from "@/types/staff";
 
 export const columns: ColumnDef<Staff>[] = [
   {
@@ -30,7 +30,7 @@ export const columns: ColumnDef<Staff>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "firstName",
+    accessorKey: "name",
     enableHiding: false,
     header: ({ column }) => {
       return (
@@ -39,14 +39,14 @@ export const columns: ColumnDef<Staff>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          First name
+          Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
   },
   {
-    accessorKey: "lastName",
+    accessorKey: "department",
     enableHiding: false,
     header: ({ column }) => {
       return (
@@ -55,27 +55,15 @@ export const columns: ColumnDef<Staff>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Last name
+          Department
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
   },
   {
-    accessorKey: "jobTitle",
-    header: "Title",
-  },
-  {
-    accessorKey: "branchName",
-    header: "Branch",
-  },
-  {
-    accessorKey: "departmentName",
-    header: "Department",
-  },
-  {
-    accessorKey: "email",
-    header: "Email address",
+    accessorKey: "role",
+    header: "Role",
   },
   {
     accessorKey: "phoneNumber",

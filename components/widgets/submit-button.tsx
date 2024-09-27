@@ -1,4 +1,4 @@
-import { Button } from "@nextui-org/react";
+import {Button} from "@/components/ui/button";
 
 type SubmitButtonProps = {
   label: string;
@@ -9,14 +9,11 @@ type SubmitButtonProps = {
 export const SubmitButton = ({
   label,
   isPending,
-  isDisabled,
 }: SubmitButtonProps) => {
   return (
     <Button
       color="primary"
-      isDisabled={isDisabled}
-      isLoading={isPending}
-      radius="sm"
+      disabled={isPending}
       type="submit"
     >
       {label}
