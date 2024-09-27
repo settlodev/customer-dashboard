@@ -45,14 +45,14 @@ export const searchStaff = async (
         const apiClient = new ApiClient();
 
         const query = {
-            filters: [
-                {
-                    key: "name",
-                    operator: "LIKE",
-                    field_type: "STRING",
-                    value: q,
-                },
-            ],
+            // filters: [
+            //     {
+            //         key: "name",
+            //         operator: "LIKE",
+            //         field_type: "STRING",
+            //         value: q,
+            //     },
+            // ],
             sorts: [
                 {
                     key: "name",
@@ -170,7 +170,7 @@ export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
             {
                 key: "id",
                 operator: "EQUAL",
-                field_type: "STRING",
+                field_type: "UUID_STRING",
                 value: id,
             },
         ],
@@ -180,7 +180,7 @@ export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
     };
 
     const staffData = await apiClient.post(
-        `/api/staff/${authToken?.locationId}`,
+        `/api/staff/2e5a964c-41d4-46b7-9377-c547acbf7739`,
         query,
     );
 

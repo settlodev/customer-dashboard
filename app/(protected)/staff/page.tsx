@@ -62,7 +62,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                             data={data}
                             pageCount={pageCount}
                             pageNo={page}
-                            searchKey="firstName"
+                            searchKey="name"
                             total={total}
                         />
                     </CardContent>

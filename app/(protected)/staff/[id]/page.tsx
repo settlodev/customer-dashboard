@@ -32,7 +32,7 @@ export default async function StaffPage({
             // Ignore redirect error
             if (isNotFoundError(error)) throw error;
 
-            throw new Error("Failed to load product data");
+            throw new Error("Failed to load staff data");
         }
     }
 

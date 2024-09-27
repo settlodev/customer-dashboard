@@ -9,7 +9,7 @@ class ApiClient {
     private readonly baseURL: string;
 
     constructor() {
-        this.baseURL = process.env.SERVICE_URL || "https://ec2-35-159-78-184.eu-central-1.compute.amazonaws.com:8443";
+        this.baseURL = process.env.SERVICE_URL || "";
 
         // Remove this when we have our own certificate
         this.instance = axios.create({
@@ -29,7 +29,7 @@ class ApiClient {
             //     config.headers["Authorization"] = `Bearer ${token.authToken}`;
             // }
 
-            config.headers["Authorization"] = `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwYmlqYW1wb2xhQGdtYWlsLmNvbSIsImlhdCI6MTcyNzQxOTk4OCwiZXhwIjoxNzI3NDIzNTg4fQ.YnaZrxLjzgLu4w0TNHX0CWP3exiqAK-zo1K9H5cLNq8`;
+            config.headers["Authorization"] = `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwYmlqYW1wb2xhQGdtYWlsLmNvbSIsImlhdCI6MTcyNzQyMjY2NCwiZXhwIjoxNzI3NDI2MjY0fQ.9gmDEAQVgBCJWGrKihSxsjUeSuZmUZxQ4vtiMv4ej8k`;
 
             config.headers["Content-Type"] = "application/json";
 
