@@ -1,7 +1,7 @@
 "use client";
 
 import {LoginSchema} from "@/types/data-schemas";
-import {login} from "@/lib/actions/auth-actions";
+import {login} from "@/lib/actions/auth/auth-actions";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";

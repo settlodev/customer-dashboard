@@ -2,7 +2,7 @@
 
 import {ApiResponse} from "@/types/types";
 import {Staff} from "@/types/staff";
-import {getAuthenticatedUser} from "@/lib/actions/auth-actions";
+import {getAuthenticatedUser} from "@/lib/actions/auth/auth-actions";
 import {getAuthToken} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {parseStringify} from "@/lib/utils";
