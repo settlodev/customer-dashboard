@@ -41,7 +41,7 @@ function LoginForm({userData}: { userData: LoginResponse }) {
 
     if (cookies.get('authToken')) {
         console.log("user data:", userData);
-        if(userData.id) {
+        if(userData && userData.id) {
             router.push('/dashboard');
         }
     }else {

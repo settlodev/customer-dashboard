@@ -10,10 +10,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/staff/columns";
-import { searchStaff } from "@/lib/actions/staff-actions";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Staff} from "@/types/staff";
 import NoItems from "@/components/layouts/no-items";
+import {listCategories} from "@/lib/actions/category/list";
 
 const breadcrumbItems = [{ title: "Staff", link: "/staff" }];
 
@@ -28,7 +28,7 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await searchStaff(q, page, pageLimit);
+    const responseData = await listCategories(q, page, pageLimit);
 
     const data: Staff[] = responseData.content;
     const total = responseData.totalElements;
@@ -43,9 +43,7 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/staff/new`}>
-                            Add staff
-                        </Link>
+                        <Link key="add-space" href={`/categories/create`}>Add Category</Link>
                     </Button>
                 </div>
             </div>
@@ -53,8 +51,8 @@ export default async function Page({ searchParams }: ParamsProps) {
             {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Staff</CardTitle>
-                        <CardDescription>Manage staff in your business location</CardDescription>
+                        <CardTitle>Categories</CardTitle>
+                        <CardDescription>Manage categories in your business location</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -68,7 +66,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`staff`} newItemUrl={`/staff/new`} />
+                <NoItems itemName={`staff`} newItemUrl={`/categories/create`} />
             )}
         </div>
     );
