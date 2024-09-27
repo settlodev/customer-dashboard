@@ -6,6 +6,7 @@ import {getAuthenticatedUser} from "@/lib/actions/auth-actions";
 import {getAuthToken} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {parseStringify} from "@/lib/utils";
+import {endpoints} from "@/types/endpoints";
 
 export const list = async (
     q: string,
@@ -38,8 +39,10 @@ export const list = async (
             size: pageLimit ? pageLimit : 10,
         };
 
+        const myEndpoints = endpoints(authToken?.locationId)
+
         const data = await apiClient.post(
-            `/api/staff/2e5a964c-41d4-46b7-9377-c547acbf7739`,
+            myEndpoints.categories.search.endpoint,
             query,
         );
 
