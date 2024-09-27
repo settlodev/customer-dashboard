@@ -14,8 +14,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Settlo Customer Dashboard",
-  description: "Customer dashboard",
+  title: "Settlo Schema Dashboard",
+  description: "Schema dashboard",
 };
 
 export default function RootLayout({

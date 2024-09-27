@@ -9,7 +9,7 @@ import {Form, FormControl,FormField, FormItem, FormLabel, FormMessage} from "@/c
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {useCallback, useTransition} from "react";
-import {CustomerSchema} from "@/types/data-schemas";
+import {CustomerSchema} from "@/types/customer/schema";
 import {createCustomer} from "@/lib/actions/customer-actions";
 
 function CustomerForm() {

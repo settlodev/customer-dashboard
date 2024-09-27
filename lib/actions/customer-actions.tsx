@@ -1,27 +1,51 @@
 "use server";
 
-import axios  from "axios";
 import {z} from "zod";
-import {CustomerSchema} from "@/types/data-schemas";
-import {CustomerResponse} from "@/types/types";
-// import {parseStringify} from "@/lib/utils";
+import {CustomerSchema} from "@/types/customer/schema";
+import ApiClient from "@/lib/settlo-api-client";
+import {getAuthToken} from "@/lib/auth-utils";
+import {parseStringify} from "@/lib/utils";
+import {FormResponse} from "@/types/types";
+import {revalidatePath} from "next/cache";
+import {redirect} from "next/navigation";
 
 export const  createCustomer= async (
-    formData: z.infer<typeof CustomerSchema>
-): Promise<CustomerResponse> => {
+    customer: z.infer<typeof CustomerSchema>
+): Promise<FormResponse | void> => {
 
-    const customerValidData= CustomerSchema.safeParse(formData)
+    let formResponse: FormResponse | null = null;
+
+    const customerValidData= CustomerSchema.safeParse(customer)
 
     if (!customerValidData.success){
-      throw new Error("Invalid customer data")
+        formResponse = {
+            responseType:"error",
+            message:"Please fill all the required fields",
+            error:new Error(customerValidData.error.message)
+      }
+      return parseStringify(formResponse)
     }
     try {
-        const resp = await axios.post("/api/customer",customerValidData.data);
-        return resp.data as CustomerResponse;
+        const apiClient = new ApiClient();
+        const authToken = await getAuthToken();
+
+        await apiClient.post(
+            `api/customer/${authToken?.locationId}/create`,customerValidData.data
+        );
     }
     catch (error){
         console.error("Error creating customer",error)
-        throw  new Error("Failed to create customer")
+        formResponse = {
+            responseType: "error",
+            message:
+                "Something went wrong while processing your request, please try again",
+            error: error instanceof Error ? error : new Error(String(error)),
+        };
     }
+    if (formResponse){
+        return parseStringify(formResponse)
+    }
+    revalidatePath("/customer");
+    redirect("/customer")
 }
 
