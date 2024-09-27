@@ -3,12 +3,14 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import https from 'https';
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
+import {getAuthToken} from "@/lib/auth-utils";
 
 class ApiClient {
     private instance: AxiosInstance;
     private readonly baseURL: string;
 
     constructor() {
+
         this.baseURL = process.env.SERVICE_URL || "";
 
         // Remove this when we have our own certificate
@@ -23,13 +25,11 @@ class ApiClient {
                 config.url = this.baseURL + config.url;
             }
 
-            // const token = await getAuthToken();
-            //
-            // if (token?.authToken) {
-            //     config.headers["Authorization"] = `Bearer ${token.authToken}`;
-            // }
+            const token = await getAuthToken();
 
-            config.headers["Authorization"] = `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwYmlqYW1wb2xhQGdtYWlsLmNvbSIsImlhdCI6MTcyNzQzNjExMywiZXhwIjoxNzI3NDM5NzEzfQ.euiEG9NcempsoCOaRiCg4uOqHJaCtXiYnIMb2-_Feqg`;
+            if (token?.authToken) {
+                config.headers["Authorization"] = `Bearer ${token.authToken}`;
+            }
 
             config.headers["Content-Type"] = "application/json";
 

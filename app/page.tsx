@@ -1,17 +1,5 @@
-import {Button} from "@/components/ui/button";
-import Link from "next/link";
+import LoginForm from "@/app/(auth)/login/login_form";
 
-export default function Home() {
-  return (
-      <div>
-        <Link href="/dashboard">
-          <Button>Dashboard</Button>
-        </Link>
-
-        <Link href="/login">
-          <Button>Login</Button>
-        </Link>
-
-      </div>
-  );
+export default function LoginPage() {
+    return <LoginForm/>
 }
