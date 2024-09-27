@@ -61,6 +61,8 @@ export const getAuthenticatedUser = async (): Promise<LoginResponse> => {
             myCookies.set('firstName', data.firstName);
             myCookies.set('lastName', data.lastName);
             myCookies.set('email', data.email);
+
+            myCookies.set('userData', JSON.stringify(data));
         }
 
         return parseStringify({
