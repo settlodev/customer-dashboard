@@ -31,10 +31,6 @@ class ApiClient {
                 config.headers["Authorization"] = `Bearer ${token.authToken}`;
             }
 
-            /*if(!this.isAuthRoute) {
-                config.headers["Authorization"] = `Bearer ${this.authToken}`;
-            }*/
-
             config.headers["Content-Type"] = "application/json";
 
             return config;
