@@ -3,17 +3,13 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import https from 'https';
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
+import {getAuthToken} from "@/lib/auth-utils";
 
 class ApiClient {
     private instance: AxiosInstance;
     private readonly baseURL: string;
-    public isAuthRoute: boolean | false | undefined;
-    public authToken: string | undefined;
 
-    constructor(isAuthRoute=false, authToken: '') {
-
-        this.isAuthRoute = isAuthRoute;
-        this.authToken = authToken;
+    constructor() {
 
         this.baseURL = process.env.SERVICE_URL || "";
 
@@ -29,15 +25,15 @@ class ApiClient {
                 config.url = this.baseURL + config.url;
             }
 
-            // const token = await getAuthToken();
-            //
-            // if (token?.authToken) {
-            //     config.headers["Authorization"] = `Bearer ${token.authToken}`;
-            // }
+            const token = await getAuthToken();
 
-            if(!this.isAuthRoute) {
-                config.headers["Authorization"] = `Bearer ${this.authToken}`;
+            if (token?.authToken) {
+                config.headers["Authorization"] = `Bearer ${token.authToken}`;
             }
+
+            /*if(!this.isAuthRoute) {
+                config.headers["Authorization"] = `Bearer ${this.authToken}`;
+            }*/
 
             config.headers["Content-Type"] = "application/json";
 

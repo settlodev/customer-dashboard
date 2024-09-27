@@ -23,6 +23,7 @@ export const login = async (
 
         try {
             const apiClient = new ApiClient();
+
             const myEndpoints = endpoints();
 
             const data = await apiClient.post(myEndpoints.auth.login.endpoint, {});
