@@ -8,7 +8,7 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
-import {getAuthenticatedUser} from "@/lib/actions/auth-actions";
+import {getAuthenticatedUser} from "@/lib/actions/auth/login";
 import {Customer} from "@/types/customer/type";
 
 export const fectchAllCustomers = async () : Promise<Customer[]> => {
