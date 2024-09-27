@@ -13,11 +13,15 @@ export const LoginSchema = object({
 });
 
 export const CustomerSchema = object({
-    name: string({ required_error: "Customer name is required" }).min(
-        1,
+    firstName: string({ required_error: "Customer first name is required" }).min(
+        3,
         "Please enter a valid name",
     ),
-    emailAddress: string()
+    lastName: string({ required_error: "Customer last name is required" }).min(
+        3,
+        "Please enter a valid name",
+    ),
+    email: string()
         .min(1, "Please enter a valid email address")
         .email("Please enter a valid email address")
         .optional(),
@@ -26,21 +30,8 @@ export const CustomerSchema = object({
             message: "Invalid phone number",
         })
         .optional(),
-    address: preprocess((val) => (val === null ? "" : val), string().optional()),
-    gender: nativeEnum(Gender),
-    dateOfBirth: preprocess((val) => {
-        if (val === null) return undefined;
-        if (typeof val === "string" && val.trim() !== "") {
-            return new Date(val);
-        }
 
-        return val;
-    }, date().optional()),
-    nationality: preprocess(
-        (val) => (val === null ? "" : val),
-        string().optional(),
-    ),
-    notes: preprocess((val) => (val === null ? "" : val), string().optional()),
+    gender: nativeEnum(Gender),
     allowNotifications: boolean(),
     location: string({ message: "Customer location is required" }).uuid(
         "Please select a valid locations",
