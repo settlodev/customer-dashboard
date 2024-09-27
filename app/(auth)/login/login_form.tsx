@@ -48,7 +48,7 @@ function LoginForm() {
                             <div className="grid gap-2">
                                 <FormField
                                     control={form.control}
-                                    name="username"
+                                    name="email"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Username</FormLabel>
@@ -63,6 +63,7 @@ function LoginForm() {
                                     )}
                                 />
                             </div>
+
                             <div className="grid gap-2">
                                 <FormField
                                     control={form.control}

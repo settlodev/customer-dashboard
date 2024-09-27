@@ -16,7 +16,7 @@ export const login = async (
         return parseStringify({
             type: "error",
             password: credentials.password,
-            username: credentials.username,
+            email: credentials.email
         });
     }else{
         console.log("Submit to API", validatedData.data);
@@ -25,10 +25,11 @@ export const login = async (
             const apiClient = new ApiClient();
 
             const myEndpoints = endpoints();
+            //console.log("credentials are:", validatedData.data);
 
-            const data = await apiClient.post(myEndpoints.auth.login.endpoint, {});
+            const data = await apiClient.post(myEndpoints.auth.login.endpoint, validatedData.data);
 
-            console.log("Action response", data);
+            //console.log("Action response", data);
 
             return parseStringify({
                 type: "success",

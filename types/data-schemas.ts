@@ -3,7 +3,7 @@ import {Gender} from "@/types/enums";
 import { isValidPhoneNumber } from "libphonenumber-js";
 
 export const LoginSchema = object({
-    username: string()
+    email: string()
         .min(6, "Please enter a valid email address")
         .email("Please enter a valid email address"),
     password: string({ required_error: "Customer password" }).min(
