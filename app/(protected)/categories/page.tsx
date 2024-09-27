@@ -9,13 +9,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/staff/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Staff} from "@/types/staff";
 import NoItems from "@/components/layouts/no-items";
 import {listCategories} from "@/lib/actions/category/list";
+import {columns} from "@/app/(protected)/categories/columns";
+import {CategoryType} from "@/types/category/type";
 
-const breadcrumbItems = [{ title: "Staff", link: "/staff" }];
+const breadcrumbItems = [{ title: "Categories", link: "/categories" }];
 
 type ParamsProps = {
     searchParams: {
@@ -29,8 +29,9 @@ export default async function Page({ searchParams }: ParamsProps) {
     const pageLimit = Number(searchParams.limit);
 
     const responseData = await listCategories(q, page, pageLimit);
+    console.log("Category responseData:", responseData);
 
-    const data: Staff[] = responseData.content;
+    const data = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
 
@@ -66,7 +67,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`staff`} newItemUrl={`/categories/create`} />
+                <NoItems itemName={`categories`} newItemUrl={`/categories/create`} />
             )}
         </div>
     );

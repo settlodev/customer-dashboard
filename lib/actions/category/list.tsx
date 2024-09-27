@@ -2,18 +2,21 @@
 import ApiClient from "@/lib/settlo-api-client";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
-import {Staff} from "@/types/staff";
 import {endpoints} from "@/types/endpoints";
+import {cookies} from "next/headers";
+import {CategoryType} from "@/types/business/type";
 
 export const listCategories = async (
     q: string,
     page: number,
     pageLimit: number,
-): Promise<ApiResponse<Staff>> => {
+): Promise<ApiResponse<CategoryType>> => {
     //await getAuthenticatedUser();
 
+    const location = cookies().get('businessId')?.value;
+    console.log("location is:", location)
     //const authToken = await getAuthToken();
-    const myEndpoints = endpoints();
+    const myEndpoints = endpoints({location: location});
     try {
         const apiClient = new ApiClient();
 
@@ -36,10 +39,7 @@ export const listCategories = async (
             size: pageLimit ? pageLimit : 10,
         };
 
-        const data = await apiClient.post(
-            myEndpoints.categories.search.endpoint,
-            query,
-        );
+        const data = await apiClient.post(myEndpoints.categories.search.endpoint, query);
 
         console.log("Action response", data);
 
