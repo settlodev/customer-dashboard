@@ -20,8 +20,6 @@ export const login = async (
             email: credentials.email
         });
     }else{
-        console.log("Submit to API", validatedData.data);
-
         try {
             const apiClient = new ApiClient();
 
@@ -43,18 +41,30 @@ export const login = async (
         } catch (error) {
             throw error;
         }
-
-        /*// call server
-        return parseStringify({
-            type: "success",
-            password: validatedData.data?.password,
-            username: validatedData.data?.username,
-        });*/
-
     }
 }
 
-export const getAuthenticatedUser = async (): Promise<string> => {
+export const getAuthenticatedUser = async (): Promise<LoginResponse> => {
     //return current user object
-    return "user";
+    try {
+        const apiClient = new ApiClient();
+
+        const myEndpoints = endpoints();
+        //console.log("credentials are:", validatedData.data);
+
+        const data:LoginResponse = await apiClient.get(myEndpoints.auth.login.endpoint);
+
+        if(data) {
+            const myCookies = cookies();
+            myCookies.set('authToken', data.authToken);
+            myCookies.set('userData', JSON.stringify(data));
+        }
+
+        return parseStringify({
+            type: "success",
+            data: data
+        });
+    } catch (error) {
+        throw error;
+    }
 };

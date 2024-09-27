@@ -10,10 +10,14 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {useCallback, useTransition} from "react";
 import {login} from "@/lib/actions/auth/login";
-import {cookies} from "next/headers";
+import {useRouter} from "next/navigation";
+import {useCookies} from "next-client-cookies";
+import {LoginResponse} from "@/types/types";
 
-function LoginForm() {
+function LoginForm({userData}: { userData: LoginResponse }) {
     const [isPending, startTransition] = useTransition();
+    const router = useRouter();
+    const cookies = useCookies();
 
     const form = useForm<z.infer<typeof LoginSchema>>({
         resolver: zodResolver(LoginSchema),
@@ -26,11 +30,7 @@ function LoginForm() {
                 login(values)
                     .then((data) => {
                         console.log("Login Response:", data);
-
-                        /*const myCookies = cookies();
-                        myCookies.set('authToken', data.authToken);
-                        myCookies.set('userData', JSON.stringify(data));
-*/
+                        router.push('/dashboard');
                     })
                     .catch((err) => {
                         console.log("Login Error:", err);
@@ -39,65 +39,72 @@ function LoginForm() {
         }, []
     );
 
-    return (
-        <Card className="mx-auto max-w-sm">
-            <CardHeader>
-                <CardTitle className="text-2xl">Login</CardTitle>
-                <CardDescription>
-                    Enter your email below to login to your account
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
-                        <div className="grid gap-4">
-                            <div className="grid gap-2">
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Username</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="User name" {...field} />
-                                            </FormControl>
-                                            <FormDescription>
-                                                Enter user name
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
+    if (cookies.get('authToken')) {
+        console.log("user data:", userData);
+        if(userData.id) {
+            router.push('/dashboard');
+        }
+    }else {
+        return (
+            <Card className="mx-auto max-w-sm">
+                <CardHeader>
+                    <CardTitle className="text-2xl">Login</CardTitle>
+                    <CardDescription>
+                        Enter your email below to login to your account
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Form {...form}>
+                        <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
+                            <div className="grid gap-4">
+                                <div className="grid gap-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="email"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Username</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="User name" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Enter user name
+                                                </FormDescription>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
 
-                            <div className="grid gap-2">
-                                <FormField
-                                    control={form.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Password</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Password" {...field} />
-                                            </FormControl>
-                                            <FormDescription>
-                                                Enter password
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="grid gap-2">
+                                    <FormField
+                                        control={form.control}
+                                        name="password"
+                                        render={({field}) => (
+                                            <FormItem>
+                                                <FormLabel>Password</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="Password" {...field} />
+                                                </FormControl>
+                                                <FormDescription>
+                                                    Enter password
+                                                </FormDescription>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                <Button type="submit" disabled={isPending} className="w-full">
+                                    Login
+                                </Button>
                             </div>
-                            <Button type="submit" disabled={isPending} className="w-full">
-                                Login
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
+                        </form>
+                    </Form>
+                </CardContent>
+            </Card>
 
-    );
+        );
+    }
 }
 
 export default LoginForm;
