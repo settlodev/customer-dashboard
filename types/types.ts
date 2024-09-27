@@ -2,27 +2,21 @@ import {UUID} from "node:crypto";
 import {Gender} from "@/types/enums";
 import {DefaultSession} from "next-auth";
 
-export declare interface Customer {
-    id: UUID;
-    name: string;
-    emailAddress: string;
-    phoneNumber: string;
-    location: UUID;
-    address: string;
-    gender: Gender;
-    nationality: string;
-    dateOfBirth: Date;
-    allowNotifications: boolean;
-    notes: string;
-    points: 0;
-    lastVisit: Date;
-    totalSpend: number;
-    canDelete: boolean;
-}
-
 export declare interface LoginResponse {
-    emailAddress: string;
-    password: string;
+    id: UUID,
+    email: string,
+    firstName: string,
+    lastName: string,
+    picture: string,
+    phoneNumber: string,
+    authToken: string,
+    refreshToken: string,
+    phoneNumberVerified: string,
+    emailVerified: string,
+    consent: boolean,
+    theme: string,
+    subscriptionStatus: string,
+    businessId: UUID
 }
 
 export type ApiResponse<T> = {
@@ -55,7 +49,7 @@ export type ApiSortResponse = {
 };
 
 export interface FormResponse {
-    responseType: string;
+    responseType: "success" | "error";
     message: string;
     error?: Error | null;
 }

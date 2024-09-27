@@ -12,7 +12,7 @@ import { getAuthToken } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { StaffSchema } from "@/types/staff";
-import {getAuthenticatedUser} from "@/lib/actions/auth-actions";
+import {getAuthenticatedUser} from "@/lib/actions/auth/login";
 
 export const fetchAllStaff = async (): Promise<Staff[]> => {
     await getAuthenticatedUser();

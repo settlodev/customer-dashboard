@@ -1,22 +1,19 @@
 "use server"
-
-import {ApiResponse} from "@/types/types";
-import {Staff} from "@/types/staff";
-import {getAuthenticatedUser} from "@/lib/actions/auth-actions";
-import {getAuthToken} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {parseStringify} from "@/lib/utils";
+import {ApiResponse} from "@/types/types";
+import {Staff} from "@/types/staff";
 import {endpoints} from "@/types/endpoints";
 
-export const list = async (
+export const listCategories = async (
     q: string,
     page: number,
     pageLimit: number,
 ): Promise<ApiResponse<Staff>> => {
-    await getAuthenticatedUser();
+    //await getAuthenticatedUser();
 
-    const authToken = await getAuthToken();
-
+    //const authToken = await getAuthToken();
+    const myEndpoints = endpoints();
     try {
         const apiClient = new ApiClient();
 
@@ -38,8 +35,6 @@ export const list = async (
             page: page ? page - 1 : 0,
             size: pageLimit ? pageLimit : 10,
         };
-
-        const myEndpoints = endpoints(authToken?.locationId)
 
         const data = await apiClient.post(
             myEndpoints.categories.search.endpoint,

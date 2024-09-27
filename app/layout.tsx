@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import {CookiesProvider} from "next-client-cookies/server";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -14,8 +15,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Settlo Customer Dashboard",
-  description: "Customer dashboard",
+  title: "Settlo Schema Dashboard",
+  description: "Schema dashboard",
 };
 
 export default function RootLayout({
@@ -25,10 +26,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+       <CookiesProvider>
+         {children}
+       </CookiesProvider>
       </body>
     </html>
   );

@@ -10,6 +10,7 @@ class ApiClient {
     private readonly baseURL: string;
 
     constructor() {
+
         this.baseURL = process.env.SERVICE_URL || "";
 
         // Remove this when we have our own certificate
