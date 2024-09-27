@@ -9,10 +9,16 @@ import {useForm} from "react-hook-form";
 import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage} from "@/components/ui/form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
-import {useCallback, useTransition} from "react";
+import {useCallback, useState, useTransition} from "react";
+import {FormResponse} from "@/types/types";
+import {DEFAULT_LOGIN_REDIRECT_URL} from "@/routes";
+import {FormError} from "@/components/widgets/form-error";
+import {FormSuccess} from "@/components/widgets/form-success";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
+    const [error, setError] = useState<string | undefined>("");
+    const [success, setSuccess] = useState<string | undefined>("");
 
     const form = useForm<z.infer<typeof LoginSchema>>({
         resolver: zodResolver(LoginSchema),
@@ -23,11 +29,25 @@ function LoginForm() {
         (values: z.infer<typeof LoginSchema>) => {
             startTransition(() => {
                 login(values)
-                    .then((data) => {
-                        console.log(data);
+                    .then((data: FormResponse) => {
+                        if (!data) {
+                            setError("An unexpected error occurred. Please try again.");
+
+                            return;
+                        }
+                        if (data.responseType === "error") {
+                            setError(data.message);
+                        } else {
+                            setSuccess(data.message);
+                            // Redirect to dashboard after successful login
+                            window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
+                        }
                     })
                     .catch((err) => {
-                        console.log(err);
+                        setError(
+                            "An unexpected error occurred. Please try again." +
+                            (err instanceof Error ? " " + err.message : ""),
+                        );
                     });
             });
         }, []
@@ -42,13 +62,16 @@ function LoginForm() {
                 </CardDescription>
             </CardHeader>
             <CardContent>
+                <FormError message={error} />
+                <FormSuccess message={success} />
+
                 <Form {...form}>
                     <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
                         <div className="grid gap-4">
                             <div className="grid gap-2">
                                 <FormField
                                     control={form.control}
-                                    name="username"
+                                    name="email"
                                     render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Username</FormLabel>

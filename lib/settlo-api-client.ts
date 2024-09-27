@@ -3,6 +3,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import https from 'https';
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
+import {getAuthToken} from "@/lib/auth-utils";
 
 class ApiClient {
     private instance: AxiosInstance;
@@ -23,13 +24,11 @@ class ApiClient {
                 config.url = this.baseURL + config.url;
             }
 
-            // const token = await getAuthToken();
-            //
-            // if (token?.authToken) {
-            //     config.headers["Authorization"] = `Bearer ${token.authToken}`;
-            // }
+            const token = await getAuthToken();
 
-            config.headers["Authorization"] = `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwYmlqYW1wb2xhQGdtYWlsLmNvbSIsImlhdCI6MTcyNzQyMjY2NCwiZXhwIjoxNzI3NDI2MjY0fQ.9gmDEAQVgBCJWGrKihSxsjUeSuZmUZxQ4vtiMv4ej8k`;
+            if (token?.authToken) {
+                config.headers["Authorization"] = `Bearer ${token.authToken}`;
+            }
 
             config.headers["Content-Type"] = "application/json";
 
@@ -43,6 +42,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
+            console.error(error);
             throw handleSettloApiError(error);
         }
     }
