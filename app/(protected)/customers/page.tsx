@@ -26,7 +26,7 @@ const invoices = [
 ]
 function CustomersPage() {
     return (
-        <div className={`flex-col mt-10`}>
+        <div className={`flex-1 space-y-4 md:p-8 pt-6`}>
             {/*<h1 className="text-3xl font-bold text-4xl leading-tight">Customers</h1>*/}
             <div>
                <Link href="/customers/create">

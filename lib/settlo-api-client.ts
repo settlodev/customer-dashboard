@@ -29,7 +29,7 @@ class ApiClient {
             //     config.headers["Authorization"] = `Bearer ${token.authToken}`;
             // }
 
-            config.headers["Authorization"] = `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwYmlqYW1wb2xhQGdtYWlsLmNvbSIsImlhdCI6MTcyNzQyMjY2NCwiZXhwIjoxNzI3NDI2MjY0fQ.9gmDEAQVgBCJWGrKihSxsjUeSuZmUZxQ4vtiMv4ej8k`;
+            config.headers["Authorization"] = `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwYmlqYW1wb2xhQGdtYWlsLmNvbSIsImlhdCI6MTcyNzQyNzk0NSwiZXhwIjoxNzI3NDMxNTQ1fQ.T74b1yS40LIyGJsC4WwZf_2q9qBAWApF2VRLHLBUXso`;
 
             config.headers["Content-Type"] = "application/json";
 

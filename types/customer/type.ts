@@ -3,7 +3,7 @@ import {Gender} from "@/types/enums";
 import {UUID} from "node:crypto";
 
 
-export declare interface Schema {
+export declare interface Customer {
     id: UUID;
     firstName: string;
     lastName: string;

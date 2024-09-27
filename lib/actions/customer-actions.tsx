@@ -8,7 +8,27 @@ import {parseStringify} from "@/lib/utils";
 import {FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
+import {getAuthenticatedUser} from "@/lib/actions/auth-actions";
+import {Customer} from "@/types/customer/type";
 
+export const fectchAllCustomers = async () : Promise<Customer[]> => {
+    await  getAuthenticatedUser();
+
+    const authToken = await getAuthToken();
+
+    try {
+        const apiClient = new ApiClient();
+
+        const customerData = await  apiClient.get(
+            `/api/customer/${authToken?.locationId}`
+        );
+        return parseStringify(customerData);
+
+    }
+    catch (error){
+        throw error;
+    }
+}
 export const  createCustomer= async (
     customer: z.infer<typeof CustomerSchema>
 ): Promise<FormResponse | void> => {
