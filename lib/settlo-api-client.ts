@@ -7,8 +7,14 @@ import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
 class ApiClient {
     private instance: AxiosInstance;
     private readonly baseURL: string;
+    public isAuthRoute: boolean | false | undefined;
+    public authToken: string | undefined;
 
-    constructor() {
+    constructor(isAuthRoute=false, authToken: '') {
+
+        this.isAuthRoute = isAuthRoute;
+        this.authToken = authToken;
+
         this.baseURL = process.env.SERVICE_URL || "";
 
         // Remove this when we have our own certificate
@@ -29,7 +35,9 @@ class ApiClient {
             //     config.headers["Authorization"] = `Bearer ${token.authToken}`;
             // }
 
-            config.headers["Authorization"] = `Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJwYmlqYW1wb2xhQGdtYWlsLmNvbSIsImlhdCI6MTcyNzQyMjY2NCwiZXhwIjoxNzI3NDI2MjY0fQ.9gmDEAQVgBCJWGrKihSxsjUeSuZmUZxQ4vtiMv4ej8k`;
+            if(!this.isAuthRoute) {
+                config.headers["Authorization"] = `Bearer ${this.authToken}`;
+            }
 
             config.headers["Content-Type"] = "application/json";
 

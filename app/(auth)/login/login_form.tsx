@@ -24,10 +24,10 @@ function LoginForm() {
             startTransition(() => {
                 login(values)
                     .then((data) => {
-                        console.log(data);
+                        console.log("Login Response:", data);
                     })
                     .catch((err) => {
-                        console.log(err);
+                        console.log("Login Error:", err);
                     });
             });
         }, []
