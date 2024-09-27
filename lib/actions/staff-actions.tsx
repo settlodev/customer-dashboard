@@ -47,7 +47,7 @@ export const searchStaff = async (
         const query = {
             filters: [
                 {
-                    key: "firstName",
+                    key: "name",
                     operator: "LIKE",
                     field_type: "STRING",
                     value: q,
@@ -55,7 +55,7 @@ export const searchStaff = async (
             ],
             sorts: [
                 {
-                    key: "firstName",
+                    key: "name",
                     direction: "ASC",
                 },
             ],
@@ -64,9 +64,11 @@ export const searchStaff = async (
         };
 
         const staffData = await apiClient.post(
-            `/api/staff/${authToken?.locationId}`,
+            `/api/staff/2e5a964c-41d4-46b7-9377-c547acbf7739`,
             query,
         );
+
+        console.log("Action response", staffData);
 
         return parseStringify(staffData);
     } catch (error) {
