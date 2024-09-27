@@ -24,6 +24,7 @@ export const CustomerSchema = object({
 
     gender: nativeEnum(Gender),
     allowNotifications: boolean(),
+    status:boolean(),
     location: string({ message: "Schema location is required" }).uuid(
         "Please select a valid locations",
     ),

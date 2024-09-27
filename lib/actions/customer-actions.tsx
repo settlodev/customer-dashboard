@@ -10,6 +10,8 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {getAuthenticatedUser} from "@/lib/actions/auth/login";
 import {Customer} from "@/types/customer/type";
+import {UUID} from "node:crypto";
+import {id} from "postcss-selector-parser";
 
 export const fectchAllCustomers = async () : Promise<Customer[]> => {
     await  getAuthenticatedUser();
@@ -110,3 +112,50 @@ export const  createCustomer= async (
     redirect("/customer")
 }
 
+export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
+    const apiClient = new ApiClient();
+    const authToken = await getAuthToken();
+    const query ={
+        filters:[
+            {
+                key: "id",
+                operator: "EQUAL",
+                field_type: "UUID_STRING",
+                value: id,
+            }
+        ],
+        sorts: [],
+        page: 0,
+        size: 1,
+    }
+    const customerResponse = await apiClient.post(
+        `/api/customer/2e5a964c-41d4-46b7-9377-c547acbf7739`,
+        query,
+    );
+    return parseStringify(customerResponse)
+}
+
+export const updateCustomer = async(id:UUID):Promise<void> => {
+    const apiClient = new ApiClient();
+    const authToken = await getAuthToken();
+
+    const query ={
+        filters:[
+            {
+                key: "id",
+                operator: "EQUAL",
+                field_type: "UUID_STRING",
+                value: id,
+            }
+        ],
+        sorts: [],
+        page: 0,
+        size: 1,
+    }
+    const customerResponse = await apiClient.post(
+        `/api/customer/2e5a964c-41d4-46b7-9377-c547acbf7739`,
+        query,
+    );
+
+    return parseStringify(customerResponse);
+}
