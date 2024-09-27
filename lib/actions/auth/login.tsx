@@ -25,7 +25,7 @@ export const login = async (
             const apiClient = new ApiClient();
             const myEndpoints = endpoints();
 
-            const data = await apiClient.post(myEndpoints.auth.login.endpoint);
+            const data = await apiClient.post(myEndpoints.auth.login.endpoint, {});
 
             console.log("Action response", data);
 
