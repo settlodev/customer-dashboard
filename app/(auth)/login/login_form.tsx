@@ -1,7 +1,6 @@
 "use client";
 
 import {LoginSchema} from "@/types/data-schemas";
-import {login} from "@/lib/actions/auth/auth-actions";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
@@ -10,6 +9,7 @@ import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, Form
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
 import {useCallback, useTransition} from "react";
+import {login} from "@/lib/actions/auth/login";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
