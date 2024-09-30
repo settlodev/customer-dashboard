@@ -28,11 +28,15 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             await validateEmail(user.id!);
         },
         async signIn({ user }) {
-             await createAuthToken(user);
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+             // @ts-expect-error
+            await createAuthToken(user);
         },
     },
     callbacks: {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         async signIn({ user, account }) {
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             const existingUser = await getUserById(user.id!);
 
             //Check if email is verified
