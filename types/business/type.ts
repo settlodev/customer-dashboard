@@ -1,6 +1,6 @@
 import {UUID} from "node:crypto";
 
-export declare interface BusinessType {
+export declare interface Business {
     id: UUID,
     prefix: string,
     name: string,
