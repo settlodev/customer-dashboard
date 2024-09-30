@@ -1,9 +1,12 @@
-import { getAuthToken } from "@/lib/auth-utils";
+"use server"
+
+import { getAuthenticatedUser, getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { BusinessSchema } from "@/types/business/schema";
 import { FormResponse } from "@/types/types";
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
+import { redirect } from "next/navigation";
 
 export const createBusiness = async(
     business:z.infer<typeof BusinessSchema>
@@ -21,21 +24,22 @@ export const createBusiness = async(
     }
     try {
          const apiClient = new ApiClient();
-        // const authToken = await getAuthToken();
+         console.log("The api client:",apiClient)
 
-        // const response = await apiClient.post(
-        //     `api/businesses`,
-        //     businessValidData.data
-        // );
+        const user = await getAuthenticatedUser();
 
-        // console.log(response);
+        const payload={
+            ...businessValidData.data
+        };
+       
 
-        // formResponse={
-        //     responseType:"success",
-        //     message:"Business created successfully"
-        // }
+        await apiClient.post(
+            `/api/businesses/546779989889899090/create`,
+            payload
+        );
 
-        // return formResponse
+
+        redirect("/location");
     }
     catch (error){
         console.error("Error creating business",error)
@@ -44,6 +48,9 @@ export const createBusiness = async(
             message:"Something went wrong while processing your request, please try again",
             error : error instanceof Error ? error : new Error(String(error))
         }
-        return formResponse
+        return parseStringify(formResponse)
+    }
+    if(formResponse){
+        return parseStringify(formResponse)
     }
 }

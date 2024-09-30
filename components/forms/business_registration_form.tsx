@@ -53,38 +53,17 @@ const BusinessRegistrationForm = () => {
         [toast],
     );
 
-    const submitData = useCallback(
-        (values: z.infer<typeof BusinessSchema>) => {
-            console.log("submitData called");
-            console.log("Submitting values are:", values)
-            startTransition(() => {
-                createBusiness(values).then((data) => {
-                    // console.log("Received response from API:", data);
-                    if (data){
-                        console.log("data is:", data)
-                        setResponse(data);
-                       if(data.responseType === "success"){
-                        toast({
-                            variant: "default",
-                            title: "Business created successfully",
-                            description:data.message,
-                            
-                        })
-                       }
-                       else if(data.responseType === "error"){
-                        toast({
-                            variant: "destructive",
-                            title: "Uh oh! Something went wrong.",
-                            description:data.message
-                        })
-                       }
-                    } 
-                       
-                });
+    const submitData = (values: z.infer<typeof BusinessSchema>) => {
+        setResponse(undefined);
+
+        startTransition(() => {
+            createBusiness(values).then((data) => {
+                if (data) setResponse(data);
             });
-        },
-        [toast]
-    )
+        });
+    };
+       
+    
 
     return (
         <Form {...form}>

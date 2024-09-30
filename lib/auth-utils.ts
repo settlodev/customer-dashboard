@@ -21,11 +21,13 @@ export const getUser = async () => {
 export const getAuthToken = async (): Promise<AuthToken | null> => {
     const cookieStore = cookies();
 
-    const tokens = cookieStore.get("settloAuthToken")?.value;
+    const tokens = cookieStore.get("authToken")?.value;
 
     if (!tokens) return null;
 
-    return JSON.parse(tokens) as AuthToken;
+    const parsedTokens = JSON.parse(tokens) as AuthToken;
+
+    return parsedTokens.authToken ? parsedTokens : null;
 };
 
 export const deleteAuthToken = async () => {
