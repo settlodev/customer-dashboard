@@ -38,19 +38,14 @@ export default auth((req) => {
     // redirect to the default page or account completion page
     if (isAuthRoute) {
       if (authToken?.businessComplete !== true) {
-        return Response.redirect(
-            new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
-        );
+        return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
       }
 
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
     }
 
     // For non-auth routes, check if business registration is complete
-    if (
-        authToken?.businessComplete !== true &&
-        nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL
-    ) {
+    if (authToken?.businessComplete !== true && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
       return Response.redirect(
           new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
       );
