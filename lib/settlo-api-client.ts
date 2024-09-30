@@ -26,7 +26,6 @@ class ApiClient {
             }
 
             const token = await getAuthToken();
-
             if (token?.authToken) {
                 config.headers["Authorization"] = `Bearer ${token.authToken}`;
             }

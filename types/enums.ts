@@ -3,3 +3,9 @@ export enum Gender {
     FEMALE = "FEMALE",
     UNDISCLOSED = "UNDISCLOSED",
 }
+
+export enum BusinessType {
+    RETAIL = "RETAIL",
+    HOSPITALITY = "HOSPITALITY",
+   
+}
