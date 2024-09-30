@@ -27,6 +27,7 @@ export const createBusiness = async(
          console.log("The api client:",apiClient)
 
         const user = await getAuthenticatedUser();
+        const userId = user?.id;
 
         const payload={
             ...businessValidData.data
@@ -34,12 +35,12 @@ export const createBusiness = async(
        
 
         await apiClient.post(
-            `/api/businesses/546779989889899090/create`,
+            `/api/businesses/${userId}/create`,
             payload
         );
 
 
-        redirect("/location");
+        // redirect("/location");
     }
     catch (error){
         console.error("Error creating business",error)

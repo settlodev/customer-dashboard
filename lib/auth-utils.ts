@@ -27,6 +27,8 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
 
     const parsedTokens = JSON.parse(tokens) as AuthToken;
 
+    console.log("Parsed token", parsedTokens);
+
     return parsedTokens.authToken ? parsedTokens : null;
 };
 
