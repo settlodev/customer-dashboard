@@ -26,8 +26,8 @@ interface CellActionProps {
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
-  const user = sessionStorage.getItem('authToken');
-  console.log("user is:", user);
+  /*const user = sessionStorage.getItem('authToken');
+  console.log("user is:", user);*/
 
   const onDelete = async () => {
     try {
@@ -68,20 +68,21 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             alignItems: "center",
             justifyContent: "center",
             gap: 16,
-            fontSize: 20,
-            alignSelf: "flex-end"
+            fontSize: 20
           }}>
-
-            <a style={{flex: 1}} onClick={() => router.push(`/businesses/${data.id}`)}>
+            <a style={{flex: 1, minWidth: 50}} onClick={() => router.push(`/businesses/${data.id}`)}>
               <EyeIcon color={'#384B70'}/>
             </a>
             <a style={{flex: 1}} onClick={() => router.push(`/businesses/${data.id}`)}>
               <EditIcon color={'#384B70'}/>
             </a>
-            {data.canDelete && (
+            {data.canDelete ?
             <a style={{flex: 1}} onClick={onOpen}>
               <DeleteIcon color={'#D91656'}/>
-            </a>)}
+            </a>:
+                <a style={{flex: 1}}>
+                    <DeleteIcon color={'#ddd'}/>
+            </a>}
           </div>
         </div>
         <div className="relative flex items-center gap-2">
