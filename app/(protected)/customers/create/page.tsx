@@ -2,7 +2,7 @@ import CustomerForm from "@/components/forms/customer_form";
 
 
 function CreateCustomer() {
-    return<CustomerForm/>
+    return<CustomerForm item={undefined}/>
 }
 
 export default CreateCustomer

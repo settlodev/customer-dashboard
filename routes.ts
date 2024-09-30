@@ -6,6 +6,7 @@ export const authRoutes = [
     "/auth-error",
     "/forgot-password",
     "/new-password",
+    "/customers"
 ];
 
 export const apiAuthPrefix = "/api/auth";

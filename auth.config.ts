@@ -1,4 +1,4 @@
-import type { NextAuthConfig } from "next-auth";
+import {AuthError, NextAuthConfig} from "next-auth";
 import Credentials from "@auth/core/providers/credentials";
 import { LoginSchema } from "@/types/data-schemas";
 
@@ -10,11 +10,14 @@ export default {
             async authorize(credentials) {
                 const validatedData = LoginSchema.safeParse(credentials);
 
+
                 if (!validatedData.success) {
                     return null;
                 }
 
                 const { email, password } = validatedData.data;
+
+                console.log("credentials are reaching the auth.config file:", credentials);
 
                 try {
                     const response = await fetch(`${serviceURL}/api/auth/login`, {
@@ -25,29 +28,38 @@ export default {
                         body: JSON.stringify({ email, password }),
                     });
 
+                    console.log("response from login after fetch api:", response);
                     if (!response.ok) {
                         const responseData = await response.json();
 
                         if (response.status === 500) {
                             console.log(responseData.message)
-                        } else if (response.status === 400) {
+                        }
+                        else if (response.status === 400) {
                             if (responseData.code === "BAD_CREDENTIALS") {
                                 console.log(responseData.message);
-                            } else if (responseData.code === "VALIDATION_FAILED") {
+                            }
+                            else if (responseData.code === "VALIDATION_FAILED") {
                                 responseData.fieldErrors?.forEach((fieldError: any) => {
                                     console.log(responseData.message)
                                 });
                             }
                         }
-
                         return null;
                     }
-
                     return await response.json();
                 } catch (error) {
-                    console.log(error)
-
-                    return null;
+                    // console.log(error)
+                        if(error instanceof AuthError) {
+                            switch (error.type) {
+                                case "CredentialsSignin":
+                                    return {
+                                        error: "Wrong credentials! Invalid email address and/or password",status:"error"}
+                                    default:
+                                        return {error: "An unexpected error occurred. Please try again.",status:"error"}
+                            }
+                        }
+                    throw error
                 }
             },
         }),

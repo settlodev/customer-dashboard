@@ -30,7 +30,7 @@ export const login = async (
     credentials: z.infer<typeof LoginSchema>,
 ): Promise<FormResponse> => {
     const validatedData = LoginSchema.safeParse(credentials);
-
+    console.log("credentials are:", credentials);
     if (!validatedData.success) {
         return parseStringify({
             responseType: "error",
