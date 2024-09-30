@@ -4,13 +4,13 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {endpoints} from "@/types/endpoints";
 import {cookies} from "next/headers";
-import {CategoryType} from "@/types/business/type";
+import {BusinessType} from "@/types/business/type";
 
-export const listCategories = async (
+export const listBusinesses = async (
     q: string,
     page: number,
     pageLimit: number,
-): Promise<ApiResponse<CategoryType>> => {
+): Promise<ApiResponse<BusinessType>> => {
     //await getAuthenticatedUser();
 
     const location = cookies().get('businessId')?.value;
@@ -39,7 +39,7 @@ export const listCategories = async (
             size: pageLimit ? pageLimit : 10,
         };
 
-        const data = await apiClient.post(myEndpoints.categories.search.endpoint, query);
+        const data = await apiClient.post(myEndpoints.business.search.endpoint, query);
 
         console.log("Action response", data);
 

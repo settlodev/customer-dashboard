@@ -27,34 +27,32 @@ export default auth((req) => {
   }
 
   // Get auth token
-  const tokens = cookies().get("settloAuthToken")?.value;
+  const tokens = cookies().get("authToken")?.value;
 
   if (tokens) {
     authToken = JSON.parse(tokens) as AuthToken;
   }
 
+  console.log("authToken:", authToken);
+
   if (isLoggedIn) {
     // If logged in and trying to access an auth route (like /login),
     // redirect to the default page or account completion page
     if (isAuthRoute) {
-      if (authToken?.businessComplete !== true) {
-        return Response.redirect(
-            new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
-        );
-      }
+      //TODO: uncomment below line to activate business verification process
+      /*if (authToken?.businessComplete !== true) {
+        return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
+      }*/
 
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
     }
 
     // For non-auth routes, check if business registration is complete
-    if (
-        authToken?.businessComplete !== true &&
-        nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL
-    ) {
+    /*if (authToken?.businessComplete !== true && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
       return Response.redirect(
           new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
       );
-    }
+    }*/
   } else {
     // If not logged in, allow access to auth routes and public routes
     if (isAuthRoute || isPublicRoute) {

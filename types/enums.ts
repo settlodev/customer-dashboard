@@ -9,3 +9,9 @@ export enum BusinessType {
     HOSPITALITY = "HOSPITALITY",
    
 }
+
+export enum BusinessType {
+    RETAIL = "RETAIL",
+    HOSPITALITY = "HOSPITALITY",
+   
+}
