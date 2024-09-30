@@ -48,6 +48,7 @@ export default auth((req) => {
     }
 
     // For non-auth routes, check if business registration is complete
+    //TODO: uncomment below line to activate business verification process
     /*if (authToken?.businessComplete !== true && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
       return Response.redirect(
           new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),

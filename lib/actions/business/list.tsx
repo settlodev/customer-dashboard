@@ -4,13 +4,13 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {endpoints} from "@/types/endpoints";
 import {cookies} from "next/headers";
-import {BusinessType} from "@/types/business/type";
+import {Business} from "@/types/business/type";
 
 export const listBusinesses = async (
     q: string,
     page: number,
     pageLimit: number,
-): Promise<ApiResponse<BusinessType>> => {
+): Promise<ApiResponse<Business>> => {
     //await getAuthenticatedUser();
 
     const location = cookies().get('businessId')?.value;

@@ -16,10 +16,10 @@ import DeleteModal from "@/components/tables/delete-modal";
 import { deleteStaff } from "@/lib/actions/staff-actions";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
-import {BusinessType} from "@/types/business/type";
+import {Business} from "@/types/business/type";
 
 interface CellActionProps {
-  data: BusinessType;
+  data: Business;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {

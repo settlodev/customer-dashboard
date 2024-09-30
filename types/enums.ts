@@ -7,11 +7,5 @@ export enum Gender {
 export enum BusinessType {
     RETAIL = "RETAIL",
     HOSPITALITY = "HOSPITALITY",
-   
-}
 
-export enum BusinessType {
-    RETAIL = "RETAIL",
-    HOSPITALITY = "HOSPITALITY",
-   
 }

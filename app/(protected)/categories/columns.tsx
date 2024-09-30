@@ -6,10 +6,10 @@ import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
-import {BusinessType} from "@/types/business/type";
+import {Business} from "@/types/business/type";
 import {CellAction} from "@/app/(protected)/categories/cell-action";
 
-export const columns: ColumnDef<BusinessType>[] = [
+export const columns: ColumnDef<Business>[] = [
     {
         id: "select",
         header: ({ table }) => (
