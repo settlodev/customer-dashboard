@@ -1,5 +1,5 @@
 "use server"
-import { getAuthenticatedUser, getAuthToken } from "@/lib/auth-utils";
+import {getAuthToken} from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { BusinessSchema } from "@/types/business/schema";
 import { FormResponse } from "@/types/types";
@@ -23,7 +23,7 @@ export const createBusiness = async(
     }
     try {
          const apiClient = new ApiClient();
-        const user= await getAuthenticatedUser();
+        const user= await getAuthToken();
         const userId= user?.id
 
         const payload = {

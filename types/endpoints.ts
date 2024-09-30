@@ -11,12 +11,12 @@ export const endpoints=(args?: EndpointArgsTypes) => {
             "delete": {method: "DELETE", endpoint: `${apiPrefix}/categories/${args?.location}/${args?.id}`},
         },
         "business": {
-            "get": {method: "GET", endpoint: `${apiPrefix}/businesses/${args?.location}/${args?.id}`},
-            "list": {method: "GET", endpoint: `${apiPrefix}/businesses`},
-            "search": {method: "POST", endpoint: `${apiPrefix}/businesses/${args?.location}`},
-            "create": {method: "POST", endpoint: `${apiPrefix}/businesses/${args?.location}/create`},
-            "update": {method: "PUT", endpoint: `${apiPrefix}/businesses/${args?.location}`},
-            "delete": {method: "DELETE", endpoint: `${apiPrefix}/businesses/${args?.location}/${args?.id}`},
+            "get": {method: "GET", endpoint: `${apiPrefix}/businesses/${args?.userId}/${args?.id}`},
+            "list": {method: "GET", endpoint: `${apiPrefix}/businesses/${args?.userId}`},
+            "search": {method: "POST", endpoint: `${apiPrefix}/businesses/${args?.userId}`},
+            "create": {method: "POST", endpoint: `${apiPrefix}/businesses/${args?.userId}/create`},
+            "update": {method: "PUT", endpoint: `${apiPrefix}/businesses/${args?.userId}`},
+            "delete": {method: "DELETE", endpoint: `${apiPrefix}/businesses/${args?.userId}/${args?.id}`},
         },
         "users": {
             "get": {method: "GET", endpoint: `${apiPrefix}/users/${args?.location}/${args?.id}`},

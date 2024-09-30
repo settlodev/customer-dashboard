@@ -15,11 +15,10 @@ export const listBusinesses = async (
 
     const authToken = await getAuthToken();
 
-    console.log("authToken user:", authToken);
-    const location = authToken?.businessId;
-    console.log("location is:", location)
+    const userId = authToken?.id;
+    console.log("userId is:", userId)
     //const authToken = await getAuthToken();
-    const myEndpoints = endpoints();
+    const myEndpoints = endpoints({userId: userId});
     try {
         const apiClient = new ApiClient();
 
@@ -41,8 +40,6 @@ export const listBusinesses = async (
             page: page ? page - 1 : 0,
             size: pageLimit ? pageLimit : 10
         };
-
-        console.log("myEndpoints.business.search.endpoint", myEndpoints.business.list.endpoint);
 
         const data = await apiClient.get(myEndpoints.business.list.endpoint);
         console.log("Action response", data);
