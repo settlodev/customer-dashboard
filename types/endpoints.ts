@@ -12,7 +12,7 @@ export const endpoints=(args?: EndpointArgsTypes) => {
         },
         "business": {
             "get": {method: "GET", endpoint: `${apiPrefix}/businesses/${args?.location}/${args?.id}`},
-            "list": {method: "GET", endpoint: `${apiPrefix}/businesses/${args?.location}`},
+            "list": {method: "GET", endpoint: `${apiPrefix}/businesses`},
             "search": {method: "POST", endpoint: `${apiPrefix}/businesses/${args?.location}`},
             "create": {method: "POST", endpoint: `${apiPrefix}/businesses/${args?.location}/create`},
             "update": {method: "PUT", endpoint: `${apiPrefix}/businesses/${args?.location}`},

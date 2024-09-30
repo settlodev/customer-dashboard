@@ -3,8 +3,8 @@ import ApiClient from "@/lib/settlo-api-client";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {endpoints} from "@/types/endpoints";
-import {cookies} from "next/headers";
 import {Business} from "@/types/business/type";
+import {getAuthToken} from "@/lib/auth-utils";
 
 export const listBusinesses = async (
     q: string,
@@ -13,10 +13,13 @@ export const listBusinesses = async (
 ): Promise<ApiResponse<Business>> => {
     //await getAuthenticatedUser();
 
-    const location = cookies().get('businessId')?.value;
+    const authToken = await getAuthToken();
+
+    console.log("authToken user:", authToken);
+    const location = authToken?.businessId;
     console.log("location is:", location)
     //const authToken = await getAuthToken();
-    const myEndpoints = endpoints({location: location});
+    const myEndpoints = endpoints();
     try {
         const apiClient = new ApiClient();
 
@@ -36,11 +39,12 @@ export const listBusinesses = async (
                 },
             ],
             page: page ? page - 1 : 0,
-            size: pageLimit ? pageLimit : 10,
+            size: pageLimit ? pageLimit : 10
         };
 
-        const data = await apiClient.post(myEndpoints.business.search.endpoint, query);
+        console.log("myEndpoints.business.search.endpoint", myEndpoints.business.list.endpoint);
 
+        const data = await apiClient.get(myEndpoints.business.list.endpoint);
         console.log("Action response", data);
 
         return parseStringify(data);
