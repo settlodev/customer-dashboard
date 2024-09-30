@@ -17,7 +17,6 @@ export default {
 
                 const { email, password } = validatedData.data;
 
-                console.log("credentials are reaching the auth.config file:", credentials);
 
                 try {
                     const response = await fetch(`${serviceURL}/api/auth/login`, {
@@ -28,7 +27,8 @@ export default {
                         body: JSON.stringify({ email, password }),
                     });
 
-                    console.log("response from login after fetch api:", response);
+                    console.log("response: ", response)
+
                     if (!response.ok) {
                         const responseData = await response.json();
 
