@@ -47,7 +47,8 @@ export default auth((req) => {
     }
 
     // For non-auth routes, check if business registration is complete
-    if (authToken?.businessComplete !== true && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
+    //if (authToken?.businessComplete !== true && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
+    if (nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
       return Response.redirect(
           new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
       );
