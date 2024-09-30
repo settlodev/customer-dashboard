@@ -27,11 +27,13 @@ export default auth((req) => {
   }
 
   // Get auth token
-  const tokens = cookies().get("settloAuthToken")?.value;
+  const tokens = cookies().get("authToken")?.value;
 
   if (tokens) {
     authToken = JSON.parse(tokens) as AuthToken;
   }
+
+  console.log("authToken:", authToken);
 
   if (isLoggedIn) {
     // If logged in and trying to access an auth route (like /login),
