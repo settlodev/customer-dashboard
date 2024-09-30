@@ -41,7 +41,7 @@ export const listBusinesses = async (
             size: pageLimit ? pageLimit : 10
         };
 
-        const data = await apiClient.get(myEndpoints.business.list.endpoint);
+        const data = await apiClient.post(myEndpoints.business.list.endpoint, query);
         console.log("Action response", data);
 
         return parseStringify(data);

@@ -34,6 +34,7 @@ export const createBusiness = async(
             `/api/businesses/${userId}/create`,
             payload
         );
+
         if(formResponse){
             return parseStringify(formResponse)
         }
