@@ -25,7 +25,7 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const {isOpen, onOpen, onOpenChange} = useDisclosure();
   /*const user = sessionStorage.getItem('authToken');
   console.log("user is:", user);*/
 
@@ -43,7 +43,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           variant: "destructive",
           title: "Uh oh! Something went wrong.",
           description:
-            "There was an issue with your request, please try again later",
+              "There was an issue with your request, please try again later",
         });
       }
     } catch (error: any) {
@@ -51,8 +51,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
         description:
-          error.message ||
-          "There was an issue with your request, please try again later",
+            error.message ||
+            "There was an issue with your request, please try again later",
       });
     } finally {
       onOpenChange();
@@ -60,7 +60,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   };
 
   return (
-    <>
+      <>
         <div style={{alignItems: 'flex-end'}}>
           <div style={{
             display: 'flex',
@@ -70,19 +70,19 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             gap: 16,
             fontSize: 20
           }}>
-            <a style={{flex: 1, minWidth: 50}} onClick={() => router.push(`/businesses/${data.id}`)}>
+            <a style={{flex: 1}} onClick={() => router.push(`/businesses/${data.id}`)}>
               <EyeIcon color={'#384B70'}/>
             </a>
             <a style={{flex: 1}} onClick={() => router.push(`/businesses/${data.id}`)}>
               <EditIcon color={'#384B70'}/>
             </a>
             {data.canDelete ?
-            <a style={{flex: 1}} onClick={onOpen}>
-              <DeleteIcon color={'#D91656'}/>
-            </a>:
+                <a style={{flex: 1}} onClick={onOpen}>
+                  <DeleteIcon color={'#D91656'}/>
+                </a> :
                 <a style={{flex: 1}}>
-                    <DeleteIcon color={'#ddd'}/>
-            </a>}
+                  <DeleteIcon color={'#ddd'}/>
+                </a>}
           </div>
         </div>
         <div className="relative flex items-center gap-2">
@@ -118,5 +118,5 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             />
         )}
       </>
-      );
-      };
+  )
+}
