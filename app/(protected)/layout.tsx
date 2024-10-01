@@ -1,10 +1,14 @@
 import { Toaster } from "@/components/ui/toaster"
 import {Suspense} from "react";
 import { Layout } from "@/components/layouts/layout";
+import {SessionProvider} from "next-auth/react";
+import {auth} from "@/auth";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
+    const session = await auth();
+    console.log("my session is:" , session)
     /*return (
         <Suspense fallback={"Loading..."}>
             <div className="flex h-dvh w-full">
@@ -24,5 +28,10 @@ export default async function RootLayout({children}: {
             </div>
         </Suspense>
     );*/
-    return <Layout>{children}</Layout>
+    return (<SessionProvider session={session}>
+        <Layout>
+            {children}
+        </Layout>
+    </SessionProvider>)
+
 }

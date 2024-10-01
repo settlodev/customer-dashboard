@@ -1,8 +1,8 @@
+"use client"
 import React from "react";
 import { Sidebar } from "./sidebar.styles";
 import { Avatar, Tooltip } from "@nextui-org/react";
 import { CompaniesDropdown } from "./companies-dropdown";
-import { HomeIcon } from "../icons/sidebar/home-icon";
 import { PaymentsIcon } from "../icons/sidebar/payments-icon";
 import { BalanceIcon } from "../icons/sidebar/balance-icon";
 import { AccountsIcon } from "../icons/sidebar/accounts-icon";
@@ -19,12 +19,14 @@ import { FilterIcon } from "../icons/sidebar/filter-icon";
 import { useSidebarContext } from "../layouts/layout-context";
 import { ChangeLogIcon } from "../icons/sidebar/changelog-icon";
 import { usePathname } from "next/navigation";
-import {DashboardIcon} from "@radix-ui/react-icons";
+import {BarChartIcon, PieChartIcon, HomeIcon, ChevronRightIcon} from "@radix-ui/react-icons";
+import {useSession} from "next-auth/react";
 
 export const SidebarWrapper = () => {
   const pathname = usePathname();
   const { collapsed, setCollapsed } = useSidebarContext();
-
+  const {data: session, status} = useSession();
+  console.log("session is:", session);
   return (
     <aside className="h-screen z-[20] sticky top-0">
       {collapsed ? (
@@ -44,19 +46,19 @@ export const SidebarWrapper = () => {
               <SidebarItem
                   isActive={pathname === "/summary"}
                   title="Summary"
-                  icon={<DashboardIcon />}
+                  icon={<HomeIcon />}
                   href="/summary"
               />
               <SidebarItem
                   isActive={pathname === "/top-selling"}
-                  title="Top Selling"
-                  icon={<DashboardIcon />}
+                  title="Top selling items"
+                  icon={<BarChartIcon />}
                   href="/top-selling"
               />
               <SidebarItem
                   isActive={pathname === "/staff-report"}
-                  title="Staff Report"
-                  icon={<DashboardIcon />}
+                  title="Staff report"
+                  icon={<PieChartIcon />}
                   href="/staff-report"
               />
             </SidebarMenu>
@@ -65,19 +67,19 @@ export const SidebarWrapper = () => {
               <SidebarItem
                 isActive={pathname === "/products"}
                 title="Products"
-                icon={<AccountsIcon />}
+                icon={<ChevronRightIcon />}
                 href="/products"
               />
               <SidebarItem
                   isActive={pathname === "/suppliers"}
                   title="Suppliers"
-                  icon={<CustomersIcon />}
+                  icon={<ChevronRightIcon />}
                   href="/suppliers"
               />
               <SidebarItem
                 isActive={pathname === "/categories"}
                 title="Categories"
-                icon={<PaymentsIcon />}
+                icon={<ChevronRightIcon />}
                 href="/categories"
               />
               {/*<CollapseItems
@@ -92,25 +94,25 @@ export const SidebarWrapper = () => {
               <SidebarItem
                 isActive={pathname === "/countries"}
                 title="Countries"
-                icon={<DevIcon />}
+                icon={<ChevronRightIcon />}
                 href='/countries'
               />
               <SidebarItem
                   isActive={pathname === "/departments"}
                   title="Departments"
-                  icon={<ProductsIcon />}
+                  icon={<ChevronRightIcon />}
                   href='/departments'
               />
               <SidebarItem
                   isActive={pathname === "/discounts"}
                   title="Discounts"
-                  icon={<ProductsIcon />}
+                  icon={<ChevronRightIcon />}
                   href='/discounts'
               />
               <SidebarItem
                   isActive={pathname === "/business"}
                   title="Business"
-                  icon={<ProductsIcon />}
+                  icon={<ChevronRightIcon />}
                   href='/business'
               />
             </SidebarMenu>
