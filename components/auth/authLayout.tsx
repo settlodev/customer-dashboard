@@ -1,4 +1,4 @@
-import { Image } from "@nextui-org/react";
+import Image from "next/image";
 import { Divider } from "@nextui-org/divider";
 
 interface Props {
@@ -12,8 +12,10 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 <div className='md:hidden absolute left-0 right-0 bottom-0 top-0 z-0'>
                     <Image
                         className='w-full h-full'
-                        src='https://nextui.org/gradients/docs-right.png'
+                        src='/images/login-bg.png'
                         alt='gradient'
+                        width={100}
+                        height={100}
                     />
                 </div>
                 {children}
@@ -37,10 +39,17 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                         <p className="text-medium">Login with your credentials to continue using the Dashboard, Download
                             Settlo App from <br/>Playstore and Appstore to use our POS in your android or iOS devices
                         </p>
-                    </div>
-                    <div className='font-light text-slate-400 mt-4'>
 
+                        <div className='mt-4 flex'>
+                            <div className="dark">
+                                <Image src="/images/apple.svg" width={80} height={80} alt='Apple AppStore' />
+                            </div>
+                            <div className="dark">
+                                <Image src="/images/play-store.svg" width={80} height={80} alt='Google PlayStore' />
+                            </div>
+                        </div>
                     </div>
+
                 </div>
             </div>
         </div>
