@@ -29,8 +29,10 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 <div className='absolute left-0 right-0 bottom-0 top-0 z-0'>
                     <Image
                         className='w-full h-full'
-                        src='https://nextui.org/gradients/docs-right.png'
+                        src='/images/login-bg.png'
                         alt='gradient'
+                        width={100}
+                        height={100}
                     />
                 </div>
                 <div className='z-10'>
@@ -40,12 +42,19 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                             Settlo App from <br/>Playstore and Appstore to use our POS in your android or iOS devices
                         </p>
 
-                        <div className='mt-4 flex'>
-                            <div className="dark">
-                                <Image src="/images/apple.svg" width={80} height={80} alt='Apple AppStore' />
+                        <div className='mt-4 flex gap-6'>
+                            <div className="flex flex-col items-center">
+                                <div>
+                                    <Image src="/images/apple.svg" width={40} height={40} alt='Apple AppStore'/>
+                                </div>
+                                <p className="text-sm font-bold text-center">AppStore</p>
                             </div>
-                            <div className="dark">
-                                <Image src="/images/play-store.svg" width={80} height={80} alt='Google PlayStore' />
+
+                            <div className="flex flex-col items-center">
+                                <div>
+                                    <Image src="/images/google-play.svg" width={40} height={40} alt='Google PlayStore'/>
+                                </div>
+                                <p className="text-sm font-bold text-center">PlayStore</p>
                             </div>
                         </div>
                     </div>
