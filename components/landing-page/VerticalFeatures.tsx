@@ -3,27 +3,27 @@ import { Section } from './Section';
 
 const VerticalFeatures = () => (
   <Section
-    title="Your title here"
-    description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Phasellus malesuada nisi tellus, non imperdiet nisi tempor at."
+    title="Features"
+    description="Our App is rich in features to satisfy your business management."
   >
     <VerticalFeatureRow
-      title="Your title here"
+      title="Point of Sale (POS)"
       description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse bibendum, nunc non posuere consectetur, justo erat semper enim, non hendrerit dui odio id enim."
       image="/assets/images/feature.svg"
-      imageAlt="First feature alt text"
+      imageAlt="Settlo POS"
     />
     <VerticalFeatureRow
-      title="Your title here"
+      title="Business Insights"
       description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse bibendum, nunc non posuere consectetur, justo erat semper enim, non hendrerit dui odio id enim."
       image="/assets/images/feature2.svg"
-      imageAlt="Second feature alt text"
+      imageAlt="Settlo Reports"
       reverse
     />
     <VerticalFeatureRow
-      title="Your title here"
+      title="Live Orders & KDS"
       description="Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse bibendum, nunc non posuere consectetur, justo erat semper enim, non hendrerit dui odio id enim."
       image="/assets/images/feature3.svg"
-      imageAlt="Third feature alt text"
+      imageAlt="Settlo KDS"
     />
   </Section>
 );

@@ -4,8 +4,8 @@ import { Section } from '@/components/landing-page/Section';
 
 const Sponsors = () => (
   <Section
-    title="Sponsors"
-    description="Our sponsors' exceptional support has made this project possible."
+    title="Trusted by top brands"
+    description="Settlo POS is trusted by top businesses in Tanzania as shown below"
   >
     <table className="mx-auto border-collapse">
       <tbody>
