@@ -1,3 +1,5 @@
+"use client"
+
 import { Meta } from './Meta';
 import { AppConfig } from './AppConfig';
 import { Banner } from './Banner';

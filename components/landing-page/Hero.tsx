@@ -2,22 +2,22 @@ import Link from 'next/link';
 
 import { Background } from './Background';
 import { Button } from './Button';
-import { HeroOneButton } from './hero/HeroOneButton';
+import { HeroOneButton } from './HeroOneButton';
 import { Section } from './Section';
 import { NavbarTwoColumns } from './NavbarTwoColumns';
 import { Logo } from './Logo';
+import {ChevronRightIcon} from "@nextui-org/shared-icons";
 
 const Hero = () => (
   <Background color="bg-gray-100">
     <Section yPadding="py-6">
       <NavbarTwoColumns logo={<Logo xl />}>
-        <li>
-          <Link href="https://github.com/ixartz/Next-JS-Landing-Page-Starter-Template">
-            GitHub
-          </Link>
+        <li className='text-medium font-bold mr-3'>
+          <Link href="/login">Sign in</Link>
         </li>
-        <li>
-          <Link href="/public">Sign in</Link>
+        <li className='text-medium font-bold border-1 rounded-full pl-4 pr-4 pt-2 pb-2 flex gap-1 items-center bg-emerald-500 text-lime-50'>
+          <Link href="/register">Sign up</Link>
+            <ChevronRightIcon fontSize={20} />
         </li>
       </NavbarTwoColumns>
     </Section>
@@ -26,14 +26,18 @@ const Hero = () => (
       <HeroOneButton
         title={
           <>
-            {'The modern landing page for\n'}
-            <span className="text-primary-500">React developers</span>
+            {'Start.Manage.Grow\n'}
+            <span className="text-emerald-400 font-bold">Your business with Settlo</span>
           </>
         }
-        description="The easiest way to build a React landing page in seconds."
+        description="The easiest way to manage and track your business"
         button={
-          <Link href="https://creativedesignsguru.com/category/nextjs/">
-            <Button xl>Download Your Free Theme</Button>
+          <Link className='rounded-full' href="https://play.google.com/store/app?id=tz.co.tality">
+            <div className="flex items-center w-full justify-center">
+                <div className="rounded-full border-1 border-emerald-700 bg-emerald-500 pl-10 pr-10 pt-3 pb-3 text-emerald-50 font-bold">
+                  <Button xl>Get Started Today</Button>
+                </div>
+            </div>
           </Link>
         }
       />
