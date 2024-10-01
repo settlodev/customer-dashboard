@@ -1,10 +1,10 @@
 import Link from 'next/link';
 
-import { Background } from '../background/Background';
-import { Button } from '../button/Button';
-import { HeroOneButton } from '../hero/HeroOneButton';
-import { Section } from '../layout/Section';
-import { NavbarTwoColumns } from '../navigation/NavbarTwoColumns';
+import { Background } from './Background';
+import { Button } from './Button';
+import { HeroOneButton } from './hero/HeroOneButton';
+import { Section } from './Section';
+import { NavbarTwoColumns } from './NavbarTwoColumns';
 import { Logo } from './Logo';
 
 const Hero = () => (
@@ -17,7 +17,7 @@ const Hero = () => (
           </Link>
         </li>
         <li>
-          <Link href="/">Sign in</Link>
+          <Link href="/public">Sign in</Link>
         </li>
       </NavbarTwoColumns>
     </Section>
