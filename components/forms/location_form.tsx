@@ -30,6 +30,7 @@ import { createBusiness } from "@/lib/actions/auth/business";
 import { Button } from "../ui/button";
 import { error } from "console";
 import { LocationSchema } from "@/types/location/schema";
+import { createBusinessLocation } from "@/lib/actions/auth/location";
 
 const LocationForm = () => {
     

@@ -29,6 +29,7 @@ import BusinessTypeSelector from "../widgets/business-type-selector";
 import { createBusiness, fetchCountries } from "@/lib/actions/auth/business";
 import { Button } from "../ui/button";
 import { useRouter } from "next/navigation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 const BusinessRegistrationForm = () => {
     const { toast } = useToast();
@@ -38,11 +39,7 @@ const BusinessRegistrationForm = () => {
     const router = useRouter();
 
     useEffect(() => {
-        // fetchCountries().then((data) => {
-        //     setCountries(data);
-        //     console.log("Supported Countries within Settlo:", data);
-        // });
-
+     
         const getCountries = async () =>{
             try {
                 const response = await fetchCountries();
@@ -142,6 +139,8 @@ const BusinessRegistrationForm = () => {
                                         )}
                                         />
                                 
+                                  
+
                                     <FormField
                                         control={form.control}
                                         name="country"
@@ -149,17 +148,32 @@ const BusinessRegistrationForm = () => {
                                             <FormItem>
                                                 <FormLabel>Country</FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Where do you operate?"
-                                                       
-                                                    />
+                                                    <Select
+                                                        disabled={isPending || countries.length === 0}
+                                                        onValueChange={field.onChange}
+                                                        value={field.value}
+                                                    >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select your country" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {countries.length > 0
+                                                                ? countries.map((country: any, index: number) => (
+                                                                      <SelectItem
+                                                                          key={index}
+                                                                          value={country.id} 
+                                                                      >
+                                                                          {country.name} {/* Assuming 'name' is the country name */}
+                                                                      </SelectItem>
+                                                                  ))
+                                                                : null}
+                                                        </SelectContent>
+                                                    </Select>
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
-                                    />  
+                                    />
                                     
                                     <FormField
                                         control={form.control}
