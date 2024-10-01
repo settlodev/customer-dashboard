@@ -8,7 +8,6 @@ import {
   authRoutes,
   publicRoutes,
   COMPLETE_ACCOUNT_REGISTRATION_URL,
-  COMPLETE_BUSINESS_LOCATION_SETUP_URL,
 } from "@/routes";
 import { AuthToken } from "@/types/types";
 
@@ -34,33 +33,27 @@ export default auth((req) => {
     authToken = JSON.parse(tokens) as AuthToken;
   }
 
-  
+  console.log("authToken:", authToken);
 
   if (isLoggedIn) {
     // If logged in and trying to access an auth route (like /login),
     // redirect to the default page or account completion page
     if (isAuthRoute) {
-      
-      if (authToken?.businessComplete !== true) {
+      //TODO: uncomment below line to activate business verification process
+      /*if (authToken?.businessComplete !== true) {
         return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
-      }
+      }*/
 
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
     }
 
     // For non-auth routes, check if business registration is complete
-    
-    if (authToken?.businessComplete === true) {
-      // Check if the business has set up allocation
-      if (!authToken.locationComplete && nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
-        return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl)); // Redirect to set location
-      }
-    } else if (!authToken?.businessComplete && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
+    //TODO: uncomment below line to activate business verification process
+    /*if (authToken?.businessComplete !== true && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
       return Response.redirect(
           new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
       );
-    }
-
+    }*/
   } else {
     // If not logged in, allow access to auth routes and public routes
     if (isAuthRoute || isPublicRoute) {
