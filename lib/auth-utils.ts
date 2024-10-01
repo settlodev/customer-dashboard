@@ -5,7 +5,7 @@ import { User } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { AuthToken, ExtendedUser, FormResponse } from "@/types/types";
+import { activeBusiness, AuthToken, ExtendedUser, FormResponse } from "@/types/types";
 import {logout} from "@/lib/actions/auth-actions";
 
 export const getUser = async () => {
@@ -63,6 +63,8 @@ export const createAuthToken = async (user: ExtendedUser) => {
         authToken: user.authToken,
         refreshToken: user.refreshToken,
         businessComplete: user.businessComplete,
+        locationComplete: user.locationComplete,
+        subscriptionComplete: user.subscriptionComplete,
         picture: user.picture,
         phoneNumber: user.phoneNumber,
         emailVerified: user.emailVerified,
@@ -76,6 +78,23 @@ export const createAuthToken = async (user: ExtendedUser) => {
     cookieStore.set({
         name: "authToken",
         value: JSON.stringify(authTokenData),
+        httpOnly: true, // Only available in server
+        secure: false, // Only HTTPS
+        //sameSite: "strict", // Do not send to third party servers
+    });
+};
+
+export const createActiveBusiness = async (user: ExtendedUser) => {
+    console.log("Creating active business", user);
+    const cookieStore = cookies();
+
+    const businessActive: activeBusiness = {
+        businessId: user.businessId,
+    };
+
+    cookieStore.set({
+        name: "activeBusiness",
+        value: JSON.stringify(businessActive),
         httpOnly: true, // Only available in server
         secure: false, // Only HTTPS
         //sameSite: "strict", // Do not send to third party servers

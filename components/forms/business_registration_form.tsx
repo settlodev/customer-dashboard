@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { use, useCallback, useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -23,17 +23,37 @@ import {
 import {FormResponse} from "@/types/types";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
-import { toast, useToast } from "@/hooks/use-toast"
+import {  useToast } from "@/hooks/use-toast"
 import { BusinessSchema } from "@/types/business/schema";
 import BusinessTypeSelector from "../widgets/business-type-selector";
-import { createBusiness } from "@/lib/actions/auth/business";
+import { createBusiness, fetchCountries } from "@/lib/actions/auth/business";
 import { Button } from "../ui/button";
-import { error } from "console";
+import { useRouter } from "next/navigation";
 
 const BusinessRegistrationForm = () => {
-    
+    const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
+    const [countries, setCountries] = useState([]);
+    const router = useRouter();
+
+    useEffect(() => {
+        // fetchCountries().then((data) => {
+        //     setCountries(data);
+        //     console.log("Supported Countries within Settlo:", data);
+        // });
+
+        const getCountries = async () =>{
+            try {
+                const response = await fetchCountries();
+                setCountries(response);
+                console.log("Supported Countries within Settlo:", response);
+            } catch (error) {
+                console.error("Error fetching countries",error);
+            }
+        }
+        getCountries();
+    }, []);
 
     const form = useForm<z.infer<typeof BusinessSchema>>({
         resolver: zodResolver(BusinessSchema),
@@ -53,38 +73,18 @@ const BusinessRegistrationForm = () => {
         [toast],
     );
 
-    const submitData = useCallback(
-        (values: z.infer<typeof BusinessSchema>) => {
-            console.log("submitData called");
-            console.log("Submitting values are:", values)
-            startTransition(() => {
-                createBusiness(values).then((data) => {
-                    // console.log("Received response from API:", data);
-                    if (data){
-                        console.log("data is:", data)
-                        setResponse(data);
-                       if(data.responseType === "success"){
-                        toast({
-                            variant: "default",
-                            title: "Business created successfully",
-                            description:data.message,
-                            
-                        })
-                       }
-                       else if(data.responseType === "error"){
-                        toast({
-                            variant: "destructive",
-                            title: "Uh oh! Something went wrong.",
-                            description:data.message
-                        })
-                       }
-                    } 
-                       
-                });
+    const submitData = (values: z.infer<typeof BusinessSchema>) => {
+        setResponse(undefined);
+
+        startTransition(() => {
+            createBusiness(values).then((data) => {
+                console.log("The data after creation is:", data)
+                if (data){
+                    setResponse(data);  
+                }
             });
-        },
-        [toast]
-    )
+        });
+    };
 
     return (
         <Form {...form}>
@@ -141,9 +141,27 @@ const BusinessRegistrationForm = () => {
                                             </FormItem>
                                         )}
                                         />
-
                                 
-                                     <FormField
+                                    <FormField
+                                        control={form.control}
+                                        name="country"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Country</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={isPending}
+                                                        placeholder="Where do you operate?"
+                                                       
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />  
+                                    
+                                    <FormField
                                         control={form.control}
                                         name="description"
                                         render={({ field }) => (
@@ -160,35 +178,23 @@ const BusinessRegistrationForm = () => {
                                                 <FormMessage />
                                             </FormItem>
                                         )}
-                                    />
-                                  
-                                    <FormField
-                                        control={form.control}
-                                        name="storeName"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>City</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Where do you operate?"
-                                                       
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />     
+                                    />   
                                 </div>
                             </CardContent>
                         </Card>
                       
                     </div>
-                
-                    <Button type="submit" disabled={isPending} className={`mt-4 w-full`}>
+                {
+                    isPending ? (
+                        <div>
+                            <div>Loading...</div>
+                        </div>
+                    ): (
+                        <Button type="submit" disabled={isPending} className={`mt-4 w-full`}>
                             Register Business
                     </Button>
+                    )
+                }
                 </div>
             </form>
         </Form>

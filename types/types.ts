@@ -70,6 +70,13 @@ export declare interface AuthToken {
     theme: string | null;
     subscriptionStatus: string;
     businessComplete: boolean;
+    locationComplete: boolean;
+    subscriptionComplete: boolean;
+    businessId: UUID | null;
+    // activeBusiness: string | null;
+
+}
+export declare interface activeBusiness {
     businessId: UUID | null;
 }
 
@@ -89,5 +96,7 @@ export type ExtendedUser = DefaultSession["user"] & {
     theme: string | null;
     subscriptionStatus: string;
     businessComplete: boolean;
+    locationComplete: boolean;
+    subscriptionComplete: UUID | null;
     businessId: UUID | null;
 };
