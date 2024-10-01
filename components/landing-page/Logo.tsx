@@ -1,4 +1,3 @@
-import { AppConfig } from './AppConfig';
 import Image from "next/image";
 
 type ILogoProps = {
