@@ -26,7 +26,7 @@ const VerticalFeatureRow = (props: IVerticalFeatureRowProps) => {
         <div className="mt-3 text-medium">{props.description}</div>
       </div>
       <div className="w-full p-6 sm:w-1/2">
-        <Image src={`/public/${props.image}`} width={200} height={200} alt={props.imageAlt} />
+        <Image src={`${props.image}`} width={200} height={200} alt={props.imageAlt} />
       </div>
     </div>
   );

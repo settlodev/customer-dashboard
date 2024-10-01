@@ -54,20 +54,19 @@ const Footer = () => (
               </svg>
             </Link>
           </>
-        }
-      >
-        <li>
-          <Link href="/public">Home</Link>
+        }>
+        <li className="pl-3 pr-3 text-sm font-medium">
+          <Link href="/">Home</Link>
         </li>
-        <li>
-          <Link href="/public">About</Link>
+        <li className="pl-3 pr-3 text-sm font-medium">
+          <Link href="/">Support</Link>
         </li>
-        <li>
-          <Link href="/public">Docs</Link>
+        <li className="pl-3 pr-3 text-sm font-medium">
+          <Link href="/">Contact</Link>
         </li>
-        <li>
-          <Link href="https://github.com/ixartz/Next-JS-Landing-Page-Starter-Template">
-            GitHub
+        <li className="pl-3 pr-3 text-sm font-medium">
+          <Link href="/">
+            Feedback
           </Link>
         </li>
       </CenteredFooter>
