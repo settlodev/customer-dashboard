@@ -17,6 +17,7 @@ import { deleteStaff } from "@/lib/actions/staff-actions";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import {Business} from "@/types/business/type";
+import {DeleteIcon, EditIcon, EyeIcon} from "@nextui-org/shared-icons";
 
 interface CellActionProps {
   data: Business;
@@ -25,6 +26,8 @@ interface CellActionProps {
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  /*const user = sessionStorage.getItem('authToken');
+  console.log("user is:", user);*/
 
   const onDelete = async () => {
     try {
@@ -58,8 +61,32 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   return (
     <>
-      <div className="relative flex items-center gap-2">
-        <DropdownMenu modal={false}>
+        <div style={{alignItems: 'flex-end'}}>
+          <div style={{
+            display: 'flex',
+            float: 'right',
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 16,
+            fontSize: 20
+          }}>
+            <a style={{flex: 1, minWidth: 50}} onClick={() => router.push(`/businesses/${data.id}`)}>
+              <EyeIcon color={'#384B70'}/>
+            </a>
+            <a style={{flex: 1}} onClick={() => router.push(`/businesses/${data.id}`)}>
+              <EditIcon color={'#384B70'}/>
+            </a>
+            {data.canDelete ?
+            <a style={{flex: 1}} onClick={onOpen}>
+              <DeleteIcon color={'#D91656'}/>
+            </a>:
+                <a style={{flex: 1}}>
+                    <DeleteIcon color={'#ddd'}/>
+            </a>}
+          </div>
+        </div>
+        <div className="relative flex items-center gap-2">
+          {/*<DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button className="h-8 w-8 p-0" variant="ghost">
               <span className="sr-only">Actions</span>
@@ -68,7 +95,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => router.push(`/staff/${data.id}`)}>
+            <DropdownMenuItem onClick={() => router.push(`/businesses/${data.id}`)}>
               <Edit className="mr-2 h-4 w-4" /> Update
             </DropdownMenuItem>
             {data.canDelete && (
@@ -79,16 +106,17 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
               </>
             )}
           </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-      {data.canDelete && (
-        <DeleteModal
-          isOpen={isOpen}
-          itemName={data.name}
-          onDelete={onDelete}
-          onOpenChange={onOpenChange}
-        />
-      )}
-    </>
-  );
-};
+        </DropdownMenu>*/}
+        </div>
+
+        {data.canDelete && (
+            <DeleteModal
+                isOpen={isOpen}
+                itemName={data.name}
+                onDelete={onDelete}
+                onOpenChange={onOpenChange}
+            />
+        )}
+      </>
+      );
+      };

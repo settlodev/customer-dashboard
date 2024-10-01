@@ -1,5 +1,5 @@
 "use server"
-import { getAuthenticatedUser, getAuthToken } from "@/lib/auth-utils";
+import {getAuthToken} from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { BusinessSchema } from "@/types/business/schema";
 import { AuthToken, FormResponse } from "@/types/types";
@@ -26,9 +26,8 @@ export const createBusiness = async(
     }
     try {
          const apiClient = new ApiClient();
-        const AuthenticatedUser= await getAuthenticatedUser();
-        const userId= AuthenticatedUser?.id
-        const user=userId
+        const user= await getAuthToken();
+        const userId= user?.id
 
         const payload = {
             ...businessValidData.data,
@@ -39,7 +38,6 @@ export const createBusiness = async(
             `/api/businesses/${userId}/create`,
             payload
         );
-
         
         if (typeof response) {
             console.log("Executing the if block with UUID response");
