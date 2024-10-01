@@ -2,7 +2,7 @@
 import {getAuthToken} from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { BusinessSchema } from "@/types/business/schema";
-import { AuthToken, FormResponse } from "@/types/types";
+import { activeBusiness, AuthToken, FormResponse } from "@/types/types";
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import { redirect } from "next/navigation";
@@ -31,8 +31,9 @@ export const createBusiness = async(
 
         const payload = {
             ...businessValidData.data,
-            user
+            user: userId
         }
+        console.log("payload",payload)
 
         let response =await apiClient.post(
             `/api/businesses/${userId}/create`,
@@ -40,8 +41,7 @@ export const createBusiness = async(
         );
         
         if (typeof response) {
-            console.log("Executing the if block with UUID response");
-        
+           
             const token = cookies().get("authToken")?.value;
             if (token) {
                 const authToken = JSON.parse(token) as AuthToken;
@@ -57,6 +57,17 @@ export const createBusiness = async(
                 // console.log("Updated token is:", updatedToken);
 
                 success = true;
+
+                if(success){
+                    // first delete the active business cookie if it exists
+                    cookies().delete("activeBusiness");
+
+                    // set the active business cookie
+                    cookies().set("activeBusiness", JSON.stringify({businessId:response}), { path: "/", httpOnly: true });
+
+                    const activeBusiness = cookies().get("activeBusiness")?.value;
+                    console.log("Active business is:", activeBusiness);
+                }
         
             } else {
                 console.log("No token found");

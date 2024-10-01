@@ -1,6 +1,6 @@
 import { UUID } from "crypto"
 
-export declare type Location = {
+export declare interface Location  {
     id: UUID
     name: string
     phone:string

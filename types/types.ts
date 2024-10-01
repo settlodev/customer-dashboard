@@ -97,6 +97,6 @@ export type ExtendedUser = DefaultSession["user"] & {
     subscriptionStatus: string;
     businessComplete: boolean;
     locationComplete: boolean;
-    subscriptionComplete: UUID | null;
+    subscriptionComplete: boolean;
     businessId: UUID | null;
 };

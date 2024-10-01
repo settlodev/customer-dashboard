@@ -5,7 +5,8 @@ import { isRedirectError } from "next/dist/client/components/redirect";
 import { AuthError } from "next-auth";
 
 import {
-    LoginSchema
+    LoginSchema,
+    RegisterSchema
 } from "@/types/data-schemas";
 import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
@@ -172,3 +173,25 @@ export const generateVerificationToken = async (
         throw error;
     }
 };
+
+export const register = async (
+    credentials: z.infer<typeof RegisterSchema>,
+): Promise<FormResponse> => {
+    const validatedData = RegisterSchema.safeParse(credentials);
+    console.log("credentials are:", credentials);
+    if (!validatedData.success) {
+        return parseStringify({
+            responseType: "error",
+            message: "Please fill in all the fields marked with * before proceeding",
+            error: new Error(validatedData.error.message),
+        });
+    }
+
+    try {    
+        const apiClient = new ApiClient();
+        const result = await apiClient.post("/api/auth/register", validatedData.data);
+        return parseStringify(result);  
+    } catch (error) {
+        throw error;
+    }
+}

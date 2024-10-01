@@ -4,6 +4,7 @@ import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
 import https from 'https';
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
 import {getAuthToken} from "@/lib/auth-utils";
+import { parseStringify } from "./utils";
 
 class ApiClient {
     private instance: AxiosInstance;
@@ -58,7 +59,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.error(parseStringify(error));
             throw handleSettloApiError(error);
         }
     }
