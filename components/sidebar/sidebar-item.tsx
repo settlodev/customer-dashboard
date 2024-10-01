@@ -1,6 +1,6 @@
 import NextLink from "next/link";
 import React from "react";
-import { useSidebarContext } from "../layout/layout-context";
+import { useSidebarContext } from "../layouts/layout-context";
 import clsx from "clsx";
 
 interface Props {
