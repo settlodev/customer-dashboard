@@ -29,6 +29,10 @@ export const RegisterSchema = object({
     country:string({required_error:"Country is required"}).uuid("Please select a valid country"),
 });
 
+export const ResetPasswordSchema = object({
+  email: string().min(6, "Please enter a valid email address").email("Please enter a valid email address"),
+});
+
 
 
 

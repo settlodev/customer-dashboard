@@ -195,3 +195,17 @@ export const register = async (
         throw error;
     }
 }
+
+export const resetPassword = async (
+    email: string,
+): Promise<FormResponse> => {
+    if (!email) throw new Error("Email address is required");   
+    const apiClient = new ApiClient();
+    try {
+        const result = await apiClient.put(`/api/auth/reset-password/${email}`, {});
+        console.log("Response from API after reset ",result)
+        return parseStringify(result);
+    } catch (error) {
+        throw error;
+    }
+}
