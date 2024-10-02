@@ -18,6 +18,7 @@ import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import {Business} from "@/types/business/type";
 import {DeleteIcon, EditIcon, EyeIcon} from "@nextui-org/shared-icons";
+import {deleteBusiness} from "@/lib/actions/business/delete";
 
 interface CellActionProps {
   data: Business;
@@ -32,11 +33,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const onDelete = async () => {
     try {
       if (data) {
-        await deleteStaff(data.id);
+        await deleteBusiness(data.id);
         toast({
           variant: "default",
           title: "Success",
-          description: "Staff deleted successfully!",
+          description: "Business deleted successfully!",
         });
       } else {
         toast({
@@ -80,7 +81,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                 <a style={{flex: 1}} onClick={onOpen}>
                   <DeleteIcon color={'#D91656'}/>
                 </a> :
-                <a style={{flex: 1}}>
+                <a style={{flex: 1}} onClick={onOpen}>
                   <DeleteIcon color={'#ddd'}/>
                 </a>}
           </div>
