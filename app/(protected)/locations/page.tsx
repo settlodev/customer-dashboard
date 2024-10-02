@@ -18,34 +18,35 @@ import {notFound} from "next/navigation";
 import {isNotFoundError} from "next/dist/client/components/not-found";
 import {getBusiness} from "@/lib/actions/business/get";
 import {Business} from "@/types/business/type";
+import {listLocations} from "@/lib/actions/business/locations/list";
+
+const breadcrumbItems = [{ title: "Businesses", link: "/businesses" }];
+
+type ParamsProps = {
+    searchParams: {
+        [key: string]: string | undefined;
+    };
+};
 
 export default async function BusinessPage(
-    { params }: { params: { id: string }}
+    { searchParams }: ParamsProps
 ) {
 
-    const isNewItem = params.id === "new";
-    let item: ApiResponse<Business> | null = null;
-
-    if (!isNewItem) {
-        try {
-            item = await getBusiness(params.id as UUID);
-            if (item.totalElements == 0) notFound();
-        } catch (error) {
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
-            throw new Error("Failed to load data");
-        }
-    }
-    console.log("item is now: ", item);
-
     const breadcrumbItems = [
-        { title: "Business", link: "/business" },
-        {
-            title: isNewItem ? "New" : item?.name || "Edit",
-            link: "",
-        },
+        { title: "Business", link: "/business" }
     ];
+
+    console.log("Search params",searchParams)
+    const q = searchParams.search || "";
+    const page = Number(searchParams.page) || 0;
+    const pageLimit = Number(searchParams.limit);
+
+    const responseData = await listLocations(q, page, pageLimit, );
+    console.log("Business responseData:", responseData);
+
+    const data = responseData.content;
+    const total = responseData.totalElements;
+    const pageCount = responseData.totalPages;
 
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">

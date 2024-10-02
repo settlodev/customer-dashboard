@@ -18,6 +18,14 @@ export const endpoints=(args?: EndpointArgsTypes) => {
             "update": {method: "PUT", endpoint: `${apiPrefix}/businesses/${args?.userId}`},
             "delete": {method: "DELETE", endpoint: `${apiPrefix}/businesses/${args?.userId}/${args?.id}`},
         },
+        "locations": {
+            "get": {method: "GET", endpoint: `${apiPrefix}/locations/${args?.businessId}/${args?.id}`},
+            "list": {method: "GET", endpoint: `${apiPrefix}/locations/${args?.businessId}`},
+            "search": {method: "POST", endpoint: `${apiPrefix}/locations/${args?.businessId}`},
+            "create": {method: "POST", endpoint: `${apiPrefix}/locations/${args?.businessId}/create`},
+            "update": {method: "PUT", endpoint: `${apiPrefix}/locations/${args?.businessId}/${args?.id}`},
+            "delete": {method: "DELETE", endpoint: `${apiPrefix}/locations/${args?.userId}/${args?.id}`},
+        },
         "users": {
             "get": {method: "GET", endpoint: `${apiPrefix}/users/${args?.location}/${args?.id}`},
             "list": {method: "GET", endpoint: `${apiPrefix}/users/${args?.location}`},

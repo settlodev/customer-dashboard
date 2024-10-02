@@ -1,14 +1,15 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import {ArrowUpDown} from "lucide-react";
+import {ArrowUpDown, ExternalLinkIcon} from "lucide-react";
 
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
 import {Business} from "@/types/business/type";
 import {CellAction} from "@/app/(protected)/business/cell-action";
-
+import Link from "next/link";
+import {LinkIcon} from "@nextui-org/shared-icons";
 export const columns: ColumnDef<Business>[] = [
     {
         id: "select",
@@ -86,7 +87,13 @@ export const columns: ColumnDef<Business>[] = [
                 </Button>
             );
         },
-        cell: ({ row }) => <><span className="text-emerald-500 font-bold px-2">{row.original.totalLocations}</span> <span>Location{row.original.totalLocations>1 && 's'}</span></>,
+        cell: ({ row }) => <div className="flex items-center">
+            <Link href={`/business/${row.original.id}/locations`} className="rounded-full items-center inline-flex bg-gray-100 text-gray-700 text-md font-bold pl-2 pr-4 pt-1 pb-1 gap-2">
+                <span className="text-emerald-500 font-bold px-2">{row.original.totalLocations}</span>
+                <span className="mr-2">Location{row.original.totalLocations>1 && 's'}</span>
+                <span className="ml-2" ><ExternalLinkIcon height={14} width={14} /></span>
+        </Link>
+        </div>
     },
     {
         accessorKey: "businessType",
