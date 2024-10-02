@@ -6,13 +6,15 @@ import { AuthError } from "next-auth";
 
 import {
     LoginSchema,
-    RegisterSchema
+    RegisterSchema,
+    ResetPasswordSchema
 } from "@/types/data-schemas";
 import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
 import { deleteAuthToken } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
+import { sendPasswordResetEmail } from "./emails/send";
 
 export async function logout() {
     try {
@@ -95,11 +97,12 @@ export const getUserById = async (userId: string): Promise<ExtendedUser> => {
     const apiClient = new ApiClient();
 
     try {
-        const userDetails = await apiClient.get<{ emailVerified: boolean }>(`/api/users/${userId}`);
+        const userDetails = await apiClient.get<{ emailVerified: boolean }>(
+            `/api/users/${userId}`,
+        );
 
         return parseStringify(userDetails);
     } catch (error) {
-        console.log("Error token here")
         // Ignore redirect error
         if (isRedirectError(error)) throw error;
         throw error;
@@ -177,7 +180,8 @@ export const register = async (
     credentials: z.infer<typeof RegisterSchema>,
 ): Promise<FormResponse> => {
     const validatedData = RegisterSchema.safeParse(credentials);
-    console.log("credentials are:", credentials);
+ 
+
     if (!validatedData.success) {
         return parseStringify({
             responseType: "error",
@@ -186,23 +190,37 @@ export const register = async (
         });
     }
 
-    try {
+    try {    
         const apiClient = new ApiClient();
         const result = await apiClient.post("/api/auth/register", validatedData.data);
-        return parseStringify(result);
+        return parseStringify(result);  
     } catch (error) {
         throw error;
     }
 }
 
 export const resetPassword = async (
-    email: string,
+    email: z.infer<typeof ResetPasswordSchema>,
 ): Promise<FormResponse> => {
-    if (!email) throw new Error("Email address is required");
-    const apiClient = new ApiClient();
+    const validateEmail = ResetPasswordSchema.safeParse(email);
+
+    console.log("validateEmail", validateEmail);
+
+    if (!validateEmail.success) {
+        return parseStringify({
+            responseType: "error",
+            message: "Please fill in all the fields marked with * before proceeding",
+            error: new Error(validateEmail.error.message),
+        });
+    }
+   
     try {
-        const result = await apiClient.put(`/api/auth/reset-password/${email}`, {});
+        const apiClient = new ApiClient();
+        const result = await apiClient.post("/api/auth/reset-password", validateEmail.data);
         console.log("Response from API after reset ",result)
+        if(result){
+           let data = await sendPasswordResetEmail()
+        }
         return parseStringify(result);
     } catch (error) {
         throw error;

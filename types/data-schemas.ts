@@ -30,7 +30,7 @@ export const RegisterSchema = object({
 });
 
 export const ResetPasswordSchema = object({
-  email: string().min(6, "Please enter a valid email address").email("Please enter a valid email address"),
+  email: string({ required_error: "Email is required"}).min(6, "Please enter a valid email address").email("Please enter a valid email address"),
 });
 
 
