@@ -79,11 +79,11 @@ function RegisterForm() {
           }
         })
         .catch((error) => {
-          setError("An unexpected error occurred. Please try again.", error);
+          setError("An unexpected error occurred. Please try again.");
+          console.error(error);
         });
     });
   };
-  
   return (
     <Card className="mx-auto max-w-sm mt-8">
       <CardHeader>

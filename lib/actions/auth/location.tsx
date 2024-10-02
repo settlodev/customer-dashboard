@@ -14,7 +14,7 @@ export const createBusinessLocation = async (
     let success: boolean = false;
     const businessLocationValidData = LocationSchema.safeParse(businessLocation)
 
-    console.log("businessLocationValidData",businessLocationValidData)
+    // console.log("businessLocationValidData",businessLocationValidData)
 
     if(!businessLocationValidData.success){
         formResponse = {
@@ -61,7 +61,7 @@ export const createBusinessLocation = async (
                 cookies().set("authToken", JSON.stringify(authToken), { path: "/", httpOnly: true });
         
                 const updatedToken = cookies().get("authToken")?.value;
-                console.log("Updated token is:", updatedToken);
+                // console.log("Updated token is:", updatedToken);
 
                 success = true;
 
@@ -72,7 +72,7 @@ export const createBusinessLocation = async (
                     cookies().set("activeLocation", JSON.stringify({locationId:response}), { path: "/", httpOnly: true });
 
                     const activeLocation = cookies().get("activeLocation")?.value;
-                    console.log("Active location is:", activeLocation);
+                    // console.log("Active location is:", activeLocation);
                 }
         
             } else {
@@ -85,15 +85,12 @@ export const createBusinessLocation = async (
         console.log("location created")
     } catch (error) {
         console.log("parse", parseStringify(error))
-        // formResponse = {
-        //     responseType: "error",
-        //     message: "Something went wrong while processing your request, please try again",
-        //     error: error instanceof Error 
-        //         ? error 
-        //         : new Error(String(error as Error) + (error.fieldErrors ? ` Field Errors: ${JSON.stringify(error.fieldErrors.flatten())}` : ''))
-        // };
-        // console.error("Full error details:", formResponse.error); // Log the full error details
-        // return parseStringify(formResponse);
+        formResponse = {
+            responseType:"error",
+            message:"Something went wrong while processing your request, please try again",
+            error : error instanceof Error ? error : new Error(String(error))
+        }
+        return parseStringify(formResponse)
     }
     if(success){
         redirect("/dashboard");

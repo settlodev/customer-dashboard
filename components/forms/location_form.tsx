@@ -23,12 +23,8 @@ import {
 import {FormResponse} from "@/types/types";
 import {Input} from "@/components/ui/input";
 import {Textarea} from "@/components/ui/textarea";
-import { toast, useToast } from "@/hooks/use-toast"
-import { BusinessSchema } from "@/types/business/schema";
-import BusinessTypeSelector from "../widgets/business-type-selector";
-import { createBusiness } from "@/lib/actions/auth/business";
+import { toast} from "@/hooks/use-toast"
 import { Button } from "../ui/button";
-import { error } from "console";
 import { LocationSchema } from "@/types/location/schema";
 import { createBusinessLocation } from "@/lib/actions/auth/location";
 
@@ -57,8 +53,7 @@ const LocationForm = () => {
 
     const submitData = useCallback(
         (values: z.infer<typeof LocationSchema>) => {
-            console.log("submitData called");
-            console.log("Submitting values are:", values)
+            
             startTransition(() => {
                 createBusinessLocation(values).then((data) => {
                     if (data){
@@ -173,29 +168,6 @@ const LocationForm = () => {
                                             </FormItem>
                                         )}
                                     />
-                                  {/* <FormField
-                                        control={form.control}
-                                        name=""
-                                        render={({ field }) => (
-                                            <FormItem>
-                                         
-                                            <FormControl>
-                                                <BusinessTypeSelector
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                onBlur={field.onBlur}
-                                                isRequired
-                                                isDisabled={isPending}
-                                                label="Business Type"
-                                                placeholder="Select business type"
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    /> */}
-
-                                
                                   
                                     <FormField
                                         control={form.control}
