@@ -26,7 +26,7 @@ export const SidebarItem = ({ icon, title, isActive, href = "" }: Props) => {
         className={clsx(
           isActive
             ? "rounded-md px-0 [&_svg_path]:fill-emerald-400 font-bold"
-            : "hover: [&_svg_path]:fill-emerald-400",
+            : "hover:text-emerald-400",
           "flex gap-2 w-full min-h-[44px] h-full items-center px-1.0 cursor-pointer transition-all duration-150 active:scale-[0.98]"
         )}
         onClick={handleClick}>

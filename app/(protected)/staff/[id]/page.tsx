@@ -16,9 +16,7 @@ import { getStaff } from "@/lib/actions/staff-actions";
 import {Staff} from "@/types/staff";
 import {ApiResponse} from "@/types/types";
 
-export default async function StaffPage({
-                                            params,
-                                        }: {
+export default async function StaffPage({params}: {
     params: { id: string };
 }) {
     const isNewItem = params.id === "new";

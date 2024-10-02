@@ -71,14 +71,14 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             gap: 16,
             fontSize: 20
           }}>
-            <a style={{flex: 1}} onClick={() => router.push(`/businesses/${data.id}`)}>
+            <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}`)} className="cursor-pointer">
               <EyeIcon color={'#384B70'}/>
             </a>
-            <a style={{flex: 1}} onClick={() => router.push(`/businesses/${data.id}`)}>
+            <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}`)} className="cursor-pointer">
               <EditIcon color={'#384B70'}/>
             </a>
             {data.canDelete ?
-                <a style={{flex: 1}} onClick={onOpen}>
+                <a style={{flex: 1}} onClick={onOpen} className="cursor-pointer">
                   <DeleteIcon color={'#D91656'}/>
                 </a> :
                 <a style={{flex: 1}} onClick={onOpen}>
