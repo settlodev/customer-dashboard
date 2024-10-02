@@ -27,8 +27,6 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
 
     const parsedTokens = JSON.parse(tokens) as AuthToken;
 
-
-
     return parsedTokens.authToken ? parsedTokens : null;
 };
 
@@ -111,5 +109,7 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 };
 
 export const deleteAuthCookie = async () => {
+    console.log("Delete cookie called");
+    await logout();
     cookies().delete("authToken");
 };

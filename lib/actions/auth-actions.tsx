@@ -95,12 +95,11 @@ export const getUserById = async (userId: string): Promise<ExtendedUser> => {
     const apiClient = new ApiClient();
 
     try {
-        const userDetails = await apiClient.get<{ emailVerified: boolean }>(
-            `/api/users/${userId}`,
-        );
+        const userDetails = await apiClient.get<{ emailVerified: boolean }>(`/api/users/${userId}`);
 
         return parseStringify(userDetails);
     } catch (error) {
+        console.log("Error token here")
         // Ignore redirect error
         if (isRedirectError(error)) throw error;
         throw error;
@@ -187,10 +186,10 @@ export const register = async (
         });
     }
 
-    try {    
+    try {
         const apiClient = new ApiClient();
         const result = await apiClient.post("/api/auth/register", validatedData.data);
-        return parseStringify(result);  
+        return parseStringify(result);
     } catch (error) {
         throw error;
     }
@@ -199,7 +198,7 @@ export const register = async (
 export const resetPassword = async (
     email: string,
 ): Promise<FormResponse> => {
-    if (!email) throw new Error("Email address is required");   
+    if (!email) throw new Error("Email address is required");
     const apiClient = new ApiClient();
     try {
         const result = await apiClient.put(`/api/auth/reset-password/${email}`, {});

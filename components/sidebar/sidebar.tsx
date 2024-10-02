@@ -86,10 +86,59 @@ export const SidebarWrapper = () => {
                 icon={<BalanceIcon />}
                 items={["Banks Accounts", "Credit Cards", "Loans"]}
                 title="Balances"
-              />*/}
+                isOpen={false} />*/}
 
             </SidebarMenu>
 
+            <SidebarMenu title="Sales">
+              <SidebarItem
+                  isActive={pathname === "/orders"}
+                  title="Completed Orders"
+                  icon={<ChevronRightIcon />}
+                  href='/orders'
+              />
+              <SidebarItem
+                  isActive={pathname === "/tickets"}
+                  title="Tickets"
+                  icon={<ChevronRightIcon />}
+                  href='/tickets'
+              />
+            </SidebarMenu>
+            <SidebarMenu title="Customers">
+
+              <SidebarItem
+                  isActive={pathname === "/customers"}
+                  title="Customers"
+                  icon={<ChevronRightIcon />}
+                  href='/customers'
+              />
+              <SidebarItem
+                  isActive={pathname === "/discounts"}
+                  title="Discounts"
+                  icon={<ChevronRightIcon />}
+                  href='/discounts'
+              />
+              <SidebarItem
+                  isActive={pathname === "/sms"}
+                  title="SMS marketing"
+                  icon={<ChevronRightIcon />}
+                  href='/sms'
+              />
+            </SidebarMenu>
+            <SidebarMenu title="Users">
+              <SidebarItem
+                  isActive={pathname === "/roles"}
+                  title="Roles"
+                  icon={<ChevronRightIcon />}
+                  href='/roles'
+              />
+              <SidebarItem
+                  isActive={pathname === "/users"}
+                  title="Users"
+                  icon={<ChevronRightIcon />}
+                  href='/users'
+              />
+            </SidebarMenu>
             <SidebarMenu title="General">
               <SidebarItem
                 isActive={pathname === "/countries"}
@@ -103,18 +152,32 @@ export const SidebarWrapper = () => {
                   icon={<ChevronRightIcon />}
                   href='/departments'
               />
-              <SidebarItem
-                  isActive={pathname === "/discounts"}
-                  title="Discounts"
-                  icon={<ChevronRightIcon />}
-                  href='/discounts'
-              />
+
               <SidebarItem
                   isActive={pathname === "/business"}
                   title="Business"
                   icon={<ChevronRightIcon />}
                   href='/business'
               />
+              <SidebarItem
+                  isActive={pathname === "/expenses"}
+                  title="Expenses"
+                  icon={<ChevronRightIcon />}
+                  href='/expenses'
+              />
+              <SidebarItem
+                  isActive={pathname === "/tables"}
+                  title="Tables & Spaces"
+                  icon={<ChevronRightIcon />}
+                  href='/tables'
+              />
+              <SidebarItem
+                  isActive={pathname === "/kds"}
+                  title="KDS"
+                  icon={<ChevronRightIcon />}
+                  href='/kds'
+              />
+
             </SidebarMenu>
 
           </div>

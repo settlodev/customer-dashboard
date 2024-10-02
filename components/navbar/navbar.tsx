@@ -1,3 +1,4 @@
+"use client"
 import { Input, Link, Navbar, NavbarContent } from "@nextui-org/react";
 import React from "react";
 import { FeedbackIcon } from "../icons/navbar/feedback-icon";
@@ -8,6 +9,7 @@ import { BurguerButton } from "./burguer-button";
 import { NotificationsDropdown } from "./notifications-dropdown";
 import { UserDropdown } from "./user-dropdown";
 import {useCookies} from "next-client-cookies";
+import {deleteAuthCookie} from "@/lib/auth-utils";
 
 interface Props {
   children: React.ReactNode;
@@ -17,6 +19,12 @@ export const NavbarWrapper = ({ children }: Props) => {
   const myCookies = useCookies();
   const authData = myCookies.get('authToken');
   console.log("authData cookie: ", authData);
+
+  const doLogout=async () => {
+    await deleteAuthCookie();
+    window.location.reload();
+  }
+
   return (
     <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
       <Navbar
@@ -44,8 +52,7 @@ export const NavbarWrapper = ({ children }: Props) => {
         </NavbarContent>
         <NavbarContent
           justify="end"
-          className="w-fit data-[justify=end]:flex-grow-0"
-        >
+          className="w-fit data-[justify=end]:flex-grow-0">
           {/*<div className="flex items-center gap-2 max-md:hidden">
             <FeedbackIcon />
             <span>Feedback?</span>
@@ -57,12 +64,6 @@ export const NavbarWrapper = ({ children }: Props) => {
             <SupportIcon />
           </div>
 
-          <Link
-            href="https://github.com/Siumauricio/nextui-dashboard-template"
-            target={"_blank"}
-          >
-            <GithubIcon />
-          </Link>
           <NavbarContent>
             <UserDropdown />
           </NavbarContent>
