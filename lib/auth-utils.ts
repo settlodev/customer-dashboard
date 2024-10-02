@@ -119,7 +119,7 @@ export const deleteActiveBusinessCookie = async () => {
 };
 
 export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
-    const cookieStore = cookies();  
+    const cookieStore = cookies();
 
     const activeBusiness = cookieStore.get("activeBusiness")?.value;
 
@@ -133,6 +133,33 @@ export const deleteActiveLocationCookie = async () => {
 // export const getActiveLocation = async (): Promise<activeLocation | null> => {
 //     const cookieStore = cookies();
 
-//     const activeLocation = cookieStore.get("activeLocation")?.value;    
+//     const activeLocation = cookieStore.get("activeLocation")?.value;
 //     return activeLocation ? JSON.parse(activeLocation) : null;
 // };
+
+/*export const deleteActiveBusinessCookie = async () => {
+    cookies().delete("activeBusiness");
+};*/
+
+/*
+export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
+    const cookieStore = cookies();
+
+    const activeBusiness = cookieStore.get("activeBusiness")?.value;
+
+    return activeBusiness ? JSON.parse(activeBusiness) : null;
+};
+*/
+
+/*
+export const deleteActiveLocationCookie = async () => {
+    cookies().delete("activeLocation");
+};
+*/
+
+/*export const getActiveLocation = async (): Promise<activeLocation | null> => {
+    const cookieStore = cookies();
+
+    const activeLocation = cookieStore.get("activeLocation")?.value;
+    return activeLocation ? JSON.parse(activeLocation) : null;
+};*/

@@ -74,6 +74,39 @@ export const columns: ColumnDef<Business>[] = [
         },
     },
     {
+        id: "totalLocations",
+        accessorKey: "totalLocations",
+        enableHiding: false,
+        header: ({ column }) => {
+            return (
+                <Button
+                    className="text-left p-0"
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                    Total Locations
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            );
+        },
+        cell: ({ row }) => <><span className="text-emerald-500 font-bold px-2">{row.original.totalLocations}</span> <span>Location{row.original.totalLocations>1 && 's'}</span></>,
+    },
+    {
+        accessorKey: "businessType",
+        enableHiding: false,
+        header: ({ column }) => {
+            return (
+                <Button
+                    className="text-left p-0"
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                    Type
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            );
+        },
+        cell: ({row})=><span className="rounded-full bg-gray-100 text-gray-700 text-xs font-medium pl-2 pr-2 pt-1 pb-1">{row.original.businessType}</span>
+    },
+    {
         id: "status",
         accessorKey: "status",
         header: ({ column }) => {
@@ -89,6 +122,23 @@ export const columns: ColumnDef<Business>[] = [
             );
         },
         cell: ({ row }) => <StateColumn state={row.original.status} />,
+        enableHiding: false,
+    },
+    {
+        id: "vfdRegistrationState",
+        accessorKey: "vfdRegistrationState",
+        header: ({ column }) => {
+            return (
+                <Button
+                    className="text-left p-0"
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                    VFD
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            );
+        },
+        cell: ({ row }) => <StateColumn state={row.original.vfdRegistrationState} />,
         enableHiding: false,
     },
     {
