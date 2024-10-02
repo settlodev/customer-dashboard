@@ -33,9 +33,7 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
 };
 
 export const deleteAuthToken = async () => {
-    const cookieStore = cookies();
-
-    cookieStore.delete("settloAuthToken");
+    cookies().delete("authToken");
 };
 
 export const updateAuthToken = async (token: AuthToken) => {

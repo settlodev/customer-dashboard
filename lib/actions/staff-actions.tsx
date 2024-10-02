@@ -8,11 +8,10 @@ import * as z from "zod";
 
 import { Staff } from "@/types/staff";
 import { ApiResponse, FormResponse } from "@/types/types";
-import { getAuthToken } from "@/lib/auth-utils";
+import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { StaffSchema } from "@/types/staff";
-import {getAuthenticatedUser} from "@/lib/actions/auth/login";
 
 export const fetchAllStaff = async (): Promise<Staff[]> => {
     await getAuthenticatedUser();
