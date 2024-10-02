@@ -26,7 +26,7 @@ export const SidebarWrapper = () => {
   const pathname = usePathname();
   const { collapsed, setCollapsed } = useSidebarContext();
   const {data: session, status} = useSession();
-  console.log("session is:", session);
+  //console.log("session is:", session, "status:", status);
   return (
     <aside className="h-screen z-[20] sticky top-0">
       {collapsed ? (
