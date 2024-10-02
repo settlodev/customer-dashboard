@@ -6,291 +6,315 @@ import { useForm } from "react-hook-form";
 import * as z from "zod";
 
 import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
 } from "@/components/ui/card";
 import {
-    Form,
-    FormControl, FormDescription,
-    FormField,
-    FormItem, FormLabel,
-    FormMessage,
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
 } from "@/components/ui/form";
 
-import {FormResponse} from "@/types/types";
-import {Input} from "@/components/ui/input";
-import {Textarea} from "@/components/ui/textarea";
-import { toast} from "@/hooks/use-toast"
+import { FormResponse } from "@/types/types";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { toast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
 import { createBusinessLocation } from "@/lib/actions/auth/location";
 
 const LocationForm = () => {
-    
-    const [isPending, startTransition] = useTransition();
-    const [response, setResponse] = useState<FormResponse | undefined>();
+  const [isPending, startTransition] = useTransition();
+  const [response, setResponse] = useState<FormResponse | undefined>();
 
-    const form = useForm<z.infer<typeof LocationSchema>>({
-        resolver: zodResolver(LocationSchema),
-        defaultValues: {}
-    });
+  const form = useForm<z.infer<typeof LocationSchema>>({
+    resolver: zodResolver(LocationSchema),
+    defaultValues: {},
+  });
 
-    const onInvalid = useCallback(
-        (errors: any) => {
-            toast({
+  const onInvalid = useCallback(
+    (errors: any) => {
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description: errors.message
+          ? errors.message
+          : "There was an issue submitting your form, please try later",
+      });
+    },
+    [toast]
+  );
+
+  const submitData = useCallback(
+    (values: z.infer<typeof LocationSchema>) => {
+      startTransition(() => {
+        createBusinessLocation(values).then((data) => {
+          if (data) {
+            console.log("data is:", data);
+            setResponse(data);
+            if (data.responseType === "success") {
+              toast({
+                variant: "default",
+                title: "Business created successfully",
+                description: data.message,
+              });
+            } else if (data.responseType === "error") {
+              toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",
-                description: errors.message
-                    ? errors.message
-                    : "There was an issue submitting your form, please try later",
-            });
-        },
-        [toast],
-    );
+                description: data.message,
+              });
+            }
+          }
+        });
+      });
+    },
+    [toast]
+  );
 
-    const submitData = useCallback(
-        (values: z.infer<typeof LocationSchema>) => {
-            
-            startTransition(() => {
-                createBusinessLocation(values).then((data) => {
-                    if (data){
-                        console.log("data is:", data)
-                        setResponse(data);
-                       if(data.responseType === "success"){
-                        toast({
-                            variant: "default",
-                            title: "Business created successfully",
-                            description:data.message,
-                            
-                        })
-                       }
-                       else if(data.responseType === "error"){
-                        toast({
-                            variant: "destructive",
-                            title: "Uh oh! Something went wrong.",
-                            description:data.message
-                        })
-                       }
-                    } 
-                       
-                });
-            });
-        },
-        [toast]
-    )
-
-    return (
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Setup Business Location</CardTitle>
+        <CardDescription>
+          Setup your business locations,if you have multiple locations
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
         <Form {...form}>
-            <form
-                className="space-y-8"
-                onSubmit={form.handleSubmit(submitData, onInvalid)}
-            >
-                <div className="pt-8">
-                    <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Setup Business Location</CardTitle>
-                                <CardDescription>
-                                    Setup your business locations,if you have multiple locations
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 grid-rows-1 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="name"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Location Name</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Enter location business name"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="phone"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Phone Number</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Enter location business phone number"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="email"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Email</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        type="email"
-                                                        placeholder="Enter location business email"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="address"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Location Address</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Enter business location address"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                  
-                                    <FormField
-                                        control={form.control}
-                                        name="city"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>City</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Which city do you operate?"
-                                                       
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    /> 
-                                      <FormField
-                                        control={form.control}
-                                        name="region"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Region</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Which region do you operate?"
-                                                       
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    /> 
-                                      <FormField
-                                        control={form.control}
-                                        name="street"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Street</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Which street do you operate?"
-                                                       
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    /> 
-                                      <FormField
-                                        control={form.control}
-                                        name="openingTime"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Opening Time</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="When do you open your business location?"
-                                                       
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />  
-                                      <FormField
-                                        control={form.control}
-                                        name="closingTime"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Closing Time</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="When do you close your business location?"
-                                                       
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />   
-                                    
-                                    <FormField
-                                        control={form.control}
-                                        name="description"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Description of your</FormLabel>
-                                                <FormControl>
-                                                    <Textarea
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Describe your business"
-                                                      
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    /> 
-                                </div>
-                            </CardContent>
-                        </Card>
-                      
-                    </div>
-                
-                    <Button type="submit" disabled={isPending} className={`mt-4 w-full`}>
-                            Setup Location
-                    </Button>
+          <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
+           
+            <div className="grid gap-2">
+            <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Location Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        disabled={isPending}
+                        placeholder="Eg. Mark Juices Sinza"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+              <div className="lg:grid grid-cols-2 gap-4 mt-2">
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Enter business location phone number"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-            </form>
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isPending}
+                            type="email"
+                            placeholder="Enter business location email"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              <div className="lg:grid grid-cols-2  gap-4 mt-2">
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Location Address</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Enter business location address"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Which city do you operate?"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              <div className="lg:grid grid-cols-2 gap-4 mt-2">
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="region"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Region</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Which region do you operate?"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="street"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Street</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Which street do you operate?"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+              <div className="lg:grid grid-cols-2 gap-4 mt-2">
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="openingTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Opening Time</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isPending}
+                            placeholder="HH:MM (24 hour format)"
+                            pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
+                            title="Please enter time in 24-hour format (HH:mm)"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                        When do you open your business location?
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="closingTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Closing Time</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            disabled={isPending}
+                            placeholder="HH:MM (24 hour format)"
+                            pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
+                            title="Please enter time in 24-hour format (HH:mm)"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                        When do you close your business location?
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2 mt-2">
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description of your business location</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        {...field}
+                        disabled={isPending}
+                        placeholder="Describe your business location"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              </div>
+          
+            <Button
+              type="submit"
+              disabled={isPending}
+              className={`mt-4 w-full`}
+            >
+              Setup Location
+            </Button>
+          </form>
         </Form>
-    );
+      </CardContent>
+    </Card>
+  );
 };
 
 export default LocationForm;

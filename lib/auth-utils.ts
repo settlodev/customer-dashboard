@@ -115,3 +115,26 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 export const deleteAuthCookie = async () => {
     cookies().delete("authToken");
 };
+
+export const deleteActiveBusinessCookie = async () => {
+    cookies().delete("activeBusiness");
+};
+
+export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
+    const cookieStore = cookies();  
+
+    const activeBusiness = cookieStore.get("activeBusiness")?.value;
+
+    return activeBusiness ? JSON.parse(activeBusiness) : null;
+};
+
+export const deleteActiveLocationCookie = async () => {
+    cookies().delete("activeLocation");
+};
+
+// export const getActiveLocation = async (): Promise<activeLocation | null> => {
+//     const cookieStore = cookies();
+
+//     const activeLocation = cookieStore.get("activeLocation")?.value;    
+//     return activeLocation ? JSON.parse(activeLocation) : null;
+// };

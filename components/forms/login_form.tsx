@@ -130,11 +130,11 @@ function LoginForm() {
           </form>
         </Form>
 
-        <div className="grid gap-2 mt-4">
-          <Link href="/forgot-password" className="text-sm text-slate-400">
+        {/* <div className="grid gap-2 mt-4"> */}
+          <Link href="/reset-password" className="text-sm text-slate-400">
             Forgot Password ?
           </Link>
-        </div>
+      
 
         <div className="font-light text-slate-400 mt-4 text-sm text-center">
           Don&apos;t have an account ?{" "}
