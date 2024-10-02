@@ -68,82 +68,78 @@ function LoginForm() {
   }, []);
 
   return (
-    <Card className="mx-auto max-w-sm">
-      <div className="pt-3 border-b-1 pb-3 pl-3">
-      <Link href="/">
-      <Image
-          src="/images/new_logo.svg"
-          height={70}
-          width={200}
-          alt="Settlo"
-        />
-      </Link>
-      </div>
-      <CardHeader>
-        <CardTitle className="text-2xl">Login</CardTitle>
-        <CardDescription>
-          Enter your email or phone login to your account
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <FormError message={error} />
-        <FormSuccess message={success} />
+      <Card className="mx-auto max-w-sm">
+          <div className="pt-3 border-b-1 pb-3 pl-3">
+              <Link href="/">
+                  <Image
+                      src="/images/new_logo.svg"
+                      height={70}
+                      width={200}
+                      alt="Settlo"
+                  />
+              </Link>
+          </div>
+          <CardHeader>
+              <CardTitle className="text-2xl">Login</CardTitle>
+              <CardDescription>
+                  Enter your email or phone login to your account
+              </CardDescription>
+          </CardHeader>
+          <CardContent className="pb-2">
+              <FormError message={error}/>
+              <FormSuccess message={success}/>
 
-        <Form {...form}>
-          <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
-            <div className="grid gap-4">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Username</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter Username" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <Form {...form}>
+                  <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
+                      <div className="grid gap-4">
+                          <div className="grid gap-2">
+                              <FormField
+                                  control={form.control}
+                                  name="email"
+                                  render={({field}) => (
+                                      <FormItem>
+                                          <FormLabel>Username</FormLabel>
+                                          <FormControl>
+                                              <Input placeholder="Enter Username" {...field} />
+                                          </FormControl>
+                                          <FormMessage/>
+                                      </FormItem>
+                                  )}
+                              />
+                          </div>
+                          <div className="grid gap-2">
+                              <FormField
+                                  control={form.control}
+                                  name="password"
+                                  render={({field}) => (
+                                      <FormItem>
+                                          <FormLabel>Password</FormLabel>
+                                          <FormControl>
+                                              <Input placeholder="Enter password" {...field} />
+                                          </FormControl>
+                                          <FormMessage/>
+                                      </FormItem>
+                                  )}
+                              />
+                          </div>
+
+                          <Button type="submit" disabled={isPending} className="w-full">
+                              Login
+                          </Button>
+                      </div>
+                  </form>
+              </Form>
+              <div className="grid gap-2 mt-6 text-center">
+                  <Link href="/forgot-password" className="text-sm text-slate-400">
+                      Forgot password,  <span className="font-bold text-emerald-500">click here</span> to reset?
+                  </Link>
               </div>
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Password</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter password" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+          </CardContent>
 
-              <Button type="submit" disabled={isPending} className="w-full">
-                Login
-              </Button>
-            </div>
-          </form>
-        </Form>
-
-        <div className="grid gap-2 mt-4">
-          <Link href="/forgot-password" className="text-sm text-slate-400">
-            Forgot Password ?
-          </Link>
-        </div>
-
-        <div className="font-light text-slate-400 mt-4 text-sm text-center">
-          Don&apos;t have an account ?{" "}
-          <Link href="/register" className="font-bold">
-            Register here
-          </Link>
-        </div>
-      </CardContent>
-    </Card>
+          <div className="font-light text-slate-400 mt-4 text-sm text-center border-t-1 py-3">
+              <Link href="/register">Don&apos;t have an account? <span className="font-bold text-emerald-500">Register here</span></Link>
+          </div>
+      </Card>
   );
 }
 
