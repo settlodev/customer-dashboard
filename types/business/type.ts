@@ -36,5 +36,6 @@ export declare interface Business {
     user: UUID,
     country: UUID,
     countryName: string,
-    isArchived: boolean
+    isArchived: boolean,
+    totalLocations: number
 }
