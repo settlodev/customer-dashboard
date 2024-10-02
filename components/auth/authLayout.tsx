@@ -38,8 +38,8 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 <div className='z-10'>
                     <h1 className='font-bold text-[45px]'>Welcome to Settlo</h1>
                     <div className='font-light text-slate-400 mt-4'>
-                        <p className="text-medium">Login with your credentials to continue using the Dashboard, Download
-                            Settlo App from <br/>Playstore and Appstore to use our POS in your android or iOS devices
+                        <p className="text-medium">Login with your credentials or register to continue using the Dashboard, Download
+                            Settlo App from Playstore and Appstore to use our POS in your android or iOS devices
                         </p>
 
                         <div className='mt-4 flex gap-6'>
