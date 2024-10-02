@@ -216,12 +216,12 @@ export const resetPassword = async (
    
     try {
         const apiClient = new ApiClient();
-        const result = await apiClient.post("/api/auth/reset-password", validateEmail.data);
-        console.log("Response from API after reset ",result)
-        if(result){
-           let data = await sendPasswordResetEmail()
+        const token = await apiClient.post("/api/auth/reset-password", validateEmail.data);
+        console.log("Response from API after reset ", token);
+        if(token){
+            await sendPasswordResetEmail();
         }
-        return parseStringify(result);
+        return parseStringify(token);
     } catch (error) {
         throw error;
     }
