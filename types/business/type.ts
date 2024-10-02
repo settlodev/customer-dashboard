@@ -35,5 +35,6 @@ export declare interface Business {
     status: boolean,
     user: UUID,
     country: UUID,
+    countryName: string,
     isArchived: boolean
 }

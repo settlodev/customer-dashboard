@@ -9,7 +9,6 @@ import {
   publicRoutes,
   COMPLETE_ACCOUNT_REGISTRATION_URL,
   COMPLETE_BUSINESS_LOCATION_SETUP_URL,
-  LOCATION_SUBSCRIPTION_URL,
 } from "@/routes";
 import { AuthToken } from "@/types/types";
 
@@ -52,18 +51,13 @@ export default auth((req) => {
     // For non-auth routes, check if business registration is complete
 
     if (authToken?.businessComplete === true) {
-      // Check if the business has set up location
+      // Check if the business has set up allocation
       if (!authToken.locationComplete && nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
-        return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl));
-      }
-
-      // Check if the location has subscribe (Not null or expired)
-      if (authToken.subscriptionStatus !== null && nextUrl.pathname !== LOCATION_SUBSCRIPTION_URL) {
-        return Response.redirect(new URL(LOCATION_SUBSCRIPTION_URL, nextUrl));
+        return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl)); // Redirect to set location
       }
     } else if (!authToken?.businessComplete && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
       return Response.redirect(
-        new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
+          new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
       );
     }
 

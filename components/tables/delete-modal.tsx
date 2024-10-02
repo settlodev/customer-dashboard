@@ -32,8 +32,7 @@ export default function DeleteModal({
         placement="center"
         radius="sm"
         size="sm"
-        onOpenChange={onOpenChange}
-      >
+        onOpenChange={onOpenChange} style={{background:'#FAFAFA'}}>
         <ModalContent>
           {(onClose) => (
             <>

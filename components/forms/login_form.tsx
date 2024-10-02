@@ -14,6 +14,8 @@ import {FormResponse} from "@/types/types";
 import {DEFAULT_LOGIN_REDIRECT_URL} from "@/routes";
 import {FormError} from "@/components/widgets/form-error";
 import {FormSuccess} from "@/components/widgets/form-success";
+import Link from "next/link";
+import Image from "next/image";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
@@ -55,15 +57,16 @@ function LoginForm() {
 
     return (
         <Card className="mx-auto max-w-sm">
+            <div className="pt-3 border-b-1 pb-3 pl-3">
+                <Image src='/images/new_logo.svg' height={70} width={200} alt='Settlo' />
+            </div>
             <CardHeader>
                 <CardTitle className="text-2xl">Login</CardTitle>
-                <CardDescription>
-                    Enter your email below to login to your account
-                </CardDescription>
+                <CardDescription>Enter your email or phone login to your account</CardDescription>
             </CardHeader>
             <CardContent>
-                <FormError message={error} />
-                <FormSuccess message={success} />
+                <FormError message={error}/>
+                <FormSuccess message={success}/>
 
                 <Form {...form}>
                     <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
@@ -72,7 +75,7 @@ function LoginForm() {
                                 <FormField
                                     control={form.control}
                                     name="email"
-                                    render={({ field }) => (
+                                    render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Username</FormLabel>
                                             <FormControl>
@@ -81,7 +84,7 @@ function LoginForm() {
                                             <FormDescription>
                                                 Enter user name
                                             </FormDescription>
-                                            <FormMessage />
+                                            <FormMessage/>
                                         </FormItem>
                                     )}
                                 />
@@ -90,7 +93,7 @@ function LoginForm() {
                                 <FormField
                                     control={form.control}
                                     name="password"
-                                    render={({ field }) => (
+                                    render={({field}) => (
                                         <FormItem>
                                             <FormLabel>Password</FormLabel>
                                             <FormControl>
@@ -99,7 +102,7 @@ function LoginForm() {
                                             <FormDescription>
                                                 Enter password
                                             </FormDescription>
-                                            <FormMessage />
+                                            <FormMessage/>
                                         </FormItem>
                                     )}
                                 />
@@ -110,6 +113,14 @@ function LoginForm() {
                         </div>
                     </form>
                 </Form>
+
+                <div className='font-light text-slate-400 mt-4 text-sm'>
+                    Don&apos;t have an account ?{" "}
+                    <Link href='/register' className='font-bold'>
+                        Register here
+                    </Link>
+                </div>
+
             </CardContent>
         </Card>
 
