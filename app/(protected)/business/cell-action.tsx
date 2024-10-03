@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash } from "lucide-react";
+import {Edit, MoreHorizontal, RefreshCcwIcon, Trash} from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -17,8 +17,9 @@ import { deleteStaff } from "@/lib/actions/staff-actions";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import {Business} from "@/types/business/type";
-import {DeleteIcon, EditIcon, EyeIcon} from "@nextui-org/shared-icons";
+import {DeleteIcon, EditIcon, EyeIcon, ArrowRightIcon} from "@nextui-org/shared-icons";
 import {deleteBusiness} from "@/lib/actions/business/delete";
+import {refreshBusiness} from "@/lib/actions/business/refresh";
 
 interface CellActionProps {
   data: Business;
@@ -60,6 +61,37 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     }
   };
 
+  const onRefreshBusiness = async (data: Business) => {
+    console.log("data switching: ", data);
+    try {
+      if (data) {
+        await refreshBusiness(data);
+        toast({
+          variant: "default",
+          title: "Success",
+          description: "Business refreshed successfully!",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Uh oh! Something went wrong.",
+          description:
+              "There was an issue with your request, please try again later",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description:
+            error.message ||
+            "There was an issue with your request, please try again later",
+      });
+    } finally {
+      onOpenChange();
+    }
+  };
+
   return (
       <>
         <div style={{alignItems: 'flex-end'}}>
@@ -71,6 +103,9 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             gap: 16,
             fontSize: 20
           }}>
+            <a style={{flex: 1}} onClick={()=>onRefreshBusiness(data)} className="cursor-pointer">
+              <ArrowRightIcon color={'#384B70'}/>
+            </a>
             <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}`)} className="cursor-pointer">
               <EyeIcon color={'#384B70'}/>
             </a>

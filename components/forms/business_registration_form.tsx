@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { use, useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/card";
 import {
     Form,
-    FormControl, FormDescription,
+    FormControl,
     FormField,
     FormItem, FormLabel,
     FormMessage,
@@ -39,7 +39,7 @@ const BusinessRegistrationForm = () => {
     const router = useRouter();
 
     useEffect(() => {
-     
+
         const getCountries = async () =>{
             try {
                 const response = await fetchCountries();
@@ -77,7 +77,7 @@ const BusinessRegistrationForm = () => {
             createBusiness(values).then((data) => {
                 console.log("The data after creation is:", data)
                 if (data){
-                    setResponse(data);  
+                    setResponse(data);
                 }
             });
         });
@@ -138,8 +138,8 @@ const BusinessRegistrationForm = () => {
                                             </FormItem>
                                         )}
                                         />
-                                
-                                  
+
+
 
                                     <FormField
                                         control={form.control}
@@ -161,7 +161,7 @@ const BusinessRegistrationForm = () => {
                                                                 ? countries.map((country: any, index: number) => (
                                                                       <SelectItem
                                                                           key={index}
-                                                                          value={country.id} 
+                                                                          value={country.id}
                                                                       >
                                                                           {country.name} {/* Assuming 'name' is the country name */}
                                                                       </SelectItem>
@@ -174,7 +174,7 @@ const BusinessRegistrationForm = () => {
                                             </FormItem>
                                         )}
                                     />
-                                    
+
                                     <FormField
                                         control={form.control}
                                         name="description"
@@ -186,17 +186,17 @@ const BusinessRegistrationForm = () => {
                                                         {...field}
                                                         disabled={isPending}
                                                         placeholder="Describe your business"
-                                                      
+
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
-                                    />   
+                                    />
                                 </div>
                             </CardContent>
                         </Card>
-                      
+
                     </div>
                 {
                     isPending ? (
