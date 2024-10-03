@@ -62,7 +62,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   };
 
   const onRefreshBusiness = async (data: Business) => {
-    console.log("data switching: ", data);
     await refreshBusiness(data);
   };
 

@@ -1,37 +1,37 @@
 import { Toaster } from "@/components/ui/toaster"
 import {Suspense} from "react";
-import { Layout } from "@/components/layouts/layout";
 import {SessionProvider} from "next-auth/react";
 import {auth} from "@/auth";
+import {SidebarWrapper} from "@/components/sidebar/sidebar";
+import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
     const session = await auth();
-    console.log("my session is:" , session)
-    /*return (
-        <Suspense fallback={"Loading..."}>
-            <div className="flex h-dvh w-full">
-                Sidebar
-                <div className="w-full flex-1 flex-col">
-                    <header className="flex rounded-medium">
-                        Navbar
-                    </header>
+    const  currentBusiness = await getCurrentBusiness();
 
-                    <main className="mt-2 max-h-full w-full overflow-visible">
-                        <div className="flex h-[80%] w-full flex-col gap-4 rounded-small border-sma/ll border-divider">
-                            <Layout>{children}</Layout>
-                        </div>
-                    </main>
+    return (
+        <SessionProvider session={session}>
+            <Suspense fallback={"Loading..."}>
+                <div className="flex h-dvh w-full">
+                    <SidebarWrapper business={currentBusiness} />
+                    <div className="w-full flex-1 flex-col">
+                        {children}
+                        <Toaster />
+                    </div>
+
                 </div>
-                <Toaster />
-            </div>
-        </Suspense>
-    );*/
-    return (<SessionProvider session={session}>
-        <Layout>
-            {children}
-        </Layout>
-    </SessionProvider>)
+            </Suspense>
+        </SessionProvider>
+    );
+    // return (<SessionProvider session={session}>
+    //     <Suspense fallback={"Loading..."}>
+    //         <LayoutTsx>
+    //             {children}
+    //             <Toaster />
+    //         </LayoutTsx>
+    //     </Suspense>
+    // </SessionProvider>)
 
 }
