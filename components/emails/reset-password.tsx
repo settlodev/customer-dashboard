@@ -1,7 +1,7 @@
 interface EmailProps {
     token: string;
 }
-export default function ResetPasswordEmailTemplate() {
+export default function ResetPasswordEmailTemplate({token}: EmailProps) {
     return (
         <div>
             <p>
@@ -13,7 +13,7 @@ export default function ResetPasswordEmailTemplate() {
                 below to reset your password:
             </p>
             <a
-                // href={`${process.env.NEXT_PUBLIC_APP_URL}/reset-password/${token}`}
+                href={`${process.env.NEXT_PUBLIC_APP_URL}/update-password?token=${token}`}
             >
                 Reset Password
             </a>

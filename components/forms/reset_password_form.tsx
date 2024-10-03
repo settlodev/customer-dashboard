@@ -2,23 +2,24 @@
 import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormResponse } from "@/types/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { ResetPasswordSchema } from "@/types/data-schemas";
-import { resetPassword } from "@/lib/actions/auth-actions";
+import { resetPassword, verifyToken } from "@/lib/actions/auth-actions";
 import { Card, CardContent,CardHeader, CardTitle } from "../ui/card";
 import Link from "next/link";
-import { sendPasswordResetEmail } from "@/lib/actions/emails/send";
+import {useRouter} from "next/navigation";
 
 
 function ResetPasswordForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [success, setSuccess] = useState<string | undefined>("");
+   
 
     const form = useForm<z.infer<typeof ResetPasswordSchema>>({
         resolver: zodResolver(ResetPasswordSchema),
@@ -38,9 +39,6 @@ function ResetPasswordForm() {
                     } else {
                         setSuccess(data.message);
                       
-                        setTimeout(() => {
-                            window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
-                        }, 30000);
                     }
                 })
                 .catch((err: any) => {

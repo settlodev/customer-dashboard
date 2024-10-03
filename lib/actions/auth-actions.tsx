@@ -7,7 +7,8 @@ import { AuthError } from "next-auth";
 import {
     LoginSchema,
     RegisterSchema,
-    ResetPasswordSchema
+    ResetPasswordSchema,
+    UpdatePasswordSchema
 } from "@/types/data-schemas";
 import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
@@ -216,12 +217,43 @@ export const resetPassword = async (
    
     try {
         const apiClient = new ApiClient();
-        const token = await apiClient.post("/api/auth/reset-password", validateEmail.data);
-        console.log("Response from API after reset ", token);
-        if(token){
-            await sendPasswordResetEmail();
+        const result = await apiClient.post("/api/auth/reset-password", validateEmail.data);
+        let token = result
+        if(result) {
+            await sendPasswordResetEmail(token);
         }
-        return parseStringify(token);
+        return parseStringify(result);
+    } catch (error) {
+        throw error;
+    }
+}
+
+export const updatePassword = async (
+    password: z.infer<typeof UpdatePasswordSchema>,
+): Promise<FormResponse> => {
+    const validatePassword = UpdatePasswordSchema.safeParse(password);
+
+    console.log("validatePassword", validatePassword);
+
+    if (!validatePassword.success) {
+        return parseStringify({
+            responseType: "error",
+            message: "Please fill in all the fields marked with * before proceeding",
+            error: new Error(validatePassword.error.message),
+        });
+    }
+
+    // let token = validatePassword.data.token
+    const payload = {
+        password: validatePassword.data.password
+        // token
+    }
+    const apiClient = new ApiClient();
+    try {
+       
+        const result = await apiClient.post("/api/auth/reset-password", validatePassword.data);
+        console.log("Response from API after reset ", result);
+        return parseStringify(result);
     } catch (error) {
         throw error;
     }
