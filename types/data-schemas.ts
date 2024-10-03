@@ -33,6 +33,10 @@ export const ResetPasswordSchema = object({
   email: string({ required_error: "Email is required"}).min(6, "Please enter a valid email address").email("Please enter a valid email address"),
 });
 
+export const UpdatePasswordSchema = object({
+  password: string({ required_error: "Old password is required"}).min(6, "Please enter a valid password"),
+});
+
 
 
 

@@ -9,6 +9,7 @@ import {
   publicRoutes,
   COMPLETE_ACCOUNT_REGISTRATION_URL,
   COMPLETE_BUSINESS_LOCATION_SETUP_URL,
+  UPDATE_PASSWORD_URL,
 } from "@/routes";
 import { AuthToken } from "@/types/types";
 
@@ -23,7 +24,11 @@ export default auth((req) => {
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
 
-  if (isApiAuthRoute || isPublicRoute) {
+    // Allow access to the reset-password route
+  const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL); 
+
+
+  if (isApiAuthRoute || isPublicRoute || isUpdatePasswordRoute) {
     return;
   }
 

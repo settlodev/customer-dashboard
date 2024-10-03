@@ -1,6 +1,7 @@
 import {UUID} from "node:crypto";
 import {Gender} from "@/types/enums";
 import {DefaultSession} from "next-auth";
+import { decl } from "postcss";
 
 export declare interface LoginResponse {
     id: UUID,
@@ -100,3 +101,8 @@ export type ExtendedUser = DefaultSession["user"] & {
     subscriptionComplete: boolean;
     businessId: UUID | null;
 };
+
+export declare interface RegisterResponse {
+    message: string;
+    success: boolean;
+}
