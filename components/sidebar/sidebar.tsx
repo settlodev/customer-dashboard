@@ -22,13 +22,15 @@ import { ChangeLogIcon } from "../icons/sidebar/changelog-icon";
 import { usePathname } from "next/navigation";
 import {BarChartIcon, PieChartIcon, HomeIcon, ChevronRightIcon} from "@radix-ui/react-icons";
 import {Business} from "@/types/business/type";
+import {parseStringify} from "@/lib/utils";
 
-export const SidebarWrapper = async ({business}: { business: Business }) => {
+export const SidebarWrapper = ({business}: { business: Business }) => {
   const pathname = usePathname();
   const {collapsed, setCollapsed} = useSidebarContext();
 
-  console.log("Biz is 2:",  business);
-
+  if(business) {
+    console.log("Biz is 3:", JSON.parse(business));
+  }
   return (
       <aside className="h-screen z-[20] sticky top-0">
         {collapsed ? (
