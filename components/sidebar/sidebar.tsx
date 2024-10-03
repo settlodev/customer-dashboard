@@ -1,4 +1,3 @@
-"use client"
 import React from "react";
 import { Sidebar } from "./sidebar.styles";
 import { Avatar, Tooltip } from "@nextui-org/react";
@@ -20,13 +19,10 @@ import { useSidebarContext } from "../layouts/layout-context";
 import { ChangeLogIcon } from "../icons/sidebar/changelog-icon";
 import { usePathname } from "next/navigation";
 import {BarChartIcon, PieChartIcon, HomeIcon, ChevronRightIcon} from "@radix-ui/react-icons";
-import {useSession} from "next-auth/react";
 
 export const SidebarWrapper = () => {
   const pathname = usePathname();
   const { collapsed, setCollapsed } = useSidebarContext();
-  const {data: session, status} = useSession();
-  //console.log("session is:", session, "status:", status);
   return (
     <aside className="h-screen z-[20] sticky top-0">
       {collapsed ? (

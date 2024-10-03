@@ -63,33 +63,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   const onRefreshBusiness = async (data: Business) => {
     console.log("data switching: ", data);
-    try {
-      if (data) {
-        await refreshBusiness(data);
-        toast({
-          variant: "default",
-          title: "Success",
-          description: "Business refreshed successfully!",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Uh oh! Something went wrong.",
-          description:
-              "There was an issue with your request, please try again later",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description:
-            error.message ||
-            "There was an issue with your request, please try again later",
-      });
-    } finally {
-      onOpenChange();
-    }
+    await refreshBusiness(data);
   };
 
   return (
