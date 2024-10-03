@@ -13,6 +13,8 @@ import { resetPassword, verifyToken } from "@/lib/actions/auth-actions";
 import { Card, CardContent,CardHeader, CardTitle } from "../ui/card";
 import Link from "next/link";
 import {useRouter} from "next/navigation";
+import { FormError } from "../widgets/form-error";
+import { FormSuccess } from "../widgets/form-success";
 
 
 function ResetPasswordForm() {
@@ -54,6 +56,10 @@ function ResetPasswordForm() {
                <CardTitle className="text-xl lg:text-2xl">Reset Password</CardTitle>
            </CardHeader>
            <CardContent>
+
+           <FormError message={error}/>
+           <FormSuccess message={success}/>
+           
            <Form{...form}>
             <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
             <FormField

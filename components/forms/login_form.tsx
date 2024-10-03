@@ -130,7 +130,7 @@ function LoginForm() {
                   </form>
               </Form>
               <div className="grid gap-2 mt-6 text-center">
-                  <Link href="/forgot-password" className="text-sm text-slate-400">
+                  <Link href="/reset-password" className="text-sm text-slate-400">
                       Forgot password,  <span className="font-bold text-emerald-500">click here</span> to reset?
                   </Link>
               </div>

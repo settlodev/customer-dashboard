@@ -11,7 +11,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useEffect, useState, useTransition } from "react";
-import { fetchCountries } from "@/lib/actions/auth/business";
 import { RegisterSchema } from "@/types/data-schemas";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -35,9 +34,11 @@ import {
 import { on } from "events";
 import { FormResponse } from "@/types/types";
 import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
-import { FormError} from "../widgets/form-error";
+import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { register } from "@/lib/actions/auth-actions";
+import { Loader2Icon } from "lucide-react";
+import { fetchCountries } from "@/lib/actions/countries-actions";
 function RegisterForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>("");
@@ -93,8 +94,8 @@ function RegisterForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-      <FormError message={error} />
-      <FormSuccess message={success} />
+        <FormError message={error} />
+        <FormSuccess message={success} />
         <Form {...form}>
           <form onSubmit={form.handleSubmit(submitData)}>
             <div className="grid gap-4">
@@ -226,9 +227,19 @@ function RegisterForm() {
                 />
               </div>
             </div>
-            <Button type="submit" className="w-full">
-              Create an account
-            </Button>
+            {isPending ? (
+              <div className="flex justify-center items-center bg-black rounded p-2 text-white">
+                <Loader2Icon className="w-6 h-6 animate-spin" />
+              </div>
+            ) : (
+              <Button
+                type="submit"
+                disabled={isPending}
+                className={`mt-4 w-full capitalize`}
+              >
+                create account
+              </Button>
+            )}
           </form>
         </Form>
         <div className="mt-4 text-center text-sm">

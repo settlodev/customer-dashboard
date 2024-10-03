@@ -120,6 +120,8 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
             `/api/auth/verify-token/${token}`,
         );
 
+        console.log("tokenResponse from Peter", tokenResponse);
+
         if (tokenResponse == token) {
             return parseStringify({
                 responseType: "success",
@@ -194,9 +196,17 @@ export const register = async (
     try {    
         const apiClient = new ApiClient();
         const result = await apiClient.post("/api/auth/register", validatedData.data);
-        return parseStringify(result);  
+        return parseStringify({
+            responseType: "success",
+            message: "Registration successful, redirecting to login...",
+        });  
     } catch (error) {
-        throw error;
+        console.error(error);
+        return parseStringify({
+            responseType: "error",
+            message: "An unexpected error occurred. Please try again.",
+            error: error instanceof Error ? error : new Error(String(error)),
+        });
     }
 }
 
@@ -222,18 +232,23 @@ export const resetPassword = async (
         if(result) {
             await sendPasswordResetEmail(token);
         }
-        return parseStringify(result);
+        return parseStringify({
+            responseType: "success",
+            message: "Password reset link sent to your email address",
+            data: result
+        });
     } catch (error) {
         throw error;
     }
 }
 
 export const updatePassword = async (
-    password: z.infer<typeof UpdatePasswordSchema>,
+    passwordData: {password: string, token: string},
 ): Promise<FormResponse> => {
-    const validatePassword = UpdatePasswordSchema.safeParse(password);
+    const validatePassword = UpdatePasswordSchema.safeParse(passwordData);
 
-    console.log("validatePassword", validatePassword);
+    console.log("Password data being validated:", passwordData);
+    console.log("Validation result:", validatePassword);
 
     if (!validatePassword.success) {
         return parseStringify({
@@ -242,19 +257,28 @@ export const updatePassword = async (
             error: new Error(validatePassword.error.message),
         });
     }
-
-    // let token = validatePassword.data.token
-    const payload = {
-        password: validatePassword.data.password
-        // token
+    const payload={
+        ...validatePassword.data,
+        token: passwordData.token
     }
+    console.log("The payload to update password", payload);
     const apiClient = new ApiClient();
     try {
        
-        const result = await apiClient.post("/api/auth/reset-password", validatePassword.data);
-        console.log("Response from API after reset ", result);
-        return parseStringify(result);
+        const response = await apiClient.post("/api/auth/update-password", payload);
+        // console.log("Response from API after reset ", response);
+        return parseStringify({
+            responseType: "success",
+            message: "Password updated successfully, redirecting to login...",
+            data: response
+        });
     } catch (error) {
-        throw error;
+        // throw error;
+        console.log("Error from API after reset ", error);
+        return parseStringify({
+            responseType: "error",
+            message: "Password reset failed.",
+            error: error instanceof Error ? error : new Error(String(error)),
+        })
     }
 }
