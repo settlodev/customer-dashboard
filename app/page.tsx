@@ -1,5 +1,5 @@
 import {Base} from "@/components/landing-page/Base";
 
-export default function LoginPage() {
+export default function LandingPage() {
     return <Base />
 }

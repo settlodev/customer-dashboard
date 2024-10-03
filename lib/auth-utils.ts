@@ -27,15 +27,11 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
 
     const parsedTokens = JSON.parse(tokens) as AuthToken;
 
-
-
     return parsedTokens.authToken ? parsedTokens : null;
 };
 
 export const deleteAuthToken = async () => {
-    const cookieStore = cookies();
-
-    cookieStore.delete("settloAuthToken");
+    cookies().delete("authToken");
 };
 
 export const updateAuthToken = async (token: AuthToken) => {
@@ -113,6 +109,8 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 };
 
 export const deleteAuthCookie = async () => {
+    console.log("Delete cookie called");
+    await logout();
     cookies().delete("authToken");
 };
 
@@ -121,7 +119,7 @@ export const deleteActiveBusinessCookie = async () => {
 };
 
 export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
-    const cookieStore = cookies();  
+    const cookieStore = cookies();
 
     const activeBusiness = cookieStore.get("activeBusiness")?.value;
 
@@ -135,6 +133,33 @@ export const deleteActiveLocationCookie = async () => {
 // export const getActiveLocation = async (): Promise<activeLocation | null> => {
 //     const cookieStore = cookies();
 
-//     const activeLocation = cookieStore.get("activeLocation")?.value;    
+//     const activeLocation = cookieStore.get("activeLocation")?.value;
 //     return activeLocation ? JSON.parse(activeLocation) : null;
 // };
+
+/*export const deleteActiveBusinessCookie = async () => {
+    cookies().delete("activeBusiness");
+};*/
+
+/*
+export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
+    const cookieStore = cookies();
+
+    const activeBusiness = cookieStore.get("activeBusiness")?.value;
+
+    return activeBusiness ? JSON.parse(activeBusiness) : null;
+};
+*/
+
+/*
+export const deleteActiveLocationCookie = async () => {
+    cookies().delete("activeLocation");
+};
+*/
+
+/*export const getActiveLocation = async (): Promise<activeLocation | null> => {
+    const cookieStore = cookies();
+
+    const activeLocation = cookieStore.get("activeLocation")?.value;
+    return activeLocation ? JSON.parse(activeLocation) : null;
+};*/

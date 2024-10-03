@@ -39,8 +39,6 @@ export default auth((req) => {
     authToken = JSON.parse(tokens) as AuthToken;
   }
 
-
-
   if (isLoggedIn) {
     // If logged in and trying to access an auth route (like /login),
     // redirect to the default page or account completion page
@@ -57,13 +55,11 @@ export default auth((req) => {
 
     if (authToken?.businessComplete === true) {
       // Check if the business has set up allocation
-      if (!authToken.locationComplete && nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
+      if (!authToken?.locationComplete && nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
         return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl)); // Redirect to set location
       }
     } else if (!authToken?.businessComplete && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
-      return Response.redirect(
-          new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl),
-      );
+      return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
     }
 
   } else {
