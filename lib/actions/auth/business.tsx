@@ -40,25 +40,33 @@ export const createBusiness = async(
             payload
         );
 
+        console.log("Response from API after creating business ", response);
+
         
         if (typeof response) {
-            console.log("Executing the if block with UUID response");
-        
+           
             const token = cookies().get("authToken")?.value;
             if (token) {
                 const authToken = JSON.parse(token) as AuthToken;
         
                 authToken.businessComplete = true;
-                // authToken.businessId = response;
-        
-                // console.log("Updated auth token", authToken);
         
                 cookies().set("authToken", JSON.stringify(authToken), { path: "/", httpOnly: true });
         
                 const updatedToken = cookies().get("authToken")?.value;
-                // console.log("Updated token is:", updatedToken);
 
                 success = true;
+
+                if(success){
+                    // first delete the active business cookie if it exists
+                    cookies().delete("activeBusiness");
+
+                    // set the active business cookie
+                    cookies().set("activeBusiness", JSON.stringify({businessId:response}), { path: "/", httpOnly: true });
+
+                    const activeBusiness = cookies().get("activeBusiness")?.value;
+                    console.log("Active business is:", activeBusiness);
+                }
         
             } else {
                 console.log("No token found");
@@ -70,6 +78,7 @@ export const createBusiness = async(
         
 
         console.log("business created")
+       
        
     }
     catch (error){
@@ -89,12 +98,3 @@ export const createBusiness = async(
     }
 }
 
-export const fetchCountries = async () => {
-    try {
-        const apiClient = new ApiClient();
-        const response = await apiClient.get("/api/countries");
-        return parseStringify(response);
-    } catch (error) {
-        throw error;
-    }   
-}

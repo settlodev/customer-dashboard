@@ -29,10 +29,14 @@ import { toast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
 import { createBusinessLocation } from "@/lib/actions/auth/location";
+import { Loader2Icon } from "lucide-react";
+import { FormError } from "../widgets/form-error";
+import { FormSuccess } from "../widgets/form-success";
 
 const LocationForm = () => {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
+ 
 
   const form = useForm<z.infer<typeof LocationSchema>>({
     resolver: zodResolver(LocationSchema),
@@ -57,9 +61,8 @@ const LocationForm = () => {
       startTransition(() => {
         createBusinessLocation(values).then((data) => {
           if (data) {
-            console.log("data is:", data);
-            setResponse(data);
             if (data.responseType === "success") {
+                setResponse(data);
               toast({
                 variant: "default",
                 title: "Business created successfully",
@@ -80,7 +83,7 @@ const LocationForm = () => {
   );
 
   return (
-    <Card>
+    <Card >
       <CardHeader>
         <CardTitle>Setup Business Location</CardTitle>
         <CardDescription>
@@ -88,6 +91,7 @@ const LocationForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
            
@@ -303,13 +307,19 @@ const LocationForm = () => {
               />
               </div>
           
-            <Button
-              type="submit"
-              disabled={isPending}
-              className={`mt-4 w-full`}
-            >
-              Setup Location
-            </Button>
+              {isPending ? (
+                  <div className="flex justify-center items-center bg-black rounded p-2 text-white">
+                    <Loader2Icon className="w-6 h-6 animate-spin" />
+                  </div>
+                ) : (
+                  <Button
+                    type="submit"
+                    disabled={isPending}
+                    className={`mt-4 w-full capitalize`}
+                  >
+                    setup business location
+                  </Button>
+                )}
           </form>
         </Form>
       </CardContent>

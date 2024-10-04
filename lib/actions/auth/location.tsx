@@ -14,8 +14,6 @@ export const createBusinessLocation = async (
     let success: boolean = false;
     const businessLocationValidData = LocationSchema.safeParse(businessLocation)
 
-    // console.log("businessLocationValidData",businessLocationValidData)
-
     if(!businessLocationValidData.success){
         formResponse = {
             responseType:"error",
@@ -61,18 +59,15 @@ export const createBusinessLocation = async (
                 cookies().set("authToken", JSON.stringify(authToken), { path: "/", httpOnly: true });
         
                 const updatedToken = cookies().get("authToken")?.value;
-                // console.log("Updated token is:", updatedToken);
 
                 success = true;
 
                 if(success){
                     cookies().delete("activeLocation");
 
-                    // set the active location in cookie
                     cookies().set("activeLocation", JSON.stringify({locationId:response}), { path: "/", httpOnly: true });
 
                     const activeLocation = cookies().get("activeLocation")?.value;
-                    // console.log("Active location is:", activeLocation);
                 }
         
             } else {
