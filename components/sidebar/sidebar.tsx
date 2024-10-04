@@ -3,21 +3,15 @@
 import React from "react";
 import {Sidebar} from "./sidebar.styles";
 import {CompaniesDropdown} from "./companies-dropdown";
-import {SidebarItem} from "./sidebar-item";
-import {SidebarMenu} from "./sidebar-menu";
 import {useSidebarContext} from "../layouts/layout-context";
-import {usePathname} from "next/navigation";
-import {BarChartIcon, ChevronRightIcon, HomeIcon, PieChartIcon} from "@radix-ui/react-icons";
 import {BusinessPropsType} from "@/types/business/business-props-type";
 import {menuItems} from "@/types/menu_items";
-import {menuItem} from "@/types/menu-item-type";
 import Link from "next/link";
 
 export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
-  const pathname = usePathname();
   const {collapsed, setCollapsed} = useSidebarContext();
   const myMenuItems = menuItems();
-  const {business, locationList} = data;
+  const {business} = data;
   if(business) {
     return (
         <aside className="h-screen z-[20] sticky top-0 transition-transform -translate-x-full sm:translate-x-0">

@@ -21,10 +21,9 @@ export default async function RootLayout({children}: {
         "locationList": locationList,
         "currentLocation": currentLocation
     }
-    console.log("businessData", businessData);
     return (
         <SessionProvider session={session}>
-            <Suspense fallback={"Loading..."}>
+            <Suspense fallback={<div className="fixed left-0 top-0">Loading</div>}>
                 <div className="flex">
                     <SidebarWrapper data={businessData}/>
                     <NavbarWrapper data={session}>

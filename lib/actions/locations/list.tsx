@@ -17,7 +17,7 @@ export const listLocations = async (
     const authToken = await getAuthToken();
 
     const userId = authToken?.id;
-    console.log("userId is:", userId)
+    //console.log("userId is:", userId)
     //const authToken = await getAuthToken();
     const myEndpoints = endpoints({businessId: userId});
     try {
@@ -43,7 +43,7 @@ export const listLocations = async (
         };
 
         const data = await apiClient.post(myEndpoints.business.list.endpoint, query);
-        console.log("Action response", data);
+        //console.log("Action response", data);
 
         return parseStringify(data);
     } catch (error) {

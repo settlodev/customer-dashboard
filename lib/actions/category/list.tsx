@@ -41,7 +41,7 @@ export const listCategories = async (
 
         const data = await apiClient.post(myEndpoints.categories.search.endpoint, query);
 
-        console.log("Action response", data);
+        //console.log("Action response", data);
 
         return parseStringify(data);
     } catch (error) {

@@ -15,6 +15,7 @@ import {Location} from "@/types/location/type";
 export const CompaniesDropdown = ({data}:{data: BusinessPropsType}) => {
   const {business, currentLocation, locationList} = data;
   const onRefreshLocation = async (data: Location) => {
+    console.log("swiitching to:", data);
     await refreshLocation(data);
   };
 
@@ -42,7 +43,7 @@ export const CompaniesDropdown = ({data}:{data: BusinessPropsType}) => {
       </DropdownTrigger>
       <DropdownMenu
           className="bg-white rounded-xl px-0 pt-2 border-1 border-gray-100">
-        <DropdownSection title={`Switch Business`}>
+        <DropdownSection title={`Switch location`}>
           {locationList && locationList.length > 0 ?
               locationList.map((biz: Location, i)=>{
                 return <DropdownItem

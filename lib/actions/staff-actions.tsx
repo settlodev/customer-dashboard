@@ -67,7 +67,7 @@ export const searchStaff = async (
             query,
         );
 
-        console.log("Action response", staffData);
+        //console.log("Action response", staffData);
 
         return parseStringify(staffData);
     } catch (error) {

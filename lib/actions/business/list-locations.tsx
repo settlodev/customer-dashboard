@@ -7,20 +7,15 @@ import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 import {Location} from "@/types/location/type";
 
 export const listLocations = async (): Promise<Location> => {
-
-    const authToken = await getAuthToken();
     const currentBusiness = await getCurrentBusiness();
     const myCurrentBusiness = JSON.parse(currentBusiness);
 
-    const userId = authToken?.id;
-    console.log("userId is:", userId)
-    //const authToken = await getAuthToken();
     const myEndpoints = endpoints({businessId: myCurrentBusiness.id});
     try {
         const apiClient = new ApiClient();
 
         const data = await apiClient.get(myEndpoints.locations.list.endpoint);
-        console.log("Locations response", data);
+        //console.log("Locations response", data);
 
         return parseStringify(data);
     } catch (error) {
