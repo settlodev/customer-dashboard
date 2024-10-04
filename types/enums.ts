@@ -14,4 +14,6 @@ export enum subscriptionStatus {
     TRIAL = "TRIAL",
     EXPIRED = "EXPIRED",
     DUE="DUE",
+    OK="OK",
+    PAST_DUE="PAST_DUE",
 }

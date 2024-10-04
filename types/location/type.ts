@@ -18,5 +18,6 @@ export declare interface Location  {
     isArchived: boolean
     settings: string
     business:string
+    endDate: string
     subscriptionStatus: subscriptionStatus
 }

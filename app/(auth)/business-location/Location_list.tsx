@@ -6,22 +6,42 @@ import { useRouter } from "next/navigation";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Location } from "@/types/location/type";
 import { subscriptionStatus } from "@/types/enums";
+import { useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 const CreatedBusinessLocationList = ({ locations }: { locations: Location[]}) => {
   const router = useRouter();
+  const { toast } = useToast();
 
-  if (locations.length === 1) {
-    if(locations[0].subscriptionStatus === subscriptionStatus.TRIAL){
-        router.push(`/subscription?location=${locations[0].id}`);
-        return null; //preventing the table
+   useEffect(() => {
+    if (locations.length === 1) {
+      if (locations[0].subscriptionStatus === subscriptionStatus.EXPIRED) {
+        toast({ 
+            variant: 'destructive',
+            title: 'Subscription Expired', 
+            description: 'Your subscription has expired. Please renew your subscription to continue using the app.', 
+           
+         });
+         setTimeout(() => {
+            router.push(`/subscription?location=${locations[0].id}`);
+          }, 30000);       
+      } else {
+        router.push(`/dashboard?location=${locations[0].id}`);
+      }
     }
-    router.push(`/dashboard?location=${locations[0].id}`);
-    return null; //preventing the table
-  }
+  }, [locations, router]);
 
   const handleLocationClick = (location: Location) => {
-    if (location.subscriptionStatus === subscriptionStatus.TRIAL) {
-      router.push(`/subscription?location=${location.id}`);
+    if (location.subscriptionStatus === subscriptionStatus.EXPIRED) {
+        toast({ 
+            variant: 'destructive',
+            title: 'Subscription Expired', 
+            description: 'Your subscription has expired. Please renew your subscription to continue using the app.', 
+           
+         });
+         setTimeout(() => {
+            router.push(`/subscription?location=${location.id}`);
+        }, 30000); 
     }
     else{
         router.push(`/dashboard?location=${location.id}`);
