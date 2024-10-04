@@ -32,7 +32,7 @@ export const CompaniesDropdown = ({data}:{data: BusinessPropsType}) => {
             <Image src={business.logo?business.logo:'/images/logo.png'} alt={'Logo'} width={30} height={30} />
           </div>
           <div className="flex flex-col gap-4">
-            <h3 className="text-xl font-bold m-0 text-default-900 text-md -mb-4 whitespace-nowrap">
+            <h3 className="text-l font-bold m-0 text-default-900 text-md -mb-4 whitespace-nowrap">
               {business.name}
             </h3>
             <span className="text-xs font-medium text-default-500">
@@ -43,19 +43,20 @@ export const CompaniesDropdown = ({data}:{data: BusinessPropsType}) => {
         </div>
       </DropdownTrigger>
       <DropdownMenu
-          className="bg-gray-50 rounded-xl px-2 py-2 border-1 border-gray-100"
-        aria-label="Avatar Actions">
-        <DropdownSection title="Switch Business">
+          className="bg-gray-50 rounded-xl px-0 pt-2 border-1 border-gray-100">
+        <DropdownSection title={<span className="text-sm font-medium mt-0 mb-2">Switch Business</span>}>
           {businessList && businessList.length > 0 ?
               businessList.map((biz: Business, i)=>{
-                return <DropdownItem onClick={()=>onRefreshBusiness(biz)}
+                return <DropdownItem
+                      onClick={()=>onRefreshBusiness(biz)}
+                      className="border-t-1 border-t-gray-150 rounded-none pt-1 pb-1"
                       key={i}
                       startContent={
                         <div className="p-1 rounded-full overflow-hidden bg-emerald-400 items-center justify-center flex">
                           <Image src={biz.logo ? biz.logo : '/images/logo.png'} alt={'Logo'} width={30} height={30}/>
                         </div>
                       }
-                      description={biz.countryName}
+                      description={<span className="text-xs font-medium mt-0">{biz.countryName}</span>}
                       classNames={{
                       base: "py-4",
                       title: "text-base font-semibold",
