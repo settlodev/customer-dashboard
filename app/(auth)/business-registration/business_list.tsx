@@ -11,8 +11,9 @@ const CreatedBusinessList = ({ businesses }: { businesses: Business[]}) => {
 
   const router = useRouter();
 
-  if (businesses.length === 1) {
-    router.push(`/business-location?business=${businesses[0].id}`);
+  if (businesses.length > 1) {
+    //router.push(`/business-location?business=${businesses[0].id}`);
+    router.push(`/select-business`);
     return null; //preventing the table
   }
 
@@ -45,7 +46,7 @@ const CreatedBusinessList = ({ businesses }: { businesses: Business[]}) => {
                 ))}
             </TableBody>
         </Table>
-   
+
   );
 };
 

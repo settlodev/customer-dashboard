@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Business } from "@/types/business/type";
+import {Business} from "@/types/business/type";
 import Image from "next/image";
 
 import {useEffect, useState} from "react";
@@ -18,8 +18,8 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
     }, [businesses]);
 
     if (businesses.length === 0) {
-        router.push(`/business-registration`);
-        return null;
+        /*router.push(`/business-registration`);
+        return null;*/
     }
 
     return (<div>

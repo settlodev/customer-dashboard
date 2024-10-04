@@ -2,7 +2,7 @@
 
 import {parseStringify} from "@/lib/utils";
 import {cookies} from "next/headers";
-import {Business} from "@/types/business/type";
+import {Business, BusinessWithLocationType} from "@/types/business/type";
 import {getAuthToken} from "@/lib/auth-utils";
 import {endpoints} from "@/types/endpoints";
 import ApiClient from "@/lib/settlo-api-client";
@@ -32,7 +32,7 @@ export const getBusinessDropDown = async (): Promise<Business[]> => {
     }
 };
 
-export const getBusinessWithLocations = async (): Promise<Business[]> => {
+export const getBusinessWithLocations = async (): Promise<BusinessWithLocationType[]> => {
     const authToken = await getAuthToken();
 
     const userId = authToken?.id as UUID;
@@ -41,10 +41,16 @@ export const getBusinessWithLocations = async (): Promise<Business[]> => {
         const apiClient = new ApiClient();
 
         const data = await apiClient.get(myEndpoints.business.list.endpoint);
-        //console.log("Business Drop Down response", data);
-
         return parseStringify(data);
+
     } catch (error) {
         throw error;
     }
 };
+
+const getLocations = async (businessId: UUID): Promise<Location[]> => {
+    const myEndpoints = endpoints({businessId: businessId});
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(myEndpoints.locations.list.endpoint);
+    return parseStringify(data);
+}
