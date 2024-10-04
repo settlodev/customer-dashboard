@@ -20,13 +20,8 @@ export const metadata: Metadata = {
   description: "Customer dashboard",
 };
 
-export default async function RootLayout({
-                                           children,
-                                         }: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default async function RootLayout({children,}: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
-  console.log("my session is:", session);
   return (
       <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>

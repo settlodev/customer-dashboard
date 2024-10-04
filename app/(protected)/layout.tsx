@@ -3,20 +3,23 @@ import {Suspense} from "react";
 import {SessionProvider} from "next-auth/react";
 import {auth} from "@/auth";
 import {SidebarWrapper} from "@/components/sidebar/sidebar";
-import {getBusinessDropDown, getCurrentBusiness} from "@/lib/actions/business/get-current-business";
+import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {NavbarWrapper} from "@/components/navbar/navbar";
+import {listLocations} from "@/lib/actions/business/list-locations";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
     const session = await auth();
     const  currentBusiness = await getCurrentBusiness();
+    const  currentLocation = await getCurrentLocation();
     const  businessList = await getBusinessDropDown();
-    /*console.log("my businessList: ", businessList);
-    console.log("my currentBusiness: ", currentBusiness);*/
+    const locationList = await listLocations();
     const businessData = {
         "business": currentBusiness?JSON.parse(currentBusiness): null,
-        "businessList": businessList
+        "businessList": businessList,
+        "locationList": locationList,
+        "currentLocation": currentLocation
     }
     console.log("businessData", businessData);
     return (

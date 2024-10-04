@@ -1,18 +1,30 @@
 "use server"
-import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {revalidatePath} from "next/cache";
 import {Business} from "@/types/business/type";
 import {cookies} from "next/headers";
+import {Location} from "@/types/location/type";
 
 export const refreshBusiness = async (data: Business): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
-    await getAuthenticatedUser();
     cookies().set({
         name: "currentBusiness",
         value: JSON.stringify(data)
     });
     try {
-        revalidatePath("/business");
+        revalidatePath("/dashboard");
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const refreshLocation = async (data: Location): Promise<void> => {
+    if (!data) throw new Error("Business ID is required to perform this request");
+    cookies().set({
+        name: "currentLocation",
+        value: JSON.stringify(data)
+    });
+    try {
+        revalidatePath("/dashboard");
     } catch (error) {
         throw error;
     }

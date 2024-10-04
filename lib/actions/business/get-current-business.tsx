@@ -11,6 +11,9 @@ import {UUID} from "node:crypto";
 export const getCurrentBusiness = async (): Promise<string | undefined> => {
     return cookies().get("currentBusiness")?.value;
 };
+export const getCurrentLocation = async (): Promise<string | undefined> => {
+    return cookies().get("currentLocation")?.value;
+};
 
 export const getBusinessDropDown = async (): Promise<Business[]> => {
     const authToken = await getAuthToken();
