@@ -3,7 +3,6 @@
 import {parseStringify} from "@/lib/utils";
 import {cookies} from "next/headers";
 import {Business} from "@/types/business/type";
-import {ApiResponse} from "@/types/types";
 import {getAuthToken} from "@/lib/auth-utils";
 import {endpoints} from "@/types/endpoints";
 import ApiClient from "@/lib/settlo-api-client";
