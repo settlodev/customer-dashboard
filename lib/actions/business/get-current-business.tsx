@@ -31,3 +31,20 @@ export const getBusinessDropDown = async (): Promise<Business[]> => {
         throw error;
     }
 };
+
+export const getBusinessWithLocations = async (): Promise<Business[]> => {
+    const authToken = await getAuthToken();
+
+    const userId = authToken?.id as UUID;
+    const myEndpoints = endpoints({userId: userId});
+    try {
+        const apiClient = new ApiClient();
+
+        const data = await apiClient.get(myEndpoints.business.list.endpoint);
+        //console.log("Business Drop Down response", data);
+
+        return parseStringify(data);
+    } catch (error) {
+        throw error;
+    }
+};
