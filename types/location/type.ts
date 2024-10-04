@@ -1,4 +1,5 @@
 import { UUID } from "crypto"
+import { subscriptionStatus } from "../enums"
 
 export declare interface Location  {
     id: UUID
@@ -17,4 +18,5 @@ export declare interface Location  {
     isArchived: boolean
     settings: string
     business:string
+    subscriptionStatus: subscriptionStatus
 }

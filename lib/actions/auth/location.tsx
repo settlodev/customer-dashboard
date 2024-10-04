@@ -6,6 +6,7 @@ import { AuthToken, FormResponse } from "@/types/types";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { Location } from "@/types/location/type";
 
 export const createBusinessLocation = async (
     businessLocation: z.infer<typeof LocationSchema>
@@ -91,3 +92,24 @@ export const createBusinessLocation = async (
         redirect("/dashboard");
     }
 }
+
+export const getAllBusinessLocationsByBusinessID = async (
+    businessId: string
+): Promise<Location[]> => {
+    const apiClient = new ApiClient();
+    try {
+        const response = await apiClient.get(
+            `/api/locations/${businessId}`
+        );
+        console.log("The response from the API for locations is:", response);
+        return parseStringify(response);
+        
+    } catch (error) {
+        return parseStringify({
+            responseType: "error",
+            message: "Something went wrong while processing your request, please try again",
+            error: error instanceof Error ? error : new Error(String(error)),
+        });
+    }
+}
+
