@@ -9,3 +9,9 @@ export enum BusinessType {
     HOSPITALITY = "HOSPITALITY",
 
 }
+
+export enum subscriptionStatus {
+    TRIAL = "TRIAL",
+    EXPIRED = "EXPIRED",
+    DUE="DUE",
+}

@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { on } from "events";
+
 import { FormResponse } from "@/types/types";
 import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormError } from "../widgets/form-error";

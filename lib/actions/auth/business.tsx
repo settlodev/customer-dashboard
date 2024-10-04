@@ -62,7 +62,7 @@ export const createBusiness = async(
                     cookies().delete("activeBusiness");
 
                     // set the active business cookie
-                    cookies().set("activeBusiness", JSON.stringify({businessId:response}), { path: "/", httpOnly: true });
+                    cookies().set("activeBusiness", JSON.stringify({Business:response}), { path: "/", httpOnly: true });
 
                     const activeBusiness = cookies().get("activeBusiness")?.value;
                     console.log("Active business is:", activeBusiness);
@@ -97,4 +97,6 @@ export const createBusiness = async(
         redirect("/business-location");
     }
 }
+
+
 

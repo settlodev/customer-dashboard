@@ -48,15 +48,29 @@ import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { fetchCountries } from "@/lib/actions/countries-actions";
 import { createBusiness } from "@/lib/actions/auth/business";
-
+import { getBusiness } from "@/lib/actions/business/get";
+import { Business } from "@/types/business/type";
+import { listBusinesses } from "@/lib/actions/business/list";
+import { UUID } from "crypto";
+import { auth } from "@/auth";
+import { useSession } from "next-auth/react";
+import { Session } from "next-auth";
+type ParamsProps = {
+    searchParams: {
+        [key: string]: string | undefined;
+    };
+};
 const BusinessRegistrationForm = () => {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
-  const [countries, setCountries] = useState([]);
+  const [countries, setCountries] = useState<Business[]>([]);
+  const [business, setBusiness] = useState([]);
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const router = useRouter();
+
+  
 
   useEffect(() => {
     const getCountries = async () => {
@@ -70,6 +84,12 @@ const BusinessRegistrationForm = () => {
     };
     getCountries();
   }, []);
+
+
+
+//   console.log("The session is:", businesses);
+
+ 
 
   const form = useForm<z.infer<typeof BusinessSchema>>({
     resolver: zodResolver(BusinessSchema),

@@ -13,7 +13,7 @@ export const getCurrentBusiness = async (): Promise<string | undefined> => {
     return cookies().get("currentBusiness")?.value;
 };
 
-export const getBusinessDropDown = async (): Promise<ApiResponse<Business>> => {
+export const getBusinessDropDown = async (): Promise<Business[]> => {
     const authToken = await getAuthToken();
 
     const userId = authToken?.id as UUID;

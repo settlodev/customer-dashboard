@@ -10,7 +10,8 @@ export const authRoutes = [
 
 export const apiAuthPrefix = "/api/auth";
 export const UPDATE_PASSWORD_URL = "/update-password";
-export const DEFAULT_LOGIN_REDIRECT_URL = "/dashboard";
+// export const DEFAULT_LOGIN_REDIRECT_URL = "/dashboard";
+export const DEFAULT_LOGIN_REDIRECT_URL = "/business-registration";
 export const COMPLETE_ACCOUNT_REGISTRATION_URL = "/business-registration";
 // export const COMPLETE_BUSINESS_LOCATION_SETUP_URL = "/subscription";
 
