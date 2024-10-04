@@ -2,31 +2,13 @@ import "@/styles/globals.css";
 import {auth} from "@/auth";
 import {SessionProvider} from "next-auth/react";
 import {Providers} from "@/app/providers";
-import localFont from "next/font/local";
-import type {Metadata} from "next";
-const geistSans = localFont({
-    src: "./fonts/GeistVF.woff",
-    variable: "--font-geist-sans",
-    weight: "100 900",
-});
-const geistMono = localFont({
-    src: "./fonts/GeistMonoVF.woff",
-    variable: "--font-geist-mono",
-    weight: "100 900",
-});
-
-export const metadata: Metadata = {
-    title: "Settlo Customer Dashboard",
-    description: "Customer dashboard",
-};
-
 export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
     const session = await auth();
     return (
         <html lang="en">
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <body>
         <SessionProvider session={session}>
             <Providers>{children}</Providers>
         </SessionProvider>

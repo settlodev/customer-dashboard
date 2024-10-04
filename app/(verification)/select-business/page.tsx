@@ -1,17 +1,7 @@
-import BusinessRegistrationForm from "@/components/forms/business_registration_form";
-import CreatedBusinessList from "./business_list";
-
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
+import {SelectBusiness} from "@/app/(verification)/select-business/business_list";
 
-
-export default async function BusinessRegistrationPage() {
-  
-    
+export default async function SelectBusinessPage() {
   const responseData = await getBusinessDropDown();
-
-    return (responseData.length > 0 ?
-        <CreatedBusinessList businesses={responseData}/>:
-        <BusinessRegistrationForm />
-
-    )
+  return <SelectBusiness businesses={responseData} />
 }
