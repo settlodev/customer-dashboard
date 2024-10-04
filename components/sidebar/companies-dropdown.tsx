@@ -15,7 +15,6 @@ import {Location} from "@/types/location/type";
 export const CompaniesDropdown = ({data}:{data: BusinessPropsType}) => {
   const {business, currentLocation, locationList} = data;
   const onRefreshLocation = async (data: Location) => {
-    console.log("swiitching to:", data);
     await refreshLocation(data);
   };
 

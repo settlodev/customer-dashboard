@@ -19,7 +19,7 @@ export default async function RootLayout({children}: {
         "business": currentBusiness?JSON.parse(currentBusiness): null,
         "businessList": businessList,
         "locationList": locationList,
-        "currentLocation": currentLocation
+        "currentLocation": currentLocation?JSON.parse(currentLocation): null
     }
     return (
         <SessionProvider session={session}>
