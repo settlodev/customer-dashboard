@@ -2,6 +2,8 @@ import {UUID} from "node:crypto";
 import {Gender} from "@/types/enums";
 import {DefaultSession} from "next-auth";
 import { decl } from "postcss";
+import { Business } from "./business/type";
+import { Location } from "./location/type";
 
 export declare interface LoginResponse {
     id: UUID,
@@ -74,6 +76,8 @@ export declare interface AuthToken {
     locationComplete: boolean;
     subscriptionComplete: boolean;
     businessId: UUID | null;
+    // businesses: Business[];
+    // locations: Location[];
     // activeBusiness: string | null;
 
 }
