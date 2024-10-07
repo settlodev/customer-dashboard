@@ -1,35 +1,42 @@
-import Link from "next/link";
+import { UUID } from "node:crypto";
 
-import { Button } from "@/components/ui/button";
+import { notFound } from "next/navigation";
+import { isNotFoundError } from "next/dist/client/components/not-found";
+
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {ApiResponse} from "@/types/types";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {UUID} from "node:crypto";
-import {notFound} from "next/navigation";
-import {isNotFoundError} from "next/dist/client/components/not-found";
-import {getBusiness} from "@/lib/actions/business/get";
-import {Business} from "@/types/business/type";
-import BusinessRegistrationForm from "@/components/forms/business_registration_form";
 
-export default async function EditPage({ params }: { params: { id: string }}) {
+import {Business} from "@/types/business/type";
+import UpdateBusinessForm from "@/components/forms/update_business_form";
+import {getBusiness} from "@/lib/actions/business-actions";
+
+export default async function Page({params}: { params: { id: string }; }) {
     const isNewItem = params.id === "new";
-    let item: Business = null!;
+    let item: ApiResponse<Business> | null = null;
 
     if (!isNewItem) {
         try {
             item = await getBusiness(params.id as UUID);
-            if (!item) notFound();
+            if (item.totalElements == 0) notFound();
         } catch (error) {
             // Ignore redirect error
             if (isNotFoundError(error)) throw error;
 
-            throw new Error("Failed to load data");
+            throw new Error("Failed to load category data");
         }
     }
-    console.log("item is now: ", item);
 
     const breadcrumbItems = [
-        {title: "Business", link: "/business"},
+        { title: "Categories", link: "/categories" },
         {
-            title: isNewItem ? "New" : item?.name || "Edit",
+            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
             link: "",
         },
     ];
@@ -38,20 +45,27 @@ export default async function EditPage({ params }: { params: { id: string }}) {
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             <div className="flex items-center justify-between mb-2">
                 <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems}/>
-                </div>
-
-                <div className="flex items-center space-x-2">
-                    <Button>
-                        <Link key="add-space" href={`/location/create`}>Add Location</Link>
-                    </Button>
+                    <BreadcrumbsNav items={breadcrumbItems} />
                 </div>
             </div>
 
-            {item?
-                <BusinessRegistrationForm business={item} />:
-                <div>Business not found</div>
-            }
+            <BranchCard isNewItem={isNewItem} item={item?.content[0]} />
         </div>
     );
 }
+
+const BranchCard = ({isNewItem, item}: { isNewItem: boolean; item: Business | null | undefined; }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle>{isNewItem ? "Create category" : "Edit category"}</CardTitle>
+            <CardDescription>
+                {isNewItem
+                    ? "Add a new category to your business"
+                    : "Edit category details"}
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <UpdateBusinessForm item={item} />
+        </CardContent>
+    </Card>
+);

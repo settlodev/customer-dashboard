@@ -9,9 +9,7 @@ import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { cookies } from "next/headers";
 
-export const createBusiness = async(
-    business:z.infer<typeof BusinessSchema>
-):Promise<FormResponse | void> => {
+export const createBusiness = async(business:z.infer<typeof BusinessSchema>):Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
     let success: boolean = false;
     const businessValidData = BusinessSchema.safeParse(business)
@@ -92,58 +90,4 @@ export const createBusiness = async(
     if (success) {
         redirect("/business-location");
     }
-}
-
-export const updateBusiness = async(business:z.infer<typeof BusinessSchema>):Promise<FormResponse | void> => {
-    let formResponse: FormResponse | null = null;
-    let success: boolean = false;
-    const businessValidData = BusinessSchema.safeParse(business)
-
-    if (!businessValidData.success) {
-        formResponse = {
-            responseType: "error",
-            message: "Please fill all the required fields",
-            error: new Error(businessValidData.error.message)
-        }
-        return parseStringify(formResponse)
-    }
-    try {
-        const apiClient = new ApiClient();
-        const AuthenticatedUser = await getAuthenticatedUser();
-        const userId = AuthenticatedUser?.id
-        const user = userId
-
-        const payload = {
-            ...businessValidData.data,
-            user
-        }
-
-        const response = await apiClient.put(`/api/businesses/${userId}/${business.id}`, payload);
-
-        const token = cookies().get("authToken")?.value;
-        if (token) {
-            const authToken = JSON.parse(token) as AuthToken;
-            success = true;
-            return response;
-
-        } else {
-            console.log("No token found");
-        }
-
-        console.log("business updated")
-    } catch (error) {
-        if (isRedirectError(error)) throw error;
-
-        console.error("Error creating business", error)
-        formResponse = {
-            responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error))
-        }
-        return parseStringify(formResponse)
-    }
-
-    /*if (success) {
-        redirect("/business-location");
-    }*/
 }

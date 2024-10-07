@@ -5,18 +5,20 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
 import {isNotFoundError} from "next/dist/client/components/not-found";
-import {getBusiness} from "@/lib/actions/business/get";
+import {getBusiness} from "@/lib/actions/business-actions";
 import {Business} from "@/types/business/type";
 import {FacebookIcon, InstagramIcon, TwitterIcon} from "lucide-react";
+import {ApiResponse} from "@/types/types";
 
 export default async function BusinessPage({ params }: { params: { id: string }}) {
     const isNewItem = params.id === "new";
-    let item: Business = null!;
+    let item: ApiResponse<Business> = null!;
 
     if (!isNewItem) {
         try {
             item = await getBusiness(params.id as UUID);
-            if (!item) notFound();
+            console.log("item is:", item);
+            if (item.numberOfElements === 0) notFound();
         } catch (error) {
             // Ignore redirect error
             if (isNotFoundError(error)) throw error;
@@ -29,7 +31,7 @@ export default async function BusinessPage({ params }: { params: { id: string }}
     const breadcrumbItems = [
         {title: "Business", link: "/business"},
         {
-            title: isNewItem ? "New" : item?.name || "Edit",
+            title: isNewItem ? "New" : item?.content[0].name || "Edit",
             link: "",
         },
     ];
@@ -48,15 +50,15 @@ export default async function BusinessPage({ params }: { params: { id: string }}
                 </div>
             </div>
 
-            {item?
+            {item.content[0]?
                 <div className="bg-white overflow-hidden shadow rounded-lg border">
                         <div className="px-4 py-5 sm:px-6 flex">
                             <div className="flex-1">
                                 <h3 className="text-xl leading-6 text-gray-900 font-bold">
-                                    {item.name}
+                                    {item.content[0].name}
                                 </h3>
                                 <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                                    {item.description}
+                                    {item.content[0].description}
                                 </p>
                                 <div className="flex pt-2">
                                     <span className="pr-2"><TwitterIcon className="text-blue-400" /></span>
@@ -65,7 +67,7 @@ export default async function BusinessPage({ params }: { params: { id: string }}
                                 </div>
                             </div>
                             <div className="float-end">
-                                <span className="rounded-full bg-emerald-50 border-emerald-400 border-1 pl-3 pr-3 font-bold text-medium pt-1 pb-1 capitalize">{item.businessType.toLowerCase()}</span>
+                                <span className="rounded-full bg-emerald-50 border-emerald-400 border-1 pl-3 pr-3 font-bold text-medium pt-1 pb-1 capitalize">{item.content[0].businessType.toLowerCase()}</span>
                             </div>
                         </div>
                         <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
@@ -75,7 +77,7 @@ export default async function BusinessPage({ params }: { params: { id: string }}
                                         Country
                                     </dt>
                                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                        {item.countryName}
+                                        {item.content[0].countryName}
                                     </dd>
                                 </div>
                                 <div className="py-3 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
@@ -83,7 +85,7 @@ export default async function BusinessPage({ params }: { params: { id: string }}
                                         Locations
                                     </dt>
                                     <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                                        {item.allLocations.length} locations
+                                        {item.content[0].allLocations.length} locations
                                     </dd>
                                 </div>
                             </dl>

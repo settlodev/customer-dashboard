@@ -22,8 +22,7 @@ export const NavbarWrapper = ({children, data}: Props) => {
                 className="w-full"
                 classNames={{
                     wrapper: "w-full max-w-full",
-                }}
-            >
+                }}>
                 <NavbarContent className="md:hidden">
                     <BurguerButton/>
                 </NavbarContent>

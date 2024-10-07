@@ -6,6 +6,7 @@ import {Business} from "@/types/business/type";
 import {getAuthToken} from "@/lib/auth-utils";
 import {UUID} from "node:crypto";
 
+/*
 export const getBusiness = async (id: UUID): Promise<Business> => {
     const apiClient = new ApiClient();
     const authToken = await getAuthToken();
@@ -15,3 +16,4 @@ export const getBusiness = async (id: UUID): Promise<Business> => {
 
     return parseStringify(data);
 };
+*/

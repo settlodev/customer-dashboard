@@ -16,11 +16,7 @@ import {Category} from "@/types/category/type";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import CategoryForm from "@/components/forms/category_form";
 
-export default async function CategoryPage({
-                                               params,
-                                           }: {
-    params: { id: string };
-}) {
+export default async function CategoryPage({params}: { params: { id: string }; }) {
     const isNewItem = params.id === "new";
     let item: ApiResponse<Category> | null = null;
 
@@ -57,13 +53,7 @@ export default async function CategoryPage({
     );
 }
 
-const BranchCard = ({
-                        isNewItem,
-                        item,
-                    }: {
-    isNewItem: boolean;
-    item: Category | null | undefined;
-}) => (
+const BranchCard = ({isNewItem, item}: { isNewItem: boolean; item: Category | null | undefined; }) => (
     <Card>
         <CardHeader>
             <CardTitle>{isNewItem ? "Create category" : "Edit category"}</CardTitle>
