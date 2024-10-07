@@ -7,6 +7,8 @@ import {ChevronRightIcon} from "@nextui-org/shared-icons";
 import {SelectLocation} from "@/app/(verification)/select-business/locations_dropdown";
 
 export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     const [business, setBusiness] = useState<Business>(null);
 
     useEffect(()=>{
