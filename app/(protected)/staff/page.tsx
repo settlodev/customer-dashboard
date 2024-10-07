@@ -50,7 +50,8 @@ export default async function Page({ searchParams }: ParamsProps) {
                 </div>
             </div>
 
-            {total > 0 || q != "" ? (
+            {total > 0 || q != "" ? 
+            (
                 <Card x-chunk="data-table">
                     <CardHeader>
                         <CardTitle>Staff</CardTitle>

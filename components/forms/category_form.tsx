@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Input } from "@nextui-org/input";
 import { Switch } from "@nextui-org/switch";
 import { cn } from "@nextui-org/react";
 
@@ -24,6 +23,7 @@ import {Category} from "@/types/category/type";
 import {FormResponse} from "@/types/types";
 import {CategorySchema} from "@/types/category/schema";
 import {FormError} from "@/components/widgets/form-error";
+import {Input} from "@/components/ui/input";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
@@ -64,12 +64,8 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                                 <FormControl>
                                     <Input
                                         {...field}
-                                        isRequired
-                                        isDisabled={isPending}
-                                        label="Category name"
+                                        disabled={isPending}
                                         placeholder="Enter category full name (eg. Hair)"
-                                        radius="sm"
-                                        size="md"
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -84,12 +80,8 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                                 <FormControl>
                                     <Input
                                         {...field}
-                                        isRequired
-                                        isDisabled={isPending}
-                                        label="Select category image"
+                                        disabled={isPending}
                                         placeholder="Upload image to represent the category"
-                                        radius="sm"
-                                        size="md"
                                     />
                                 </FormControl>
                                 <FormMessage />
@@ -104,12 +96,8 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                                 <FormControl>
                                     <Input
                                         {...field}
-                                        isRequired
-                                        isDisabled={isPending}
-                                        label="Select category parent"
+                                        disabled={isPending}
                                         placeholder="Select parent category"
-                                        radius="sm"
-                                        size="md"
                                     />
                                 </FormControl>
                                 <FormMessage />

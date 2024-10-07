@@ -20,26 +20,22 @@ type BreadcrumbPropsType = {
 
 export default function BreadcrumbsNav({ items }: BreadcrumbPropsType) {
     return (
-        <>
-            <Breadcrumb>
-                <BreadcrumbList>
-                    <BreadcrumbItem>
-                        <BreadcrumbLink key="dashboard" href={`/dashboard`}>Home</BreadcrumbLink>
-                    </BreadcrumbItem>
-                    <BreadcrumbSeparator />
-
-                    {items.map((item, index) => (
-                        <>
-                        <BreadcrumbItem key={index}>
-                            <BreadcrumbLink key={index} href={item.link}>
+        <Breadcrumb>
+            <BreadcrumbList>
+                <BreadcrumbItem>
+                    <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
+                </BreadcrumbItem>
+                {items.map((item) => (
+                    <React.Fragment key={item.link}>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem>
+                            <BreadcrumbLink href={item.link}>
                                 {item.title}
                             </BreadcrumbLink>
                         </BreadcrumbItem>
-                        <BreadcrumbSeparator />
-                        </>
-                    ))}
-                </BreadcrumbList>
-            </Breadcrumb>
-        </>
+                    </React.Fragment>
+                ))}
+            </BreadcrumbList>
+        </Breadcrumb>
     );
 }

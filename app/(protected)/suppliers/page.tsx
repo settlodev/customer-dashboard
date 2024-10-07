@@ -9,12 +9,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
+import { columns } from "@/components/tables/supplier/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import {columns} from "@/components/tables/category/columns";
-import {searchCategories} from "@/lib/actions/category-actions";
+import { searchSuppliers } from "@/lib/actions/supplier-actions";
+import { Supplier } from "@/types/supplier/type";
 
-const breadcrumbItems = [{ title: "Categories", link: "/categories" }];
+const breadcrumbItems = [{ title: "Suppliers", link: "/suppliers" }];
 
 type ParamsProps = {
     searchParams: {
@@ -27,8 +28,9 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await searchCategories(q, page, pageLimit);
-    const data = responseData.content;
+    const responseData = await searchSuppliers(q, page, pageLimit);
+
+    const data: Supplier[] = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
 
@@ -41,16 +43,19 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-category" href={`/categories/new`}>Add Category</Link>
+                        <Link key="add-space" href={`/suppliers/new`}>
+                            Add supplier
+                        </Link>
                     </Button>
                 </div>
             </div>
 
-            {total > 0 || q != "" ? (
+            {total > 0 || q != "" ? 
+            (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Categories</CardTitle>
-                        <CardDescription>Manage categories in your business location</CardDescription>
+                        <CardTitle>Supplier</CardTitle>
+                        <CardDescription>Manage supplier in your business location</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -64,7 +69,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`categories`} newItemUrl={`/categories/new`} />
+                <NoItems itemName={`suppliers`} newItemUrl={`/suppliers/new`} />
             )}
         </div>
     );

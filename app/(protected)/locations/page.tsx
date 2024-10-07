@@ -11,16 +11,10 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import {columns} from "@/app/(protected)/business/columns";
-import {ApiResponse} from "@/types/types";
-import {UUID} from "node:crypto";
-import {notFound} from "next/navigation";
-import {isNotFoundError} from "next/dist/client/components/not-found";
-import {getBusiness} from "@/lib/actions/business/get";
-import {Business} from "@/types/business/type";
-import {listLocations} from "@/lib/actions/locations/list";
+import {columns} from "@/components/tables/location/columns";
+import {searchLocations} from "@/lib/actions/location-actions";
 
-const breadcrumbItems = [{ title: "Businesses", link: "/businesses" }];
+const breadcrumbItems = [{ title: "Locations", link: "/locations" }];
 
 type ParamsProps = {
     searchParams: {
@@ -28,22 +22,12 @@ type ParamsProps = {
     };
 };
 
-export default async function BusinessPage(
-    { searchParams }: ParamsProps
-) {
-
-    const breadcrumbItems = [
-        { title: "Business", link: "/business" }
-    ];
-
-    console.log("Search params",searchParams)
+export default async function Page({ searchParams }: ParamsProps) {
     const q = searchParams.search || "";
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await listLocations(q, page, pageLimit, );
-    //console.log("Business responseData:", responseData);
-
+    const responseData = await searchLocations(q, page, pageLimit);
     const data = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
@@ -57,16 +41,16 @@ export default async function BusinessPage(
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/business/create`}>Add Location</Link>
+                        <Link key="add-location" href={`/locations/new`}>Add Location</Link>
                     </Button>
                 </div>
             </div>
 
-            {/*{total > 0 || q != "" ? (
+            {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Business</CardTitle>
-                        <CardDescription>Manage your businesses</CardDescription>
+                        <CardTitle>Locations</CardTitle>
+                        <CardDescription>Manage locations in your business</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -80,8 +64,8 @@ export default async function BusinessPage(
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`businesses`} newItemUrl={`/businesses/create`} />
-            )}*/}
+                <NoItems itemName={`locations`} newItemUrl={`/locations/new`} />
+            )}
         </div>
     );
 }

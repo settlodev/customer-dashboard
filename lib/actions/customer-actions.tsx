@@ -3,7 +3,7 @@
 import {z} from "zod";
 import {CustomerSchema} from "@/types/customer/schema";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthToken} from "@/lib/auth-utils";
+import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
@@ -11,20 +11,22 @@ import {redirect} from "next/navigation";
 import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import {id} from "postcss-selector-parser";
+import { getCurrentLocation } from "./business/get-current-business";
 
 export const fectchAllCustomers = async () : Promise<Customer[]> => {
-    // await  getAuthenticatedUser();
+    await  getAuthenticatedUser();
 
     const authToken = await getAuthToken();
 
     try {
         const apiClient = new ApiClient();
-        const locationId ='6ed59bf2-b994-4fdb-90b7-5a38285e0a16'
+
+        const location = await getCurrentLocation();
 
         const customerData = await  apiClient.get(
-            `/api/customers/${locationId}`
+            `/api/customers/${location?.id}`,
         );
-        console.log("Customer response",customerData);
+       
         return parseStringify(customerData);
 
     }
@@ -37,7 +39,7 @@ export const searchCustomer = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Customer>> =>{
-    // await getAuthenticatedUser();
+    await getAuthenticatedUser();
 
     const authToken = await getAuthToken();
 
@@ -61,8 +63,9 @@ export const searchCustomer = async (
             page:page ? page - 1:0,
             size:pageLimit ? pageLimit : 10
         }
+        const location = await getCurrentLocation();
         const customerData = await  apiClient.post(
-            '/api/customers/6ed59bf2-b994-4fdb-90b7-5a38285e0a16',
+            `/api/customers/${location?.id}`,
             query
         );
         console.log("Customer response",customerData);
@@ -90,13 +93,19 @@ export const  createCustomer= async (
       }
       return parseStringify(formResponse)
     }
+
+    const payload = {
+        ...customerValidData.data,
+        locationId: '6ed59bf2-b994-4fdb-90b7-5a38285e0a16'
+    }
     try {
         const apiClient = new ApiClient();
-        const authToken = await getAuthToken();
-        const locationId = '6ed59bf2-b994-4fdb-90b7-5a38285e0a16';
+      
+        const location = await getCurrentLocation();
 
         await apiClient.post(
-            `/api/customers/${locationId}/create`,customerValidData.data
+            `/api/customers/${location?.id}/create`,
+            payload
         );
     }
     catch (error){
@@ -131,11 +140,12 @@ export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
         page: 0,
         size: 1,
     }
+    const location = await getCurrentLocation();
     const customerResponse = await apiClient.post(
-        `/api/customers/6ed59bf2-b994-4fdb-90b7-5a38285e0a16`,
+        `/api/customers/${location?.id}`,
         query,
     );
-    console.log("Customer response with post request",customerResponse);
+    
     return parseStringify(customerResponse)
 }
 
@@ -157,15 +167,21 @@ export const updateCustomer = async(
       }
       return parseStringify(formResponse)
     }
+    const location = await getCurrentLocation();
+    const payload = {
+        ...customerValidData.data,
+        location: location?.id
+    }
     try {
         const apiClient = new ApiClient();
-        // const authToken = await getAuthToken();
-        const locationId = '6ed59bf2-b994-4fdb-90b7-5a38285e0a16';
+
+       
+
         const updatedCustomer = await apiClient.put(
-            `api/customers/${locationId}/${id}`,
-            customerValidData.data
+            `api/customers/${location?.id}/${id}`,
+            payload
         );
-        console.log("Updated Customer",updatedCustomer);
+      
     }
     catch (error){
         formResponse = {
@@ -183,13 +199,23 @@ export const updateCustomer = async(
     redirect("/customers")
 }
 
-export const deleteCustomer = async (id: UUID) => {
+export const deleteCustomer = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Customer ID is required to perform this request");
+
+    await getAuthenticatedUser();
+
+   try{
     const apiClient = new ApiClient();
-    const authToken = await getAuthToken();
-    const locationId = '6ed59bf2-b994-4fdb-90b7-5a38285e0a16';
+
+    const location = await getCurrentLocation();
+   
     await apiClient.delete(
-        `/api/customers/${locationId}/${id}`,
+        `/api/customers/${location?.id}/${id}`,
     );
     revalidatePath("/customers");
-    redirect("/customers")
+    
+   }
+   catch (error){
+       throw error
+   }
 }

@@ -95,9 +95,9 @@ export const createStaff = async (
     try {
         const apiClient = new ApiClient();
         const authToken = await getAuthToken();
-
+        const locationId = "6ed59bf2-b994-4fdb-90b7-5a38285e0a16";
         await apiClient.post(
-            `/api/categories/${authToken?.locationId}/create`,
+            `/api/categories/${locationId}/create`,
             validatedData.data,
         );
     } catch (error: unknown) {
