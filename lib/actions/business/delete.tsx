@@ -9,7 +9,9 @@ export const deleteBusiness = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Business ID is required to perform this request");
     await getAuthenticatedUser();
     const authToken = await getAuthToken();
-    const myEndpoint = endpoints({id: id, userId: authToken?.id})
+    const deleteData = {id: id, userId: authToken?.id}
+    console.log("deleteData: ", deleteData);
+    const myEndpoint = endpoints(deleteData)
     try {
         const apiClient = new ApiClient();
         await apiClient.delete(myEndpoint.business.delete.endpoint);

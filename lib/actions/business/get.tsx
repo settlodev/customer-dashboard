@@ -1,13 +1,12 @@
 "use server"
 import ApiClient from "@/lib/settlo-api-client";
 import {parseStringify} from "@/lib/utils";
-import {ApiResponse} from "@/types/types";
 import {endpoints} from "@/types/endpoints";
 import {Business} from "@/types/business/type";
 import {getAuthToken} from "@/lib/auth-utils";
 import {UUID} from "node:crypto";
 
-export const getBusiness = async (id: UUID): Promise<ApiResponse<Business>> => {
+export const getBusiness = async (id: UUID): Promise<Business> => {
     const apiClient = new ApiClient();
     const authToken = await getAuthToken();
     const userId = authToken?.id;

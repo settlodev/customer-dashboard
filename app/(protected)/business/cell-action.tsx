@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
-import { deleteStaff } from "@/lib/actions/staff-actions";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import {Business} from "@/types/business/type";
@@ -53,7 +52,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
         description:
-            error.message ||
+            //error.message ||
             "There was an issue with your request, please try again later",
       });
     } finally {

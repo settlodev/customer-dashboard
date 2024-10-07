@@ -2,7 +2,6 @@
 import ApiClient from "@/lib/settlo-api-client";
 import {parseStringify} from "@/lib/utils";
 import {endpoints} from "@/types/endpoints";
-import {getAuthToken} from "@/lib/auth-utils";
 import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 import {Location} from "@/types/location/type";
 
