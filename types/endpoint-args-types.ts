@@ -2,8 +2,8 @@ import {UUID} from "node:crypto";
 
 export declare interface EndpointArgsTypes {
     location?: UUID,
-    id?: UUID,
+    id?: string,
     token?: string,
-    userId?: UUID,
+    userId?: string,
     businessId?: UUID,
 }

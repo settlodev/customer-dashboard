@@ -25,7 +25,7 @@ export default function DeleteModal({
     <>
       <Modal
         backdrop="blur"
-        className="w-1/4"
+        className="w-1/4 p-4 rounded-2xl border-t-gray-300"
         isDismissable={false}
         isKeyboardDismissDisabled={true}
         isOpen={isOpen}
@@ -36,7 +36,7 @@ export default function DeleteModal({
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex flex-col gap-1">
+              <ModalHeader className="flex flex-col gap-1 mt-3">
                 Confirm Deletion
               </ModalHeader>
               <ModalBody>

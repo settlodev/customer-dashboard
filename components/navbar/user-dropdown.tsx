@@ -14,7 +14,7 @@ import { deleteAuthCookie } from "@/lib/auth-utils";
 import Image from "next/image";
 import {Session} from "next-auth";
 
-export const UserDropdown = async ({data}:{data: Session|null}) => {
+export const UserDropdown = ({data}:{data: Session|null}) => {
   const router = useRouter();
 
   const handleLogout = useCallback(async () => {

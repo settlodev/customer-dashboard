@@ -9,7 +9,6 @@ import { StateColumn } from "@/components/tables/state-column";
 import {Business} from "@/types/business/type";
 import {CellAction} from "@/app/(protected)/business/cell-action";
 import Link from "next/link";
-import {LinkIcon} from "@nextui-org/shared-icons";
 export const columns: ColumnDef<Business>[] = [
     {
         id: "select",
