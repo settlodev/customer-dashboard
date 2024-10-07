@@ -4,11 +4,11 @@ import {Gender} from "@/types/enums";
 
 
 export const CustomerSchema = object({
-    firstName: string({ required_error: "Schema first name is required" }).min(
+    firstName: string({ required_error: "Customer first name is required" }).min(
         3,
         "Please enter a valid name",
     ),
-    lastName: string({ required_error: "Schema last name is required" }).min(
+    lastName: string({ required_error: "Customer last name is required" }).min(
         3,
         "Please enter a valid name",
     ),
@@ -17,17 +17,17 @@ export const CustomerSchema = object({
         .email("Please enter a valid email address")
         .optional(),
     phoneNumber: string({ required_error: "Phone number is required" })
-        .refine(isValidPhoneNumber, {
-            message: "Invalid phone number",
-        })
+        // .refine(isValidPhoneNumber, {
+        //     message: "Invalid phone number",
+        // })
         .optional(),
 
     gender: nativeEnum(Gender),
     allowNotifications: boolean(),
-    status:boolean(),
-    location: string({ message: "Schema location is required" }).uuid(
-        "Please select a valid locations",
-    ),
+    // status:boolean(),
+    // location: string({ required_error: "Customer location is required" }).uuid(
+    //     "Please select a valid locations",
+    // ),
 });
 
 

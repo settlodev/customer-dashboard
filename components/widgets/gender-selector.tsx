@@ -1,6 +1,6 @@
 import React from "react";
 import { Gender } from "@/types/enums";
-import {Select, SelectContent, SelectItem} from "@/components/ui/select";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 
 interface GenderSelectorProps {
   label: string;
@@ -24,7 +24,10 @@ export default function GenderSelector({
   onBlur,
 }: GenderSelectorProps) {
   return (
-      <Select>
+      <Select value={value} onValueChange={onChange} disabled={isDisabled}>
+            <SelectTrigger>
+                <SelectValue placeholder={placeholder || "Select gender"} />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem key={Gender.MALE} value={Gender.MALE}>
                 Male

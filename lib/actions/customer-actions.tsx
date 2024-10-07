@@ -8,22 +8,23 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
-import {getAuthenticatedUser} from "@/lib/actions/auth/login";
 import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import {id} from "postcss-selector-parser";
 
 export const fectchAllCustomers = async () : Promise<Customer[]> => {
-    await  getAuthenticatedUser();
+    // await  getAuthenticatedUser();
 
     const authToken = await getAuthToken();
 
     try {
         const apiClient = new ApiClient();
+        const locationId ='6ed59bf2-b994-4fdb-90b7-5a38285e0a16'
 
         const customerData = await  apiClient.get(
-            `/api/customer/${authToken?.locationId}`
+            `/api/customers/${locationId}`
         );
+        console.log("Customer response",customerData);
         return parseStringify(customerData);
 
     }
@@ -36,7 +37,7 @@ export const searchCustomer = async (
     page:number,
     pageLimit:number
 ): Promise<ApiResponse<Customer>> =>{
-    await getAuthenticatedUser();
+    // await getAuthenticatedUser();
 
     const authToken = await getAuthToken();
 
@@ -61,7 +62,7 @@ export const searchCustomer = async (
             size:pageLimit ? pageLimit : 10
         }
         const customerData = await  apiClient.post(
-            '/api/customers/2e5a964c-41d4-46b7-9377-c547acbf7739',
+            '/api/customers/6ed59bf2-b994-4fdb-90b7-5a38285e0a16',
             query
         );
         console.log("Customer response",customerData);
@@ -79,6 +80,7 @@ export const  createCustomer= async (
     let formResponse: FormResponse | null = null;
 
     const customerValidData= CustomerSchema.safeParse(customer)
+    console.log("Customer Valid Data", customerValidData)
 
     if (!customerValidData.success){
         formResponse = {
@@ -91,9 +93,10 @@ export const  createCustomer= async (
     try {
         const apiClient = new ApiClient();
         const authToken = await getAuthToken();
+        const locationId = '6ed59bf2-b994-4fdb-90b7-5a38285e0a16';
 
         await apiClient.post(
-            `api/customer/${authToken?.locationId}/create`,customerValidData.data
+            `/api/customers/${locationId}/create`,customerValidData.data
         );
     }
     catch (error){
@@ -108,8 +111,8 @@ export const  createCustomer= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/customer");
-    redirect("/customer")
+    revalidatePath("/customers");
+    redirect("/customers")
 }
 
 export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
@@ -129,33 +132,64 @@ export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
         size: 1,
     }
     const customerResponse = await apiClient.post(
-        `/api/customer/2e5a964c-41d4-46b7-9377-c547acbf7739`,
+        `/api/customers/6ed59bf2-b994-4fdb-90b7-5a38285e0a16`,
         query,
     );
+    console.log("Customer response with post request",customerResponse);
     return parseStringify(customerResponse)
 }
 
-export const updateCustomer = async(id:UUID):Promise<void> => {
+export const updateCustomer = async(
+    id:UUID,
+    customer: z.infer<typeof CustomerSchema>
+
+):Promise<FormResponse | void> => {
+    let formResponse: FormResponse | null = null;
+    const customerValidData= CustomerSchema.safeParse(customer)
+
+    console.log("Updated Customer Valid Data", customerValidData)
+
+    if (!customerValidData.success){
+        formResponse = {
+            responseType:"error",
+            message:"Please fill all the required fields",
+            error:new Error(customerValidData.error.message)
+      }
+      return parseStringify(formResponse)
+    }
+    try {
+        const apiClient = new ApiClient();
+        // const authToken = await getAuthToken();
+        const locationId = '6ed59bf2-b994-4fdb-90b7-5a38285e0a16';
+        const updatedCustomer = await apiClient.put(
+            `api/customers/${locationId}/${id}`,
+            customerValidData.data
+        );
+        console.log("Updated Customer",updatedCustomer);
+    }
+    catch (error){
+        formResponse = {
+            responseType: "error",
+            message:
+                "Something went wrong while processing your request, please try again",
+            error: error instanceof Error ? error : new Error(String(error)),
+        };
+    }
+
+    if (formResponse){
+        return parseStringify(formResponse)
+    }
+    revalidatePath("/customers");
+    redirect("/customers")
+}
+
+export const deleteCustomer = async (id: UUID) => {
     const apiClient = new ApiClient();
     const authToken = await getAuthToken();
-
-    const query ={
-        filters:[
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            }
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
-    }
-    const customerResponse = await apiClient.post(
-        `/api/customer/2e5a964c-41d4-46b7-9377-c547acbf7739`,
-        query,
+    const locationId = '6ed59bf2-b994-4fdb-90b7-5a38285e0a16';
+    await apiClient.delete(
+        `/api/customers/${locationId}/${id}`,
     );
-
-    return parseStringify(customerResponse);
+    revalidatePath("/customers");
+    redirect("/customers")
 }
