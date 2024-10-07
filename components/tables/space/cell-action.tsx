@@ -3,6 +3,7 @@
 import { Edit, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
+import { useDisclosure } from "@nextui-org/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -12,14 +13,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Space } from "@/types";
 import DeleteModal from "@/components/tables/delete-modal";
-import { deleteStaff } from "@/lib/actions/staff-actions";
-import {useDisclosure} from "@nextui-org/modal";
-import {toast} from "@/hooks/use-toast";
-import {CategoryType} from "@/types/business/type";
+import { toast } from "@/components/ui/use-toast";
+import { deleteSpace } from "@/lib/actions/spaces-actions";
 
 interface CellActionProps {
-  data: CategoryType;
+  data: Space;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
@@ -29,11 +29,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const onDelete = async () => {
     try {
       if (data) {
-        await deleteStaff(data.id);
+        await deleteSpace(data.id);
         toast({
           variant: "default",
           title: "Success",
-          description: "Staff deleted successfully!",
+          description: "Space / Section deleted successfully!",
         });
       } else {
         toast({
@@ -68,7 +68,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => router.push(`/staff/${data.id}`)}>
+            <DropdownMenuItem onClick={() => router.push(`/spaces/${data.id}`)}>
               <Edit className="mr-2 h-4 w-4" /> Update
             </DropdownMenuItem>
             {data.canDelete && (

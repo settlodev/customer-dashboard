@@ -1,18 +1,16 @@
 "use client";
-import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormResponse } from "@/types/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { ResetPasswordSchema } from "@/types/data-schemas";
-import { resetPassword, verifyToken } from "@/lib/actions/auth-actions";
+import { resetPassword } from "@/lib/actions/auth-actions";
 import { Card, CardContent,CardHeader, CardTitle } from "../ui/card";
 import Link from "next/link";
-import {useRouter} from "next/navigation";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 
@@ -21,12 +19,12 @@ function ResetPasswordForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [success, setSuccess] = useState<string | undefined>("");
-   
+
 
     const form = useForm<z.infer<typeof ResetPasswordSchema>>({
         resolver: zodResolver(ResetPasswordSchema),
         defaultValues: {},
-    }); 
+    });
 
     const submitData = useCallback((values: z.infer<typeof ResetPasswordSchema>) => {
         startTransition(() => {
@@ -40,13 +38,13 @@ function ResetPasswordForm() {
                         setError(data.message);
                     } else {
                         setSuccess(data.message);
-                      
+
                     }
                 })
                 .catch((err: any) => {
                     setError("An unexpected error occurred. Please try again.");
                     console.error(err);
-                });     
+                });
         });
     }, []);
 
@@ -59,7 +57,7 @@ function ResetPasswordForm() {
 
            <FormError message={error}/>
            <FormSuccess message={success}/>
-           
+
            <Form{...form}>
             <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
             <FormField
@@ -76,11 +74,11 @@ function ResetPasswordForm() {
                             />
                         </FormControl>
                         <FormDescription>
-                            We'll send you a link to reset your password
+                            We&lsquo;ll send you a link to reset your password
                         </FormDescription>
-                        <FormMessage /> 
+                        <FormMessage />
                     </FormItem>
-                )}  
+                )}
             />
             <div className="flex items-center justify-between">
                 <Button
@@ -91,7 +89,7 @@ function ResetPasswordForm() {
                     Reset Password Link
                 </Button>
             </div>
-            </form>    
+            </form>
         </Form>
         <div className="mt-4 text-start text-sm">
           Already have an account?{" "}

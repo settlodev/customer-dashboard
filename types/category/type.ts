@@ -1,6 +1,6 @@
 import {UUID} from "node:crypto";
 
-export declare interface CategoryType {
+export declare interface Category {
     "id": UUID,
     "name": string,
     "image": string,
