@@ -86,12 +86,13 @@ export const columns: ColumnDef<Business>[] = [
                 </Button>
             );
         },
-        cell: ({ row }) => <div className="flex items-center">
-            <Link href={`/locations/${row.original.id}`} className="rounded-full items-center inline-flex bg-gray-100 text-gray-700 text-md font-bold pl-2 pr-4 pt-1 pb-1 gap-2">
+        cell: ({ row }) =>
+        <div className="flex items-center">
+            <div className="rounded-full items-center inline-flex bg-gray-100 text-gray-700 text-md font-bold pl-2 pr-4 pt-1 pb-1 gap-2">
                 <span className="text-emerald-500 font-bold px-2">{row.original.totalLocations}</span>
                 <span className="mr-0">Location{row.original.totalLocations>1 && 's'}</span>
                 <span><ExternalLinkIcon height={14} width={14} /></span>
-        </Link>
+        </div>
         </div>
     },
     {

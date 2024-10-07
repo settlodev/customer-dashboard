@@ -7,7 +7,6 @@ import {notFound} from "next/navigation";
 import {isNotFoundError} from "next/dist/client/components/not-found";
 import {getBusiness} from "@/lib/actions/business/get";
 import {Business} from "@/types/business/type";
-import {FacebookIcon, InstagramIcon, TwitterIcon} from "lucide-react";
 import BusinessRegistrationForm from "@/components/forms/business_registration_form";
 
 export default async function EditPage({ params }: { params: { id: string }}) {

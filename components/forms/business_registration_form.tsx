@@ -46,7 +46,7 @@ import { Loader2Icon } from "lucide-react";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { fetchCountries } from "@/lib/actions/countries-actions";
-import { createBusiness } from "@/lib/actions/auth/business";
+import {createBusiness, updateBusiness} from "@/lib/actions/auth/business";
 import { getBusiness } from "@/lib/actions/business/get";
 import { Business } from "@/types/business/type";
 import { listBusinesses } from "@/lib/actions/business/list";
@@ -102,32 +102,55 @@ const BusinessRegistrationForm = ({business}:{business: Business|null}) => {
     setResponse(undefined);
 
     startTransition(() => {
-      createBusiness(values)
-      .then((data) => {
-        console.log("The data after creation is:", data);
-        if (!data) {
-          setError("An unexpected error occurred. Please try again.");
-          return;
+        if(business) {
+            updateBusiness(values)
+                .then((data) => {
+                    console.log("The data after creation is:", data);
+                    if (!data) {
+                        setError("An unexpected error occurred. Please try again.");
+                        return;
+                    }
+                    if (data.responseType === "error") {
+                        setError(data.message);
+                    } else {
+                        setSuccess(data.message);
+                        setResponse(data);
+                    }
+                })
+                .catch((error) => {
+                    setError(
+                        "An unexpected error occurred. Please try again." +
+                        (error instanceof Error ? " " + error.message : "")
+                    );
+                });
+        }else{
+            createBusiness(values)
+                .then((data) => {
+                    console.log("The data after creation is:", data);
+                    if (!data) {
+                        setError("An unexpected error occurred. Please try again.");
+                        return;
+                    }
+                    if (data.responseType === "error") {
+                        setError(data.message);
+                    } else {
+                        setSuccess(data.message);
+                        setResponse(data);
+                    }
+                })
+                .catch((error) => {
+                    setError(
+                        "An unexpected error occurred. Please try again." +
+                        (error instanceof Error ? " " + error.message : "")
+                    );
+                });
         }
-        if (data.responseType === "error") {
-          setError(data.message);
-        } else {
-          setSuccess(data.message);
-          setResponse(data);
-        }
-      })
-      .catch((error) => {
-        setError(
-            "An unexpected error occurred. Please try again." +
-              (error instanceof Error ? " " + error.message : "")
-          );
-      });
     });
   };
 
   return (<Card className="mx-auto max-w-sm lg:max-w-lg">
           <CardHeader>
-            <CardTitle className="text-2xl lg:text-3xl">Business Registration</CardTitle>
+            <CardTitle className="text-2xl lg:text-3xl">{business?'Update your business': 'Business Registration'}</CardTitle>
             <CardDescription className="text-[18px]">Enter details for your business</CardDescription>
           </CardHeader>
           <CardContent>
@@ -189,8 +212,7 @@ const BusinessRegistrationForm = ({business}:{business: Business|null}) => {
                           <Select
                             disabled={isPending || countries.length === 0}
                             onValueChange={field.onChange}
-                            value={field.value}
-                          >
+                            value={field.value}>
                             <SelectTrigger>
                               <SelectValue placeholder="Select your country" />
                             </SelectTrigger>
@@ -200,8 +222,7 @@ const BusinessRegistrationForm = ({business}:{business: Business|null}) => {
                                     (country: any, index: number) => (
                                       <SelectItem
                                         key={index}
-                                        value={country.id}
-                                      >
+                                        value={business && business.country === country.id ? business.country: country.id}>
                                         {country.name}{" "}
                                         {/* Assuming 'name' is the country name */}
                                       </SelectItem>
@@ -226,7 +247,7 @@ const BusinessRegistrationForm = ({business}:{business: Business|null}) => {
                           <Textarea
                             {...field}
                             disabled={isPending}
-                            placeholder="Describe your business"
+                            placeholder="Describe your business" value={business?.description}
                           />
                         </FormControl>
                         <FormMessage />
@@ -242,10 +263,7 @@ const BusinessRegistrationForm = ({business}:{business: Business|null}) => {
                   <Button
                     type="submit"
                     disabled={isPending}
-                    className={`mt-4 w-full`}
-                  >
-                    Register Business
-                  </Button>
+                    className={`mt-4 w-full`}>{business? "Update Business" : "Register Business"}</Button>
                 )}
               </form>
             </Form>
