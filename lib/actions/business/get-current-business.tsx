@@ -10,7 +10,15 @@ import {UUID} from "node:crypto";
 import {Location} from "@/types/location/type";
 
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {
-    return parseStringify(cookies().get("currentBusiness")?.value);
+    const businessCookie = cookies().get("currentBusiness");
+    if (!businessCookie) return undefined;
+
+    try {
+        return JSON.parse(businessCookie.value) as Business;
+    } catch (error) {
+        console.error("Failed to parse business cookie:", error);
+        return undefined;
+    }
 };
 
 export const getCurrentLocation = async (): Promise<Location | undefined> => {

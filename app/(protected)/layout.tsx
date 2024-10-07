@@ -4,7 +4,7 @@ import {auth} from "@/auth";
 import {SidebarWrapper} from "@/components/sidebar/sidebar";
 import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {NavbarWrapper} from "@/components/navbar/navbar";
-import {listLocations} from "@/lib/actions/business/list-locations";
+import {fetchAllLocations} from "@/lib/actions/location-actions";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
@@ -13,7 +13,7 @@ export default async function RootLayout({children}: {
     const  currentBusiness = await getCurrentBusiness();
     const  currentLocation = await getCurrentLocation();
     const  businessList = await getBusinessDropDown();
-    const locationList = currentBusiness?await listLocations():[];
+    const locationList = currentBusiness ? await fetchAllLocations():[];
     const businessData = {
         "business": currentBusiness,
         "businessList": businessList,
