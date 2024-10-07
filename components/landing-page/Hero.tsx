@@ -53,7 +53,7 @@ const Hero = ({session}: {session: Session}) => {
                     }
                     description="The easiest way to manage and track your business"
                     button={
-                        <Link className='rounded-full' href="https://play.google.com/store/app?id=tz.co.tality">
+                        <Link className='rounded-full' href="/register">
                             <div className="flex items-center w-full justify-center">
                                 <div
                                     className="rounded-full border-1 border-emerald-700 bg-emerald-500 pl-10 pr-10 pt-3 pb-3 text-emerald-50 font-bold">

@@ -18,7 +18,7 @@ import {notFound} from "next/navigation";
 import {isNotFoundError} from "next/dist/client/components/not-found";
 import {getBusiness} from "@/lib/actions/business/get";
 import {Business} from "@/types/business/type";
-import {listLocations} from "@/lib/actions/business/locations/list";
+import {listLocations} from "@/lib/actions/locations/list";
 
 const breadcrumbItems = [{ title: "Businesses", link: "/businesses" }];
 
@@ -42,7 +42,7 @@ export default async function BusinessPage(
     const pageLimit = Number(searchParams.limit);
 
     const responseData = await listLocations(q, page, pageLimit, );
-    console.log("Business responseData:", responseData);
+    //console.log("Business responseData:", responseData);
 
     const data = responseData.content;
     const total = responseData.totalElements;

@@ -6,16 +6,16 @@ import { Business } from "@/types/business/type";
 
 
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useEffect } from "react";
 
 const CreatedBusinessList = ({ businesses }: { businesses: Business[]}) => {
-const router = useRouter();
 
- useEffect(()=>{
-    if (businesses.length === 1) {
-        router.push(`/business-location?business=${businesses[0].id}`);
-      }
- },[businesses, router])
+  const router = useRouter();
+
+  if (businesses.length > 1) {
+    //router.push(`/business-location?business=${businesses[0].id}`);
+    router.push(`/select-business`);
+    return null; //preventing the table
+  }
 
   const handleRedirectToLocations = (business: Business) => {
     router.push(`/business-location?business=${business.id}`);
@@ -46,7 +46,7 @@ const router = useRouter();
                 ))}
             </TableBody>
         </Table>
-   
+
   );
 };
 
