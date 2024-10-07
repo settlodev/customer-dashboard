@@ -25,7 +25,7 @@ export default function BreadcrumbsNav({ items }: BreadcrumbPropsType) {
                 <BreadcrumbItem>
                     <BreadcrumbLink href="/dashboard">Home</BreadcrumbLink>
                 </BreadcrumbItem>
-                {items.map((item, index) => (
+                {items.map((item) => (
                     <React.Fragment key={item.link}>
                         <BreadcrumbSeparator />
                         <BreadcrumbItem>
