@@ -39,7 +39,7 @@ export declare interface Business {
     countryName: string,
     isArchived: boolean,
     totalLocations: number,
-    locations: Location|null
+    allLocations: Location[]|[]
 }
 
 export declare interface BusinessWithLocationType {

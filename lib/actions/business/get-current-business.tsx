@@ -7,12 +7,16 @@ import {getAuthToken} from "@/lib/auth-utils";
 import {endpoints} from "@/types/endpoints";
 import ApiClient from "@/lib/settlo-api-client";
 import {UUID} from "node:crypto";
-
+import {Location} from "@/types/location/type";
 export const getCurrentBusiness = async (): Promise<string | undefined> => {
     return cookies().get("currentBusiness")?.value;
 };
 export const getCurrentLocation = async (): Promise<string | undefined> => {
     return cookies().get("currentLocation")?.value;
+};
+export const setCurrentLocation = async (location: Location): Promise<Location> => {
+    cookies().set({name: "currentLocation", value: JSON.stringify(location)});
+    return location;
 };
 
 export const getBusinessDropDown = async (): Promise<Business[]> => {

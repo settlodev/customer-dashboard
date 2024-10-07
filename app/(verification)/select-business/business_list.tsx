@@ -1,15 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import {Business} from "@/types/business/type";
 import Image from "next/image";
-
 import {useEffect, useState} from "react";
 import {ChevronRightIcon} from "@nextui-org/shared-icons";
+import {SelectLocation} from "@/app/(verification)/select-business/locations_dropdown";
 
 export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
-    const router = useRouter();
-    const [business, setBusiness] = useState(null);
+    const [business, setBusiness] = useState<Business>(null);
 
     useEffect(()=>{
         if(businesses.length === 1){
@@ -36,8 +34,10 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
                 <div className="rounded border-1 border-gray-200">
                     <ul className="max-w-md divide-y divide-gray-200 dark:divide-gray-700">
                         {business?
-                        <></>:
-                        businesses.map((business: Business, index: number) => {
+                            //TODO: Display in separate locations component
+                            <SelectLocation locations={business.allLocations} />
+                        : businesses.map((business: Business, index: number) => {
+                                //TODO: Display in separate businesses component
                                 return <li className="pb-3 sm:pb-4 p-4" key={index}>
                                     <div className="flex items-center space-x-4 rtl:space-x-reverse">
                                         <div className="flex-shrink-0 w-10 h-10 p-1 rounded-full bg-emerald-400">
@@ -68,30 +68,5 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
                 </div>
             </div>
         </div>
-        /*<Table>
-        <TableCaption>
-            A list of all businesses.
-        </TableCaption>
-        <TableHeader>
-            <TableRow>
-                <TableHead>Business Name</TableHead>
-                <TableHead>Business Type</TableHead>
-                <TableHead>Business Phone</TableHead>
-                <TableHead>Business Address</TableHead>
-                <TableHead>Business Country</TableHead>
-            </TableRow>
-        </TableHeader>
-        <TableBody>
-            {businesses.map((business) => (
-                <TableRow key={business.id}>
-                    <TableCell onClick={() => handleRedirectToLocations(business)}
-                               style={{cursor: 'pointer'}}>{business.name}</TableCell>
-                    <TableCell>{business.businessType}</TableCell>
-                    <TableCell>{business.country}</TableCell>
-                </TableRow>
-            ))}
-        </TableBody>
-    </Table>*/
-
     )
 }
