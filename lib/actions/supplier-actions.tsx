@@ -10,14 +10,18 @@ import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 
 export const fetchSuppliers = async (): Promise<Supplier[]> => {
   await getAuthenticatedUser();
-  const authToken = await getAuthToken();
+  
   try {
     const apiClient = new ApiClient();
+
+    const location = await getCurrentLocation();
+
     const supplierData = await apiClient.get(
-      `/api/suppliers/${authToken?.locationId}`
+      `/api/suppliers/${location?.id}`,
     );
     return parseStringify(supplierData);
   } catch (error) {
@@ -31,19 +35,21 @@ export const searchSuppliers = async (
   pageLimit: number
 ): Promise<ApiResponse<Supplier>> => {
   await getAuthenticatedUser();
-  const authToken = await getAuthToken();
+
   try {
     const apiClient = new ApiClient();
 
+    const location = await getCurrentLocation();
+
     const query = {
-      // filters: [
-      //     {
-      //         key: "name",
-      //         operator: "LIKE",
-      //         field_type: "STRING",
-      //         value: q,
-      //     },
-      // ],
+      filters: [
+          {
+              key: "name",
+              operator: "LIKE",
+              field_type: "STRING",
+              value: q,
+          },
+      ],
       sorts: [
         {
           key: "name",
@@ -55,11 +61,11 @@ export const searchSuppliers = async (
     };
 
     const supplierData = await apiClient.post(
-      `/api/suppliers/2e5a964c-41d4-46b7-9377-c547acbf7739`,
+      `/api/suppliers/${location?.id}`,
       query
     );
 
-    console.log("Action response", supplierData);
+    
     return parseStringify(supplierData);
   } catch (error) {
     throw error;
@@ -82,19 +88,21 @@ export const createSupplier = async (
     return parseStringify(formResponse);
   }
 
+  const location = await getCurrentLocation();
+  const business = await getCurrentBusiness();
+
   const payload = {
     ...supplierValidData.data,
-    locationId: "6ed59bf2-b994-4fdb-90b7-5a38285e0a16",
-    business: "6dce2391-2af7-4851-936b-be62637033c7",
+    location: location?.id,
+    business: business?.id,
   };
 
   await getAuthenticatedUser();
-  const authToken = await getAuthToken();
-  const locationId = "6ed59bf2-b994-4fdb-90b7-5a38285e0a16";
+  
   try {
     const apiClient = new ApiClient();
     const supplierData = await apiClient.post(
-      `/api/suppliers/${locationId}/create`,
+      `/api/suppliers/${location?.id}/create`,
       payload
     );
     console.log("The supplier created is", supplierData);
@@ -117,25 +125,27 @@ export const createSupplier = async (
 
 export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
   const apiClient = new ApiClient();
-  const authToken = await getAuthToken();
+ 
   const query = {
-    // filters:[
-    //     {
-    //         key: "id",
-    //         operator: "EQUAL",
-    //         field_type: "UUID_STRING",
-    //         value: id,
-    //     }
-    // ],
+    filters:[
+        {
+            key: "id",
+            operator: "EQUAL",
+            field_type: "UUID_STRING",
+            value: id,
+        }
+    ],
     sorts: [],
     page: 0,
     size: 1,
   };
+
+  const location = await getCurrentLocation();
+
   const supplierResponse = await apiClient.post(
-    `/api/suppliers/6ed59bf2-b994-4fdb-90b7-5a38285e0a16`,
+    `/api/suppliers/${location?.id}`,
     query
   );
-  console.log("Customer response with post request", supplierResponse);
   return parseStringify(supplierResponse);
 };
 
@@ -154,24 +164,27 @@ export const updateSupplier = async (
     };
     return parseStringify(formResponse);
   }
+  const location = await getCurrentLocation();
+  const business = await getCurrentBusiness();
+
   const payload = {
     ...supplierValidData.data,
-    locationId: "6ed59bf2-b994-4fdb-90b7-5a38285e0a16",
-    business: "6dce2391-2af7-4851-936b-be62637033c7",
+    location: location?.id,
+    business: business?.id,
   };
 
+  console.log("The payload to update supplier", payload);
+
   await getAuthenticatedUser();
-  const authToken = await getAuthToken();
-  const locationId= "6ed59bf2-b994-4fdb-90b7-5a38285e0a16"
+
   try {
     const apiClient = new ApiClient();
     const supplierData = await apiClient.put(
-      `/api/suppliers/6ed59bf2-b994-4fdb-90b7-5a38285e0a16/31746cb3-2799-4acc-85b3-bd3284e4fbc9`,
+      `/api/suppliers/${location?.id}/${id}`,
       payload
     );
     return parseStringify(supplierData);
   } catch (error) {
-    console.error("Error creating supplier", error);
     formResponse = {
       responseType: "error",
       message:
@@ -186,28 +199,18 @@ export const updateSupplier = async (
   redirect("/suppliers");
 };
 
-export const deleteSupplier = async (
-  id: UUID
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
+
+export const deleteSupplier = async (id: UUID): Promise<void> => {
+  if (!id) throw new Error("Supplier ID is required to perform this request");
   await getAuthenticatedUser();
-  const authToken = await getAuthToken();
+
   try {
-    const apiClient = new ApiClient();
-    const supplierData = await apiClient.delete(
-      `/api/suppliers/${authToken?.locationId}/${id}`
-    );
-    return parseStringify(supplierData);
+      const apiClient = new ApiClient();
+      const location = await getCurrentLocation();
+
+      await apiClient.delete(`/api/suppliers/${location?.id}/${id}`);
+      revalidatePath("/suppliers");
   } catch (error) {
-    console.error("Error creating supplier", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-  if (formResponse) {
-    return parseStringify(formResponse);
+      throw error;
   }
 };
