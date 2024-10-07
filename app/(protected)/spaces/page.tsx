@@ -12,7 +12,8 @@ import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
 import {listCategories} from "@/lib/actions/category/list";
-import {columns} from "@/components/tables/category/columns";
+import {columns} from "@/components/tables/categories/columns";
+import {CategoryType} from "@/types/category/type";
 
 const breadcrumbItems = [{ title: "Categories", link: "/categories" }];
 

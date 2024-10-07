@@ -9,12 +9,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
+import { columns } from "@/components/tables/roles/columns";
+import { searchRoles } from "@/lib/actions/role-actions";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {Role} from "@/types/roles/type";
 import NoItems from "@/components/layouts/no-items";
-import {listCategories} from "@/lib/actions/category/list";
-import {columns} from "@/components/tables/category/columns";
 
-const breadcrumbItems = [{ title: "Categories", link: "/categories" }];
+const breadcrumbItems = [{ title: "Roles", link: "/roles" }];
 
 type ParamsProps = {
     searchParams: {
@@ -27,10 +28,9 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await listCategories(q, page, pageLimit);
-    console.log("Category responseData:", responseData);
+    const responseData = await searchRoles(q, page, pageLimit);
 
-    const data = responseData.content;
+    const data: Role[] = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
 
@@ -43,7 +43,9 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/categories/create`}>Add Category</Link>
+                        <Link key="add-space" href={`/roles/new`}>
+                            Add role
+                        </Link>
                     </Button>
                 </div>
             </div>
@@ -51,8 +53,8 @@ export default async function Page({ searchParams }: ParamsProps) {
             {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Categories</CardTitle>
-                        <CardDescription>Manage categories in your business location</CardDescription>
+                        <CardTitle>Role</CardTitle>
+                        <CardDescription>Manage roles in your business location</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -66,7 +68,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`categories`} newItemUrl={`/categories/create`} />
+                <NoItems itemName={`role`} newItemUrl={`/roles/new`} />
             )}
         </div>
     );
