@@ -29,7 +29,7 @@ export const columns: ColumnDef<Customer>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "name",
+        accessorKey: "firstName",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -38,14 +38,14 @@ export const columns: ColumnDef<Customer>[] = [
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Name
+                    First Name
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
     },
     {
-        accessorKey: "department",
+        accessorKey: "lastName",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -54,15 +54,15 @@ export const columns: ColumnDef<Customer>[] = [
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Department
+                    Last Name
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
     },
     {
-        accessorKey: "role",
-        header: "Role",
+        accessorKey: "gender",
+        header: "Gender",
     },
     {
         accessorKey: "phoneNumber",

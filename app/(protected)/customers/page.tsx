@@ -26,6 +26,7 @@ const breadCrumbItems = [{title:"Customers",link:"/customers"}];
      const responseData = await searchCustomer(q,page,pageLimit);
 
      const data:Customer[]=responseData.content;
+     console.log("Customer data fetched from search response",data)
      const total =responseData.totalElements;
      const pageCount = responseData.totalPages
 
@@ -37,7 +38,7 @@ const breadCrumbItems = [{title:"Customers",link:"/customers"}];
                 </div>
                 <div className={`flex items-center space-x-2`}>
                     <Button>
-                        <Link href={`/staff/create`}>
+                        <Link href={`/customers/new`}>
                             Add Customer
                         </Link>
                     </Button>
@@ -45,7 +46,7 @@ const breadCrumbItems = [{title:"Customers",link:"/customers"}];
             </div>
             {
                 total > 0 || q != "" ? (
-                    <Card>
+                    <Card x-chunk="data-table">
                         <CardHeader>
                             <CardTitle>Customer</CardTitle>
                             <CardDescription>Manage customer in your business location</CardDescription>
@@ -62,7 +63,7 @@ const breadCrumbItems = [{title:"Customers",link:"/customers"}];
                     </Card>
                 ):
                     (
-                        <NoItems newItemUrl={`/customer/create`} itemName={`customer`}/>
+                        <NoItems newItemUrl={`/customers/new`} itemName={`customers`}/>
                     )
             }
         </div>

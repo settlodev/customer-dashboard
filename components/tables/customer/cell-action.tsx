@@ -17,6 +17,7 @@ import { deleteStaff } from "@/lib/actions/staff-actions";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import {Customer} from "@/types/customer/type";
+import { deleteCustomer } from "@/lib/actions/customer-actions";
 
 interface CellActionProps {
     data: Customer;
@@ -29,7 +30,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const onDelete = async () => {
         try {
             if (data) {
-                await deleteStaff(data.id);
+                await deleteCustomer(data.id);
                 toast({
                     variant: "default",
                     title: "Success",
@@ -68,7 +69,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => router.push(`/staff/${data.id}`)}>
+                        <DropdownMenuItem onClick={() => router.push(`/customers/${data.id}`)}>
                             <Edit className="mr-2 h-4 w-4" /> Update
                         </DropdownMenuItem>
                         {data.canDelete && (
