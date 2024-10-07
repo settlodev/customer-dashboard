@@ -41,7 +41,7 @@ const Meta = (props: IMetaProps) => {
         />
         <link
           rel="icon"
-          href={`/favicon.ico`}
+          href={`/images/logo.png`}
           key="favicon"
         />
       </Head>

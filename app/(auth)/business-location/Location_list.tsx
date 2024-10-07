@@ -16,15 +16,15 @@ const CreatedBusinessLocationList = ({ locations }: { locations: Location[]}) =>
    useEffect(() => {
     if (locations.length === 1) {
       if (locations[0].subscriptionStatus === subscriptionStatus.EXPIRED) {
-        toast({ 
+        toast({
             variant: 'destructive',
-            title: 'Subscription Expired', 
-            description: 'Your subscription has expired. Please renew your subscription to continue using the app.', 
-           
+            title: 'Subscription Expired',
+            description: 'Your subscription has expired. Please renew your subscription to continue using the app.',
+
          });
          setTimeout(() => {
             router.push(`/subscription?location=${locations[0].id}`);
-          }, 30000);       
+          }, 30000);
       } else {
         router.push(`/dashboard?location=${locations[0].id}`);
       }
@@ -33,15 +33,15 @@ const CreatedBusinessLocationList = ({ locations }: { locations: Location[]}) =>
 
   const handleLocationClick = (location: Location) => {
     if (location.subscriptionStatus === subscriptionStatus.EXPIRED) {
-        toast({ 
+        toast({
             variant: 'destructive',
-            title: 'Subscription Expired', 
-            description: 'Your subscription has expired. Please renew your subscription to continue using the app.', 
-           
+            title: 'Subscription Expired',
+            description: 'Your subscription has expired. Please renew your subscription to continue using the app.',
+
          });
          setTimeout(() => {
             router.push(`/subscription?location=${location.id}`);
-        }, 30000); 
+        }, 30000);
     }
     else{
         router.push(`/dashboard?location=${location.id}`);
@@ -49,7 +49,6 @@ const CreatedBusinessLocationList = ({ locations }: { locations: Location[]}) =>
   };
 
   return (
-
         <Table>
             <TableCaption>
                 A list of registered businesses location.
@@ -69,7 +68,7 @@ const CreatedBusinessLocationList = ({ locations }: { locations: Location[]}) =>
                 ))}
             </TableBody>
         </Table>
-   
+
   );
 };
 

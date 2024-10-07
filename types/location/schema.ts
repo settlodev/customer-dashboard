@@ -1,4 +1,4 @@
-import { object, string } from "zod";
+import {boolean, object, string} from "zod";
 
 export const LocationSchema = object({
     name: string().min(2, 'Name of location must be less than 3 characters').max(50, 'Name of location can not be more than 50 characters'),
@@ -11,4 +11,5 @@ export const LocationSchema = object({
     street:string(),
     openingTime:string(),
     closingTime:string(),
+    status: boolean(),
 })

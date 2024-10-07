@@ -1,37 +1,34 @@
 import { Toaster } from "@/components/ui/toaster"
-import {Suspense} from "react";
-import { Layout } from "@/components/layouts/layout";
 import {SessionProvider} from "next-auth/react";
 import {auth} from "@/auth";
+import {SidebarWrapper} from "@/components/sidebar/sidebar";
+import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
+import {NavbarWrapper} from "@/components/navbar/navbar";
+import {listLocations} from "@/lib/actions/business/list-locations";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
     const session = await auth();
-    console.log("my session is:" , session)
-    /*return (
-        <Suspense fallback={"Loading..."}>
-            <div className="flex h-dvh w-full">
-                Sidebar
-                <div className="w-full flex-1 flex-col">
-                    <header className="flex rounded-medium">
-                        Navbar
-                    </header>
-
-                    <main className="mt-2 max-h-full w-full overflow-visible">
-                        <div className="flex h-[80%] w-full flex-col gap-4 rounded-small border-sma/ll border-divider">
-                            <Layout>{children}</Layout>
-                        </div>
-                    </main>
-                </div>
-                <Toaster />
+    const  currentBusiness = await getCurrentBusiness();
+    const  currentLocation = await getCurrentLocation();
+    const  businessList = await getBusinessDropDown();
+    const locationList = currentBusiness?await listLocations():[];
+    const businessData = {
+        "business": currentBusiness,
+        "businessList": businessList,
+        "locationList": locationList,
+        "currentLocation": currentLocation
+    }
+    return (
+        <SessionProvider session={session}>
+            <div className="flex">
+                <SidebarWrapper data={businessData}/>
+                <NavbarWrapper data={session}>
+                    {children}
+                    <Toaster/>
+                </NavbarWrapper>
             </div>
-        </Suspense>
-    );*/
-    return (<SessionProvider session={session}>
-        <Layout>
-            {children}
-        </Layout>
-    </SessionProvider>)
-
+        </SessionProvider>
+    );
 }

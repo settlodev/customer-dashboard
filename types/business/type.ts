@@ -1,4 +1,5 @@
 import {UUID} from "node:crypto";
+import {Location} from "@/types/location/type";
 
 export declare interface Business {
     id: UUID,
@@ -37,5 +38,11 @@ export declare interface Business {
     country: UUID,
     countryName: string,
     isArchived: boolean,
-    totalLocations: number
+    totalLocations: number,
+    allLocations: Location[]|[]
+}
+
+export declare interface BusinessWithLocationType {
+    business: Business,
+    locations: Location[]|[]
 }

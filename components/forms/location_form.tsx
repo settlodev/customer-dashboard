@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -25,62 +25,37 @@ import {
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
-import { createBusinessLocation } from "@/lib/actions/auth/location";
 import { Loader2Icon } from "lucide-react";
-import { FormError } from "../widgets/form-error";
-import { FormSuccess } from "../widgets/form-success";
+import {Location} from "@/types/location/type";
+import {createLocation, updateLocation} from "@/lib/actions/location-actions";
 
-const LocationForm = () => {
-  const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
- 
+const LocationForm = ({ item }: { item: Location | null | undefined }) => {
+    const [isPending, startTransition] = useTransition();
+    const [response, setResponse] = useState<FormResponse | undefined>();
+    const [isActive, setIsActive] = useState(item ? item.status : true);
 
-  const form = useForm<z.infer<typeof LocationSchema>>({
-    resolver: zodResolver(LocationSchema),
-    defaultValues: {},
-  });
+    const form = useForm<z.infer<typeof LocationSchema>>({
+        resolver: zodResolver(LocationSchema),
+        defaultValues: item ? item : { status: true },
+    });
 
-  const onInvalid = useCallback(
-    (errors: any) => {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description: errors.message
-          ? errors.message
-          : "There was an issue submitting your form, please try later",
-      });
-    },
-    [toast]
-  );
+    const submitData = (values: z.infer<typeof LocationSchema>) => {
+        setResponse(undefined);
 
-  const submitData = useCallback(
-    (values: z.infer<typeof LocationSchema>) => {
-      startTransition(() => {
-        createBusinessLocation(values).then((data) => {
-          if (data) {
-            if (data.responseType === "success") {
-                setResponse(data);
-              toast({
-                variant: "default",
-                title: "Business created successfully",
-                description: data.message,
-              });
-            } else if (data.responseType === "error") {
-              toast({
-                variant: "destructive",
-                title: "Uh oh! Something went wrong.",
-                description: data.message,
-              });
+        startTransition(() => {
+            if (item) {
+                updateLocation(item.id, values).then((data) => {
+                    if (data) setResponse(data);
+                });
+            } else {
+                createLocation(values).then((data) => {
+                    if (data) setResponse(data);
+                });
             }
-          }
         });
-      });
-    },
-    [toast]
-  );
+    };
 
   return (
     <Card >
@@ -91,10 +66,10 @@ const LocationForm = () => {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        
+
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-           
+          <form onSubmit={form.handleSubmit(submitData)}>
+
             <div className="grid gap-2">
             <FormField
                 control={form.control}
@@ -306,7 +281,7 @@ const LocationForm = () => {
                 )}
               />
               </div>
-          
+
               {isPending ? (
                   <div className="flex justify-center items-center bg-black rounded p-2 text-white">
                     <Loader2Icon className="w-6 h-6 animate-spin" />

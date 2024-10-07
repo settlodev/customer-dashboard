@@ -112,6 +112,9 @@ export const deleteAuthCookie = async () => {
     console.log("Delete cookie called");
     await logout();
     cookies().delete("authToken");
+    cookies().delete("activeBusiness");
+    cookies().delete("currentBusiness");
+    cookies().delete("currentLocation");
 };
 
 export const deleteActiveBusinessCookie = async () => {
