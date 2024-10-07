@@ -9,13 +9,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/staff/columns";
-import { searchStaff } from "@/lib/actions/staff-actions";
+import { columns } from "@/components/tables/supplier/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Staff} from "@/types/staff";
 import NoItems from "@/components/layouts/no-items";
+import { searchSuppliers } from "@/lib/actions/supplier-actions";
+import { Supplier } from "@/types/supplier/type";
 
-const breadcrumbItems = [{ title: "Staff", link: "/staff" }];
+const breadcrumbItems = [{ title: "Suppliers", link: "/suppliers" }];
 
 type ParamsProps = {
     searchParams: {
@@ -28,9 +28,9 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await searchStaff(q, page, pageLimit);
+    const responseData = await searchSuppliers(q, page, pageLimit);
 
-    const data: Staff[] = responseData.content;
+    const data: Supplier[] = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
 
@@ -43,8 +43,8 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/staff/new`}>
-                            Add staff
+                        <Link key="add-space" href={`/suppliers/new`}>
+                            Add supplier
                         </Link>
                     </Button>
                 </div>
@@ -54,8 +54,8 @@ export default async function Page({ searchParams }: ParamsProps) {
             (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Staff</CardTitle>
-                        <CardDescription>Manage staff in your business location</CardDescription>
+                        <CardTitle>Supplier</CardTitle>
+                        <CardDescription>Manage supplier in your business location</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -69,7 +69,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`staff`} newItemUrl={`/staff/new`} />
+                <NoItems itemName={`suppliers`} newItemUrl={`/suppliers/new`} />
             )}
         </div>
     );

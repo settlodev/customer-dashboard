@@ -90,13 +90,19 @@ export const  createCustomer= async (
       }
       return parseStringify(formResponse)
     }
+
+    const payload = {
+        ...customerValidData.data,
+        locationId: '6ed59bf2-b994-4fdb-90b7-5a38285e0a16'
+    }
     try {
         const apiClient = new ApiClient();
         const authToken = await getAuthToken();
         const locationId = '6ed59bf2-b994-4fdb-90b7-5a38285e0a16';
 
         await apiClient.post(
-            `/api/customers/${locationId}/create`,customerValidData.data
+            `/api/customers/${locationId}/create`,
+            payload
         );
     }
     catch (error){
@@ -157,13 +163,17 @@ export const updateCustomer = async(
       }
       return parseStringify(formResponse)
     }
+    const payload = {
+        ...customerValidData.data,
+        locationId: '6ed59bf2-b994-4fdb-90b7-5a38285e0a16'
+    }
     try {
         const apiClient = new ApiClient();
         // const authToken = await getAuthToken();
         const locationId = '6ed59bf2-b994-4fdb-90b7-5a38285e0a16';
         const updatedCustomer = await apiClient.put(
             `api/customers/${locationId}/${id}`,
-            customerValidData.data
+            payload
         );
         console.log("Updated Customer",updatedCustomer);
     }
