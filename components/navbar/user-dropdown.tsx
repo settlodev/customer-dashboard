@@ -26,17 +26,7 @@ export const UserDropdown = async ({data}:{data: Session|null}) => {
       <Dropdown>
         <NavbarItem>
           <DropdownTrigger>
-            {/*{userData.picture?
-            <Avatar
-              as='button'
-              color='secondary'
-              size='md'
-              src={userData.picture}
-            />: <Image  src='/images/logo.png' alt={'Logo'} width={50} height={50} className="rounded-full" />
-          }*/}
-
-
-            <div className="rounded-full mt-2mb-2 overflow-hidden bg-emerald-400 p-1 m-2">
+            <div className="rounded-full mt-2mb-2 overflow-hidden bg-emerald-400 p-1 mt-2 mb-2 ml-2 mr-5 cursor-pointer">
               <Image src='/images/logo.png' alt={'Logo'} width={45} height={45}/>
             </div>
           </DropdownTrigger>
@@ -52,9 +42,10 @@ export const UserDropdown = async ({data}:{data: Session|null}) => {
               <p className="text-xs font-medium">{data?.user.email}</p>
             </div>
           </DropdownItem>
-          <DropdownItem className="border-b-1 border-b-gray-150 font-medium text-sm rounded-none" key='1'>My Profile</DropdownItem>
-          <DropdownItem className="border-b-1 border-b-gray-150 text-sm rounded-none" key='2'>Notifications</DropdownItem>
-          <DropdownItem className="border-b-1 border-b-gray-150 text-sm rounded-none" key='3'>Help & Feedback</DropdownItem>
+          <DropdownItem className="border-b-1 border-b-gray-150 font-medium text-sm rounded-none" key='1' href="/profile">My Profile</DropdownItem>
+          <DropdownItem className="border-b-1 border-b-gray-150 font-medium text-sm rounded-none" key='1' href="/business">My Business</DropdownItem>
+          <DropdownItem className="border-b-1 border-b-gray-150 text-sm rounded-none" key='2' href="/notifications">Notifications</DropdownItem>
+          <DropdownItem className="border-b-1 border-b-gray-150 text-sm rounded-none" key='3' href="feedback">Help & Feedback</DropdownItem>
           <DropdownItem
               key='logout'
               color='secondary'
