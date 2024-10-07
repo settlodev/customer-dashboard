@@ -1,11 +1,11 @@
 import Image from "next/image";
 import {ChevronRightIcon} from "@nextui-org/shared-icons";
-import {setCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {Location} from "@/types/location/type";
+import {refreshLocation} from "@/lib/actions/business/refresh";
 
 export function SelectLocation ({ locations }: { locations: Location[]}){
     const setLocation = async(location: Location)=>{
-         await setCurrentLocation(location);
+         await refreshLocation(location);
          document.location.href='/dashboard'
     }
 

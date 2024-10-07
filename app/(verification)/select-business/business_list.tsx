@@ -5,6 +5,7 @@ import Image from "next/image";
 import {useEffect, useState} from "react";
 import {ChevronRightIcon} from "@nextui-org/shared-icons";
 import {SelectLocation} from "@/app/(verification)/select-business/locations_dropdown";
+import {refreshBusiness} from "@/lib/actions/business/refresh";
 
 export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -20,6 +21,11 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
     if (businesses.length === 0) {
         /*router.push(`/business-registration`);
         return null;*/
+    }
+
+    const setCurrentBusiness = async(mBusiness: Business)=>{
+        setBusiness(mBusiness);
+        await refreshBusiness(mBusiness);
     }
 
     return (<div>
@@ -58,7 +64,7 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
                                             className="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
                                             <button type="button"
                                                     className="flex gap-2 rounded-full bg-emerald-500 pr-2 pl-3 py-1 text-white font-medium text-sm"
-                                                    onClick={() => setBusiness(business)}>
+                                                    onClick={() => setCurrentBusiness(business)}>
                                                 Select <ChevronRightIcon/>
                                             </button>
                                         </div>
