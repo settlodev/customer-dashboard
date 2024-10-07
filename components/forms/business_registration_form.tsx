@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, {
-  use,
   useCallback,
   useEffect,
   useState,
@@ -60,17 +59,13 @@ type ParamsProps = {
         [key: string]: string | undefined;
     };
 };
-const BusinessRegistrationForm = () => {
+const BusinessRegistrationForm = ({business}:{business: Business|null}) => {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [countries, setCountries] = useState<Business[]>([]);
-  const [business, setBusiness] = useState([]);
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
-  const router = useRouter();
-
-  
 
   useEffect(() => {
     const getCountries = async () => {
@@ -84,12 +79,6 @@ const BusinessRegistrationForm = () => {
     };
     getCountries();
   }, []);
-
-
-
-//   console.log("The session is:", businesses);
-
- 
 
   const form = useForm<z.infer<typeof BusinessSchema>>({
     resolver: zodResolver(BusinessSchema),
@@ -136,9 +125,7 @@ const BusinessRegistrationForm = () => {
     });
   };
 
-  return (
-
-        <Card className="mx-auto max-w-sm lg:max-w-lg">
+  return (<Card className="mx-auto max-w-sm lg:max-w-lg">
           <CardHeader>
             <CardTitle className="text-2xl lg:text-3xl">Business Registration</CardTitle>
             <CardDescription className="text-[18px]">Enter details for your business</CardDescription>
@@ -163,6 +150,7 @@ const BusinessRegistrationForm = () => {
                             {...field}
                             disabled={isPending}
                             placeholder="Enter business name"
+                            value={business?.name}
                           />
                         </FormControl>
                         <FormMessage />
@@ -177,7 +165,7 @@ const BusinessRegistrationForm = () => {
                         {/* <FormLabel>Business Type</FormLabel> */}
                         <FormControl>
                           <BusinessTypeSelector
-                            value={field.value}
+                            value={business?business.businessType: field.value}
                             onChange={field.onChange}
                             onBlur={field.onBlur}
                             isRequired
@@ -263,7 +251,7 @@ const BusinessRegistrationForm = () => {
             </Form>
           </CardContent>
         </Card>
-   
+
   );
 };
 

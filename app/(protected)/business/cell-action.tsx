@@ -81,7 +81,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}`)} className="cursor-pointer">
               <EyeIcon color={'#384B70'}/>
             </a>
-            <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}`)} className="cursor-pointer">
+            <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}/edit`)} className="cursor-pointer">
               <EditIcon color={'#384B70'}/>
             </a>
             {data.canDelete ?
