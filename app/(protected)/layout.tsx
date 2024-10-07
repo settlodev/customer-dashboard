@@ -1,5 +1,4 @@
 import { Toaster } from "@/components/ui/toaster"
-import {Suspense} from "react";
 import {SessionProvider} from "next-auth/react";
 import {auth} from "@/auth";
 import {SidebarWrapper} from "@/components/sidebar/sidebar";
@@ -16,22 +15,20 @@ export default async function RootLayout({children}: {
     const  businessList = await getBusinessDropDown();
     const locationList = currentBusiness?await listLocations():[];
     const businessData = {
-        "business": currentBusiness?JSON.parse(currentBusiness): null,
+        "business": currentBusiness,
         "businessList": businessList,
         "locationList": locationList,
-        "currentLocation": currentLocation?JSON.parse(currentLocation): null
+        "currentLocation": currentLocation
     }
     return (
         <SessionProvider session={session}>
-            <Suspense fallback={<div className="fixed left-0 top-0">Loading</div>}>
-                <div className="flex">
-                    <SidebarWrapper data={businessData}/>
-                    <NavbarWrapper data={session}>
-                        {children}
-                        <Toaster/>
-                    </NavbarWrapper>
-                </div>
-            </Suspense>
+            <div className="flex">
+                <SidebarWrapper data={businessData}/>
+                <NavbarWrapper data={session}>
+                    {children}
+                    <Toaster/>
+                </NavbarWrapper>
+            </div>
         </SessionProvider>
     );
 }

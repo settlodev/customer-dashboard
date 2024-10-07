@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import {listCategories} from "@/lib/actions/category/list";
 import {columns} from "@/components/tables/category/columns";
+import {searchCategories} from "@/lib/actions/category-actions";
 
 const breadcrumbItems = [{ title: "Categories", link: "/categories" }];
 
@@ -27,9 +27,7 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await listCategories(q, page, pageLimit);
-    console.log("Category responseData:", responseData);
-
+    const responseData = await searchCategories(q, page, pageLimit);
     const data = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
@@ -43,7 +41,7 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/categories/create`}>Add Category</Link>
+                        <Link key="add-category" href={`/categories/new`}>Add Category</Link>
                     </Button>
                 </div>
             </div>
@@ -66,7 +64,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`categories`} newItemUrl={`/categories/create`} />
+                <NoItems itemName={`categories`} newItemUrl={`/categories/new`} />
             )}
         </div>
     );

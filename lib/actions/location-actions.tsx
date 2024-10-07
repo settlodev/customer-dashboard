@@ -10,37 +10,37 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {ApiResponse, FormResponse} from "@/types/types";
-import {Category} from "@/types/category/type";
-import {CategorySchema} from "@/types/category/schema";
-import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
+import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
+import {Location} from "@/types/location/type";
+import {LocationSchema} from "@/types/location/schema";
 
-export const fetchAllCategories = async (): Promise<Category[] | null> => {
+export const fetchAllLocations = async (): Promise<Location[] | null> => {
     await getAuthenticatedUser();
 
     try {
-        const location = await getCurrentLocation();
+        const business = await getCurrentBusiness();
 
         const apiClient = new ApiClient();
 
-        const categoriesData = await apiClient.get(
-            `/api/categories/${location?.id}`,
+        const locationsData = await apiClient.get(
+            `/api/locations/${business?.id}`,
         );
 
-        return parseStringify(categoriesData);
+        return parseStringify(locationsData);
     } catch (error) {
         throw error;
     }
 };
 
-export const searchCategories = async (
+export const searchLocations = async (
     q: string,
     page: number,
     pageLimit: number,
-): Promise<ApiResponse<Category>> => {
+): Promise<ApiResponse<Location>> => {
     await getAuthenticatedUser();
 
     try {
-        const location = await getCurrentLocation();
+        const business = await getCurrentBusiness();
         const apiClient = new ApiClient();
 
         const query = {
@@ -64,7 +64,7 @@ export const searchCategories = async (
 
 
         const data = await apiClient.post(
-            `/api/categories/${location?.id}`,
+            `/api/locations/${business?.id}`,
             query,
         );
 
@@ -75,8 +75,8 @@ export const searchCategories = async (
     }
 };
 
-export const createCategory = async (
-    category: z.infer<typeof CategorySchema>,
+export const createLocation = async (
+    location: z.infer<typeof LocationSchema>,
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
     const authenticatedUser = await getAuthenticatedUser();
@@ -84,7 +84,7 @@ export const createCategory = async (
     if ("responseType" in authenticatedUser)
         return parseStringify(authenticatedUser);
 
-    const validatedData = CategorySchema.safeParse(category);
+    const validatedData = LocationSchema.safeParse(location);
 
     if (!validatedData.success) {
         formResponse = {
@@ -98,10 +98,10 @@ export const createCategory = async (
 
     try {
         const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
+        const business = await getCurrentBusiness();
 
         await apiClient.post(
-            `/api/categories/${location?.id}/create`,
+            `/api/locations/${business?.id}/create`,
             validatedData.data,
         );
     } catch (error: unknown) {
@@ -117,13 +117,13 @@ export const createCategory = async (
         return parseStringify(formResponse);
     }
 
-    revalidatePath("/categories");
-    redirect("/categories");
+    revalidatePath("/locations");
+    redirect("/locations");
 };
 
-export const updateCategory = async (
+export const updateLocation = async (
     id: UUID,
-    category: z.infer<typeof CategorySchema>,
+    location: z.infer<typeof LocationSchema>,
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
     const authenticatedUser = await getAuthenticatedUser();
@@ -131,7 +131,7 @@ export const updateCategory = async (
     if ("responseType" in authenticatedUser)
         return parseStringify(authenticatedUser);
 
-    const validatedData = CategorySchema.safeParse(category);
+    const validatedData = LocationSchema.safeParse(location);
 
     if (!validatedData.success) {
         formResponse = {
@@ -145,10 +145,10 @@ export const updateCategory = async (
 
     try {
         const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
+        const business = await getCurrentBusiness();
 
         await apiClient.put(
-            `/api/categories/${location?.id}/${id}`,
+            `/api/locations/${business?.id}/${id}`,
             validatedData.data,
         );
     } catch (error: unknown) {
@@ -164,11 +164,11 @@ export const updateCategory = async (
         return parseStringify(formResponse);
     }
 
-    revalidatePath("/categories");
-    redirect("/categories");
+    revalidatePath("/locations");
+    redirect("/locations");
 };
 
-export const getCategory = async (id: UUID): Promise<ApiResponse<Category>> => {
+export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
     const apiClient = new ApiClient();
 
     const query = {
@@ -185,10 +185,10 @@ export const getCategory = async (id: UUID): Promise<ApiResponse<Category>> => {
         size: 1,
     };
 
-    const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
 
     const data = await apiClient.post(
-        `/api/categories/${location?.id}`,
+        `/api/locations/${business?.id}`,
         query,
     );
 
@@ -196,17 +196,17 @@ export const getCategory = async (id: UUID): Promise<ApiResponse<Category>> => {
     return parseStringify(data);
 };
 
-export const deleteCategory = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Category ID is required to perform this request");
+export const deleteLocation = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Location ID is required to perform this request");
     await getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
 
-        const location = await getCurrentLocation();
+        const business = await getCurrentBusiness();
 
-        await apiClient.delete(`/api/categories/${location?.id}/${id}`);
-        revalidatePath("/categories");
+        await apiClient.delete(`/api/locations/${business?.id}/${id}`);
+        revalidatePath("/locations");
     } catch (error) {
         throw error;
     }

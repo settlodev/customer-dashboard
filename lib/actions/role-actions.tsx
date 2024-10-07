@@ -8,10 +8,11 @@ import * as z from "zod";
 
 import { Role } from "@/types/roles/type";
 import { ApiResponse, FormResponse } from "@/types/types";
-import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
+import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { RoleSchema } from "@/types/roles/schema";
+import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
 
 export const fetchAllRoles = async (): Promise<Role[]> => {
     await getAuthenticatedUser();
@@ -19,9 +20,10 @@ export const fetchAllRoles = async (): Promise<Role[]> => {
     try {
         const apiClient = new ApiClient();
 
+        const location = await getCurrentLocation();
 
         const rolesData = await apiClient.get(
-            `/api/roles/${locationId}`,
+            `/api/roles/${location?.id}`,
         );
 
         return parseStringify(rolesData);
@@ -59,8 +61,10 @@ export const searchRoles = async (
             size: pageLimit ? pageLimit : 10,
         };
 
+        const location = await getCurrentLocation();
+
         const rolesData = await apiClient.post(
-            `/api/roles/${locationId}`,
+            `/api/roles/${location?.id}`,
             query,
         );
 
@@ -89,9 +93,10 @@ export const createRole = async (
 
     try {
         const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
 
         await apiClient.post(
-            `/api/roles/${locationId}/create`,
+            `/api/roles/${location?.id}/create`,
             validatedData.data,
         );
     } catch (error: unknown) {
@@ -131,9 +136,10 @@ export const updateRole = async (
 
     try {
         const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
 
         await apiClient.put(
-            `/api/roles/${locationId}/${id}`,
+            `/api/roles/${location?.id}/${id}`,
             validatedData.data,
         );
     } catch (error: unknown) {
@@ -170,8 +176,10 @@ export const getRole = async (id: UUID): Promise<ApiResponse<Role>> => {
         size: 1,
     };
 
+    const location = await getCurrentLocation();
+
     const roleData = await apiClient.post(
-        `/api/roles/2e5a964c-41d4-46b7-9377-c547acbf7739`,
+        `/api/roles/${location?.id}`,
         query,
     );
 
@@ -184,8 +192,9 @@ export const deleteRole = async (id: UUID): Promise<void> => {
 
     try {
         const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
 
-        await apiClient.delete(`/api/roles/${locationId}/${id}`);
+        await apiClient.delete(`/api/roles/${location?.id}/${id}`);
         revalidatePath("/roles");
     } catch (error) {
         throw error;

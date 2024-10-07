@@ -8,11 +8,21 @@ import {endpoints} from "@/types/endpoints";
 import ApiClient from "@/lib/settlo-api-client";
 import {UUID} from "node:crypto";
 import {Location} from "@/types/location/type";
-export const getCurrentBusiness = async (): Promise<string | undefined> => {
-    return cookies().get("currentBusiness")?.value;
+
+export const getCurrentBusiness = async (): Promise<Business | undefined> => {
+    return parseStringify(cookies().get("currentBusiness")?.value);
 };
-export const getCurrentLocation = async (): Promise<string | undefined> => {
-    return cookies().get("currentLocation")?.value;
+
+export const getCurrentLocation = async (): Promise<Location | undefined> => {
+    const locationCookie = cookies().get("currentLocation");
+    if (!locationCookie) return undefined;
+
+    try {
+        return JSON.parse(locationCookie.value) as Location;
+    } catch (error) {
+        console.error("Failed to parse location cookie:", error);
+        return undefined;
+    }
 };
 export const setCurrentLocation = async (location: Location): Promise<Location> => {
     cookies().set({name: "currentLocation", value: JSON.stringify(location)});
