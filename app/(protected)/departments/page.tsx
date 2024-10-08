@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import {columns} from "@/components/tables/expense/columns";
-import { searchExpenses } from "@/lib/actions/expense-actions";
+import {columns} from "@/components/tables/department/columns";
+import { searchDepartment } from "@/lib/actions/department-actions";
 
-const breadcrumbItems = [{ title: "Expenses", link: "/expense" }];
+const breadcrumbItems = [{ title: "Departments", link: "/departments" }];
 
 type ParamsProps = {
     searchParams: {
@@ -27,8 +27,7 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await searchExpenses(q, page, pageLimit);
-    console.log("Category responseData:", responseData);
+    const responseData = await searchDepartment(q, page, pageLimit);
 
     const data = responseData.content;
     const total = responseData.totalElements;
@@ -43,7 +42,7 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/expenses/new`}>Add Expense</Link>
+                        <Link key="add-space" href={`/departments/new`}>Add Department</Link>
                     </Button>
                 </div>
             </div>
@@ -51,8 +50,8 @@ export default async function Page({ searchParams }: ParamsProps) {
             {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Expense</CardTitle>
-                        <CardDescription>Manage expenses in your business location</CardDescription>
+                        <CardTitle>Departments</CardTitle>
+                        <CardDescription>Manage departments in your business location</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -66,7 +65,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`expenses`} newItemUrl={`/expenses/new`} />
+                <NoItems itemName={`departments`} newItemUrl={`/departments/new`} />
             )}
         </div>
     );

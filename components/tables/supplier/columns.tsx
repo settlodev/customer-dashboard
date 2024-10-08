@@ -47,7 +47,7 @@ export const columns: ColumnDef<Supplier>[] = [
   },
   {
     accessorKey: "email",
-    enableHiding: false,
+    enableHiding: true,
     header: "Email",
   },
  

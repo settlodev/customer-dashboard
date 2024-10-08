@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition } from "react";
 import { toast, useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
@@ -28,38 +28,19 @@ import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
-import { Expense } from "@/types/expense/type";
-import { ExpenseSchema } from "@/types/expense/schema";
-import { createExpense, updateExpense } from "@/lib/actions/expense-actions";
-import { fetchExpenseCategories } from "@/lib/actions/expense-categories-actions";
-import { ExpenseCategory } from "@/types/expenseCategories/type";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { formatNumber } from "@/lib/utils";
+import { DepartmentSchema } from "@/types/department/schema";
+import { createDepartment, updateDepartment } from "@/lib/actions/department-actions";
+import { Department } from "@/types/department/type";
 
-function ExpenseForm({ item }: { item: Expense | null | undefined }) {
+function DepartmentForm({ item }: { item: Department | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
-  const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>(
-    []
-  );
   const { toast } = useToast();
 
-  useEffect(() => {
-    const getExpenseCategories = async () => {
-      try {
-        const response = await fetchExpenseCategories();
-        setExpenseCategories(response);
-      } catch (error) {
-        console.error("Error fetching countries", error);
-      }
-    };
-    getExpenseCategories();
-  }, []);
-
-  const form = useForm<z.infer<typeof ExpenseSchema>>({
-    resolver: zodResolver(ExpenseSchema),
+  const form = useForm<z.infer<typeof DepartmentSchema>>({
+    resolver: zodResolver(DepartmentSchema),
     defaultValues: item ? item : { status: true },
   });
 
@@ -76,14 +57,14 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
     [toast]
   );
 
-  const submitData = (values: z.infer<typeof ExpenseSchema>) => {
+  const submitData = (values: z.infer<typeof DepartmentSchema>) => {
     startTransition(() => {
       if (item) {
-        updateExpense(item.id, values).then((data) => {
+        updateDepartment(item.id, values).then((data) => {
           if (data) setResponse(data);
         });
       } else {
-        createExpense(values)
+        createDepartment(values)
           .then((data) => {
             console.log(data);
             if (data) setResponse(data);
@@ -103,9 +84,9 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Expense Details</CardTitle>
+              <CardTitle>Department Details</CardTitle>
               <CardDescription>
-                Add expense to your business location
+                Add department to your business location
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -117,10 +98,11 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Expense Name</FormLabel>
+                      <FormLabel>Department Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter expense name"
+                          placeholder="Enter department name"
+                          required
                           {...field}
                           disabled={isPending}
                         />
@@ -132,50 +114,31 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
             
                 <FormField
                   control={form.control}
-                  name="amount"
+                  name="color"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount</FormLabel>
+                      <FormLabel>Department Color</FormLabel>
                       <FormControl>
-                      <Input
-                        placeholder="Enter expense amount"
-                        value={field.value ? formatNumber(field.value) : ''} 
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/,/g, ''); 
-                          field.onChange(value ? parseFloat(value) : undefined);
-                        }}
-                      />
+                        <Input placeholder="Enter department color" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
                
-               <FormField
+                <FormField
                   control={form.control}
-                  name="expenseCategory"
+                  name="image"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Expense Category</FormLabel>
+                      <FormLabel>Department Image</FormLabel>
                       <FormControl>
-                        <Select
-                          disabled={isPending || expenseCategories.length === 0}
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select expense category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {expenseCategories.length > 0
-                              ? expenseCategories.map((expCat: any, index: number) => (
-                                  <SelectItem key={index} value={expCat.id}>
-                                    {expCat.name}{" "}
-                                  </SelectItem>
-                                ))
-                              : null}
-                          </SelectContent>
-                        </Select>
+                        <Input
+                          type="file"
+                          placeholder="Enter department image"
+                          {...field}
+                          disabled={isPending}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -190,7 +153,7 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
             <Separator orientation="vertical" />
             <SubmitButton
               isPending={isPending}
-              label={item ? "Update supplier details" : "Add supplier "}
+              label={item ? "Update department details" : "Add department"} 
             />
           </div>
         </div>
@@ -201,4 +164,4 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
   );
 }
 
-export default ExpenseForm;
+export default DepartmentForm;

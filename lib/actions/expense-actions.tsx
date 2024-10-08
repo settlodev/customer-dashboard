@@ -11,7 +11,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
+import {getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import { Expense } from "@/types/expense/type";
 import { ExpenseSchema } from "@/types/expense/schema";
 
@@ -81,6 +81,7 @@ export const createExpense = async (
     let formResponse: FormResponse | null = null;
 
     const validatedExpenseData = ExpenseSchema.safeParse(expense);
+    console.log("The validated data is:", validatedExpenseData)
 
     if (!validatedExpenseData.success) {
         formResponse = {
@@ -92,13 +93,22 @@ export const createExpense = async (
         return parseStringify(formResponse);
     }
 
+    const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
+  
+    const payload = {
+      ...validatedExpenseData.data,
+      location: location?.id,
+      business: business?.id,
+    };
+
     try {
         const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
+        
 
         await apiClient.post(
             `/api/expenses/${location?.id}/create`,
-            validatedExpenseData.data,
+            payload
         );
     } catch (error: unknown) {
         formResponse = {
@@ -135,9 +145,11 @@ export const updateExpense = async (
     }
 
     const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
     const payload = {
         ...validatedExpenseData.data,
         location: location?.id,
+        business: business?.id,
     };
 
     try {
