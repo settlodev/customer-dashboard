@@ -1,0 +1,76 @@
+import { UUID } from "node:crypto";
+
+import { notFound } from "next/navigation";
+import { isNotFoundError } from "next/dist/client/components/not-found";
+
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {Role} from "@/types/roles/type";
+import {ApiResponse} from "@/types/types";
+import {getRole} from "@/lib/actions/role-actions";
+import RoleForm from "@/components/forms/role_form";
+import { Expense } from "@/types/expense/type";
+import { getExpense } from "@/lib/actions/expense-actions";
+import ExpenseForm from "@/components/forms/expense_form";
+
+export default async function ExpensesPage({params}: {
+    params: { id: string };
+}) {
+    const isNewItem = params.id === "new";
+    let item: ApiResponse<Expense> | null = null;
+
+    if (!isNewItem) {
+        try {
+            item = await getExpense(params.id as UUID);
+            if (item.totalElements == 0) notFound();
+        } catch (error) {
+            // Ignore redirect error
+            if (isNotFoundError(error)) throw error;
+
+            throw new Error("Failed to load role data");
+        }
+    }
+
+    const breadcrumbItems = [
+        { title: "Expenses", link: "/expenses" },
+        {
+            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
+            link: "",
+        },
+    ];
+
+    return (
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <div className="flex items-center justify-between mb-2">
+                <div className="relative flex-1 md:max-w-md">
+                    <BreadcrumbsNav items={breadcrumbItems} />
+                </div>
+            </div>
+
+            <ExpenseCard isNewItem={isNewItem} item={item?.content[0]} />
+        </div>
+    );
+}
+
+const ExpenseCard = ({isNewItem, item}: {
+    isNewItem: boolean;
+    item: Expense | null | undefined;
+}) => (
+    <Card>
+        <CardHeader>
+            <CardTitle>{isNewItem ? "Add expense" : "Edit expense details"}</CardTitle>
+            <CardDescription>
+                {isNewItem ? "Add expense to your business" : "Edit expense details"}
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <ExpenseForm item={item} />
+        </CardContent>
+    </Card>
+);

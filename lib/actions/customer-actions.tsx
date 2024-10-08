@@ -41,7 +41,6 @@ export const searchCustomer = async (
 ): Promise<ApiResponse<Customer>> =>{
     await getAuthenticatedUser();
 
-    const authToken = await getAuthToken();
 
     try {
         const apiClient = new ApiClient();
@@ -68,7 +67,6 @@ export const searchCustomer = async (
             `/api/customers/${location?.id}`,
             query
         );
-        console.log("Customer response",customerData);
         return parseStringify(customerData);
     }
     catch (error){
@@ -83,7 +81,6 @@ export const  createCustomer= async (
     let formResponse: FormResponse | null = null;
 
     const customerValidData= CustomerSchema.safeParse(customer)
-    console.log("Customer Valid Data", customerValidData)
 
     if (!customerValidData.success){
         formResponse = {
@@ -94,14 +91,15 @@ export const  createCustomer= async (
       return parseStringify(formResponse)
     }
 
+    const location = await getCurrentLocation();
+
     const payload = {
         ...customerValidData.data,
-        locationId: '6ed59bf2-b994-4fdb-90b7-5a38285e0a16'
+        location: location?.id
     }
     try {
         const apiClient = new ApiClient();
       
-        const location = await getCurrentLocation();
 
         await apiClient.post(
             `/api/customers/${location?.id}/create`,
@@ -126,7 +124,6 @@ export const  createCustomer= async (
 
 export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
     const apiClient = new ApiClient();
-    const authToken = await getAuthToken();
     const query ={
         filters:[
             {
@@ -149,41 +146,93 @@ export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
     return parseStringify(customerResponse)
 }
 
-export const updateCustomer = async(
-    id:UUID,
+// export const updateCustomer = async(
+//     id:UUID,
+//     customer: z.infer<typeof CustomerSchema>
+
+// ):Promise<FormResponse | void> => {
+//     let formResponse: FormResponse | null = null;
+//     const customerValidData= CustomerSchema.safeParse(customer)
+
+
+//     if (!customerValidData.success){
+//         formResponse = {
+//             responseType:"error",
+//             message:"Please fill all the required fields",
+//             error:new Error(customerValidData.error.message)
+//       }
+//       return parseStringify(formResponse)
+//     }
+//     const location = await getCurrentLocation();
+//     const payload = {
+//         ...customerValidData.data,
+//         location: location?.id
+//     }
+//     console.log("Updating customer with this id", id)
+//     console.log("The payload", payload)
+//     try {
+//         console.log("executing in try block to update customer")
+//         const apiClient = new ApiClient();
+
+
+//         const updateCustomerResponse = await apiClient.put(
+//             `api/customers/${location?.id}/${id}`,
+//             payload
+//         );
+//       console.log("Update Customer Response", updateCustomerResponse)
+//     }
+//     catch (error){
+//         console.error("Error updating customer", error);
+//         formResponse = {
+//             responseType: "error",
+//             message:
+//                 "Something went wrong while processing your request, please try again",
+//             error: error instanceof Error ? error : new Error(String(error)),
+//         };
+//     }
+
+//     if (formResponse){
+//         return parseStringify(formResponse)
+//     }
+//     revalidatePath("/customers");
+//     redirect("/customers")
+// }
+
+export const updateCustomer = async (
+    id: UUID,
     customer: z.infer<typeof CustomerSchema>
-
-):Promise<FormResponse | void> => {
+): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const customerValidData= CustomerSchema.safeParse(customer)
+    const customerValidData = CustomerSchema.safeParse(customer);
 
-    console.log("Updated Customer Valid Data", customerValidData)
-
-    if (!customerValidData.success){
+    if (!customerValidData.success) {
         formResponse = {
-            responseType:"error",
-            message:"Please fill all the required fields",
-            error:new Error(customerValidData.error.message)
-      }
-      return parseStringify(formResponse)
+            responseType: "error",
+            message: "Please fill all the required fields",
+            error: new Error(customerValidData.error.message),
+        };
+        return parseStringify(formResponse);
     }
+
     const location = await getCurrentLocation();
     const payload = {
         ...customerValidData.data,
-        location: location?.id
-    }
+        location: location?.id,
+    };
+
+    
+
     try {
+        console.log("Executing in try block to update customer");
         const apiClient = new ApiClient();
 
-       
-
-        const updatedCustomer = await apiClient.put(
-            `api/customers/${location?.id}/${id}`,
+        await apiClient.put(
+            `/api/customers/${location?.id}/${id}`, 
             payload
         );
-      
-    }
-    catch (error){
+
+    } catch (error) {
+        console.error("Error updating customer", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -192,12 +241,12 @@ export const updateCustomer = async(
         };
     }
 
-    if (formResponse){
-        return parseStringify(formResponse)
+    if (formResponse) {
+        return parseStringify(formResponse);
     }
     revalidatePath("/customers");
-    redirect("/customers")
-}
+    redirect("/customers");
+};
 
 export const deleteCustomer = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Customer ID is required to perform this request");

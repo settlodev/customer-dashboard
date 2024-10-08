@@ -1,3 +1,4 @@
+import { isValidPhoneNumber } from "libphonenumber-js";
 import { boolean, object, string } from "zod";
 
 export const SupplierSchema = object({
@@ -9,6 +10,8 @@ export const SupplierSchema = object({
     }).email("Not a valid email"),
     phoneNumber: string({
         required_error: "Phone number of supplier is required",
-    }).min(10, "Phone number should be at least 10 digits"),
+    })  .refine(isValidPhoneNumber, {
+        message: "Invalid phone number",
+    }),
     status: boolean().optional(),
 })

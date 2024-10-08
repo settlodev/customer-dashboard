@@ -26,7 +26,6 @@ const breadCrumbItems = [{title:"Customers",link:"/customers"}];
      const responseData = await searchCustomer(q,page,pageLimit);
 
      const data:Customer[]=responseData.content;
-     console.log("Customer data fetched from search response",data)
      const total =responseData.totalElements;
      const pageCount = responseData.totalPages
 

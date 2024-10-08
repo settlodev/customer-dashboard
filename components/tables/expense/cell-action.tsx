@@ -13,9 +13,9 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Expense } from "@/types";
+import { Expense } from "@/types/expense/type";
 import DeleteModal from "@/components/tables/delete-modal";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { deleteExpense } from "@/lib/actions/expense-actions";
 
 interface CellActionProps {

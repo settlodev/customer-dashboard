@@ -4,12 +4,12 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
 import { CellAction } from "@/components/tables/expense/cell-action";
-import { Expense } from "@/types";
+import { Expense } from "@/types/expense/type";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { BadgeColumn } from "@/components/tables/badge-column";
-import { MoneyColumn } from "@/components/tables/money-column";
-import { CellView } from "@/components/tables/cell-edit";
+// import { MoneyColumn } from "@/components/tables/money-column";
+// import { CellView } from "@/components/tables/cell-edit";
 
 export const columns: ColumnDef<Expense>[] = [
   {

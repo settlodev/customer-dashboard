@@ -13,7 +13,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
-import { deleteStaff } from "@/lib/actions/staff-actions";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import {Customer} from "@/types/customer/type";
@@ -34,7 +33,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                 toast({
                     variant: "default",
                     title: "Success",
-                    description: "Staff deleted successfully!",
+                    description: "Customer deleted successfully!",
                 });
             } else {
                 toast({

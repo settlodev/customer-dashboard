@@ -1,3 +1,4 @@
+
 "use server";
 
 import { UUID } from "node:crypto";
@@ -6,41 +7,38 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 
-import { Staff } from "@/types/staff";
 import { ApiResponse, FormResponse } from "@/types/types";
-import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
+import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { StaffSchema } from "@/types/staff";
-import { getCurrentLocation } from "./business/get-current-business";
+import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
+import { Expense } from "@/types/expense/type";
+import { ExpenseSchema } from "@/types/expense/schema";
 
-export const fetchAllStaff = async (): Promise<Staff[]> => {
+export const fetchAllExpenses = async (): Promise<Expense[]> => {
     await getAuthenticatedUser();
-
 
     try {
         const apiClient = new ApiClient();
 
         const location = await getCurrentLocation();
 
-
-        const staffData = await apiClient.get(
-            `/api/staff/${location?.id}`,
+        const expenseData = await apiClient.get(
+            `/api/expenses/${location?.id}`,
         );
 
-        return parseStringify(staffData);
+        return parseStringify(expenseData);
     } catch (error) {
         throw error;
     }
 };
 
-export const searchStaff = async (
+export const searchExpenses = async (
     q: string,
     page: number,
     pageLimit: number,
-): Promise<ApiResponse<Staff>> => {
+): Promise<ApiResponse<Expense>> => {
     await getAuthenticatedUser();
-
 
     try {
         const apiClient = new ApiClient();
@@ -66,29 +64,29 @@ export const searchStaff = async (
 
         const location = await getCurrentLocation();
 
-        const staffData = await apiClient.post(
-            `/api/staff/${location?.id}`,
+        const expensesData = await apiClient.post(
+            `/api/expenses/${location?.id}`,
             query,
         );
 
-        return parseStringify(staffData);
+        return parseStringify(expensesData);
     } catch (error) {
         throw error;
     }
 };
 
-export const createStaff = async (
-    staff: z.infer<typeof StaffSchema>,
+export const createExpense = async (
+    expense: z.infer<typeof ExpenseSchema>,
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
 
-    const validatedData = StaffSchema.safeParse(staff);
+    const validatedExpenseData = ExpenseSchema.safeParse(expense);
 
-    if (!validatedData.success) {
+    if (!validatedExpenseData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill in all the fields marked with * before proceeding",
-            error: new Error(validatedData.error.message),
+            error: new Error(validatedExpenseData.error.message),
         };
 
         return parseStringify(formResponse);
@@ -96,12 +94,11 @@ export const createStaff = async (
 
     try {
         const apiClient = new ApiClient();
-        
         const location = await getCurrentLocation();
 
         await apiClient.post(
-            `/api/categories/${location?.id}/create`,
-            validatedData.data,
+            `/api/expenses/${location?.id}/create`,
+            validatedExpenseData.data,
         );
     } catch (error: unknown) {
         formResponse = {
@@ -116,37 +113,43 @@ export const createStaff = async (
         return parseStringify(formResponse);
     }
 
-    revalidatePath("/staff");
-    redirect("/staff");
+    revalidatePath("/expenses");
+    redirect("/expenses");
 };
 
-export const updateStaff = async (
+
+export const updateExpense = async (
     id: UUID,
-    staff: z.infer<typeof StaffSchema>,
+    expense: z.infer<typeof ExpenseSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
+    const validatedExpenseData = ExpenseSchema.safeParse(expense);
 
-    const validatedData = StaffSchema.safeParse(staff);
-
-    if (!validatedData.success) {
+    if (!validatedExpenseData.success) {
         formResponse = {
             responseType: "error",
-            message: "Please fill in all the fields marked with * before proceeding",
-            error: new Error(validatedData.error.message),
+            message: "Please fill all the required fields",
+            error: new Error(validatedExpenseData.error.message),
         };
-
         return parseStringify(formResponse);
     }
+
+    const location = await getCurrentLocation();
+    const payload = {
+        ...validatedExpenseData.data,
+        location: location?.id,
+    };
 
     try {
         const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
 
-        await apiClient.put(
-            `/api/staff/${location?.id}/${id}`,
-            validatedData.data,
+      await apiClient.put(
+            `/api/expenses/${location?.id}/${id}`, 
+            payload
         );
-    } catch (error: unknown) {
+
+    } catch (error) {
+        console.error("Error updating expense", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -158,14 +161,12 @@ export const updateStaff = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-
-    revalidatePath("/staff");
-    redirect("/staff");
+    revalidatePath("/expenses");
+    redirect("/expenses");
 };
 
-export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
+export const getExpense = async (id: UUID): Promise<ApiResponse<Expense>> => {
     const apiClient = new ApiClient();
-    const authToken = await getAuthToken();
 
     const query = {
         filters: [
@@ -183,26 +184,24 @@ export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
 
     const location = await getCurrentLocation();
 
-    const staffData = await apiClient.post(
-        `/api/staff/${location?.id}`,
+    const expenseData = await apiClient.post(
+        `/api/expenses/${location?.id}`,
         query,
     );
 
-    return parseStringify(staffData);
+    return parseStringify(expenseData);
 };
 
-export const deleteStaff = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Staff ID is required to perform this request");
+export const deleteExpense = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Expense ID is required to perform this request");
     await getAuthenticatedUser();
-    const authToken = await getAuthToken();
 
     try {
         const apiClient = new ApiClient();
-
         const location = await getCurrentLocation();
 
-        await apiClient.delete(`/api/staff/${location?.id}/${id}`);
-        revalidatePath("/staff");
+        await apiClient.delete(`/api/expenses/${location?.id}/${id}`);
+        revalidatePath("/expenses");
     } catch (error) {
         throw error;
     }
