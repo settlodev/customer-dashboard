@@ -4,7 +4,7 @@ import { getAllBusinessLocationsByBusinessID } from "@/lib/actions/auth/location
 import { useSearchParams } from "next/navigation";
 import CreatedBusinessLocationList from "./Location_list";
 import { Location } from "@/types/location/type";
-import LocationAuthForm from "@/components/forms/location_form";
+import LocationAuthForm from "@/components/forms/location_auth_form";
 
 async function fetchLocationData(businessId: string) {
     return await getAllBusinessLocationsByBusinessID(businessId);
@@ -22,7 +22,12 @@ function LocationPage() {
                 console.log("The location data is:", data.length);
                 setLocationData(data);
                 setLoading(false);
+            }).catch(error => {
+                console.error("Error fetching location data:", error);
+                setLoading(false); 
             });
+        } else {
+            setLoading(false); 
         }
     }, [businessId]);
 
