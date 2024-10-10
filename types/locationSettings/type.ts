@@ -3,8 +3,8 @@ import { UUID } from "crypto"
 export declare type LocationSettings = {
     id: UUID
     minimumuSettlementAmount: number
-    systemPassCode: string
-    reportsPassCode: string
+    systemPasscode: string
+    reportsPasscode: string
     isDefault: boolean
     trackInventory: boolean
     ecommerceEnabled: boolean
@@ -13,7 +13,7 @@ export declare type LocationSettings = {
     useDepartments: boolean
     useCustomerPrice: boolean
     useWarehouse: boolean
-    useShift: boolean
+    useShifts: boolean
     useKds: boolean
     isActive: boolean
     locationId: UUID
