@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -15,7 +15,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -25,12 +24,10 @@ import {
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
-import { LocationSchema } from "@/types/location/schema";
 import { Loader2Icon } from "lucide-react";
 import { LocationSettings } from "@/types/locationSettings/type";
 import { LocationSettingsSchema } from "@/types/locationSettings/schema";
-import { createLocationSettings, updateLocationSettings } from "@/lib/actions/settings-actions";
-import { formatNumber } from "@/lib/utils";
+import { updateLocationSettings } from "@/lib/actions/settings-actions";
 import { Checkbox } from "../ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 
@@ -41,12 +38,19 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
 
   const form = useForm<z.infer<typeof LocationSettingsSchema>>({
     resolver: zodResolver(LocationSettingsSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues:item ||{ status: true },
   });
+
+   useEffect(() => {
+    if (item) {
+      form.reset(item); 
+    }
+  }, [item, form]);
+
 
   const onInvalid = useCallback(
     (errors: any) => {
-      // console.error("Form validation errors:", errors);
+      console.error("Form validation errors:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
@@ -59,22 +63,15 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
   );
 
   const submitData = (values: z.infer<typeof LocationSettingsSchema>) => {
-    // console.log("Form submitted with values:", values); 
 
     setResponse(undefined);
 
     startTransition(() => {
       if (item) {
-        // console.log("Updating location settings...");
         updateLocationSettings(item.id, values).then((data) => {
           if (data) setResponse(data);
         });
-      } else {
-        // console.log("Creating location settings...");
-        createLocationSettings(values).then((data) => {
-          if (data) setResponse(data);
-        });
-      }
+      } 
     });
   };
 
@@ -104,11 +101,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                         {...field}
                         required
                         disabled={isPending}
-                        value={field.value ? formatNumber(field.value) : ''}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/,/g, '');
-                          field.onChange(value ? parseFloat(value) : undefined);
-                        }}
+                        value={field.value}
                       />
                     </FormControl>
                     <FormMessage />
@@ -129,6 +122,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                           {...field}
                           required
                           disabled={isPending}
+                          value={field.value }
                           placeholder="Enter system passcode"
                         />
                       </FormControl>
@@ -140,7 +134,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
               <div className="grid gap-2">
                 <FormField
                   control={form.control}
-                  name="reportPasscode"
+                  name="reportsPasscode"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Report Passcode</FormLabel>
@@ -149,6 +143,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                           {...field}
                           required
                           disabled={isPending}
+                          value={field.value }
                           placeholder="Enter report passcode"
                         />
                       </FormControl>
@@ -281,7 +276,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
               <div className="grid gap-2">
                 <FormField
                   control={form.control}
-                  name="useShift"
+                  name="useShifts"
                   render={({ field }) => (
                     <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                     <FormControl>
@@ -399,6 +394,32 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                 />
               </div>
             </div>
+            <div className="lg:grid grid-cols-2 gap-4 mt-2">
+              <div className="grid gap-2">
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          Is Active
+                        </FormLabel>
+                      </div>
+                      <FormMessage />
+
+                    </FormItem>
+                  )}
+                />
+              </div>
+           
+            </div>
          
             {isPending ? (
               <div className="flex justify-center items-center bg-black rounded p-2 text-white">
@@ -410,7 +431,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                 disabled={isPending}
                 className={`mt-4 w-full capitalize`}
               >
-                setup settings
+                update settings
               </Button>
             )}
           </form>
