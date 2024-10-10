@@ -120,7 +120,10 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     <FormItem>
                       <FormLabel>Department Color</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter department color" {...field} />
+                        <Input placeholder="Enter department color" {...field}
+                         disabled={isPending}
+                         value={field.value ?? ''}
+                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -139,6 +142,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                           placeholder="Enter department image"
                           {...field}
                           disabled={isPending}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
