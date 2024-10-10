@@ -29,7 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { Discount } from "@/types/discount/type";
-import { DiscountSchema } from "@/types/discount/shema";
+import { DiscountSchema } from "@/types/discount/schema";
 import { createDiscount, updateDiscount } from "@/lib/actions/discount-actions";
 import DiscountTypeSelector from "../widgets/discount-type-selector";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
@@ -47,15 +47,13 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
-  const [validFrom, setValidFrom] = useState<Date | undefined>();
-  const [validTo, setValidTo] = useState<Date | undefined>();
+  const [validFrom, setValidFrom] = useState<Date | undefined>(item?.validFrom ? new Date(item.validFrom) : undefined); 
+  const [validTo, setValidTo] = useState<Date | undefined>(item?.validTo ? new Date(item.validTo) : undefined); 
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof DiscountSchema>>({
     resolver: zodResolver(DiscountSchema),
-    defaultValues: {
-      name: item?.name || ""
-    }
+    defaultValues: item ? item : { status: true },
   });
 
   const onInvalid = useCallback(
@@ -167,7 +165,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                     </FormItem>
                   )}
                 />
-                   <FormField
+                <FormField
                   control={form.control}
                   name="minimumSpend"
                   render={({ field }) => (
@@ -191,9 +189,9 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                   )}
                 />
 
-<FormField
+                <FormField
                   control={form.control}
-                  name="minimumSpend"
+                  name="usageLimit"
                   render={({ field }) => (
                     <FormItem className="flex flex-col lg:mt-4">
                       <FormLabel>Usage Limit</FormLabel>
@@ -303,7 +301,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                     </FormItem>
                   )}
                 />
-            
+
               </div>
             </CardContent>
           </Card>

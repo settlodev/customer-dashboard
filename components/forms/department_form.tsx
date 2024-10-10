@@ -46,6 +46,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
 
   const onInvalid = useCallback(
     (errors: any) => {
+      console.log("Errors during form submission:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",

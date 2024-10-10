@@ -1,4 +1,5 @@
 import { UUID } from "crypto"
+import { discountType } from "../enums"
 
 export declare interface Discount {
     id: UUID
@@ -8,7 +9,7 @@ export declare interface Discount {
     validTo: string
     discountCode: string
     minimumSpend: number
-    discountType: string
+    discountType: discountType
     usageLimit: number
     activations: number
     department: string

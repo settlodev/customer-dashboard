@@ -1,18 +1,21 @@
 "use server";
 
 import {z} from "zod";
+import {CustomerSchema} from "@/types/customer/schema";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
+import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
+import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
+import {id} from "postcss-selector-parser";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import { Discount } from "@/types/discount/type";
-import { DiscountSchema } from "@/types/discount/schema";
+import { LocationSettings} from "@/types/locationSettings/type";
+import { LocationSettingsSchema } from "@/types/locationSettings/schema";
 
-export const fectchAllDicounts = async () : Promise<Discount[]> => {
+export const fectchLocationSettings = async () : Promise<LocationSettings[]> => {
     await  getAuthenticatedUser();
 
 
@@ -21,22 +24,22 @@ export const fectchAllDicounts = async () : Promise<Discount[]> => {
 
         const location = await getCurrentLocation();
 
-        const discountData = await  apiClient.get(
-            `/api/discounts/${location?.id}`,
+        const settingsData = await  apiClient.get(
+            `/api/location-settings/${location?.id}`,
         );
        
-        return parseStringify(discountData);
+        return parseStringify(settingsData);
 
     }
     catch (error){
         throw error;
     }
 }
-export const searchDiscount = async (
+export const searchLocationSettings = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Discount>> =>{
+): Promise<ApiResponse<LocationSettings>> =>{
     await getAuthenticatedUser();
 
 
@@ -61,53 +64,51 @@ export const searchDiscount = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        const discountData = await  apiClient.post(
-            `/api/discounts/${location?.id}`,
+        const productData = await  apiClient.post(
+            `/api/products/${location?.id}`,
             query
         );
-        return parseStringify(discountData);
+        return parseStringify(productData);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  createDiscount= async (
-    discount: z.infer<typeof DiscountSchema>
+export const  createLocationSettings= async (
+    settings: z.infer<typeof LocationSettingsSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const discountValidData= DiscountSchema.safeParse(discount)
+    const validSettingsData= LocationSettingsSchema.safeParse(settings)
 
-    if (!discountValidData.success){
+    if (!validSettingsData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(discountValidData.error.message)
+            error:new Error(validSettingsData.error.message)
       }
       return parseStringify(formResponse)
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
 
     const payload = {
-        ...discountValidData.data,
-        location: location?.id,
-        business: business?.id
+        ...validSettingsData.data,
+        locationId: location?.id,
     }
     try {
         const apiClient = new ApiClient();
       
 
         await apiClient.post(
-            `/api/discounts/${location?.id}/create`,
+            `/api/location-settings/${location?.id}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error creating discount",error)
+        console.error("Error creating location settings",error)
         formResponse = {
             responseType: "error",
             message:
@@ -118,11 +119,11 @@ export const  createDiscount= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/discounts");
-    redirect("/discounts")
+    revalidatePath("/settings");
+    redirect("/settings");
 }
 
-export const getDiscount= async (id:UUID) : Promise<ApiResponse<Discount>> => {
+export const getLocationSettings = async (id:UUID) : Promise<ApiResponse<LocationSettings>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -138,48 +139,52 @@ export const getDiscount= async (id:UUID) : Promise<ApiResponse<Discount>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const discountResponse = await apiClient.post(
-        `/api/discounts/${location?.id}`,
+    const product = await apiClient.post(
+        `/api/location-settings/${location?.id}`,
         query,
     );
     
-    return parseStringify(discountResponse)
+    return parseStringify(product)
 }
 
 
 
-export const updateDiscount = async (
+export const updateLocationSettings = async (
     id: UUID,
-    discount: z.infer<typeof DiscountSchema>
+    setting: z.infer<typeof LocationSettingsSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const discountValidData = DiscountSchema.safeParse(discount);
+    const validSettingsData = LocationSettingsSchema.safeParse(setting);
 
-    if (!discountValidData.success) {
+    if (!validSettingsData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(discountValidData.error.message),
+            error: new Error(validSettingsData.error.message),
         };
         return parseStringify(formResponse);
     }
 
     const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
     const payload = {
-        ...discountValidData.data,
+        ...validSettingsData.data,
         location: location?.id,
+        business: business?.id
     };
+
+    
 
     try {
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/discounts/${location?.id}/${id}`, 
+            `/api/location-settings/${location?.id}/${id}`, 
             payload
         );
 
     } catch (error) {
-        console.error("Error updating discount", error); 
+        console.error("Error updating location settings", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -191,12 +196,12 @@ export const updateDiscount = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/discounts");
-    redirect("/discounts");
+    revalidatePath("/settings");
+    redirect("/settings");
 };
 
-export const deleteDiscount = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Discount ID is required to perform this request");
+export const deleteLocationSettings = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Location setting ID is required to perform this request");
 
     await getAuthenticatedUser();
 
@@ -206,9 +211,9 @@ export const deleteDiscount = async (id: UUID): Promise<void> => {
     const location = await getCurrentLocation();
    
     await apiClient.delete(
-        `/api/discounts/${location?.id}/${id}`,
+        `/api/location-settings/${location?.id}/${id}`,
     );
-    revalidatePath("/discounts");
+    revalidatePath("/settings");
     
    }
    catch (error){
