@@ -11,34 +11,35 @@ import {redirect} from "next/navigation";
 import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import {id} from "postcss-selector-parser";
-import { getCurrentLocation } from "./business/get-current-business";
+import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import { LocationSettings} from "@/types/locationSettings/type";
+import { LocationSettingsSchema } from "@/types/locationSettings/schema";
 
-export const fectchAllCustomers = async () : Promise<Customer[]> => {
+export const fectchLocationSettings = async () : Promise<LocationSettings[]> => {
     await  getAuthenticatedUser();
 
-    const authToken = await getAuthToken();
 
     try {
         const apiClient = new ApiClient();
 
         const location = await getCurrentLocation();
 
-        const customerData = await  apiClient.get(
-            `/api/customers/${location?.id}`,
+        const settingsData = await  apiClient.get(
+            `/api/location-settings/${location?.id}`,
         );
        
-        return parseStringify(customerData);
+        return parseStringify(settingsData);
 
     }
     catch (error){
         throw error;
     }
 }
-export const searchCustomer = async (
+export const searchLocationSettings = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Customer>> =>{
+): Promise<ApiResponse<LocationSettings>> =>{
     await getAuthenticatedUser();
 
 
@@ -47,7 +48,7 @@ export const searchCustomer = async (
         const query ={
             filters: [
                 {
-                    key:"firstName",
+                    key:"name",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -55,7 +56,7 @@ export const searchCustomer = async (
             ],
             sorts:[
                 {
-                    key:"firstName",
+                    key:"name",
                     direction:"ASC"
                 }
             ],
@@ -63,30 +64,30 @@ export const searchCustomer = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        const customerData = await  apiClient.post(
-            `/api/customers/${location?.id}`,
+        const productData = await  apiClient.post(
+            `/api/products/${location?.id}`,
             query
         );
-        return parseStringify(customerData);
+        return parseStringify(productData);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  createCustomer= async (
-    customer: z.infer<typeof CustomerSchema>
+export const  createLocationSettings= async (
+    settings: z.infer<typeof LocationSettingsSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const customerValidData= CustomerSchema.safeParse(customer)
+    const validSettingsData= LocationSettingsSchema.safeParse(settings)
 
-    if (!customerValidData.success){
+    if (!validSettingsData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(customerValidData.error.message)
+            error:new Error(validSettingsData.error.message)
       }
       return parseStringify(formResponse)
     }
@@ -94,20 +95,20 @@ export const  createCustomer= async (
     const location = await getCurrentLocation();
 
     const payload = {
-        ...customerValidData.data,
-        location: location?.id
+        ...validSettingsData.data,
+        locationId: location?.id,
     }
     try {
         const apiClient = new ApiClient();
       
 
         await apiClient.post(
-            `/api/customers/${location?.id}/create`,
+            `/api/location-settings/${location?.id}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error creating customer",error)
+        console.error("Error creating location settings",error)
         formResponse = {
             responseType: "error",
             message:
@@ -118,11 +119,11 @@ export const  createCustomer= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/customers");
-    redirect("/customers")
+    revalidatePath("/settings");
+    redirect("/settings");
 }
 
-export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
+export const getLocationSettings = async (id:UUID) : Promise<ApiResponse<LocationSettings>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -138,51 +139,52 @@ export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const customerResponse = await apiClient.post(
-        `/api/customers/${location?.id}`,
+    const product = await apiClient.post(
+        `/api/location-settings/${location?.id}`,
         query,
     );
     
-    return parseStringify(customerResponse)
+    return parseStringify(product)
 }
 
 
 
-export const updateCustomer = async (
+export const updateLocationSettings = async (
     id: UUID,
-    customer: z.infer<typeof CustomerSchema>
+    setting: z.infer<typeof LocationSettingsSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const customerValidData = CustomerSchema.safeParse(customer);
+    const validSettingsData = LocationSettingsSchema.safeParse(setting);
 
-    if (!customerValidData.success) {
+    if (!validSettingsData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(customerValidData.error.message),
+            error: new Error(validSettingsData.error.message),
         };
         return parseStringify(formResponse);
     }
 
     const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
     const payload = {
-        ...customerValidData.data,
+        ...validSettingsData.data,
         location: location?.id,
+        business: business?.id
     };
 
     
 
     try {
-        console.log("Executing in try block to update customer");
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/customers/${location?.id}/${id}`, 
+            `/api/location-settings/${location?.id}/${id}`, 
             payload
         );
 
     } catch (error) {
-        console.error("Error updating customer", error); 
+        console.error("Error updating location settings", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -194,12 +196,12 @@ export const updateCustomer = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/customers");
-    redirect("/customers");
+    revalidatePath("/settings");
+    redirect("/settings");
 };
 
-export const deleteCustomer = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Customer ID is required to perform this request");
+export const deleteLocationSettings = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Location setting ID is required to perform this request");
 
     await getAuthenticatedUser();
 
@@ -209,9 +211,9 @@ export const deleteCustomer = async (id: UUID): Promise<void> => {
     const location = await getCurrentLocation();
    
     await apiClient.delete(
-        `/api/customers/${location?.id}/${id}`,
+        `/api/location-settings/${location?.id}/${id}`,
     );
-    revalidatePath("/customers");
+    revalidatePath("/settings");
     
    }
    catch (error){

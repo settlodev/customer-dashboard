@@ -13,27 +13,30 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Expense } from "@/types/expense/type";
 import DeleteModal from "@/components/tables/delete-modal";
-import { toast } from "@/hooks/use-toast";
-import { deleteExpense } from "@/lib/actions/expense-actions";
+import { useToast } from "@/hooks/use-toast"
+import { deleteLocation } from "@/lib/actions/location-actions";
+import {Location} from "@/types/location/type";
+import { LocationSettings } from "@/types/locationSettings/type";
+import { deleteLocationSettings } from "@/lib/actions/settings-actions";
 
 interface CellActionProps {
-  data: Expense;
+  data: LocationSettings;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const { toast } = useToast()
 
   const onDelete = async () => {
     try {
       if (data) {
-        await deleteExpense(data.id);
+        await deleteLocationSettings(data.id);
         toast({
           variant: "default",
           title: "Success",
-          description: "Expense record deleted successfully!",
+          description: "Setting deleted successfully!",
         });
       } else {
         toast({
@@ -69,7 +72,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => router.push(`/expenses/${data.id}`)}
+              onClick={() => router.push(`/settings/${data.id}`)}
             >
               <Edit className="mr-2 h-4 w-4" /> Update
             </DropdownMenuItem>
@@ -86,7 +89,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       {data.canDelete && (
         <DeleteModal
           isOpen={isOpen}
-          itemName={data.name}
+          itemName={data.id}
           onDelete={onDelete}
           onOpenChange={onOpenChange}
         />

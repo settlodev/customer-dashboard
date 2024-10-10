@@ -1,44 +1,42 @@
 "use server";
 
 import {z} from "zod";
-import {CustomerSchema} from "@/types/customer/schema";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
+import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
-import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
-import {id} from "postcss-selector-parser";
-import { getCurrentLocation } from "./business/get-current-business";
+import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import { Discount } from "@/types/discount/type";
+import { DiscountSchema } from "@/types/discount/schema";
 
-export const fectchAllCustomers = async () : Promise<Customer[]> => {
+export const fectchAllDicounts = async () : Promise<Discount[]> => {
     await  getAuthenticatedUser();
 
-    const authToken = await getAuthToken();
 
     try {
         const apiClient = new ApiClient();
 
         const location = await getCurrentLocation();
 
-        const customerData = await  apiClient.get(
-            `/api/customers/${location?.id}`,
+        const discountData = await  apiClient.get(
+            `/api/discounts/${location?.id}`,
         );
        
-        return parseStringify(customerData);
+        return parseStringify(discountData);
 
     }
     catch (error){
         throw error;
     }
 }
-export const searchCustomer = async (
+export const searchDiscount = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Customer>> =>{
+): Promise<ApiResponse<Discount>> =>{
     await getAuthenticatedUser();
 
 
@@ -47,7 +45,7 @@ export const searchCustomer = async (
         const query ={
             filters: [
                 {
-                    key:"firstName",
+                    key:"name",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -55,7 +53,7 @@ export const searchCustomer = async (
             ],
             sorts:[
                 {
-                    key:"firstName",
+                    key:"name",
                     direction:"ASC"
                 }
             ],
@@ -63,51 +61,53 @@ export const searchCustomer = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        const customerData = await  apiClient.post(
-            `/api/customers/${location?.id}`,
+        const discountData = await  apiClient.post(
+            `/api/discounts/${location?.id}`,
             query
         );
-        return parseStringify(customerData);
+        return parseStringify(discountData);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  createCustomer= async (
-    customer: z.infer<typeof CustomerSchema>
+export const  createDiscount= async (
+    discount: z.infer<typeof DiscountSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const customerValidData= CustomerSchema.safeParse(customer)
+    const discountValidData= DiscountSchema.safeParse(discount)
 
-    if (!customerValidData.success){
+    if (!discountValidData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(customerValidData.error.message)
+            error:new Error(discountValidData.error.message)
       }
       return parseStringify(formResponse)
     }
 
     const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
 
     const payload = {
-        ...customerValidData.data,
-        location: location?.id
+        ...discountValidData.data,
+        location: location?.id,
+        business: business?.id
     }
     try {
         const apiClient = new ApiClient();
       
 
         await apiClient.post(
-            `/api/customers/${location?.id}/create`,
+            `/api/discounts/${location?.id}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error creating customer",error)
+        console.error("Error creating discount",error)
         formResponse = {
             responseType: "error",
             message:
@@ -118,11 +118,11 @@ export const  createCustomer= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/customers");
-    redirect("/customers")
+    revalidatePath("/discounts");
+    redirect("/discounts")
 }
 
-export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
+export const getDiscount= async (id:UUID) : Promise<ApiResponse<Discount>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -138,51 +138,48 @@ export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const customerResponse = await apiClient.post(
-        `/api/customers/${location?.id}`,
+    const discountResponse = await apiClient.post(
+        `/api/discounts/${location?.id}`,
         query,
     );
     
-    return parseStringify(customerResponse)
+    return parseStringify(discountResponse)
 }
 
 
 
-export const updateCustomer = async (
+export const updateDiscount = async (
     id: UUID,
-    customer: z.infer<typeof CustomerSchema>
+    discount: z.infer<typeof DiscountSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const customerValidData = CustomerSchema.safeParse(customer);
+    const discountValidData = DiscountSchema.safeParse(discount);
 
-    if (!customerValidData.success) {
+    if (!discountValidData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(customerValidData.error.message),
+            error: new Error(discountValidData.error.message),
         };
         return parseStringify(formResponse);
     }
 
     const location = await getCurrentLocation();
     const payload = {
-        ...customerValidData.data,
+        ...discountValidData.data,
         location: location?.id,
     };
 
-    
-
     try {
-        console.log("Executing in try block to update customer");
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/customers/${location?.id}/${id}`, 
+            `/api/discounts/${location?.id}/${id}`, 
             payload
         );
 
     } catch (error) {
-        console.error("Error updating customer", error); 
+        console.error("Error updating discount", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -194,12 +191,12 @@ export const updateCustomer = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/customers");
-    redirect("/customers");
+    revalidatePath("/discounts");
+    redirect("/discounts");
 };
 
-export const deleteCustomer = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Customer ID is required to perform this request");
+export const deleteDiscount = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Discount ID is required to perform this request");
 
     await getAuthenticatedUser();
 
@@ -209,9 +206,9 @@ export const deleteCustomer = async (id: UUID): Promise<void> => {
     const location = await getCurrentLocation();
    
     await apiClient.delete(
-        `/api/customers/${location?.id}/${id}`,
+        `/api/discounts/${location?.id}/${id}`,
     );
-    revalidatePath("/customers");
+    revalidatePath("/discounts");
     
    }
    catch (error){

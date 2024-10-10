@@ -105,7 +105,7 @@ export const createSupplier = async (
       `/api/suppliers/${location?.id}/create`,
       payload
     );
-    console.log("The supplier created is", supplierData);
+
     return parseStringify(supplierData);
   } catch (error) {
     console.error("Error creating supplier", error);
@@ -149,6 +149,8 @@ export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
   return parseStringify(supplierResponse);
 };
 
+
+
 export const updateSupplier = async (
   id: UUID,
   supplier: z.infer<typeof SupplierSchema>
@@ -157,13 +159,14 @@ export const updateSupplier = async (
   const supplierValidData = SupplierSchema.safeParse(supplier);
 
   if (!supplierValidData.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(supplierValidData.error.message),
-    };
-    return parseStringify(formResponse);
+      formResponse = {
+          responseType: "error",
+          message: "Please fill all the required fields",
+          error: new Error(supplierValidData.error.message),
+      };
+      return parseStringify(formResponse);
   }
+
   const location = await getCurrentLocation();
   const business = await getCurrentBusiness();
 
@@ -173,27 +176,28 @@ export const updateSupplier = async (
     business: business?.id,
   };
 
-  console.log("The payload to update supplier", payload);
-
-  await getAuthenticatedUser();
 
   try {
-    const apiClient = new ApiClient();
-    const supplierData = await apiClient.put(
-      `/api/suppliers/${location?.id}/${id}`,
-      payload
-    );
-    return parseStringify(supplierData);
+      const apiClient = new ApiClient();
+
+      const updateSupplierResponse = await apiClient.put(
+          `/api/suppliers/${location?.id}/${id}`, 
+          payload
+      );
+
+      console.log("Update Supplier Response", updateSupplierResponse);
   } catch (error) {
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+      console.error("Error updating supplier", error); 
+      formResponse = {
+          responseType: "error",
+          message:
+              "Something went wrong while processing your request, please try again",
+          error: error instanceof Error ? error : new Error(String(error)),
+      };
   }
+
   if (formResponse) {
-    return parseStringify(formResponse);
+      return parseStringify(formResponse);
   }
   revalidatePath("/suppliers");
   redirect("/suppliers");

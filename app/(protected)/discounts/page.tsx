@@ -3,29 +3,29 @@
 import {Button} from "@/components/ui/button";
 import Link from "next/link";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {searchCustomer} from "@/lib/actions/customer-actions";
-import {Customer} from "@/types/customer/type";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import {DataTable} from "@/components/tables/data-table";
-import {columns} from '@/components/tables/customer/column'
+import {columns} from '@/components/tables/discount/column'
+import { searchDiscount } from "@/lib/actions/discount-actions";
+import { Discount } from "@/types/discount/type";
 
 
-const breadCrumbItems = [{title:"Customers",link:"/customers"}];
+const breadCrumbItems = [{title:"Discounts",link:"/discounts"}];
  type ParamsProps ={
      searchParams:{
          [key:string]:string | undefined
      }
  };
- async function CustomersPage({searchParams}:ParamsProps) {
+ async function Page({searchParams}:ParamsProps) {
 
      const q = searchParams.search || "";
      const page = Number(searchParams.page) || 0;
      const pageLimit = Number(searchParams.limit);
 
-     const responseData = await searchCustomer(q,page,pageLimit);
+     const responseData = await searchDiscount(q,page,pageLimit);
 
-     const data:Customer[]=responseData.content;
+     const data:Discount[]=responseData.content;
      const total =responseData.totalElements;
      const pageCount = responseData.totalPages
 
@@ -37,8 +37,8 @@ const breadCrumbItems = [{title:"Customers",link:"/customers"}];
                 </div>
                 <div className={`flex items-center space-x-2`}>
                     <Button>
-                        <Link href={`/customers/new`}>
-                            Add Customer
+                        <Link href={`/discounts/new`}>
+                            Add Discount
                         </Link>
                     </Button>
                 </div>
@@ -47,13 +47,13 @@ const breadCrumbItems = [{title:"Customers",link:"/customers"}];
                 total > 0 || q != "" ? (
                     <Card x-chunk="data-table">
                         <CardHeader>
-                            <CardTitle>Customer</CardTitle>
-                            <CardDescription>Manage customer in your business location</CardDescription>
+                            <CardTitle>Discount</CardTitle>
+                            <CardDescription>Manage discount in your business location</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <DataTable columns={columns}
                                        data={data}
-                                       searchKey="firstName"
+                                       searchKey="name"
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
@@ -62,11 +62,11 @@ const breadCrumbItems = [{title:"Customers",link:"/customers"}];
                     </Card>
                 ):
                     (
-                        <NoItems newItemUrl={`/customers/new`} itemName={`customers`}/>
+                        <NoItems newItemUrl={`/discounts/new`} itemName={`discounts`}/>
                     )
             }
         </div>
     );
 }
 
-export default CustomersPage
+export default Page

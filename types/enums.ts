@@ -18,8 +18,7 @@ export enum subscriptionStatus {
     PAST_DUE="PAST_DUE",
 }
 
-export enum subscriptionStatus {
-    TRIAL = "TRIAL",
-    EXPIRED = "EXPIRED",
-    DUE="DUE",
+export enum discountType {
+    FIXED = "FIXED",
+    PERCENTAGE = "PERCENTAGE",
 }

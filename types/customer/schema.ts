@@ -17,9 +17,9 @@ export const CustomerSchema = object({
         .email("Please enter a valid email address")
         .optional(),
     phoneNumber: string({ required_error: "Phone number is required" })
-        // .refine(isValidPhoneNumber, {
-        //     message: "Invalid phone number",
-        // })
+        .refine(isValidPhoneNumber, {
+            message: "Invalid phone number",
+        })
         .optional(),
 
     gender: nativeEnum(Gender),

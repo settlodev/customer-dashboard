@@ -17,9 +17,11 @@ import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import {Customer} from "@/types/customer/type";
 import { deleteCustomer } from "@/lib/actions/customer-actions";
+import { Discount } from "@/types/discount/type";
+import { deleteDiscount } from "@/lib/actions/discount-actions";
 
 interface CellActionProps {
-    data: Customer;
+    data: Discount;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
@@ -29,11 +31,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const onDelete = async () => {
         try {
             if (data) {
-                await deleteCustomer(data.id);
+                await deleteDiscount(data.id);
                 toast({
                     variant: "default",
                     title: "Success",
-                    description: "Customer deleted successfully!",
+                    description: "Discount deleted successfully!",
                 });
             } else {
                 toast({
@@ -68,7 +70,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => router.push(`/customers/${data.id}`)}>
+                        <DropdownMenuItem onClick={() => router.push(`/discounts/${data.id}`)}>
                             <Edit className="mr-2 h-4 w-4" /> Update
                         </DropdownMenuItem>
                         {data.canDelete && (
@@ -84,7 +86,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             {data.canDelete && (
                 <DeleteModal
                     isOpen={isOpen}
-                    itemName={data.firstName}
+                    itemName={data.name}
                     onDelete={onDelete}
                     onOpenChange={onOpenChange}
                 />

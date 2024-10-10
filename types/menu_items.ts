@@ -74,6 +74,8 @@ export const menuItems=(args?: MenuItemArgType) => {
                     {"title": "Expenses", "link": "/expenses", "current": args?.isCurrentItem, "icon": "cart"},
                     {"title": "Tables & Spaces", "link": "/tables", "current": args?.isCurrentItem, "icon": "cart"},
                     {"title": "KDS", "link": "/kds", "current": args?.isCurrentItem, "icon": "cart"},
+                    {"title": "Locations", "link": "/locations", "current": args?.isCurrentItem, "icon": "cart"},
+                    {"title": "Settings", "link": "/settings", "current": args?.isCurrentItem, "icon": "cart"}
                 ]
         }
     ]

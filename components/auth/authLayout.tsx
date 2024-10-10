@@ -8,24 +8,8 @@ interface Props {
 export const AuthLayoutWrapper = ({ children }: Props) => {
     return (
         <div className='flex h-screen'>
-            <div className='flex-1 flex-col flex items-center justify-center p-6'>
-                <div className='md:hidden absolute left-0 right-0 bottom-0 top-0 z-0'>
-                    <Image
-                        className='w-full h-full'
-                        src='/images/login-bg.png'
-                        alt='gradient'
-                        width={100}
-                        height={100}
-                    />
-                </div>
-                {children}
-            </div>
 
-            <div className='hidden my-10 md:block'>
-                <Divider orientation='vertical'/>
-            </div>
-
-            <div className='hidden md:flex flex-1 relative  items-center justify-center p-6'>
+<div className='hidden md:flex flex-1 relative  items-center justify-center p-6'>
                 <div className='absolute left-0 right-0 bottom-0 top-0 z-0'>
                     <Image
                         className='w-full h-full'
@@ -42,7 +26,7 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                             Settlo App from Playstore and Appstore to use our POS in your android or iOS devices
                         </p>
 
-                        <div className='mt-4 flex gap-6'>
+                        <div className='mt-4 flex gap-6 items-center justify-center'>
                             <div className="flex flex-col items-center">
                                 <div>
                                     <Image src="/images/apple.svg" width={40} height={40} alt='Apple AppStore'/>
@@ -61,6 +45,25 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
 
                 </div>
             </div>
+          
+            <div className='hidden my-10 md:block'>
+                <Divider orientation='vertical'/>
+            </div>
+
+            <div className='flex-1 flex-col flex items-center justify-center p-6'>
+                <div className='md:hidden absolute left-0 right-0 bottom-0 top-0 z-0'>
+                    <Image
+                        className='w-full h-full'
+                        src='/images/login-bg.png'
+                        alt='gradient'
+                        width={100}
+                        height={100}
+                    />
+                </div>
+                {children}
+            </div>
+
+           
         </div>
     );
 }

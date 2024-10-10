@@ -11,34 +11,34 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Role} from "@/types/roles/type";
 import {ApiResponse} from "@/types/types";
-import {getRole} from "@/lib/actions/role-actions";
-import RoleForm from "@/components/forms/role_form";
 import { Expense } from "@/types/expense/type";
 import { getExpense } from "@/lib/actions/expense-actions";
 import ExpenseForm from "@/components/forms/expense_form";
+import { Department } from "@/types/department/type";
+import { getDepartment } from "@/lib/actions/department-actions";
+import DepartmentForm from "@/components/forms/department_form";
 
-export default async function ExpensesPage({params}: {
+export default async function DepartmentPage({params}: {
     params: { id: string };
 }) {
     const isNewItem = params.id === "new";
-    let item: ApiResponse<Expense> | null = null;
+    let item: ApiResponse<Department> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getExpense(params.id as UUID);
+            item = await getDepartment(params.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
             // Ignore redirect error
             if (isNotFoundError(error)) throw error;
 
-            throw new Error("Failed to load role data");
+            throw new Error("Failed to load department data");
         }
     }
 
     const breadcrumbItems = [
-        { title: "Expenses", link: "/expenses" },
+        { title: "Departments", link: "/departments" },
         {
             title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
             link: "",
@@ -53,24 +53,24 @@ export default async function ExpensesPage({params}: {
                 </div>
             </div>
 
-            <ExpenseCard isNewItem={isNewItem} item={item?.content[0]} />
+            <DepartmentCard isNewItem={isNewItem} item={item?.content[0]} />
         </div>
     );
 }
 
-const ExpenseCard = ({isNewItem, item}: {
+const DepartmentCard = ({isNewItem, item}: {
     isNewItem: boolean;
-    item: Expense | null | undefined;
+    item: Department | null | undefined;
 }) => (
     <Card>
         <CardHeader>
-            <CardTitle>{isNewItem ? "Add expense" : "Edit expense details"}</CardTitle>
+            <CardTitle>{isNewItem ? "Add department" : "Edit department details"}</CardTitle>
             <CardDescription>
-                {isNewItem ? "Add expense to your business" : "Edit expense details"}
+                {isNewItem ? "Add department to your business location" : "Edit department details"}
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <ExpenseForm item={item} />
+            <DepartmentForm item={item} />
         </CardContent>
     </Card>
 );

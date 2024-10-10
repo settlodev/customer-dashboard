@@ -18,10 +18,10 @@ export const RegisterSchema = object({
     email: string({ required_error: "Email is required" })
         .min(1, "Please enter a valid email address")
         .email("Please enter a valid email address"),
-    phoneNumber: string({ required_error: "Phone number is required" }),
-        // .refine(isValidPhoneNumber, {
-        //     message: "Invalid phone number",
-        // }),
+    phoneNumber: string({ required_error: "Phone number is required" })
+        .refine(isValidPhoneNumber, {
+            message: "Invalid phone number",
+        }),
     password: string({ required_error: "Password is required" }).min(
         6,
         "Please enter a valid password",

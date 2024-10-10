@@ -3,13 +3,13 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
-import { CellAction } from "@/components/tables/expense/cell-action";
-import { Expense } from "@/types/expense/type";
+import { CellAction } from "@/components/tables/setting/cell-action";
+import { StateColumn } from "@/components/tables/state-column";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { StateColumn } from "../state-column";
+import { LocationSettings } from "@/types/locationSettings/type";
 
-export const columns: ColumnDef<Expense>[] = [
+export const columns: ColumnDef<LocationSettings>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -39,19 +39,23 @@ export const columns: ColumnDef<Expense>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Expense Title
+          Location name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
   },
   {
-    accessorKey: "expenseCategory",
-    header: "Expense Category",
+    accessorKey: "phone",
+    header: "Phone",
   },
   {
-    id: "amount",
-    accessorKey: "amount",
+    accessorKey: "email",
+    header: "Email address",
+  },
+  {
+    id: "status",
+    accessorKey: "status",
     header: ({ column }) => {
       return (
         <Button
@@ -59,34 +63,14 @@ export const columns: ColumnDef<Expense>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Total Amount
+          Status
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
-   
-    enableHiding: false,
-  },
- 
-  {
-    id: "status",
-    accessorKey: "status",
-    header: ({ column }) => {
-        return (
-            <Button
-                className="text-left p-0"
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-                Status
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-        );
-    },
     cell: ({ row }) => <StateColumn state={row.original.status} />,
     enableHiding: false,
-},
- 
+  },
   {
     id: "actions",
     cell: ({ row }) => <CellAction data={row.original} />,

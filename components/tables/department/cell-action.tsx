@@ -13,13 +13,13 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Expense } from "@/types/expense/type";
 import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
-import { deleteExpense } from "@/lib/actions/expense-actions";
+import { deleteDepartment } from "@/lib/actions/department-actions";
+import { Department } from "@/types/department/type";
 
 interface CellActionProps {
-  data: Expense;
+  data: Department;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
@@ -29,11 +29,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const onDelete = async () => {
     try {
       if (data) {
-        await deleteExpense(data.id);
+        await deleteDepartment(data.id);
         toast({
           variant: "default",
           title: "Success",
-          description: "Expense record deleted successfully!",
+          description: "Department deleted successfully!",
         });
       } else {
         toast({
@@ -69,7 +69,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => router.push(`/expenses/${data.id}`)}
+              onClick={() => router.push(`/departments/${data.id}`)}
             >
               <Edit className="mr-2 h-4 w-4" /> Update
             </DropdownMenuItem>
