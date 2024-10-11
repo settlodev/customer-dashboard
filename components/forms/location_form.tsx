@@ -33,8 +33,8 @@ import {createLocation, updateLocation} from "@/lib/actions/location-actions";
 
 const LocationForm = ({ item }: { item: Location | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
-    const [response, setResponse] = useState<FormResponse | undefined>();
-    const [isActive, setIsActive] = useState(item ? item.status : true);
+    const [, setResponse] = useState<FormResponse | undefined>();
+    // const [isActive, setIsActive] = useState(item ? item.status : true);
 
     const form = useForm<z.infer<typeof LocationSchema>>({
         resolver: zodResolver(LocationSchema),

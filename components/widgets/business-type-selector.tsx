@@ -13,14 +13,10 @@ interface BusinessTypeSelectorProps {
     onBlur: () => void;
 }
 function BusinessTypeSelector({
-    label,
     placeholder,
-    isRequired,
     value,
     isDisabled,
-    description,
     onChange,
-    onBlur,
 }: BusinessTypeSelectorProps) {
 
     return (

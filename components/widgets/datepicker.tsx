@@ -16,9 +16,7 @@ interface DatePickerFieldProps {
 const DatePicker: React.FC<DatePickerFieldProps> = ({
 
   name,
-  label,
   selectedDate,
-  onDateChange,
   isPending,
 }) => {
   return (

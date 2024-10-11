@@ -43,13 +43,12 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             "There was an issue with your request, please try again later",
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
         description:
-          error.message ||
-          "There was an issue with your request, please try again later",
+        (error as Error).message ||"There was an issue with your request, please try again later",
       });
     } finally {
       onOpenChange();

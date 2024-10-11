@@ -6,10 +6,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -21,7 +20,7 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useState, useTransition } from "react";
-import { toast, useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
@@ -34,9 +33,9 @@ import { Department } from "@/types/department/type";
 
 function DepartmentForm({ item }: { item: Department | null | undefined }) {
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [, setResponse] = useState<FormResponse | undefined>();
+  const [error, ] = useState<string | undefined>("");
+  const [success, ] = useState<string | undefined>("");
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof DepartmentSchema>>({
@@ -45,12 +44,12 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
   });
 
   const onInvalid = useCallback(
-    (errors: any) => {
+    (errors: FieldErrors) => {
       console.log("Errors during form submission:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
-        description: errors.message
+        description:typeof errors.message === 'string' && errors.message
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });

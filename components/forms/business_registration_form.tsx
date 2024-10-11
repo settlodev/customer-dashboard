@@ -2,13 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, {
-  use,
   useCallback,
   useEffect,
   useState,
   useTransition,
 } from "react";
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import {
@@ -21,7 +20,6 @@ import {
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -35,7 +33,6 @@ import { useToast } from "@/hooks/use-toast";
 import { BusinessSchema } from "@/types/business/schema";
 import BusinessTypeSelector from "../widgets/business-type-selector";
 import { Button } from "../ui/button";
-import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -48,27 +45,14 @@ import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { fetchCountries } from "@/lib/actions/countries-actions";
 import { createBusiness } from "@/lib/actions/auth/business";
-import { getBusiness } from "@/lib/actions/business/get";
 import { Business } from "@/types/business/type";
-import { listBusinesses } from "@/lib/actions/business/list";
-import { UUID } from "crypto";
-import { auth } from "@/auth";
-import { useSession } from "next-auth/react";
-import { Session } from "next-auth";
-type ParamsProps = {
-    searchParams: {
-        [key: string]: string | undefined;
-    };
-};
 const BusinessRegistrationForm = () => {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
+  const [, setResponse] = useState<FormResponse | undefined>();
   const [countries, setCountries] = useState<Business[]>([]);
-  const [business, setBusiness] = useState([]);
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
-  const router = useRouter();
 
   
 
@@ -87,7 +71,6 @@ const BusinessRegistrationForm = () => {
 
 
 
-//   console.log("The session is:", businesses);
 
  
 
@@ -97,11 +80,11 @@ const BusinessRegistrationForm = () => {
   });
 
   const onInvalid = useCallback(
-    (errors: any) => {
+    (errors: FieldErrors) => {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: errors.message
+        description: typeof errors.message === 'string'
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
@@ -209,7 +192,7 @@ const BusinessRegistrationForm = () => {
                             <SelectContent>
                               {countries.length > 0
                                 ? countries.map(
-                                    (country: any, index: number) => (
+                                    (country: Business, index: number) => (
                                       <SelectItem
                                         key={index}
                                         value={country.id}

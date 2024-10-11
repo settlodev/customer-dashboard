@@ -15,8 +15,6 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
-import {Customer} from "@/types/customer/type";
-import { deleteCustomer } from "@/lib/actions/customer-actions";
 import { Discount } from "@/types/discount/type";
 import { deleteDiscount } from "@/lib/actions/discount-actions";
 
@@ -45,12 +43,12 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                         "There was an issue with your request, please try again later",
                 });
             }
-        } catch (error: any) {
+        } catch (error) {
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",
                 description:
-                    error.message ||
+                (error as Error).message ||
                     "There was an issue with your request, please try again later",
             });
         } finally {

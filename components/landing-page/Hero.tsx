@@ -11,7 +11,7 @@ import {UserIcon} from "lucide-react";
 import {deleteAuthCookie} from "@/lib/auth-utils";
 import {Session} from "next-auth";
 
-const Hero = ({session}: {session: Session}) => {
+const Hero = ({session}: {session: Session | null}) => {
     const doLogout=async () => {
         await deleteAuthCookie();
         window.location.reload();

@@ -1,13 +1,10 @@
-// "use client"
 import BusinessRegistrationForm from "@/components/forms/business_registration_form";
 import CreatedBusinessList from "./business_list";
 
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
-import { useState } from "react";
 
 
 export default async function BusinessRegistrationPage() {
-  // const [loading, setLoading] = useState(true);
   
   const responseData = await getBusinessDropDown();
 

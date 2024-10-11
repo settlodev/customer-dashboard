@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Separator } from "@/components/ui/separator";
@@ -19,7 +19,6 @@ import {
     FormField,
     FormItem, FormLabel,
     FormMessage,
-    FormError
 } from "@/components/ui/form";
 import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
 import {Staff, StaffSchema} from "@/types/staff";
@@ -35,7 +34,7 @@ import { useToast } from "@/hooks/use-toast"
 const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
-    const [response, setResponse] = useState<FormResponse | undefined>();
+    const [, setResponse] = useState<FormResponse | undefined>();
 
     const form = useForm<z.infer<typeof StaffSchema>>({
         resolver: zodResolver(StaffSchema),
@@ -45,11 +44,11 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     });
 
     const onInvalid = useCallback(
-        (errors: any) => {
+        (errors: FieldErrors) => {
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",
-                description: errors.message
+                description:typeof errors.message === 'string' && errors.message
                     ? errors.message
                     : "There was an issue submitting your form, please try later",
             });

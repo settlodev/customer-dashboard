@@ -7,7 +7,7 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { Location } from "@/types/location/type";
 import { subscriptionStatus } from "@/types/enums";
 import { useEffect } from "react";
-import { useToast } from "@/hooks/use-toast";
+import { useToast} from "@/hooks/use-toast";
 
 const CreatedBusinessLocationList = ({ locations }: { locations: Location[]}) => {
   const router = useRouter();
@@ -29,7 +29,7 @@ const CreatedBusinessLocationList = ({ locations }: { locations: Location[]}) =>
         router.push(`/dashboard?location=${locations[0].id}`);
       }
     }
-  }, [locations, router]);
+  }, [locations, router, toast]);
 
   const handleLocationClick = (location: Location) => {
     if (location.subscriptionStatus === subscriptionStatus.EXPIRED) {

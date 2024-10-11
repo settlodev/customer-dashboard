@@ -1,17 +1,7 @@
 import Link from "next/link";
 
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import NoItems from "@/components/layouts/no-items";
-import {columns} from "@/app/(protected)/business/columns";
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
@@ -42,7 +32,7 @@ export default async function BusinessPage(
     const breadcrumbItems = [
         { title: "Business", link: "/business" },
         {
-            title: isNewItem ? "New" : item?.name || "Edit",
+            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
             link: "",
         },
     ];

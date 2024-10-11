@@ -27,11 +27,11 @@ export const CompaniesDropdown = ({data}:{data: BusinessPropsType}) => {
       <DropdownTrigger className="cursor-pointer">
         <div className="flex items-center gap-2">
           <div className="p-1 rounded-full overflow-hidden bg-emerald-400 items-center justify-center flex">
-            <Image src={business.logo?business.logo:'/images/logo.png'} alt={'Logo'} width={30} height={30} />
+            <Image src={business?.logo?business.logo:'/images/logo.png'} alt={'Logo'} width={30} height={30} />
           </div>
           <div className="flex flex-col gap-4">
             <h3 className="text-l font-bold m-0 text-default-900 text-md -mb-4 whitespace-nowrap">
-              {business.name}
+              {business?.name}
             </h3>
             <span className="text-xs font-medium text-default-500">
               {currentLocation?currentLocation.name:''}
@@ -51,7 +51,7 @@ export const CompaniesDropdown = ({data}:{data: BusinessPropsType}) => {
                       key={i}
                       startContent={
                         <div className="p-1 rounded-full overflow-hidden bg-emerald-400 items-center justify-center flex">
-                          <Image src={business.logo ? business.logo : '/images/logo.png'} alt={'Logo'} width={30} height={30}/>
+                          <Image src={business?.logo ? business.logo : '/images/logo.png'} alt={'Logo'} width={30} height={30}/>
                         </div>
                       }
                       description={<span className="text-xs font-medium mt-0">{biz.region}</span>}

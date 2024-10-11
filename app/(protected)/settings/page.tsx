@@ -13,7 +13,7 @@ import LocationSettingsForm from "@/components/forms/location_settings_form";
 
 export default async function LocationSettingsPage() {
 
-    let item = await fectchLocationSettings();
+    const item = await fectchLocationSettings();
     const breadcrumbItems = [
         { title: "Settings", link: "/settings" },
         {

@@ -6,10 +6,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -21,15 +20,11 @@ import {
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useState, useTransition } from "react";
-import { CustomerSchema } from "@/types/customer/schema";
-import { createCustomer, updateCustomer } from "@/lib/actions/customer-actions";
-import { toast, useToast } from "@/hooks/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
-import GenderSelector from "@/components/widgets/gender-selector";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "../ui/switch";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { Supplier } from "@/types/supplier/type";
@@ -38,9 +33,9 @@ import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 
 function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [, setResponse] = useState<FormResponse | undefined>();
+  const [error, ] = useState<string | undefined>("");
+  const [success,] = useState<string | undefined>("");
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof SupplierSchema>>({
@@ -49,11 +44,11 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   });
 
   const onInvalid = useCallback(
-    (errors: any) => {
+    (errors: FieldErrors) => {
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
-        description: errors.message
+        description:typeof errors.message === 'string' && errors.message
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });

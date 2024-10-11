@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import {
@@ -33,7 +33,7 @@ import { Loader2Icon } from "lucide-react";
 
 const LocationAuthForm = () => {
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
+  const [, setResponse] = useState<FormResponse | undefined>();
 
 
   const form = useForm<z.infer<typeof LocationSchema>>({
@@ -42,16 +42,16 @@ const LocationAuthForm = () => {
   });
 
   const onInvalid = useCallback(
-    (errors: any) => {
+    (errors: FieldErrors) => {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: errors.message
+        description:typeof errors.message === 'string' 
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
     },
-    [toast]
+    []
   );
 
   const submitData = useCallback(
@@ -77,7 +77,7 @@ const LocationAuthForm = () => {
         });
       });
     },
-    [toast]
+    []
   );
 
   return (

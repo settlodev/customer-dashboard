@@ -59,7 +59,7 @@ export const createBusinessLocation = async (
         
                 cookies().set("authToken", JSON.stringify(authToken), { path: "/", httpOnly: true });
         
-                const updatedToken = cookies().get("authToken")?.value;
+                // const updatedToken = cookies().get("authToken")?.value;
 
                 success = true;
 
@@ -68,7 +68,7 @@ export const createBusinessLocation = async (
 
                     cookies().set("activeLocation", JSON.stringify({locationId:response}), { path: "/", httpOnly: true });
 
-                    const activeLocation = cookies().get("activeLocation")?.value;
+                    // const activeLocation = cookies().get("activeLocation")?.value;
                 }
         
             } else {

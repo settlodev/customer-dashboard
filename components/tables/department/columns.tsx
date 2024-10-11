@@ -4,10 +4,8 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
 import { CellAction } from "@/components/tables/department/cell-action";
-import { Expense } from "@/types/expense/type";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { BadgeColumn } from "@/components/tables/badge-column";
 import { Department } from "@/types/department/type";
 import { StateColumn } from "../state-column";
 

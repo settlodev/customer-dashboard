@@ -2,7 +2,7 @@
 import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormResponse } from "@/types/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useCallback,useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -16,7 +16,7 @@ import {
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { UpdatePasswordSchema } from "@/types/data-schemas";
-import { updatePassword, verifyToken } from "@/lib/actions/auth-actions";
+import { updatePassword} from "@/lib/actions/auth-actions";
 import {
   Card,
   CardContent,
@@ -64,7 +64,7 @@ function UpdatePasswordForm() {
               }, 5000); 
             }
           })
-          .catch((err: any) => {
+          .catch((err: Error) => {
             setError("An unexpected error occurred. Please try again.");
             console.error(err);
           });

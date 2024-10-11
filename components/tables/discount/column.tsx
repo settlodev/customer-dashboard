@@ -4,7 +4,6 @@ import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
-import {Customer} from "@/types/customer/type";
 import {CellAction} from "@/components/tables/discount/cell-action";
 import { Discount } from "@/types/discount/type";
 

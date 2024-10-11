@@ -70,7 +70,7 @@ export const getBusinessWithLocations = async (): Promise<BusinessWithLocationTy
     }
 };
 
-const getLocations = async (businessId: UUID): Promise<Location[]> => {
+export const getLocations = async (businessId: UUID): Promise<Location[]> => {
     const myEndpoints = endpoints({businessId: businessId});
     const apiClient = new ApiClient();
     const data = await apiClient.get(myEndpoints.locations.list.endpoint);

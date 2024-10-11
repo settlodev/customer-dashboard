@@ -14,14 +14,10 @@ interface GenderSelectorProps {
 }
 
 export default function GenderSelector({
-  label,
   placeholder,
-  isRequired,
   value,
   isDisabled,
-  description,
   onChange,
-  onBlur,
 }: GenderSelectorProps) {
   return (
       <Select value={value} onValueChange={onChange} disabled={isDisabled}>

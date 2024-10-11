@@ -41,7 +41,7 @@ function ResetPasswordForm() {
 
                     }
                 })
-                .catch((err: any) => {
+                .catch((err: Error) => {
                     setError("An unexpected error occurred. Please try again.");
                     console.error(err);
                 });
