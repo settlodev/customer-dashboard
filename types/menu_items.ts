@@ -23,7 +23,8 @@ export const menuItems=(args?: MenuItemArgType) => {
                 [
                     {"title": "Products", "link": "/products", "current": args?.isCurrentItem, "icon": "cart"},
                     {"title": "Categories", "link": "/categories", "current": args?.isCurrentItem, "icon": "cart"},
-                    {"title": "Suppliers", "link": "/suppliers", "current": args?.isCurrentItem, "icon": "cart"}
+                    {"title": "Suppliers", "link": "/suppliers", "current": args?.isCurrentItem, "icon": "cart"},
+                    {"title": "Brands", "link": "/brands", "current": args?.isCurrentItem, "icon": "cart"},
                 ]
         },
         {
