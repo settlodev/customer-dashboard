@@ -1,4 +1,5 @@
-import {boolean, object, string, number} from "zod";
+import {boolean, object, string, number, array} from "zod";
+import {VariantSchema} from "@/types/variant/schema";
 
 export const ProductSchema = object({
     name: string({ required_error: "Product name is required" }).min(3, "Product name is required"),
@@ -11,6 +12,7 @@ export const ProductSchema = object({
     color: string().optional(),
     status: boolean().optional(),
     sellOnline: boolean(),
+    variants: array(VariantSchema),
 
     variantName: string().optional(),
     price: number().min(0).optional(),

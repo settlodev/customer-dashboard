@@ -5,6 +5,7 @@ export declare interface MenuItemArgType {
 }
 export declare interface menuItemType {
     label: string,
+    icon: ReactNode,
     current: boolean | false,
     showSeparator: boolean | false,
     items: menuItem[],
