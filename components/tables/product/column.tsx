@@ -5,10 +5,10 @@ import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
 import {CellAction} from "@/components/tables/discount/cell-action";
-import { Discount } from "@/types/discount/type";
+import {Product} from "@/types/product/type";
 
 
-export const columns: ColumnDef<Discount>[] = [
+export const columns: ColumnDef<Product>[] = [
     {
         id: "select",
         header: ({ table }) => (
@@ -36,16 +36,15 @@ export const columns: ColumnDef<Discount>[] = [
                 <Button
                     className="text-left p-0"
                     variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
                     Discount Name
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
     },
-    {
-        accessorKey: "discountCode",
+    /*{
+        accessorKey: "categoryName",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -54,27 +53,34 @@ export const columns: ColumnDef<Discount>[] = [
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Discount Code
+                    Category
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            );
+        },
+    },*/
+    {
+        accessorKey: "departmentName",
+        enableHiding: false,
+        header: ({ column }) => {
+            return (
+                <Button
+                    className="text-left p-0"
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
+                    Department
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
     },
     {
-        accessorKey: "discountType",
-        header: "Discount Type",
+        accessorKey: "sku",
+        header: "Sku",
     },
     {
-        accessorKey: "validFrom",
-        header: "Valid From",
-    },
-    {
-        accessorKey: "validTo",
-        header: "Valid To",
-    },
-    {
-        accessorKey: "usageLimit",
-        header: "Usage Limit",
+        accessorKey: "brandName",
+        header: "brandName",
     },
     {
         id: "status",

@@ -15,8 +15,11 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
+import {Customer} from "@/types/customer/type";
+import { deleteCustomer } from "@/lib/actions/customer-actions";
+import { Discount } from "@/types/discount/type";
+import { deleteDiscount } from "@/lib/actions/discount-actions";
 import {Product} from "@/types/product/type";
-import {deleteProduct} from "@/lib/actions/product-actions";
 
 interface CellActionProps {
     data: Product;
@@ -29,7 +32,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const onDelete = async () => {
         try {
             if (data) {
-                await deleteProduct(data.id);
+                await deleteDiscount(data.id);
                 toast({
                     variant: "default",
                     title: "Success",
@@ -68,7 +71,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => router.push(`/products/${data.id}`)}>
+                        <DropdownMenuItem onClick={() => router.push(`/discounts/${data.id}`)}>
                             <Edit className="mr-2 h-4 w-4" /> Update
                         </DropdownMenuItem>
                         {data.canDelete && (
