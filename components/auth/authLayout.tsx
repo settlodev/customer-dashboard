@@ -7,9 +7,8 @@ interface Props {
 
 export const AuthLayoutWrapper = ({ children }: Props) => {
     return (
-        <div className='flex h-screen'>
-
-<div className='hidden md:flex flex-1 relative  items-center justify-center p-6'>
+        <div className='flex h-screen container mx-auto'>
+            <div className='hidden md:flex flex-1 relative  items-center justify-center p-6'>
                 <div className='absolute left-0 right-0 bottom-0 top-0 z-0'>
                     <Image
                         className='w-full h-full'
@@ -22,8 +21,8 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 <div className='z-10'>
                     <h1 className='font-bold text-[45px]'>Welcome to Settlo</h1>
                     <div className='font-light text-slate-400 mt-4'>
-                        <p className="text-medium">Login with your credentials or register to continue using the Dashboard, Download
-                            Settlo App from Playstore and Appstore to use our POS in your android or iOS devices
+                        <p className="text-medium">Login with your credentials or register to continue using the
+                            Dashboard, Download Settlo App from Playstore and Appstore to use our POS in your android or iOS devices
                         </p>
 
                         <div className='mt-4 flex gap-6 items-center justify-center'>
@@ -45,9 +44,9 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
 
                 </div>
             </div>
-          
-            <div className='hidden my-10 md:block'>
-                <Divider orientation='vertical'/>
+
+            <div className='my-10 md:block'>
+                <Divider orientation='vertical' className="bg-gray-100 w-0.5" />
             </div>
 
             <div className='flex-1 flex-col flex items-center justify-center p-6'>
@@ -62,8 +61,6 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 </div>
                 {children}
             </div>
-
-           
         </div>
-    );
+    )
 }
