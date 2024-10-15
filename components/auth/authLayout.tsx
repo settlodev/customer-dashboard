@@ -25,7 +25,7 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                             Dashboard, Download Settlo App from Playstore and Appstore to use our POS in your android or iOS devices
                         </p>
 
-                        <div className='mt-4 flex gap-6 items-center justify-center'>
+                        <div className='mt-4 flex gap-6'>
                             <div className="flex flex-col items-center">
                                 <div>
                                     <Image src="/images/apple.svg" width={40} height={40} alt='Apple AppStore'/>
@@ -45,7 +45,7 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 </div>
             </div>
 
-            <div className='my-10 md:block'>
+            <div className='md:block'>
                 <Divider orientation='vertical' className="bg-gray-100 w-0.5" />
             </div>
 
