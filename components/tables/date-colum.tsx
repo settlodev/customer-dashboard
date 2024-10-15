@@ -13,7 +13,7 @@ export const DateTimeColumn = ({
     return <></>;
   }
 
-  const formattedDate = formatDateTime(value);
+const formattedDate = formatDateTime(value);
   let displayDate: string;
 
   switch (type) {

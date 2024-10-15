@@ -13,14 +13,10 @@ interface DiscountTypeSelectorProps {
     onBlur: () => void;
 }
 function DiscountTypeSelector({
-    label,
     placeholder,
-    isRequired,
     value,
     isDisabled,
-    description,
     onChange,
-    onBlur,
 }: DiscountTypeSelectorProps) {
 
     return (

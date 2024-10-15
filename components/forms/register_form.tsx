@@ -9,7 +9,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useEffect, useState, useTransition } from "react";
 import { RegisterSchema } from "@/types/data-schemas";
 import { useForm } from "react-hook-form";
@@ -39,6 +38,7 @@ import { FormSuccess } from "../widgets/form-success";
 import { register } from "@/lib/actions/auth-actions";
 import { Loader2Icon } from "lucide-react";
 import { fetchCountries } from "@/lib/actions/countries-actions";
+import { Country } from "@/types/country/type";
 function RegisterForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>("");
@@ -191,7 +191,7 @@ function RegisterForm() {
                           </SelectTrigger>
                           <SelectContent>
                             {countries.length > 0
-                              ? countries.map((country: any, index: number) => (
+                              ? countries.map((country: Country, index: number) => (
                                   <SelectItem key={index} value={country.id}>
                                     {country.name}{" "}
                                     {/* Assuming 'name' is the country name */}

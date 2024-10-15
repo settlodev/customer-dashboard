@@ -47,6 +47,7 @@ export const login = async (
     await deleteAuthToken();
 
     try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const result = await signIn("credentials", {
             email: validatedData.data.email,
             password: validatedData.data.password,
@@ -116,6 +117,8 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
     const apiClient = new ApiClient();
 
     try {
+
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const tokenResponse = await apiClient.get(
             `/api/auth/verify-token/${token}`,
         );
@@ -162,16 +165,19 @@ export const validateEmail = async (userId: string): Promise<FormResponse> => {
 
 export const generateVerificationToken = async (
     email: string,
-): Promise<any> => {
+): Promise<FormResponse> => {
     if (!email) throw new Error("Email address is required");
 
     const apiClient = new ApiClient();
 
     try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const tokenResponse = await apiClient.put(
             `/api/auth/generate-verification-token/${email}`,
             {},
         );
+
+        return parseStringify({ tokenResponse });
 
         //send verification email with token
     } catch (error) {
@@ -195,7 +201,7 @@ export const register = async (
 
     try {    
         const apiClient = new ApiClient();
-        const result = await apiClient.post("/api/auth/register", validatedData.data);
+        await apiClient.post("/api/auth/register", validatedData.data);
         return parseStringify({
             responseType: "success",
             message: "Registration successful, redirecting to login...",
@@ -228,9 +234,9 @@ export const resetPassword = async (
     try {
         const apiClient = new ApiClient();
         const result = await apiClient.post("/api/auth/reset-password", validateEmail.data);
-        let token = result
-        if(result) {
-            await sendPasswordResetEmail(token);
+
+        if(result && typeof result === 'string') {
+            await sendPasswordResetEmail(result);
         }
         return parseStringify({
             responseType: "success",

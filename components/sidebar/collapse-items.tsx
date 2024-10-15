@@ -1,8 +1,6 @@
 "use client";
-import React, {useState} from "react";
 import { ChevronDownIcon } from "../icons/sidebar/chevron-down-icon";
 import { Accordion, AccordionItem } from "@nextui-org/react";
-import {PressEvent} from "@react-types/shared";
 
 interface Props {
   icon: React.ReactNode;
@@ -12,7 +10,7 @@ interface Props {
 }
 
 export const CollapseItems = ({ icon, items, title, isOpen=false }: Props) => {
-  const [open, setOpen] = useState(false);
+  // const [open, setOpen] = useState(false);
 
   console.log("isOpen is:", isOpen)
 

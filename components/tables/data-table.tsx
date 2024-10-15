@@ -50,7 +50,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {DoubleArrowLeftIcon, DoubleArrowRightIcon} from "@radix-ui/react-icons";
+import { DoubleArrowLeftIcon, DoubleArrowRightIcon } from "@radix-ui/react-icons";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -85,11 +85,10 @@ export function DataTable<TData, TValue>({
   const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
-  // Create query string
   const createQueryString = React.useCallback(
     (params: Record<string, string | number | null>) => {
       const newSearchParams = new URLSearchParams(searchParams?.toString());
-
+  
       for (const [key, value] of Object.entries(params)) {
         if (value === null) {
           newSearchParams.delete(key);
@@ -97,10 +96,10 @@ export function DataTable<TData, TValue>({
           newSearchParams.set(key, String(value));
         }
       }
-
+  
       return newSearchParams.toString();
     },
-    [searchParams],
+    [searchParams], 
   );
 
   // Handle server-side pagination
@@ -109,6 +108,7 @@ export function DataTable<TData, TValue>({
       pageIndex: fallbackPage - 1,
       pageSize: fallbackPerPage,
     });
+
 
   React.useEffect(() => {
     router.push(
@@ -121,6 +121,8 @@ export function DataTable<TData, TValue>({
       },
     );
   }, [pageIndex, pageSize, createQueryString, pathname, router]);
+
+
 
   const table = useReactTable({
     data,
@@ -170,7 +172,7 @@ export function DataTable<TData, TValue>({
     }
 
     setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, [searchValue]);
+  }, [searchValue, createQueryString, router, pathname]);
 
   return (
     <motion.div>
@@ -241,9 +243,9 @@ export function DataTable<TData, TValue>({
                       {header.isPlaceholder
                         ? null
                         : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                          header.column.columnDef.header,
+                          header.getContext(),
+                        )}
                     </TableHead>
                   );
                 })}

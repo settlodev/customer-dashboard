@@ -1,5 +1,5 @@
 "use server"
-import { getAuthenticatedUser, getAuthToken } from "@/lib/auth-utils";
+import { getAuthenticatedUser} from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { BusinessSchema } from "@/types/business/schema";
 import { AuthToken, FormResponse } from "@/types/types";
@@ -8,8 +8,11 @@ import ApiClient from "@/lib/settlo-api-client";
 import { redirect } from "next/navigation";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { cookies } from "next/headers";
+import { User } from "next-auth";
 
-export const createBusiness = async(business:z.infer<typeof BusinessSchema>):Promise<FormResponse | void> => {
+export const createBusiness = async(
+    business:z.infer<typeof BusinessSchema>
+):Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
     let success: boolean = false;
     const businessValidData = BusinessSchema.safeParse(business)
@@ -24,8 +27,8 @@ export const createBusiness = async(business:z.infer<typeof BusinessSchema>):Pro
     }
     try {
          const apiClient = new ApiClient();
-        const AuthenticatedUser= await getAuthenticatedUser();
-        const userId= AuthenticatedUser?.id
+        const AuthenticatedUser= await getAuthenticatedUser() as User;
+        const userId= AuthenticatedUser.id
         const user=userId
 
         const payload = {
@@ -33,25 +36,25 @@ export const createBusiness = async(business:z.infer<typeof BusinessSchema>):Pro
             user
         }
 
-        let response =await apiClient.post(
+        const response =await apiClient.post(
             `/api/businesses/${userId}/create`,
             payload
         );
 
         console.log("Response from API after creating business ", response);
 
-
+        
         if (typeof response) {
-
+           
             const token = cookies().get("authToken")?.value;
             if (token) {
                 const authToken = JSON.parse(token) as AuthToken;
-
+        
                 authToken.businessComplete = true;
-
+        
                 cookies().set("authToken", JSON.stringify(authToken), { path: "/", httpOnly: true });
-
-                const updatedToken = cookies().get("authToken")?.value;
+        
+                // const updatedToken = cookies().get("authToken")?.value;
 
                 success = true;
 
@@ -65,7 +68,7 @@ export const createBusiness = async(business:z.infer<typeof BusinessSchema>):Pro
                     const activeBusiness = cookies().get("activeBusiness")?.value;
                     console.log("Active business is:", activeBusiness);
                 }
-
+        
             } else {
                 console.log("No token found");
             }
@@ -73,7 +76,11 @@ export const createBusiness = async(business:z.infer<typeof BusinessSchema>):Pro
         } else {
             console.log("Unexpected response:", response);
         }
+        
+
         console.log("business created")
+       
+       
     }
     catch (error){
         if(isRedirectError(error)) throw error;
@@ -91,3 +98,6 @@ export const createBusiness = async(business:z.infer<typeof BusinessSchema>):Pro
         redirect("/business-location");
     }
 }
+
+
+

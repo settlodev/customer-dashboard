@@ -1,17 +1,8 @@
 "use client";
 
-import {Edit, MoreHorizontal, RefreshCcwIcon, Trash} from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
@@ -47,12 +38,12 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
               "There was an issue with your request, please try again later",
         });
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
         description:
-            //error.message ||
+            (error as Error).message ||
             "There was an issue with your request, please try again later",
       });
     } finally {
@@ -81,7 +72,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}`)} className="cursor-pointer">
               <EyeIcon color={'#384B70'}/>
             </a>
-            <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}/edit`)} className="cursor-pointer">
+            <a style={{flex: 1}} onClick={() => router.push(`/business/${data.id}`)} className="cursor-pointer">
               <EditIcon color={'#384B70'}/>
             </a>
             {data.canDelete ?

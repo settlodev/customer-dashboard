@@ -8,7 +8,7 @@ import * as z from "zod";
 
 import { Staff } from "@/types/staff";
 import { ApiResponse, FormResponse } from "@/types/types";
-import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
+import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { StaffSchema } from "@/types/staff";
@@ -165,8 +165,6 @@ export const updateStaff = async (
 
 export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
     const apiClient = new ApiClient();
-    const authToken = await getAuthToken();
-
     const query = {
         filters: [
             {
@@ -194,7 +192,6 @@ export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
 export const deleteStaff = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Staff ID is required to perform this request");
     await getAuthenticatedUser();
-    const authToken = await getAuthToken();
 
     try {
         const apiClient = new ApiClient();

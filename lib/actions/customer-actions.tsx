@@ -3,20 +3,17 @@
 import {z} from "zod";
 import {CustomerSchema} from "@/types/customer/schema";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
+import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
-import {id} from "postcss-selector-parser";
 import { getCurrentLocation } from "./business/get-current-business";
 
 export const fectchAllCustomers = async () : Promise<Customer[]> => {
     await  getAuthenticatedUser();
-
-    const authToken = await getAuthToken();
 
     try {
         const apiClient = new ApiClient();

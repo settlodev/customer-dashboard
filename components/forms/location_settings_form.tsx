@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import {
@@ -34,7 +34,7 @@ import { toast } from "@/hooks/use-toast";
 
 const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefined }) => {
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
+  const [, setResponse] = useState<FormResponse | undefined>();
 
   const form = useForm<z.infer<typeof LocationSettingsSchema>>({
     resolver: zodResolver(LocationSettingsSchema),
@@ -49,17 +49,17 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
 
 
   const onInvalid = useCallback(
-    (errors: any) => {
+    (errors: FieldErrors) => {
       console.error("Form validation errors:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description: errors.message
+        description:typeof errors.message === 'string'
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
     },
-    [toast]
+    []
   );
 
   const submitData = (values: z.infer<typeof LocationSettingsSchema>) => {
@@ -121,6 +121,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                         <Input
                           {...field}
                           required
+                          // type="password"
                           disabled={isPending}
                           value={field.value }
                           placeholder="Enter system passcode"

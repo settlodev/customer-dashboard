@@ -3,7 +3,7 @@ import { useSidebarContext } from "../layouts/layout-context";
 import { StyledBurgerButton } from "./navbar.styles";
 
 export const BurguerButton = () => {
-  const { collapsed, setCollapsed } = useSidebarContext();
+  const {  setCollapsed } = useSidebarContext();
 
   return (
     <div

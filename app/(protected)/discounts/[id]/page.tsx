@@ -1,12 +1,9 @@
 import {ApiResponse} from "@/types/types";
-import {Customer} from "@/types/customer/type";
-import {getCustomer} from "@/lib/actions/customer-actions";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
 import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import CustomerForm from "@/components/forms/customer_form";
 import { Discount } from "@/types/discount/type";
 import { getDiscount } from "@/lib/actions/discount-actions";
 import DiscountForm from "@/components/forms/discount_form";

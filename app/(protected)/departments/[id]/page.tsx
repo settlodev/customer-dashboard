@@ -12,9 +12,6 @@ import {
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {ApiResponse} from "@/types/types";
-import { Expense } from "@/types/expense/type";
-import { getExpense } from "@/lib/actions/expense-actions";
-import ExpenseForm from "@/components/forms/expense_form";
 import { Department } from "@/types/department/type";
 import { getDepartment } from "@/lib/actions/department-actions";
 import DepartmentForm from "@/components/forms/department_form";

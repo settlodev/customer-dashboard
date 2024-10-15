@@ -1,7 +1,7 @@
 "use server";
 
 import { Supplier } from "@/types/supplier/type";
-import { getAuthenticatedUser, getAuthToken } from "../auth-utils";
+import { getAuthenticatedUser} from "../auth-utils";
 import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { ApiResponse, FormResponse } from "@/types/types";

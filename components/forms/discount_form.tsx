@@ -6,10 +6,9 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import { FieldErrors, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -44,9 +43,9 @@ import { formatNumber, formatDateForZod } from "@/lib/utils";
 
 function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [isPending, startTransition] = useTransition();
-  const [response, setResponse] = useState<FormResponse | undefined>();
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [, setResponse] = useState<FormResponse | undefined>();
+  const [error, ] = useState<string | undefined>("");
+  const [success,] = useState<string | undefined>("");
   const [validFrom, setValidFrom] = useState<Date | undefined>(item?.validFrom ? new Date(item.validFrom) : undefined); 
   const [validTo, setValidTo] = useState<Date | undefined>(item?.validTo ? new Date(item.validTo) : undefined); 
   const { toast } = useToast();
@@ -57,11 +56,11 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   });
 
   const onInvalid = useCallback(
-    (errors: any) => {
+    (errors: FieldErrors) => {
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
-        description: errors.message
+        description:typeof errors.message === 'string' && errors.message
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
