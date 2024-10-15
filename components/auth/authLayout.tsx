@@ -8,7 +8,7 @@ interface Props {
 export const AuthLayoutWrapper = ({ children }: Props) => {
     return (
         <div className='flex h-screen container mx-auto'>
-            <div className='hidden md:flex flex-1 relative  items-center justify-center p-6'>
+            <div className='hidden md:flex flex-1 relative items-center justify-center p-6'>
                 <div className='absolute left-0 right-0 bottom-0 top-0 z-0'>
                     <Image
                         className='w-full h-full'
