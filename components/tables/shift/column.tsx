@@ -65,7 +65,7 @@ export const columns: ColumnDef<Shift>[] = [
         header: "End Time",
     },
     {
-        accessorKey: "department",
+        accessorKey: "departmentName",
         header: "Department",
     },
    

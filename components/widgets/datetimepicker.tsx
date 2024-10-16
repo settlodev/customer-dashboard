@@ -7,7 +7,12 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
+
 type handleTimeChangeType = "hour" | "minutes";
+type FieldType = {
+  value: string | undefined;
+  onChange: (value: string) => void;
+};
 
 const DateTimePicker = ({
   field,
@@ -16,7 +21,7 @@ const DateTimePicker = ({
   handleTimeChange,
   onDateSelect,
 }: {
-  field: any; // Replace 'any' with the appropriate type
+  field: FieldType;
   date: Date | undefined;
   setDate: (date: Date | undefined) => void;
   handleTimeChange: (type: handleTimeChangeType, value: string) => void;

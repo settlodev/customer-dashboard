@@ -45,8 +45,7 @@ import {
 } from "../ui/select";
 import { PhoneInput } from "../ui/phone-input";
 import { toast } from "@/hooks/use-toast";
-// import PhoneInput from "react-phone-number-input";
-// import 'react-phone-number-input/style.css';
+
 
 const ReservationForm = ({
   item,
@@ -92,7 +91,7 @@ const ReservationForm = ({
         description: typeof errors.message === 'string' ? errors.message : "There was an issue submitting your form, please try later",
       });
     },
-    [toast]
+    []
   );
 
   const submitData = (values: z.infer<typeof ReservationSchema>) => {
@@ -117,7 +116,7 @@ const ReservationForm = ({
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
     const currentDate = new Date();
-    let newDate = new Date(currentDate);
+    const newDate = new Date(currentDate);
     if (type === "hour") {
       newDate.setHours(Number(value));
     } else if (type === "minutes") {

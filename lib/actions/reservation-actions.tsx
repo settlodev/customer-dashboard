@@ -1,14 +1,12 @@
 "use server";
 
 import {z} from "zod";
-import {CustomerSchema} from "@/types/customer/schema";
 import ApiClient from "@/lib/settlo-api-client";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
-import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { Reservation } from "@/types/reservation/type";

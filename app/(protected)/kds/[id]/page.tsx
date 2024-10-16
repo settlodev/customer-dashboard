@@ -4,29 +4,29 @@ import {notFound} from "next/navigation";
 import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import { Space } from "@/types/space/type";
-import { getSpace } from "@/lib/actions/space-actions";
-import SpaceForm from "@/components/forms/space_form";
+import { KDS } from "@/types/kds/type";
+import { getKDS } from "@/lib/actions/kds-actions";
+import KDSForm from "@/components/forms/kds_form";
 
 
-export default async function SpacePage({params}:{params:{id:string}}){
+export default async function KDSPage({params}:{params:{id:string}}){
 
     const isNewItem = params.id === "new";
-    let item: ApiResponse<Space> | null = null;
+    let item: ApiResponse<KDS> | null = null;
 
     if(!isNewItem){
         try{
-            item = await  getSpace(params.id as UUID);
+            item = await  getKDS(params.id as UUID);
             if(item.totalElements == 0) notFound();
         }
         catch (error){
             if(isNotFoundError(error)) throw error;
 
-            throw new Error("Failed to load space details");
+            throw new Error("Failed to load KDS details");
         }
     }
 
-    const breadCrumbItems=[{title:"Spaces",link:"/spaces"},
+    const breadCrumbItems=[{title:"KDS",link:"/kds"},
         {title: isNewItem ? "New":item?.content[0].name || "Edit",link:""}]
 
     return(
@@ -36,26 +36,26 @@ export default async function SpacePage({params}:{params:{id:string}}){
                     <BreadcrumbsNav items={breadCrumbItems}/>
                 </div>
             </div>
-            <SpaceCard isNewItem={isNewItem} item={item?.content[0]}/>
+            <KDSCard isNewItem={isNewItem} item={item?.content[0]}/>
         </div>
     )
 }
 
-const SpaceCard =({isNewItem,item}:{
+const KDSCard =({isNewItem,item}:{
     isNewItem:boolean,
-    item: Space | null | undefined
+    item: KDS | null | undefined
 }) =>(
     <Card>
        <CardHeader>
            <CardTitle>
-               {isNewItem ? "Add Table / Space" : "Edit table / space details"}
+               {isNewItem ? "Add KDS" : "Edit KDS details"}
            </CardTitle>
            <CardDescription>
-               {isNewItem ? "Add Table / Space to your business": "Edit table / space details"}
+               {isNewItem ? "Add KDS to your business": "Edit KDS details"}
            </CardDescription>
        </CardHeader>
         <CardContent>
-            <SpaceForm item={item}/>
+            <KDSForm item={item}/>
         </CardContent>
     </Card>
 )

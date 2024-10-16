@@ -3,13 +3,13 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
-import { CellAction } from "@/components/tables/space/cell-action";
+import { CellAction } from "@/components/tables/kds/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
-import { Space } from "@/types/space/type";
+import { KDS } from "@/types/kds/type";
 
-export const columns: ColumnDef<Space>[] = [
+export const columns: ColumnDef<KDS>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -39,7 +39,7 @@ export const columns: ColumnDef<Space>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Space / Table name
+          KDS Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
@@ -47,12 +47,12 @@ export const columns: ColumnDef<Space>[] = [
   },
 
   {
-    accessorKey: "totalOrders",
-    header: "Total Orders",
+    accessorKey: "departmentName",
+    header: "Department",
   },
   {
-    accessorKey: "currentOrders",
-    header: "Current Orders",
+    accessorKey: "activeOrders",
+    header: "Active Orders",
   },
   {
     id: "status",
