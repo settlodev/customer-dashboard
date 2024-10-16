@@ -10,19 +10,20 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { getCategory } from "@/lib/actions/category-actions";
 import {ApiResponse} from "@/types/types";
-import {Category} from "@/types/category/type";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import CategoryForm from "@/components/forms/category_form";
 
-export default async function CategoryPage({params}: { params: { id: string }; }) {
+import {Business} from "@/types/business/type";
+import UpdateBusinessForm from "@/components/forms/update_business_form";
+import {getBusiness} from "@/lib/actions/business-actions";
+
+export default async function Page({params}: { params: { id: string }; }) {
     const isNewItem = params.id === "new";
-    let item: ApiResponse<Category> | null = null;
+    let item: ApiResponse<Business> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getCategory(params.id as UUID);
+            item = await getBusiness(params.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
             // Ignore redirect error
@@ -53,7 +54,7 @@ export default async function CategoryPage({params}: { params: { id: string }; }
     );
 }
 
-const BranchCard = ({isNewItem, item}: { isNewItem: boolean; item: Category | null | undefined; }) => (
+const BranchCard = ({isNewItem, item}: { isNewItem: boolean; item: Business | null | undefined; }) => (
     <Card>
         <CardHeader>
             <CardTitle>{isNewItem ? "Create category" : "Edit category"}</CardTitle>
@@ -64,7 +65,7 @@ const BranchCard = ({isNewItem, item}: { isNewItem: boolean; item: Category | nu
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <CategoryForm item={item} />
+            <UpdateBusinessForm item={item} />
         </CardContent>
     </Card>
 );

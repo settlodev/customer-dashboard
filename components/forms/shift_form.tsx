@@ -159,7 +159,7 @@ function ShiftForm({ item }: { item: Shift | null | undefined }) {
                     </FormItem>
                   )}
                 />
-            
+
             <FormField
                     control={form.control}
                     name="startTime"
@@ -204,8 +204,8 @@ function ShiftForm({ item }: { item: Shift | null | undefined }) {
                       </FormItem>
                     )}
                   />
-             
-              
+
+
               </div>
             </CardContent>
           </Card>

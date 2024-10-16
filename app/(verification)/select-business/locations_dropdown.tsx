@@ -19,7 +19,7 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
                                        width={50} height={50}/>
                             </div>
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-gray-900 truncate dark:text-white">
+                                <p className="text-md font-bold text-gray-900 truncate dark:text-white">
                                     {myLocation.name}
                                 </p>
                                 <p className="text-sm text-gray-500 truncate dark:text-gray-400">
@@ -29,15 +29,13 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
                             <div
                                 className="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
                                 <button type="button"
-                                        className="flex gap-2 rounded-full bg-emerald-500 pr-2 pl-3 py-1 text-white font-medium text-sm"
-                                        onClick={() => setLocation(myLocation)}>
-                                    Select <ChevronRightIcon/>
-                                </button>
+                                        className="flex gap-2 rounded-full bg-emerald-500 pr-4 pl-4 py-2 text-white font-medium text-sm"
+                                        onClick={() => setLocation(myLocation)}>SELECT</button>
                             </div>
                         </div>
                     </li>
                 })
-                : <>You have not added any locations for this business</>
+                : <p className="p-4 text-red-600">You have not added any locations for this business</p>
             }
         </>
     )

@@ -9,10 +9,10 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import { Reservation } from "@/types/reservation/type";
-import { ReservationSchema } from "@/types/reservation/schema";
+import {Product} from "@/types/product/type";
+import {ProductSchema} from "@/types/product/schema";
 
-export const fectchAllReservations = async () : Promise<Reservation[]> => {
+export const fectchAllProducts = async () : Promise<Product[]> => {
     await  getAuthenticatedUser();
 
     try {
@@ -20,24 +20,23 @@ export const fectchAllReservations = async () : Promise<Reservation[]> => {
 
         const location = await getCurrentLocation();
 
-        const reservationData = await  apiClient.get(
-            `/api/reservations/${location?.id}`,
+        const data = await  apiClient.get(
+            `/api/products/${location?.id}`,
         );
 
-        return parseStringify(reservationData);
+        return parseStringify(data);
 
     }
     catch (error){
         throw error;
     }
 }
-export const searchReservation = async (
+export const searchProducts = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Reservation>> =>{
+): Promise<ApiResponse<Product>> =>{
     await getAuthenticatedUser();
-
 
     try {
         const apiClient = new ApiClient();
@@ -60,31 +59,30 @@ export const searchReservation = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-
-        const reservationData = await  apiClient.post(
-            `/api/reservations/${location?.id}`,
+        const data = await  apiClient.post(
+            `/api/products/${location?.id}`,
             query
         );
-        return parseStringify(reservationData);
+        return parseStringify(data);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  createReservation= async (
-    reservation: z.infer<typeof ReservationSchema>
+export const  createProduct= async (
+    product: z.infer<typeof ProductSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const VavlidReservationData= ReservationSchema.safeParse(reservation)
+    const validData= ProductSchema.safeParse(product)
 
-    if (!VavlidReservationData.success){
+    if (!validData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(VavlidReservationData.error.message)
+            error:new Error(validData.error.message)
       }
       return parseStringify(formResponse)
     }
@@ -93,7 +91,7 @@ export const  createReservation= async (
     const business = await getCurrentBusiness();
 
     const payload = {
-        ...VavlidReservationData.data,
+        ...validData.data,
         location: location?.id,
         business: business?.id
     }
@@ -102,12 +100,12 @@ export const  createReservation= async (
 
 
         await apiClient.post(
-            `/api/reservations/${location?.id}/create`,
+            `/api/products/${location?.id}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error creating reservation",error)
+        console.error("Error creating product",error)
         formResponse = {
             responseType: "error",
             message:
@@ -118,11 +116,11 @@ export const  createReservation= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/reservations");
-    redirect("/reservations")
+    revalidatePath("/products");
+    redirect("/products")
 }
 
-export const getReservation= async (id:UUID) : Promise<ApiResponse<Reservation>> => {
+export const getProduct= async (id:UUID) : Promise<ApiResponse<Product>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -138,55 +136,50 @@ export const getReservation= async (id:UUID) : Promise<ApiResponse<Reservation>>
         size: 1,
     }
     const location = await getCurrentLocation();
-    const reservationResponse = await apiClient.post(
-        `/api/reservations/${location?.id}`,
+    const response = await apiClient.post(
+        `/api/products/${location?.id}`,
         query,
     );
 
-    return parseStringify(reservationResponse)
+    return parseStringify(response)
 }
 
 
-
-export const updateReservation = async (
+export const updateProduct = async (
     id: UUID,
-    reservation: z.infer<typeof ReservationSchema>
+    product: z.infer<typeof ProductSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const ValidReservationData = ReservationSchema.safeParse(reservation);
+    const validData = ProductSchema.safeParse(product);
 
-    if (!ValidReservationData.success) {
+    if (!validData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(ValidReservationData.error.message),
+            error: new Error(validData.error.message),
         };
         return parseStringify(formResponse);
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
-
     const payload = {
-        ...ValidReservationData.data,
+        ...validData.data,
         location: location?.id,
-        business: business?.id
     };
 
     try {
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/reservations/${location?.id}/${id}`,
+            `/api/products/${location?.id}/${id}`,
             payload
         );
 
     } catch (error) {
-        console.error("Error updating reservation", error);
+        console.error("Error updating product", error);
         formResponse = {
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
@@ -194,12 +187,12 @@ export const updateReservation = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/reservations");
-    redirect("/reservations");
+    revalidatePath("/products");
+    redirect("/products");
 };
 
-export const deleteReservation = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Reservation ID is required to perform this request");
+export const deleteProduct = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Product ID is required to perform this request");
 
     await getAuthenticatedUser();
 
@@ -209,9 +202,9 @@ export const deleteReservation = async (id: UUID): Promise<void> => {
     const location = await getCurrentLocation();
 
     await apiClient.delete(
-        `/api/reservations/${location?.id}/${id}`,
+        `/api/products/${location?.id}/${id}`,
     );
-    revalidatePath("/reservations");
+    revalidatePath("/products");
 
    }
    catch (error){
