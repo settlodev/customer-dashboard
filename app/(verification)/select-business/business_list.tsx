@@ -14,9 +14,13 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
     const [business, setBusiness] = useState<Business|null>(null);
 
     useEffect(()=>{
-        if(businesses.length === 1){
-            setBusiness(businesses[0]);
+        async function getData(){
+            if(businesses.length === 1){
+                setBusiness(businesses[0]);
+                await refreshBusiness(businesses[0]);
+            }
         }
+        getData();
     }, [businesses]);
 
     if (businesses.length === 0) {
