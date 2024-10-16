@@ -59,6 +59,7 @@ export const menuItems=(args?: MenuItemArgType) => {
             "items":
                 [
                     {"title": "Users", "link": "/users", "current": args?.isCurrentItem, "icon": "cart"},
+                    {"title": "Shifts", "link": "/shifts", "current": args?.isCurrentItem, "icon": "cart"},
                     {"title": "Roles", "link": "/roles", "current": args?.isCurrentItem, "icon": "cart"}
                 ]
         },
