@@ -15,7 +15,6 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Input, InputProps } from "@/components/ui/input";
 import {
   Popover,
   PopoverContent,
@@ -24,6 +23,8 @@ import {
 
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "./scroll-area";
+import {Input, InputProps} from "@nextui-org/input";
+import {E164Number} from "libphonenumber-js";
 
 type PhoneInputProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -52,7 +53,7 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
            *
            * @param {E164Number | undefined} value - The entered value
            */
-          onChange={(value) => onChange?.(value || "")}
+          onChange={(value) => onChange?.(value as  E164Number)}
           {...props}
         />
       );
