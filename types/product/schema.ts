@@ -11,18 +11,6 @@ export const ProductSchema = object({
     description: string().optional(),
     color: string().optional(),
     status: boolean().optional(),
-    sellOnline: boolean(),
-    variants: array(VariantSchema),
-
-    variantName: string().optional(),
-    price: number().min(0).optional(),
-    cost: number().min(0).optional(),
-    quantity: number().min(0).optional(),
-    variantSku: string().optional(),
-    variantDescription: string().optional(),
-    variantImage: string().optional(),
-    variantStatus: boolean().optional(),
-    variantColor: string().optional(),
-    taxIncluded: boolean().optional(),
-    taxAmount: number().optional()
+    sellOnline: boolean().optional(),
+    variants: array(VariantSchema)
 });
