@@ -10,8 +10,8 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 const CreatedBusinessList = ({ businesses }: { businesses: Business[]}) => {
 
   const router = useRouter();
-
-  if (businesses.length > 1) {
+    console.log("businesses", businesses)
+  if (businesses.length > 0) {
     //router.push(`/business-location?business=${businesses[0].id}`);
     router.push(`/select-business`);
     return null; //preventing the table

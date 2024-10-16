@@ -14,6 +14,8 @@ export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
   const [visibleIndex, setVisibleIndex] = useState<number>(0);
   const myMenuItems = menuItems();
 
+  console.log("data is:", data);
+
   const getIcon=(iconName: string)=>{
       const size:number = 18;
       //const color:string = '#7CF5FF';
