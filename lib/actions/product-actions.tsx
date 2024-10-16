@@ -95,10 +95,10 @@ export const  createProduct= async (
         location: location?.id,
         business: business?.id
     }
+    console.log("payload:", payload);
+
     try {
         const apiClient = new ApiClient();
-
-
         await apiClient.post(
             `/api/products/${location?.id}/create`,
             payload
@@ -108,8 +108,7 @@ export const  createProduct= async (
         console.error("Error creating product",error)
         formResponse = {
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }

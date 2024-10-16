@@ -12,5 +12,6 @@ export const ProductSchema = object({
     color: string().optional(),
     status: boolean().optional(),
     sellOnline: boolean().optional(),
+    slug: string().optional(),
     variants: array(VariantSchema)
 });
