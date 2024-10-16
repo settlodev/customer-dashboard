@@ -66,7 +66,7 @@ export const createBusiness = async(
                     cookies().set("activeBusiness", JSON.stringify({Business:response}), { path: "/", httpOnly: true });
 
                     const activeBusiness = cookies().get("activeBusiness")?.value;
-                    console.log("Active business is:", activeBusiness);
+                    // console.log("Active business is:", activeBusiness);
                 }
         
             } else {

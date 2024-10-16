@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import { searchSpaces } from "@/lib/actions/space-actions";
-import { columns } from "@/components/tables/space/columns";
+import { columns } from "@/components/tables/kds/columns";
+import { searchKDS } from "@/lib/actions/kds-actions";
 
-const breadcrumbItems = [{ title: "Tables & Spaces", link: "/spaces" }];
+const breadcrumbItems = [{ title: "KDS", link: "/kds" }];
 
 type ParamsProps = {
     searchParams: {
@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await searchSpaces(q, page, pageLimit);
+    const responseData = await searchKDS(q, page, pageLimit);
 
     const data = responseData.content;
     const total = responseData.totalElements;
@@ -42,7 +42,7 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/spaces/new`}>Add Space</Link>
+                        <Link key="add-space" href={`/kds/new`}>Add KDS</Link>
                     </Button>
                 </div>
             </div>
@@ -50,8 +50,8 @@ export default async function Page({ searchParams }: ParamsProps) {
             {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Tables & Spaces</CardTitle>
-                        <CardDescription>Manage tables or spaces in your business location</CardDescription>
+                        <CardTitle>KDS</CardTitle>
+                        <CardDescription>Manage KDS in your business location</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -65,7 +65,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`table or space`} newItemUrl={`/spaces/new`} />
+                <NoItems itemName={`KDS`} newItemUrl={`/kds/new`} />
             )}
         </div>
     );

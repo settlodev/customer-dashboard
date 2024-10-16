@@ -20,8 +20,8 @@ export function formatNumber(value: number): string {
 }
 
 export const formatDateForZod = (date: Date | undefined): string => {
-  if (!date) return "";
-  return format(date, "yyyy-MM-dd'T'HH:mm:ss'Z'");
+  if (!date) return ""; 
+  return format(date, "yyyy-MM-dd'T'HH:mm:ss'Z'"); 
 }
 
 export const formatDateTime = (date: Date | string | undefined): { dateTime: string; dateDay: string; timeOnly: string; dateOnly: string } => {
@@ -33,9 +33,9 @@ export const formatDateTime = (date: Date | string | undefined): { dateTime: str
     return { dateTime: "Invalid date", dateDay: "Invalid date", timeOnly: "Invalid date", dateOnly: "Invalid date" };
   }
 
-  const formattedDate = format(dateValue, "yyyy-MM-dd");
-  const formattedTime = format(dateValue, "HH:mm:ss");
-  const formattedDateOnly = format(dateValue, "yyyy-MM-dd");
+  const formattedDate = format(dateValue, "yyyy-MM-dd"); 
+  const formattedTime = format(dateValue, "HH:mm:ss"); 
+  const formattedDateOnly = format(dateValue, "yyyy-MM-dd"); 
 
   return {
     dateTime: `${formattedDate} ${formattedTime}`,
@@ -44,3 +44,24 @@ export const formatDateTime = (date: Date | string | undefined): { dateTime: str
     dateOnly: formattedDateOnly,
   };
 }
+
+// export const formatDateTime = (date: Date | string | undefined): { dateTime: string; dateDay: string; timeOnly: string; dateOnly: string } => {
+//   if (!date) return { dateTime: "", dateDay: "", timeOnly: "", dateOnly: "" };
+
+//   const dateValue = typeof date === "string" ? new Date(date) : date;
+
+//   if (isNaN(dateValue.getTime())) {
+//     return { dateTime: "Invalid date", dateDay: "Invalid date", timeOnly: "Invalid date", dateOnly: "Invalid date" };
+//   }
+
+//   const formattedDate = format(dateValue, "yyyy-MM-dd"); 
+//   const formattedTime = format(dateValue, "HH:mm:ss"); 
+//   const formattedDateOnly = format(dateValue, "yyyy-MM-dd"); 
+
+//   return {
+//     dateTime: `${formattedDate} ${formattedTime}`,
+//     dateDay: formattedDate,
+//     timeOnly: formattedTime,
+//     dateOnly: formattedDateOnly,
+//   };
+// }

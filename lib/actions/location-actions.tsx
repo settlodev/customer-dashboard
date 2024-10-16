@@ -86,6 +86,8 @@ export const createLocation = async (
 
     const validatedData = LocationSchema.safeParse(location);
 
+    console.log("Validation result:", validatedData);
+
     if (!validatedData.success) {
         formResponse = {
             responseType: "error",

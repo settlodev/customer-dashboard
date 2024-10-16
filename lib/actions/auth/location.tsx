@@ -27,11 +27,10 @@ export const createBusinessLocation = async (
         const apiClient = new ApiClient();
         
         const activeBusiness = cookies().get("activeBusiness")?.value;
-        console.log("Active business is:", activeBusiness);
         const business = JSON.parse(activeBusiness as string);
-        console.log("Business is:", business);
-        const businessId= business?.businessId ;
-        // const businessId= "89ee541d-9ae1-4d18-a478-93a73de54d87";
+        // console.log("Business which is active is:", business);
+        const businessId= business.Business.id;
+        // console.log("Business id to be passed to create location:", businessId);
 
         const payload = {
             ...businessLocationValidData.data,
@@ -39,7 +38,7 @@ export const createBusinessLocation = async (
             
         }
 
-        console.log(" The payload sub",payload)
+        // console.log(" The payload sub",payload)
 
        const response = await apiClient.post(
             `/api/locations/${businessId}/create`,

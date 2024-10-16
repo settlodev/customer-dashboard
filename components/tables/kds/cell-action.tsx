@@ -14,12 +14,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
-import { Space } from "@/types/space/type";
 import { toast } from "@/hooks/use-toast";
-import { deleteSpace } from "@/lib/actions/space-actions";
+import { deleteKDS } from "@/lib/actions/kds-actions";
+import { KDS } from "@/types/kds/type";
 
 interface CellActionProps {
-  data: Space;
+  data: KDS;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
@@ -29,7 +29,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const onDelete = async () => {
     try {
       if (data) {
-        await deleteSpace(data.id);
+        await deleteKDS(data.id);
         toast({
           variant: "default",
           title: "Success",
@@ -47,8 +47,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description:(error as Error).message ||"There was an issue with your request, please try again later",
-
+        description:
+        (error as Error).message ||"There was an issue with your request, please try again later",
       });
     } finally {
       onOpenChange();
@@ -67,7 +67,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => router.push(`/spaces/${data.id}`)}>
+            <DropdownMenuItem onClick={() => router.push(`/kds/${data.id}`)}>
               <Edit className="mr-2 h-4 w-4" /> Update
             </DropdownMenuItem>
             {data.canDelete && (
