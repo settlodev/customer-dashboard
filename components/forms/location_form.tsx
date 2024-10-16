@@ -1,8 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import React, { useCallback, useState, useTransition } from "react";
+import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import {
@@ -30,6 +30,9 @@ import { LocationSchema } from "@/types/location/schema";
 import { Loader2Icon } from "lucide-react";
 import {Location} from "@/types/location/type";
 import {createLocation, updateLocation} from "@/lib/actions/location-actions";
+import { toast } from "@/hooks/use-toast";
+import { PhoneInput } from "../ui/phone-input";
+import { createBusinessLocation } from "@/lib/actions/auth/location";
 
 const LocationForm = ({ item }: { item: Location | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
@@ -41,6 +44,17 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
         defaultValues: item ? item : { status: true },
     });
 
+    const onInvalid = useCallback(
+      (errors: FieldErrors) => {
+          console.log("Errors during form submission:", errors);
+          toast({
+              variant: "destructive",
+              title: "Uh oh! something went wrong",
+              description: typeof errors.message === 'string' ? errors.message : "There was an issue submitting your form, please try later",
+          });
+      },
+      [toast],
+  );
     const submitData = (values: z.infer<typeof LocationSchema>) => {
         setResponse(undefined);
 
@@ -50,7 +64,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                     if (data) setResponse(data);
                 });
             } else {
-                createLocation(values).then((data) => {
+                createBusinessLocation(values).then((data) => {
                     if (data) setResponse(data);
                 });
             }
@@ -68,7 +82,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
       <CardContent>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submitData)}>
+          <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
 
             <div className="grid gap-2">
             <FormField
@@ -95,14 +109,14 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                     control={form.control}
                     name="phone"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col items-start">
                         <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input
+                        <FormControl >
+                         <PhoneInput
                             {...field}
                             disabled={isPending}
                             placeholder="Enter business location phone number"
-                          />
+                            />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
