@@ -16,7 +16,7 @@ const DateTimePicker = ({
   handleTimeChange,
   onDateSelect,
 }: {
-  field: any; // Replace 'any' with the appropriate type
+  field: any;
   date: Date | undefined;
   setDate: (date: Date | undefined) => void;
   handleTimeChange: (type: handleTimeChangeType, value: string) => void;

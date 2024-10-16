@@ -1,14 +1,12 @@
 "use server";
 
 import {z} from "zod";
-import {CustomerSchema} from "@/types/customer/schema";
 import ApiClient from "@/lib/settlo-api-client";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
-import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { Reservation } from "@/types/reservation/type";
@@ -25,7 +23,7 @@ export const fectchAllReservations = async () : Promise<Reservation[]> => {
         const reservationData = await  apiClient.get(
             `/api/reservations/${location?.id}`,
         );
-       
+
         return parseStringify(reservationData);
 
     }
@@ -101,7 +99,7 @@ export const  createReservation= async (
     }
     try {
         const apiClient = new ApiClient();
-      
+
 
         await apiClient.post(
             `/api/reservations/${location?.id}/create`,
@@ -144,7 +142,7 @@ export const getReservation= async (id:UUID) : Promise<ApiResponse<Reservation>>
         `/api/reservations/${location?.id}`,
         query,
     );
-    
+
     return parseStringify(reservationResponse)
 }
 
@@ -179,12 +177,12 @@ export const updateReservation = async (
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/reservations/${location?.id}/${id}`, 
+            `/api/reservations/${location?.id}/${id}`,
             payload
         );
 
     } catch (error) {
-        console.error("Error updating reservation", error); 
+        console.error("Error updating reservation", error);
         formResponse = {
             responseType: "error",
             message:
@@ -209,12 +207,12 @@ export const deleteReservation = async (id: UUID): Promise<void> => {
     const apiClient = new ApiClient();
 
     const location = await getCurrentLocation();
-   
+
     await apiClient.delete(
         `/api/reservations/${location?.id}/${id}`,
     );
     revalidatePath("/reservations");
-    
+
    }
    catch (error){
        throw error

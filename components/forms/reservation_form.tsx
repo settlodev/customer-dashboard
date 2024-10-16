@@ -44,27 +44,26 @@ import {
   SelectValue,
 } from "../ui/select";
 import { PhoneInput } from "../ui/phone-input";
-import { toast } from "@/hooks/use-toast";
-// import PhoneInput from "react-phone-number-input";
-// import 'react-phone-number-input/style.css';
+import{useToast} from "@/hooks/use-toast";
 
 const ReservationForm = ({
   item,
 }: {
   item: Reservation | null | undefined;
 }) => {
-  const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
-  const [date, setDate] = useState<Date | undefined>(
-    item?.date ? new Date(item.date) : undefined
-  );
-  const [startDate, setStartDate] = useState<Date | undefined>(
-    item?.startDate ? new Date(item.startDate) : undefined
-  );
-  const [endDate, setEndDate] = useState<Date | undefined>(
-    item?.endDate ? new Date(item.endDate) : undefined
-  );
-  const [customers, setCustomers] = useState<Customer[]>([]);
+    const [isPending, startTransition] = useTransition();
+    const [, setResponse] = useState<FormResponse | undefined>();
+    const [date, setDate] = useState<Date | undefined>(
+        item?.date ? new Date(item.date) : undefined
+    );
+    const [startDate, setStartDate] = useState<Date | undefined>(
+        item?.startDate ? new Date(item.startDate) : undefined
+    );
+    const [endDate, setEndDate] = useState<Date | undefined>(
+        item?.endDate ? new Date(item.endDate) : undefined
+    );
+    const [customers, setCustomers] = useState<Customer[]>([]);
+    const { toast } = useToast();
 
   useEffect(() => {
     const getCustomers = async () => {
@@ -78,46 +77,42 @@ const ReservationForm = ({
     getCustomers();
   }, []);
 
-  const form = useForm<z.infer<typeof ReservationSchema>>({
-    resolver: zodResolver(ReservationSchema),
-    defaultValues: item ? item : { status: true },
-  });
-
-  const onInvalid = useCallback(
-    (errors: FieldErrors) => {
-      console.log("Errors during form submission:", errors);
-      toast({
-        variant: "destructive",
-        title: "Uh oh! something went wrong",
-        description: typeof errors.message === 'string' ? errors.message : "There was an issue submitting your form, please try later",
-      });
-    },
-    [toast]
-  );
-
-  const submitData = (values: z.infer<typeof ReservationSchema>) => {
-
-    console.log("Submitting data:", values);
-
-    setResponse(undefined);
-
-    
-    startTransition(() => {
-      if (item) {
-        updateReservation(item.id, values).then((data) => {
-          if (data) setResponse(data);
-        });
-      } else {
-        createReservation(values).then((data) => {
-          if (data) setResponse(data);
-        });
-      }
+    const form = useForm<z.infer<typeof ReservationSchema>>({
+        resolver: zodResolver(ReservationSchema),
+        defaultValues: item ? item : { status: true },
     });
-  };
+
+    const onInvalid = useCallback(
+        (errors: FieldErrors) => {
+            toast({
+                variant: "destructive",
+                title: "Uh oh! something went wrong",
+                description: typeof errors.message === 'string' ? errors.message : "There was an issue submitting your form, please try later",
+            });
+        },
+        [toast],
+    );
+
+    const submitData = (values: z.infer<typeof ReservationSchema>) => {
+
+        setResponse(undefined);
+
+        startTransition(() => {
+          if (item) {
+            updateReservation(item.id, values).then((data) => {
+              if (data) setResponse(data);
+            });
+          } else {
+            createReservation(values).then((data) => {
+              if (data) setResponse(data);
+            });
+          }
+        });
+    };
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
     const currentDate = new Date();
-    let newDate = new Date(currentDate);
+    const newDate = new Date(currentDate);
     if (type === "hour") {
       newDate.setHours(Number(value));
     } else if (type === "minutes") {
@@ -126,7 +121,6 @@ const ReservationForm = ({
   };
 
   const handleDateSelect = (date: Date) => {
-    console.log("selected date:", date);
     setStartDate(date);
   };
 
@@ -279,7 +273,7 @@ const ReservationForm = ({
                             const value = e.target.value;
                             field.onChange(value ? Number(value) : 0);
                           }}
-                          value={field.value || ''} 
+                          value={field.value || ''}
                         />
                       </FormControl>
                       <FormMessage />
