@@ -69,8 +69,8 @@ function LoginForm() {
   }, []);
 
   return (
-      <Card className="mx-auto max-w-sm">
-          <div className="pt-3 border-b-1 pb-3 pl-3">
+      <Card className="mx-auto max-w-md w-[500px]">
+          {/*<div className="pt-3 border-b-1 pb-3 pl-3">
               <Link href="/">
                   <Image
                       src="/images/new_logo.svg"
@@ -79,14 +79,14 @@ function LoginForm() {
                       alt="Settlo"
                   />
               </Link>
-          </div>
-          <CardHeader>
-              <CardTitle className="text-2xl">Login</CardTitle>
+          </div>*/}
+          <CardHeader className="border-b-1 mb-4 px-8">
+              <CardTitle className="text-[32px] font-bold mb-2">Welcome back</CardTitle>
               <CardDescription>
                   Enter your email or phone login to your account
               </CardDescription>
           </CardHeader>
-          <CardContent className="pb-2">
+          <CardContent className="pb-4 px-8">
               <FormError message={error}/>
               <FormSuccess message={success}/>
 
@@ -138,7 +138,7 @@ function LoginForm() {
                   </Link>
               </div>
           </CardContent>
-          <div className="font-light text-slate-400 mt-4 text-sm text-center border-t-1 py-3">
+          <div className="font-light text-slate-400 mt-4 text-sm text-center border-t-1 py-6">
               <Link href="/register">Don&apos;t have an account? <span className="font-bold text-emerald-500">Register here</span></Link>
           </div>
       </Card>
