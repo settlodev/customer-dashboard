@@ -1,4 +1,4 @@
-import {boolean, object, string, number, array} from "zod";
+import {boolean, object, string, array} from "zod";
 import {VariantSchema} from "@/types/variant/schema";
 
 export const ProductSchema = object({

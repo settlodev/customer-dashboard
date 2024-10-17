@@ -40,7 +40,6 @@ import ProductCategorySelector from "@/components/widgets/product-category-selec
 import ProductDepartmentSelector from "@/components/widgets/product-department-selector";
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import {VariantSchema} from "@/types/variant/schema";
-import {register} from "@/lib/actions/auth-actions";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -49,14 +48,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     const [success, setSuccess] = useState<string | undefined>("");
 
     const [variants, setVariants] = useState<FormVariantItem[]>([]);
-    const [variantName, setName] = useState<string>('');
-    const [variantPrice, setPrice] = useState<number>(0);
-    const [variantCost, setCost] = useState<number>(0);
-    const [variantQty, setQty] = useState<number>(0);
-    const [variantSku, setSku] = useState<string>("");
-    const [variantImage, setImage] = useState<string>("");
-    const [variantColor, setColor] = useState<string>("#000000");
-    const [variantDesc, setDesc] = useState<string>("");
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [brands, setBrands] = useState<ProductBrand[]>([]);
@@ -116,30 +107,162 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     };
 
     const saveVariantItem = (values: z.infer<typeof VariantSchema>) => {
-        startTransition(() => {
-            /*const variantItem = {
-                name: variantName,
-                price: variantPrice,
-                cost: variantCost,
-                quantity: variantQty,
-                sku: variantSku,
-                description: variantDesc,
-                image: variantImage,
-                color: variantColor
-            }*/
-
-            const mVariants = [values, ...variants];
-            setVariants(mVariants);
-        });
-
-        console.log("values: ", values);
-        return false;
+        setVariants([values, ...variants]);
     }
 
     const removeVariant = (index: number) => {
         const mVariants = [...variants];
         mVariants[index] = null;
         setVariants(_.compact(mVariants));
+    }
+
+    const renderVariantFields=()=>{
+        console.log("variants", variants);
+        const items = [];
+        /*if(variants.length > 0) {
+            for (let i = 0; i <= variants.length; i++) {
+                console.log("Variants loop: ", variants);
+            }
+        }*/
+
+        if(variants.length > 0) {
+            for(let i=0; i < variants.length; i++) {
+                items.push(<div className="hidden">
+                    <FormField
+                        control={form.control}
+                        name={`variants.${i}.name`}
+                        defaultValue={variants[i].name}
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Name</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name={`variants.${i}.price`}
+                        defaultValue={variants[i].price}
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Price</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name={`variants.${i}.cost`}
+                        defaultValue={variants[i].cost}
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Price</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name={`variants.${i}.quantity`}
+                        defaultValue={variants[i].quantity}
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Price</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name={`variants.${i}.sku`}
+                        defaultValue={variants[i].sku}
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Price</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name={`variants.${i}.description`}
+                        defaultValue={variants[i].description}
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel>Price</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                </div>)
+            }
+            /*for(let i=0; i < variants.length; i++) {
+                items.push(<div key={i}>
+                    <Input
+                        name={`variants.${i}.name`}
+                        defaultValue={variants[i].name}
+                    />
+                    <Input
+                        name={`variants.${i}.price`}
+                        defaultValue={`${variants[i].price}`}
+                    />
+                    <Input
+                        name={`variants.${i}.cost`}
+                        defaultValue={`${variants[i].cost}`}
+                    />
+                    <Input
+                        name={`variants.${i}.quantity`}
+                        defaultValue={`${variants[i].quantity}`}
+                    />
+                    <Input
+                        name={`variants.${i}.sku`}
+                        defaultValue={`${variants[i].sku}`}
+                    />
+                    <Input
+                        name={`variants.${i}.description`}
+                        defaultValue={`${variants[i].description}`}
+                    />
+                </div>)
+            }*/
+        }
+        return items;
+
     }
     return (
 
@@ -178,24 +301,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                 </FormItem>
                                             )}
                                         />
-                                        <FormField
-                                            control={form.control}
-                                            name="slug"
-                                            render={({field}) => (
-                                                <FormItem>
-                                                    <FormLabel>Product Slug</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Enter product slug"
-                                                            {...field}
-                                                            disabled={isPending}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage/>
-                                                </FormItem>
-                                            )}
-                                        />
-
                                         <FormField
                                             control={form.control}
                                             name="description"
@@ -284,114 +389,40 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                         />
                                     </div>
 
-                                    {variants.length > 0 && variants.map((variant, index) => {
-                                        console.log("variants item:", variant);
-                                        return <CardContent key={index}>
-                                            <FormField
-                                                control={form.control}
-                                                name={`variants.${index}.name`}
-                                                defaultValue={variant.name}
-                                                render={({field}) => (
-                                                    <FormItem>
-                                                        <FormLabel>Variant Name</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage/>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name={`variants.${index}.price`}
-                                                defaultValue={variant.price}
-                                                render={({field}) => (
-                                                    <FormItem>
-                                                        <FormLabel>Price</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage/>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name={`variants.${index}.cost`}
-                                                defaultValue={variant.cost}
-                                                render={({field}) => (
-                                                    <FormItem>
-                                                        <FormLabel>Cost</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage/>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name={`variants.${index}.quantity`}
-                                                defaultValue={variant.quantity}
-                                                render={({field}) => (
-                                                    <FormItem>
-                                                        <FormLabel>Quantity</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage/>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name={`variants.${index}.sku`}
-                                                defaultValue={variant.sku}
-                                                render={({field}) => (
-                                                    <FormItem>
-                                                        <FormLabel>SKU</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage/>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                            <FormField
-                                                control={form.control}
-                                                name={`variants.${index}.description`}
-                                                defaultValue={variant.description}
-                                                render={({field}) => (
-                                                    <FormItem>
-                                                        <FormLabel>Description</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage/>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </CardContent>
-                                    })}
                                 </CardContent>
+
+                                {/* TODO: Leave below line alone */}
+
+                                {renderVariantFields()}
+
+                                {variants.length > 0 ?
+                                    <div className="border-t-1 border-t-gray-100 p-5">
+                                        <h3 className="font-bold pb-2">Variants</h3>
+                                        <div className="border-emerald-500 border-0 rounded-md pt-2 pb-2 pl-0 pr-0">
+                                            {variants.length > 0 ?
+                                                <>
+                                                    {variants.map((variant: FormVariantItem, index) => {
+                                                        return <div
+                                                            className="flex border-1 border-emerald-200 mt-0 items-center pt-0 pb-0 pl-0 mb-1"
+                                                            key={index}>
+                                                            <p onClick={() => removeVariant(index)}
+                                                               className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4">
+                                                                <span>{index + 1}</span></p>
+                                                            <div className="flex-1 pt-1 pb-1">
+                                                                <p className="text-md font-medium">{variant.name}</p>
+                                                                <p className="text-xs font-medium">PRICE: {variant.price} | COST: {variant.price} | QTY: {variant.quantity}</p>
+                                                            </div>
+                                                            <p onClick={() => removeVariant(index)}
+                                                               className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer">
+                                                                <span>Remove</span></p>
+                                                        </div>
+                                                    })}
+                                                </> :
+                                                <p>No variants added</p>
+                                            }
+                                        </div>
+                                    </div>
+                                    : <></>}
                             </Card>
 
                             <div className="flex h-5 items-center space-x-4 mt-4">
@@ -419,26 +450,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                         Add variants to your products
                                     </CardDescription>
                                 </CardHeader>
-                                {variants.length > 0 ?
-                                    <div className="ml-5 mr-6">
-                                        <h3 className="font-bold pb-2">Variants</h3>
-                                        <div className="border-emerald-500 border-1 rounded-md pt-2 pb-2 pl-4 pr-4">
-                                            {variants.length > 0 ?
-                                                <>
-                                                    {variants.map((variant: FormVariantItem, index) => {
-                                                        return <div className="flex border-b-1 border-b-emerald-200"
-                                                                    key={index}>
-                                                            <p className="flex-1 text-sm font-bold">{index + 1}. {variant.name}</p>
-                                                            <p onClick={() => removeVariant(index)}
-                                                               className="text-white self-end px-3 rounded-xl m-1 border-1 bg-red-600 font-bold">X</p>
-                                                        </div>
-                                                    })}
-                                                </> :
-                                                <p>No variants added</p>
-                                            }
-                                        </div>
-                                    </div>
-                                : <></>}
 
                                 <CardContent>
                                     <FormError message={error} />
