@@ -19,8 +19,7 @@ export const ReservationSchema = object({
     phone: string({ required_error: "Phone number is required" }).refine(isValidPhoneNumber, {
         message: "Invalid phone number",
     }),
-    product: string({ required_error: "Product is required" }),
+    product: string({ message: "Room is required" }).uuid( "Please select a valid room"),
     customer: string({}).optional(),
     status: boolean().optional(),
-    // totalPrice:preprocess((val)=>(val===null?"":Number(val)),number().optional())
 })

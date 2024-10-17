@@ -33,7 +33,6 @@ import {
   updateReservation,
 } from "@/lib/actions/reservation-actions";
 import DateTimePicker from "../widgets/datetimepicker";
-import DatePicker from "../widgets/datepicker";
 import { fectchAllCustomers } from "@/lib/actions/customer-actions";
 import { Customer } from "@/types/customer/type";
 import {
@@ -45,6 +44,8 @@ import {
 } from "../ui/select";
 import { PhoneInput } from "../ui/phone-input";
 import{useToast} from "@/hooks/use-toast";
+import { Product } from "@/types/product/type";
+import { fectchAllProducts } from "@/lib/actions/product-actions";
 
 const ReservationForm = ({
   item,
@@ -53,7 +54,7 @@ const ReservationForm = ({
 }) => {
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
-    const [date, setDate] = useState<Date | undefined>(
+    const [reservationDate, setReservationDate] = useState<Date | undefined>(
         item?.date ? new Date(item.date) : undefined
     );
     const [startDate, setStartDate] = useState<Date | undefined>(
@@ -63,19 +64,26 @@ const ReservationForm = ({
         item?.endDate ? new Date(item.endDate) : undefined
     );
     const [customers, setCustomers] = useState<Customer[]>([]);
+    const [rooms, setRooms] = useState<Product[]>([]);
     const { toast } = useToast();
 
-  useEffect(() => {
-    const getCustomers = async () => {
-      try {
-        const response = await fectchAllCustomers();
-        setCustomers(response);
-      } catch (error) {
-        console.error("Error fetching customers", error);
-      }
-    };
-    getCustomers();
-  }, []);
+    useEffect(() => {
+      const fetchData = async () => {
+        try {
+          const [customerResponse, roomResponse] = await Promise.all([
+            fectchAllCustomers(),
+            fectchAllProducts(),
+          ]);
+          setCustomers(customerResponse);
+          setRooms(roomResponse);
+        } catch (error) {
+          console.error("Error fetching data", error);
+        }
+      };
+    
+      fetchData();
+    }, []);
+    
 
     const form = useForm<z.infer<typeof ReservationSchema>>({
         resolver: zodResolver(ReservationSchema),
@@ -84,6 +92,7 @@ const ReservationForm = ({
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
+            console.log("Errors during form submission:", errors);
             toast({
                 variant: "destructive",
                 title: "Uh oh! something went wrong",
@@ -94,6 +103,8 @@ const ReservationForm = ({
     );
 
     const submitData = (values: z.infer<typeof ReservationSchema>) => {
+
+        console.log("Submitting data:", values);
 
         setResponse(undefined);
 
@@ -234,22 +245,22 @@ const ReservationForm = ({
             </div>
             <div className="lg:grid grid-cols-2  gap-4 mt-2">
               <div className="grid gap-2">
-                <FormField
+              <FormField
                   control={form.control}
                   name="date"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col">
                       <FormLabel>Date of Reservation</FormLabel>
-                      <FormControl>
-                        <DatePicker
-                          selectedDate={date}
-                          onDateChange={(selectedDate) => {
-                            setDate(selectedDate);
-                            field.onChange(selectedDate.toDateString());
-                          }}
-                          disabled={isPending}
-                        />
-                      </FormControl>
+                      <DateTimePicker
+                        field={field}
+                        date={reservationDate}
+                        setDate={setReservationDate}
+                        handleTimeChange={handleTimeChange}
+                        onDateSelect={handleDateSelect}
+                      />
+                      <FormDescription>
+                        Please select your preferred date of reservation.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -266,14 +277,9 @@ const ReservationForm = ({
                       <FormControl>
                         <Input
                           {...field}
-                          // type="number"
                           disabled={isPending}
-                          placeholder="Which city do you operate?"
-                          // onChange={(e) => {
-                          //   const value = e.target.value;
-                          //   field.onChange(value ? Number(value) : 0);
-                          // }}
-                          value={field.value || ''}
+                          placeholder="Enter number of people"
+                          value={field.value}
                         />
                       </FormControl>
                       <FormMessage />
@@ -334,24 +340,24 @@ const ReservationForm = ({
             <div className="grid gap-2 mt-2">
               <FormField
                 control={form.control}
-                name="customer"
+                name="product"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Room</FormLabel>
                     <FormControl>
                       <Select
-                        disabled={isPending || customers.length === 0}
-                        onValueChange={field.onChange}
+                        disabled={isPending || rooms.length === 0}
                         value={field.value}
+                        onValueChange={field.onChange}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Select room to reserve" />
                         </SelectTrigger>
                         <SelectContent>
-                          {customers.length > 0
-                            ? customers.map((cust: Customer, index: number) => (
-                                <SelectItem key={index} value={cust.id}>
-                                  {cust.firstName} {cust.lastName}{" "}
+                          {rooms.length > 0
+                            ? rooms.map((rm: Product, index: number) => (
+                                <SelectItem key={index} value={rm.id}>
+                                  {rm.name}{" "}
                                 </SelectItem>
                               ))
                             : null}

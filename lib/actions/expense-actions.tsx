@@ -81,7 +81,6 @@ export const createExpense = async (
     let formResponse: FormResponse | null = null;
 
     const validatedExpenseData = ExpenseSchema.safeParse(expense);
-    console.log("The validated data is:", validatedExpenseData)
 
     if (!validatedExpenseData.success) {
         formResponse = {

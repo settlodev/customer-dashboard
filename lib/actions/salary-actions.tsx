@@ -8,11 +8,11 @@ import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
-import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import { Shift } from "@/types/shift/type";
-import { ShiftSchema } from "@/types/shift/schema";
+import {getCurrentLocation } from "./business/get-current-business";
+import { Salary } from "@/types/salary/type";
+import { SalarySchema } from "@/types/salary/schema";
 
-export const fectchAllShifts = async () : Promise<Shift[]> => {
+export const fectchSalaries = async () : Promise<Salary[]> => {
     await  getAuthenticatedUser();
 
     try {
@@ -20,41 +20,39 @@ export const fectchAllShifts = async () : Promise<Shift[]> => {
 
         const location = await getCurrentLocation();
 
-        const shiftData= await  apiClient.get(
-            `/api/shifts/${location?.id}`,
+        const salaryData= await  apiClient.get(
+            `/api/salaries/${location?.id}`,
         );
-
-        console.log("All shifts", shiftData);
        
-        return parseStringify(shiftData);
+        return parseStringify(salaryData);
 
     }
     catch (error){
         throw error;
     }
 }
-export const searchShift = async (
+export const searchSalary = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Shift>> =>{
+): Promise<ApiResponse<Salary>> =>{
     await getAuthenticatedUser();
 
 
     try {
         const apiClient = new ApiClient();
         const query ={
-            filters: [
-                {
-                    key:"name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
+            // filters: [
+            //     {
+            //         key:"amount",
+            //         operator:"LIKE",
+            //         // field_type:"STRING",
+            //         value:q
+            //     }
+            // ],
             sorts:[
                 {
-                    key:"name",
+                    key:"amount",
                     direction:"ASC"
                 }
             ],
@@ -62,59 +60,56 @@ export const searchShift = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        const shiftData = await  apiClient.post(
-            `/api/shifts/${location?.id}`,
+        const salaryData = await  apiClient.post(
+            `/api/salaries/${location?.id}`,
             query
         );
-        return parseStringify(shiftData);
+        return parseStringify(salaryData);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  createShift= async (
-    shift: z.infer<typeof ShiftSchema>
+export const  createSalary= async (
+    salary: z.infer<typeof SalarySchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const validShiftData= ShiftSchema.safeParse(shift)
-
-    console.log("Valid shift data",validShiftData);
+    const validSalaryData= SalarySchema.safeParse(salary);
 
 
-    if (!validShiftData.success){
+
+    if (!validSalaryData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(validShiftData.error.message)
+            error:new Error(validSalaryData.error.message)
       }
       return parseStringify(formResponse)
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
 
     const payload = {
-        ...validShiftData.data,
+        ...validSalaryData.data,
         location: location?.id,
-        business: business?.id
     }
 
-    console.log("The payload to create shift", payload);
+    console.log("The payload to create salary", payload);
 
     try {
         const apiClient = new ApiClient();
       
 
         await apiClient.post(
-            `/api/shifts/${location?.id}/create`,
+            `/api/salaries/${location?.id}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error while creating shift",error)
+        console.error("Error while creating salary",error)
         formResponse = {
             responseType: "error",
             message:
@@ -125,11 +120,11 @@ export const  createShift= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/shifts");
-    redirect("/shifts")
+    revalidatePath("/salaries");
+    redirect("/salaries")
 }
 
-export const getShift= async (id:UUID) : Promise<ApiResponse<Shift>> => {
+export const getSalary= async (id:UUID) : Promise<ApiResponse<Salary>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -145,53 +140,50 @@ export const getShift= async (id:UUID) : Promise<ApiResponse<Shift>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const shift= await apiClient.post(
-        `/api/shifts/${location?.id}`,
+    const salary= await apiClient.post(
+        `/api/salaries/${location?.id}`,
         query,
     );
     
-    return parseStringify(shift)
+    return parseStringify(salary)
 }
 
 
 
-export const updateShift = async (
+export const updateSalary = async (
     id: UUID,
-    shift: z.infer<typeof ShiftSchema>
+    salary: z.infer<typeof SalarySchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const validShiftData = ShiftSchema.safeParse(shift);
+    const validSalaryData = SalarySchema.safeParse(salary);
 
-    if (!validShiftData.success) {
+    if (!validSalaryData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(validShiftData.error.message),
+            error: new Error(validSalaryData.error.message),
         };
         return parseStringify(formResponse);
     }
 
     const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
 
     const payload = {
-        ...validShiftData.data,
+        ...validSalaryData.data,
         location: location?.id,
-        business: business?.id
     };
-    console.log("updating the shift id", id);
-    console.log("The payload to update shift", payload);
+    console.log("The payload to update salary", payload);
 
     try {
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/shifts/${location?.id}/${id}`, 
+            `/api/salaries/${location?.id}/${id}`, 
             payload
         );
 
     } catch (error) {
-        console.error("Error while updating shift", error); 
+        console.error("Error while updating salary", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -203,12 +195,12 @@ export const updateShift = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/shifts");
-    redirect("/shifts");
+    revalidatePath("/salaries");
+    redirect("/salaries");
 };
 
-export const deleteShift = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Shift ID is required to perform this request");
+export const deleteSalary = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Salary ID is required to perform this request");
 
     await getAuthenticatedUser();
 
@@ -218,9 +210,9 @@ export const deleteShift = async (id: UUID): Promise<void> => {
     const location = await getCurrentLocation();
    
     await apiClient.delete(
-        `/api/shifts/${location?.id}/${id}`,
+        `/api/salaries/${location?.id}/${id}`,
     );
-    revalidatePath("/shifts");
+    revalidatePath("/salaries");
     
    }
    catch (error){

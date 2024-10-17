@@ -19,7 +19,6 @@ function LocationPage() {
     useEffect(() => {
         if (businessId) {
             fetchLocationData(businessId).then(data => {
-                console.log("The location data is:", data.length);
                 setLocationData(data);
                 setLoading(false);
             }).catch(error => {

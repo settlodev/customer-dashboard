@@ -12,32 +12,32 @@ import {
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {ApiResponse} from "@/types/types";
-import { Shift } from "@/types/shift/type";
-import { getShift } from "@/lib/actions/shift-actions";
-import ShiftForm from "@/components/forms/shift_form";
+import { Salary } from "@/types/salary/type";
+import { getSalary } from "@/lib/actions/salary-actions";
+import SalaryForm from "@/components/forms/salary_form";
 
-export default async function ShiftPage({params}: {
+export default async function SalaryPage({params}: {
     params: { id: string };
 }) {
     const isNewItem = params.id === "new";
-    let item: ApiResponse<Shift> | null = null;
+    let item: ApiResponse<Salary> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getShift(params.id as UUID);
+            item = await getSalary(params.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
             // Ignore redirect error
             if (isNotFoundError(error)) throw error;
 
-            throw new Error("Failed to load shift data");
+            throw new Error("Failed to load salary data");
         }
     }
 
     const breadcrumbItems = [
-        { title: "Shifts", link: "/shifts" },
+        { title: "Salary", link: "/salaries" },
         {
-            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
+            title: isNewItem ? "New" : item?.content[0]?.amount.toString() || "Edit",
             link: "",
         },
     ];
@@ -50,24 +50,24 @@ export default async function ShiftPage({params}: {
                 </div>
             </div>
 
-            <ShiftCard isNewItem={isNewItem} item={item?.content[0]} />
+            <SalaryCard isNewItem={isNewItem} item={item?.content[0]} />
         </div>
     );
 }
 
-const ShiftCard = ({isNewItem, item}: {
+const SalaryCard = ({isNewItem, item}: {
     isNewItem: boolean;
-    item: Shift | null | undefined;
+    item: Salary | null | undefined;
 }) => (
     <Card>
         <CardHeader>
-            <CardTitle>{isNewItem ? "Add shift" : "Edit shift details"}</CardTitle>
+            <CardTitle>{isNewItem ? "Add salary details" : "Edit salary details"}</CardTitle>
             <CardDescription>
                 {isNewItem ? "Add shift to your business" : "Edit shift details"}
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <ShiftForm item={item} />
+            <SalaryForm item={item} />
         </CardContent>
     </Card>
 );

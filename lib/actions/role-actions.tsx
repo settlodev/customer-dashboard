@@ -43,14 +43,14 @@ export const searchRoles = async (
         const apiClient = new ApiClient();
 
         const query = {
-            filters: [
-                {
-                    key: "name",
-                    operator: "LIKE",
-                    field_type: "STRING",
-                    value: q,
-                },
-            ],
+            // filters: [
+            //     {
+            //         key: "name",
+            //         operator: "LIKE",
+            //         field_type: "STRING",
+            //         value: q,
+            //     },
+            // ],
             sorts: [
                 {
                     key: "name",

@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -30,11 +30,43 @@ import CancelButton from "@/components/widgets/cancel-button";
 import {SubmitButton} from "@/components/widgets/submit-button";
 import GenderSelector from "@/components/widgets/gender-selector";
 import { useToast } from "@/hooks/use-toast"
+import { Department } from "@/types/department/type";
+import { fectchAllDepartments } from "@/lib/actions/department-actions";
+import { Select, SelectContent, SelectItem, SelectTrigger,SelectValue } from "../ui/select";
+import { fectchSalaries } from "@/lib/actions/salary-actions";
+import { Salary } from "@/types/salary/type";
 
 const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const { toast } = useToast();
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
+    const [departments,setDepartments ] = useState<Department[]>([]);
+    const [salaries,setSalaries ] = useState<Salary[]>([]);
+
+    useEffect(() => {
+        const getDepartments = async () => {
+          try {
+            const response = await fectchAllDepartments();
+            setDepartments(response);
+          } catch (error) {
+            console.error("Error fetching departments", error);
+          }
+        };
+        getDepartments();
+      }, []);
+
+    useEffect(() => {
+        const salaries = async () => {
+            try {
+                const response = await fectchSalaries();
+                setSalaries(response);
+            } catch (error) {
+                console.error("Error fetching salaries", error);
+            }
+        }
+
+        salaries();
+    }, []);  
 
     const form = useForm<z.infer<typeof StaffSchema>>({
         resolver: zodResolver(StaffSchema),
@@ -210,42 +242,95 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
+    
                                     <FormField
                                         control={form.control}
-                                        name="location"
+                                        name="department"
                                         render={({ field }) => {
-                                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                            const { ref: _ref, ...customSelectRef } = field;
-
                                             return (
                                                 <FormItem>
                                                     <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            disabled={isPending}
-                                                            placeholder="Enter staff location"
-                                                        />
+                                                    <Select
+                                                        disabled={isPending || departments.length === 0}
+                                                        onValueChange={field.onChange}
+                                                        value={field.value}
+                                                        >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select staff department" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {departments.length > 0
+                                                            ? departments.map((dept: Department, index: number) => (
+                                                                <SelectItem key={index} value={dept.id}>
+                                                                    {dept.name}{" "}
+                                                                </SelectItem>
+                                                                ))
+                                                            : null}
+                                                        </SelectContent>
+                                                        </Select>
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             );
                                         }}
                                     />
-                                    <FormField
+                                     <FormField
                                         control={form.control}
-                                        name="department"
+                                        name="salary"
                                         render={({ field }) => {
-                                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                            const { ref: _ref, ...customSelectRef } = field;
-
                                             return (
                                                 <FormItem>
                                                     <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            disabled={isPending}
-                                                            placeholder="Enter staff department"
-                                                        />
+                                                    <Select
+                                                        disabled={isPending || salaries.length === 0}
+                                                        onValueChange={field.onChange}
+                                                        value={field.value}
+                                                        >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select staff salary" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {salaries.length > 0
+                                                            ? salaries.map((sal: Salary, index: number) => (
+                                                                <SelectItem key={index} value={sal.id}>
+                                                                    {sal.amount}{" "}
+                                                                </SelectItem>
+                                                                ))
+                                                            : null}
+                                                        </SelectContent>
+                                                        </Select>
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            );
+                                        }}
+                                    />
+
+<FormField
+                                        control={form.control}
+                                        name="role"
+                                        render={({ field }) => {
+                                            return (
+                                                <FormItem>
+                                                    <FormControl>
+                                                    <Select
+                                                        disabled={isPending || departments.length === 0}
+                                                        onValueChange={field.onChange}
+                                                        value={field.value}
+                                                        >
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder="Select staff role" />
+                                                        </SelectTrigger>
+                                                        <SelectContent>
+                                                            {departments.length > 0
+                                                            ? departments.map((dept: Department, index: number) => (
+                                                                <SelectItem key={index} value={dept.id}>
+                                                                    {dept.name}{" "}
+                                                                </SelectItem>
+                                                                ))
+                                                            : null}
+                                                        </SelectContent>
+                                                        </Select>
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -262,7 +347,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                                     <Input
                                                         {...field}
                                                         disabled={isPending}
-                                                        placeholder="Enter employee's home address"
+                                                        placeholder="Enter staff's home address"
                                                         value={field.value ?? ""}
                                                     />
                                                 </FormControl>
@@ -270,7 +355,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-                                    <FormField
+                                    {/* <FormField
                                         control={form.control}
                                         name="nationality"
                                         render={({ field }) => {
@@ -290,7 +375,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                                 </FormItem>
                                             );
                                         }}
-                                    />
+                                    /> */}
 
                                     <FormField
                                         control={form.control}

@@ -32,28 +32,17 @@ export const StaffSchema = object({
 
         return val;
     }, date().optional()),
-    nationality: preprocess(
-        (val) => (val === null ? "" : val),
-        string().optional(),
-    ),
-    joiningDate: preprocess((val) => {
-        if (val === null) return undefined;
-        if (typeof val === "string" && val.trim() !== "") {
-            return new Date(val);
-        }
-
-        return val;
-    }, date().optional()),
+    nationality: preprocess((val) => (val === null ? "" : val),string().optional(),),
+    joiningDate: preprocess((val) => {if (val === null) return undefined;if (typeof val === "string" && val.trim() !== "") {return new Date(val);}return val;}, date().optional()),
     jobTitle: string(),
     notes: preprocess((val) => (val === null ? "" : val), string().optional()),
     image: preprocess((val) => (val === null ? "" : val), string().optional()),
     status: boolean(),
-    location: string({ message: "Staff location is required" }).uuid(
-        "Please select a valid location",
-    ),
     department: string({ message: "Staff department is required" }).uuid(
         "Please select a valid department",
     ),
+    salary:string({message:"Salary is required"}).uuid("Please select a valid salary"),
+    role: string({ message: "Staff role is required" }).uuid("Please select a valid role")
 });
 
 export declare interface Staff {
@@ -81,5 +70,8 @@ export declare interface Staff {
     status: boolean;
     posAccess: boolean;
     dashboardAccess: boolean;
+    isArchived: boolean;
+    salary:string,
+    role:string
 }
 

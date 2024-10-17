@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import { searchShift } from "@/lib/actions/shift-actions";
-import { columns } from "@/components/tables/shift/column";
+import { columns } from "@/components/tables/salary/column";
+import { searchSalary } from "@/lib/actions/salary-actions";
 
-const breadcrumbItems = [{ title: "Shifts", link: "/shift" }];
+const breadcrumbItems = [{ title: "Salaries", link: "/salaries" }];
 
 type ParamsProps = {
     searchParams: {
@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await searchShift(q, page, pageLimit);
+    const responseData = await searchSalary(q, page, pageLimit);
 
     const data = responseData.content;
     const total = responseData.totalElements;
@@ -42,7 +42,7 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/shifts/new`}>Add Shift</Link>
+                        <Link key="add-space" href={`/salaries/new`}>Add Salary</Link>
                     </Button>
                 </div>
             </div>
@@ -50,8 +50,8 @@ export default async function Page({ searchParams }: ParamsProps) {
             {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Shift</CardTitle>
-                        <CardDescription>Manage shifts in your business location</CardDescription>
+                        <CardTitle>Salary</CardTitle>
+                        <CardDescription>Manage staff salaries in your business location</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -65,7 +65,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`Shift`} newItemUrl={`/shifts/new`} />
+                <NoItems itemName={`Salaries`} newItemUrl={`/salaries/new`} />
             )}
         </div>
     );

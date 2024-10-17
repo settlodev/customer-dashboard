@@ -39,7 +39,7 @@ export const columns: ColumnDef<Reservation>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Location name
+          Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
@@ -52,6 +52,22 @@ export const columns: ColumnDef<Reservation>[] = [
   {
     accessorKey: "email",
     header: "Email address",
+  },
+  {
+    accessorKey: "date",
+    header: "Date of Reservation",
+  },
+  {
+    accessorKey: "productName",
+    header: "Room",
+  },
+  {
+    accessorKey: "startDate",
+    header: "Date In",
+  },
+  {
+    accessorKey: "endDate",
+    header: "Date Out",
   },
   {
     id: "status",

@@ -30,6 +30,7 @@ export const menuItems=(args?: MenuItemArgType) => {
                     {"title": "Categories", "link": "/categories", "current": args?.isCurrentItem, "icon": "cart"},
                     {"title": "Suppliers", "link": "/suppliers", "current": args?.isCurrentItem, "icon": "cart"},
                     {"title": "Brands", "link": "/brands", "current": args?.isCurrentItem, "icon": "cart"},
+                    {"title": "Addons", "link": "/addons", "current": args?.isCurrentItem, "icon": "cart"},
                 ]
         },
         {
@@ -67,7 +68,9 @@ export const menuItems=(args?: MenuItemArgType) => {
             items:
                 [
                     {title: "Users", link: "/users", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Roles", link: "/roles", current: args?.isCurrentItem, icon: "cart"}
+                    {title: "Staffs", link: "/staff", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Shifts", link: "/shifts", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Roles", link: "/roles", current: args?.isCurrentItem, icon: "cart"},
                 ]
         },
         {
@@ -82,7 +85,8 @@ export const menuItems=(args?: MenuItemArgType) => {
                     {title: "Departments", link: "/departments", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Businesses", link: "/business", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Expenses", link: "/expenses", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Tables & Spaces", link: "/tables", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Tables & Spaces", link: "/spaces", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Reservations", link: "/reservations", current: args?.isCurrentItem, icon: "cart"},
                     {title: "KDS", link: "/kds", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Settings", link: "/settings", current: args?.isCurrentItem, icon: "cart"}
