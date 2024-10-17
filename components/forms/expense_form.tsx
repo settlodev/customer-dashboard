@@ -33,7 +33,6 @@ import { createExpense, updateExpense } from "@/lib/actions/expense-actions";
 import { fetchExpenseCategories } from "@/lib/actions/expense-categories-actions";
 import { ExpenseCategory } from "@/types/expenseCategories/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { formatNumber } from "@/lib/utils";
 
 function ExpenseForm({ item }: { item: Expense | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -136,11 +135,9 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
                       <FormControl>
                       <Input
                         placeholder="Enter expense amount"
-                        value={field.value ? formatNumber(field.value) : ''} 
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/,/g, ''); 
-                          field.onChange(value ? parseFloat(value) : undefined);
-                        }}
+                        {...field}
+                        disabled={isPending}
+                        value={field.value}
                       />
                       </FormControl>
                       <FormMessage />

@@ -40,26 +40,17 @@ import ProductCategorySelector from "@/components/widgets/product-category-selec
 import ProductDepartmentSelector from "@/components/widgets/product-department-selector";
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import {VariantSchema} from "@/types/variant/schema";
-import {register} from "@/lib/actions/auth-actions";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
-    const [response, setResponse] = useState<FormResponse | undefined>();
-    const [error, setError] = useState<string | undefined>("");
-    const [success, setSuccess] = useState<string | undefined>("");
+    const [, setResponse] = useState<FormResponse | undefined>();
+    const [error,] = useState<string | undefined>("");
+    const [success,] = useState<string | undefined>("");
 
     const [variants, setVariants] = useState<FormVariantItem[]>([]);
-    const [variantName, setName] = useState<string>('');
-    const [variantPrice, setPrice] = useState<number>(0);
-    const [variantCost, setCost] = useState<number>(0);
-    const [variantQty, setQty] = useState<number>(0);
-    const [variantSku, setSku] = useState<string>("");
-    const [variantImage, setImage] = useState<string>("");
-    const [variantColor, setColor] = useState<string>("#000000");
-    const [variantDesc, setDesc] = useState<string>("");
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
-    const [brands, setBrands] = useState<ProductBrand[]>([]);
+    const [brands, ] = useState<ProductBrand[]>([]);
 
     const {toast} = useToast();
 

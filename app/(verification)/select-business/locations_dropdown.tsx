@@ -1,5 +1,4 @@
 import Image from "next/image";
-import {ChevronRightIcon} from "@nextui-org/shared-icons";
 import {Location} from "@/types/location/type";
 import {refreshLocation} from "@/lib/actions/business/refresh";
 

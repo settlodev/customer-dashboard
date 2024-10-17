@@ -13,14 +13,10 @@ interface ProductCategorySelectorProps {
     onBlur: () => void;
 }
 function ProductCategorySelector({
-    label,
     placeholder,
-    isRequired,
     value,
     isDisabled,
-    description,
     onChange,
-    onBlur,
     categories
 }: ProductCategorySelectorProps) {
     return (

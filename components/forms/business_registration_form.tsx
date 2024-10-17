@@ -52,7 +52,7 @@ const BusinessRegistrationForm = () => {
   const [, setResponse] = useState<FormResponse | undefined>();
   const [countries, setCountries] = useState<Business[]>([]);
   const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [success,] = useState<string | undefined>("");
 
   
 
@@ -94,30 +94,27 @@ const BusinessRegistrationForm = () => {
 
   const submitData = (values: z.infer<typeof BusinessSchema>) => {
     setResponse(undefined);
-
+  
     startTransition(() => {
       createBusiness(values)
-      .then((data) => {
-        console.log("The data after creation is:", data);
-        if (!data) {
-          setError("An unexpected error occurred. Please try again.");
-          return;
-        }
-        if (data.responseType === "error") {
-          setError(data.message);
-        } else {
-          setSuccess(data.message);
-          setResponse(data);
-        }
-      })
-      .catch((error) => {
-        setError(
+        .then(async (data) => {
+  
+          if (data && "id" in data) {            
+          } else if (data && data.responseType === "error") {
+            setError(data.message);
+          } else {
+            setError("An unexpected error occurred. Please try again.");
+          }
+        })
+        .catch((error) => {
+          setError(
             "An unexpected error occurred. Please try again." +
               (error instanceof Error ? " " + error.message : "")
           );
-      });
+        });
     });
   };
+  
 
   return (
 

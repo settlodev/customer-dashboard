@@ -266,13 +266,13 @@ const ReservationForm = ({
                       <FormControl>
                         <Input
                           {...field}
-                          type="number"
+                          // type="number"
                           disabled={isPending}
                           placeholder="Which city do you operate?"
-                          onChange={(e) => {
-                            const value = e.target.value;
-                            field.onChange(value ? Number(value) : 0);
-                          }}
+                          // onChange={(e) => {
+                          //   const value = e.target.value;
+                          //   field.onChange(value ? Number(value) : 0);
+                          // }}
                           value={field.value || ''}
                         />
                       </FormControl>
