@@ -14,8 +14,6 @@ export default async function RootLayout({children}: {
     const  currentLocation = await getCurrentLocation();
     const  businessList = await getBusinessDropDown();
     const locationList = currentBusiness ? await fetchAllLocations():[];
-    // console.log("currentBusiness:", currentBusiness);
-    // console.log("currentLocation:", currentLocation);
     const businessData = {
         "business": currentBusiness,
         "businessList": businessList,

@@ -29,11 +29,13 @@ import { FormError } from "@/components/widgets/form-error";
 import { FormSuccess } from "@/components/widgets/form-success";
 import Link from "next/link";
 import Image from "next/image";
+import {EyeOffIcon, EyeIcon} from "lucide-react";
 
 function LoginForm() {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
@@ -67,8 +69,8 @@ function LoginForm() {
   }, []);
 
   return (
-      <Card className="mx-auto max-w-sm">
-          <div className="pt-3 border-b-1 pb-3 pl-3">
+      <Card className="mx-auto max-w-md w-[500px]">
+          {/*<div className="pt-3 border-b-1 pb-3 pl-3">
               <Link href="/">
                   <Image
                       src="/images/new_logo.svg"
@@ -77,14 +79,14 @@ function LoginForm() {
                       alt="Settlo"
                   />
               </Link>
-          </div>
-          <CardHeader>
-              <CardTitle className="text-2xl">Login</CardTitle>
+          </div>*/}
+          <CardHeader className="border-b-1 mb-4 px-8">
+              <CardTitle className="text-[32px] font-bold mb-2">Welcome back</CardTitle>
               <CardDescription>
                   Enter your email or phone login to your account
               </CardDescription>
           </CardHeader>
-          <CardContent className="pb-2">
+          <CardContent className="pb-4 px-8">
               <FormError message={error}/>
               <FormSuccess message={success}/>
 
@@ -114,7 +116,11 @@ function LoginForm() {
                                       <FormItem>
                                           <FormLabel>Password</FormLabel>
                                           <FormControl>
-                                              <Input placeholder="Enter password" {...field} />
+                                              <div className="relative">
+                                                  <Input type={showPassword?"text": "password"} placeholder="Enter password" {...field} />
+                                                  <span onClick={()=>setShowPassword(!showPassword)} className="absolute right-0 top-0 h-full w-10 flex items-center justify-center z-40 cursor-pointer">
+                                                      {showPassword ? <EyeOffIcon size={20} />: <EyeIcon size={20} />}</span>
+                                            </div>
                                           </FormControl>
                                           <FormMessage/>
                                       </FormItem>
@@ -122,9 +128,7 @@ function LoginForm() {
                               />
                           </div>
 
-                          <Button type="submit" disabled={isPending} className="w-full">
-                              Login
-                          </Button>
+                          <Button type="submit" disabled={isPending} className="w-full">Login</Button>
                       </div>
                   </form>
               </Form>
@@ -134,12 +138,11 @@ function LoginForm() {
                   </Link>
               </div>
           </CardContent>
-
-          <div className="font-light text-slate-400 mt-4 text-sm text-center border-t-1 py-3">
+          <div className="font-light text-slate-400 mt-4 text-sm text-center border-t-1 py-6">
               <Link href="/register">Don&apos;t have an account? <span className="font-bold text-emerald-500">Register here</span></Link>
           </div>
       </Card>
-  );
+  )
 }
 
 export default LoginForm;

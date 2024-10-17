@@ -1,10 +1,10 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import {Brand} from "@/types/brand/type";
+import {TaxClass} from "@/types/tax/type";
 
-interface ProductBrandSelectorProps {
+interface ProductTaxSelectorProps {
     label: string;
     placeholder: string;
-    brands: Brand[];
+    data: TaxClass[]|null;
     isRequired?: boolean;
     value?: string;
     isDisabled?: boolean;
@@ -12,23 +12,27 @@ interface ProductBrandSelectorProps {
     onChange: (value: string) => void;
     onBlur: () => void;
 }
-function ProductBrandSelector({
+function ProductTaxSelector({
+    label,
     placeholder,
+    isRequired,
     value,
     isDisabled,
+    description,
     onChange,
-    brands
-}: ProductBrandSelectorProps) {
+    onBlur,
+    data
+}: ProductTaxSelectorProps) {
     return (
         <Select value={value} onValueChange={onChange} disabled={isDisabled}>
             <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select brand"}/>
+                <SelectValue placeholder={placeholder || "Select tax"}/>
             </SelectTrigger>
             <SelectContent>
-                {brands && brands.length > 0 ?
-                    brands.map((item, index) => {
-                        return <SelectItem key={index} value={item.id}>
-                            {item.name}
+                {data && data.length > 0 ?
+                    data.map((item, index) => {
+                        return <SelectItem key={index} value={item.name}>
+                            {item.displayName} - {item.amount}%
                         </SelectItem>
                     })
                     : <></>}
@@ -36,4 +40,4 @@ function ProductBrandSelector({
         </Select>
     )
 }
-export default ProductBrandSelector
+export default ProductTaxSelector

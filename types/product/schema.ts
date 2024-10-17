@@ -1,4 +1,4 @@
-import {boolean, object, string, number, array} from "zod";
+import {boolean, object, string, array} from "zod";
 import {VariantSchema} from "@/types/variant/schema";
 
 export const ProductSchema = object({
@@ -12,6 +12,9 @@ export const ProductSchema = object({
     color: string().optional(),
     status: boolean().optional(),
     sellOnline: boolean().optional(),
+    trackInventory: boolean().optional(),
+    taxIncluded: boolean().optional(),
+    taxClass: string().optional(),
     slug: string().optional(),
-    variants: array(VariantSchema)
+    variants: array(VariantSchema).optional()
 });
