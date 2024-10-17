@@ -32,8 +32,8 @@ import Image from "next/image";
 
 function LoginForm() {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
@@ -114,7 +114,7 @@ function LoginForm() {
                                       <FormItem>
                                           <FormLabel>Password</FormLabel>
                                           <FormControl>
-                                              <Input placeholder="Enter password" {...field} />
+                                              <Input type="password" placeholder="Enter password" {...field} />
                                           </FormControl>
                                           <FormMessage/>
                                       </FormItem>
@@ -122,9 +122,7 @@ function LoginForm() {
                               />
                           </div>
 
-                          <Button type="submit" disabled={isPending} className="w-full">
-                              Login
-                          </Button>
+                          <Button type="submit" disabled={isPending} className="w-full">Login</Button>
                       </div>
                   </form>
               </Form>
@@ -134,12 +132,11 @@ function LoginForm() {
                   </Link>
               </div>
           </CardContent>
-
           <div className="font-light text-slate-400 mt-4 text-sm text-center border-t-1 py-3">
               <Link href="/register">Don&apos;t have an account? <span className="font-bold text-emerald-500">Register here</span></Link>
           </div>
       </Card>
-  );
+  )
 }
 
 export default LoginForm;

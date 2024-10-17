@@ -96,11 +96,11 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
             } else {
                 createProduct(values)
                   .then((data) => {
-                    console.log(data);
+                    console.log("Create Business Response: ", data);
                     if (data) setResponse(data);
                   })
                   .catch((err) => {
-                    console.log(err);
+                    console.log("Create Business Error: ", err);
                   });
             }
         });
@@ -117,17 +117,10 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     }
 
     const renderVariantFields=()=>{
-        console.log("variants", variants);
         const items = [];
-        /*if(variants.length > 0) {
-            for (let i = 0; i <= variants.length; i++) {
-                console.log("Variants loop: ", variants);
-            }
-        }*/
-
         if(variants.length > 0) {
             for(let i=0; i < variants.length; i++) {
-                items.push(<div className="hidden">
+                items.push(<div className="hidden" key={i}>
                     <FormField
                         control={form.control}
                         name={`variants.${i}.name`}
