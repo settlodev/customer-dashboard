@@ -3,6 +3,7 @@ import axios, { AxiosError } from "axios";
 export const handleSettloApiError = (error: unknown) => {
     if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
+        console.log("axiosError.response:", axiosError.response)
 
         if (axiosError.response) {
             switch (axiosError.response.status) {

@@ -27,7 +27,7 @@ import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
-import {Product, ProductBrand} from "@/types/product/type";
+import {Product} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
 import {createProduct, updateProduct} from "@/lib/actions/product-actions";
 import {FormVariantItem} from "@/types/variant/type";
@@ -40,6 +40,7 @@ import ProductCategorySelector from "@/components/widgets/product-category-selec
 import ProductDepartmentSelector from "@/components/widgets/product-department-selector";
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import {VariantSchema} from "@/types/variant/schema";
+import {Brand} from "@/types/brand/type";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -50,7 +51,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     const [variants, setVariants] = useState<FormVariantItem[]>([]);
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
-    const [brands, setBrands] = useState<ProductBrand[]>([]);
+    const [brands, setBrands] = useState<Brand[]>([]);
 
     const {toast} = useToast();
 
@@ -225,37 +226,8 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                     />
                 </div>)
             }
-            /*for(let i=0; i < variants.length; i++) {
-                items.push(<div key={i}>
-                    <Input
-                        name={`variants.${i}.name`}
-                        defaultValue={variants[i].name}
-                    />
-                    <Input
-                        name={`variants.${i}.price`}
-                        defaultValue={`${variants[i].price}`}
-                    />
-                    <Input
-                        name={`variants.${i}.cost`}
-                        defaultValue={`${variants[i].cost}`}
-                    />
-                    <Input
-                        name={`variants.${i}.quantity`}
-                        defaultValue={`${variants[i].quantity}`}
-                    />
-                    <Input
-                        name={`variants.${i}.sku`}
-                        defaultValue={`${variants[i].sku}`}
-                    />
-                    <Input
-                        name={`variants.${i}.description`}
-                        defaultValue={`${variants[i].description}`}
-                    />
-                </div>)
-            }*/
         }
         return items;
-
     }
     return (
 
