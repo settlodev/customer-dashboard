@@ -13,14 +13,10 @@ interface ProductDepartmentSelectorProps {
     onBlur: () => void;
 }
 function ProductDepartmentSelector({
-    label,
     placeholder,
-    isRequired,
     value,
     isDisabled,
-    description,
     onChange,
-    onBlur,
     departments
 }: ProductDepartmentSelectorProps) {
     return (

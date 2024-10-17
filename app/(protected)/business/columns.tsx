@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
 import {Business} from "@/types/business/type";
 import {CellAction} from "@/app/(protected)/business/cell-action";
-import Link from "next/link";
 export const columns: ColumnDef<Business>[] = [
     {
         id: "select",

@@ -102,9 +102,15 @@ export const createLocation = async (
         const apiClient = new ApiClient();
         const business = await getCurrentBusiness();
 
+
+        const payload = {
+            ...validatedData.data,
+            business: business?.id,
+        };
+
         await apiClient.post(
             `/api/locations/${business?.id}/create`,
-            validatedData.data,
+            payload,
         );
     } catch (error: unknown) {
         formResponse = {

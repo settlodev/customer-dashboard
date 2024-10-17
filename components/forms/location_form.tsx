@@ -32,12 +32,10 @@ import {Location} from "@/types/location/type";
 import {createLocation, updateLocation} from "@/lib/actions/location-actions";
 import { toast } from "@/hooks/use-toast";
 import { PhoneInput } from "../ui/phone-input";
-import { createBusinessLocation } from "@/lib/actions/auth/location";
 
 const LocationForm = ({ item }: { item: Location | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
-    // const [isActive, setIsActive] = useState(item ? item.status : true);
 
     const form = useForm<z.infer<typeof LocationSchema>>({
         resolver: zodResolver(LocationSchema),
@@ -53,7 +51,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
               description: typeof errors.message === 'string' ? errors.message : "There was an issue submitting your form, please try later",
           });
       },
-      [toast],
+      [],
   );
     const submitData = (values: z.infer<typeof LocationSchema>) => {
         setResponse(undefined);
@@ -64,7 +62,9 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                     if (data) setResponse(data);
                 });
             } else {
-                createBusinessLocation(values).then((data) => {
+                createLocation(values)
+                .then((data) => {
+                  
                     if (data) setResponse(data);
                 });
             }

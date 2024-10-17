@@ -12,8 +12,9 @@ import ApiClient from "@/lib/settlo-api-client";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {Category} from "@/types/category/type";
 import {CategorySchema} from "@/types/category/schema";
-import {getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
+import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {Business} from "@/types/business/type";
+import { BusinessSchema } from "@/types/business/schema";
 
 export const fetchAllBusinesses = async (): Promise<Business[] | null> => {
     await getAuthenticatedUser();
@@ -125,7 +126,7 @@ export const createBusiness = async (
 
 export const updateBusiness = async (
     id: UUID,
-    business: z.infer<typeof CategorySchema>,
+    business: z.infer<typeof BusinessSchema>,
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
     const authenticatedUser = await getAuthenticatedUser();

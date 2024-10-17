@@ -3,14 +3,13 @@
 import {Business} from "@/types/business/type";
 import Image from "next/image";
 import {useEffect, useState} from "react";
-import {ChevronRightIcon} from "@nextui-org/shared-icons";
 import {SelectLocation} from "@/app/(verification)/select-business/locations_dropdown";
 import {refreshBusiness} from "@/lib/actions/business/refresh";
 import {ArrowLeftIcon} from "@radix-ui/react-icons";
 
 export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-expect-error
+    // @ts-ignore
     const [business, setBusiness] = useState<Business|null>(null);
 
     useEffect(()=>{

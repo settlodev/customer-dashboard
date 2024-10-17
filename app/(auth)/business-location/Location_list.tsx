@@ -14,7 +14,7 @@ const CreatedBusinessLocationList = ({ locations }: { locations: Location[]}) =>
   const { toast } = useToast();
 
    useEffect(() => {
-    if (locations.length === 1) {
+    if (locations.length > 0) {
       if (locations[0].subscriptionStatus === subscriptionStatus.EXPIRED) {
         toast({
             variant: 'destructive',

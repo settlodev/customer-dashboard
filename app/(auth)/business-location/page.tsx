@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"; // Add useState and useEffect
+import { useEffect, useState } from "react"; 
 import { getAllBusinessLocationsByBusinessID } from "@/lib/actions/auth/location";
 import { useSearchParams } from "next/navigation";
 import CreatedBusinessLocationList from "./Location_list";

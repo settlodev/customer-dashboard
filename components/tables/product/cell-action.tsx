@@ -15,9 +15,6 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
-import {Customer} from "@/types/customer/type";
-import { deleteCustomer } from "@/lib/actions/customer-actions";
-import { Discount } from "@/types/discount/type";
 import { deleteDiscount } from "@/lib/actions/discount-actions";
 import {Product} from "@/types/product/type";
 

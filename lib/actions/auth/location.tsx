@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { Location } from "@/types/location/type";
+import { refreshLocation } from "../business/refresh";
 
 export const createBusinessLocation = async (
     businessLocation: z.infer<typeof LocationSchema>
@@ -14,6 +15,7 @@ export const createBusinessLocation = async (
     let formResponse: FormResponse | null = null;
     let success: boolean = false;
     const businessLocationValidData = LocationSchema.safeParse(businessLocation)
+    
 
     if(!businessLocationValidData.success){
         formResponse = {
@@ -28,9 +30,7 @@ export const createBusinessLocation = async (
         
         const activeBusiness = cookies().get("activeBusiness")?.value;
         const business = JSON.parse(activeBusiness as string);
-        // console.log("Business which is active is:", business);
         const businessId= business.Business.id;
-        // console.log("Business id to be passed to create location:", businessId);
 
         const payload = {
             ...businessLocationValidData.data,
@@ -38,7 +38,6 @@ export const createBusinessLocation = async (
             
         }
 
-        // console.log(" The payload sub",payload)
 
        const response = await apiClient.post(
             `/api/locations/${businessId}/create`,
@@ -58,7 +57,6 @@ export const createBusinessLocation = async (
         
                 cookies().set("authToken", JSON.stringify(authToken), { path: "/", httpOnly: true });
         
-                // const updatedToken = cookies().get("authToken")?.value;
 
                 success = true;
 
@@ -67,7 +65,7 @@ export const createBusinessLocation = async (
 
                     cookies().set("activeLocation", JSON.stringify({locationId:response}), { path: "/", httpOnly: true });
 
-                    // const activeLocation = cookies().get("activeLocation")?.value;
+                    refreshLocation(response as Location);
                 }
         
             } else {

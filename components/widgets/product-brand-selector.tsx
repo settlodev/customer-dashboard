@@ -13,14 +13,10 @@ interface ProductBrandSelectorProps {
     onBlur: () => void;
 }
 function ProductBrandSelector({
-    label,
     placeholder,
-    isRequired,
     value,
     isDisabled,
-    description,
     onChange,
-    onBlur,
     brands
 }: ProductBrandSelectorProps) {
     return (

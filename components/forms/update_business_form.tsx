@@ -4,8 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Switch } from "@nextui-org/switch";
-import { cn } from "@nextui-org/react";
 
 import { Separator } from "../ui/separator";
 
@@ -46,7 +44,7 @@ const UpdateBusinessForm = ({ item }: { item: Business | null | undefined }) => 
                 });
             } else {
                 createBusiness(values).then((data) => {
-                    if (data) setResponse(data);
+                    if (data) setResponse(data as FormResponse);
                 });
             }
         });
