@@ -29,11 +29,13 @@ import { FormError } from "@/components/widgets/form-error";
 import { FormSuccess } from "@/components/widgets/form-success";
 import Link from "next/link";
 import Image from "next/image";
+import {EyeOffIcon, EyeIcon} from "lucide-react";
 
 function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const form = useForm<z.infer<typeof LoginSchema>>({
     resolver: zodResolver(LoginSchema),
@@ -114,7 +116,11 @@ function LoginForm() {
                                       <FormItem>
                                           <FormLabel>Password</FormLabel>
                                           <FormControl>
-                                              <Input type="password" placeholder="Enter password" {...field} />
+                                              <div className="relative">
+                                                  <Input type={showPassword?"text": "password"} placeholder="Enter password" {...field} />
+                                                  <span onClick={()=>setShowPassword(!showPassword)} className="absolute right-0 top-0 h-full w-10 flex items-center justify-center z-40 cursor-pointer">
+                                                      {showPassword ? <EyeOffIcon size={20} />: <EyeIcon size={20} />}</span>
+                                            </div>
                                           </FormControl>
                                           <FormMessage/>
                                       </FormItem>

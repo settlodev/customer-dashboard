@@ -1,10 +1,10 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import {ProductBrand} from "@/types/product/type";
+import {Brand} from "@/types/brand/type";
 
 interface ProductBrandSelectorProps {
     label: string;
     placeholder: string;
-    brands: ProductBrand[];
+    brands: Brand[];
     isRequired?: boolean;
     value?: string;
     isDisabled?: boolean;
