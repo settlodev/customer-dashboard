@@ -1,10 +1,11 @@
 "use client"
-import { useEffect, useState } from "react"; 
+import { useEffect, useState } from "react";
 import { getAllBusinessLocationsByBusinessID } from "@/lib/actions/auth/location";
 import { useSearchParams } from "next/navigation";
 import CreatedBusinessLocationList from "./Location_list";
 import { Location } from "@/types/location/type";
 import LocationAuthForm from "@/components/forms/location_auth_form";
+import RegisterForm from "@/components/forms/register_form";
 
 async function fetchLocationData(businessId: string) {
     return await getAllBusinessLocationsByBusinessID(businessId);
@@ -23,10 +24,10 @@ function LocationPage() {
                 setLoading(false);
             }).catch(error => {
                 console.error("Error fetching location data:", error);
-                setLoading(false); 
+                setLoading(false);
             });
         } else {
-            setLoading(false); 
+            setLoading(false);
         }
     }, [businessId]);
 
@@ -34,9 +35,11 @@ function LocationPage() {
         return <p>Loading...</p>;
     }
 
-    return (
+    /*return (
         locationData.length > 0 ? <CreatedBusinessLocationList locations={locationData}/> : <LocationAuthForm />
-    );
+    );*/
+
+    return <RegisterForm step="step3" />
 }
 
 export default LocationPage;

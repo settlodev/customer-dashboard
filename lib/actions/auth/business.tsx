@@ -18,7 +18,7 @@ export const createBusiness = async (
     let formResponse: FormResponse | null = null;
     let success: boolean = false;
     const businessValidData = BusinessSchema.safeParse(business);
-  
+
     if (!businessValidData.success) {
       formResponse = {
         responseType: "error",
@@ -27,25 +27,25 @@ export const createBusiness = async (
       };
       return parseStringify(formResponse);
     }
-  
+
     try {
       const apiClient = new ApiClient();
       const AuthenticatedUser = (await getAuthenticatedUser()) as User;
       const userId = AuthenticatedUser.id;
       const user = userId;
-  
+
       const payload = {
         ...businessValidData.data,
         user,
       };
-  
+
       const response = await apiClient.post(
         `/api/businesses/${userId}/create`,
         payload
       );
-  
+
       console.log("Response from API after creating business ", response);
-  
+
       if (response) {
         const token = cookies().get("authToken")?.value;
         if (token) {
@@ -55,9 +55,9 @@ export const createBusiness = async (
             path: "/",
             httpOnly: true,
           });
-  
+
           success = true;
-  
+
           if (success) {
             cookies().delete("activeBusiness");
             cookies().set(
@@ -65,11 +65,11 @@ export const createBusiness = async (
               JSON.stringify({ Business: response }),
               { path: "/", httpOnly: true }
             );
-  
+
             console.log("Active business is:", cookies().get("activeBusiness"));
           }
-  
-          refreshBusiness(response as Business);
+
+          await refreshBusiness(response as Business);
           return response as Business;
         } else {
           console.log("No token found");
@@ -79,7 +79,7 @@ export const createBusiness = async (
       }
     } catch (error) {
       if (isRedirectError(error)) throw error;
-  
+
       console.error("Error creating business", error);
       formResponse = {
         responseType: "error",
@@ -89,12 +89,12 @@ export const createBusiness = async (
       };
       return parseStringify(formResponse);
     }
-  
+
     if (success) {
       redirect("/business-location");
     }
   };
-  
+
 
 
 

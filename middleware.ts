@@ -25,7 +25,7 @@ export default auth((req) => {
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
 
     // Allow access to the reset-password route
-  const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL); 
+  const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL);
 
 
   if (isApiAuthRoute || isPublicRoute || isUpdatePasswordRoute) {

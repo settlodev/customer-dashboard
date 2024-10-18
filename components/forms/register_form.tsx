@@ -80,14 +80,15 @@ const signUpSteps=[
     }
 ]
 
-function RegisterForm() {
+function RegisterForm({step}:{step: string}) {
+    const mCurrentStep = step?signUpSteps[_.findIndex(signUpSteps, {id: step})]:signUpSteps[0];
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [success, setSuccess] = useState<string | undefined>("");
     const [countries, setCountries] = useState([]);
     const [stepsDone, setStepsDone] = useState<signUpStepItemType[]>([]);
     const [addStep, setAddStep] = useState(null);
-    const [currentStep, setCurrentStep] = useState<signUpStepItemType>(signUpSteps[0]);
+    const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
     const [showPassword, setShowPassword] = useState<boolean>(false);
 
     /*TODO: Business form information*/
@@ -132,6 +133,19 @@ function RegisterForm() {
             }
         };
         getCountries();
+
+        if(step){
+            console.log("step is:", step);
+            if(step === "step2"){
+                setStepsDone([...stepsDone, signUpSteps[0]])
+            }
+            if(step === "step3"){
+                const doneSteps = [...stepsDone, signUpSteps[0], signUpSteps[1]];
+                console.log("Done steps: ", doneSteps)
+                setStepsDone(doneSteps)
+            }
+        }
+
     }, []);
 
     const setMyCurrentStep = () => {
@@ -154,6 +168,7 @@ function RegisterForm() {
                         //window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
                         setStepsDone([...stepsDone, currentStep]);
                         setMyCurrentStep();
+                        location.reload();
                     }
                 })
                 .catch((error) => {
@@ -174,7 +189,7 @@ function RegisterForm() {
 
                         setStepsDone([...stepsDone, currentStep]);
                         setMyCurrentStep();
-
+                        location.reload();
                     } else if (data && data.responseType === "error") {
                         setError(data.message);
                     } else {
@@ -197,15 +212,17 @@ function RegisterForm() {
                     if (data) {
                         if (data.responseType === "success") {
 
-                            setStepsDone([...stepsDone, currentStep]);
-                            setMyCurrentStep();
-
-                            setResponse(data);
+                            //setStepsDone([...stepsDone, currentStep]);
+                            //setMyCurrentStep();
+                            /*setResponse(data);
                             toast({
                                 variant: "default",
                                 title: "Business created successfully",
                                 description: data.message,
-                            });
+                            });*/
+
+                            location.href = "/dashboard";
+
                         } else if (data.responseType === "error") {
                             toast({
                                 variant: "destructive",
@@ -224,7 +241,7 @@ function RegisterForm() {
         const currentIndex = signUpSteps.indexOf(currentStep);
         const nextIndex = currentIndex+1;
         if(nextIndex <= signUpSteps.length) {
-            return signUpSteps[nextIndex].title
+            return signUpSteps[nextIndex]?.title
         }else{
             return 'Finish';
         }
@@ -437,7 +454,7 @@ function RegisterForm() {
                         </Form>
                     </CardContent>
                 </Card>
-                : currentStep.id === "step2" ? <>
+                : (currentStep.id === "step2" || step === "step2") ? <>
                         <Card className="mt-6 mr-10 pl-6 pr-6 pt-2 pb-5">
                             <CardHeader>
                                 <CardTitle className="text-[32px] mb-3">Business Information</CardTitle>
@@ -613,7 +630,7 @@ function RegisterForm() {
                             </CardContent>
                         </Card>
                     </>
-                    : currentStep.id === "step3" ? <>
+                    : (currentStep.id === "step3" || step === "step3") ? <>
                             <Card className="mt-6 mr-10 pl-6 pr-6 pt-2 pb-5">
                                 <CardHeader>
                                     <CardTitle>Setup Business Location</CardTitle>
@@ -881,21 +898,19 @@ function RegisterForm() {
                                                         className={`mt-4 pl-10 pr-10`}>
                                                         {isPending ?
                                                             <Loader2Icon className="w-6 h-6 animate-spin"/> :
-                                                            <> Next <ChevronRight/></>
+                                                            <> Complete <ChevronRight/></>
                                                         }
                                                     </Button>
                                                 </div>
-                                                <div className="self-end flex items-center">
-                                                    <span>Next: {nextStepLabel()}</span>
-                                                    <ChevronRight/></div>
+                                                {/*<div className="self-end flex items-center">
+                                                    <span>{nextStepLabel()}</span>
+                                                    <ChevronRight/></div>*/}
                                             </div>
 
                                         </form>
                                     </Form>
                                 </CardContent>
                             </Card>
-
-
                         </>
                         : <p>End</p>
             }
