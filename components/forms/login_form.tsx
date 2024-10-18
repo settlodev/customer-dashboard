@@ -29,7 +29,6 @@ import { FormError } from "@/components/widgets/form-error";
 import { FormSuccess } from "@/components/widgets/form-success";
 import Link from "next/link";
 import {EyeOffIcon, EyeIcon, CheckIcon} from "lucide-react";
-import Image from "next/image";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
@@ -54,7 +53,7 @@ function LoginForm() {
                     if (data.responseType === "error") {
                         setError(data.message);
                     } else {
-                        setSuccess(data.message);
+                        //setSuccess(data.message);
                         // Redirect to dashboard after successful login
                         window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
                     }

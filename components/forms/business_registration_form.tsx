@@ -54,8 +54,6 @@ const BusinessRegistrationForm = () => {
   const [error, setError] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
 
-  
-
   useEffect(() => {
     const getCountries = async () => {
       try {
@@ -69,10 +67,6 @@ const BusinessRegistrationForm = () => {
     getCountries();
   }, []);
 
-
-
-
- 
 
   const form = useForm<z.infer<typeof BusinessSchema>>({
     resolver: zodResolver(BusinessSchema),
@@ -94,12 +88,12 @@ const BusinessRegistrationForm = () => {
 
   const submitData = (values: z.infer<typeof BusinessSchema>) => {
     setResponse(undefined);
-  
+
     startTransition(() => {
       createBusiness(values)
         .then(async (data) => {
-  
-          if (data && "id" in data) {            
+
+          if (data && "id" in data) {
           } else if (data && data.responseType === "error") {
             setError(data.message);
           } else {
@@ -114,7 +108,7 @@ const BusinessRegistrationForm = () => {
         });
     });
   };
-  
+
 
   return (
 
@@ -243,7 +237,7 @@ const BusinessRegistrationForm = () => {
             </Form>
           </CardContent>
         </Card>
-   
+
   );
 };
 

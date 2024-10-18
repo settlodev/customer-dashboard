@@ -13,9 +13,10 @@ import {
 import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import { deleteAuthToken } from "@/lib/auth-utils";
+import {createAuthToken, deleteAuthToken} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { sendPasswordResetEmail } from "./emails/send";
+import {refreshBusiness} from "@/lib/actions/business/refresh";
 
 export async function logout() {
     try {
@@ -34,7 +35,6 @@ export const login = async (
     credentials: z.infer<typeof LoginSchema>,
 ): Promise<FormResponse> => {
     const validatedData = LoginSchema.safeParse(credentials);
-    console.log("credentials are:", credentials);
     if (!validatedData.success) {
         return parseStringify({
             responseType: "error",
@@ -189,7 +189,7 @@ export const register = async (
     credentials: z.infer<typeof RegisterSchema>,
 ): Promise<FormResponse> => {
     const validatedData = RegisterSchema.safeParse(credentials);
- 
+
 
     if (!validatedData.success) {
         return parseStringify({
@@ -199,13 +199,16 @@ export const register = async (
         });
     }
 
-    try {    
+    try {
         const apiClient = new ApiClient();
-        await apiClient.post("/api/auth/register", validatedData.data);
+        const regData = await apiClient.post("/api/auth/register", validatedData.data);
+        console.log("regData:", regData);
+        //await createAuthToken(regData);
+
         return parseStringify({
             responseType: "success",
             message: "Registration successful, redirecting to login...",
-        });  
+        });
     } catch (error) {
         console.error(error);
         return parseStringify({
@@ -230,7 +233,7 @@ export const resetPassword = async (
             error: new Error(validateEmail.error.message),
         });
     }
-   
+
     try {
         const apiClient = new ApiClient();
         const result = await apiClient.post("/api/auth/reset-password", validateEmail.data);
@@ -270,7 +273,7 @@ export const updatePassword = async (
     console.log("The payload to update password", payload);
     const apiClient = new ApiClient();
     try {
-       
+
         const response = await apiClient.post("/api/auth/update-password", payload);
         // console.log("Response from API after reset ", response);
         return parseStringify({

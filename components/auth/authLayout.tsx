@@ -1,17 +1,20 @@
+"use client"
 import Image from "next/image";
 import Link from "next/link";
 import {CheckIcon, ChevronRight} from "lucide-react";
+import {usePathname} from "next/navigation";
 
 interface Props {
   children: React.ReactNode;
-  section?: string;
 }
 
-export const AuthLayoutWrapper = ({ children, section }: Props) => {
-
+export const AuthLayoutWrapper = ({ children }: Props) => {
+    const router = usePathname();
+    const isRegisterPath = router === '/register';
+    const isLoginPath = router === '/login';
     return (<>
             <div className='flex h-screen bg-gray-100 relative'>
-                <div className='hidden md:flex w-1/3 justify-center h-screen bg-[#3962EA] mr-20'>
+                <div className='hidden md:flex w-1/3 justify-center h-screen bg-[#09A87B] mr-20'>
                     <div className="relative pl-16 pr-16">
                         <div className='z-10'>
                             <div className="pt-10 pb-10 pl-3 w-full flex items-center">
@@ -23,10 +26,12 @@ export const AuthLayoutWrapper = ({ children, section }: Props) => {
                                         alt="Settlo"
                                     />
                                 </div>
+
+                                {isRegisterPath?
                                 <Link href="/login" className="self-end flex items-center justify-center gap-1">
-                                    <span className="text-gray-50 font-bold text-md">Go back</span>
+                                    <span className="text-gray-50 font-bold text-md">Go to login</span>
                                     <ChevronRight size={18} color={'#FFFFFF'}/>
-                                </Link>
+                                </Link>:<></>}
                             </div>
 
                             <div
@@ -113,14 +118,12 @@ export const AuthLayoutWrapper = ({ children, section }: Props) => {
                                         <p className="text-sm font-bold text-center text-white">PlayStore</p>
                                     </div>
                                 </div>
-
-
                             </div>
 
                             <div className="pt-6 pl-4">
-                                <span className="mr-5 text-gray-400">About us</span>
-                                <span className="mr-5 text-gray-400">Terms & Conditions</span>
-                                <span className="mr-5 text-gray-400">Contact</span>
+                                <span className="mr-5 text-gray-200">About us</span>
+                                <span className="mr-5 text-gray-200">Terms & Conditions</span>
+                                <span className="mr-5 text-gray-200">Contact</span>
                             </div>
                         </div>
                     </div>
