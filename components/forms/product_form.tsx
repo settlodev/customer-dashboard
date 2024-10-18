@@ -3,7 +3,6 @@
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
@@ -46,18 +45,17 @@ import {Textarea} from "@/components/ui/textarea";
 import {Switch} from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
 import {taxClasses} from "@/types/constants";
-import {Checkbox} from "@/components/ui/checkbox";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
-    const [response, setResponse] = useState<FormResponse | undefined>();
-    const [error, setError] = useState<string | undefined>("");
-    const [success, setSuccess] = useState<string | undefined>("");
+    const [, setResponse] = useState<FormResponse | undefined>();
+    const [error,] = useState<string | undefined>("");
+    const [success,] = useState<string | undefined>("");
 
     const [variants, setVariants] = useState<FormVariantItem[]>([]);
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
-    const [brands, setBrands] = useState<Brand[]>([]);
+    const [brands,] = useState<Brand[]>([]);
 
     const {toast} = useToast();
 

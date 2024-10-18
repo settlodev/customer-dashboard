@@ -28,7 +28,6 @@ import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormError } from "@/components/widgets/form-error";
 import { FormSuccess } from "@/components/widgets/form-success";
 import Link from "next/link";
-import Image from "next/image";
 import {EyeOffIcon, EyeIcon} from "lucide-react";
 
 function LoginForm() {

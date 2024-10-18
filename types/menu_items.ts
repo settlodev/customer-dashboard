@@ -70,6 +70,8 @@ export const menuItems=(args?: MenuItemArgType) => {
                     {title: "Users", link: "/users", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Staffs", link: "/staff", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Shifts", link: "/shifts", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Salaries", link: "/salaries", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Payslips", link: "/payslips", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Roles", link: "/roles", current: args?.isCurrentItem, icon: "cart"},
                 ]
         },

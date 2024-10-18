@@ -1,6 +1,4 @@
 import Image from "next/image";
-import { Divider } from "@nextui-org/divider";
-import Link from "next/link";
 import {CheckIcon} from "lucide-react";
 
 interface Props {
