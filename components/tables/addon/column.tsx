@@ -4,11 +4,11 @@ import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
-import {CellAction} from "@/components/tables/discount/cell-action";
-import { Discount } from "@/types/discount/type";
+import {CellAction} from "@/components/tables/addon/cell-action";
+import { Addon } from "@/types/addon/type";
 
 
-export const columns: ColumnDef<Discount>[] = [
+export const columns: ColumnDef<Addon>[] = [
     {
         id: "select",
         header: ({ table }) => (
@@ -29,7 +29,7 @@ export const columns: ColumnDef<Discount>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "name",
+        accessorKey: "title",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -38,58 +38,18 @@ export const columns: ColumnDef<Discount>[] = [
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Name
+                    Title
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
     },
     {
-        accessorKey: "discountCode",
-        enableHiding: true,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Code
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
+        accessorKey: "price",
+        header: "Price",
+        enableHiding: false,
     },
-    {
-        accessorKey: "discountType",
-        header: "Discount Type",
-        enableHiding: true,
-    },
-    {
-        accessorKey: "discountValue",
-        header: "Discount Value",
-        enableHiding: true
-    },
-    {
-        accessorKey: "minimumSpend",
-        header: "Minimum Spend",
-        enableHiding: true
-    },
-    {
-        accessorKey: "validFrom",
-        header: "Valid From",
-        enableHiding: true,
-    },
-    {
-        accessorKey: "validTo",
-        header: "Valid To",
-        enableHiding: true,
-    },
-    {
-        accessorKey: "usageLimit",
-        header: "Usage Limit",
-        enableHiding: true,
-    },
+  
     {
         id: "status",
         accessorKey: "status",

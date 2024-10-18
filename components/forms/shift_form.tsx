@@ -142,7 +142,7 @@ function ShiftForm({ item }: { item: Shift | null | undefined }) {
                           value={field.value}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Select department" />
+                            <SelectValue placeholder={departments.length > 0 ? "Select a department": "No departments found"} />
                           </SelectTrigger>
                           <SelectContent>
                             {departments.length > 0
@@ -151,7 +151,8 @@ function ShiftForm({ item }: { item: Shift | null | undefined }) {
                                     {dept.name}{" "}
                                   </SelectItem>
                                 ))
-                              : null}
+                              : null
+                              }
                           </SelectContent>
                         </Select>
                       </FormControl>

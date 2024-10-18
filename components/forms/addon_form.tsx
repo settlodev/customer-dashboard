@@ -27,21 +27,19 @@ import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
-import { Supplier } from "@/types/supplier/type";
-import { SupplierSchema } from "@/types/supplier/schema";
-import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
-import { PhoneInput } from "../ui/phone-input";
-import { Loader2Icon } from "lucide-react";
+import { AddonSchema } from "@/types/addon/schema";
+import { createAddon, updateAddon } from "@/lib/actions/addon-actions";
+import { Addon } from "@/types/addon/type";
 
-function SupplierForm({ item }: { item: Supplier | null | undefined }) {
+function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error, ] = useState<string | undefined>("");
-  const [success,] = useState<string | undefined>("");
+  const [success, ] = useState<string | undefined>("");
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof SupplierSchema>>({
-    resolver: zodResolver(SupplierSchema),
+  const form = useForm<z.infer<typeof AddonSchema>>({
+    resolver: zodResolver(AddonSchema),
     defaultValues: item ? item : { status: true },
   });
 
@@ -58,14 +56,14 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
     [toast]
   );
 
-  const submitData = (values: z.infer<typeof SupplierSchema>) => {
+  const submitData = (values: z.infer<typeof AddonSchema>) => {
     startTransition(() => {
       if (item) {
-        updateSupplier(item.id, values).then((data) => {
+        updateAddon(item.id, values).then((data) => {
           if (data) setResponse(data);
         });
       } else {
-        createSupplier(values)
+        createAddon(values)
           .then((data) => {
             console.log(data);
             if (data) setResponse(data);
@@ -85,9 +83,9 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
           <Card>
             <CardHeader>
-              <CardTitle>Supplier Details</CardTitle>
+              <CardTitle>Addon Details</CardTitle>
               <CardDescription>
-                Enter personal details of the supplier
+                Enter the details of the Addon
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -96,13 +94,30 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
               <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="title"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Full Name</FormLabel>
+                      <FormLabel>Addon Title</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter supplier full name "
+                          placeholder="Enter brand name "
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Addon Price</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter brand name "
                           {...field}
                           disabled={isPending}
                         />
@@ -112,56 +127,16 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   )}
                 />
             
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="johndoe@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-               
-                <FormField
-                  control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col items-start">
-                      <FormLabel>Supplier Phone Number</FormLabel>
-                      <FormControl className="w-full border-1 rounded-sm">
-                        <PhoneInput
-                          placeholder="Enter supplier phone number"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              
               </div>
             </CardContent>
           </Card>
           <div className="flex h-5 items-center space-x-4 mt-4">
             <CancelButton />
             <Separator orientation="vertical" />
-            {
-              isPending ? (
-                <div className="flex justify-center items-center bg-black rounded p-2 text-white">
-                  <Loader2Icon className="w-6 h-6 animate-spin" />
-                </div>
-              ) : (
-                <SubmitButton
-                  isPending={isPending}
-                  label={item ? "Update supplier details" : "Add supplier "}
-                />
-              )
-            }
+            <SubmitButton
+              isPending={isPending}
+              label={item ? "Update Addon details" : "Add Addon"}
+            />
           </div>
         </div>
 
@@ -170,4 +145,4 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   );
 }
 
-export default SupplierForm;
+export default AddonForm;

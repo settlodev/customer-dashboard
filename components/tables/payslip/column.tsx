@@ -4,11 +4,11 @@ import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
-import {CellAction} from "@/components/tables/discount/cell-action";
-import { Discount } from "@/types/discount/type";
+import {CellAction} from "@/components/tables/payslip/cell-action";
+import { Payslip } from "@/types/payslip/type";
 
 
-export const columns: ColumnDef<Discount>[] = [
+export const columns: ColumnDef<Payslip>[] = [
     {
         id: "select",
         header: ({ table }) => (
@@ -29,7 +29,7 @@ export const columns: ColumnDef<Discount>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "name",
+        accessorKey: "staff",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -38,57 +38,36 @@ export const columns: ColumnDef<Discount>[] = [
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Name
+                    Staff Name
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
     },
     {
-        accessorKey: "discountCode",
-        enableHiding: true,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Code
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
+        accessorKey: "salary",
+        header: "Salary",
+        enableHiding: false,
     },
     {
-        accessorKey: "discountType",
-        header: "Discount Type",
-        enableHiding: true,
+        accessorKey: "baseSalary",
+        header: "Base Salary",
+        enableHiding: false,
     },
     {
-        accessorKey: "discountValue",
-        header: "Discount Value",
-        enableHiding: true
+        accessorKey: "netSalary",
+        header: "Net Salary",
+        enableHiding: false,
     },
     {
-        accessorKey: "minimumSpend",
-        header: "Minimum Spend",
-        enableHiding: true
+        accessorKey: "startPeriod",
+        header: "Start Period",
+        enableHiding: false,
     },
     {
-        accessorKey: "validFrom",
-        header: "Valid From",
-        enableHiding: true,
-    },
-    {
-        accessorKey: "validTo",
-        header: "Valid To",
-        enableHiding: true,
-    },
-    {
-        accessorKey: "usageLimit",
-        header: "Usage Limit",
-        enableHiding: true,
+        accessorKey: "endPeriod",
+        header: "End Period",
+        enableHiding: false,
     },
     {
         id: "status",

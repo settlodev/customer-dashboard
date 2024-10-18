@@ -13,14 +13,10 @@ interface ProductTaxSelectorProps {
     onBlur: () => void;
 }
 function ProductTaxSelector({
-    label,
     placeholder,
-    isRequired,
     value,
     isDisabled,
-    description,
     onChange,
-    onBlur,
     data
 }: ProductTaxSelectorProps) {
     return (
