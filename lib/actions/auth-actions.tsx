@@ -190,7 +190,6 @@ export const register = async (
 ): Promise<FormResponse> => {
     const validatedData = RegisterSchema.safeParse(credentials);
 
-
     if (!validatedData.success) {
         return parseStringify({
             responseType: "error",
@@ -202,8 +201,13 @@ export const register = async (
     try {
         const apiClient = new ApiClient();
         const regData = await apiClient.post("/api/auth/register", validatedData.data);
-        console.log("regData:", regData);
-        //await createAuthToken(regData);
+        if(regData){
+            await signIn("credentials", {
+                email: credentials.email,
+                password: credentials.password,
+                redirect: false,
+            })
+        }
 
         return parseStringify({
             responseType: "success",
