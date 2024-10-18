@@ -98,15 +98,15 @@ export const createSupplier = async (
   };
 
   await getAuthenticatedUser();
-  
+
   try {
     const apiClient = new ApiClient();
-    const supplierData = await apiClient.post(
+
+    await apiClient.post(
       `/api/suppliers/${location?.id}/create`,
       payload
     );
 
-    return parseStringify(supplierData);
   } catch (error) {
     console.error("Error creating supplier", error);
     formResponse = {
@@ -116,12 +116,15 @@ export const createSupplier = async (
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
+  
   if (formResponse) {
     return parseStringify(formResponse);
   }
+
   revalidatePath("/suppliers");
   redirect("/suppliers");
 };
+
 
 export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
   const apiClient = new ApiClient();

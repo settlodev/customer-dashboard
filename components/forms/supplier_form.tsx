@@ -30,6 +30,8 @@ import { FormSuccess } from "../widgets/form-success";
 import { Supplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
 import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
+import { PhoneInput } from "../ui/phone-input";
+import { Loader2Icon } from "lucide-react";
 
 function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -100,7 +102,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter supplier first name "
+                          placeholder="Enter supplier full name "
                           {...field}
                           disabled={isPending}
                         />
@@ -128,10 +130,10 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   control={form.control}
                   name="phoneNumber"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Customer Phone Number</FormLabel>
-                      <FormControl>
-                        <Input
+                    <FormItem className="flex flex-col items-start">
+                      <FormLabel>Supplier Phone Number</FormLabel>
+                      <FormControl className="w-full border-1 rounded-sm">
+                        <PhoneInput
                           placeholder="Enter supplier phone number"
                           {...field}
                           disabled={isPending}
@@ -148,14 +150,21 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
           <div className="flex h-5 items-center space-x-4 mt-4">
             <CancelButton />
             <Separator orientation="vertical" />
-            <SubmitButton
-              isPending={isPending}
-              label={item ? "Update supplier details" : "Add supplier "}
-            />
+            {
+              isPending ? (
+                <div className="flex justify-center items-center bg-black rounded p-2 text-white">
+                  <Loader2Icon className="w-6 h-6 animate-spin" />
+                </div>
+              ) : (
+                <SubmitButton
+                  isPending={isPending}
+                  label={item ? "Update supplier details" : "Add supplier "}
+                />
+              )
+            }
           </div>
         </div>
 
-        {/* </div> */}
       </form>
     </Form>
   );

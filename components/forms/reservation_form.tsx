@@ -210,7 +210,7 @@ const ReservationForm = ({
                   render={({ field }) => (
                     <FormItem className="flex flex-col items-start">
                       <FormLabel>Phone Number</FormLabel>
-                      <FormControl className="w-full">
+                      <FormControl className="w-full border-1 rounded-sm ">
                         <PhoneInput
                           {...field}
                           disabled={isPending}

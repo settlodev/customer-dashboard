@@ -38,7 +38,7 @@ export const columns: ColumnDef<Discount>[] = [
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Discount Name
+                    Name
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
@@ -46,7 +46,7 @@ export const columns: ColumnDef<Discount>[] = [
     },
     {
         accessorKey: "discountCode",
-        enableHiding: false,
+        enableHiding: true,
         header: ({ column }) => {
             return (
                 <Button
@@ -54,7 +54,7 @@ export const columns: ColumnDef<Discount>[] = [
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
                 >
-                    Discount Code
+                    Code
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
@@ -63,18 +63,32 @@ export const columns: ColumnDef<Discount>[] = [
     {
         accessorKey: "discountType",
         header: "Discount Type",
+        enableHiding: true,
+    },
+    {
+        accessorKey: "discountValue",
+        header: "Discount Value",
+        enableHiding: true
+    },
+    {
+        accessorKey: "minimumSpend",
+        header: "Minimum Spend",
+        enableHiding: true
     },
     {
         accessorKey: "validFrom",
         header: "Valid From",
+        enableHiding: true,
     },
     {
         accessorKey: "validTo",
         header: "Valid To",
+        enableHiding: true,
     },
     {
         accessorKey: "usageLimit",
         header: "Usage Limit",
+        enableHiding: true,
     },
     {
         id: "status",

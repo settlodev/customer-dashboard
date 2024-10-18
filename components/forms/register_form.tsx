@@ -39,6 +39,7 @@ import { register } from "@/lib/actions/auth-actions";
 import { Loader2Icon } from "lucide-react";
 import { fetchCountries } from "@/lib/actions/countries-actions";
 import { Country } from "@/types/country/type";
+import { PhoneInput } from "../ui/phone-input";
 function RegisterForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>("");
@@ -162,10 +163,14 @@ function RegisterForm() {
                   control={form.control}
                   name="phoneNumber"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col items-start">
                       <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Enter phone number" {...field} />
+                      <FormControl className="w-full border-1 rounded-sm ">
+                        {/* <Input placeholder="Enter phone number" {...field} /> */}
+                        <PhoneInput
+                          placeholder="Enter phone number"
+                          {...field}
+                        />
                       </FormControl>
                       <FormDescription>{/* Enter user name */}</FormDescription>
                       <FormMessage />

@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "../ui/switch";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
+import { PhoneInput } from "../ui/phone-input";
 
 function CustomerForm({ item }: { item: Customer | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -171,10 +172,10 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                   control={form.control}
                   name="phoneNumber"
                   render={({ field }) => (
-                    <FormItem>
+                    <FormItem className="flex flex-col items-start">
                       <FormLabel>Customer Phone Number</FormLabel>
-                      <FormControl>
-                        <Input
+                      <FormControl className="w-full border-1 rounded-sm">
+                        <PhoneInput
                           placeholder="Enter customer phone number"
                           {...field}
                           disabled={isPending}

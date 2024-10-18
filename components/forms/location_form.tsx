@@ -111,7 +111,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                     render={({ field }) => (
                       <FormItem className="flex flex-col items-start">
                         <FormLabel>Phone Number</FormLabel>
-                        <FormControl >
+                        <FormControl className="w-full border-1 rounded-sm ">
                          <PhoneInput
                             {...field}
                             disabled={isPending}

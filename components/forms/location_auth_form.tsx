@@ -30,6 +30,7 @@ import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
 import { createBusinessLocation } from "@/lib/actions/auth/location";
 import { Loader2Icon } from "lucide-react";
+import { PhoneInput } from "../ui/phone-input";
 
 const LocationAuthForm = () => {
   const [isPending, startTransition] = useTransition();
@@ -118,10 +119,10 @@ const LocationAuthForm = () => {
                     control={form.control}
                     name="phone"
                     render={({ field }) => (
-                      <FormItem>
+                      <FormItem className="flex flex-col items-start">
                         <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input
+                        <FormControl className="w-full border-1 rounded-sm">
+                          <PhoneInput
                             {...field}
                             disabled={isPending}
                             placeholder="Enter business location phone number"
@@ -129,6 +130,7 @@ const LocationAuthForm = () => {
                         </FormControl>
                         <FormMessage />
                       </FormItem>
+                      
                     )}
                   />
                 </div>
