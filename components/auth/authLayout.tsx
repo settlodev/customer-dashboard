@@ -20,7 +20,7 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 </Link>
             </div>*/}
             <div className='flex h-screen bg-gray-100 relative'>
-                <div className='absolute left-0 right-0 bottom-0 z-0 opacity-5 w-full'>
+                <div className='absolute left-0 right-0 bottom-0 z-[-1] opacity-10 w-full'>
                     <Image
                         className='w-full'
                         src='/images/wave-2.svg'
@@ -112,6 +112,18 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                                             passwords and passcodes.</p>
                                     </div>
                                 </div>
+                                <div className="flex mb-5">
+                                    <div className="flex w-8 mr-4 mt-1.5">
+                                        <span
+                                            className="w-6 h-6 bg-emerald-500 overflow-hidden rounded-full flex items-center justify-center">
+                                            <CheckIcon size={18} className="text-white" />
+                                        </span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="font-bold text-[26px] text-[#1E3E62]">Free trial period</h3>
+                                        <p className="text-gray-600 text-md">Test before you buy, use our system for 30 days free trial period.</p>
+                                    </div>
+                                </div>
 
                                 <div className='mt-10 flex gap-6'>
                                     <div className="flex flex-1 gap-2 items-center border-1 rounded-xl p-2 pl-4 pr-3 bg-gray-800">
@@ -139,15 +151,6 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 </div>*/}
 
                 <div className='flex-1 flex-col items-center justify-center pt-32'>
-                    {/*<div className='md:hidden absolute left-0 right-0 bottom-0 top-0 z-0'>
-                        <Image
-                            className='w-full h-full'
-                            src='/images/login-bg.png'
-                            alt='gradient'
-                            width={100}
-                            height={100}
-                        />
-                    </div>*/}
                     {children}
                 </div>
             </div>
