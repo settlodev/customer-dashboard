@@ -49,11 +49,7 @@ export const columns: ColumnDef<Addon>[] = [
         header: "Price",
         enableHiding: false,
     },
-    {
-        accessorKey: "orderItem",
-        header: "Order Item",
-        enableHiding: false,
-    },
+  
     {
         id: "status",
         accessorKey: "status",
