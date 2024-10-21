@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Business } from "@/types/business/type";
 
 
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 const CreatedBusinessList = ({ businesses }: { businesses: Business[]}) => {
 
@@ -17,9 +16,9 @@ const CreatedBusinessList = ({ businesses }: { businesses: Business[]}) => {
         return null; //preventing the table
     }
 
-    const handleRedirectToLocations = (business: Business) => {
-        router.push(`/business-location?business=${business.id}`);
-    }
+    // const handleRedirectToLocations = (business: Business) => {
+    //     router.push(`/business-location?business=${business.id}`);
+    // }
 
     return (<></>)
 }

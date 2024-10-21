@@ -1,15 +1,15 @@
 "use client"
 import Image from "next/image";
-import Link from "next/link";
-import {CheckIcon, ChevronRight} from "lucide-react";
-import {usePathname} from "next/navigation";
+// import Link from "next/link";
+import {CheckIcon} from "lucide-react";
+// import {usePathname} from "next/navigation";
 
 interface Props {
   children: React.ReactNode;
 }
 
 export const AuthLayoutWrapper = ({ children }: Props) => {
-    const router = usePathname();
+    // const router = usePathname();
     //const isRegisterPath = router === '/register';
     //const isLoginPath = router === '/login';
     return (<>
