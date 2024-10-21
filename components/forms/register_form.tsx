@@ -100,12 +100,12 @@ function RegisterForm({step}:{step: string}) {
 
     const form = useForm<z.infer<typeof RegisterSchema>>({
         resolver: zodResolver(RegisterSchema),
-        defaultValues: {},
+        defaultValues: {country: defaultCountry},
     });
 
     const businessForm = useForm<z.infer<typeof BusinessSchema>>({
         resolver: zodResolver(BusinessSchema),
-        defaultValues: {},
+        defaultValues: {country: defaultCountry},
     });
 
     const locationForm = useForm<z.infer<typeof LocationSchema>>({
@@ -348,8 +348,7 @@ function RegisterForm({step}:{step: string}) {
                                                         <Select
                                                             disabled={isPending || countries.length === 0}
                                                             onValueChange={field.onChange}
-                                                            value={field.value}
-                                                            defaultValue={defaultCountry}>
+                                                            value={field.value}>
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="Select your country" />
                                                             </SelectTrigger>
@@ -566,8 +565,7 @@ function RegisterForm({step}:{step: string}) {
                                                             <Select
                                                                 disabled={isPending || countries.length === 0}
                                                                 onValueChange={field.onChange}
-                                                                value={field.value}
-                                                                defaultValue={defaultCountry}>
+                                                                value={field.value}>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select your country"/>
                                                                 </SelectTrigger>
@@ -862,7 +860,7 @@ function RegisterForm({step}:{step: string}) {
                                                                                 ? businessTimes.map((item: BusinessTimeType, index: number) => (
                                                                                     <SelectItem key={index}
                                                                                                 value={item.name}>
-                                                                                        {item.name}
+                                                                                        {item.label}
                                                                                     </SelectItem>
                                                                                 ))
                                                                                 : <></>}
@@ -896,7 +894,7 @@ function RegisterForm({step}:{step: string}) {
                                                                                 ? businessTimes.map((item: BusinessTimeType, index: number) => (
                                                                                     <SelectItem key={index}
                                                                                                 value={item.name}>
-                                                                                        {item.name}
+                                                                                        {item.label}
                                                                                     </SelectItem>
                                                                                 ))
                                                                                 : <></>}
