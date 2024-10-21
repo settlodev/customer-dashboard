@@ -57,6 +57,7 @@ import BusinessTypeSelector from "@/components/widgets/business-type-selector";
 import {Textarea} from "@/components/ui/textarea";
 import {LocationSchema} from "@/types/location/schema";
 import {createBusinessLocation} from "@/lib/actions/auth/location";
+import { PhoneInput } from "../ui/phone-input";
 interface signUpStepItemType{
     id: string;
     label: string;
@@ -370,10 +371,13 @@ function RegisterForm({step}:{step: string}) {
                                             control={form.control}
                                             name="phoneNumber"
                                             render={({field}) => (
-                                                <FormItem>
+                                                <FormItem className="flex flex-col items-center mt-1">
                                                     <FormLabel>Phone Number</FormLabel>
-                                                    <FormControl>
-                                                        <Input placeholder="Enter phone number" {...field} />
+                                                    <FormControl className="w-full border-1 rounded-sm">
+                                                    <PhoneInput
+                                                        placeholder="Enter phone number"
+                                                        {...field}
+                                                      />
                                                     </FormControl>
                                                     <FormDescription>{/* Enter user name */}</FormDescription>
                                                     <FormMessage/>
