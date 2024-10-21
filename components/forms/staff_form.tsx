@@ -367,7 +367,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                                     <Input
                                                         {...field}
                                                         disabled={isPending}
-                                                        placeholder="Enter staff's home address"
+                                                        placeholder="Enter staff home address"
                                                         value={field.value ?? ""}
                                                     />
                                                 </FormControl>
@@ -457,7 +457,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                             <CardHeader>
                                 <CardTitle>Contact Person</CardTitle>
                                 <CardDescription>
-                                    Staff's relative contact person, incase of emergency
+                                    Staff relative contact person, incase of emergency
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
