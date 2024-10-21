@@ -2,9 +2,7 @@
 import { useEffect, useState } from "react";
 import { getAllBusinessLocationsByBusinessID } from "@/lib/actions/auth/location";
 import { useSearchParams } from "next/navigation";
-import CreatedBusinessLocationList from "./Location_list";
 import { Location } from "@/types/location/type";
-import LocationAuthForm from "@/components/forms/location_auth_form";
 import RegisterForm from "@/components/forms/register_form";
 
 async function fetchLocationData(businessId: string) {
@@ -15,7 +13,7 @@ function LocationPage() {
     const searchParams = useSearchParams();
     const businessId = searchParams.get("business");
     const [loading, setLoading] = useState(true);
-    const [locationData, setLocationData] = useState<Location[]>([]);
+    const [, setLocationData] = useState<Location[]>([]);
 
     useEffect(() => {
         if (businessId) {

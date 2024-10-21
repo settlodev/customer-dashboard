@@ -55,7 +55,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
         <Form {...form}>
             <FormError message={response?.message} />
             <form className="space-y-8" onSubmit={form.handleSubmit(submitData)}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-3 gap-4">
                     <FormField
                         control={form.control}
                         name="name"
@@ -66,10 +66,8 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                         {...field}
                                         isRequired
                                         isDisabled={isPending}
-                                        label="Role name"
+                                        // label="Role name"
                                         placeholder="Enter role name"
-                                        radius="sm"
-                                        size="md"
                                     />
                                 </FormControl>
                                 <FormMessage />

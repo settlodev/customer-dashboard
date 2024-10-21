@@ -119,7 +119,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
 
     const removeVariant = (index: number) => {
         const mVariants = [...variants];
-        mVariants[index] = null;
+        mVariants.splice(index, 1);
         setVariants(_.compact(mVariants));
     }
 

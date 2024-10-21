@@ -51,7 +51,7 @@ import { Country } from "@/types/country/type";
 import _ from "lodash";
 import {BusinessSchema} from "@/types/business/schema";
 import {createBusiness} from "@/lib/actions/auth/business";
-import {toast, useToast} from "@/hooks/use-toast";
+import {useToast} from "@/hooks/use-toast";
 import {Business} from "@/types/business/type";
 import BusinessTypeSelector from "@/components/widgets/business-type-selector";
 import {Textarea} from "@/components/ui/textarea";
@@ -85,10 +85,10 @@ function RegisterForm({step}:{step: string}) {
     const mCurrentStep = step?signUpSteps[_.findIndex(signUpSteps, {id: step})]:signUpSteps[0];
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
-    const [success, setSuccess] = useState<string | undefined>("");
+    const [success,] = useState<string | undefined>("");
     const [countries, setCountries] = useState([]);
     const [stepsDone, setStepsDone] = useState<signUpStepItemType[]>([]);
-    const [addStep, setAddStep] = useState(null);
+    // const [addStep, setAddStep] = useState(null);
     const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
     const [showPassword, setShowPassword] = useState<boolean>(false);
 
@@ -147,7 +147,7 @@ function RegisterForm({step}:{step: string}) {
             }
         }
 
-    }, []);
+    }, [step, stepsDone]);
 
     const setMyCurrentStep = () => {
         const currentStepIndex = signUpSteps.indexOf(currentStep) + 1;

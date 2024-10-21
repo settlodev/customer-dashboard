@@ -13,10 +13,10 @@ import {
 import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import {createAuthToken, deleteAuthToken} from "@/lib/auth-utils";
+import {deleteAuthToken} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { sendPasswordResetEmail } from "./emails/send";
-import {refreshBusiness} from "@/lib/actions/business/refresh";
+// import {refreshBusiness} from "@/lib/actions/business/refresh";
 
 export async function logout() {
     try {

@@ -13,6 +13,7 @@ export declare interface Product {
     status: boolean,
     canDelete: boolean,
     business: UUID,
+    category: UUID,
     location: UUID,
     department: UUID,
     departmentName: string,

@@ -11,7 +11,7 @@ interface Props {
 export const AuthLayoutWrapper = ({ children }: Props) => {
     const router = usePathname();
     const isRegisterPath = router === '/register';
-    const isLoginPath = router === '/login';
+    // const isLoginPath = router === '/login';
     return (<>
             <div className='flex h-screen bg-gray-100 relative'>
                 <div className='hidden md:flex w-1/3 justify-center h-screen bg-[#09A87B] mr-20'>
