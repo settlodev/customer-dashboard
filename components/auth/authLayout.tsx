@@ -10,11 +10,11 @@ interface Props {
 
 export const AuthLayoutWrapper = ({ children }: Props) => {
     const router = usePathname();
-    const isRegisterPath = router === '/register';
-    // const isLoginPath = router === '/login';
+    //const isRegisterPath = router === '/register';
+    //const isLoginPath = router === '/login';
     return (<>
             <div className='flex h-screen bg-gray-100 relative'>
-                <div className='hidden md:flex w-1/3 justify-center h-screen bg-[#09A87B] mr-20'>
+                <div className='hidden md:flex w-1/3 justify-center h-screen bg-emerald-600 mr-20'>
                     <div className="relative pl-16 pr-16">
                         <div className='z-10'>
                             <div className="pt-10 pb-10 pl-3 w-full flex items-center">
@@ -27,11 +27,11 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                                     />
                                 </div>
 
-                                {isRegisterPath?
+                                {/*{isRegisterPath?
                                 <Link href="/login" className="self-end flex items-center justify-center gap-1">
                                     <span className="text-gray-50 font-bold text-md">Go to login</span>
                                     <ChevronRight size={18} color={'#FFFFFF'}/>
-                                </Link>:<></>}
+                                </Link>:<></>}*/}
                             </div>
 
                             <div

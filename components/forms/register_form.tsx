@@ -248,7 +248,6 @@ function RegisterForm({step}:{step: string}) {
         }
     }
 
-
     return (<div className="pl-16 pr-20">
             <div className="pt-5 pb-5 flex gap-4 mr-16">
                 {signUpSteps.map((item, index) => {
@@ -346,8 +345,7 @@ function RegisterForm({step}:{step: string}) {
                                                         <Select
                                                             disabled={isPending || countries.length === 0}
                                                             onValueChange={field.onChange}
-                                                            value={field.value}
-                                                        >
+                                                            value={field.value}>
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="Select your country"/>
                                                             </SelectTrigger>
@@ -355,11 +353,10 @@ function RegisterForm({step}:{step: string}) {
                                                                 {countries.length > 0
                                                                     ? countries.map((country: Country, index: number) => (
                                                                         <SelectItem key={index} value={country.id}>
-                                                                            {country.name}{" "}
-                                                                            {/* Assuming 'name' is the country name */}
+                                                                            {country.name}
                                                                         </SelectItem>
                                                                     ))
-                                                                    : null}
+                                                                : <></>}
                                                             </SelectContent>
                                                         </Select>
                                                     </FormControl>
@@ -446,13 +443,13 @@ function RegisterForm({step}:{step: string}) {
                                             className={`mt-4 pl-10 pr-10`}>
                                             {isPending ?
                                                 <Loader2Icon className="w-6 h-6 animate-spin"/>:
-                                                <> Next <ChevronRight/></>
+                                                <>Next: Business info <ChevronRight/></>
                                             }
                                         </Button>
                                     </div>
-                                    <div className="self-end flex items-center">
+                                    {/*<div className="self-end flex items-center">
                                         <span>Next: {nextStepLabel()}</span>
-                                        <ChevronRight/></div>
+                                        <ChevronRight/></div>*/}
                                 </div>
                             </form>
                         </Form>
@@ -620,13 +617,13 @@ function RegisterForm({step}:{step: string}) {
                                                     className={`mt-4 pl-10 pr-10`}>
                                                     {isPending ?
                                                         <Loader2Icon className="w-6 h-6 animate-spin"/> :
-                                                        <> Next <ChevronRight/></>
+                                                        <> Next: Location info <ChevronRight/></>
                                                     }
                                                 </Button>
                                             </div>
-                                            <div className="self-end flex items-center">
+                                            {/*<div className="self-end flex items-center">
                                                 <span>Next: {nextStepLabel()}</span>
-                                                <ChevronRight/></div>
+                                                <ChevronRight/></div>*/}
                                         </div>
 
                                     </form>
@@ -906,9 +903,6 @@ function RegisterForm({step}:{step: string}) {
                                                         }
                                                     </Button>
                                                 </div>
-                                                {/*<div className="self-end flex items-center">
-                                                    <span>{nextStepLabel()}</span>
-                                                    <ChevronRight/></div>*/}
                                             </div>
 
                                         </form>
