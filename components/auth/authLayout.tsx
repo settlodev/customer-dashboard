@@ -16,10 +16,14 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
     const hideFromRoutes = ["/business-registration", "/business-location"];
     const hideSidePanel = _.includes(hideFromRoutes, router);
 
-    return (<div className={`${!hideSidePanel && 'flex'} bg-gray-100 relative w-full pb-40`}>
+    return (<div className={`${!hideSidePanel && 'lg:flex md:flex'} bg-gray-100 relative w-full pb-40`}>
             {(hideSidePanel) ?
                 <SignupNavbar />
-            : <></>}
+            :
+                <div className="lg:hidden md:hidden">
+                    <SignupNavbar />
+                </div>
+            }
 
             {!hideSidePanel ?
                 <div className='hidden md:flex w-1/3 justify-center bg-emerald-600 mr-20'>
@@ -139,8 +143,8 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 </div>
             : <></>}
 
-            <div className={`${hideSidePanel ? 'container mx-auto pt-10' : 'flex-1  pt-32'}`}>
-                <div className={hideSidePanel ? 'pl-32 pr-32' : ''}>
+            <div className={`${hideSidePanel ? 'lg:container md:container md:mx-auto lg:mx-auto lg:pt-10 md:pt-10' : 'flex-1 lg:pt-32 md:pt-32'}`}>
+                <div className={hideSidePanel ? 'lg:pl-32 md:pl-32 lg:pr-32 md:pr-32' : ''}>
                     {children}
                 </div>
             </div>

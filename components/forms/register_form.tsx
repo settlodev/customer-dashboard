@@ -244,7 +244,7 @@ function RegisterForm({step}:{step: string}) {
         []
     );
 
-    /*const nextStepLabel=()=>{
+    const nextStepLabel=()=>{
         const currentIndex = signUpSteps.indexOf(currentStep);
         const nextIndex = currentIndex+1;
         if(nextIndex <= signUpSteps.length) {
@@ -252,7 +252,7 @@ function RegisterForm({step}:{step: string}) {
         }else{
             return 'Finish';
         }
-    }*/
+    }
 
     return (<div className="pl-16 pr-20">
             <div className="pt-5 pb-5 flex gap-4 mr-16">

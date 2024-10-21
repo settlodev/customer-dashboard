@@ -1,4 +1,3 @@
-import BusinessRegistrationForm from "@/components/forms/business_registration_form";
 import CreatedBusinessList from "./business_list";
 
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
