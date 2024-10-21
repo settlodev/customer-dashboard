@@ -16,13 +16,13 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
     const hideFromRoutes = ["/business-registration", "/business-location"];
     const hideSidePanel = _.includes(hideFromRoutes, router);
 
-    return (<div className={`${!hideSidePanel && 'flex'} h-screen bg-gray-100 relative w-full`}>
+    return (<div className={`${!hideSidePanel && 'flex'} bg-gray-100 relative w-full pb-40`}>
             {(hideSidePanel) ?
                 <SignupNavbar />
             : <></>}
 
             {!hideSidePanel ?
-                <div className='hidden md:flex w-1/3 justify-center h-screen bg-emerald-600 mr-20'>
+                <div className='hidden md:flex w-1/3 justify-center bg-emerald-600 mr-20'>
                     <div className="relative pl-16 pr-16">
                         <div className='z-10'>
                             <div className="pt-10 pb-10 pl-3 w-full flex items-center">

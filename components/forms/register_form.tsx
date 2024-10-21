@@ -59,6 +59,7 @@ import {LocationSchema} from "@/types/location/schema";
 import {createBusinessLocation} from "@/lib/actions/auth/location";
 import { PhoneInput } from "../ui/phone-input";
 import {businessTimes} from "@/types/constants";
+import {useSession} from "next-auth/react";
 interface signUpStepItemType{
     id: string;
     label: string;
@@ -91,6 +92,8 @@ function RegisterForm({step}:{step: string}) {
     const [stepsDone, setStepsDone] = useState<signUpStepItemType[]>([]);
     const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
     const [showPassword, setShowPassword] = useState<boolean>(false);
+
+    const {data: session} = useSession();
 
     /*TODO: Business form information*/
     const {toast} = useToast();
@@ -241,7 +244,7 @@ function RegisterForm({step}:{step: string}) {
         []
     );
 
-    const nextStepLabel=()=>{
+    /*const nextStepLabel=()=>{
         const currentIndex = signUpSteps.indexOf(currentStep);
         const nextIndex = currentIndex+1;
         if(nextIndex <= signUpSteps.length) {
@@ -249,7 +252,7 @@ function RegisterForm({step}:{step: string}) {
         }else{
             return 'Finish';
         }
-    }
+    }*/
 
     return (<div className="pl-16 pr-20">
             <div className="pt-5 pb-5 flex gap-4 mr-16">
@@ -779,7 +782,7 @@ function RegisterForm({step}:{step: string}) {
                                                         name="address"
                                                         render={({field}) => (
                                                             <FormItem>
-                                                                <FormLabel>Location Address</FormLabel>
+                                                                <FormLabel>Full business address</FormLabel>
                                                                 <FormControl>
                                                                     <Input
                                                                         {...field}
@@ -953,10 +956,12 @@ function RegisterForm({step}:{step: string}) {
                         : <p>End</p>
             }
 
-            <div className="mt-6 text-sm flex items-center font-bold">
-                <ChevronLeft size={18}/>
-                <Link href="/login">Back to login</Link>
-            </div>
+            {!session?.user?
+                <div className="mt-6 text-sm flex items-center font-bold">
+                    <ChevronLeft size={18}/>
+                    <Link href="/login">Back to login</Link>
+                </div>
+            :<></>}
         </div>
     );
 }
