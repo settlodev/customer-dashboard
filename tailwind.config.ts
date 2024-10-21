@@ -59,7 +59,7 @@ const config: Config = {
 				sm: 'calc(var(--radius) - 4px)'
 			}
 		},
-		/*screens: {
+		screens: {
 			'sm': '640px',
 			// => @media (min-width: 640px) { ... }
 
@@ -74,7 +74,7 @@ const config: Config = {
 
 			'2xl': '1536px',
 			// => @media (min-width: 1536px) { ... }
-		}*/
+		}
 	},
 	plugins: [require("tailwindcss-animate"), nextui()],
 } satisfies Config;

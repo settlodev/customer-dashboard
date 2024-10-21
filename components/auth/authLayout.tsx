@@ -5,6 +5,7 @@ import {usePathname} from "next/navigation";
 import _ from "lodash";
 import React from "react";
 import {SignupNavbar} from "@/app/(auth)/register/sign_up_navbar";
+import {Footer} from "@/components/landing-page/Footer";
 
 interface Props {
   children: React.ReactNode;
@@ -13,21 +14,23 @@ interface Props {
 export const AuthLayoutWrapper = ({ children }: Props) => {
     const router = usePathname();
 
-    const hideFromRoutes = ["/business-registration", "/business-location"];
+    const hideFromRoutes = ["/business-registration", "/business-location", "/login"];
     const hideSidePanel = _.includes(hideFromRoutes, router);
 
-    return (<div className={`${!hideSidePanel && 'lg:flex md:flex'} bg-gray-100 relative w-full pb-40`}>
-            {(hideSidePanel) ?
+    return (<div className={`${!hideSidePanel && ''} bg-gray-100 relative w-full`}>
+            {/*{(hideSidePanel) ?
                 <SignupNavbar />
             :
-                <div className="lg:hidden md:hidden">
+                <div className="">
                     <SignupNavbar />
                 </div>
-            }
+            }*/}
+
+            <SignupNavbar />
 
             {!hideSidePanel ?
-                <div className='hidden md:flex w-1/3 justify-center bg-emerald-600 mr-20'>
-                    <div className="relative pl-16 pr-16">
+                <div className='hidden md:hidden lg:hidden xl:hidden w-1/3 justify-center bg-emerald-600 mr-20'>
+                    <div className="relative md:pl-16 md:pr-16 lg:pl-16 lg:pr-16">
                         <div className='z-10'>
                             <div className="pt-10 pb-10 pl-3 w-full flex items-center">
                                 <div className="flex-1">
@@ -143,10 +146,11 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
                 </div>
             : <></>}
 
-            <div className={`${hideSidePanel ? 'lg:container md:container md:mx-auto lg:mx-auto lg:pt-10 md:pt-10' : 'flex-1 lg:pt-32 md:pt-32'}`}>
-                <div className={hideSidePanel ? 'lg:pl-32 md:pl-32 lg:pr-32 md:pr-32' : ''}>
-                    {children}
-                </div>
+            <div className={`${hideSidePanel ? 'lg:container md:container md:mx-auto lg:mx-auto lg:pt-10 md:pt-10' : 'lg:container lg:mx-auto flex-1 lg:pl-28 lg:pr-28'}`}>
+                {children}
+            </div>
+
+            <div className="pt-8"><Footer />
             </div>
         </div>
     )

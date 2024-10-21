@@ -67,7 +67,7 @@ function LoginForm() {
         });
     }, []);
 
-    return (<Card className="mx-auto max-w-md w-[500px]">
+    return (<Card className="mx-auto max-w-md w-[500px] mt-10 lg:mt-0 md:mt-0">
             <CardHeader className="border-b-1 mb-4 px-8">
                 <CardTitle className="text-[32px] font-bold mb-2">Welcome back</CardTitle>
                 <CardDescription>

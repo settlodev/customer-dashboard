@@ -254,37 +254,35 @@ function RegisterForm({step}:{step: string}) {
         }
     }
 
-    return (<div className="pl-16 pr-20">
-            <div className="pt-5 pb-5 flex gap-4 mr-16">
+    return (<div className="lg:pl-16 md:pl-16 lg:pr-20 md:pr-16">
+            <div className="pt-5 pb-5 flex gap-4 lg:mr-16">
                 {signUpSteps.map((item, index) => {
                     const isCurrent = currentStep.id === item.id || _.includes(stepsDone, item);
                     return <>
                         <div className="flex flex-col items-center justify-center flex-1">
-                            <div className="flex-1 font-bold text-md mt-3">
+                            <div className="flex-1 font-bold text-sm mt-3">
                                 {_.includes(stepsDone, item) ?
                                     <span
                                         className="w-6 h-6 overflow-hidden bg-blue-500 rounded-full flex items-center justify-center">
                                         <CheckIcon size={16} className="text-gray-50"/>
                                     </span>
-                                    : <span
-                                        className={`font-bold text-md ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.label}</span>}
+                                    : <span className={`font-bold text-center ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.label}</span>}
                             </div>
-                            <div
-                                className={`flex-1 font-bold text-md mt-3 ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.title}</div>
+                            <div className={`flex-1 font-bold text-center mt-3 ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.title}</div>
                         </div>
                         {index + 1 < signUpSteps.length ?
-                            <div className="flex items-center justify-center flex-1 mt-8 pl-2 pr-8">
+                            <div className="flex items-center justify-center flex-1 mt-8 pl-2 lg:pr-8 md:pr-8">
                                 <span className="w-[10px] h-[10px] bg-gray-400 rounded-full"></span>
                                 <span className="h-[1px] bg-gray-400 w-[90%]"></span>
                                 <span className="w-[10px] h-[10px] bg-gray-400 rounded-full"></span>
                             </div>
-                            : <></>}
+                        : <></>}
                     </>
                 })}
             </div>
 
             {currentStep.id === "step1" ?
-                <Card className="mt-6 mr-10 pl-6 pr-6 pt-2 pb-5">
+                <Card className="mt-6 lg:mr-10 pl-6 pr-6 pt-2 pb-5">
                     <CardHeader>
                         <CardTitle className="text-[32px] mb-3">Personal Information</CardTitle>
                         <CardDescription>
@@ -301,7 +299,7 @@ function RegisterForm({step}:{step: string}) {
                                     <span className="flex-end"><ChevronDownIcon/></span>
                                 </div>
                                 <div className="grid gap-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
                                         <div className="grid gap-2">
                                             <FormField
                                                 control={form.control}
@@ -339,7 +337,7 @@ function RegisterForm({step}:{step: string}) {
                                             />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
 
                                         <FormField
                                             control={form.control}
@@ -397,7 +395,7 @@ function RegisterForm({step}:{step: string}) {
                                         <span className="flex-end"><ChevronDownIcon/></span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
                                             name="email"
@@ -463,7 +461,7 @@ function RegisterForm({step}:{step: string}) {
                     </CardContent>
                 </Card>
                 : (currentStep.id === "step2" || step === "step2") ? <>
-                        <Card className="mt-6 mr-10 pl-6 pr-6 pt-2 pb-5">
+                        <Card className="mt-6 lg:mr-10 md:mr-10  pl-6 pr-6 pt-2 pb-5">
                             <CardHeader>
                                 <CardTitle className="text-[32px] mb-3">Business Information</CardTitle>
                                 <CardDescription className="text-[18px]">Enter details for your business</CardDescription>
@@ -532,7 +530,7 @@ function RegisterForm({step}:{step: string}) {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 grid-rows-1 gap-4">
+                                        <div className="grid lg:grid-cols-2 md:grid-cols-2 grid-rows-1 gap-4">
 
                                             <FormField
                                                 control={businessForm.control}
@@ -639,9 +637,9 @@ function RegisterForm({step}:{step: string}) {
                         </Card>
                     </>
                     : (currentStep.id === "step3" || step === "step3") ? <>
-                            <Card className="mt-6 mr-10 pl-6 pr-6 pt-2 pb-5">
+                            <Card className="mt-6 lg:mr-10 md:mr-10 pl-6 pr-6 pt-2 pb-5">
                                 <CardHeader>
-                                    <CardTitle>Setup Business Location</CardTitle>
+                                    <CardTitle>Setup business location</CardTitle>
                                     <CardDescription>
                                         Setup your business locations,if you have multiple locations
                                     </CardDescription>
@@ -709,21 +707,21 @@ function RegisterForm({step}:{step: string}) {
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="lg:grid grid-cols-2 gap-4 mt-2">
+                                            <div className="lg:grid lg:grid-cols-2 md:grid-cols-2 gap-4 mt-2">
                                                 <div className="grid gap-2">
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="phone"
                                                         render={({field}) => (
-                                                            <FormItem>
+                                                            <FormItem className="flex flex-col mt-1">
                                                                 <FormLabel>Phone Number</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                        disabled={isPending}
-                                                                        placeholder="Enter business location phone number"
+                                                                <FormControl className="w-full border-1 rounded-sm">
+                                                                    <PhoneInput
+                                                                        placeholder="Enter phone number"
+                                                                        {...field} disabled={isPending}
                                                                     />
                                                                 </FormControl>
+                                                                <FormDescription>{/* Enter user name */}</FormDescription>
                                                                 <FormMessage/>
                                                             </FormItem>
                                                         )}
@@ -953,15 +951,15 @@ function RegisterForm({step}:{step: string}) {
                                 </CardContent>
                             </Card>
                         </>
-                        : <p>End</p>
+                    : <p>End</p>
             }
 
-            {!session?.user?
+            {/*{!session?.user?
                 <div className="mt-6 text-sm flex items-center font-bold">
                     <ChevronLeft size={18}/>
                     <Link href="/login">Back to login</Link>
                 </div>
-            :<></>}
+            :<></>}*/}
         </div>
     );
 }
