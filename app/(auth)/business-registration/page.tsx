@@ -10,7 +10,6 @@ export default async function BusinessRegistrationPage() {
     return (responseData.length > 0 ?
         <CreatedBusinessList businesses={responseData}/>:
         <RegisterForm step="step2" />
-        /*<BusinessRegistrationForm />*/
 
     )
   //return <RegisterForm step="step2" />

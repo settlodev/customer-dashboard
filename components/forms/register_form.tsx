@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -93,7 +92,7 @@ function RegisterForm({step}:{step: string}) {
     const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
     const [showPassword, setShowPassword] = useState<boolean>(false);
 
-    const {data: session} = useSession();
+    const defaultCountry = "55b3323c-17fa-4da4-8780-17b9fe830d01";
 
     /*TODO: Business form information*/
     const {toast} = useToast();
@@ -175,7 +174,7 @@ function RegisterForm({step}:{step: string}) {
                         //window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
                         setStepsDone([...stepsDone, currentStep]);
                         setMyCurrentStep();
-                        location.reload();
+                        window.location.reload();
                     }
                 })
                 .catch((error) => {
@@ -196,7 +195,7 @@ function RegisterForm({step}:{step: string}) {
 
                         setStepsDone([...stepsDone, currentStep]);
                         setMyCurrentStep();
-                        location.reload();
+                        window.location.reload();
                     } else if (data && data.responseType === "error") {
                         setError(data.message);
                     } else {
@@ -228,7 +227,7 @@ function RegisterForm({step}:{step: string}) {
                                 description: data.message,
                             });*/
 
-                            location.href = "/dashboard";
+                            window.location.href = "/dashboard";
 
                         } else if (data.responseType === "error") {
                             toast({
@@ -349,14 +348,17 @@ function RegisterForm({step}:{step: string}) {
                                                         <Select
                                                             disabled={isPending || countries.length === 0}
                                                             onValueChange={field.onChange}
-                                                            value={field.value}>
+                                                            value={field.value}
+                                                            defaultValue={defaultCountry}>
                                                             <SelectTrigger>
-                                                                <SelectValue placeholder="Select your country"/>
+                                                                <SelectValue placeholder="Select your country" />
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 {countries.length > 0
                                                                     ? countries.map((country: Country, index: number) => (
-                                                                        <SelectItem key={index} value={country.id}>
+                                                                        <SelectItem
+                                                                            key={index}
+                                                                            value={country.id}>
                                                                             {country.name}
                                                                         </SelectItem>
                                                                     ))
@@ -565,7 +567,7 @@ function RegisterForm({step}:{step: string}) {
                                                                 disabled={isPending || countries.length === 0}
                                                                 onValueChange={field.onChange}
                                                                 value={field.value}
-                                                            >
+                                                                defaultValue={defaultCountry}>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select your country"/>
                                                                 </SelectTrigger>
@@ -575,8 +577,7 @@ function RegisterForm({step}:{step: string}) {
                                                                             (country: Business, index: number) => (
                                                                                 <SelectItem
                                                                                     key={index}
-                                                                                    value={country.id}
-                                                                                >
+                                                                                    value={country.id}>
                                                                                     {country.name}{" "}
                                                                                     {/* Assuming 'name' is the country name */}
                                                                                 </SelectItem>

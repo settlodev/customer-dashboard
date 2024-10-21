@@ -44,7 +44,7 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
           className={cn("flex", className)}
           flagComponent={FlagComponent}
           countrySelectComponent={CountrySelect}
-          inputComponent={InputComponent}
+          inputComponent={InputComponent} defaultCountry={"TZ"}
           /**
            * Handles the onChange event.
            *
@@ -88,13 +88,11 @@ const CountrySelect = ({
   onChange,
   options,
 }: CountrySelectProps) => {
-  const handleSelect = React.useCallback(
-    (country: RPNInput.Country) => {
+  const handleSelect = React.useCallback((country: RPNInput.Country) => {
       onChange(country);
     },
     [onChange],
   );
-
   return (
     <Popover>
       <PopoverTrigger asChild>

@@ -20,12 +20,12 @@ export function SignupNavbar () {
                 <NavbarTwoColumns logo={<Logo xl/>}>
                     {session?.user?
                         <>
-                            <li className='text-medium font-bold border-1 rounded-full pl-4 pr-4 pt-2 pb-2 flex gap-1 items-center bg-emerald-500 text-lime-50'>
+                            <li className='text-medium font-bold border-1 rounded-full pl-4 pr-4 pt-2 pb-2 text-emerald-500 flex gap-1 items-center border-emerald-500'>
                                 <UserIcon fontSize={20}/>
                                 <Link href="#">{session.user.firstName} {session.user.lastName}</Link>
                             </li>
 
-                            <li className='text-medium font-bold ml-3 flex items-center justify-center'>
+                            <li className='text-medium font-bold ml-4 flex items-center justify-center'>
                                 <Link onClick={() => doLogout()} href={'#'}>Logout</Link>
                                 <ChevronRightIcon fontSize={20}/>
                             </li>
