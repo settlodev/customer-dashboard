@@ -110,3 +110,7 @@ export declare interface RegisterResponse {
     message: string;
     success: boolean;
 }
+
+export declare interface BusinessTimeType {
+    name: string;
+}

@@ -26,23 +26,23 @@ export const NavbarWrapper = ({children, data}: Props) => {
                 <NavbarContent className="w-full max-md:hidden">
                     <p>Welcome</p>
                     {/*<Input
-            startContent={<SearchIcon />}
-            isClearable
-            className="w-full"
-            classNames={{
-              input: "w-full",
-              mainWrapper: "w-full",
-            }}
-            placeholder="Search..."
-          />*/}
+                        startContent={<SearchIcon />}
+                        isClearable
+                        className="w-full"
+                        classNames={{
+                          input: "w-full",
+                          mainWrapper: "w-full",
+                        }}
+                        placeholder="Search..."
+                      />*/}
                 </NavbarContent>
                 <NavbarContent
                     justify="end"
                     className="w-fit data-[justify=end]:flex-grow-0">
                     {/*<div className="flex items-center gap-2 max-md:hidden">
-            <FeedbackIcon />
-            <span>Feedback?</span>
-          </div>*/}
+                        <FeedbackIcon />
+                        <span>Feedback?</span>
+                      </div>*/}
 
                     <NotificationsDropdown/>
 

@@ -214,7 +214,7 @@ export const register = async (
             message: "Registration successful, redirecting to login...",
         });
     } catch (error) {
-        console.error(error);
+        console.error("Error is: ", error);
         return parseStringify({
             responseType: "error",
             message: "An unexpected error occurred. Please try again.",
