@@ -24,7 +24,7 @@ import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
 import {Staff, StaffSchema} from "@/types/staff";
 import {FormResponse} from "@/types/types";
 import {Input} from "@/components/ui/input";
-import {Switch} from "@radix-ui/react-switch";
+// import {Switch} from "@radix-ui/react-switch";
 import {Textarea} from "@/components/ui/textarea";
 import CancelButton from "@/components/widgets/cancel-button";
 import {SubmitButton} from "@/components/widgets/submit-button";
@@ -35,6 +35,10 @@ import { fectchAllDepartments } from "@/lib/actions/department-actions";
 import { Select, SelectContent, SelectItem, SelectTrigger,SelectValue } from "../ui/select";
 import { fectchSalaries } from "@/lib/actions/salary-actions";
 import { Salary } from "@/types/salary/type";
+import { fetchAllRoles } from "@/lib/actions/role-actions";
+import { Role } from "@/types/roles/type";
+import { PhoneInput } from "../ui/phone-input";
+import { Switch } from "../ui/switch";
 
 const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const { toast } = useToast();
@@ -42,6 +46,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const [, setResponse] = useState<FormResponse | undefined>();
     const [departments,setDepartments ] = useState<Department[]>([]);
     const [salaries,setSalaries ] = useState<Salary[]>([]);
+    const [roles,setRoles ] = useState<Role[]>([]);
 
     useEffect(() => {
         const getDepartments = async () => {
@@ -68,6 +73,19 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
         salaries();
     }, []);  
 
+    useEffect(() => {
+        const roles = async () => {
+            try {
+                const response = await fetchAllRoles();
+                setRoles(response);
+            } catch (error) {
+                console.error("Error fetching roles", error);
+            }
+        }
+
+        roles();
+    }, []);  
+
     const form = useForm<z.infer<typeof StaffSchema>>({
         resolver: zodResolver(StaffSchema),
         defaultValues: item
@@ -77,6 +95,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
+            console.log("onInvalid errors are ", errors);
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",
@@ -124,39 +143,24 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                 <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
                                     <FormField
                                         control={form.control}
-                                        name="firstName"
+                                        name="name"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormControl>
                                                     <Input
                                                         {...field}
                                                         disabled={isPending}
-                                                        placeholder="Enter staff first name"
+                                                        placeholder="Enter staff full name"
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
+                                   
                                     <FormField
                                         control={form.control}
-                                        name="lastName"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Enter staff last name"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="emailAddress"
+                                        name="email"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormControl>
@@ -173,14 +177,30 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="phoneNumber"
+                                        name="phone"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col items-center mt-1">
+                                                <FormControl className="w-full border-1 rounded-sm">
+                                                    <PhoneInput
+                                                        {...field}
+                                                        disabled={isPending}
+                                                        placeholder="Enter phone number"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                     <FormField
+                                        control={form.control}
+                                        name="passCode"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormControl>
                                                     <Input
                                                         {...field}
                                                         disabled={isPending}
-                                                        placeholder="Enter phone number"
+                                                        placeholder="Enter staff passcode"
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -212,7 +232,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="staffId"
+                                        name="employeeNumber"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormControl>
@@ -256,7 +276,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                                         value={field.value}
                                                         >
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Select staff department" />
+                                                            <SelectValue placeholder={departments.length > 0 ? "Select a department": "No departments found"}/>
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {departments.length > 0
@@ -287,7 +307,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                                         value={field.value}
                                                         >
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Select staff salary" />
+                                                            <SelectValue placeholder={salaries.length > 0 ? "Select a salary": "No salaries found"} />
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {salaries.length > 0
@@ -306,7 +326,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                         }}
                                     />
 
-<FormField
+                                    <FormField
                                         control={form.control}
                                         name="role"
                                         render={({ field }) => {
@@ -314,18 +334,18 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                                 <FormItem>
                                                     <FormControl>
                                                     <Select
-                                                        disabled={isPending || departments.length === 0}
+                                                        disabled={isPending || roles.length === 0}
                                                         onValueChange={field.onChange}
                                                         value={field.value}
                                                         >
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder="Select staff role" />
+                                                            <SelectValue placeholder={roles.length > 0 ? "Select a role": "No roles found"} />
                                                         </SelectTrigger>
                                                         <SelectContent>
-                                                            {departments.length > 0
-                                                            ? departments.map((dept: Department, index: number) => (
-                                                                <SelectItem key={index} value={dept.id}>
-                                                                    {dept.name}{" "}
+                                                            {roles.length > 0
+                                                            ? roles.map((rol: Role, index: number) => (
+                                                                <SelectItem key={index} value={rol.id}>
+                                                                    {rol.name}{" "}
                                                                 </SelectItem>
                                                                 ))
                                                             : null}
@@ -355,36 +375,31 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-                                    {/* <FormField
+                                <FormField
                                         control={form.control}
                                         name="nationality"
-                                        render={({ field }) => {
-                                            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                            const { ref: _ref, ...customSelectRef } = field;
-
-                                            return (
-                                                <FormItem>
-                                                    <FormControl>
-                                                        <Input
-                                                            {...field}
-                                                            disabled={isPending}
-                                                            placeholder="Enter staff nationality"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            );
-                                        }}
-                                    /> */}
-
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={isPending}
+                                                        placeholder="Enter staff's nationality"
+                                                        value={field.value ?? ""}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <FormField
                                         control={form.control}
                                         name="status"
                                         render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                            <FormItem className="flex flex-row items-center justify-between rounded border p-4">
                                                 <div className="space-y-0.5">
                                                     <FormLabel className="text-base">Staff status</FormLabel>
-                                                    <FormDescription>
+                                                    <FormDescription className="text-sm text-muted-foreground">
                                                         Is staff account enabled
                                                     </FormDescription>
                                                 </div>
@@ -399,7 +414,104 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
+                                      <FormField 
+                                        control={form.control}
+                                        name="posAccess"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                            <FormLabel>Allow POS Access</FormLabel>
+                                            <FormControl>
+                                                <Switch
+                                                
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={isPending}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                        />
+                                          <FormField 
+                                        control={form.control}
+                                        name="dashboardAccess"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                            <FormLabel>Allow Dashboard Access</FormLabel>
+                                            <FormControl>
+                                                <Switch
+                                                
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={isPending}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                        />
                                 </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Contact Person</CardTitle>
+                                <CardDescription>
+                                    Staff's relative contact person, incase of emergency
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
+                            <FormField
+                                        control={form.control}
+                                        name="emergencyName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={isPending}
+                                                        placeholder="Enter relative full name"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                       <FormField
+                                        control={form.control}
+                                        name="emergencyNumber"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col items-center mt-1">
+                                                <FormControl className="w-full border-1 rounded-sm">
+                                                    <PhoneInput
+                                                        {...field}
+                                                        disabled={isPending}
+                                                        placeholder="Enter relative phone number"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="emergencyRelationship"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={isPending}
+                                                        placeholder="Enter relative's relationship"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                            </div>
+                              
                             </CardContent>
                         </Card>
                         <Card>

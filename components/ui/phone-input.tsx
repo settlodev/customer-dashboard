@@ -1,11 +1,7 @@
 import { CheckIcon, ChevronsUpDown } from "lucide-react";
-
 import * as React from "react";
-
 import * as RPNInput from "react-phone-number-input";
-
 import flags from "react-phone-number-input/flags";
-
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -13,7 +9,6 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-
   CommandList,
 } from "@/components/ui/command";
 import {
@@ -21,11 +16,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "./scroll-area";
-import {Input, InputProps} from "@nextui-org/input";
-import {E164Number} from "libphonenumber-js";
+import { Input, InputProps } from "@nextui-org/input";
+import { E164Number } from "libphonenumber-js";
 
 type PhoneInputProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
