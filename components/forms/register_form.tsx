@@ -345,8 +345,7 @@ function RegisterForm({step}:{step: string}) {
                                                         <Select
                                                             disabled={isPending || countries.length === 0}
                                                             onValueChange={field.onChange}
-                                                            value={field.value}
-                                                        >
+                                                            value={field.value}>
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="Select your country"/>
                                                             </SelectTrigger>
@@ -354,11 +353,10 @@ function RegisterForm({step}:{step: string}) {
                                                                 {countries.length > 0
                                                                     ? countries.map((country: Country, index: number) => (
                                                                         <SelectItem key={index} value={country.id}>
-                                                                            {country.name}{" "}
-                                                                            {/* Assuming 'name' is the country name */}
+                                                                            {country.name}
                                                                         </SelectItem>
                                                                     ))
-                                                                    : null}
+                                                                : <></>}
                                                             </SelectContent>
                                                         </Select>
                                                     </FormControl>
