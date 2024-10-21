@@ -41,7 +41,6 @@ import {
     EyeOffIcon,
     Loader2Icon,
     ChevronRight,
-    ChevronLeft,
     ChevronDownIcon,
     ImageIcon
 } from "lucide-react";
@@ -58,7 +57,6 @@ import {LocationSchema} from "@/types/location/schema";
 import {createBusinessLocation} from "@/lib/actions/auth/location";
 import { PhoneInput } from "../ui/phone-input";
 import {businessTimes} from "@/types/constants";
-import {useSession} from "next-auth/react";
 interface signUpStepItemType{
     id: string;
     label: string;
@@ -86,7 +84,7 @@ function RegisterForm({step}:{step: string}) {
     const mCurrentStep = step?signUpSteps[_.findIndex(signUpSteps, {id: step})]:signUpSteps[0];
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
-    const [success, setSuccess] = useState<string | undefined>("");
+    const [success] = useState<string | undefined>("");
     const [countries, setCountries] = useState([]);
     const [stepsDone, setStepsDone] = useState<signUpStepItemType[]>([]);
     const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
@@ -100,12 +98,12 @@ function RegisterForm({step}:{step: string}) {
 
     const form = useForm<z.infer<typeof RegisterSchema>>({
         resolver: zodResolver(RegisterSchema),
-        defaultValues: {},
+        defaultValues: {country: defaultCountry},
     });
 
     const businessForm = useForm<z.infer<typeof BusinessSchema>>({
         resolver: zodResolver(BusinessSchema),
-        defaultValues: {},
+        defaultValues: {country: defaultCountry},
     });
 
     const locationForm = useForm<z.infer<typeof LocationSchema>>({
@@ -243,16 +241,6 @@ function RegisterForm({step}:{step: string}) {
         []
     );
 
-    const nextStepLabel=()=>{
-        const currentIndex = signUpSteps.indexOf(currentStep);
-        const nextIndex = currentIndex+1;
-        if(nextIndex <= signUpSteps.length) {
-            return signUpSteps[nextIndex]?.title
-        }else{
-            return 'Finish';
-        }
-    }
-
     return (<div className="lg:pl-16 md:pl-16 lg:pr-20 md:pr-16">
             <div className="pt-5 pb-5 flex gap-4 lg:mr-16">
                 {signUpSteps.map((item, index) => {
@@ -348,8 +336,7 @@ function RegisterForm({step}:{step: string}) {
                                                         <Select
                                                             disabled={isPending || countries.length === 0}
                                                             onValueChange={field.onChange}
-                                                            value={field.value}
-                                                            defaultValue={defaultCountry}>
+                                                            value={field.value}>
                                                             <SelectTrigger>
                                                                 <SelectValue placeholder="Select your country" />
                                                             </SelectTrigger>
@@ -566,8 +553,7 @@ function RegisterForm({step}:{step: string}) {
                                                             <Select
                                                                 disabled={isPending || countries.length === 0}
                                                                 onValueChange={field.onChange}
-                                                                value={field.value}
-                                                                defaultValue={defaultCountry}>
+                                                                value={field.value}>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select your country"/>
                                                                 </SelectTrigger>
@@ -862,7 +848,7 @@ function RegisterForm({step}:{step: string}) {
                                                                                 ? businessTimes.map((item: BusinessTimeType, index: number) => (
                                                                                     <SelectItem key={index}
                                                                                                 value={item.name}>
-                                                                                        {item.name}
+                                                                                        {item.label}
                                                                                     </SelectItem>
                                                                                 ))
                                                                                 : <></>}
@@ -896,7 +882,7 @@ function RegisterForm({step}:{step: string}) {
                                                                                 ? businessTimes.map((item: BusinessTimeType, index: number) => (
                                                                                     <SelectItem key={index}
                                                                                                 value={item.name}>
-                                                                                        {item.name}
+                                                                                        {item.label}
                                                                                     </SelectItem>
                                                                                 ))
                                                                                 : <></>}

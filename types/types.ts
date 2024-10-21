@@ -113,4 +113,5 @@ export declare interface RegisterResponse {
 
 export declare interface BusinessTimeType {
     name: string;
+    label: string;
 }
