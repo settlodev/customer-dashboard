@@ -38,9 +38,17 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
           className={cn("flex", className)}
           flagComponent={FlagComponent}
           countrySelectComponent={CountrySelect}
-          inputComponent={InputComponent}
-          defaultCountry="TZ" // Set Tanzania as the default country
-          onChange={(value) => onChange?.(value as E164Number)}
+          inputComponent={InputComponent} defaultCountry={"TZ"}
+          /**
+           * Handles the onChange event.
+           *
+           * react-phone-number-input might trigger the onChange event as undefined
+           * when a valid phone number is not entered. To prevent this,
+           * the value is coerced to an empty string.
+           *
+           * @param {E164Number | undefined} value - The entered value
+           */
+          onChange={(value) => onChange?.(value as  E164Number)}
           {...props}
         />
       );
@@ -74,13 +82,11 @@ const CountrySelect = ({
   onChange,
   options,
 }: CountrySelectProps) => {
-  const handleSelect = React.useCallback(
-    (country: RPNInput.Country) => {
+  const handleSelect = React.useCallback((country: RPNInput.Country) => {
       onChange(country);
     },
     [onChange],
   );
-
   return (
     <Popover>
       <PopoverTrigger asChild>

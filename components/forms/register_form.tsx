@@ -1,6 +1,5 @@
 "use client"
 
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -32,7 +31,7 @@ import {
   SelectValue,
 } from "../ui/select";
 
-import { FormResponse } from "@/types/types";
+import {BusinessTimeType, FormResponse} from "@/types/types";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { register } from "@/lib/actions/auth-actions";
@@ -58,6 +57,8 @@ import {Textarea} from "@/components/ui/textarea";
 import {LocationSchema} from "@/types/location/schema";
 import {createBusinessLocation} from "@/lib/actions/auth/location";
 import { PhoneInput } from "../ui/phone-input";
+import {businessTimes} from "@/types/constants";
+import {useSession} from "next-auth/react";
 interface signUpStepItemType{
     id: string;
     label: string;
@@ -85,12 +86,13 @@ function RegisterForm({step}:{step: string}) {
     const mCurrentStep = step?signUpSteps[_.findIndex(signUpSteps, {id: step})]:signUpSteps[0];
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
-    const [success,] = useState<string | undefined>("");
+    const [success, setSuccess] = useState<string | undefined>("");
     const [countries, setCountries] = useState([]);
     const [stepsDone, setStepsDone] = useState<signUpStepItemType[]>([]);
-    // const [addStep, setAddStep] = useState(null);
     const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
     const [showPassword, setShowPassword] = useState<boolean>(false);
+
+    const defaultCountry = "55b3323c-17fa-4da4-8780-17b9fe830d01";
 
     /*TODO: Business form information*/
     const {toast} = useToast();
@@ -113,10 +115,12 @@ function RegisterForm({step}:{step: string}) {
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
+            console.log("errors");
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",
-                description: typeof errors.message === 'string'
+                description:
+                    typeof errors.message === 'string'
                     ? errors.message
                     : "There was an issue submitting your form, please try later",
             });
@@ -147,7 +151,7 @@ function RegisterForm({step}:{step: string}) {
             }
         }
 
-    }, [step, stepsDone]);
+    }, []);
 
     const setMyCurrentStep = () => {
         const currentStepIndex = signUpSteps.indexOf(currentStep) + 1;
@@ -158,6 +162,7 @@ function RegisterForm({step}:{step: string}) {
         startTransition(() => {
             register(values)
                 .then((data: FormResponse) => {
+                    console.log("data is:", data);
                     if (!data) {
                         setError("An unexpected error occurred. Please try again.");
                         return;
@@ -169,11 +174,11 @@ function RegisterForm({step}:{step: string}) {
                         //window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
                         setStepsDone([...stepsDone, currentStep]);
                         setMyCurrentStep();
-                        location.reload();
+                        window.location.reload();
                     }
                 })
                 .catch((error) => {
-                    setError("An unexpected error occurred. Please try again.");
+                    setError(error.data?.message);
                     console.error(error);
                 });
         });
@@ -190,7 +195,7 @@ function RegisterForm({step}:{step: string}) {
 
                         setStepsDone([...stepsDone, currentStep]);
                         setMyCurrentStep();
-                        location.reload();
+                        window.location.reload();
                     } else if (data && data.responseType === "error") {
                         setError(data.message);
                     } else {
@@ -222,7 +227,7 @@ function RegisterForm({step}:{step: string}) {
                                 description: data.message,
                             });*/
 
-                            location.href = "/dashboard";
+                            window.location.href = "/dashboard";
 
                         } else if (data.responseType === "error") {
                             toast({
@@ -238,47 +243,45 @@ function RegisterForm({step}:{step: string}) {
         []
     );
 
-    // const nextStepLabel=()=>{
-    //     const currentIndex = signUpSteps.indexOf(currentStep);
-    //     const nextIndex = currentIndex+1;
-    //     if(nextIndex <= signUpSteps.length) {
-    //         return signUpSteps[nextIndex]?.title
-    //     }else{
-    //         return 'Finish';
-    //     }
-    // }
+    const nextStepLabel=()=>{
+        const currentIndex = signUpSteps.indexOf(currentStep);
+        const nextIndex = currentIndex+1;
+        if(nextIndex <= signUpSteps.length) {
+            return signUpSteps[nextIndex]?.title
+        }else{
+            return 'Finish';
+        }
+    }
 
-    return (<div className="pl-16 pr-20">
-            <div className="pt-5 pb-5 flex gap-4 mr-16">
+    return (<div className="lg:pl-16 md:pl-16 lg:pr-20 md:pr-16">
+            <div className="pt-5 pb-5 flex gap-4 lg:mr-16">
                 {signUpSteps.map((item, index) => {
                     const isCurrent = currentStep.id === item.id || _.includes(stepsDone, item);
                     return <>
                         <div className="flex flex-col items-center justify-center flex-1">
-                            <div className="flex-1 font-bold text-md mt-3">
+                            <div className="flex-1 font-bold text-sm mt-3">
                                 {_.includes(stepsDone, item) ?
                                     <span
                                         className="w-6 h-6 overflow-hidden bg-blue-500 rounded-full flex items-center justify-center">
                                         <CheckIcon size={16} className="text-gray-50"/>
                                     </span>
-                                    : <span
-                                        className={`font-bold text-md ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.label}</span>}
+                                    : <span className={`font-bold text-center ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.label}</span>}
                             </div>
-                            <div
-                                className={`flex-1 font-bold text-md mt-3 ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.title}</div>
+                            <div className={`flex-1 font-bold text-center mt-3 ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.title}</div>
                         </div>
                         {index + 1 < signUpSteps.length ?
-                            <div className="flex items-center justify-center flex-1 mt-8 pl-2 pr-8">
+                            <div className="flex items-center justify-center flex-1 mt-8 pl-2 lg:pr-8 md:pr-8">
                                 <span className="w-[10px] h-[10px] bg-gray-400 rounded-full"></span>
                                 <span className="h-[1px] bg-gray-400 w-[90%]"></span>
                                 <span className="w-[10px] h-[10px] bg-gray-400 rounded-full"></span>
                             </div>
-                            : <></>}
+                        : <></>}
                     </>
                 })}
             </div>
 
             {currentStep.id === "step1" ?
-                <Card className="mt-6 mr-10 pl-6 pr-6 pt-2 pb-5">
+                <Card className="mt-6 lg:mr-10 pl-6 pr-6 pt-2 pb-5">
                     <CardHeader>
                         <CardTitle className="text-[32px] mb-3">Personal Information</CardTitle>
                         <CardDescription>
@@ -295,7 +298,7 @@ function RegisterForm({step}:{step: string}) {
                                     <span className="flex-end"><ChevronDownIcon/></span>
                                 </div>
                                 <div className="grid gap-4">
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
                                         <div className="grid gap-2">
                                             <FormField
                                                 control={form.control}
@@ -304,7 +307,7 @@ function RegisterForm({step}:{step: string}) {
                                                     <FormItem>
                                                         <FormLabel>First Name</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Enter first name" {...field} />
+                                                            <Input disabled={isPending} placeholder="Enter first name" {...field} />
                                                         </FormControl>
                                                         <FormDescription>
                                                             {/* Enter user name */}
@@ -322,7 +325,7 @@ function RegisterForm({step}:{step: string}) {
                                                     <FormItem>
                                                         <FormLabel>Last Name</FormLabel>
                                                         <FormControl>
-                                                            <Input placeholder="Enter last name" {...field} />
+                                                            <Input disabled={isPending} placeholder="Enter last name" {...field} />
                                                         </FormControl>
                                                         <FormDescription>
                                                             {/* Enter user name */}
@@ -333,7 +336,7 @@ function RegisterForm({step}:{step: string}) {
                                             />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
 
                                         <FormField
                                             control={form.control}
@@ -345,14 +348,17 @@ function RegisterForm({step}:{step: string}) {
                                                         <Select
                                                             disabled={isPending || countries.length === 0}
                                                             onValueChange={field.onChange}
-                                                            value={field.value}>
+                                                            value={field.value}
+                                                            defaultValue={defaultCountry}>
                                                             <SelectTrigger>
-                                                                <SelectValue placeholder="Select your country"/>
+                                                                <SelectValue placeholder="Select your country" />
                                                             </SelectTrigger>
                                                             <SelectContent>
                                                                 {countries.length > 0
                                                                     ? countries.map((country: Country, index: number) => (
-                                                                        <SelectItem key={index} value={country.id}>
+                                                                        <SelectItem
+                                                                            key={index}
+                                                                            value={country.id}>
                                                                             {country.name}
                                                                         </SelectItem>
                                                                     ))
@@ -369,12 +375,12 @@ function RegisterForm({step}:{step: string}) {
                                             control={form.control}
                                             name="phoneNumber"
                                             render={({field}) => (
-                                                <FormItem className="flex flex-col items-center mt-1">
+                                                <FormItem className="flex flex-col mt-1">
                                                     <FormLabel>Phone Number</FormLabel>
                                                     <FormControl className="w-full border-1 rounded-sm">
                                                     <PhoneInput
                                                         placeholder="Enter phone number"
-                                                        {...field}
+                                                        {...field} disabled={isPending}
                                                       />
                                                     </FormControl>
                                                     <FormDescription>{/* Enter user name */}</FormDescription>
@@ -391,7 +397,7 @@ function RegisterForm({step}:{step: string}) {
                                         <span className="flex-end"><ChevronDownIcon/></span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
+                                    <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
                                             name="email"
@@ -403,6 +409,7 @@ function RegisterForm({step}:{step: string}) {
                                                             placeholder="Enter valid email"
                                                             {...field}
                                                             type="email"
+                                                            disabled={isPending}
                                                         />
                                                     </FormControl>
                                                     <FormDescription>{/* Enter user name */}</FormDescription>
@@ -419,7 +426,7 @@ function RegisterForm({step}:{step: string}) {
                                                     <FormLabel>Password</FormLabel>
                                                     <FormControl>
                                                         <div className="relative">
-                                                            <Input type={showPassword ? "text" : "password"}
+                                                            <Input disabled={isPending} type={showPassword ? "text" : "password"}
                                                                    placeholder="Enter password" {...field} />
                                                             <span onClick={() => setShowPassword(!showPassword)}
                                                                   className="absolute right-0 top-0 h-full w-10 flex items-center justify-center z-40 cursor-pointer">
@@ -456,7 +463,7 @@ function RegisterForm({step}:{step: string}) {
                     </CardContent>
                 </Card>
                 : (currentStep.id === "step2" || step === "step2") ? <>
-                        <Card className="mt-6 mr-10 pl-6 pr-6 pt-2 pb-5">
+                        <Card className="mt-6 lg:mr-10 md:mr-10  pl-6 pr-6 pt-2 pb-5">
                             <CardHeader>
                                 <CardTitle className="text-[32px] mb-3">Business Information</CardTitle>
                                 <CardDescription className="text-[18px]">Enter details for your business</CardDescription>
@@ -525,7 +532,7 @@ function RegisterForm({step}:{step: string}) {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 grid-rows-1 gap-4">
+                                        <div className="grid lg:grid-cols-2 md:grid-cols-2 grid-rows-1 gap-4">
 
                                             <FormField
                                                 control={businessForm.control}
@@ -560,7 +567,7 @@ function RegisterForm({step}:{step: string}) {
                                                                 disabled={isPending || countries.length === 0}
                                                                 onValueChange={field.onChange}
                                                                 value={field.value}
-                                                            >
+                                                                defaultValue={defaultCountry}>
                                                                 <SelectTrigger>
                                                                     <SelectValue placeholder="Select your country"/>
                                                                 </SelectTrigger>
@@ -570,8 +577,7 @@ function RegisterForm({step}:{step: string}) {
                                                                             (country: Business, index: number) => (
                                                                                 <SelectItem
                                                                                     key={index}
-                                                                                    value={country.id}
-                                                                                >
+                                                                                    value={country.id}>
                                                                                     {country.name}{" "}
                                                                                     {/* Assuming 'name' is the country name */}
                                                                                 </SelectItem>
@@ -632,9 +638,9 @@ function RegisterForm({step}:{step: string}) {
                         </Card>
                     </>
                     : (currentStep.id === "step3" || step === "step3") ? <>
-                            <Card className="mt-6 mr-10 pl-6 pr-6 pt-2 pb-5">
+                            <Card className="mt-6 lg:mr-10 md:mr-10 pl-6 pr-6 pt-2 pb-5">
                                 <CardHeader>
-                                    <CardTitle>Setup Business Location</CardTitle>
+                                    <CardTitle>Setup business location</CardTitle>
                                     <CardDescription>
                                         Setup your business locations,if you have multiple locations
                                     </CardDescription>
@@ -644,6 +650,11 @@ function RegisterForm({step}:{step: string}) {
                                     <Form {...locationForm}>
                                         <form onSubmit={locationForm.handleSubmit(submitLocationData, onInvalid)}>
 
+                                            <div
+                                                className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
+                                                <h3 className="font-bold flex-1">Location Information</h3>
+                                                <span className="flex-end"><ChevronDownIcon/></span>
+                                            </div>
                                             <div className="mt-4 flex">
                                                 <label
                                                     className="cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col">
@@ -697,21 +708,21 @@ function RegisterForm({step}:{step: string}) {
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="lg:grid grid-cols-2 gap-4 mt-2">
+                                            <div className="lg:grid lg:grid-cols-2 md:grid-cols-2 gap-4 mt-2">
                                                 <div className="grid gap-2">
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="phone"
                                                         render={({field}) => (
-                                                            <FormItem>
+                                                            <FormItem className="flex flex-col mt-1">
                                                                 <FormLabel>Phone Number</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                        disabled={isPending}
-                                                                        placeholder="Enter business location phone number"
+                                                                <FormControl className="w-full border-1 rounded-sm">
+                                                                    <PhoneInput
+                                                                        placeholder="Enter phone number"
+                                                                        {...field} disabled={isPending}
                                                                     />
                                                                 </FormControl>
+                                                                <FormDescription>{/* Enter user name */}</FormDescription>
                                                                 <FormMessage/>
                                                             </FormItem>
                                                         )}
@@ -738,19 +749,24 @@ function RegisterForm({step}:{step: string}) {
                                                     />
                                                 </div>
                                             </div>
+                                            <div
+                                                className="pl-0 pr-3 pt-8 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
+                                                <h3 className="font-bold flex-1">Business address</h3>
+                                                <span className="flex-end"><ChevronDownIcon/></span>
+                                            </div>
                                             <div className="lg:grid grid-cols-2  gap-4 mt-2">
                                                 <div className="grid gap-2">
                                                     <FormField
                                                         control={locationForm.control}
-                                                        name="address"
+                                                        name="city"
                                                         render={({field}) => (
                                                             <FormItem>
-                                                                <FormLabel>Location Address</FormLabel>
+                                                                <FormLabel>City <span className="text-red-700">*</span></FormLabel>
                                                                 <FormControl>
                                                                     <Input
                                                                         {...field}
                                                                         disabled={isPending}
-                                                                        placeholder="Enter business location address"
+                                                                        placeholder="Which city do you operate?"
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage/>
@@ -762,15 +778,15 @@ function RegisterForm({step}:{step: string}) {
                                                 <div className="grid gap-2">
                                                     <FormField
                                                         control={locationForm.control}
-                                                        name="city"
+                                                        name="address"
                                                         render={({field}) => (
                                                             <FormItem>
-                                                                <FormLabel>City</FormLabel>
+                                                                <FormLabel>Full business address</FormLabel>
                                                                 <FormControl>
                                                                     <Input
                                                                         {...field}
                                                                         disabled={isPending}
-                                                                        placeholder="Which city do you operate?"
+                                                                        placeholder="Enter business location address"
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage/>
@@ -819,6 +835,11 @@ function RegisterForm({step}:{step: string}) {
                                                     />
                                                 </div>
                                             </div>
+                                            <div
+                                                className="pl-0 pr-3 pt-8 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
+                                                <h3 className="font-bold flex-1">Operating times</h3>
+                                                <span className="flex-end"><ChevronDownIcon/></span>
+                                            </div>
                                             <div className="lg:grid grid-cols-2 gap-4 mt-2">
                                                 <div className="grid gap-2">
                                                     <FormField
@@ -828,23 +849,33 @@ function RegisterForm({step}:{step: string}) {
                                                             <FormItem>
                                                                 <FormLabel>Opening Time</FormLabel>
                                                                 <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                        disabled={isPending}
-                                                                        placeholder="HH:MM (24 hour format)"
-                                                                        pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
-                                                                        title="Please enter time in 24-hour format (HH:mm)"
-                                                                    />
+                                                                    <Select
+                                                                        disabled={isPending || countries.length === 0}
+                                                                        onValueChange={field.onChange}
+                                                                        value={field.value}>
+                                                                        <SelectTrigger>
+                                                                            <SelectValue
+                                                                                placeholder="Select opening time"/>
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {businessTimes.length > 0
+                                                                                ? businessTimes.map((item: BusinessTimeType, index: number) => (
+                                                                                    <SelectItem key={index}
+                                                                                                value={item.name}>
+                                                                                        {item.name}
+                                                                                    </SelectItem>
+                                                                                ))
+                                                                                : <></>}
+                                                                        </SelectContent>
+                                                                    </Select>
                                                                 </FormControl>
-                                                                <FormDescription>
-                                                                    When do you open your business location?
-                                                                </FormDescription>
                                                                 <FormMessage/>
                                                             </FormItem>
                                                         )}
                                                     />
                                                 </div>
                                                 <div className="grid gap-2">
+
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="closingTime"
@@ -852,17 +883,26 @@ function RegisterForm({step}:{step: string}) {
                                                             <FormItem>
                                                                 <FormLabel>Closing Time</FormLabel>
                                                                 <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                        disabled={isPending}
-                                                                        placeholder="HH:MM (24 hour format)"
-                                                                        pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
-                                                                        title="Please enter time in 24-hour format (HH:mm)"
-                                                                    />
+                                                                    <Select
+                                                                        disabled={isPending || countries.length === 0}
+                                                                        onValueChange={field.onChange}
+                                                                        value={field.value}>
+                                                                        <SelectTrigger>
+                                                                            <SelectValue
+                                                                                placeholder="Select closing time"/>
+                                                                        </SelectTrigger>
+                                                                        <SelectContent>
+                                                                            {businessTimes.length > 0
+                                                                                ? businessTimes.map((item: BusinessTimeType, index: number) => (
+                                                                                    <SelectItem key={index}
+                                                                                                value={item.name}>
+                                                                                        {item.name}
+                                                                                    </SelectItem>
+                                                                                ))
+                                                                                : <></>}
+                                                                        </SelectContent>
+                                                                    </Select>
                                                                 </FormControl>
-                                                                <FormDescription>
-                                                                    When do you close your business location?
-                                                                </FormDescription>
                                                                 <FormMessage/>
                                                             </FormItem>
                                                         )}
@@ -870,7 +910,7 @@ function RegisterForm({step}:{step: string}) {
                                                 </div>
                                             </div>
 
-                                            <div className="grid gap-2 mt-2">
+                                            {/*<div className="grid gap-2 mt-2">
                                                 <FormField
                                                     control={locationForm.control}
                                                     name="description"
@@ -879,16 +919,18 @@ function RegisterForm({step}:{step: string}) {
                                                             <FormLabel>Description of your business location</FormLabel>
                                                             <FormControl>
                                                                 <Textarea
+                                                                    placeholder="Enter location description"
                                                                     {...field}
                                                                     disabled={isPending}
-                                                                    placeholder="Describe your business location"
+                                                                    className="resize-none bg-gray-50"
+                                                                    maxLength={200}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage/>
                                                         </FormItem>
                                                     )}
                                                 />
-                                            </div>
+                                            </div>*/}
 
                                             <div className="flex items-center">
                                                 <div className="flex-1">
@@ -910,15 +952,15 @@ function RegisterForm({step}:{step: string}) {
                                 </CardContent>
                             </Card>
                         </>
-                        : <p>End</p>
+                    : <p>End</p>
             }
 
-            {currentStep.id === 'step1' ?
+            {/*{!session?.user?
                 <div className="mt-6 text-sm flex items-center font-bold">
                     <ChevronLeft size={18}/>
                     <Link href="/login">Back to login</Link>
                 </div>
-                : <></>}
+            :<></>}*/}
         </div>
     );
 }

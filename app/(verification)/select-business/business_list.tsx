@@ -2,10 +2,11 @@
 
 import {Business} from "@/types/business/type";
 import Image from "next/image";
-import {useEffect, useState} from "react";
+import React, {useEffect, useState} from "react";
 import {SelectLocation} from "@/app/(verification)/select-business/locations_dropdown";
 import {refreshBusiness} from "@/lib/actions/business/refresh";
 import {ArrowLeftIcon} from "@radix-ui/react-icons";
+import {SignupNavbar} from "@/app/(auth)/register/sign_up_navbar";
 
 export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -32,14 +33,17 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
         await refreshBusiness(mBusiness);
     }
 
-    return (<div className="container mx-auto flex flex-col items-center justify-center">
+    return (<>
+            <SignupNavbar />
+
+            <div className="container mx-auto flex flex-col items-center justify-center">
             <div className="flex items-center justify-center flex-col">
-                <div className="overflow-hidden p-2 mb-4 mt-6">
+                {/*<div className="overflow-hidden p-2 mb-4 mt-6">
                     <Image src="/images/new_logo.svg" alt="Settlo Logo" width={200} height={100}/>
-                </div>
-                <div className="overflow-hidden mb-6 text-center">
-                    {business && <h1 className="font-bold text-lg text-gray-700">{business.name}</h1>}
-                    <h1 className="font-bold text-md text-gray-500">Select your business {business && 'location'}</h1>
+                </div>*/}
+                <div className="overflow-hidden mb-6 text-center mt-6">
+                    {business && <h1 className="font-bold text-[32px] text-gray-700">{business.name}</h1>}
+                    <h1 className="font-bold text-md text-gray-500">Select your business {business ? "location":''}</h1>
                 </div>
             </div>
 
@@ -80,13 +84,14 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
                 </div>
             </div>
 
-            {business?
+            {(business && businesses.length>1)?
                 <div className="text-base dark:text-white text-left">
                     <button type="button" className="flex mt-6 gap-2 pr-4 pl-4 py-2 items-center justify-center text-gray-800 font-bold text-sm"
-                            onClick={() => setBusiness(null)}><ArrowLeftIcon fontSize={3} /> GO BACK
+                            onClick={() => setBusiness(null)}><ArrowLeftIcon fontSize={3} /> CHANGE BUSINESS
                     </button>
                 </div>
             :<></>}
         </div>
+        </>
     )
 }

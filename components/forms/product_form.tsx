@@ -45,17 +45,20 @@ import {Textarea} from "@/components/ui/textarea";
 import {Switch} from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
 import {taxClasses} from "@/types/constants";
+import {fectchAllBrands} from "@/lib/actions/brand-actions";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
-    const [, setResponse] = useState<FormResponse | undefined>();
-    const [error,] = useState<string | undefined>("");
+    const [formResponse, setResponse] = useState<FormResponse | undefined>();
+    const [error] = useState<string | undefined>("");
     const [success,] = useState<string | undefined>("");
+
+    console.log("formResponse;", formResponse)
 
     const [variants, setVariants] = useState<FormVariantItem[]>([]);
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
-    const [brands,] = useState<Brand[]>([]);
+    const [brands, setBrands] = useState<Brand[]>([]);
 
     const {toast} = useToast();
 
@@ -66,6 +69,10 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
 
             const departments = await fectchAllDepartments();
             setDepartments(departments);
+
+            const brands = await fectchAllBrands();
+            console.log("brands:", brands);
+            setBrands(brands);
         }
         getData();
     }, []);
@@ -124,7 +131,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     }
 
     return (
-
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
             <div className="flex gap-10">
                 <div className="flex-1">
