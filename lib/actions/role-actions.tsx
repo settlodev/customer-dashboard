@@ -94,10 +94,15 @@ export const createRole = async (
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
+        
+        const payload= {
+            ...validatedData.data,
+            location: location?.id
+        }
 
         await apiClient.post(
             `/api/roles/${location?.id}/create`,
-            validatedData.data,
+            payload,
         );
     } catch (error: unknown) {
         formResponse = {
@@ -138,9 +143,14 @@ export const updateRole = async (
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
 
+        const payload= {
+            ...validatedData.data,
+            location: location?.id
+        }
+
         await apiClient.put(
             `/api/roles/${location?.id}/${id}`,
-            validatedData.data,
+            payload,
         );
     } catch (error: unknown) {
         formResponse = {

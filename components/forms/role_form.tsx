@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import {Input, Textarea} from "@nextui-org/input";
+
 import { Switch } from "@nextui-org/switch";
 import { cn } from "@nextui-org/react";
 
@@ -24,6 +24,8 @@ import {FormResponse} from "@/types/types";
 import {RoleSchema} from "@/types/roles/schema";
 import {FormError} from "@/components/widgets/form-error";
 import {Role} from "@/types/roles/type";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 
 const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
@@ -64,8 +66,8 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                 <FormControl>
                                     <Input
                                         {...field}
-                                        isRequired
-                                        isDisabled={isPending}
+                                        // isRequired
+                                        // isDisabled={isPending}
                                         // label="Role name"
                                         placeholder="Enter role name"
                                     />
@@ -128,10 +130,10 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                             <FormControl>
                                 <Textarea
                                     {...field}
-                                    isDisabled={isPending}
-                                    label="Role description"
+                                    // isDisabled={isPending}
+                                    // label="Role description"
                                     placeholder="Enter a short description of the role"
-                                    radius="sm"
+                                    // radius="sm"
                                 />
                             </FormControl>
                             <FormMessage />

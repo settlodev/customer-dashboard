@@ -12,7 +12,7 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { StaffSchema } from "@/types/staff";
-import { getCurrentLocation } from "./business/get-current-business";
+import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 
 export const fetchAllStaff = async (): Promise<Staff[]> => {
     await getAuthenticatedUser();
@@ -98,10 +98,19 @@ export const createStaff = async (
         const apiClient = new ApiClient();
         
         const location = await getCurrentLocation();
+        const business = await getCurrentBusiness();
+
+        const payload = {
+            ...validatedData.data,
+            location: location?.id,
+            business: business?.id
+        }
+
+        console.log("The payload to create staff", payload);
 
         await apiClient.post(
-            `/api/categories/${location?.id}/create`,
-            validatedData.data,
+            `/api/staff/${location?.id}/create`,
+            payload,
         );
     } catch (error: unknown) {
         formResponse = {
@@ -141,6 +150,15 @@ export const updateStaff = async (
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
+        const business = await getCurrentBusiness();
+
+        const payload = {
+            ...validatedData.data,
+            location: location?.id,
+            business: business?.id
+        }
+
+        console.log("The payload to update staff", payload);
 
         await apiClient.put(
             `/api/staff/${location?.id}/${id}`,

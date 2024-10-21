@@ -1,11 +1,7 @@
 import { CheckIcon, ChevronsUpDown } from "lucide-react";
-
 import * as React from "react";
-
 import * as RPNInput from "react-phone-number-input";
-
 import flags from "react-phone-number-input/flags";
-
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -13,7 +9,6 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
-
   CommandList,
 } from "@/components/ui/command";
 import {
@@ -21,11 +16,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "./scroll-area";
-import {Input, InputProps} from "@nextui-org/input";
-import {E164Number} from "libphonenumber-js";
+import { Input, InputProps } from "@nextui-org/input";
+import { E164Number } from "libphonenumber-js";
 
 type PhoneInputProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
@@ -45,16 +39,8 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
           flagComponent={FlagComponent}
           countrySelectComponent={CountrySelect}
           inputComponent={InputComponent}
-          /**
-           * Handles the onChange event.
-           *
-           * react-phone-number-input might trigger the onChange event as undefined
-           * when a valid phone number is not entered. To prevent this,
-           * the value is coerced to an empty string.
-           *
-           * @param {E164Number | undefined} value - The entered value
-           */
-          onChange={(value) => onChange?.(value as  E164Number)}
+          defaultCountry="TZ" // Set Tanzania as the default country
+          onChange={(value) => onChange?.(value as E164Number)}
           {...props}
         />
       );
