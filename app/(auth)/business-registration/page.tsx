@@ -1,18 +1,26 @@
-import BusinessRegistrationForm from "@/components/forms/business_registration_form";
+"use client";
 import CreatedBusinessList from "./business_list";
 
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
 import RegisterForm from "@/components/forms/register_form";
 
+export default function BusinessRegistrationPage() {
+  const router = useRouter();
+  const getBusinesses=async()=>{
+    return await getBusinessDropDown();
+  }
 
-export default async function BusinessRegistrationPage() {
+  const responseData = getBusinesses();
 
-  const responseData = await getBusinessDropDown();
+  if (responseData.length > 0) {
+    //router.push(`/business-location?business=${businesses[0].id}`);
+    router.push(`/select-business`);
+    return null; //preventing the table
+  }
 
-    /*return (responseData.length > 0 ?
+    return (responseData.length > 0 ?
         <CreatedBusinessList businesses={responseData}/>:
-        <BusinessRegistrationForm />
-
-    )*/
-  return <RegisterForm step="step2" />
+        <RegisterForm step="step2" />
+        /*<BusinessRegistrationForm />*/
+    )
 }
