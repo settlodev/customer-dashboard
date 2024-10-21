@@ -7,7 +7,10 @@ import {Location} from "@/types/location/type";
 
 export const listLocations = async (): Promise<Location> => {
     const currentBusiness = await getCurrentBusiness();
-    const myCurrentBusiness = JSON.parse(currentBusiness);
+    if (!currentBusiness) {
+        throw new Error("Current business is undefined");
+    }
+    const myCurrentBusiness = currentBusiness;
 
     const myEndpoints = endpoints({businessId: myCurrentBusiness.id});
     try {

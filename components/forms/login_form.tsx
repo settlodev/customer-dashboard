@@ -28,12 +28,12 @@ import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormError } from "@/components/widgets/form-error";
 import { FormSuccess } from "@/components/widgets/form-success";
 import Link from "next/link";
-import {EyeOffIcon, EyeIcon, CheckIcon} from "lucide-react";
+import {EyeOffIcon, EyeIcon} from "lucide-react";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string>("");
-    const [success, setSuccess] = useState<string>("");
+    const [success,] = useState<string>("");
     const [showPassword, setShowPassword] = useState<boolean>(false);
 
     const form = useForm<z.infer<typeof LoginSchema>>({

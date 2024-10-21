@@ -23,9 +23,9 @@ export declare interface Variant {
 
 export declare interface FormVariantItem {
     name: string,
-    price: string,
-    cost: string,
-    quantity: string,
+    price: number,
+    cost: number,
+    quantity: number,
     sku?: string|undefined,
     description?: string|undefined,
     image?: string|undefined,
