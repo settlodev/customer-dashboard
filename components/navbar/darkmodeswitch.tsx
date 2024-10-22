@@ -7,7 +7,7 @@ export const DarkModeSwitch = () => {
   return (
     <Switch
       isSelected={resolvedTheme === "dark" ? true : false}
-      onValueChange={(e) => setTheme(e ? "dark" : "light")} className="bg-emerald-500" aria-label="Dark Mode"
+      onValueChange={(e) => setTheme(e ? "dark" : "light")} className="bg-emerald-500 rounded-full" aria-label="Dark Mode"
     />
   );
 };

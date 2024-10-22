@@ -238,14 +238,7 @@ function RegisterForm({step}:{step: string}) {
                     if (data) {
                         if (data.responseType === "success") {
 
-                            //setStepsDone([...stepsDone, currentStep]);
-                            //setMyCurrentStep();
-                            /*setResponse(data);
-                            toast({
-                                variant: "default",
-                                title: "Business created successfully",
-                                description: data.message,
-                            });*/
+                          
 
                             window.location.href = "/dashboard";
 
@@ -918,27 +911,6 @@ function RegisterForm({step}:{step: string}) {
                                                 </div>
                                             </div>
 
-                                            {/*<div className="grid gap-2 mt-2">
-                                                <FormField
-                                                    control={locationForm.control}
-                                                    name="description"
-                                                    render={({field}) => (
-                                                        <FormItem>
-                                                            <FormLabel>Description of your business location</FormLabel>
-                                                            <FormControl>
-                                                                <Textarea
-                                                                    placeholder="Enter location description"
-                                                                    {...field}
-                                                                    disabled={isPending}
-                                                                    className="resize-none bg-gray-50"
-                                                                    maxLength={200}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage/>
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            </div>*/}
 
                                             <div className="flex items-center">
                                                 <div className="flex-1">

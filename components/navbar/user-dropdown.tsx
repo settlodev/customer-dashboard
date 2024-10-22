@@ -38,13 +38,13 @@ export const UserDropdown = ({data}:{data: Session|null}) => {
               className='w-full p-0'>
             <div className="font-bold text-medium border-b-1 border-b-gray-200 pb-2 mb-2 w-full p-2">
               <p>Hello {data?.user.firstName}</p>
-              <p className="text-xs font-medium">{data?.user.email}</p>
+              <p className="text-xs font-medium dark:text-gray-800">{data?.user.email}</p>
             </div>
           </DropdownItem>
-          <DropdownItem className="border-b-1 border-b-gray-150 font-medium text-sm rounded-none" key='1' href="/profile">My Profile</DropdownItem>
-          <DropdownItem className="border-b-1 border-b-gray-150 font-medium text-sm rounded-none" key='1' href="/business">My Business</DropdownItem>
-          <DropdownItem className="border-b-1 border-b-gray-150 text-sm rounded-none" key='2' href="/notifications">Notifications</DropdownItem>
-          <DropdownItem className="border-b-1 border-b-gray-150 text-sm rounded-none" key='3' href="feedback">Help & Feedback</DropdownItem>
+          <DropdownItem className="border-b-1 border-b-gray-150 font-medium text-sm rounded-none dark:text-gray-800" key='1' href="/profile">My Profile</DropdownItem>
+          <DropdownItem className="border-b-1 border-b-gray-150 font-medium text-sm rounded-none dark:text-gray-800" key='1' href="/business">My Business</DropdownItem>
+          {/* <DropdownItem className="border-b-1 border-b-gray-150 text-sm rounded-none dark:text-gray-800" key='2' href="/notifications">Notifications</DropdownItem>
+          <DropdownItem className="border-b-1 border-b-gray-150 text-sm rounded-none dark:text-gray-800" key='3' href="feedback">Help & Feedback</DropdownItem> */}
           <DropdownItem
               key='logout'
               color='secondary'

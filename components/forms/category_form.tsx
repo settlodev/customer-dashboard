@@ -32,7 +32,12 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
     const form = useForm<z.infer<typeof CategorySchema>>({
         resolver: zodResolver(CategorySchema),
-        defaultValues: item ? item : { status: true },
+        defaultValues: {
+            ...item,
+            image: item?.image || "",
+            parentId: item?.parentId || "",
+            status: item ? item.status : true,
+        },
     });
 
     const submitData = (values: z.infer<typeof CategorySchema>) => {
@@ -40,7 +45,13 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
         startTransition(() => {
             if (item) {
-                updateCategory(item.id, values).then((data) => {
+                const updatedValues = {
+                    ...values,
+                    parentId: values.parentId || item.parentId || "",
+                };
+                console.log("Updated values:", updatedValues);
+
+                updateCategory(item.id, updatedValues).then((data) => {
                     if (data) setResponse(data);
                 });
             } else {
@@ -98,6 +109,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                                         {...field}
                                         disabled={isPending}
                                         placeholder="Select parent category"
+                                        value={field.value || ''}
                                     />
                                 </FormControl>
                                 <FormMessage />

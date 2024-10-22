@@ -162,7 +162,7 @@ export const updateStaff = async (
 
         await apiClient.put(
             `/api/staff/${location?.id}/${id}`,
-            validatedData.data,
+            payload,
         );
     } catch (error: unknown) {
         formResponse = {

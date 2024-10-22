@@ -155,9 +155,14 @@ export const updateLocation = async (
         const apiClient = new ApiClient();
         const business = await getCurrentBusiness();
 
+        const payload = {
+            ...validatedData.data,
+            business: business?.id,
+        };
+
         await apiClient.put(
             `/api/locations/${business?.id}/${id}`,
-            validatedData.data,
+            payload
         );
     } catch (error: unknown) {
         formResponse = {
