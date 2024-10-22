@@ -7,7 +7,17 @@ import { CellAction } from "@/components/tables/staff/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
-import {Staff} from "@/types/staff";
+import { Staff } from "@/types/staff";
+import { useState } from "react";
+const PassCodeCell = ({ passCode }: { passCode: number }) => {
+  const [isVisible, setIsVisible] = useState(false); 
+
+  return (
+    <span onClick={() => setIsVisible(!isVisible)} className="cursor-pointer">
+      {isVisible ? String(passCode) : "*****"} 
+    </span>
+  );
+}
 
 export const columns: ColumnDef<Staff>[] = [
   {
@@ -46,28 +56,51 @@ export const columns: ColumnDef<Staff>[] = [
     },
   },
   {
-    accessorKey: "department",
-    enableHiding: false,
-    header: ({ column }) => {
+    accessorKey: "roleName",
+    enableHiding: true,
+    header: "Role",
+  },
+  {
+    accessorKey: "departmentName",
+    enableHiding: true,
+    header: "Department",
+  },
+  {
+    accessorKey: "phone",
+    enableHiding: true,
+    header: "Phone Number",
+  },
+  {
+    accessorKey: "passCode",
+    enableHiding: true,
+    header: "Passcode",
+    cell: ({ row }) => {
+      const passCode = row.getValue("passCode") as number;
+      return <PassCodeCell passCode={passCode} />; 
+    },
+  },
+  {
+    accessorKey: "posAccess",
+    enableHiding: true,
+    header: "POS Access",
+    cell: ({ row }) => {
+      const posAccess = row.getValue("posAccess");
       return (
-        <Button
-          className="text-left p-0"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Department
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <span className={posAccess ? "text-white bg-green-500 p-1 rounded-sm" : "text-white bg-red-500 p-1 rounded-sm"}>
+          {posAccess ? "Yes" : "No"}
+        </span>
       );
     },
   },
   {
-    accessorKey: "role",
-    header: "Role",
-  },
-  {
-    accessorKey: "phoneNumber",
-    header: "Phone number",
+    accessorKey: "dashboardAccess",
+    enableHiding: true,
+    header: "Dashboard Access",
+    cell: ({ row }) => (
+      <span className={row.getValue("dashboardAccess") ? "text-white bg-green-500 p-1 rounded-sm" : "text-white bg-red-500 p-1 rounded-sm"}>
+        {row.getValue("dashboardAccess") ? "Yes" : "No"}
+      </span>
+    ),
   },
   {
     id: "status",

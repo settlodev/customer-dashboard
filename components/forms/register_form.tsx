@@ -216,14 +216,7 @@ function RegisterForm({step}:{step: string}) {
                     if (data) {
                         if (data.responseType === "success") {
 
-                            //setStepsDone([...stepsDone, currentStep]);
-                            //setMyCurrentStep();
-                            /*setResponse(data);
-                            toast({
-                                variant: "default",
-                                title: "Business created successfully",
-                                description: data.message,
-                            });*/
+                          
 
                             window.location.href = "/dashboard";
 

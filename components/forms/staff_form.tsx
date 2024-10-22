@@ -39,6 +39,8 @@ import { fetchAllRoles } from "@/lib/actions/role-actions";
 import { Role } from "@/types/roles/type";
 import { PhoneInput } from "../ui/phone-input";
 import { Switch } from "../ui/switch";
+import { fetchCountries } from "@/lib/actions/countries-actions";
+import { Country } from "@/types/country/type";
 
 const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const { toast } = useToast();
@@ -47,6 +49,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const [departments,setDepartments ] = useState<Department[]>([]);
     const [salaries,setSalaries ] = useState<Salary[]>([]);
     const [roles,setRoles ] = useState<Role[]>([]);
+    const [countries,setCountries ] = useState<Country[]>([]);
 
     useEffect(() => {
         const getDepartments = async () => {
@@ -86,11 +89,28 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
         roles();
     }, []);  
 
+    useEffect(() => {
+        const getCountries = async () => {
+            try {
+                const response = await fetchCountries();
+                setCountries(response);
+            } catch (error) {
+                console.error("Error fetching countries", error);
+            }
+        };
+        getCountries();
+
+    }, []);
+
+
+    const defaultCountry = "55b3323c-17fa-4da4-8780-17b9fe830d01";
     const form = useForm<z.infer<typeof StaffSchema>>({
         resolver: zodResolver(StaffSchema),
-        defaultValues: item
-            ? item
-            : { status: true },
+        defaultValues: {
+            ...item, 
+            nationality: item?.nationality || defaultCountry,
+            status: item ? item.status : true, 
+        },
     });
 
     const onInvalid = useCallback(
@@ -375,23 +395,36 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-                                <FormField
-                                        control={form.control}
-                                        name="nationality"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Enter staff's nationality"
-                                                        value={field.value ?? ""}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                  <FormField
+                                            control={form.control}
+                                            name="nationality"
+                                            render={({field}) => (
+                                                <FormItem>
+                                                    <FormControl>
+                                                        <Select
+                                                            disabled={isPending || countries.length === 0}
+                                                            onValueChange={field.onChange}
+                                                            value={field.value}>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select staff nationality" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                {countries.length > 0
+                                                                    ? countries.map((country: Country, index: number) => (
+                                                                        <SelectItem
+                                                                            key={index}
+                                                                            value={country.id}>
+                                                                            {country.name}
+                                                                        </SelectItem>
+                                                                    ))
+                                                                : <></>}
+                                                            </SelectContent>
+                                                        </Select>
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}
+                                        />
                                     <FormField
                                         control={form.control}
                                         name="status"
