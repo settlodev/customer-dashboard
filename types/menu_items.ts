@@ -80,15 +80,13 @@ export const menuItems=(args?: MenuItemArgType) => {
             icon: 'general',
             items:
                 [
-                    {title: "Countries", link: "/countries", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Departments", link: "/departments", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Businesses", link: "/business", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Expenses", link: "/expenses", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Tables & Spaces", link: "/spaces", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Reservations", link: "/reservations", current: args?.isCurrentItem, icon: "cart"},
                     {title: "KDS", link: "/kds", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Settings", link: "/settings", current: args?.isCurrentItem, icon: "cart"}
+                    {title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart"}
                 ]
         }
     ]

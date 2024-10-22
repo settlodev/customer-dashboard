@@ -7,7 +7,16 @@ import {useSidebarContext} from "../layouts/layout-context";
 import {BusinessPropsType} from "@/types/business/business-props-type";
 import {menuItems} from "@/types/menu_items";
 import Link from "next/link";
-import {UsersIcon, ContactIcon, ChartNoAxesColumn, Package2, Info, ReceiptText, Settings} from "lucide-react";
+import {
+    UsersIcon,
+    ContactIcon,
+    ChartNoAxesColumn,
+    Package2,
+    Info,
+    ReceiptText,
+    Settings,
+    ChevronDownIcon
+} from "lucide-react";
 
 export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
   const {collapsed, setCollapsed} = useSidebarContext();
@@ -15,7 +24,7 @@ export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
   const myMenuItems = menuItems();
 
   const getIcon=(iconName: string)=>{
-      const size:number = 18;
+      const size:number = 20;
       //const color:string = '#7CF5FF';
       const color:string = '#A3FFD6';
       if(iconName === 'dashboard') {
@@ -55,9 +64,12 @@ export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
                   <ul className="space-y-2 font-medium">
                       {myMenuItems.map((label, labelIndex: number) => {
                           return <li key={labelIndex}>
-                              <a href="#" className="flex items-center p-2 text-gray-100 rounded-lg dark:text-white hover:bg-gray-700 dark:hover:bg-gray-700 group" onClick={()=>setVisibleIndex(labelIndex)}>
-                                  <span className="text-xs">{getIcon(label.icon)}</span>
-                                  <span className="ml-2">{label.label}</span>
+                              <a href="#" className="flex items-center p-2 text-gray-100 rounded-lg dark:text-white hover:bg-gray-700 dark:hover:bg-gray-700 group w-full" onClick={()=>setVisibleIndex(labelIndex)}>
+                                  <div className="flex-1 flex items-center ">
+                                      <span className="text-xs">{getIcon(label.icon)}</span>
+                                      <span className="ml-2">{label.label}</span>
+                                  </div>
+                                  <ChevronDownIcon className="self-end" />
                               </a>
 
                               {(visibleIndex === labelIndex) &&

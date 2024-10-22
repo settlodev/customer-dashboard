@@ -18,4 +18,4 @@ const Logo = (props: ILogoProps) => {
   )
 }
 
-export { Logo };
+export { Logo }

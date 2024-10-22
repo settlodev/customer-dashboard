@@ -84,7 +84,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       {data.canDelete && (
         <DeleteModal
           isOpen={isOpen}
-          itemName={data.firstName}
+          itemName={data.name}
           onDelete={onDelete}
           onOpenChange={onOpenChange}
         />

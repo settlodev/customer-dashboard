@@ -37,7 +37,7 @@ export default async function StaffPage({params}: {
     const breadcrumbItems = [
         { title: "Staff", link: "/staff" },
         {
-            title: isNewItem ? "New" : item?.content[0]?.firstName || "Edit",
+            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
             link: "",
         },
     ];

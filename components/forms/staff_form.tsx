@@ -71,7 +71,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
         }
 
         salaries();
-    }, []);  
+    }, []);
 
     useEffect(() => {
         const roles = async () => {
@@ -84,7 +84,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
         }
 
         roles();
-    }, []);  
+    }, []);
 
     const form = useForm<z.infer<typeof StaffSchema>>({
         resolver: zodResolver(StaffSchema),
@@ -157,7 +157,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-                                   
+
                                     <FormField
                                         control={form.control}
                                         name="email"
@@ -262,7 +262,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-    
+
                                     <FormField
                                         control={form.control}
                                         name="department"
@@ -414,7 +414,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-                                      <FormField 
+                                      <FormField
                                         control={form.control}
                                         name="posAccess"
                                         render={({ field }) => (
@@ -422,7 +422,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             <FormLabel>Allow POS Access</FormLabel>
                                             <FormControl>
                                                 <Switch
-                                                
+
                                                 checked={field.value}
                                                 onCheckedChange={field.onChange}
                                                 disabled={isPending}
@@ -432,7 +432,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             </FormItem>
                                         )}
                                         />
-                                          <FormField 
+                                          <FormField
                                         control={form.control}
                                         name="dashboardAccess"
                                         render={({ field }) => (
@@ -440,7 +440,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             <FormLabel>Allow Dashboard Access</FormLabel>
                                             <FormControl>
                                                 <Switch
-                                                
+
                                                 checked={field.value}
                                                 onCheckedChange={field.onChange}
                                                 disabled={isPending}
@@ -457,7 +457,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                             <CardHeader>
                                 <CardTitle>Contact Person</CardTitle>
                                 <CardDescription>
-                                    Staff's relative contact person, incase of emergency
+                                    Staffs relative contact person, incase of emergency
                                 </CardDescription>
                             </CardHeader>
                             <CardContent>
@@ -511,7 +511,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                         )}
                                     />
                             </div>
-                              
+
                             </CardContent>
                         </Card>
                         <Card>

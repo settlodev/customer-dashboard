@@ -8,7 +8,7 @@ export const LocationSchema = object({
     }),
     email: string().min(2, 'Email must be less than 10 characters').max(120, 'Email can not be more than 120characters').optional(),
     description: string().min(2, 'Description must be less than 20 characters').max(120, 'Description can not be more than 20 characters').optional(),
-    address: string().min(2, 'Address must be less than 20 characters').max(120, 'Address can not be more than 20 characters').optional(),
+    address: string().min(2, 'Address must be less than 20 characters').max(120, 'Address can not be more than 20 characters'),
     city: string(),
     region: string().optional(),
     street: string().optional(),
