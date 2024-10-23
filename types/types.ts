@@ -118,5 +118,5 @@ export declare interface BusinessTimeType {
 
 export declare interface uploadCallBackType{
     success: boolean;
-    data: Response | null;
+    data: string;
 }

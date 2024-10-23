@@ -20,7 +20,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {z} from "zod";
 import React, {useCallback, useEffect, useState, useTransition} from "react";
 import { useToast } from "@/hooks/use-toast";
-import { FormResponse } from "@/types/types";
+// import { FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
@@ -47,22 +47,22 @@ import ProductTaxSelector from "@/components/widgets/product-tax-selector";
 import {taxClasses} from "@/types/constants";
 import {fectchAllBrands} from "@/lib/actions/brand-actions";
 import {uploadImage} from "@/lib/utils";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
-    const [formResponse, setResponse] = useState<FormResponse | undefined>();
+    // const [formResponse, setResponse] = useState<FormResponse | undefined>();
     const [error] = useState<string | undefined>("");
     const [success,] = useState<string | undefined>("");
-
-    console.log("formResponse;", formResponse)
 
     const [variants, setVariants] = useState<FormVariantItem[]>([]);
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
 
-    const [file, setFile] = useState<File | null>(null)
-    const [uploading, setUploading] = useState(false)
+    //const [file, setFile] = useState<File | null>(null)
+    const [uploading, setUploading] = useState(false);
+    const [imageUrl, setImageUrl] = useState<string>('');
 
     const {toast} = useToast();
 
@@ -108,13 +108,13 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
         startTransition(() => {
             if (item) {
                 updateProduct(item.id, values).then((data) => {
-                    if (data) setResponse(data);
+                    //if (data) setResponse(data);
                 });
             } else {
                 createProduct(values)
                   .then((data) => {
                     console.log("Create Business Response: ", data);
-                    if (data) setResponse(data);
+                    //if (data) setResponse(data);
                   })
                   .catch((err) => {
                     console.log("Create Business Error: ", err);
@@ -133,15 +133,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
         setVariants(_.compact(mVariants));
     }
 
-    const uploadMyImage=async(mFile: File)=>{
-        setUploading(true);
-        setFile(mFile);
-
-        await uploadImage(mFile, function (response) {
-            console.log("My response is:", response.data);
-            setUploading(true);
-        });
-    }
 
     return (
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
@@ -159,28 +150,12 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                     <span className="flex-end"><ChevronDownIcon/></span>
                                 </div>
 
-                                <input type="hidden" name="image" value="https://www.foodandwine.com/thmb/Wd4lBRZz3X_8qBr69UOu2m7I2iw=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/classic-cheese-pizza-FT-RECIPE0422-31a2c938fc2546c9a07b7011658cfd05.jpg" />
+                                <input type="hidden" name="image" value={imageUrl} />
 
                                 <div className="mt-4 flex">
-                                    <label
-                                        className="cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col">
-                                        <span><ImageIcon/></span>
-                                        <span className="text-xs font-bold">Image</span>
 
-                                        <input
-                                            className="hidden"
-                                            type="file"
-                                            name="file"
-                                            onChange={(e) => {
-                                                const files = e.target.files
-                                                if (files) {
-                                                    uploadMyImage(files[0])
-                                                }
-                                            }}
-                                            accept="image/png, image/jpeg, image/jpg"
-                                        />
+                                    <UploadImageWidget display={true} setImage={setImageUrl} />
 
-                                    </label>
                                     <div className="flex-1">
                                         <FormField
                                             control={form.control}
