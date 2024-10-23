@@ -18,7 +18,7 @@ export default function ResetPasswordEmailTemplate({token}: EmailProps) {
                 below to reset your password:
             </p>
            
-            <Button href={`${process.env.NEXT_PUBLIC_APP_URL}/update-password?token=${token}`}>
+            <Button href={`${process.env.SERVICE_URL}/update-password?token=${token}`}>
                 Reset Password Link
             </Button>
         </div>
