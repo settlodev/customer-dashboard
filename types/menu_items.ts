@@ -53,7 +53,20 @@ export const menuItems=(args?: MenuItemArgType) => {
                 [
                     {title: "Customers", link: "/customers", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Discounts", link: "/discounts", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "SMS Marketing", link: "/sms-marketing", current: args?.isCurrentItem, icon: "cart"}
+                 
+                ]
+        },
+        {
+            label: "Marketing",
+            showSeparator: false,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'customers',
+            items:
+                [
+
+                    {title: "Communication Templates", link: "/communication-templates", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Broadcast SMS/Email", link: "/sms-marketing", current: args?.isCurrentItem, icon: "cart"}
                 ]
         },
         {

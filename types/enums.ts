@@ -22,3 +22,10 @@ export enum discountType {
     FIXED = "FIXED",
     PERCENTAGE = "PERCENTAGE",
 }
+
+export enum broadcastType {
+    SMS = "SMS",
+    EMAIL = "EMAIL",
+    NOTIFICATION = "NOTIFICATION",
+}
+

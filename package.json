@@ -50,6 +50,7 @@
     "react-dom": "^18",
     "react-hook-form": "^7.53.0",
     "react-phone-number-input": "^3.4.8",
+    "react-quill": "^2.0.0",
     "react-table": "^7.8.0",
     "resend": "^4.0.0",
     "tailwind-merge": "^2.5.2",
