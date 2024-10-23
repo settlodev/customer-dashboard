@@ -5,18 +5,21 @@ import {toast} from "@/hooks/use-toast";
 import Image from "next/image";
 interface ImageUploadProps {
     setImage: (value: string) => void;
-    displayImage: boolean;
-    displayStyle: string | 'default'
+    displayImage?: boolean | true;
+    imagePath: string | 'products',
+    displayStyle?: string | 'default',
+    label?: string | 'Image',
+    showLabel?: boolean|true,
 }
 
-function UploadImageWidget({setImage, displayImage, displayStyle}: ImageUploadProps) {
+function UploadImageWidget({setImage, displayImage, displayStyle, imagePath, label, showLabel}: ImageUploadProps) {
     const [uploading, setUploading] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string>('');
 
     const uploadMyImage = async (mFile: File) => {
         setUploading(true);
-        await uploadImage(mFile, 'products', function (response) {
-            console.log("response:", response);
+        await uploadImage(mFile, imagePath, function (response) {
+            console.log("response.data:", response.data);
             if (response.success) {
                 setImageUrl(response.data);
                 setImage(response.data);
@@ -33,35 +36,38 @@ function UploadImageWidget({setImage, displayImage, displayStyle}: ImageUploadPr
         });
     }
 
-    return <label className={displayStyle==='default'?'cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col':''}>
+    return (<label
+        className={displayStyle === 'default' ? 'cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col' : ''}>
+        {uploading && <div className="spin-in w-[30px] h-[30px] border-2 border-emerald-300 rounded-full"></div>}
         {(imageUrl && displayImage) ?
-            <Image alt="" width={0} height={0} src={imageUrl} className="object-cover w-full h-full" /> :
-            <>
-                {displayStyle === 'default'?
-                    uploading?
-                        <div className="spin-in w-[30px] h-[30px] border-2 border-emerald-300 rounded-full"></div>:
-                <>
-                    <span><ImageIcon/></span>
-                    <span className="text-xs font-bold">Image</span>
-                </>
+            !uploading ?
+                <Image alt="" width={150} height={150} src={imageUrl} className="object-cover w-[100%] h-[100%]"/>
                 :<></>
+            : <>
+                {displayStyle === 'default' ?
+                    !uploading && (<>
+                        <span><ImageIcon/></span>
+                        {showLabel && <span className="text-xs font-bold">{label}</span>}
+                    </>)
+                    : <></>
                 }
-                <input
-                    className={displayStyle==='default'?"hidden":'flex'}
-                    type="file"
-                    name="file"
-                    disabled={uploading}
-                    onChange={async (e) => {
-                        const files = e.target.files
-                        if (files) {
-                            await uploadMyImage(files[0])
-                        }
-                    }}
-                    accept="image/png, image/jpeg, image/jpg"
-                />
             </>
         }
-    </label>
+        <input
+            className={displayStyle === 'default' ? "hidden" : 'flex'}
+            type="file"
+            name="file"
+            disabled={uploading}
+            onChange={async (e) => {
+                const files = e.target.files
+                if (files) {
+                    await uploadMyImage(files[0])
+                }
+            }}
+            accept="image/*"
+        />
+
+    </label>)
 }
 
 export default UploadImageWidget;

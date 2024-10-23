@@ -60,6 +60,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     const [brands, setBrands] = useState<Brand[]>([]);
 
     //const [file, setFile] = useState<File | null>(null)
+    const [variantImageUrl, setVariantImageUrl] = useState<string>('');
     const [imageUrl, setImageUrl] = useState<string>('');
 
     const {toast} = useToast();
@@ -102,6 +103,9 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
 
     const submitData = (values: z.infer<typeof ProductSchema>) => {
         values.variants=variants;
+        if(imageUrl){
+            values.image = imageUrl;
+        }
 
         startTransition(() => {
             if (item) {
@@ -123,6 +127,9 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     };
 
     const saveVariantItem = (values: z.infer<typeof VariantSchema>) => {
+        if(variantImageUrl) {
+            values.image = variantImageUrl;
+        }
         setVariants([values, ...variants]);
     }
 
@@ -149,12 +156,8 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                     <span className="flex-end"><ChevronDownIcon/></span>
                                 </div>
 
-                                <input type="hidden" name="image" value={imageUrl} />
-
                                 <div className="mt-4 flex">
-
-                                    <UploadImageWidget displayStyle={'default'} displayImage={true} setImage={setImageUrl} />
-
+                                    <UploadImageWidget imagePath={'products'} displayStyle={'default'} displayImage={true} setImage={setImageUrl}/>
                                     <div className="flex-1">
                                         <FormField
                                             control={form.control}
@@ -453,113 +456,119 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                     <FormError message={error}/>
                                     <FormSuccess message={success}/>
 
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="name"
-                                        render={({field}) => (
-                                            <FormItem>
-                                                <FormLabel>Variant Name</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Enter variant name ex: Small"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage/>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="price"
-                                        render={({field}) => (
-                                            <FormItem>
-                                                <FormLabel>Price</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="0.00"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        type={'number'}
-                                                        step={0.1}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage/>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="cost"
-                                        render={({field}) => (
-                                            <FormItem>
-                                                <FormLabel>Cost</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="0.00"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        type={'number'} step={0.1}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage/>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="quantity"
-                                        render={({field}) => (
-                                            <FormItem>
-                                                <FormLabel>Quantity</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="0.00"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        type={'number'}
-                                                        step={0.1}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage/>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="sku"
-                                        render={({field}) => (
-                                            <FormItem>
-                                                <FormLabel>SKU</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Enter SKU"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage/>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="description"
-                                        render={({field}) => (
-                                            <FormItem>
-                                                <FormLabel>Description</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Enter variant description"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage/>
-                                            </FormItem>
-                                        )}
-                                    />
+                                    <div className="mt-4 flex">
+                                        <UploadImageWidget imagePath={'products'} displayStyle={'default'} displayImage={true} setImage={setVariantImageUrl}/>
+
+                                        <div className="flex-1">
+                                            <FormField
+                                                control={variantForm.control}
+                                                name="name"
+                                                render={({field}) => (
+                                                    <FormItem>
+                                                        <FormLabel>Variant Name</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                placeholder="Enter variant name ex: Small"
+                                                                {...field}
+                                                                disabled={isPending}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage/>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                        </div>
+                                        <FormField
+                                            control={variantForm.control}
+                                            name="price"
+                                            render={({field}) => (
+                                                <FormItem>
+                                                    <FormLabel>Price</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="0.00"
+                                                            {...field}
+                                                            disabled={isPending}
+                                                            type={'number'}
+                                                            step={0.1}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={variantForm.control}
+                                            name="cost"
+                                            render={({field}) => (
+                                                <FormItem>
+                                                    <FormLabel>Cost</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="0.00"
+                                                            {...field}
+                                                            disabled={isPending}
+                                                            type={'number'} step={0.1}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={variantForm.control}
+                                            name="quantity"
+                                            render={({field}) => (
+                                                <FormItem>
+                                                    <FormLabel>Quantity</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="0.00"
+                                                            {...field}
+                                                            disabled={isPending}
+                                                            type={'number'}
+                                                            step={0.1}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={variantForm.control}
+                                            name="sku"
+                                            render={({field}) => (
+                                                <FormItem>
+                                                    <FormLabel>SKU</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="Enter SKU"
+                                                            {...field}
+                                                            disabled={isPending}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={variantForm.control}
+                                            name="description"
+                                            render={({field}) => (
+                                                <FormItem>
+                                                    <FormLabel>Description</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="Enter variant description"
+                                                            {...field}
+                                                            disabled={isPending}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}
+                                        />
                                 </CardContent>
 
                                 <div className="flex ml-6 mb-6">

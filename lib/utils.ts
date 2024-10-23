@@ -57,18 +57,20 @@ export async function uploadImage(file: File, path: string, callback: (response:
     extension = 'png'
   }
 
-  const { data, error } = await supabase
-      .storage
-      .from('Data')
-      .upload(`${path}/${v4()}.${extension}`, file, {
+  //await supabase.storage.createBucket("Images", {public: true});
+  const sbObject = supabase.storage.from("Images");
+  const imageName = `${path}/${v4()}.${extension}`;
+  const { error } = await sbObject.upload(imageName, file, {
         cacheControl: '3600',
         upsert: false
       });
 
+  const { data } = sbObject.getPublicUrl(imageName);
+
   if(error){
     return callback({ success: false, data: "Error uploading image" });
   }
-  return callback({ success: true, data: `${url}/storage/v1/object/public/${data.fullPath}`});
+  return callback({ success: true, data: data.publicUrl});
 }
 
 
