@@ -40,13 +40,12 @@ import ProductDepartmentSelector from "@/components/widgets/product-department-s
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import {VariantSchema} from "@/types/variant/schema";
 import {Brand} from "@/types/brand/type";
-import {ChevronDownIcon, ImageIcon} from "lucide-react";
+import {ChevronDownIcon} from "lucide-react";
 import {Textarea} from "@/components/ui/textarea";
 import {Switch} from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
 import {taxClasses} from "@/types/constants";
 import {fectchAllBrands} from "@/lib/actions/brand-actions";
-import {uploadImage} from "@/lib/utils";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
@@ -61,7 +60,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     const [brands, setBrands] = useState<Brand[]>([]);
 
     //const [file, setFile] = useState<File | null>(null)
-    const [uploading, setUploading] = useState(false);
     const [imageUrl, setImageUrl] = useState<string>('');
 
     const {toast} = useToast();
@@ -109,6 +107,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
             if (item) {
                 updateProduct(item.id, values).then((data) => {
                     //if (data) setResponse(data);
+                    console.log("data:", data)
                 });
             } else {
                 createProduct(values)
@@ -154,7 +153,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
 
                                 <div className="mt-4 flex">
 
-                                    <UploadImageWidget display={true} setImage={setImageUrl} />
+                                    <UploadImageWidget displayStyle={'default'} displayImage={true} setImage={setImageUrl} />
 
                                     <div className="flex-1">
                                         <FormField

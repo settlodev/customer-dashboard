@@ -5,16 +5,18 @@ import {toast} from "@/hooks/use-toast";
 import Image from "next/image";
 interface ImageUploadProps {
     setImage: (value: string) => void;
-    display: boolean
+    displayImage: boolean;
+    displayStyle: string | 'default'
 }
 
-function UploadImageWidget({setImage, display}: ImageUploadProps) {
+function UploadImageWidget({setImage, displayImage, displayStyle}: ImageUploadProps) {
     const [uploading, setUploading] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string>('');
 
     const uploadMyImage = async (mFile: File) => {
         setUploading(true);
         await uploadImage(mFile, 'products', function (response) {
+            console.log("response:", response);
             if (response.success) {
                 setImageUrl(response.data);
                 setImage(response.data);
@@ -27,19 +29,25 @@ function UploadImageWidget({setImage, display}: ImageUploadProps) {
                     description: "There was an issue uploading image",
                 });
             }
-            setUploading(true);
+            setUploading(false);
         });
     }
 
-    return <label
-        className="cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col">
-        {(imageUrl && display) ?
+    return <label className={displayStyle==='default'?'cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col':''}>
+        {(imageUrl && displayImage) ?
             <Image alt="" width={0} height={0} src={imageUrl} className="object-cover w-full h-full" /> :
             <>
-                <span><ImageIcon/></span>
-                <span className="text-xs font-bold">Image</span>
+                {displayStyle === 'default'?
+                    uploading?
+                        <div className="spin-in w-[30px] h-[30px] border-2 border-emerald-300 rounded-full"></div>:
+                <>
+                    <span><ImageIcon/></span>
+                    <span className="text-xs font-bold">Image</span>
+                </>
+                :<></>
+                }
                 <input
-                    className="hidden"
+                    className={displayStyle==='default'?"hidden":'flex'}
                     type="file"
                     name="file"
                     disabled={uploading}
