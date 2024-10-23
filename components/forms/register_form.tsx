@@ -57,6 +57,8 @@ import {LocationSchema} from "@/types/location/schema";
 import {createBusinessLocation} from "@/lib/actions/auth/location";
 import { PhoneInput } from "../ui/phone-input";
 import {businessTimes} from "@/types/constants";
+import {useSession} from "next-auth/react";
+import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 interface signUpStepItemType{
     id: string;
     label: string;
@@ -89,12 +91,23 @@ function RegisterForm({step}:{step: string}) {
     const [stepsDone, setStepsDone] = useState<signUpStepItemType[]>([]);
     const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
     const [showPassword, setShowPassword] = useState<boolean>(false);
+    const [currentBusiness, setCurrentBusiness] = useState<Business | undefined>(undefined);
+
+    useEffect(() => {
+        async function getBusiness(){
+            const myBusiness = await getCurrentBusiness();
+            console.log("myBusiness:", myBusiness);
+            setCurrentBusiness(myBusiness);
+        }
+
+        getBusiness();
+    }, []);
 
     const defaultCountry = "55b3323c-17fa-4da4-8780-17b9fe830d01";
+    const session = useSession();
 
     /*TODO: Business form information*/
     const {toast} = useToast();
-    const [, setResponse] = useState<FormResponse | undefined>();
 
     const form = useForm<z.infer<typeof RegisterSchema>>({
         resolver: zodResolver(RegisterSchema),
@@ -103,17 +116,26 @@ function RegisterForm({step}:{step: string}) {
 
     const businessForm = useForm<z.infer<typeof BusinessSchema>>({
         resolver: zodResolver(BusinessSchema),
-        defaultValues: {country: defaultCountry},
+        defaultValues: {
+            country: defaultCountry,
+            email: session?.data?.user.email
+        }
     });
 
     const locationForm = useForm<z.infer<typeof LocationSchema>>({
         resolver: zodResolver(LocationSchema),
-        defaultValues: {},
+        defaultValues: {
+            phone: session?.data?.user.phoneNumber,
+            email: session?.data?.user.email,
+            name: currentBusiness?.name,
+            openingTime: "07:00",
+            closingTime: "23:00",
+        },
     });
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
-            console.log("errors");
+            //console.log("errors");
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",
@@ -138,13 +160,13 @@ function RegisterForm({step}:{step: string}) {
         getCountries();
 
         if(step){
-            console.log("step is:", step);
+            //console.log("step is:", step);
             if(step === "step2"){
                 setStepsDone([...stepsDone, signUpSteps[0]])
             }
             if(step === "step3"){
                 const doneSteps = [...stepsDone, signUpSteps[0], signUpSteps[1]];
-                console.log("Done steps: ", doneSteps)
+                //console.log("Done steps: ", doneSteps)
                 setStepsDone(doneSteps)
             }
         }
@@ -183,7 +205,7 @@ function RegisterForm({step}:{step: string}) {
     }
 
     const submitBusinessData = (values: z.infer<typeof BusinessSchema>) => {
-        setResponse(undefined);
+        //setResponse(undefined);
 
         startTransition(() => {
             createBusiness(values)
@@ -740,7 +762,7 @@ function RegisterForm({step}:{step: string}) {
                                                         name="city"
                                                         render={({field}) => (
                                                             <FormItem>
-                                                                <FormLabel>City <span className="text-red-700">*</span></FormLabel>
+                                                                <FormLabel>City / Region</FormLabel>
                                                                 <FormControl>
                                                                     <Input
                                                                         {...field}
@@ -774,7 +796,7 @@ function RegisterForm({step}:{step: string}) {
                                                     />
                                                 </div>
                                             </div>
-                                            <div className="lg:grid grid-cols-2 gap-4 mt-2">
+                                            {/*<div className="lg:grid grid-cols-2 gap-4 mt-2">
                                                 <div className="grid gap-2">
                                                     <FormField
                                                         control={locationForm.control}
@@ -813,7 +835,7 @@ function RegisterForm({step}:{step: string}) {
                                                         )}
                                                     />
                                                 </div>
-                                            </div>
+                                            </div>*/}
                                             <div
                                                 className="pl-0 pr-3 pt-8 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Operating times</h3>

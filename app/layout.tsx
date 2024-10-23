@@ -24,7 +24,7 @@ export default async function RootLayout({children,}: Readonly<{ children: React
   const session = await auth();
   return (
       <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased bg-whiten dark:bg-boxdark-2 dark:text-bodydark`}>
       <SessionProvider session={session}>
         <Providers>{children}</Providers>
       </SessionProvider>

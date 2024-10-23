@@ -1,4 +1,4 @@
-import Image from "next/image";;
+import Image from "next/image";
 
 type ILogoProps = {
   xl?: boolean;
@@ -15,7 +15,7 @@ const Logo = (props: ILogoProps) => {
         <Image onClick={()=>window.location.href='/'} src="/images/new_logo.svg" className="hidden lg:block md:block" width={160} height={70} alt={'Logo'} />
         <Image onClick={()=>window.location.href='/'} src="/images/new_logo.svg" className="lg:hidden md:hidden mt-1" width={120} height={50} alt={'Logo'} />
     </span>
-  );
-};
+  )
+}
 
-export { Logo };
+export { Logo }
