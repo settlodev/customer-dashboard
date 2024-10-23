@@ -115,3 +115,8 @@ export declare interface BusinessTimeType {
     name: string;
     label: string;
 }
+
+export declare interface uploadCallBackType{
+    success: boolean;
+    data: Response | null;
+}

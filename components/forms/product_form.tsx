@@ -46,6 +46,7 @@ import {Switch} from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
 import {taxClasses} from "@/types/constants";
 import {fectchAllBrands} from "@/lib/actions/brand-actions";
+import {uploadImage} from "@/lib/utils";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -60,6 +61,9 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
 
+    const [file, setFile] = useState<File | null>(null)
+    const [uploading, setUploading] = useState(false)
+
     const {toast} = useToast();
 
     useEffect(() => {
@@ -71,7 +75,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
             setDepartments(departments);
 
             const brands = await fectchAllBrands();
-            console.log("brands:", brands);
             setBrands(brands);
         }
         getData();
@@ -130,6 +133,16 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
         setVariants(_.compact(mVariants));
     }
 
+    const uploadMyImage=async(mFile: File)=>{
+        setUploading(true);
+        setFile(mFile);
+
+        await uploadImage(mFile, function (response) {
+            console.log("My response is:", response.data);
+            setUploading(true);
+        });
+    }
+
     return (
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
             <div className="flex gap-10">
@@ -158,27 +171,13 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                             className="hidden"
                                             type="file"
                                             name="file"
-                                            accept="image/*"
-                                            onChange={async (e) => {
-                                                if (e.target.files) {
-                                                    const formData = new FormData();
-                                                    Object.values(e.target.files).forEach((file) => {
-                                                        formData.append("file", file);
-                                                    });
-
-                                                    const response = await fetch("/api/upload", {
-                                                        method: "POST",
-                                                        body: formData,
-                                                    });
-
-                                                    const result = await response.json();
-                                                    if (result.success) {
-                                                        alert("Upload ok : " + result.name);
-                                                    } else {
-                                                        alert("Upload failed");
-                                                    }
+                                            onChange={(e) => {
+                                                const files = e.target.files
+                                                if (files) {
+                                                    uploadMyImage(files[0])
                                                 }
                                             }}
+                                            accept="image/png, image/jpeg, image/jpg"
                                         />
 
                                     </label>

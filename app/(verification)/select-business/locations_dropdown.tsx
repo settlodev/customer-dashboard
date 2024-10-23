@@ -11,7 +11,7 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
     return (<>
             {locations.length > 0 ?
                 locations.map((myLocation: Location, index: number) => {
-                    return <li className="pb-3 sm:pb-4 p-4" key={index}>
+                    return <li className="pb-3 sm:pb-4 p-4 bg-white" key={index}>
                         <div className="flex items-center space-x-4 rtl:space-x-reverse">
                             <div className="flex-shrink-0 w-10 h-10 p-1 rounded-full bg-emerald-400">
                                 <Image className="rounded-full" src="/images/logo.png" alt="Settlo Logo"

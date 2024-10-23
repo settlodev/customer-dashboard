@@ -21,12 +21,7 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
             }
         }
         getData();
-    }, [businesses]);
-
-    if (businesses.length === 0) {
-        /*router.push(`/business-registration`);
-        return null;*/
-    }
+    }, []);
 
     const setCurrentBusiness = async(mBusiness: Business)=>{
         setBusiness(mBusiness);
@@ -35,7 +30,6 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
 
     return (<>
             <SignupNavbar />
-
             <div className="container mx-auto flex flex-col items-center justify-center">
             <div className="flex items-center justify-center flex-col">
                 {/*<div className="overflow-hidden p-2 mb-4 mt-6">
@@ -55,7 +49,7 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
                             <SelectLocation locations={business.allLocations}/>
                             : businesses.map((business: Business, index: number) => {
                                     //TODO: Display in separate businesses component
-                                    return <li className="pb-3 sm:pb-4 p-4" key={index}>
+                                    return <li className="pb-3 sm:pb-4 p-4 bg-white" key={index}>
                                         <div className="flex items-center space-x-4 rtl:space-x-reverse">
                                             <div className="flex-shrink-0 w-10 h-10 p-1 rounded-full bg-emerald-400">
                                                 <Image className="rounded-full" src="/images/logo.png" alt="Settlo Logo"
