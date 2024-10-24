@@ -30,6 +30,7 @@ import { FormSuccess } from "../widgets/form-success";
 import { DepartmentSchema } from "@/types/department/schema";
 import { createDepartment, updateDepartment } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
+import { Switch } from "../ui/switch";
 
 function DepartmentForm({ item }: { item: Department | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -119,7 +120,10 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     <FormItem>
                       <FormLabel>Department Color</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter department color" {...field}
+                        <Input
+                         placeholder="Enter department color"
+                          {...field}
+                          type="color"
                          disabled={isPending}
                          value={field.value ?? ''}
                          />
@@ -148,7 +152,37 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     </FormItem>
                   )}
                 />
-              
+              {item && (
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="status"
+
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <FormLabel>
+
+                            Department Status
+                            <span className={item.status ? "text-green-500" : "text-red-500"}>
+                              ({item.status ? "Active" : "Inactive"})
+                            </span>
+
+                          </FormLabel>
+                          <FormControl>
+                            <Switch
+
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )
+                }
               </div>
             </CardContent>
           </Card>

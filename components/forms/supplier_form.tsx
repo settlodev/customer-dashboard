@@ -32,11 +32,12 @@ import { SupplierSchema } from "@/types/supplier/schema";
 import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 import { PhoneInput } from "../ui/phone-input";
 import { Loader2Icon } from "lucide-react";
+import { Switch } from "../ui/switch";
 
 function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error, ] = useState<string | undefined>("");
+  const [error,] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
   const { toast } = useToast();
 
@@ -50,7 +51,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
-        description:typeof errors.message === 'string' && errors.message
+        description: typeof errors.message === 'string' && errors.message
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
@@ -91,8 +92,8 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-            <FormError message={error}/>
-            <FormSuccess message={success}/>
+              <FormError message={error} />
+              <FormSuccess message={success} />
               <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -111,7 +112,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                     </FormItem>
                   )}
                 />
-            
+
                 <FormField
                   control={form.control}
                   name="email"
@@ -125,7 +126,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                     </FormItem>
                   )}
                 />
-               
+
                 <FormField
                   control={form.control}
                   name="phoneNumber"
@@ -143,7 +144,39 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                     </FormItem>
                   )}
                 />
-              
+
+                {item && (
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="status"
+
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <FormLabel>
+
+                            Supplier Status
+                            <span className={item.status ? "text-green-500" : "text-red-500"}>
+                              ({item.status ? "Active" : "Inactive"})
+                            </span>
+
+                          </FormLabel>
+                          <FormControl>
+                            <Switch
+
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )
+                }
+
               </div>
             </CardContent>
           </Card>

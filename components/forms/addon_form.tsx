@@ -30,6 +30,7 @@ import { FormSuccess } from "../widgets/form-success";
 import { AddonSchema } from "@/types/addon/schema";
 import { createAddon, updateAddon } from "@/lib/actions/addon-actions";
 import { Addon } from "@/types/addon/type";
+import { Switch } from "../ui/switch";
 
 function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -100,7 +101,7 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
                       <FormLabel>Addon Title</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter brand name "
+                          placeholder="Enter addon title"
                           {...field}
                           disabled={isPending}
                         />
@@ -117,7 +118,7 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
                       <FormLabel>Addon Price</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter brand name "
+                          placeholder="Enter addon price"
                           {...field}
                           disabled={isPending}
                         />
@@ -126,6 +127,30 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
                     </FormItem>
                   )}
                 />
+
+{                item && (
+                  <div className="grid gap-2">
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                      <FormLabel>Addon Status</FormLabel>
+                      <FormControl>
+                        <Switch
+
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+                )
+              }
             
               </div>
             </CardContent>
