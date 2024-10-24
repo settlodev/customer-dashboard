@@ -47,7 +47,7 @@ export const updateAuthToken = async (token: AuthToken) => {
 };
 
 export const createAuthToken = async (user: ExtendedUser) => {
-    console.log("Creating token", user);
+    //console.log("Creating token", user);
     const cookieStore = cookies();
 
     const authTokenData: AuthToken = {
