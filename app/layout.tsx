@@ -14,7 +14,6 @@ export default async function RootLayout({children,}: Readonly<{ children: React
   return (
       <html lang="en" className="bg-whiten">
       <head>
-          <title></title>
           <link rel="icon" href="/favicon.png" sizes="any"/>
       </head>
 
