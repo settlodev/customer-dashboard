@@ -20,7 +20,7 @@ const Meta = (props: IMetaProps) => {
           content="width=device-width,initial-scale=1"
           key="viewport"
         />
-        <link
+        {/*<link
           rel="apple-touch-icon"
           href={`/apple-touch-icon.png`}
           key="apple"
@@ -38,10 +38,10 @@ const Meta = (props: IMetaProps) => {
           sizes="16x16"
           href={`/favicon-16x16.png`}
           key="icon16"
-        />
+        />*/}
         <link
           rel="icon"
-          href={`/images/logo.png`}
+          href={`../../app/favicon.png`}
           key="favicon"
         />
       </Head>
