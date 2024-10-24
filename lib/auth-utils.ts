@@ -30,9 +30,11 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
     return parsedTokens.authToken ? parsedTokens : null;
 };
 
-export const deleteAuthToken = async () => {
-    cookies().delete("authToken");
-};
+// export const deleteAuthToken = async () => {
+//     cookies().delete("authToken");
+//     cookies().delete("next-auth.session-token");
+//     cookies().delete("next-auth.csrf-token");
+// };
 
 export const updateAuthToken = async (token: AuthToken) => {
     const cookieStore = cookies();
@@ -41,13 +43,12 @@ export const updateAuthToken = async (token: AuthToken) => {
         name: "authToken",
         value: JSON.stringify(token),
         httpOnly: true, // Only available in server
-        secure: false, // Only HTTPS
-        //sameSite: "strict", // Do not send to third party servers
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     });
 };
 
 export const createAuthToken = async (user: ExtendedUser) => {
-    console.log("Creating token", user);
     const cookieStore = cookies();
 
     const authTokenData: AuthToken = {
@@ -75,8 +76,8 @@ export const createAuthToken = async (user: ExtendedUser) => {
         name: "authToken",
         value: JSON.stringify(authTokenData),
         httpOnly: true, // Only available in server
-        secure: false, // Only HTTPS
-        //sameSite: "strict", // Do not send to third party servers
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     });
 };
 
@@ -92,8 +93,8 @@ export const createActiveBusiness = async (user: ExtendedUser) => {
         name: "activeBusiness",
         value: JSON.stringify(businessActive),
         httpOnly: true, // Only available in server
-        secure: false, // Only HTTPS
-        //sameSite: "strict", // Do not send to third party servers
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
     });
 };
 
@@ -109,12 +110,13 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 };
 
 export const deleteAuthCookie = async () => {
-    console.log("Delete cookie called");
-    await logout();
     cookies().delete("authToken");
+    cookies().delete("next-auth.session-token");
+    cookies().delete("next-auth.csrf-token");
     cookies().delete("activeBusiness");
     cookies().delete("currentBusiness");
     cookies().delete("currentLocation");
+    await logout();
 };
 
 export const deleteActiveBusinessCookie = async () => {
