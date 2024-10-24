@@ -13,6 +13,11 @@ export default async function RootLayout({children,}: Readonly<{ children: React
   const session = await auth();
   return (
       <html lang="en" className="bg-whiten">
+      <head>
+          <title></title>
+          <link rel="icon" href="/favicon.png" sizes="any"/>
+      </head>
+
       <body className='antialiased bg-whiten dark:bg-boxdark-2 dark:text-bodydark'>
       <SessionProvider session={session}>
         <Providers>{children}</Providers>
