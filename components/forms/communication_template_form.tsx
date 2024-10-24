@@ -151,9 +151,10 @@ const TemplateForm = ({
                           theme="snow"
                           placeholder="Enter business description"
                           {...field}
-                          // disabled={isPending}
                           value={field.value}
-                          onChange={field.onChange}
+                          onChange={(value) => {
+                            field.onChange(value); 
+                          }}
                           className="resize-none bg-gray-50"
                           modules={{
                             toolbar: [

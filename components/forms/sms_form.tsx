@@ -158,12 +158,11 @@ const SMSForm = ({
                         value={field.value}
                         onValueChange={(value) => {
                           console.log("Selected Template ID:", value);
-                          field.onChange(value); // Update form state with selected template ID
+                          field.onChange(value); 
 
-                          // Find the selected template and update the message field
                           const selectedTemplate = templates.find(template => template.id === value);
                           if (selectedTemplate) {
-                            form.setValue("message", selectedTemplate.message); // Auto-fill the message
+                            form.setValue("message", selectedTemplate.message); 
                           }
                         }}
                       >
@@ -172,7 +171,9 @@ const SMSForm = ({
                         </SelectTrigger>
                         <SelectContent>
                           {templates.length > 0
-                            ? templates.map((temp: Template, index: number) => (
+                            ? templates
+                            .filter(temp => temp.broadcastType === "SMS") 
+                            .map((temp: Template, index: number) => (
                                 <SelectItem key={index} value={temp.id}>
                                   {temp.subject}-{temp.broadcastType}
                                 </SelectItem>

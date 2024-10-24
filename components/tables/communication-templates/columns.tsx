@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
+import DOMPurify from 'dompurify';
 
 import { CellAction } from "@/components/tables/communication-templates/cell-action";
 import { StateColumn } from "@/components/tables/state-column";
@@ -52,6 +53,12 @@ export const columns: ColumnDef<Template>[] = [
   {
     accessorKey: "message",
     header: "Message",
+    cell: ({ row }) => {
+      const sanitizedMessage = DOMPurify.sanitize(row.original.message); // Sanitize the message
+      return (
+        <div dangerouslySetInnerHTML={{ __html: sanitizedMessage }} /> // Render the sanitized HTML
+      );
+    },
   },
   {
     id: "status",

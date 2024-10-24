@@ -7,9 +7,9 @@ import { ArrowUpDown } from "lucide-react";
 import { StateColumn } from "@/components/tables/state-column";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { SMS } from "@/types/sms/type";
+import { Email } from "@/types/email/type";
 
-export const columns: ColumnDef<SMS>[] = [
+export const columns: ColumnDef<Email>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -30,7 +30,7 @@ export const columns: ColumnDef<SMS>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "senderId",
+    accessorKey: "subject",
     enableHiding: false,
     header: ({ column }) => {
       return (
@@ -39,7 +39,7 @@ export const columns: ColumnDef<SMS>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Sender ID
+          Subject
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
@@ -71,5 +71,8 @@ export const columns: ColumnDef<SMS>[] = [
     cell: ({ row }) => <StateColumn state={row.original.status} />,
     enableHiding: false,
   },
- 
+  // {
+  //   id: "actions",
+  //   cell: ({ row }) => <CellAction data={row.original} />,
+  // },
 ];
