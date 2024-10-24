@@ -66,7 +66,9 @@ export const menuItems=(args?: MenuItemArgType) => {
                 [
 
                     {title: "Communication Templates", link: "/communication-templates", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Broadcast SMS/Email", link: "/sms-marketing", current: args?.isCurrentItem, icon: "cart"}
+                    {title: "Broadcast SMS", link: "/sms-marketing", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Broadcast Email", link: "/email-marketing", current: args?.isCurrentItem, icon: "cart"}
+
                 ]
         },
         {
