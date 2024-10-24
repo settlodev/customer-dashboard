@@ -37,7 +37,7 @@ export const columns: ColumnDef<Product>[] = [
                     className="text-left p-0"
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Discount Name
+                    Name
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
@@ -60,7 +60,7 @@ export const columns: ColumnDef<Product>[] = [
         },
     },*/
     {
-        accessorKey: "departmentName",
+        accessorKey: "category",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -68,7 +68,7 @@ export const columns: ColumnDef<Product>[] = [
                     className="text-left p-0"
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Department
+                    Category
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
@@ -79,7 +79,7 @@ export const columns: ColumnDef<Product>[] = [
         header: "Sku",
     },
     {
-        accessorKey: "brandName",
+        accessorKey: "brand",
         header: "brandName",
     },
     {

@@ -6,14 +6,13 @@ import React from "react";
 import DeleteModal from "@/components/tables/delete-modal";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
-import {Business} from "@/types/business/type";
-import {DeleteIcon, EditIcon, EyeIcon, ArrowRightIcon} from "@nextui-org/shared-icons";
-import {deleteBusiness} from "@/lib/actions/business/delete";
-import {refreshBusiness} from "@/lib/actions/business/refresh";
+import {DeleteIcon, EditIcon, EyeIcon} from "@nextui-org/shared-icons";
+
 import {deleteProduct} from "@/lib/actions/product-actions";
+import { Product } from "@/types/product/type";
 
 interface CellActionProps {
-    data: Business;
+    data: Product;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
