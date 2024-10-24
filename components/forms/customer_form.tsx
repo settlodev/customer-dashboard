@@ -203,6 +203,37 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                     </FormItem>
                   )}
                 />
+                 {item && (
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="status"
+
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <FormLabel>
+
+                            Customer Status
+                            <span className={item.status ? "text-green-500" : "text-red-500"}>
+                              ({item.status ? "Active" : "Inactive"})
+                            </span>
+
+                          </FormLabel>
+                          <FormControl>
+                            <Switch
+
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )
+                }
               </div>
             </CardContent>
           </Card>

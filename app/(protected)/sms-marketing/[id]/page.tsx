@@ -12,9 +12,9 @@ import {
 } from "@/components/ui/card";
 import { ApiResponse } from "@/types/types";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import SMSEMAILForm from "@/components/forms/sms_email_form";
 import { SMS } from "@/types/sms/type";
 import { getSMS } from "@/lib/actions/broadcast-sms-action";
+import SMSForm from "@/components/forms/sms_form";
 
 export default async function SMSMarketingPage({params}: {params: { id: string }}) {
 
@@ -64,12 +64,12 @@ const TemplateCard = ({
             <CardTitle>{isNewItem ? "Send SMS/Email" : "Edit template"}</CardTitle>
             <CardDescription>
                 {isNewItem
-                    ? "Broadcast SMS / Email for your business location towards your customers or staff"
-                    : "Edit template details"}
+                    ? "Broadcast SMS from your business location towards your customers or staff"
+                    : ""}
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <SMSEMAILForm item={item} />
+            <SMSForm item={item} />
         </CardContent>
     </Card>
 );

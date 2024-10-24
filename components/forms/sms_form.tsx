@@ -6,13 +6,6 @@ import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
   Form,
   FormControl,
   FormDescription,
@@ -38,8 +31,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { SMS } from "@/types/sms/type";
 import { SMSSchema } from "@/types/sms/schema";
 import { sendSMS } from "@/lib/actions/broadcast-sms-action";
+import { Checkbox } from "../ui/checkbox";
 
-const SMSEMAILForm = ({
+const SMSForm = ({
   item,
 }: {
   item: SMS | null | undefined;
@@ -128,15 +122,7 @@ const SMSEMAILForm = ({
 
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Send SMS / Email</CardTitle>
-        <CardDescription>
-          Send SMS / Email to your customers or staff 
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
+    <Form {...form}>
           <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
             <div className="lg:grid grid-cols-2 gap-4 mt-2">
             <div className="grid gap-2">
@@ -267,28 +253,82 @@ const SMSEMAILForm = ({
                 />
               </div>
 
-              <div className="grid gap-2 mt-12">
-              <FormField
+
+              <div className="grid gap-2 mt-8">
+                <FormField
                   control={form.control}
-                  name="scheduled"
+                  name="sendingOptions" 
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Schedule SMS <span className="text-blue-500">(Optional)</span></FormLabel>
-                      <DateTimePicker
-                        field={field}
-                        date={scheduledDate}
-                        setDate={ setSchuledDate}
-                        handleTimeChange={handleTimeChange}
-                        onDateSelect={handleDateSelect}
-                      />
-                      <FormDescription>
-                      Optional enter date and time to schedule sending process
-                      </FormDescription>
+                      <FormLabel>Send Options</FormLabel>
+                      <div className="flex flex-col space-y-2 lg:flex-row lg:space-y-0 lg:space-x-8">
+                        <div className="flex items-center">
+                          <Checkbox
+                            checked={field.value === "sendNow"} 
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked ? "sendNow" : ""); 
+                              if (checked) setSchuledDate(undefined)
+                            }}
+                            disabled={isPending}
+                          />
+                          <span className="ml-2">Send Now</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Checkbox
+                            checked={field.value === "sendTest"} 
+                            onCheckedChange={(checked) => {
+                              field.onChange(checked ? "sendTest" : "");
+                              if (checked) setSchuledDate(undefined) 
+                            }}
+                            disabled={isPending}
+                          />
+                          <span className="ml-2">Send Test</span>
+                        </div>
+                        <div className="flex items-center">
+                          <Checkbox
+                            checked={field.value === "schedule"} 
+                            onCheckedChange={(checked) => {
+                              
+                              field.onChange(checked ? "schedule" : "");
+                              if (checked) setSchuledDate(new Date()) 
+                            }}
+                            disabled={isPending}
+                          />
+                          <span className="ml-2">Schedule</span>
+                        </div>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+
+             {
+              form.getValues("sendingOptions")?.includes("schedule") && (
+                <div className="grid gap-2 mt-12">
+                <FormField
+                    control={form.control}
+                    name="scheduled"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Schedule SMS <span className="text-blue-500">(Optional)</span></FormLabel>
+                        <DateTimePicker
+                          field={field}
+                          date={scheduledDate}
+                          setDate={ setSchuledDate}
+                          handleTimeChange={handleTimeChange}
+                          onDateSelect={handleDateSelect}
+                        />
+                        <FormDescription>
+                        Optional enter date and time to schedule sending process
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )
+             }
         
             {isPending ? (
               <div className="flex justify-center items-center bg-black rounded p-2 text-white">
@@ -300,14 +340,12 @@ const SMSEMAILForm = ({
                 disabled={isPending}
                 className={`mt-8 w-full capitalize`}
               >
-                Send SMS / Email
+                Send SMS
               </Button>
             )}
           </form>
         </Form>
-      </CardContent>
-    </Card>
   );
 };
 
-export default SMSEMAILForm;
+export default SMSForm;

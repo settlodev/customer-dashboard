@@ -13,14 +13,12 @@ import {
 import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import {deleteAuthToken} from "@/lib/auth-utils";
+import {deleteAuthCookie} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { sendPasswordResetEmail } from "./emails/send";
-// import {refreshBusiness} from "@/lib/actions/business/refresh";
 
 export async function logout() {
     try {
-        //await deleteAuthToken();
         await signOut();
     } catch (error) {
         if (error instanceof AuthError) {
@@ -44,7 +42,7 @@ export const login = async (
     }
 
     //Make sure token does not exist
-    await deleteAuthToken();
+    await deleteAuthCookie();
 
     try {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -197,6 +195,9 @@ export const register = async (
             error: new Error(validatedData.error.message),
         });
     }
+
+    //Make sure token does not exist
+    await deleteAuthCookie();
 
     try {
         const apiClient = new ApiClient();

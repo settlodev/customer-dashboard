@@ -9,6 +9,7 @@ export declare interface SMS {
     template: string;
     receipt: string;
     location: string;
+    sendingOptions: string;
     scheduled: string;
     status: boolean;
     canDelete: boolean;

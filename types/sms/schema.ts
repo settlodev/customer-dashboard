@@ -6,6 +6,7 @@ export const SMSSchema = object({
     senderId: string(),
     template: string().optional(),
     receipt: string({message:"Receipt is required"}),
+    sendingOptions: string({message:"Sending options is required"}),
     scheduled: string().optional(),
     status: boolean().optional(),
 })
