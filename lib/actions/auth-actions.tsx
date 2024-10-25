@@ -91,7 +91,7 @@ export const login = async (
     }
 };
 
-export const getUserById = async (userId: string): Promise<ExtendedUser> => {
+export const getUserById = async (userId: string|undefined): Promise<ExtendedUser> => {
     if (!userId) throw new Error("User data is required");
 
     const apiClient = new ApiClient();

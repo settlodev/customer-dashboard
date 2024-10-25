@@ -96,7 +96,6 @@ function RegisterForm({step}:{step: string}) {
     useEffect(() => {
         async function getBusiness(){
             const myBusiness = await getCurrentBusiness();
-            console.log("myBusiness:", myBusiness);
             setCurrentBusiness(myBusiness);
         }
 
@@ -238,7 +237,7 @@ function RegisterForm({step}:{step: string}) {
                     if (data) {
                         if (data.responseType === "success") {
 
-                          
+
 
                             window.location.href = "/dashboard";
 

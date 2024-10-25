@@ -35,7 +35,9 @@ export const UpdateUserSchema = object({
     bio: string().optional(),
     email: string().optional(),
     phoneNumber: string().optional(),
-    image: string().optional()
+    image: string().optional(),
+    role: string().optional(),
+    country: string().optional(),
 });
 
 export const ResetPasswordSchema = object({

@@ -91,7 +91,10 @@ export type ExtendedUser = DefaultSession["user"] & {
     email: string;
     firstName: string;
     lastName: string;
+    bio: string;
     picture: string;
+    country: UUID;
+    role: UUID;
     phoneNumber: string;
     authToken: string;
     refreshToken: string;

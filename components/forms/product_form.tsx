@@ -47,7 +47,7 @@ import ProductTaxSelector from "@/components/widgets/product-tax-selector";
 import {taxClasses} from "@/types/constants";
 import {fectchAllBrands} from "@/lib/actions/brand-actions";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-
+import Image from "next/image";
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     // const [formResponse, setResponse] = useState<FormResponse | undefined>();
@@ -138,7 +138,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
         mVariants.splice(index, 1);
         setVariants(_.compact(mVariants));
     }
-
 
     return (
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
@@ -407,12 +406,15 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                     className="flex border-1 border-emerald-200 mt-0 items-center pt-0 pb-0 pl-0 mb-1"
                                                     key={index}>
                                                     <p onClick={() => removeVariant(index)}
-                                                       className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4">
-                                                        <span>{index + 1}</span></p>
+                                                       className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4 w-[50px]">
+                                                        {variant.image?
+                                                            <Image src={variant.image} width={50} height={50} alt="" className="rounded-md" />
+                                                        :<></>}
+                                                    </p>
                                                     <div className="flex-1 pt-1 pb-1">
                                                         <p className="text-md font-medium">{variant.name}</p>
                                                         <p className="text-xs font-medium">PRICE: {variant.price} |
-                                                            COST: {variant.price} | QTY: {variant.quantity}</p>
+                                                            COST: {variant.cost} | QTY: {variant.quantity}</p>
                                                     </div>
                                                     <p onClick={() => removeVariant(index)}
                                                        className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer">
