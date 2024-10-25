@@ -29,6 +29,15 @@ export const RegisterSchema = object({
     country:string({required_error:"Country is required"}).uuid("Please select a valid country"),
 });
 
+export const UpdateUserSchema = object({
+    firstName: string({ required_error: "First name is required" }).min(3,"Please enter a valid name",),
+    lastName: string({ required_error: "Last name is required" }).min(3,"Please enter a valid name",),
+    bio: string().optional(),
+    email: string().optional(),
+    phoneNumber: string().optional(),
+    image: string().optional()
+});
+
 export const ResetPasswordSchema = object({
   email: string({ required_error: "Email is required"}).min(6, "Please enter a valid email address").email("Please enter a valid email address"),
 });

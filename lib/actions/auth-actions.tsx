@@ -8,12 +8,12 @@ import {
     LoginSchema,
     RegisterSchema,
     ResetPasswordSchema,
-    UpdatePasswordSchema
+    UpdatePasswordSchema, UpdateUserSchema
 } from "@/types/data-schemas";
 import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import {deleteAuthCookie} from "@/lib/auth-utils";
+import {deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { sendPasswordResetEmail } from "./emails/send";
 
@@ -213,6 +213,37 @@ export const register = async (
         return parseStringify({
             responseType: "success",
             message: "Registration successful, redirecting to login...",
+        });
+    } catch (error) {
+        console.error("Error is: ", error);
+        return parseStringify({
+            responseType: "error",
+            message: "An unexpected error occurred. Please try again.",
+            error: error instanceof Error ? error : new Error(String(error)),
+        });
+    }
+}
+export const updateUser = async (
+    credentials: z.infer<typeof UpdateUserSchema>,
+): Promise<FormResponse> => {
+    const validatedData = UpdateUserSchema.safeParse(credentials);
+
+    if (!validatedData.success) {
+        return parseStringify({
+            responseType: "error",
+            message: "Please fill in all the fields marked with * before proceeding",
+            error: new Error(validatedData.error.message),
+        });
+    }
+
+    try {
+        const user = await getUser();
+        const apiClient = new ApiClient();
+        await apiClient.put(`/api/users/${user?.id}`, validatedData.data);
+
+        return parseStringify({
+            responseType: "success",
+            message: "Profile updated successful",
         });
     } catch (error) {
         console.error("Error is: ", error);

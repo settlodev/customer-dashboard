@@ -21,7 +21,7 @@ const DropdownUser = () => {
       <Link
         onClick={() => setDropdownOpen(!dropdownOpen)}
         className="flex items-center gap-4"
-        href="/profile">
+        href="#">
         <span className="hidden text-right lg:block">
           <span className="block text-sm font-bold text-black dark:text-white">
             {session.data?.user.firstName} {session.data?.user.lastName}
