@@ -3,13 +3,12 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
-// import { CellAction } from "@/components/tables/communication-templates/cell-action";
 import { StateColumn } from "@/components/tables/state-column";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { SMS } from "@/types/sms/type";
+import { Campaign } from "@/types/campaign/type";
 
-export const columns: ColumnDef<SMS>[] = [
+export const columns: ColumnDef<Campaign>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -46,7 +45,7 @@ export const columns: ColumnDef<SMS>[] = [
     },
   },
   {
-    accessorKey: "receipt",
+    accessorKey: "audience",
     header: "Receipt",
   },
   {

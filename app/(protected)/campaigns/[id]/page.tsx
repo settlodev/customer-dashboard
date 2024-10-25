@@ -12,18 +12,18 @@ import {
 } from "@/components/ui/card";
 import { ApiResponse } from "@/types/types";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { SMS } from "@/types/sms/type";
-import { getSMS } from "@/lib/actions/broadcast-sms-action";
-import SMSForm from "@/components/forms/sms_form";
+import { Campaign} from "@/types/campaign/type";
+import { getCampaign} from "@/lib/actions/campaign_action";
+import CampaignForm from "@/components/forms/campaign_form";
 
 export default async function SMSMarketingPage({params}: {params: { id: string }}) {
 
     const isNewItem = params.id === "new";
-    let item: ApiResponse<SMS> | null = null;
+    let item: ApiResponse<Campaign> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getSMS(params.id as UUID);
+            item = await getCampaign(params.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
             // Ignore redirect error
@@ -34,9 +34,9 @@ export default async function SMSMarketingPage({params}: {params: { id: string }
     }
 
     const breadcrumbItems = [
-        { title: "SMS Marketing", link: "/sms-marketing" },
+        { title: "Campaign", link: "/campaign" },
         {
-            title: isNewItem ? "New" : item?.content[0]?.senderId || "",
+            title: isNewItem ? "New" : item?.content[0]?.name || "",
             link: "",
         },
     ];
@@ -49,27 +49,27 @@ export default async function SMSMarketingPage({params}: {params: { id: string }
                 </div>
             </div>
 
-            <TemplateCard isNewItem={isNewItem} item={item?.content[0]} />
+            <CampaignCard isNewItem={isNewItem} item={item?.content[0]} />
         </div>
     );
 }
 
-const TemplateCard = ({
+const CampaignCard = ({
     isNewItem, item,}: {
     isNewItem: boolean;
-    item: SMS | null | undefined;
+    item: Campaign | null | undefined;
 }) => (
     <Card>
         <CardHeader>
-            <CardTitle>{isNewItem ? "Send SMS/Email" : "Edit template"}</CardTitle>
+            <CardTitle>{isNewItem ? "Send Campaign" : ""}</CardTitle>
             <CardDescription>
                 {isNewItem
-                    ? "Broadcast SMS from your business location towards your customers or staff"
+                    ? "Broadcast Campaign towards your customers or staff"
                     : ""}
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <SMSForm item={item} />
+            <CampaignForm item={item} />
         </CardContent>
     </Card>
 );

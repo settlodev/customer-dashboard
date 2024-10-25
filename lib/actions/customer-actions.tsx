@@ -12,7 +12,7 @@ import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 
-export const fectchAllCustomers = async () : Promise<Customer[]> => {
+export const fetchAllCustomers = async () : Promise<Customer[]> => {
     await  getAuthenticatedUser();
 
     try {

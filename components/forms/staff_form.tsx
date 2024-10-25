@@ -149,13 +149,12 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                 className="space-y-8"
                 onSubmit={form.handleSubmit(submitData, onInvalid)}
             >
-                <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
-                    {/* Left Column */}
+               
                     <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Personal details</CardTitle>
-                                <CardDescription>
+                            
+                                <CardDescription >
                                     Enter personal details of the staff member
                                 </CardDescription>
                             </CardHeader>
@@ -589,7 +588,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                             label={item ? "Update staff details" : "Add staff"}
                         />
                     </div>
-                </div>
+                
             </form>
         </Form>
     );

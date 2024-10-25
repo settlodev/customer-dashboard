@@ -16,10 +16,10 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import { useToast } from "@/hooks/use-toast"
 import { deleteTemplate } from "@/lib/actions/communication-templates-actions";
-import { SMS } from "@/types/sms/type";
+import { Campaign} from "@/types/campaign/type";
 
 interface CellActionProps {
-  data:SMS;
+  data:Campaign;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {

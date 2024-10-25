@@ -4,7 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
-import DOMPurify from 'dompurify';
 
 import {
   Form,
@@ -22,43 +21,35 @@ import { Button } from "../ui/button";
 import { Loader2Icon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Template } from "@/types/communication-templates/types";
+import { Textarea } from "../ui/textarea";
+import { fetchTemplates } from "@/lib/actions/communication-templates-actions";
 import "react-quill/dist/quill.snow.css";
 import DateTimePicker from "../widgets/datetimepicker";
-import { Customer } from "@/types/customer/type";
-import {fetchAllCustomers } from "@/lib/actions/customer-actions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { sendCampaign } from "@/lib/actions/campaign_action";
 import { Checkbox } from "../ui/checkbox";
-import { Email } from "@/types/email/type";
-import { EmailSchema } from "@/types/email/schema";
-import { sendEmail } from "@/lib/actions/broadcast-email-action";
-import { MultiSelect } from "../ui/multi-select";
-import ReactQuill from "react-quill";
-import { Staff } from "@/types/staff";
-import { fetchAllStaff } from "@/lib/actions/staff-actions";
-import { fetchTemplates } from "@/lib/actions/communication-templates-actions";
+import { CampaignSchema } from "@/types/campaign/schema";
+import { Campaign } from "@/types/campaign/type";
+import { audienceType } from "@/types/enums";
 
-const EmailForm = ({
+const CampaignForm = ({
   item,
 }: {
-  item: Email | null | undefined;
+  item: Campaign | null | undefined;
 }) => {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [scheduledDate, setSchuledDate] = useState<Date | undefined>(
     item?.scheduled ? new Date(item.scheduled) : undefined);
-
-  const [customers, setCustomers] = useState<Customer[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [staffs, setStaffs] = useState<Staff[]>([]);
 
- 
   const { toast } = useToast();
 
 
 
 
-  const form = useForm<z.infer<typeof EmailSchema>>({
-    resolver: zodResolver(EmailSchema),
+  const form = useForm<z.infer<typeof CampaignSchema>>({
+    resolver: zodResolver(CampaignSchema),
     defaultValues: item ? item : { status: true },
   });
 
@@ -74,14 +65,14 @@ const EmailForm = ({
     [toast],
   );
 
-  const submitData = (values: z.infer<typeof EmailSchema>) => {
+  const submitData = (values: z.infer<typeof CampaignSchema>) => {
 
     console.log("Submitting data:", values);
 
     setResponse(undefined);
 
     startTransition(() => {
-      sendEmail(values).then((data) => {
+      sendCampaign(values).then((data) => {
         if (data) setResponse(data);
       });
 
@@ -91,23 +82,20 @@ const EmailForm = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [customerResponse, templateResponse, staffResponse] = await Promise.all([
-         fetchAllCustomers(),
-         fetchTemplates(),
-          fetchAllStaff(),
+        const [templateResponse] = await Promise.all([
+          fetchTemplates(),
+
         ]);
-        setCustomers(customerResponse);
         setTemplates(templateResponse);
-        setStaffs(staffResponse);
       } catch (error) {
         console.error("Error fetching data", error);
       }
     };
-  
+
     fetchData();
   }, []);
 
-
+ 
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
     const currentDate = new Date();
@@ -123,33 +111,22 @@ const EmailForm = ({
     setSchuledDate(date);
   };
 
-  function sanitizeAndStripHtml(html: string): string {
-    // Sanitize the HTML
-    const sanitizedHtml = DOMPurify.sanitize(html);
-
-    // Create a temporary div to strip tags
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = sanitizedHtml;
-
-    // Get the text content, replacing <p> tags with line breaks
-    return tempDiv.innerText.replace(/\n/g, ' ').trim(); // Replace new lines with spaces
-  }
-
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-        <div className="lg:grid grid-cols-2 gap-4 mt-2">
+        <div className="lg:grid grid-cols-2 gap-4 ">
+
           <div className="grid gap-2">
             <FormField
               control={form.control}
-              name="subject"
+              name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>From</FormLabel>
+                  <FormLabel>Campaign Name</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Eg: pb@settlo.co.tz"
+                      placeholder="SWITCH CLOTHES NA X-MAS"
                       {...field}
                       disabled={isPending}
                     />
@@ -159,60 +136,80 @@ const EmailForm = ({
               )}
             />
           </div>
-
-        </div>
-        <div className="grid gap-2 mt-2">
-          <FormField
-            control={form.control}
-            name="receipt"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Receipt</FormLabel>
-                <FormControl>
-                  <MultiSelect
-                     options={
-                      [
-                        // { label: "Customers", value: "group-customers"},
-                        ...customers.map((customer) => ({
-                          label: customer.firstName + " " + customer.lastName,
-                          value: customer.id,
-                        })),
-                        // { label: "Staff", value: "group-staff"},
-                        ...staffs.map((staff) => ({ 
-                          label: staff.name, 
-                          value: staff.id, 
-                        })),
-                      ]
-                    }
-                    onValueChange={(field as any).onChange}
-                    placeholder="Select customers"
-                    variant="inverted"
-                    animation={2}
-                    maxCount={3}
-                    {...field}
-                    disabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-        <div className="items-center justify-center lg:grid grid-cols-2 gap-4 mt-2">
           <div className="grid gap-2">
             <FormField
               control={form.control}
-              name="subject"
+              name="senderId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Subject</FormLabel>
+                  <FormLabel>SenderId</FormLabel>
                   <FormControl>
                     <Input
-                      placeholder="Eg: Order Confirmation"
+                      placeholder="SETTLO"
                       {...field}
                       disabled={isPending}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </div>
+
+        <div className="lg:grid grid-cols-2 gap-4 mt-2">
+
+          <div className="grid gap-2 mt-4">
+            <FormField
+              control={form.control}
+              name="audience"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Audience</FormLabel>
+                  <div className="flex flex-col space-y-2 lg:flex-row lg:space-y-0 lg:space-x-8">
+                    <div className="flex items-center">
+                      <Checkbox
+                        checked={field.value === audienceType.CUSTOMER}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            field.onChange(audienceType.CUSTOMER);
+                          } else if (field.value === audienceType.CUSTOMER) {
+                            field.onChange("");
+                          }
+                        }}
+                        disabled={isPending}
+                      />
+                      <span className="ml-2">Customers</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Checkbox
+                        checked={field.value === audienceType.STAFF}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            field.onChange(audienceType.STAFF);
+                          } else if (field.value === audienceType.STAFF) {
+                            field.onChange("");
+                          }
+                        }}
+                        disabled={isPending}
+                      />
+                      <span className="ml-2">Staff</span>
+                    </div>
+                    <div className="flex items-center">
+                      <Checkbox
+                        checked={field.value === audienceType.ALL}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            field.onChange(audienceType.ALL);
+                          } else if (field.value === audienceType.ALL) {
+                            field.onChange("");
+                          }
+                        }}
+                        disabled={isPending}
+                      />
+                      <span className="ml-2">All</span>
+                    </div>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
@@ -222,10 +219,10 @@ const EmailForm = ({
           <div className="grid gap-2 mt-2">
             <FormField
               control={form.control}
-              name="template"
+              name="communicationTemplate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Email Template <span className="text-blue-500">(You can use templates in this section)</span></FormLabel>
+                  <FormLabel>Template <span className="text-blue-500">(Optional)</span></FormLabel>
                   <FormControl>
                     <Select
                       disabled={isPending || templates.length === 0}
@@ -236,8 +233,7 @@ const EmailForm = ({
 
                         const selectedTemplate = templates.find(template => template.id === value);
                         if (selectedTemplate) {
-                          const plainTextMessage = sanitizeAndStripHtml(selectedTemplate.message); // Sanitize and strip HTML
-                          form.setValue("message", plainTextMessage);
+                          form.setValue("message", selectedTemplate.message);
                         }
                       }}
                     >
@@ -247,7 +243,7 @@ const EmailForm = ({
                       <SelectContent>
                         {templates.length > 0
                           ? templates
-                            .filter(temp => temp.broadcastType === "EMAIL") 
+                            .filter(temp => temp.broadcastType === "SMS")
                             .map((temp: Template, index: number) => (
                               <SelectItem key={index} value={temp.id}>
                                 {temp.subject}-{temp.broadcastType}
@@ -264,6 +260,7 @@ const EmailForm = ({
           </div>
         </div>
 
+
         <div className="grid gap-2 mt-6">
           <FormField
             control={form.control}
@@ -272,44 +269,14 @@ const EmailForm = ({
               <FormItem>
                 <FormLabel>Message</FormLabel>
                 <FormControl>
-
-
-                  <ReactQuill
-                    theme="snow"
+                  <Textarea
                     placeholder="Enter message"
-                    value={field.value}
-                    onChange={(value) => {
-                      field.onChange(value);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.shiftKey) {
-                        event.preventDefault();
-                      }
-                    }}
-                    onKeyUp={(event) => {
-                      if (event.key === "Enter" && event.shiftKey) {
-                        event.preventDefault();
-                      }
-                    }}
-                    className="resize-none bg-gray-50"
-                    modules={{
-                      toolbar: [
-                        ["bold", "italic", "underline", "strike"],
-                        ["blockquote", "code-block"],
-                        [{ header: 1 }, { header: 2 }],
-                        [{ list: "ordered" }, { list: "bullet" }],
-                        [{ size: ["small", false, "large", "huge"] }],
-                        [{ header: [1, 2, 3, 4, 5, 6, false] }],
-                        [{ color: [] }, { background: [] }],
-                        [{ font: [] }],
-                        [{ align: [] }],
-                        ["clean"],
-                        ["link", "image", "video"],
-                      ],
-                    }}
+                    {...field}
+                    disabled={isPending}
+                    maxLength={1000}
+
                   />
                 </FormControl>
-
                 <FormMessage />
               </FormItem>
             )}
@@ -374,7 +341,7 @@ const EmailForm = ({
                 name="scheduled"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Schedule Email</FormLabel>
+                    <FormLabel>Schedule Campaign <span className="text-blue-500">(Optional)</span></FormLabel>
                     <DateTimePicker
                       field={field}
                       date={scheduledDate}
@@ -383,7 +350,7 @@ const EmailForm = ({
                       onDateSelect={handleDateSelect}
                     />
                     <FormDescription>
-                      Schedule an email to be sent at a specific date and time.
+                      Optional enter date and time to schedule sending process
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -403,7 +370,7 @@ const EmailForm = ({
             disabled={isPending}
             className={`mt-8 w-full capitalize`}
           >
-            Send SMS
+            Send Campaign
           </Button>
         )}
       </form>
@@ -411,4 +378,4 @@ const EmailForm = ({
   );
 };
 
-export default EmailForm;
+export default CampaignForm;

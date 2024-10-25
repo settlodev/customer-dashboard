@@ -29,3 +29,9 @@ export enum broadcastType {
     NOTIFICATION = "NOTIFICATION",
 }
 
+export enum audienceType{
+    ALL="ALL",
+    CUSTOMER="CUSTOMER",
+    STAFF = "STAFF",
+}
+

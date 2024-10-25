@@ -12,7 +12,7 @@ import {getCurrentLocation } from "./business/get-current-business";
 import { Template } from "@/types/communication-templates/types";
 import { TemplateSchema } from "@/types/communication-templates/schema";
 
-export const fectchTemplates = async () : Promise<Template[]> => {
+export const fetchTemplates = async () : Promise<Template[]> => {
     await  getAuthenticatedUser();
 
     try {

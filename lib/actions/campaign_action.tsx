@@ -8,11 +8,11 @@ import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
-import {getCurrentLocation } from "./business/get-current-business";
-import { SMS } from "@/types/sms/type";
-import { SMSSchema } from "@/types/sms/schema";
+import {getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import { Campaign} from "@/types/campaign/type";
+import { CampaignSchema } from "@/types/campaign/schema";
 
-export const fectchSMS = async () : Promise<SMS[]> => {
+export const fectchCampaign = async () : Promise<Campaign[]> => {
     await  getAuthenticatedUser();
 
     try {
@@ -20,22 +20,22 @@ export const fectchSMS = async () : Promise<SMS[]> => {
 
         const location = await getCurrentLocation();
 
-        const smsData = await  apiClient.get(
-            `/api/broadcast-sms/${location?.id}`,
+        const campaignData = await  apiClient.get(
+            `/api/campaigns/${location?.id}`,
         );
 
-        return parseStringify(smsData);
+        return parseStringify(campaignData);
 
     }
     catch (error){
         throw error;
     }
 }
-export const searchSMS = async (
+export const searchCampaign = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<SMS>> =>{
+): Promise<ApiResponse<Campaign>> =>{
     await getAuthenticatedUser();
 
 
@@ -44,7 +44,7 @@ export const searchSMS = async (
         const query ={
             filters: [
                 {
-                    key:"senderId",
+                    key:"name",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -52,7 +52,7 @@ export const searchSMS = async (
             ],
             sorts:[
                 {
-                    key:"senderId",
+                    key:"name",
                     direction:"ASC"
                 }
             ],
@@ -61,55 +61,58 @@ export const searchSMS = async (
         }
         const location = await getCurrentLocation();
 
-        const smsData = await  apiClient.post(
-            `/api/broadcast-sms/${location?.id}`,
+        const campaignData = await  apiClient.post(
+            `/api/campaigns/${location?.id}`,
             query
         );
-        return parseStringify(smsData);
+        return parseStringify(campaignData);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  sendSMS= async (
-    sms: z.infer<typeof SMSSchema>
+export const  sendCampaign= async (
+    campaign: z.infer<typeof CampaignSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const ValidSmsData= SMSSchema.safeParse(sms)
+    const ValidCampaignData= CampaignSchema.safeParse(campaign)
 
-    if (!ValidSmsData.success){
+    console.log("The valid campaign data", ValidCampaignData)
+
+    if (!ValidCampaignData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(ValidSmsData.error.message)
+            error:new Error(ValidCampaignData.error.message)
       }
       return parseStringify(formResponse)
     }
 
     const location = await getCurrentLocation();
-    console.log("The location id passed is", location?.id);
+    const business = await getCurrentBusiness();
      
 
     const payload = {
-        ...ValidSmsData.data,
+        ...ValidCampaignData.data,
         location: location?.id,
+        business: business?.id
     }
 
-    console.log("The payload sending sms", payload);
+    console.log("The payload sending campaign", payload);
     try {
         const apiClient = new ApiClient();
 
 
         await apiClient.post(
-            `/api/broadcast-sms/${location?.id}/create`,
+            `/api/campaigns/${location?.id}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error sending sms",error)
+        console.error("Error sending campaign",error)
         formResponse = {
             responseType: "error",
             message:
@@ -120,11 +123,11 @@ export const  sendSMS= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/sms-marketing");
-    redirect("/sms-marketing");
+    revalidatePath("/campaigns");
+    redirect("/campaigns");
 }
 
-export const getSMS= async (id:UUID) : Promise<ApiResponse<SMS>> => {
+export const getCampaign = async (id:UUID) : Promise<ApiResponse<Campaign>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -140,11 +143,11 @@ export const getSMS= async (id:UUID) : Promise<ApiResponse<SMS>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const smsResponse = await apiClient.post(
-        `/api/broadcast-sms/${location?.id}`,
+    const campaignResponse = await apiClient.post(
+        `/api/campaigns/${location?.id}`,
         query,
     );
 
-    return parseStringify(smsResponse);
+    return parseStringify(campaignResponse);
 }
 

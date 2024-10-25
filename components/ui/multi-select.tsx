@@ -195,8 +195,11 @@ export const MultiSelect = React.forwardRef<
         onOpenChange={setIsPopoverOpen}
         modal={modalPopover}
       >
-        <PopoverTrigger asChild ={asChild}>
-          <Button
+        <PopoverTrigger asChild>
+          {asChild ? (
+            <div  className={cn(className)} />
+          ):(
+            <Button
             ref={ref}
             {...props}
             onClick={handleTogglePopover}
@@ -278,6 +281,7 @@ export const MultiSelect = React.forwardRef<
               </div>
             )}
           </Button>
+          )}
         </PopoverTrigger>
         <PopoverContent
           className="w-auto p-0"
