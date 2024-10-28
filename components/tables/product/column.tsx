@@ -43,45 +43,69 @@ export const columns: ColumnDef<Product>[] = [
             );
         },
     },
-    /*{
+ 
+    {
         accessorKey: "categoryName",
-        enableHiding: false,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Category
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
-    },*/
+        enableHiding: true,
+        header: 'Category'
+    },
     {
-        accessorKey: "category",
+        accessorKey: "brandName",
+        header: "Brand",
+        enableHiding: true,
+    },
+    {
+        accessorKey: "variants",
         enableHiding: false,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Category
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
+        header: 'Cost',
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const cost = variants.length > 0 ? variants[0].cost : "N/A"; 
+            return <span>{cost}</span>; 
         },
     },
     {
-        accessorKey: "sku",
-        header: "Sku",
+        accessorKey: "variants", // Change this to access the variants array
+        enableHiding: false,
+        header: ' Price',
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const price = variants.length > 0 ? variants[0].price : "N/A"; 
+            return <span>{price}</span>; 
+        },
+    },
+
+    {
+        accessorKey: "variant",
+        header: "Quantity",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const quantity = variants.length > 0 ? variants[0].quantity : "N/A"; 
+            return <span>{quantity}</span>;
+        }
     },
     {
-        accessorKey: "brand",
-        header: "brandName",
+        id: "outOfStock",
+        header: "Stock Status",
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const quantity = variants.length > 0 ? variants[0].quantity : 0; 
+            return quantity === 0 ? <span className="px-2 py-1 rounded-full bg-red-500 text-sm text-white">Out of Stock</span> : <span className="px-2 py-1 rounded-full bg-green-500 text-sm text-white">In Stock</span>; // Show "Out of Stock" if quantity is 0
+        },
+        enableHiding: true,
     },
+    {
+        accessorKey: "variant",
+        header: "SKU",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const sku = variants.length > 0 ? variants[0].sku : "N/A"; 
+            return <span>{sku}</span>;
+        }
+    },
+   
     {
         id: "status",
         accessorKey: "status",

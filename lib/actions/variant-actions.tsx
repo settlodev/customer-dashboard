@@ -5,23 +5,21 @@ import ApiClient from "@/lib/settlo-api-client";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
-import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
-import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import {Product} from "@/types/product/type";
-import {ProductSchema} from "@/types/product/schema";
+import { getCurrentLocation } from "./business/get-current-business";
+import { Variant } from "@/types/variant/type";
+import { VariantSchema } from "@/types/variant/schema";
 
-export const fectchAllProducts = async () : Promise<Product[]> => {
+export const fetchVariants = async () : Promise<Variant[]> => {
     await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
 
-        const location = await getCurrentLocation();
+        const product = "5b6ba5c1-106a-43a3-b3be-e91ce4279add"
 
         const data = await  apiClient.get(
-            `/api/products/${location?.id}`,
+            `/api/variants/${product}`,
         );
 
         return parseStringify(data);
@@ -31,11 +29,11 @@ export const fectchAllProducts = async () : Promise<Product[]> => {
         throw error;
     }
 }
-export const searchProducts = async (
+export const searchVariants = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Product>> =>{
+): Promise<ApiResponse<Variant>> =>{
     await getAuthenticatedUser();
 
     try {
@@ -58,9 +56,9 @@ export const searchProducts = async (
             page:page ? page - 1:0,
             size:pageLimit ? pageLimit : 10
         }
-        const location = await getCurrentLocation();
+        const product = await getCurrentLocation();
         const data = await  apiClient.post(
-            `/api/products/${location?.id}`,
+            `/api/products/${product?.id}`,
             query
         );
         return parseStringify(data);
@@ -70,13 +68,14 @@ export const searchProducts = async (
     }
 
 }
-export const  createProduct= async (
-    product: z.infer<typeof ProductSchema>
+export const  createVariant= async (
+    productId:UUID,
+    variant: z.infer<typeof VariantSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const validData= ProductSchema.safeParse(product)
+    const validData= VariantSchema.safeParse(variant)
 
     if (!validData.success){
         formResponse = {
@@ -87,25 +86,22 @@ export const  createProduct= async (
       return parseStringify(formResponse)
     }
 
-    const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
-
+    
     const payload = {
         ...validData.data,
-        location: location?.id,
-        business: business?.id
+        product: productId
     }
     console.log("payload:", payload);
 
     try {
         const apiClient = new ApiClient();
         await apiClient.post(
-            `/api/products/${location?.id}/create`,
+            `/api/variants/${productId}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error creating product",error)
+        console.error("Error creating variant",error)
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",
@@ -115,11 +111,10 @@ export const  createProduct= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/products");
-    redirect("/products")
+    
 }
 
-export const getProduct= async (id:UUID) : Promise<ApiResponse<Product>> => {
+export const getVariant= async (id:UUID) : Promise<ApiResponse<Variant>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -134,9 +129,9 @@ export const getProduct= async (id:UUID) : Promise<ApiResponse<Product>> => {
         page: 0,
         size: 1,
     }
-    const location = await getCurrentLocation();
+    const product = await getCurrentLocation();
     const response = await apiClient.post(
-        `/api/products/${location?.id}`,
+        `/api/variants/${product?.id}`,
         query,
     );
 
@@ -144,12 +139,13 @@ export const getProduct= async (id:UUID) : Promise<ApiResponse<Product>> => {
 }
 
 
-export const updateProduct = async (
+export const updateVariant = async (
     id: UUID,
-    product: z.infer<typeof ProductSchema>
+    productId: UUID,
+    variant: z.infer<typeof VariantSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const validData = ProductSchema.safeParse(product);
+    const validData = VariantSchema.safeParse(variant);
 
     if (!validData.success) {
         formResponse = {
@@ -160,12 +156,9 @@ export const updateProduct = async (
         return parseStringify(formResponse);
     }
 
-    const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
     const payload = {
         ...validData.data,
-        location: location?.id,
-        business: business?.id
+        product: productId
     };
     console.log("The payload to update product", payload);
 
@@ -173,7 +166,7 @@ export const updateProduct = async (
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/products/${location?.id}/${id}`,
+            `/api/variants/${productId}/${id}`,
             payload
         );
 
@@ -189,11 +182,10 @@ export const updateProduct = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/products");
-    redirect("/products");
+ 
 };
 
-export const deleteProduct = async (id: UUID): Promise<void> => {
+export const deleteVariant = async (id: UUID, productId: UUID): Promise<void> => {
     if (!id) throw new Error("Product ID is required to perform this request");
 
     await getAuthenticatedUser();
@@ -201,13 +193,10 @@ export const deleteProduct = async (id: UUID): Promise<void> => {
    try{
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
-
     await apiClient.delete(
-        `/api/products/${location?.id}/${id}`,
+        `/api/products/${productId}/${id}`,
     );
-    revalidatePath("/products");
-
+    
    }
    catch (error){
        throw error

@@ -18,8 +18,7 @@ interface CellActionProps {
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const router = useRouter();
     const {isOpen, onOpen, onOpenChange} = useDisclosure();
-    /*const user = sessionStorage.getItem('authToken');
-    console.log("user is:", user);*/
+  
 
     const onDelete = async () => {
         try {
