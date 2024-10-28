@@ -4,6 +4,7 @@ import {DefaultSession} from "next-auth";
 import { decl } from "postcss";
 import { Business } from "./business/type";
 import { Location } from "./location/type";
+import {AxiosError} from "axios";
 
 export declare interface LoginResponse {
     id: UUID,
@@ -54,7 +55,7 @@ export type ApiSortResponse = {
 export interface FormResponse {
     responseType: "success" | "error";
     message: string;
-    error?: Error | null;
+    error?: ErrorMessageType | null;
 }
 
 export declare interface AuthToken {
@@ -107,6 +108,7 @@ export type ExtendedUser = DefaultSession["user"] & {
     locationComplete: boolean;
     subscriptionComplete: boolean;
     businessId: UUID | null;
+    emailVerificationToken: string | null;
 };
 
 export declare interface RegisterResponse {
@@ -123,3 +125,16 @@ export declare interface uploadCallBackType{
     success: boolean;
     data: string;
 }
+
+export declare interface ServerResponseError{
+    message: ErrorMessageType;
+    error: object;
+}
+
+export declare interface ErrorMessageType{
+    status: number;
+    code: string;
+    message: string;
+    error: string
+}
+

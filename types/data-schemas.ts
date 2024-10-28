@@ -12,6 +12,17 @@ export const LoginSchema = object({
     ),
 });
 
+
+export const PhoneVerificationSchema = object({
+    phoneNumber: string().optional(),
+    code: string().optional()
+});
+
+export const EmailVerificationSchema = object({
+    email: string().optional(),
+    code: string().optional(),
+});
+
 export const RegisterSchema = object({
     firstName: string({ required_error: "First name is required" }).min(3,"Please enter a valid name",),
     lastName: string({ required_error: "Last name is required" }).min(3,"Please enter a valid name",),

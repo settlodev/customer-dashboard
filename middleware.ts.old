@@ -25,7 +25,7 @@ export default auth((req) => {
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
 
-  // Allow access to the reset-password route
+    // Allow access to the reset-password route
   const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL);
 
 
@@ -42,18 +42,17 @@ export default auth((req) => {
   if (isLoggedIn) {
     // If logged in and trying to access an auth route (like /login),
     // redirect to the default page or account completion page
+
+    if (isAuthRoute) {
+      if (authToken?.businessComplete !== true) {
+        return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
+      }
+      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
+    }
+
     if (authToken?.emailVerified === null) {
-      if(nextUrl.pathname !== VERIFICATION_REDIRECT_URL) {
-        return Response.redirect(new URL(VERIFICATION_REDIRECT_URL, nextUrl));
-      }
-      return;
+      return Response.redirect(new URL(VERIFICATION_REDIRECT_URL, nextUrl));
     }else {
-      if (isAuthRoute) {
-        if (authToken?.businessComplete !== true) {
-          return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
-        }
-        return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
-      }
       // For non-auth routes, check if business registration is complete
       if (authToken?.businessComplete === true) {
         // Check if the business has set up allocation
@@ -65,7 +64,6 @@ export default auth((req) => {
           return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
         }
       }
-
     }
   } else {
     // If not logged in, allow access to auth routes and public routes

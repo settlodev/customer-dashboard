@@ -11,11 +11,12 @@ import {
     UpdatePasswordSchema, UpdateUserSchema
 } from "@/types/data-schemas";
 import { signIn, signOut } from "@/auth";
-import { ExtendedUser, FormResponse } from "@/types/types";
+import {ExtendedUser, FormResponse, ServerResponseError} from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import {createAuthToken, deleteAuthCookie, getUser} from "@/lib/auth-utils";
+import {deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
-import { sendPasswordResetEmail } from "./emails/send";
+import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
+import {AxiosError} from "axios";
 
 export async function logout() {
     try {
@@ -131,14 +132,14 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
         } else {
             return parseStringify({
                 responseType: "error",
-                message: "Token verification failed.",
-                error: new Error(String("Token verification failed.")),
+                message: "Token user-verification failed.",
+                error: new Error(String("Token user-verification failed.")),
             });
         }
     } catch (error) {
         return parseStringify({
             responseType: "error",
-            message: "Token verification failed.",
+            message: "Token user-verification failed.",
             error: error instanceof Error ? error : new Error(String(error)),
         });
     }
@@ -177,7 +178,7 @@ export const generateVerificationToken = async (
 
         return parseStringify({ tokenResponse });
 
-        //send verification email with token
+        //send user-verification email with token
     } catch (error) {
         throw error;
     }
@@ -201,21 +202,21 @@ export const register = async (
 
     try {
         const apiClient = new ApiClient();
-        const regData = await apiClient.post("/api/auth/register", validatedData.data);
+        const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
 
         console.log("regData is:", regData);
 
         if(regData){
-            await deleteAuthCookie();
+            if(regData.emailVerified === null) {
+                const emailSent = await sendVerificationEmail(regData.name, regData.emailVerificationToken!, regData.email);
+                console.log("emailSent is:", emailSent);
+            }
+
             await signIn("credentials", {
                 email: credentials.email,
                 password: credentials.password,
                 redirect: false,
             });
-
-            /*// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-expect-error
-            await createAuthToken(regData);*/
         }
 
         return parseStringify({
@@ -223,10 +224,11 @@ export const register = async (
             message: "Registration successful, redirecting to login...",
         });
     } catch (error) {
-        console.error("Error is: ", error);
+        const mError = JSON.stringify(error);
+        const myNewError = JSON.parse(mError);
         return parseStringify({
             responseType: "error",
-            message: error?error.error: "An unexpected error occurred. Please try again.",
+            message: myNewError.message,
             error: error instanceof Error ? error : new Error(String(error)),
         });
     }
