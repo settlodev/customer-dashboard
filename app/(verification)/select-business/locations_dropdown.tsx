@@ -1,11 +1,30 @@
 import Image from "next/image";
 import {Location} from "@/types/location/type";
 import {refreshLocation} from "@/lib/actions/business/refresh";
+import { toast } from "@/hooks/use-toast";
+import { useTransition } from "react";
+import { Loader2Icon } from "lucide-react";
 
 export function SelectLocation ({ locations }: { locations: Location[]}){
+    const [isPending, startTransition] = useTransition();
     const setLocation = async(location: Location)=>{
-         await refreshLocation(location);
+
+        if(location.subscriptionStatus === "EXPIRED"){
+            console.log("Selected Location:", location.subscriptionStatus);
+
+            toast({
+                variant: 'destructive',
+                title: 'Subscription Expired',
+                description: 'Your subscription has expired. Please renew your subscription to continue using the app.',
+            });
+            setTimeout(() => {
+                document.location.href=`/subscription?location=${location.id}`;
+            }, 3000);
+        }
+        else{
+            await refreshLocation(location);
          document.location.href='/dashboard'
+        }
     }
 
     return (<>
@@ -27,9 +46,13 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
                             </div>
                             <div
                                 className="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
-                                <button type="button"
-                                        className="flex gap-2 rounded-full bg-emerald-500 pr-4 pl-4 py-2 text-white font-medium text-sm"
-                                        onClick={() => setLocation(myLocation)}>SELECT</button>
+                                                            <button type="button"
+                                    className="flex gap-2 rounded-full bg-emerald-500 pr-4 pl-4 py-2 text-white font-medium text-sm"
+                                    onClick={() => startTransition(() => setLocation(myLocation))}>
+                                {
+                                    isPending ? <Loader2Icon className="w-6 h-6 animate-spin text-red-500"/> : 'Select' // Show loader or text
+                                }
+                            </button>
                             </div>
                         </div>
                     </li>

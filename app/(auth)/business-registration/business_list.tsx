@@ -3,6 +3,7 @@
 import { useEffect } from "react"; // Import useEffect
 import { useRouter } from "next/navigation";
 import { Business } from "@/types/business/type";
+import { Loader2Icon } from "lucide-react";
 
 const CreatedBusinessList = ({ businesses }: { businesses: Business[]}) => {
     const router = useRouter();
@@ -14,6 +15,11 @@ const CreatedBusinessList = ({ businesses }: { businesses: Business[]}) => {
         }
     }, [businesses]); // Dependency array to run effect when businesses change
 
-    return (<p>Loading...</p>)
+    return (
+   
+        <div className="flex items-center justify-center">
+             <Loader2Icon className="w-12 h-12 animate-spin" size={32} strokeWidth={4} text-emerald-500/>
+        </div>
+)
 }
 export default CreatedBusinessList;
