@@ -10,11 +10,12 @@ interface ImageUploadProps {
     displayStyle?: string | 'default',
     label?: string | 'Image',
     showLabel?: boolean|true,
+    image?: string|null
 }
 
-function UploadImageWidget({setImage, displayImage, displayStyle, imagePath, label, showLabel}: ImageUploadProps) {
+function UploadImageWidget({setImage, displayImage, displayStyle, imagePath, label, showLabel, image=null}: ImageUploadProps) {
     const [uploading, setUploading] = useState<boolean>(false);
-    const [imageUrl, setImageUrl] = useState<string>('');
+    const [imageUrl, setImageUrl] = useState<string>(image?image:'');
 
     const uploadMyImage = async (mFile: File) => {
         setUploading(true);
@@ -46,7 +47,7 @@ function UploadImageWidget({setImage, displayImage, displayStyle, imagePath, lab
             : <>
                 {displayStyle === 'default' ?
                     !uploading && (<>
-                        <span><ImageIcon/></span>
+                        <span><ImageIcon /></span>
                         {showLabel && <span className="text-xs font-bold">{label}</span>}
                     </>)
                     : <></>

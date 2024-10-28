@@ -49,19 +49,20 @@ import {fectchAllBrands} from "@/lib/actions/brand-actions";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import Image from "next/image";
 function ProductForm({ item }: { item: Product | null | undefined }) {
+    console.log("item:", item);
     const [isPending, startTransition] = useTransition();
     // const [formResponse, setResponse] = useState<FormResponse | undefined>();
     const [error] = useState<string | undefined>("");
-    const [success,] = useState<string | undefined>("");
+    const [success] = useState<string | undefined>("");
 
-    const [variants, setVariants] = useState<FormVariantItem[]>([]);
+    const [variants, setVariants] = useState<FormVariantItem[]>(item?item.variants: []);
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
 
     //const [file, setFile] = useState<File | null>(null)
     const [variantImageUrl, setVariantImageUrl] = useState<string>('');
-    const [imageUrl, setImageUrl] = useState<string>('');
+    const [imageUrl, setImageUrl] = useState<string>(item?item.image: '');
 
     const {toast} = useToast();
 
@@ -156,7 +157,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                 </div>
 
                                 <div className="mt-4 flex">
-                                    <UploadImageWidget imagePath={'products'} displayStyle={'default'} displayImage={true} setImage={setImageUrl}/>
+                                    <UploadImageWidget imagePath={'products'} displayStyle={'default'} displayImage={true} setImage={setImageUrl} image={imageUrl} />
                                     <div className="flex-1">
                                         <FormField
                                             control={form.control}

@@ -191,8 +191,8 @@ function RegisterForm({step}:{step: string}) {
                     } else {
                         //setSuccess(data.message);
                         //window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
-                        setStepsDone([...stepsDone, currentStep]);
-                        setMyCurrentStep();
+                        //setStepsDone([...stepsDone, currentStep]);
+                        //setMyCurrentStep();
                         window.location.reload();
                     }
                 })

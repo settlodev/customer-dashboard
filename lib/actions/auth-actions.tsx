@@ -13,7 +13,7 @@ import {
 import { signIn, signOut } from "@/auth";
 import { ExtendedUser, FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import {deleteAuthCookie, getUser} from "@/lib/auth-utils";
+import {createAuthToken, deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { sendPasswordResetEmail } from "./emails/send";
 
@@ -202,12 +202,20 @@ export const register = async (
     try {
         const apiClient = new ApiClient();
         const regData = await apiClient.post("/api/auth/register", validatedData.data);
+
+        console.log("regData is:", regData);
+
         if(regData){
+            await deleteAuthCookie();
             await signIn("credentials", {
                 email: credentials.email,
                 password: credentials.password,
                 redirect: false,
-            })
+            });
+
+            /*// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-expect-error
+            await createAuthToken(regData);*/
         }
 
         return parseStringify({
@@ -218,7 +226,7 @@ export const register = async (
         console.error("Error is: ", error);
         return parseStringify({
             responseType: "error",
-            message: "An unexpected error occurred. Please try again.",
+            message: error?error.error: "An unexpected error occurred. Please try again.",
             error: error instanceof Error ? error : new Error(String(error)),
         });
     }

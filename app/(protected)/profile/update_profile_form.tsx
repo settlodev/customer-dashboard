@@ -22,7 +22,6 @@ import {Button} from "@/components/ui/button";
 
 export default function UpdateProfileForm() {
     const session = useSession();
-    console.log("session:", session.data?.user.phoneNumber);
     const [imageUrl, setImageUrl] = useState<string>('');
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
@@ -96,7 +95,7 @@ export default function UpdateProfileForm() {
         });
     }
 
-    return (
+    return (!user?<></>:
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             <div className="flex items-center justify-between mb-2">
                 <div className="relative flex-1 md:max-w-md">

@@ -3,7 +3,7 @@ import axios, { AxiosError } from "axios";
 export const handleSettloApiError = (error: unknown) => {
     if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
-        console.log("axiosError.response:", axiosError.response)
+        console.log("axiosError.response:", axiosError.response?.data?.message)
 
         if (axiosError.response) {
             switch (axiosError.response.status) {
@@ -20,6 +20,10 @@ export const handleSettloApiError = (error: unknown) => {
                     return {
                         error:
                             "Sorry, we could not find a valid resource with your request, please try again.",
+                    };
+                case 409:
+                    return {
+                        error: axiosError.response?.data?.message,
                     };
                 default:
                     return {

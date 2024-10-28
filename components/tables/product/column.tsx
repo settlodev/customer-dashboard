@@ -1,12 +1,12 @@
 "use client";
 import {ColumnDef} from "@tanstack/react-table";
-import {ArrowUpDown} from "lucide-react";
+import {ArrowUpDown, ImageIcon} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
 import {CellAction} from "@/components/tables/product/cell-action";
 import {Product} from "@/types/product/type";
-
+import Image from "next/image";
 
 export const columns: ColumnDef<Product>[] = [
     {
@@ -27,6 +27,23 @@ export const columns: ColumnDef<Product>[] = [
         ),
         enableSorting: false,
         enableHiding: false,
+    },
+    {
+        accessorKey: "image",
+        enableHiding: false,
+        header: () => {
+            return (
+                <span>Image</span>
+            );
+        },
+        cell: ({row})=>{
+            return <div className="w-[60px] h-[60px] rounded-md overflow-hidden flex items-center justify-center">
+                {row.original.image?
+                    <Image src={row.original.image} className="rounded-md" width={60} height={60}  alt="Image" />:
+                    <ImageIcon size={32} />
+                }
+            </div>
+        }
     },
     {
         accessorKey: "name",

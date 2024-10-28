@@ -44,7 +44,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.error("Axio error:", error);
             throw handleSettloApiError(error);
         }
     }
