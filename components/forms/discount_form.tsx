@@ -47,8 +47,8 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error, ] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
-  const [validFrom, setValidFrom] = useState<Date | undefined>(item?.validFrom ? new Date(item.validFrom) : undefined); 
-  const [validTo, setValidTo] = useState<Date | undefined>(item?.validTo ? new Date(item.validTo) : undefined); 
+  const [validFrom, setValidFrom] = useState<Date | undefined>(item?.validFrom ? new Date(item.validFrom) : undefined);
+  const [validTo, setValidTo] = useState<Date | undefined>(item?.validTo ? new Date(item.validTo) : undefined);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof DiscountSchema>>({
@@ -93,15 +93,9 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className={`gap-1`}
       >
-        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Discount Details</CardTitle>
-              <CardDescription>
-                Enter the details of the discount
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div>
+          <>
+            <>
               <FormError message={error} />
               <FormSuccess message={success} />
               <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
@@ -335,8 +329,8 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                 }
 
               </div>
-            </CardContent>
-          </Card>
+            </>
+          </>
           <div className="flex h-5 items-center space-x-4 mt-4">
             <CancelButton />
             <Separator orientation="vertical" />

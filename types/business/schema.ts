@@ -2,7 +2,7 @@ import {object, string,} from "zod";
 
 export const BusinessSchema= object({
     id: string().uuid().optional(),
-    name: string().min(2, 'Business must be less than 2 characters').max(20, 'Business can not be more than 20 characters'),
+    name: string().min(2, 'Business must be less than 2 characters').max(50, 'Business can not be more than 50 characters'),
     identificationNumber: string().min(14).max(28).optional(),
     certificateOfIncorporation: string().optional(),
     businessIdentificationDocument: string().optional(),

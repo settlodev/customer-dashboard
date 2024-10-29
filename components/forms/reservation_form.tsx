@@ -81,10 +81,10 @@ const ReservationForm = ({
           console.error("Error fetching data", error);
         }
       };
-    
+
       fetchData();
     }, []);
-    
+
 
     const form = useForm<z.infer<typeof ReservationSchema>>({
         resolver: zodResolver(ReservationSchema),
@@ -137,14 +137,8 @@ const ReservationForm = ({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Setup Reservation</CardTitle>
-        <CardDescription>
-          Setup reservation details for your customer
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <>
+      <>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
             <div className="lg:grid grid-cols-2 gap-4 mt-2">
@@ -419,8 +413,8 @@ const ReservationForm = ({
             )}
           </form>
         </Form>
-      </CardContent>
-    </Card>
+      </>
+    </>
   );
 };
 

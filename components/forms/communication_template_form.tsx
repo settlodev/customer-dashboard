@@ -43,7 +43,7 @@ const TemplateForm = ({
   const [, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
 
-  
+
 
   const form = useForm<z.infer<typeof TemplateSchema>>({
     resolver: zodResolver(TemplateSchema),
@@ -83,14 +83,8 @@ const TemplateForm = ({
 
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Setup Template</CardTitle>
-        <CardDescription>
-          Setup communication template
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+    <>
+      <>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
             <div className="lg:grid grid-cols-2 gap-4 mt-2">
@@ -138,7 +132,7 @@ const TemplateForm = ({
               </div>
             </div>
 
-      
+
               <div className="grid gap-2 mt-2">
                 <FormField
                   control={form.control}
@@ -202,7 +196,7 @@ const TemplateForm = ({
               </div>
                 )
               }
-        
+
             {isPending ? (
               <div className="flex justify-center items-center bg-black rounded p-2 text-white">
                 <Loader2Icon className="w-6 h-6 animate-spin" />
@@ -218,8 +212,8 @@ const TemplateForm = ({
             )}
           </form>
         </Form>
-      </CardContent>
-    </Card>
+      </>
+    </>
   );
 };
 

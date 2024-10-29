@@ -83,15 +83,9 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className={`gap-1`}
       >
-        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Customer Details</CardTitle>
-              <CardDescription>
-                Enter personal details of the customer
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+        <div>
+          <>
+            <>
             <FormError message={error}/>
             <FormSuccess message={success}/>
               <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
@@ -167,7 +161,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                     </FormItem>
                   )}
                 />
-               
+
                 <FormField
                   control={form.control}
                   name="phoneNumber"
@@ -185,7 +179,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                     </FormItem>
                   )}
                 />
-                 <FormField 
+                 <FormField
                   control={form.control}
                   name="allowNotifications"
                   render={({ field }) => (
@@ -193,7 +187,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                       <FormLabel>Allow Notifications</FormLabel>
                       <FormControl>
                         <Switch
-                          
+
                           checked={field.value !== undefined ? field.value : true}
                           onCheckedChange={field.onChange}
                           disabled={isPending}
@@ -235,9 +229,9 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                 )
                 }
               </div>
-            </CardContent>
-          </Card>
-          <div className="flex h-5 items-center space-x-4 mt-4">
+            </>
+          </>
+          <div className="flex h-5 items-center space-x-4 mt-10">
             <CancelButton />
             <Separator orientation="vertical" />
             <SubmitButton

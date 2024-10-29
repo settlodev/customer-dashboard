@@ -75,15 +75,8 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
   };
 
   return (
-    <Card >
-      <CardHeader>
-        <CardTitle>Setup Business Location</CardTitle>
-        <CardDescription>
-          Setup your business locations,if you have multiple locations
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-
+    <>
+      <>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
 
@@ -365,8 +358,8 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
             )}
           </form>
         </Form>
-      </CardContent>
-    </Card>
+      </>
+    </>
   );
 };
 
