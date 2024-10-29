@@ -20,7 +20,7 @@ export const PhoneVerificationSchema = object({
 
 export const EmailVerificationSchema = object({
     email: string().optional(),
-    code: string().optional(),
+    name: string().optional()
 });
 
 export const RegisterSchema = object({

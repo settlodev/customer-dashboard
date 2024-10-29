@@ -24,10 +24,10 @@ export async function sendPasswordResetEmail(token: string) {
 
     }
 }
-export async function sendVerificationEmail(name:string, token: string, email: string) {
+export async function sendVerificationEmail(name:string, token: string|null|undefined, email: string) {
     try {
         const {data,error} = await resend.emails.send({
-            from: "Tech <onboarding@resend.dev>",
+            from: "Tech <support@settlo.co.tz>",
             to: email,
             subject: "Complete Settlo Registration",
             react: VerifyEmailTemplate({token, name}),

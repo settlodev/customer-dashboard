@@ -10,7 +10,7 @@ import {
   COMPLETE_ACCOUNT_REGISTRATION_URL,
   COMPLETE_BUSINESS_LOCATION_SETUP_URL,
   UPDATE_PASSWORD_URL,
-  VERIFICATION_REDIRECT_URL
+  VERIFICATION_REDIRECT_URL, VERIFICATION_PAGE
 } from "@/routes";
 import { AuthToken } from "@/types/types";
 
@@ -28,7 +28,6 @@ export default auth((req) => {
   // Allow access to the reset-password route
   const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL);
 
-
   if (isApiAuthRoute || isPublicRoute || isUpdatePasswordRoute) {
     return;
   }
@@ -43,7 +42,9 @@ export default auth((req) => {
     // If logged in and trying to access an auth route (like /login),
     // redirect to the default page or account completion page
     if (authToken?.emailVerified === null) {
-      if(nextUrl.pathname !== VERIFICATION_REDIRECT_URL) {
+      if(nextUrl.pathname === VERIFICATION_PAGE) {
+        return;
+      }else if(nextUrl.pathname !== VERIFICATION_REDIRECT_URL) {
         return Response.redirect(new URL(VERIFICATION_REDIRECT_URL, nextUrl));
       }
       return;

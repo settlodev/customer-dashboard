@@ -66,6 +66,7 @@ export const createAuthToken = async (user: ExtendedUser) => {
         phoneNumber: user.phoneNumber,
         emailVerified: user.emailVerified,
         phoneNumberVerified: user.phoneNumberVerified,
+        emailVerificationToken: user.emailVerificationToken,
         consent: user.consent,
         theme: user.theme,
         subscriptionStatus: user.subscriptionStatus,
@@ -82,7 +83,6 @@ export const createAuthToken = async (user: ExtendedUser) => {
 };
 
 export const createActiveBusiness = async (user: ExtendedUser) => {
-    console.log("Creating active business", user);
     const cookieStore = cookies();
 
     const businessActive: activeBusiness = {

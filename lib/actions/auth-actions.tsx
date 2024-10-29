@@ -8,15 +8,15 @@ import {
     LoginSchema,
     RegisterSchema,
     ResetPasswordSchema,
-    UpdatePasswordSchema, UpdateUserSchema
+    UpdatePasswordSchema,
+    UpdateUserSchema
 } from "@/types/data-schemas";
-import { signIn, signOut } from "@/auth";
-import {ExtendedUser, FormResponse, ServerResponseError} from "@/types/types";
+import {auth, signIn, signOut} from "@/auth";
+import {ExtendedUser, FormResponse} from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import {deleteAuthCookie, getUser} from "@/lib/auth-utils";
+import {createAuthToken, deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
-import {AxiosError} from "axios";
 
 export async function logout() {
     try {
@@ -52,6 +52,8 @@ export const login = async (
             password: validatedData.data.password,
             redirect: false,
         });
+
+        console.log("result is now:", result)
 
         if (result?.error) {
             return parseStringify({
@@ -335,5 +337,40 @@ export const updatePassword = async (
             message: "Password reset failed.",
             error: error instanceof Error ? error : new Error(String(error)),
         })
+    }
+}
+
+export const resendVerificationEmail = async (name: any, email: any): Promise<FormResponse> => {
+    const apiClient = new ApiClient();
+    const response = await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
+    console.log("my response is:", response)
+    if(response) {
+        await sendVerificationEmail(name, response as string, email);
+        return parseStringify({
+            responseType: "success",
+            message: "Email sent",
+            error: "",
+        })
+    }else{
+        return parseStringify({
+            responseType: "error",
+            message: "Error sending email",
+            error: "Error sending email",
+        })
+    }
+}
+
+export const verifyEmailToken = async (token: string): Promise<string> => {
+    const apiClient = new ApiClient();
+    const response = await apiClient.get(`/api/auth/verify-token/${token}`, {});
+    const session = await auth();
+    const myUser = await getUserById(session?.user.id);
+    await createAuthToken(myUser);
+    console.log("myUser2:", myUser);
+
+    if(typeof response === "string"){
+        return response;
+    }else{
+        return "Error"
     }
 }
