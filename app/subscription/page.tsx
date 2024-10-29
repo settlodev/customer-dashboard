@@ -11,7 +11,6 @@ function SubscriptionPage() {
        const fetchSubscriptions = async () => {
            try {
             const subscriptions = await getAllSubscriptions();
-            console.log("The response on the page for subscriptions is:", subscriptions);
             setSubscriptionData(subscriptions);
            } catch (error) {
             console.error("Error fetching subscriptions", error);
@@ -50,7 +49,7 @@ function SubscriptionPage() {
                            </CardContent>
                            <CardFooter className="text-center">
                                <Button className="w-full text-xl capitalize">
-                                   Subscribe now
+                                   Get started
                                </Button>
                            </CardFooter>
                        </Card>

@@ -12,18 +12,18 @@ import {
 } from "@/components/ui/card";
 import { ApiResponse } from "@/types/types";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { SMS } from "@/types/sms/type";
-import { getSMS } from "@/lib/actions/broadcast-sms-action";
-import SMSForm from "@/components/forms/sms_form";
+import EmailForm from "@/components/forms/email_form";
+import { Email } from "@/types/email/type";
+import { getEmail } from "@/lib/actions/broadcast-email-action";
 
-export default async function SMSMarketingPage({params}: {params: { id: string }}) {
+export default async function EmailMarketingPage({params}: {params: { id: string }}) {
 
     const isNewItem = params.id === "new";
-    let item: ApiResponse<SMS> | null = null;
+    let item: ApiResponse<Email> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getSMS(params.id as UUID);
+            item = await getEmail(params.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
             // Ignore redirect error
@@ -34,9 +34,9 @@ export default async function SMSMarketingPage({params}: {params: { id: string }
     }
 
     const breadcrumbItems = [
-        { title: "SMS Marketing", link: "/sms-marketing" },
+        { title: "Email Marketing", link: "/email-marketing" },
         {
-            title: isNewItem ? "New" : item?.content[0]?.senderId || "",
+            title: isNewItem ? "New" : item?.content[0]?.subject || "",
             link: "",
         },
     ];
@@ -57,19 +57,19 @@ export default async function SMSMarketingPage({params}: {params: { id: string }
 const TemplateCard = ({
     isNewItem, item,}: {
     isNewItem: boolean;
-    item: SMS | null | undefined;
+    item: Email | null | undefined;
 }) => (
     <Card>
         <CardHeader>
-            <CardTitle>{isNewItem ? "Send SMS/Email" : "Edit template"}</CardTitle>
+            <CardTitle>{isNewItem ? "Send Email" : ""}</CardTitle>
             <CardDescription>
                 {isNewItem
-                    ? "Broadcast SMS from your business location towards your customers or staff"
+                    ? "Broadcast Email from your business location towards your customers"
                     : ""}
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <SMSForm item={item} />
+            <EmailForm item={item} />
         </CardContent>
     </Card>
 );

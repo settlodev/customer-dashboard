@@ -9,10 +9,10 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
-import { SMS } from "@/types/sms/type";
-import { SMSSchema } from "@/types/sms/schema";
+import { Email } from "@/types/email/type";
+import { EmailSchema } from "@/types/email/schema";
 
-export const fectchSMS = async () : Promise<SMS[]> => {
+export const fectchEmails = async () : Promise<Email[]> => {
     await  getAuthenticatedUser();
 
     try {
@@ -20,22 +20,22 @@ export const fectchSMS = async () : Promise<SMS[]> => {
 
         const location = await getCurrentLocation();
 
-        const smsData = await  apiClient.get(
-            `/api/broadcast-sms/${location?.id}`,
+        const emailData = await  apiClient.get(
+            `/api/broadcast-email/${location?.id}`,
         );
 
-        return parseStringify(smsData);
+        return parseStringify(emailData);
 
     }
     catch (error){
         throw error;
     }
 }
-export const searchSMS = async (
+export const searchEmail = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<SMS>> =>{
+): Promise<ApiResponse<Email>> =>{
     await getAuthenticatedUser();
 
 
@@ -44,7 +44,7 @@ export const searchSMS = async (
         const query ={
             filters: [
                 {
-                    key:"senderId",
+                    key:"subject",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -52,7 +52,7 @@ export const searchSMS = async (
             ],
             sorts:[
                 {
-                    key:"senderId",
+                    key:"subject",
                     direction:"ASC"
                 }
             ],
@@ -61,30 +61,30 @@ export const searchSMS = async (
         }
         const location = await getCurrentLocation();
 
-        const smsData = await  apiClient.post(
-            `/api/broadcast-sms/${location?.id}`,
+        const emailData = await  apiClient.post(
+            `/api/broadcast-email/${location?.id}`,
             query
         );
-        return parseStringify(smsData);
+        return parseStringify(emailData);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  sendSMS= async (
-    sms: z.infer<typeof SMSSchema>
+export const  sendEmail= async (
+    email: z.infer<typeof EmailSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const ValidSmsData= SMSSchema.safeParse(sms)
+    const ValidEmailData= EmailSchema.safeParse(email)
 
-    if (!ValidSmsData.success){
+    if (!ValidEmailData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(ValidSmsData.error.message)
+            error:new Error(ValidEmailData.error.message)
       }
       return parseStringify(formResponse)
     }
@@ -94,7 +94,7 @@ export const  sendSMS= async (
      
 
     const payload = {
-        ...ValidSmsData.data,
+        ...ValidEmailData.data,
         location: location?.id,
     }
 
@@ -104,7 +104,7 @@ export const  sendSMS= async (
 
 
         await apiClient.post(
-            `/api/broadcast-sms/${location?.id}/create`,
+            `/api/broadcast-email/${location?.id}/create`,
             payload
         );
     }
@@ -120,11 +120,11 @@ export const  sendSMS= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/sms-marketing");
-    redirect("/sms-marketing");
+    revalidatePath("/email-marketing");
+    redirect("/email-marketing");
 }
 
-export const getSMS= async (id:UUID) : Promise<ApiResponse<SMS>> => {
+export const getEmail= async (id:UUID) : Promise<ApiResponse<Email>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -140,11 +140,11 @@ export const getSMS= async (id:UUID) : Promise<ApiResponse<SMS>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const smsResponse = await apiClient.post(
-        `/api/broadcast-sms/${location?.id}`,
+    const emailResponse = await apiClient.post(
+        `/api/broadcast-email/${location?.id}`,
         query,
     );
 
-    return parseStringify(smsResponse);
+    return parseStringify(emailResponse);
 }
 

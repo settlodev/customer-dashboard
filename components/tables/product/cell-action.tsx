@@ -7,8 +7,9 @@ import DeleteModal from "@/components/tables/delete-modal";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import {DeleteIcon, EditIcon, EyeIcon} from "@nextui-org/shared-icons";
+
 import {deleteProduct} from "@/lib/actions/product-actions";
-import {Product} from "@/types/product/type";
+import { Product } from "@/types/product/type";
 
 interface CellActionProps {
     data: Product;
@@ -17,8 +18,7 @@ interface CellActionProps {
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const router = useRouter();
     const {isOpen, onOpen, onOpenChange} = useDisclosure();
-    /*const user = sessionStorage.getItem('authToken');
-    console.log("user is:", user);*/
+  
 
     const onDelete = async () => {
         try {

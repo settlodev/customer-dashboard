@@ -161,10 +161,13 @@ export const updateProduct = async (
     }
 
     const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
     const payload = {
         ...validData.data,
         location: location?.id,
+        business: business?.id
     };
+    console.log("The payload to update product", payload);
 
     try {
         const apiClient = new ApiClient();

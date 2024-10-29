@@ -26,7 +26,7 @@ import {
   updateReservation,
 } from "@/lib/actions/reservation-actions";
 import DateTimePicker from "../widgets/datetimepicker";
-import { fectchAllCustomers } from "@/lib/actions/customer-actions";
+import {fetchAllCustomers } from "@/lib/actions/customer-actions";
 import { Customer } from "@/types/customer/type";
 import {
   Select,
@@ -65,7 +65,7 @@ const ReservationForm = ({
       const fetchData = async () => {
         try {
           const [customerResponse, roomResponse] = await Promise.all([
-            fectchAllCustomers(),
+           fetchAllCustomers(),
             fectchAllProducts(),
           ]);
           setCustomers(customerResponse);

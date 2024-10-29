@@ -1,12 +1,12 @@
 "use client";
 import {ColumnDef} from "@tanstack/react-table";
-import {ArrowUpDown, ImageIcon} from "lucide-react";
+import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
 import {CellAction} from "@/components/tables/product/cell-action";
 import {Product} from "@/types/product/type";
-import Image from "next/image";
+
 
 export const columns: ColumnDef<Product>[] = [
     {
@@ -29,23 +29,6 @@ export const columns: ColumnDef<Product>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "image",
-        enableHiding: false,
-        header: () => {
-            return (
-                <span>Image</span>
-            );
-        },
-        cell: ({row})=>{
-            return <div className="w-[60px] h-[60px] rounded-md overflow-hidden flex items-center justify-center">
-                {row.original.image?
-                    <Image src={row.original.image} className="rounded-md" width={60} height={60}  alt="Image" />:
-                    <ImageIcon size={32} />
-                }
-            </div>
-        }
-    },
-    {
         accessorKey: "name",
         enableHiding: false,
         header: ({ column }) => {
@@ -54,51 +37,75 @@ export const columns: ColumnDef<Product>[] = [
                     className="text-left p-0"
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Product Name
+                    Name
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
     },
-    /*{
+ 
+    {
         accessorKey: "categoryName",
-        enableHiding: false,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Category
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
-    },*/
-    {
-        accessorKey: "departmentName",
-        enableHiding: false,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Department
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
-    },
-    {
-        accessorKey: "sku",
-        header: "Sku",
+        enableHiding: true,
+        header: 'Category'
     },
     {
         accessorKey: "brandName",
-        header: "brandName",
+        header: "Brand",
+        enableHiding: true,
     },
+    {
+        accessorKey: "variants",
+        enableHiding: false,
+        header: 'Cost',
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const cost = variants.length > 0 ? variants[0].cost : "N/A"; 
+            return <span>{cost}</span>; 
+        },
+    },
+    {
+        accessorKey: "variants", // Change this to access the variants array
+        enableHiding: false,
+        header: ' Price',
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const price = variants.length > 0 ? variants[0].price : "N/A"; 
+            return <span>{price}</span>; 
+        },
+    },
+
+    {
+        accessorKey: "variant",
+        header: "Quantity",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const quantity = variants.length > 0 ? variants[0].quantity : "N/A"; 
+            return <span>{quantity}</span>;
+        }
+    },
+    {
+        id: "outOfStock",
+        header: "Stock Status",
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const quantity = variants.length > 0 ? variants[0].quantity : 0; 
+            return quantity === 0 ? <span className="px-2 py-1 rounded-full bg-red-500 text-sm text-white">Out of Stock</span> : <span className="px-2 py-1 rounded-full bg-green-500 text-sm text-white">In Stock</span>; // Show "Out of Stock" if quantity is 0
+        },
+        enableHiding: true,
+    },
+    {
+        accessorKey: "variant",
+        header: "SKU",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const variants = row.original.variants; 
+            const sku = variants.length > 0 ? variants[0].sku : "N/A"; 
+            return <span>{sku}</span>;
+        }
+    },
+   
     {
         id: "status",
         accessorKey: "status",

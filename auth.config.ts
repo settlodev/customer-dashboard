@@ -49,7 +49,7 @@ export default {
                     }
                     return await response.json();
                 } catch (error) {
-                    // console.log(error)
+                    console.log("error during registration: ", error)
                         if(error instanceof AuthError) {
                             switch (error.type) {
                                 case "CredentialsSignin":

@@ -3,6 +3,7 @@
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle
 } from "@/components/ui/card";
@@ -47,25 +48,25 @@ import ProductTaxSelector from "@/components/widgets/product-tax-selector";
 import {taxClasses} from "@/types/constants";
 import {fectchAllBrands} from "@/lib/actions/brand-actions";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-import Image from "next/image";
+import { createVariant, updateVariant } from "@/lib/actions/variant-actions";
+
 function ProductForm({ item }: { item: Product | null | undefined }) {
-    console.log("item:", item);
     const [isPending, startTransition] = useTransition();
     // const [formResponse, setResponse] = useState<FormResponse | undefined>();
     const [error] = useState<string | undefined>("");
-    const [success] = useState<string | undefined>("");
+    const [success,] = useState<string | undefined>("");
 
-    const [variants, setVariants] = useState<FormVariantItem[]>(item?item.variants: []);
+    const [variants, setVariants] = useState<FormVariantItem[]>([]);
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
 
     //const [file, setFile] = useState<File | null>(null)
     const [variantImageUrl, setVariantImageUrl] = useState<string>('');
-    const [imageUrl, setImageUrl] = useState<string>(item?item.image: '');
+    const [imageUrl, setImageUrl] = useState<string>('');
+    const [selectedVariant, setSelectedVariant] = useState<FormVariantItem | null>(null);
 
     const {toast} = useToast();
-
     useEffect(() => {
         const getData = async () => {
             const categories = await fetchAllCategories();
@@ -86,11 +87,46 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     });
 
     const variantForm = useForm<z.infer<typeof VariantSchema>>({
-        resolver: zodResolver(VariantSchema)
+        resolver: zodResolver(VariantSchema),
+        defaultValues:{
+            name:'',
+            price:0,
+            cost:0,
+            sku:'',
+            quantity:0,
+            description:'',
+            image:'',
+        },
     });
+
+    useEffect(() => {
+        if (item && item.variants) {
+            setVariants(item.variants.map(variant=>({
+                ...variant,
+                id: variant.id,
+                name: variant.name,
+                price: variant.price,
+                cost: variant.cost,
+                sku: variant.sku ? variant.sku : '',
+                quantity: variant.quantity,
+                description: variant.description,
+                image: variant.image ? variant.image : '',
+                color: variant.color ? variant.color : '',
+                product:variant.product ? variant.product : null
+            })));
+            
+        }
+    }, [item]);
+
+    useEffect(() => {
+        if (selectedVariant) {
+            variantForm.reset(selectedVariant);
+        }
+    }, [selectedVariant, variantForm]);
 
     const onInvalid = useCallback(
         (errors: any) => {
+            console.log("These errors occurred:", errors);
             toast({
                 variant: "destructive",
                 title: "Uh oh! something went wrong",
@@ -112,16 +148,16 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
             if (item) {
                 updateProduct(item.id, values).then((data) => {
                     //if (data) setResponse(data);
-                    console.log("data:", data)
+                    console.log(" Update product data:", data)
                 });
             } else {
                 createProduct(values)
                   .then((data) => {
-                    console.log("Create Business Response: ", data);
+                    console.log("Create product data: ", data);
                     //if (data) setResponse(data);
                   })
                   .catch((err) => {
-                    console.log("Create Business Error: ", err);
+                    console.log("Error while creating product: ", err);
                   });
             }
         });
@@ -129,16 +165,88 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
 
     const saveVariantItem = (values: z.infer<typeof VariantSchema>) => {
         if(variantImageUrl) {
-            values.image = variantImageUrl;
+            values.image = variantImageUrl ? variantImageUrl : '';
         }
         setVariants([values, ...variants]);
+        variantForm.reset();
+        setSelectedVariant(null);
     }
+
+    const handleSaveVariant = (values: z.infer<typeof VariantSchema>) => {
+        if (variantImageUrl) {
+            values.image = variantImageUrl;
+        }
+
+        const productId = item?.id;
+        console.log("Selected product ID:", productId);
+    
+       try {
+        if (!productId) {
+            console.error("Product ID is missing");
+            return;
+        }
+        const response = createVariant(productId, values);
+        console.log("Variant created response:", response);
+    
+        saveVariantItem(values);
+        variantForm.reset();
+        setSelectedVariant(null);
+        
+       } catch (error) {
+        console.error("Error creating variant:", error);
+       }
+    }
+
+    const handleUpdateVariant = async (values: z.infer<typeof VariantSchema>) => {
+        
+        if (variantImageUrl) {
+            values.image = variantImageUrl;
+        }
+
+        const variantId = selectedVariant?.id; 
+        const productId = item?.id;
+        console.log("Selected variant ID:", variantId);
+    
+        try {
+            if (!variantId || !productId) {
+                throw new Error("Variant ID or product ID is missing");
+            }
+            const response = await updateVariant(variantId,productId, values);
+            console.log("Variant updated response:", response);
+    
+            setVariants((prevVariants) => {
+                return prevVariants.map((variant) =>
+                    variant.id === variantId ? { ...variant, ...values } : variant
+                );
+            });
+    
+            variantForm.reset(); 
+            setSelectedVariant(null);
+        } catch (error) {
+            console.error("Error updating variant:", error);
+        }
+    };
+
+    // const handleDeleteVariant = (variant: FormVariantItem) => {
+    //     const variantId = variant.id;
+    //     const productId = item?.id;
+    //     if (variantId && productId) {
+    //         deleteVariant(variantId, productId).then(() => {
+    //             removeVariant(variants.indexOf(variant));
+    //         });
+    //     }
+    // }
 
     const removeVariant = (index: number) => {
         const mVariants = [...variants];
         mVariants.splice(index, 1);
         setVariants(_.compact(mVariants));
     }
+
+    const handleEditVariant = (variant: FormVariantItem) => {
+        setSelectedVariant(variant);
+    }
+
 
     return (
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
@@ -157,7 +265,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                 </div>
 
                                 <div className="mt-4 flex">
-                                    <UploadImageWidget imagePath={'products'} displayStyle={'default'} displayImage={true} setImage={setImageUrl} image={imageUrl} />
+                                    <UploadImageWidget imagePath={'products'} displayStyle={'default'} displayImage={true} setImage={setImageUrl}/>
                                     <div className="flex-1">
                                         <FormField
                                             control={form.control}
@@ -365,30 +473,34 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                         placeholder="Enter SKU"
                                                         {...field}
                                                         disabled={isPending}
+                                                        value={field.value || ''}
                                                     />
                                                 </FormControl>
                                                 <FormMessage/>
                                             </FormItem>
                                         )}
                                     />
-
-                                    {/*<FormField
-                                        control={form.control}
-                                        name="color"
-                                        render={({field}) => (
-                                            <FormItem>
-                                                <FormLabel>Tag Color</FormLabel>
-                                                <FormControl>
-                                                    <Checkbox
-                                                        defaultValue={'black'}
-                                                        {...field}
-                                                        disabled={isPending}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage/>
-                                            </FormItem>
-                                        )}
-                                    />*/}
+                                  {item && (
+                                       <FormField
+                                       control={form.control}
+                                       name="status"
+                                       defaultValue={false}
+                                       render={({field}) => (
+                                           <FormItem
+                                               className="flex lg:mt-4 items-center gap-2 border-1 pt-1 pb-2 pl-3 pr-3 rounded-md">
+                                               <FormLabel className="flex-1">Product Status</FormLabel>
+                                               <FormControl className="self-end">
+                                                   <Switch
+                                                       checked={field.value !== undefined ? field.value : false}
+                                                       onCheckedChange={field.onChange}
+                                                       disabled={isPending}
+                                                   />
+                                               </FormControl>
+                                               <FormMessage/>
+                                           </FormItem>
+                                       )}
+                                   />
+                                  )}
 
                                 </div>
 
@@ -405,20 +517,18 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                             {variants.map((variant: FormVariantItem, index) => {
                                                 return <div
                                                     className="flex border-1 border-emerald-200 mt-0 items-center pt-0 pb-0 pl-0 mb-1"
-                                                    key={index}>
-                                                    <p onClick={() => removeVariant(index)}
-                                                       className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4 w-[50px]">
-                                                        {variant.image?
-                                                            <Image src={variant.image} width={50} height={50} alt="" className="rounded-md" />
-                                                        :<></>}
-                                                    </p>
+                                                    key={index}
+                                                    onClick={() => handleEditVariant(variant)} // Click to edit variant
+                                                >
+                                                    <p className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4">
+                                                        <span>{index + 1}</span></p>
                                                     <div className="flex-1 pt-1 pb-1">
                                                         <p className="text-md font-medium">{variant.name}</p>
                                                         <p className="text-xs font-medium">PRICE: {variant.price} |
                                                             COST: {variant.cost} | QTY: {variant.quantity}</p>
                                                     </div>
                                                     <p onClick={() => removeVariant(index)}
-                                                       className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer">
+                                                        className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer">
                                                         <span>Remove</span></p>
                                                 </div>
                                             })}
@@ -439,7 +549,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                 <SubmitButton
                                     isPending={isPending || variants.length === 0}
                                     label={item ? "Update product" : "Save Product"}
-                                />
+                                     />
                             </div>
                         </form>
                     </Form>
@@ -453,6 +563,10 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                             <Card>
                                 <CardHeader>
                                     <CardTitle>Add variants</CardTitle>
+                                    <CardDescription>{item ? "Edit variants" : "Add variants"}</CardDescription>
+                                    {item && (
+                                        <span className="text-sm text-white bg-blue-500 p-2 rounded">Please,select the variant you want to edit on product variants</span>
+                                    )}
                                 </CardHeader>
 
                                 <CardContent>
@@ -575,14 +689,17 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                 </CardContent>
 
                                 <div className="flex ml-6 mb-6">
-                                    {/*<div className="rounded-xl bg-emerald-400 px-4 pt-2 pb-2 text-white font-bold"
-                                             onClick={() => saveVariantItem()}>
-                                            Add variant
-                                        </div>*/}
-
+                                   
                                     <SubmitButton
                                         isPending={isPending}
-                                        label={'Save Variant'}
+                                        label={selectedVariant ? 'Update Variant' : 'Save Variant'}
+                                        onClick={
+                                            item 
+                                                ? (selectedVariant 
+                                                    ? variantForm.handleSubmit(handleUpdateVariant, onInvalid) 
+                                                    : variantForm.handleSubmit(handleSaveVariant, onInvalid)) 
+                                                : variantForm.handleSubmit(saveVariantItem, onInvalid)
+                                        }
                                     />
                                 </div>
                             </Card>

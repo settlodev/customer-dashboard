@@ -22,12 +22,13 @@ export declare interface Variant {
 }
 
 export declare interface FormVariantItem {
+    id?: UUID,
     name: string,
     price: number,
     cost: number,
     quantity: number,
     sku?: string|undefined,
     description?: string|undefined,
-    image?: string|undefined,
-    color?: string|undefined
+    image?: string|undefined|null,
+    color?: string|undefined|null,
 }

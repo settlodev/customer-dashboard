@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import {columns} from "@/components/tables/sms/columns";
-import { searchSMS } from "@/lib/actions/broadcast-sms-action";
+import {columns} from "@/components/tables/campaign/columns";
+import { searchCampaign} from "@/lib/actions/campaign_action";
 
 const breadcrumbItems = [{ title: "SMS Marketing", link: "/sms-marketing" }];
 
@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await searchSMS(q, page, pageLimit);
+    const responseData = await searchCampaign(q, page, pageLimit);
     const data = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
@@ -41,7 +41,7 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-sms-email" href={`/sms-marketing/new`}>Broadcast SMS / Email</Link>
+                        <Link key="add-sms-email" href={`/email-marketing/new`}>Broadcast Email</Link>
                     </Button>
                 </div>
             </div>
@@ -49,8 +49,8 @@ export default async function Page({ searchParams }: ParamsProps) {
             {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>SMS / Email Sent</CardTitle>
-                        <CardDescription>List of all SMS / Email sent</CardDescription>
+                        <CardTitle>Email Sent</CardTitle>
+                        <CardDescription>List of all Email sent</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -64,7 +64,7 @@ export default async function Page({ searchParams }: ParamsProps) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`SMS / Email`} newItemUrl={`/sms-marketing/new`} />
+                <NoItems itemName={`Email`} newItemUrl={`/email-marketing/new`} />
             )}
         </div>
     );

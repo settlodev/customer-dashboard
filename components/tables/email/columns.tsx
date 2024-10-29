@@ -2,15 +2,14 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
-import DOMPurify from 'dompurify';
 
-import { CellAction } from "@/components/tables/communication-templates/cell-action";
+// import { CellAction } from "@/components/tables/communication-templates/cell-action";
 import { StateColumn } from "@/components/tables/state-column";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Template } from "@/types/communication-templates/types";
+import { Email } from "@/types/email/type";
 
-export const columns: ColumnDef<Template>[] = [
+export const columns: ColumnDef<Email>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -47,18 +46,12 @@ export const columns: ColumnDef<Template>[] = [
     },
   },
   {
-    accessorKey: "broadcastType",
-    header: "Broadcast Type",
+    accessorKey: "receipt",
+    header: "Receipt",
   },
   {
     accessorKey: "message",
     header: "Message",
-    cell: ({ row }) => {
-      const sanitizedMessage = DOMPurify.sanitize(row.original.message); // Sanitize the message
-      return (
-        <div dangerouslySetInnerHTML={{ __html: sanitizedMessage }} /> // Render the sanitized HTML
-      );
-    },
   },
   {
     id: "status",
@@ -78,8 +71,8 @@ export const columns: ColumnDef<Template>[] = [
     cell: ({ row }) => <StateColumn state={row.original.status} />,
     enableHiding: false,
   },
-  {
-    id: "actions",
-    cell: ({ row }) => <CellAction data={row.original} />,
-  },
+  // {
+  //   id: "actions",
+  //   cell: ({ row }) => <CellAction data={row.original} />,
+  // },
 ];

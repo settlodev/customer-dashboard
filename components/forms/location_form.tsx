@@ -236,7 +236,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                   name="city"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>City</FormLabel>
+                      <FormLabel>City / Region</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
@@ -252,15 +252,15 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
               <div className="grid gap-2">
                 <FormField
                   control={form.control}
-                  name="region"
+                  name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Region</FormLabel>
+                      <FormLabel>Full business address</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           disabled={isPending}
-                          placeholder="Which region do you operate?"
+                          placeholder="Enter business location address"
                         />
                       </FormControl>
                       <FormMessage />
@@ -270,25 +270,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
               </div>
             </div>
             <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="street"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Street</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Which street do you operate?"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+              
               {
                 item && (
                   <div className="grid gap-2">

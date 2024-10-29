@@ -1,50 +1,47 @@
 "use server";
 
 import {z} from "zod";
-import {CustomerSchema} from "@/types/customer/schema";
 import ApiClient from "@/lib/settlo-api-client";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
-import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
-import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
+import { Variant } from "@/types/variant/type";
+import { VariantSchema } from "@/types/variant/schema";
 
-export const fetchAllCustomers = async () : Promise<Customer[]> => {
+export const fetchVariants = async () : Promise<Variant[]> => {
     await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
 
-        const location = await getCurrentLocation();
+        const product = "5b6ba5c1-106a-43a3-b3be-e91ce4279add"
 
-        const customerData = await  apiClient.get(
-            `/api/customers/${location?.id}`,
+        const data = await  apiClient.get(
+            `/api/variants/${product}`,
         );
-       
-        return parseStringify(customerData);
+
+        return parseStringify(data);
 
     }
     catch (error){
         throw error;
     }
 }
-export const searchCustomer = async (
+export const searchVariants = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Customer>> =>{
+): Promise<ApiResponse<Variant>> =>{
     await getAuthenticatedUser();
-
 
     try {
         const apiClient = new ApiClient();
         const query ={
             filters: [
                 {
-                    key:"firstName",
+                    key:"name",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -52,74 +49,72 @@ export const searchCustomer = async (
             ],
             sorts:[
                 {
-                    key:"firstName",
+                    key:"name",
                     direction:"ASC"
                 }
             ],
             page:page ? page - 1:0,
             size:pageLimit ? pageLimit : 10
         }
-        const location = await getCurrentLocation();
-        const customerData = await  apiClient.post(
-            `/api/customers/${location?.id}`,
+        const product = await getCurrentLocation();
+        const data = await  apiClient.post(
+            `/api/products/${product?.id}`,
             query
         );
-        return parseStringify(customerData);
+        return parseStringify(data);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  createCustomer= async (
-    customer: z.infer<typeof CustomerSchema>
+export const  createVariant= async (
+    productId:UUID,
+    variant: z.infer<typeof VariantSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const customerValidData= CustomerSchema.safeParse(customer)
+    const validData= VariantSchema.safeParse(variant)
 
-    if (!customerValidData.success){
+    if (!validData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(customerValidData.error.message)
+            error:new Error(validData.error.message)
       }
       return parseStringify(formResponse)
     }
 
-    const location = await getCurrentLocation();
-
+    
     const payload = {
-        ...customerValidData.data,
-        location: location?.id
+        ...validData.data,
+        product: productId
     }
+    console.log("payload:", payload);
+
     try {
         const apiClient = new ApiClient();
-      
-
         await apiClient.post(
-            `/api/customers/${location?.id}/create`,
+            `/api/variants/${productId}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error creating customer",error)
+        console.error("Error creating variant",error)
         formResponse = {
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/customers");
-    redirect("/customers")
+    
 }
 
-export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
+export const getVariant= async (id:UUID) : Promise<ApiResponse<Variant>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -134,56 +129,52 @@ export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
         page: 0,
         size: 1,
     }
-    const location = await getCurrentLocation();
-    const customerResponse = await apiClient.post(
-        `/api/customers/${location?.id}`,
+    const product = await getCurrentLocation();
+    const response = await apiClient.post(
+        `/api/variants/${product?.id}`,
         query,
     );
-    
-    return parseStringify(customerResponse)
+
+    return parseStringify(response)
 }
 
 
-
-export const updateCustomer = async (
+export const updateVariant = async (
     id: UUID,
-    customer: z.infer<typeof CustomerSchema>
+    productId: UUID,
+    variant: z.infer<typeof VariantSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const customerValidData = CustomerSchema.safeParse(customer);
+    const validData = VariantSchema.safeParse(variant);
 
-    if (!customerValidData.success) {
+    if (!validData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(customerValidData.error.message),
+            error: new Error(validData.error.message),
         };
         return parseStringify(formResponse);
     }
 
-    const location = await getCurrentLocation();
     const payload = {
-        ...customerValidData.data,
-        location: location?.id,
+        ...validData.data,
+        product: productId
     };
-
-    
+    console.log("The payload to update product", payload);
 
     try {
-        console.log("Executing in try block to update customer");
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/customers/${location?.id}/${id}`, 
+            `/api/variants/${productId}/${id}`,
             payload
         );
 
     } catch (error) {
-        console.error("Error updating customer", error); 
+        console.error("Error updating product", error);
         formResponse = {
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
@@ -191,24 +182,20 @@ export const updateCustomer = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/customers");
-    redirect("/customers");
+ 
 };
 
-export const deleteCustomer = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Customer ID is required to perform this request");
+export const deleteVariant = async (id: UUID, productId: UUID): Promise<void> => {
+    if (!id) throw new Error("Product ID is required to perform this request");
 
     await getAuthenticatedUser();
 
    try{
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
-   
     await apiClient.delete(
-        `/api/customers/${location?.id}/${id}`,
+        `/api/products/${productId}/${id}`,
     );
-    revalidatePath("/customers");
     
    }
    catch (error){

@@ -1,11 +1,11 @@
 
 import { UUID } from "crypto";
 
-export declare interface SMS {
+export declare interface Email {
     id: UUID;
     subject: string;
     message: string;
-    senderId: string;
+    from: string;
     template: string;
     receipt: string;
     location: string;
