@@ -291,9 +291,8 @@ export const resetPassword = async (
     try {
         const apiClient = new ApiClient();
         const result = await apiClient.post("/api/auth/reset-password", validateEmail.data);
-
         if(result && typeof result === 'string') {
-            await sendPasswordResetEmail(result);
+            await sendPasswordResetEmail(result, validateEmail.data.email);
         }
         return parseStringify({
             responseType: "success",

@@ -3,12 +3,12 @@ import {Resend} from "resend";
 import VerifyEmailTemplate from "@/components/emails/verify-email";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
-export async function sendPasswordResetEmail(token: string) {
-    console.log("Sending emai for password reset email", token);
+export async function sendPasswordResetEmail(token: string, email: string) {
+    console.log("Sending email for password reset email", token);
     try {
         const {data,error} = await resend.emails.send({
-            from: "Tech <onboarding@resend.dev>",
-            to: "tech@settlo.co.tz",
+            from:"Tech <support@settlo.co.tz>",
+            to: email,
             subject: "Reset Password Link",
             react: ResetPasswordEmailTemplate({token}),
         })
