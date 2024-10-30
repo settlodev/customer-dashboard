@@ -30,14 +30,14 @@ function LocationPage() {
     }, [businessId]);
 
     if (loading) {
-        return <p>Loading...</p>;
+        return <p>Loading...</p>
     }
 
     /*return (
         locationData.length > 0 ? <CreatedBusinessLocationList locations={locationData}/> : <LocationAuthForm />
     );*/
 
-    return <RegisterForm step="step3" />
+    return <RegisterForm step="step4" />
 }
 
 export default LocationPage;

@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import React, {useCallback, useEffect, useState, useTransition} from "react";
-import { RegisterSchema } from "@/types/data-schemas";
+import {EmailVerificationSchema, RegisterSchema} from "@/types/data-schemas";
 import {FieldErrors, useForm} from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,7 +34,7 @@ import {
 import {BusinessTimeType, FormResponse} from "@/types/types";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
-import { register } from "@/lib/actions/auth-actions";
+import {register, resendVerificationEmail} from "@/lib/actions/auth-actions";
 import {
     CheckIcon,
     EyeIcon,
@@ -73,11 +73,16 @@ const signUpSteps=[
     {
         id: "step2",
         label: "02",
-        title: "Business Info",
+        title: "Verification",
     },
     {
         id: "step3",
         label: "03",
+        title: "Business Info",
+    },
+    {
+        id: "step4",
+        label: "04",
         title: "Location Info",
     }
 ]
@@ -92,11 +97,12 @@ function RegisterForm({step}:{step: string}) {
     const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [currentBusiness, setCurrentBusiness] = useState<Business | undefined>(undefined);
+    const [emailVerified] = useState<boolean>(false);
+    const [emailSent, setEmailSent] = useState<boolean>(false);
 
     useEffect(() => {
         async function getBusiness(){
             const myBusiness = await getCurrentBusiness();
-            console.log("myBusiness:", myBusiness);
             setCurrentBusiness(myBusiness);
         }
 
@@ -112,6 +118,11 @@ function RegisterForm({step}:{step: string}) {
     const form = useForm<z.infer<typeof RegisterSchema>>({
         resolver: zodResolver(RegisterSchema),
         defaultValues: {country: defaultCountry},
+    });
+
+    const emailVerificationForm = useForm<z.infer<typeof EmailVerificationSchema>>({
+        resolver: zodResolver(EmailVerificationSchema),
+        defaultValues: {email: session.data?.user?.email, name: session.data?.user?.name},
     });
 
     const businessForm = useForm<z.infer<typeof BusinessSchema>>({
@@ -169,6 +180,11 @@ function RegisterForm({step}:{step: string}) {
                 //console.log("Done steps: ", doneSteps)
                 setStepsDone(doneSteps)
             }
+            if(step === "step4"){
+                const doneSteps = [...stepsDone, signUpSteps[0], signUpSteps[1], signUpSteps[2]];
+                //console.log("Done steps: ", doneSteps)
+                setStepsDone(doneSteps)
+            }
         }
 
     }, []);
@@ -182,7 +198,6 @@ function RegisterForm({step}:{step: string}) {
         startTransition(() => {
             register(values)
                 .then((data: FormResponse) => {
-                    console.log("data is:", data);
                     if (!data) {
                         setError("An unexpected error occurred. Please try again.");
                         return;
@@ -192,8 +207,8 @@ function RegisterForm({step}:{step: string}) {
                     } else {
                         //setSuccess(data.message);
                         //window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
-                        setStepsDone([...stepsDone, currentStep]);
-                        setMyCurrentStep();
+                        //setStepsDone([...stepsDone, currentStep]);
+                        //setMyCurrentStep();
                         window.location.reload();
                     }
                 })
@@ -238,8 +253,6 @@ function RegisterForm({step}:{step: string}) {
                     if (data) {
                         if (data.responseType === "success") {
 
-                          
-
                             window.location.href = "/dashboard";
 
                         } else if (data.responseType === "error") {
@@ -249,6 +262,25 @@ function RegisterForm({step}:{step: string}) {
                                 description: data.message,
                             });
                         }
+                    }
+                });
+            });
+        },
+        []
+    );
+
+    const submitEmailVerificationData = useCallback(
+        (values: z.infer<typeof EmailVerificationSchema>) => {
+            startTransition(() => {
+                resendVerificationEmail(values.name, values.email).then((resp)=>{
+                    if(resp.responseType === 'error'){
+                        toast({
+                            variant: "destructive",
+                            title: "Uh oh! Something went wrong.",
+                            description: resp.message
+                        });
+                    }else{
+                        setEmailSent(true);
                     }
                 });
             });
@@ -313,7 +345,6 @@ function RegisterForm({step}:{step: string}) {
                                                             <Input disabled={isPending} placeholder="Enter first name" {...field} />
                                                         </FormControl>
                                                         <FormDescription>
-                                                            {/* Enter user name */}
                                                         </FormDescription>
                                                         <FormMessage/>
                                                     </FormItem>
@@ -331,7 +362,6 @@ function RegisterForm({step}:{step: string}) {
                                                             <Input disabled={isPending} placeholder="Enter last name" {...field} />
                                                         </FormControl>
                                                         <FormDescription>
-                                                            {/* Enter user name */}
                                                         </FormDescription>
                                                         <FormMessage/>
                                                     </FormItem>
@@ -385,7 +415,7 @@ function RegisterForm({step}:{step: string}) {
                                                         {...field} disabled={isPending}
                                                       />
                                                     </FormControl>
-                                                    <FormDescription>{/* Enter user name */}</FormDescription>
+                                                    <FormDescription></FormDescription>
                                                     <FormMessage/>
                                                 </FormItem>
                                             )}
@@ -448,9 +478,9 @@ function RegisterForm({step}:{step: string}) {
                                     <div className="flex-1">
                                         <Button
                                             type="submit"
-                                            disabled={isPending}
+                                            disabled={isPending || emailVerified}
                                             className={`mt-4 pl-10 pr-10`}>
-                                            {isPending ?
+                                            {(isPending) ?
                                                 <Loader2Icon className="w-6 h-6 animate-spin"/>:
                                                 <>Next: Business info <ChevronRight/></>
                                             }
@@ -464,7 +494,71 @@ function RegisterForm({step}:{step: string}) {
                         </Form>
                     </CardContent>
                 </Card>
-                : (currentStep.id === "step2" || step === "step2") ? <>
+                : (currentStep.id === "step2" || step === "step2") ?<>
+                    <FormError message={error}/>
+                    <FormSuccess message={success}/>
+                    <Form {...emailVerificationForm}>
+                        <form onSubmit={emailVerificationForm.handleSubmit(submitEmailVerificationData)}>
+                            <Card className="mt-6 lg:mr-10 pl-6 pr-6 pt-2 pb-5">
+                                <CardHeader>
+                                    <CardTitle className="text-[32px] mb-3">Verify email</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <CardDescription>
+                                        We have sent link with activation instruction to {session.data?.user?.email}
+                                    </CardDescription>
+                                    {emailSent?
+                                        <CardDescription className="text-green-500 py-4 flex">
+                                            <FormSuccess message="Email sent successfully" />
+                                        </CardDescription>
+                                    :<Button type="submit" className="mt-4"  disabled={isPending}>
+                                            {isPending?
+                                                <Loader2Icon className="w-6 h-6 animate-spin"/>:
+                                                "Resend verification email"
+                                            }
+                                        </Button>}
+                                </CardContent>
+                            </Card>
+                            <div className="hidden">
+
+                                <FormField
+                                    control={emailVerificationForm.control}
+                                    name="name"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Name</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    disabled={isPending}
+                                                />
+                                            </FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={emailVerificationForm.control}
+                                    name="email"
+                                    render={({field}) => (
+                                        <FormItem>
+                                            <FormLabel>Email</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    {...field}
+                                                    disabled={isPending}
+                                                />
+                                            </FormControl>
+                                            <FormMessage/>
+                                        </FormItem>
+                                    )}
+                                />
+
+                            </div>
+                        </form>
+                    </Form>
+                    </>
+                : (currentStep.id === "step3" || step === "step3") ? <>
                         <Card className="mt-6 lg:mr-10 md:mr-10  pl-6 pr-6 pt-2 pb-5">
                             <CardHeader>
                                 <CardTitle className="text-[32px] mb-3">Business Information</CardTitle>
@@ -638,7 +732,7 @@ function RegisterForm({step}:{step: string}) {
                             </CardContent>
                         </Card>
                     </>
-                    : (currentStep.id === "step3" || step === "step3") ? <>
+                    : (currentStep.id === "step4" || step === "step4") ? <>
                             <Card className="mt-6 lg:mr-10 md:mr-10 pl-6 pr-6 pt-2 pb-5">
                                 <CardHeader>
                                     <CardTitle>Setup business location</CardTitle>

@@ -1,12 +1,5 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { FieldErrors, useForm } from "react-hook-form";
 import {
@@ -83,14 +76,8 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
         className={`gap-1`}
       >
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Department Details</CardTitle>
-              <CardDescription>
-                Add department to your business location
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+          <>
+            <>
             <FormError message={error}/>
             <FormSuccess message={success}/>
               <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
@@ -112,7 +99,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     </FormItem>
                   )}
                 />
-            
+
                 <FormField
                   control={form.control}
                   name="color"
@@ -132,7 +119,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     </FormItem>
                   )}
                 />
-               
+
                 <FormField
                   control={form.control}
                   name="image"
@@ -184,14 +171,14 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                 )
                 }
               </div>
-            </CardContent>
-          </Card>
+            </>
+          </>
           <div className="flex h-5 items-center space-x-4 mt-4">
             <CancelButton />
             <Separator orientation="vertical" />
             <SubmitButton
               isPending={isPending}
-              label={item ? "Update department details" : "Add department"} 
+              label={item ? "Update department details" : "Add department"}
             />
           </div>
         </div>

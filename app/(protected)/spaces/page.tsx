@@ -69,4 +69,5 @@ export default async function Page({ searchParams }: ParamsProps) {
             )}
         </div>
     );
+
 }

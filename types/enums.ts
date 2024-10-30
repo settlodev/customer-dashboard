@@ -34,4 +34,3 @@ export enum audienceType{
     CUSTOMER="CUSTOMER",
     STAFF = "STAFF",
 }
-

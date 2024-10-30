@@ -8,14 +8,15 @@ import {
     LoginSchema,
     RegisterSchema,
     ResetPasswordSchema,
-    UpdatePasswordSchema
+    UpdatePasswordSchema,
+    UpdateUserSchema
 } from "@/types/data-schemas";
-import { signIn, signOut } from "@/auth";
-import { ExtendedUser, FormResponse } from "@/types/types";
+import {auth, signIn, signOut} from "@/auth";
+import {ExtendedUser, FormResponse} from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import {deleteAuthCookie} from "@/lib/auth-utils";
+import {createAuthToken, deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
-import { sendPasswordResetEmail } from "./emails/send";
+import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
 
 export async function logout() {
     try {
@@ -51,6 +52,8 @@ export const login = async (
             password: validatedData.data.password,
             redirect: false,
         });
+
+        console.log("result is now:", result)
 
         if (result?.error) {
             return parseStringify({
@@ -91,7 +94,7 @@ export const login = async (
     }
 };
 
-export const getUserById = async (userId: string): Promise<ExtendedUser> => {
+export const getUserById = async (userId: string|undefined): Promise<ExtendedUser> => {
     if (!userId) throw new Error("User data is required");
 
     const apiClient = new ApiClient();
@@ -100,6 +103,8 @@ export const getUserById = async (userId: string): Promise<ExtendedUser> => {
         const userDetails = await apiClient.get<{ emailVerified: boolean }>(
             `/api/users/${userId}`,
         );
+
+        console.log("userDetails:", userDetails);
 
         return parseStringify(userDetails);
     } catch (error) {
@@ -131,14 +136,14 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
         } else {
             return parseStringify({
                 responseType: "error",
-                message: "Token verification failed.",
-                error: new Error(String("Token verification failed.")),
+                message: "Token user-verification failed.",
+                error: new Error(String("Token user-verification failed.")),
             });
         }
     } catch (error) {
         return parseStringify({
             responseType: "error",
-            message: "Token verification failed.",
+            message: "Token user-verification failed.",
             error: error instanceof Error ? error : new Error(String(error)),
         });
     }
@@ -177,7 +182,7 @@ export const generateVerificationToken = async (
 
         return parseStringify({ tokenResponse });
 
-        //send verification email with token
+        //send user-verification email with token
     } catch (error) {
         throw error;
     }
@@ -201,19 +206,63 @@ export const register = async (
 
     try {
         const apiClient = new ApiClient();
-        const regData = await apiClient.post("/api/auth/register", validatedData.data);
+        const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
+
+        console.log("regData is:", regData);
+
         if(regData){
+            if(regData.emailVerified === null) {
+                const emailSent = await sendVerificationEmail(regData.name, regData.emailVerificationToken!, regData.email);
+                console.log("emailSent is:", emailSent);
+            }
+
             await signIn("credentials", {
                 email: credentials.email,
                 password: credentials.password,
                 redirect: false,
-            })
+            });
         }
 
         return parseStringify({
             responseType: "success",
             message: "Registration successful, redirecting to login...",
         });
+    } catch (error) {
+        const mError = JSON.stringify(error);
+        const myNewError = JSON.parse(mError);
+        return parseStringify({
+            responseType: "error",
+            message: myNewError.message,
+            error: error instanceof Error ? error : new Error(String(error)),
+        });
+    }
+}
+export const updateUser = async (
+    credentials: z.infer<typeof UpdateUserSchema>,
+): Promise<FormResponse> => {
+    const validatedData = UpdateUserSchema.safeParse(credentials);
+
+    if (!validatedData.success) {
+        return parseStringify({
+            responseType: "error",
+            message: "Please fill in all the fields marked with * before proceeding",
+            error: new Error(validatedData.error.message),
+        });
+    }
+
+    try {
+        const user = await getUser();
+
+        const apiClient = new ApiClient();
+        await apiClient.put(`/api/users/${user?.id}`, validatedData.data);
+
+        //await createAuthToken(user!);
+
+        return parseStringify({
+            responseType: "success",
+            message: "Profile updated successful",
+        });
+
     } catch (error) {
         console.error("Error is: ", error);
         return parseStringify({
@@ -294,5 +343,40 @@ export const updatePassword = async (
             message: "Password reset failed.",
             error: error instanceof Error ? error : new Error(String(error)),
         })
+    }
+}
+
+export const resendVerificationEmail = async (name: any, email: any): Promise<FormResponse> => {
+    const apiClient = new ApiClient();
+    const response = await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
+    console.log("my response is:", response)
+    if(response) {
+        await sendVerificationEmail(name, response as string, email);
+        return parseStringify({
+            responseType: "success",
+            message: "Email sent",
+            error: "",
+        })
+    }else{
+        return parseStringify({
+            responseType: "error",
+            message: "Error sending email",
+            error: "Error sending email",
+        })
+    }
+}
+
+export const verifyEmailToken = async (token: string): Promise<string> => {
+    const apiClient = new ApiClient();
+    const response = await apiClient.get(`/api/auth/verify-token/${token}`, {});
+    const session = await auth();
+    const myUser = await getUserById(session?.user.id);
+    await createAuthToken(myUser);
+    console.log("myUser2:", myUser);
+
+    if(typeof response === "string"){
+        return response;
+    }else{
+        return "Error"
     }
 }

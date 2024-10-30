@@ -1,9 +1,5 @@
 import {UUID} from "node:crypto";
-import {Gender} from "@/types/enums";
 import {DefaultSession} from "next-auth";
-import { decl } from "postcss";
-import { Business } from "./business/type";
-import { Location } from "./location/type";
 
 export declare interface LoginResponse {
     id: UUID,
@@ -60,10 +56,13 @@ export interface FormResponse {
 export declare interface AuthToken {
     id: string;
     name: string;
+    bio: string;
+    role: string;
+    country: string;
     email: string;
     firstName: string;
     lastName: string;
-    picture: string;
+    avatar: string|null;
     phoneNumber: string;
     authToken: string;
     refreshToken: string;
@@ -76,6 +75,7 @@ export declare interface AuthToken {
     locationComplete: boolean;
     subscriptionComplete: boolean;
     businessId: UUID | null;
+    emailVerificationToken: string|null;
     // businesses: Business[];
     // locations: Location[];
     // activeBusiness: string | null;
@@ -91,7 +91,10 @@ export type ExtendedUser = DefaultSession["user"] & {
     email: string;
     firstName: string;
     lastName: string;
-    picture: string;
+    bio: string;
+    avatar: string|null;
+    country: UUID;
+    role: UUID;
     phoneNumber: string;
     authToken: string;
     refreshToken: string;
@@ -104,6 +107,7 @@ export type ExtendedUser = DefaultSession["user"] & {
     locationComplete: boolean;
     subscriptionComplete: boolean;
     businessId: UUID | null;
+    emailVerificationToken: string | null;
 };
 
 export declare interface RegisterResponse {
@@ -120,3 +124,16 @@ export declare interface uploadCallBackType{
     success: boolean;
     data: string;
 }
+
+export declare interface ServerResponseError{
+    message: ErrorMessageType;
+    error: object;
+}
+
+export declare interface ErrorMessageType{
+    status: number;
+    code: string;
+    message: string;
+    error: string
+}
+

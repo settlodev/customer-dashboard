@@ -50,22 +50,25 @@ export const updateAuthToken = async (token: AuthToken) => {
 
 export const createAuthToken = async (user: ExtendedUser) => {
     const cookieStore = cookies();
-
     const authTokenData: AuthToken = {
         firstName: user.firstName,
         lastName: user.lastName,
         name: user.name,
         email: user.email,
         id: user.id,
+        bio: user.bio,
+        role: user.role,
+        country: user.country,
         authToken: user.authToken,
         refreshToken: user.refreshToken,
         businessComplete: user.businessComplete,
         locationComplete: user.locationComplete,
         subscriptionComplete: user.subscriptionComplete,
-        picture: user.picture,
+        avatar: user.avatar,
         phoneNumber: user.phoneNumber,
         emailVerified: user.emailVerified,
         phoneNumberVerified: user.phoneNumberVerified,
+        emailVerificationToken: user.emailVerificationToken,
         consent: user.consent,
         theme: user.theme,
         subscriptionStatus: user.subscriptionStatus,
@@ -82,7 +85,6 @@ export const createAuthToken = async (user: ExtendedUser) => {
 };
 
 export const createActiveBusiness = async (user: ExtendedUser) => {
-    console.log("Creating active business", user);
     const cookieStore = cookies();
 
     const businessActive: activeBusiness = {

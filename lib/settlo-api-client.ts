@@ -1,10 +1,11 @@
 "use server";
 
-import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
+import axios, {AxiosInstance, AxiosRequestConfig} from "axios";
 import https from 'https';
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
 import {getAuthToken} from "@/lib/auth-utils";
 import { parseStringify } from "./utils";
+import {ErrorMessageType} from "@/types/types";
 
 class ApiClient {
     private instance: AxiosInstance;
@@ -44,8 +45,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            console.error(error);
-            throw handleSettloApiError(error);
+            throw handleSettloApiError(error as ErrorMessageType);
         }
     }
 
@@ -60,7 +60,7 @@ class ApiClient {
             return response.data;
         } catch (error) {
             console.error(parseStringify(error));
-            throw handleSettloApiError(error);
+            throw handleSettloApiError(error as ErrorMessageType);
         }
     }
 
@@ -74,7 +74,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            throw handleSettloApiError(error);
+            throw handleSettloApiError(error as ErrorMessageType);
         }
     }
 
@@ -84,7 +84,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            throw handleSettloApiError(error);
+            throw handleSettloApiError(error as ErrorMessageType);
         }
     }
 }

@@ -40,7 +40,7 @@ export default {
                                 console.log(responseData.message);
                             }
                             else if (responseData.code === "VALIDATION_FAILED") {
-                                responseData.fieldErrors?.forEach((fieldError: any) => {
+                                responseData.fieldErrors?.forEach(() => {
                                     console.log(responseData.message)
                                 });
                             }

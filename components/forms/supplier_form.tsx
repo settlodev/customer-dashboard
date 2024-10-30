@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+
 import { Input } from "@/components/ui/input";
 import { FieldErrors, useForm } from "react-hook-form";
 import {
@@ -83,104 +77,97 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className={`gap-1`}
       >
-        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>Supplier Details</CardTitle>
-              <CardDescription>
-                Enter personal details of the supplier
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FormError message={error} />
-              <FormSuccess message={success} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter supplier full name "
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="johndoe@example.com" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="phoneNumber"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col items-start">
-                      <FormLabel>Supplier Phone Number</FormLabel>
-                      <FormControl className="w-full border-1 rounded-sm">
-                        <PhoneInput
-                          placeholder="Enter supplier phone number"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {item && (
-                  <div className="grid gap-2">
+        <div>
+            <>
+                <FormError message={error} />
+                <FormSuccess message={success} />
+                <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
                     <FormField
-                      control={form.control}
-                      name="status"
+                        control={form.control}
+                        name="name"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Full Name</FormLabel>
+                                <FormControl>
+                                    <Input
+                                        placeholder="Enter supplier full name "
+                                        {...field}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <FormLabel>
+                    <FormField
+                        control={form.control}
+                        name="email"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email Address</FormLabel>
+                                <FormControl>
+                                    <Input placeholder="johndoe@example.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
 
-                            Supplier Status
-                            <span className={item.status ? "text-green-500" : "text-red-500"}>
+                    <FormField
+                        control={form.control}
+                        name="phoneNumber"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-col items-start">
+                                <FormLabel>Supplier Phone Number</FormLabel>
+                                <FormControl className="w-full border-1 rounded-sm">
+                                    <PhoneInput
+                                        placeholder="Enter supplier phone number"
+                                        {...field}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    {item && (
+                        <div className="grid gap-2">
+                            <FormField
+                                control={form.control}
+                                name="status"
+
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <FormLabel>
+
+                                            Supplier Status
+                                            <span className={item.status ? "text-green-500" : "text-red-500"}>
                               ({item.status ? "Active" : "Inactive"})
                             </span>
 
-                          </FormLabel>
-                          <FormControl>
-                            <Switch
+                                        </FormLabel>
+                                        <FormControl>
+                                            <Switch
 
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={isPending}
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={isPending}
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
                             />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )
-                }
+                        </div>
+                    )
+                    }
 
-              </div>
-            </CardContent>
-          </Card>
-          <div className="flex h-5 items-center space-x-4 mt-4">
+                </div>
+            </>
+
+          <div className="flex h-5 items-center space-x-4 mt-10">
             <CancelButton />
             <Separator orientation="vertical" />
             {

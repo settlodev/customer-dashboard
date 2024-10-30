@@ -12,6 +12,17 @@ export const LoginSchema = object({
     ),
 });
 
+
+export const PhoneVerificationSchema = object({
+    phoneNumber: string().optional(),
+    code: string().optional()
+});
+
+export const EmailVerificationSchema = object({
+    email: string().optional(),
+    name: string().optional()
+});
+
 export const RegisterSchema = object({
     firstName: string({ required_error: "First name is required" }).min(3,"Please enter a valid name",),
     lastName: string({ required_error: "Last name is required" }).min(3,"Please enter a valid name",),
@@ -27,6 +38,16 @@ export const RegisterSchema = object({
         "Please enter a valid password",
     ),
     country:string({required_error:"Country is required"}).uuid("Please select a valid country"),
+});
+
+export const UpdateUserSchema = object({
+    firstName: string({ required_error: "First name is required" }).min(3,"Please enter a valid name",),
+    lastName: string({ required_error: "Last name is required" }).min(3,"Please enter a valid name",),
+    bio: string().optional(),
+    email: string().optional(),
+    phoneNumber: string().optional(),
+    avatar: string().optional(),
+    country: string().optional(),
 });
 
 export const ResetPasswordSchema = object({
