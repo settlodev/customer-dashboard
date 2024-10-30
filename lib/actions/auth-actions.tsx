@@ -104,6 +104,8 @@ export const getUserById = async (userId: string|undefined): Promise<ExtendedUse
             `/api/users/${userId}`,
         );
 
+        console.log("userDetails:", userDetails);
+
         return parseStringify(userDetails);
     } catch (error) {
         // Ignore redirect error
@@ -250,13 +252,17 @@ export const updateUser = async (
 
     try {
         const user = await getUser();
+
         const apiClient = new ApiClient();
         await apiClient.put(`/api/users/${user?.id}`, validatedData.data);
+
+        //await createAuthToken(user!);
 
         return parseStringify({
             responseType: "success",
             message: "Profile updated successful",
         });
+
     } catch (error) {
         console.error("Error is: ", error);
         return parseStringify({

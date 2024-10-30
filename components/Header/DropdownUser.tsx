@@ -10,6 +10,7 @@ import {useRouter} from "next/navigation";
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const session = useSession();
+  console.log("session:", session);
     const router = useRouter();
 
     const handleLogout = useCallback(async () => {
@@ -29,11 +30,11 @@ const DropdownUser = () => {
           <span className="block text-xs"></span>
         </span>
 
-        <span className="h-12 w-12 rounded-full">
+        <span className="h-12 w-12 rounded-full overflow-hidden">
           <Image
             width={112}
             height={112}
-            src={"/images/logo.png"}
+            src={session.data?.user?.avatar?session.data?.user?.avatar: "/images/logo.png"}
             style={{
               width: "auto",
               height: "auto",

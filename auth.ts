@@ -53,19 +53,23 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
                 session.user.email = token.email;
             }
             if (session.user) {
-                session.user.name = token.name as string;
-                session.user.email = token.email as string;
-                session.user.firstName = token.firstName as string;
-                session.user.lastName = token.lastName as string;
-                session.user.picture = token.picture ? token.picture : "";
-                session.user.phoneNumber = token.phoneNumber as string;
-                session.user.businessId = token.businessId as UUID;
-                session.user.businessComplete = token.businessComplete as boolean;
-                session.user.emailVerified = token.emailVerified as Date;
-                session.user.phoneNumberVerified = token.emailVerified as Date;
-                session.user.emailVerificationToken = token.emailVerificationToken as string;
-                session.user.consent = (token.consent as boolean) ?? null;
-                session.user.theme = (token.theme as string) ?? "light";
+                const existingUser = await getUserById(session.user.id);
+                session.user.name = existingUser.name as string;
+                session.user.email = existingUser.email as string;
+                session.user.firstName = existingUser.firstName as string;
+                session.user.bio = existingUser.bio as string;
+                session.user.role = existingUser.role as UUID;
+                session.user.country = existingUser.country as UUID;
+                session.user.lastName = existingUser.lastName as string;
+                session.user.avatar = existingUser.avatar ? existingUser.avatar : null;
+                session.user.phoneNumber = existingUser.phoneNumber as string;
+                session.user.businessId = existingUser.businessId as UUID;
+                session.user.businessComplete = existingUser.businessComplete as boolean;
+                session.user.emailVerified = existingUser.emailVerified as Date;
+                session.user.phoneNumberVerified = existingUser.emailVerified as Date;
+                session.user.emailVerificationToken = existingUser.emailVerificationToken as string;
+                session.user.consent = (existingUser.consent as boolean) ?? null;
+                session.user.theme = (existingUser.theme as string) ?? "light";
             }
 
             return session;
@@ -76,12 +80,17 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
             const existingUser = await getUserById(token.sub);
 
+            console.log("existingUser:", existingUser);
+
             if (!existingUser) return token;
+            token.bio = existingUser.bio;
+            token.role = existingUser.role;
+            token.country = existingUser.country;
             token.name = existingUser.name;
             token.email = existingUser.email;
             token.firstName = existingUser.firstName;
             token.lastName = existingUser.lastName;
-            token.picture = existingUser.picture;
+            token.avatar = existingUser.avatar;
             token.phoneNumber = existingUser.phoneNumber;
             token.theme = existingUser.theme;
             token.consent = existingUser.consent;

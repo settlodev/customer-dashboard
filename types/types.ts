@@ -56,10 +56,13 @@ export interface FormResponse {
 export declare interface AuthToken {
     id: string;
     name: string;
+    bio: string;
+    role: string;
+    country: string;
     email: string;
     firstName: string;
     lastName: string;
-    picture: string;
+    avatar: string|null;
     phoneNumber: string;
     authToken: string;
     refreshToken: string;
@@ -89,7 +92,7 @@ export type ExtendedUser = DefaultSession["user"] & {
     firstName: string;
     lastName: string;
     bio: string;
-    picture: string;
+    avatar: string|null;
     country: UUID;
     role: UUID;
     phoneNumber: string;

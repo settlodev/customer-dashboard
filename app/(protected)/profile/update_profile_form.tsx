@@ -1,6 +1,6 @@
 "use client"
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import React, {useCallback, useEffect, useState, useTransition} from "react";
+import React, {useCallback, useState, useTransition} from "react";
 const breadcrumbItems = [{ title: "Profile", link: "/profile" }];
 import Image from "next/image";
 import {Loader2Icon, PhoneCallIcon, UploadIcon, UserIcon, VerifiedIcon} from "lucide-react";
@@ -12,8 +12,8 @@ import {FieldErrors, useForm} from "react-hook-form";
 import {z} from "zod";
 import {UpdateUserSchema} from "@/types/data-schemas";
 import {zodResolver} from "@hookform/resolvers/zod";
-import {getUserById, updateUser} from "@/lib/actions/auth-actions";
-import {ExtendedUser, FormResponse} from "@/types/types";
+import {updateUser} from "@/lib/actions/auth-actions";
+import {FormResponse} from "@/types/types";
 import {FormError} from "@/components/widgets/form-error";
 import {FormSuccess} from "@/components/widgets/form-success";
 import {Form, FormField, FormItem} from "@/components/ui/form";
@@ -26,27 +26,16 @@ export default function UpdateProfileForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
-    const [user, setUser] = useState<ExtendedUser | null>(null);
-
-    useEffect(() => {
-        async function getMyUser() {
-            const mUser = await getUserById(session.data?.user?.id);
-            console.log("mUser:", mUser);
-            setUser(mUser);
-        }
-        getMyUser();
-    }, []);
 
     const form = useForm<z.infer<typeof UpdateUserSchema>>({
         resolver: zodResolver(UpdateUserSchema),
         defaultValues:{
-            firstName: user?.firstName,
-            lastName: user?.lastName,
-            email: user?.email,
-            phoneNumber: user?.phoneNumber,
-            role: user?.role,
-            country: user?.country,
-            bio: user?.bio,
+            firstName: session.data?.user?.firstName,
+            lastName: session.data?.user?.lastName,
+            email: session.data?.user?.email,
+            phoneNumber: session.data?.user?.phoneNumber,
+            country: session.data?.user?.country,
+            bio: session.data?.user?.bio,
         }
     });
     const {toast} = useToast();
@@ -67,13 +56,9 @@ export default function UpdateProfileForm() {
 
     const submitData = async (values: z.infer<typeof UpdateUserSchema>) => {
         if (imageUrl) {
-            values.image = imageUrl;
+            values.avatar = imageUrl;
         }
 
-        values.role = user?.role;
-        values.country = user?.country;
-
-        console.log("values:", values);
         startTransition(() => {
             updateUser(values)
                 .then((data: FormResponse) => {
@@ -85,7 +70,7 @@ export default function UpdateProfileForm() {
                     if (data.responseType === "error") {
                         setError(data.message);
                     } else {
-
+                        window.location.reload();
                     }
                 })
                 .catch((error) => {
@@ -95,8 +80,7 @@ export default function UpdateProfileForm() {
         });
     }
 
-    return (!user?<></>:
-        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+    return (<div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
             <div className="flex items-center justify-between mb-2">
                 <div className="relative flex-1 md:max-w-md">
                     <BreadcrumbsNav items={breadcrumbItems}/>
@@ -297,7 +281,7 @@ export default function UpdateProfileForm() {
                                             <div
                                                 className="h-14 w-14 rounded-full overflow-hidden border-2 border-emerald-300">
                                                 <Image
-                                                    src={imageUrl ? imageUrl : (user && user.image ? user.image : "/images/logo.png")}
+                                                    src={imageUrl ? imageUrl : (session.data?.user?.image ? session.data?.user?.image : "/images/logo.png")}
                                                     width={200}
                                                     height={200}
                                                     alt="User"
