@@ -194,7 +194,7 @@ export const deleteVariant = async (id: UUID, productId: UUID): Promise<void> =>
     const apiClient = new ApiClient();
 
     await apiClient.delete(
-        `/api/products/${productId}/${id}`,
+        `/api/variants/${productId}/${id}`,
     );
     
    }

@@ -91,7 +91,7 @@ export const columns: ColumnDef<Product>[] = [
         cell: ({ row }) => {
             const variants = row.original.variants; 
             const quantity = variants.length > 0 ? variants[0].quantity : 0; 
-            return quantity === 0 ? <span className="px-2 py-1 rounded-full bg-red-500 text-sm text-white">Out of Stock</span> : <span className="px-2 py-1 rounded-full bg-green-500 text-sm text-white">In Stock</span>; // Show "Out of Stock" if quantity is 0
+            return quantity === 0 ? <span className="px-2 py-1 rounded-full bg-red-500 text-sm text-white">OutOfStock</span> : <span className="px-2 py-1 rounded-full bg-green-500 text-sm text-white">InStock</span>; // Show "Out of Stock" if quantity is 0
         },
         enableHiding: true,
     },

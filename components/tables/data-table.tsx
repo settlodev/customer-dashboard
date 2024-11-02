@@ -51,6 +51,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DoubleArrowLeftIcon, DoubleArrowRightIcon } from "@radix-ui/react-icons";
+import { DialogDemo } from "../csv/CSVImport";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -191,6 +192,7 @@ export function DataTable<TData, TValue>({
             }
           />
         </div>
+     
 
         <div className="flex items-center space-x-2">
           <DataTableViewOptions table={table} />
@@ -217,6 +219,8 @@ export function DataTable<TData, TValue>({
               <DropdownMenuCheckboxItem>Disabled</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+         {pathname === "/products" ?  <DialogDemo /> : null}
 
           <Button
             className="h-8 gap-1"
@@ -365,3 +369,5 @@ export function DataTable<TData, TValue>({
     </motion.div>
   );
 }
+
+
