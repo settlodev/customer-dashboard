@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useState, useTransition } from "react";
+import React, {useEffect, useRef, useState, useTransition} from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -20,17 +20,20 @@ import {
 import { createRole, updateRole } from "@/lib/actions/role-actions";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
-import {FormResponse} from "@/types/types";
+import {FormResponse, PrivilegeItem} from "@/types/types";
 import {RoleSchema} from "@/types/roles/schema";
 import {FormError} from "@/components/widgets/form-error";
 import {Role} from "@/types/roles/type";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
+import {fetchAllSections} from "@/lib/actions/privileges-actions";
+import {verifyEmailToken} from "@/lib/actions/auth-actions";
 
 const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
-    const [isActive, setIsActive] = React.useState(item ? item.status : true);
+    const [isActive, setIsActive] = useState(item ? item.status : true);
+    const [privs, setPrivileges] = useState<PrivilegeItem[]|null>(null);
 
     const form = useForm<z.infer<typeof RoleSchema>>({
         resolver: zodResolver(RoleSchema),
@@ -52,6 +55,21 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
             }
         });
     };
+
+    const initialized = useRef(false);
+
+    useEffect(()=>{
+        async function getData(){
+            if (!initialized.current) {
+                initialized.current = true
+                const data = await fetchAllSections();
+                console.log("data is:", data);
+                setPrivileges(data);
+            }
+        }
+
+        getData();
+    },[]);
 
     return (
         <Form {...form}>

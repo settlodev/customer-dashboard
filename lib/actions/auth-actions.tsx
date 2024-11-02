@@ -104,8 +104,6 @@ export const getUserById = async (userId: string|undefined): Promise<ExtendedUse
             `/api/users/${userId}`,
         );
 
-        console.log("userDetails:", userDetails);
-
         return parseStringify(userDetails);
     } catch (error) {
         // Ignore redirect error
