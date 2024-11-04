@@ -72,3 +72,7 @@ export const businessTimes=
     ];
 
 export const DefaultCountry = "0f2ca331-2412-4c72-9458-87eb49bed8e4";
+export const ItemStatuses = [
+    {"name": "Active", "value": true},
+    {"name": "In-Active", "value": false}
+];

@@ -18,6 +18,7 @@ export const COMPLETE_ACCOUNT_REGISTRATION_URL = "/business-registration";
 // export const COMPLETE_BUSINESS_LOCATION_SETUP_URL = "/subscription";
 
 export const COMPLETE_BUSINESS_LOCATION_SETUP_URL = "/business-location";
+export const SELECT_BUSINESS_URL = "/select-business";
 export const LOCATION_SUBSCRIPTION_URL = "/subscription";
 
 

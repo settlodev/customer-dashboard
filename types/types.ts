@@ -146,3 +146,8 @@ export declare interface PrivilegeItem{
     isArchived: boolean;
 }
 
+export declare interface StatusItem{
+    name: string;
+    value: boolean;
+}
+
