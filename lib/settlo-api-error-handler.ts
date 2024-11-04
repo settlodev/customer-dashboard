@@ -21,10 +21,20 @@ export const handleSettloApiError = (error: unknown) => {
                         error:
                             "Sorry, we could not find a valid resource with your request, please try again.",
                     };
-                case 409:
+                case 601:
                     return {
                         error:
-                            "Phone number or email already registered",
+                            "Email already registered",
+                    };
+                case 602:
+                    return {
+                        error:
+                            "Phone number already registered",
+                    };
+                case 603:
+                    return {
+                        error:
+                            "Login failed, wrong credentials",
                     };
                 default:
                     return {

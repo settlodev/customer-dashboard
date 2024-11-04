@@ -27,7 +27,6 @@ import {Role} from "@/types/roles/type";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import {fetchAllSections} from "@/lib/actions/privileges-actions";
-import {verifyEmailToken} from "@/lib/actions/auth-actions";
 
 const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
@@ -64,10 +63,10 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                 initialized.current = true
                 const data = await fetchAllSections();
                 console.log("data is:", data);
+                console.log("privs is:", privs);
                 setPrivileges(data);
             }
         }
-
         getData();
     },[]);
 

@@ -1,26 +1,14 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
-import { FieldErrors, useForm } from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import React, {useCallback, useEffect, useState, useTransition} from "react";
+import {FieldErrors, useForm} from "react-hook-form";
 import * as z from "zod";
 
-import { Separator } from "@/components/ui/separator";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
-import {
-    Form,
-    FormControl, FormDescription,
-    FormField,
-    FormItem, FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
-import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
+import {Separator} from "@/components/ui/separator";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle,} from "@/components/ui/card";
+import {Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage,} from "@/components/ui/form";
+import {createStaff, updateStaff} from "@/lib/actions/staff-actions";
 import {Staff, StaffSchema} from "@/types/staff";
 import {FormResponse} from "@/types/types";
 import {Input} from "@/components/ui/input";
@@ -29,18 +17,19 @@ import {Textarea} from "@/components/ui/textarea";
 import CancelButton from "@/components/widgets/cancel-button";
 import {SubmitButton} from "@/components/widgets/submit-button";
 import GenderSelector from "@/components/widgets/gender-selector";
-import { useToast } from "@/hooks/use-toast"
-import { Department } from "@/types/department/type";
-import { fectchAllDepartments } from "@/lib/actions/department-actions";
-import { Select, SelectContent, SelectItem, SelectTrigger,SelectValue } from "../ui/select";
-import { fectchSalaries } from "@/lib/actions/salary-actions";
-import { Salary } from "@/types/salary/type";
-import { fetchAllRoles } from "@/lib/actions/role-actions";
-import { Role } from "@/types/roles/type";
-import { PhoneInput } from "../ui/phone-input";
-import { Switch } from "../ui/switch";
-import { fetchCountries } from "@/lib/actions/countries-actions";
-import { Country } from "@/types/country/type";
+import {useToast} from "@/hooks/use-toast"
+import {Department} from "@/types/department/type";
+import {fectchAllDepartments} from "@/lib/actions/department-actions";
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "../ui/select";
+import {fectchSalaries} from "@/lib/actions/salary-actions";
+import {Salary} from "@/types/salary/type";
+import {fetchAllRoles} from "@/lib/actions/role-actions";
+import {Role} from "@/types/roles/type";
+import {PhoneInput} from "../ui/phone-input";
+import {Switch} from "../ui/switch";
+import {fetchCountries} from "@/lib/actions/countries-actions";
+import {Country} from "@/types/country/type";
+import {DefaultCountry} from "@/types/constants";
 
 const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const { toast } = useToast();
@@ -103,12 +92,11 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     }, []);
 
 
-    const defaultCountry = "55b3323c-17fa-4da4-8780-17b9fe830d01";
     const form = useForm<z.infer<typeof StaffSchema>>({
         resolver: zodResolver(StaffSchema),
         defaultValues: {
             ...item,
-            nationality: item?.nationality || defaultCountry,
+            nationality: item?.nationality || DefaultCountry,
             status: item ? item.status : true,
         },
     });

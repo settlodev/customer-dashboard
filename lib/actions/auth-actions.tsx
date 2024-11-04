@@ -226,11 +226,12 @@ export const register = async (
             message: "Registration successful, redirecting to login...",
         });
     } catch (error) {
+        console.log("Signup error:", error);
         const mError = JSON.stringify(error);
         const myNewError = JSON.parse(mError);
         return parseStringify({
             responseType: "error",
-            message: myNewError.message,
+            message: myNewError.error,
             error: error instanceof Error ? error : new Error(String(error)),
         });
     }

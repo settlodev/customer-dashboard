@@ -56,7 +56,7 @@ import {Textarea} from "@/components/ui/textarea";
 import {LocationSchema} from "@/types/location/schema";
 import {createBusinessLocation} from "@/lib/actions/auth/location";
 import { PhoneInput } from "../ui/phone-input";
-import {businessTimes} from "@/types/constants";
+import {businessTimes, DefaultCountry} from "@/types/constants";
 import {useSession} from "next-auth/react";
 import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 interface signUpStepItemType{
@@ -109,7 +109,7 @@ function RegisterForm({step}:{step: string}) {
         getBusiness();
     }, []);
 
-    const defaultCountry = "55b3323c-17fa-4da4-8780-17b9fe830d01";
+    const defaultCountry = DefaultCountry;
     const session = useSession();
 
     /*TODO: Business form information*/
