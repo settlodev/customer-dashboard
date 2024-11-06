@@ -1,93 +1,51 @@
 import Image from 'next/image';
 
-import { Section } from '@/components/landing-page/Section';
+const brandLogos = [
+  {
+    src: '/images/brand/africanboy.jpeg',
+    alt: 'Sentry',
+  },
+  {
+    src: '/images/brand/bongekuku.jpeg',
+    alt: 'Better Stack',
+  },
+  {
+    src: '/images/brand/borntoshine.png',
+    alt: 'Clerk',
+  },
+  {
+    src: '/images/brand/paaz.png',
+    alt: 'Turso',
+  },
+  {
+    src: '/images/brand/brand-05.svg',
+    alt: 'Turso',
+  },
+]
 
 const Sponsors = () => (
-  <Section
-    title="Trusted by top brands"
-    description="Settlo POS is trusted by top businesses in Tanzania as shown below"
-  >
-    <table className="mx-auto border-collapse">
-      <tbody>
-        <tr className="h-56">
-          <td className="border-2 border-gray-300 p-3">
-            <a
-              href="https://sentry.io/for/nextjs/?utm_source=github&utm_medium=paid-community&utm_campaign=general-fy25q1-nextjs&utm_content=github-banner-nextjsboilerplate-logo"
-              target="_blank"
-            >
-              <Image
-                src="/assets/images/sentry-dark.png"
-                alt="Sentry"
-                width={260}
-                height={224}
-              />
-            </a>
-          </td>
-          <td className="border-2 border-gray-300 p-3">
-            <a
-              href="https://betterstack.com/?utm_source=github&utm_medium=sponsorship&utm_campaign=next-js-boilerplate"
-              target="_blank"
-            >
-              <Image
-                src="/assets/images/better-stack-dark.png"
-                alt="Better Stack"
-                width={260}
-                height={224}
-              />
-            </a>
-          </td>
-          <td className="border-2 border-gray-300 p-3">
-            <a href="https://nextlessjs.com">
-              <Image
-                src="/assets/images/nextlessjs.png"
-                alt="React SaaS Boilerplate Next.js"
-                width={260}
-                height={224}
-              />
-            </a>
-          </td>
-        </tr>
-        <tr className="h-56">
-          <td className="border-2 border-gray-300 p-3">
-            <a
-              href="https://clerk.com?utm_source=github&utm_medium=sponsorship&utm_campaign=nextjs-boilerplate"
-              target="_blank"
-            >
-              <Image
-                src="/assets/images/clerk.png"
-                alt="Clerk – Authentication & User Management for Next.js"
-                width={260}
-                height={224}
-              />
-            </a>
-          </td>
-          <td className="border-2 border-gray-300 p-3">
-            <a
-              href="https://turso.tech/?utm_source=nextjsstarterbp"
-              target="_blank"
-            >
-              <Image
-                src="/assets/images/turso.png"
-                alt="SQLite Developer Experience"
-                width={260}
-                height={224}
-              />
-            </a>
-          </td>
-          <td className="border-2 border-gray-300 p-3">
-            <a href="https://l.crowdin.com/next-js" target="_blank">
-              <Image
-                src="https://support.crowdin.com/assets/logos/core-logo/svg/crowdin-core-logo-cDark.svg"
-                alt="Crowdin"
-                width={260}
-                height={224}
-              />
-            </a>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </Section>
+  <section className='py-12 px-4 flex flex-col items-center justify-center bg-gradient-to-bl from-[#FFFFFF] via-[#FFFFFF] to-[#87d5c7] w-full'>
+  
+    <div className='flex flex-col items-center justify-center '>
+      <div className='flex flex-col items-center justify-center gap-1 mb-3 lg:w-[44%]'>
+        <h2 className='text-[30px] font-medium text-gray-900 text-center lg:font-bold lg:text-3xl'>Trusted by top brands</h2>
+        <p className='hidden text-[18px] font-normal text-center text-gray-900 mt-3 lg:block lg:text-[22px]'>Join thousands of businesses thriving with  Settlo: the smart POS solution that simplifies your operations and boosts growth</p>
+      </div>
+    <div className='flex items-center justify-center gap-2  p-3 h-full md:grid md:grid-cols-4 '>
+      {brandLogos.map((logo) => (
+        <Image
+        className='rounded-md h-15 w-15'
+          key={logo.src}
+          src={logo.src}
+          alt={logo.alt}
+          width={60}
+          height={60}
+          loading='lazy'
+        />
+      ))}
+    </div>
+    </div>
+  </section>
 );
 
 export { Sponsors };

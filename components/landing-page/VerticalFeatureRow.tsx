@@ -1,34 +1,28 @@
-import className from 'classnames';
-import Image from 'next/image';
+
 type IVerticalFeatureRowProps = {
   title: string;
   description: string;
-  image: string;
+  image?: string;
   imageAlt: string;
   reverse?: boolean;
+  icon?: React.ReactNode;
 };
 
 const VerticalFeatureRow = (props: IVerticalFeatureRowProps) => {
-  const verticalFeatureClass = className(
-    'mt-20',
-    'flex',
-    'flex-wrap',
-    'items-center',
-    {
-      'flex-row-reverse': props.reverse,
-    },
-  );
 
   return (
-    <div className={verticalFeatureClass}>
-      <div className="w-full text-center sm:w-1/2 sm:px-6">
-        <h3 className="text-2xl font-bold text-gray-900">{props.title}</h3>
-        <div className="mt-3 text-medium">{props.description}</div>
-      </div>
-      <div className="w-full p-6 sm:w-1/2">
-        <Image src={`${props.image}`} width={200} height={200} alt={props.imageAlt} />
-      </div>
+<div className="flex flex-col items-center justify-center lg:grid lg:grid-cols-2 space-y-10">
+    <div>
+    <div className="flex flex-col items-start justify-center w-full bg-[#FEF8F3] h-[250px] lg:w-[380px] lg:h-50 border-b-4 border-r-4 border-gray-900 rounded-md pl-5 pr-5 pt-3 pb-3 shadow-xl">
+    <div className="flex flex-row gap-2 items-center justify-center">
+    <p>{props.icon}</p>
+    <h3 className="text-[20px] text-start font-medium text-gray-900 lg:font-bold">{props.title}</h3>
     </div>
+    <p className="mt-3 text-normal text-start text-[14px] text-gray-900 lg:text-start lg:text-[16px]">{props.description}</p>
+    </div>
+    </div>
+  
+</div>
   );
 };
 
