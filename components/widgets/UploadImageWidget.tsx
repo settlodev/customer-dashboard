@@ -47,7 +47,7 @@ function UploadImageWidget({setImage, displayImage, displayStyle, imagePath, lab
             : <>
                 {displayStyle === 'default' ?
                     !uploading && (<>
-                        <span><ImageIcon /></span>
+                        <span><ImageIcon size={36} /></span>
                         {showLabel && <span className="text-xs font-bold">{label}</span>}
                     </>)
                     : <></>
@@ -67,7 +67,6 @@ function UploadImageWidget({setImage, displayImage, displayStyle, imagePath, lab
             }}
             accept="image/*"
         />
-
     </label>)
 }
 

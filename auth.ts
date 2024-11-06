@@ -67,7 +67,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
                 session.user.businessComplete = token.businessComplete as boolean;
                 session.user.emailVerified = token.emailVerified as Date;
                 session.user.phoneNumberVerified = token.emailVerified as Date;
-                session.user.emailVerificationToken = token.emailVerificationToken as string;
+                //session.user.emailVerificationToken = token.emailVerificationToken as string;
                 session.user.consent = (token.consent as boolean) ?? null;
                 session.user.theme = (token.theme as string) ?? "light";
             }
@@ -96,7 +96,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
             token.phoneNumberVerified = existingUser.phoneNumberVerified;
             token.emailVerified = existingUser.emailVerified;
             token.businessComplete = existingUser.businessComplete;
-            token.emailVerificationToken = existingUser.emailVerificationToken;
+            //token.emailVerificationToken = existingUser.emailVerificationToken;
             return token;
         },
     },

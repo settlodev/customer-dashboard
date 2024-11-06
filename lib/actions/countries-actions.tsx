@@ -6,7 +6,7 @@ import {cookies} from "next/headers";
 
 export const fetchCountries = async () => {
     const countryList = cookies().get("countries")?.value;
-    console.log("countryList", countryList);
+    //console.log("countryList", countryList);
     if(countryList){
         return countryList;
     }else {

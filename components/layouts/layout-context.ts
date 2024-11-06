@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext } from "react";
 
+/*
 interface SidebarContext {
   collapsed: boolean;
   setCollapsed: () => void;
@@ -13,5 +14,21 @@ export const SidebarContext = createContext<SidebarContext>({
 });
 
 export const useSidebarContext = () => {
-  return useContext(SidebarContext);
+  //return useContext(SidebarContext);
+  return SidebarContext;
+};
+*/
+
+interface SidebarContext {
+  collapsed: boolean;
+  setCollapsed: () => void;
+}
+
+export const SidebarContext = ({
+  collapsed: false,
+  setCollapsed: () => {},
+})
+
+export const useSidebarContext = () => {
+  return SidebarContext;
 };

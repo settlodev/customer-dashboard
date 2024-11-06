@@ -10,7 +10,7 @@ import {
   COMPLETE_ACCOUNT_REGISTRATION_URL,
   COMPLETE_BUSINESS_LOCATION_SETUP_URL,
   UPDATE_PASSWORD_URL,
-  VERIFICATION_REDIRECT_URL, VERIFICATION_PAGE
+  VERIFICATION_REDIRECT_URL, VERIFICATION_PAGE, SELECT_BUSINESS_URL
 } from "@/routes";
 import { AuthToken } from "@/types/types";
 
@@ -49,6 +49,7 @@ export default auth((req) => {
       }
       return;
     }else {
+
       if (isAuthRoute) {
         if (authToken?.businessComplete !== true) {
           return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
@@ -59,14 +60,17 @@ export default auth((req) => {
       if (authToken?.businessComplete === true) {
         // Check if the business has set up allocation
         if (!authToken?.locationComplete && nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
-          return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl)); // Redirect to set location
+          return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl));
+        }else{
+          /*if(nextUrl.pathname !== SELECT_BUSINESS_URL) {
+            return Response.redirect(new URL(SELECT_BUSINESS_URL, nextUrl));
+          }*/
         }
       } else {
         if (!authToken?.businessComplete && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
           return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
         }
       }
-
     }
   } else {
     // If not logged in, allow access to auth routes and public routes

@@ -59,6 +59,7 @@ import { PhoneInput } from "../ui/phone-input";
 import {businessTimes, DefaultCountry} from "@/types/constants";
 import {useSession} from "next-auth/react";
 import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 interface signUpStepItemType{
     id: string;
     label: string;
@@ -99,6 +100,8 @@ function RegisterForm({step}:{step: string}) {
     const [currentBusiness, setCurrentBusiness] = useState<Business | undefined>(undefined);
     const [emailVerified] = useState<boolean>(false);
     const [emailSent, setEmailSent] = useState<boolean>(false);
+    const [imageUrl, setImageUrl] = useState<string>("");
+    const [locationImageUrl, setLocationImageUrl] = useState<string>("");
 
     useEffect(() => {
         async function getBusiness(){
@@ -222,12 +225,13 @@ function RegisterForm({step}:{step: string}) {
     const submitBusinessData = (values: z.infer<typeof BusinessSchema>) => {
         //setResponse(undefined);
 
+        if(imageUrl){
+            values.image = imageUrl;
+        }
         startTransition(() => {
             createBusiness(values)
                 .then(async (data) => {
-
                     if (data && "id" in data) {
-
                         setStepsDone([...stepsDone, currentStep]);
                         setMyCurrentStep();
                         window.location.reload();
@@ -248,13 +252,14 @@ function RegisterForm({step}:{step: string}) {
 
     const submitLocationData = useCallback(
         (values: z.infer<typeof LocationSchema>) => {
+            if(locationImageUrl){
+                values.image = locationImageUrl;
+            }
             startTransition(() => {
                 createBusinessLocation(values).then((data) => {
                     if (data) {
                         if (data.responseType === "success") {
-
                             window.location.href = "/dashboard";
-
                         } else if (data.responseType === "error") {
                             toast({
                                 variant: "destructive",
@@ -512,11 +517,12 @@ function RegisterForm({step}:{step: string}) {
                                             <FormSuccess message="Email sent successfully" />
                                         </CardDescription>
                                     :<Button type="submit" className="mt-4"  disabled={isPending}>
-                                            {isPending?
-                                                <Loader2Icon className="w-6 h-6 animate-spin"/>:
-                                                "Resend verification email"
-                                            }
-                                        </Button>}
+                                        {isPending?
+                                            <Loader2Icon className="w-6 h-6 animate-spin"/>:
+                                            "Resend verification email"
+                                        }
+                                    </Button>}
+
                                 </CardContent>
                             </Card>
                             <div className="hidden">
@@ -574,39 +580,9 @@ function RegisterForm({step}:{step: string}) {
                                     >
 
                                         <div className="mt-4 flex">
-                                            <label
-                                                className="cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col">
-                                                <span><ImageIcon/></span>
-                                                <span className="text-xs font-bold">Logo</span>
 
-                                                <input
-                                                    className="hidden"
-                                                    type="file"
-                                                    name="file"
-                                                    accept="image/*"
-                                                    onChange={async (e) => {
-                                                        if (e.target.files) {
-                                                            const formData = new FormData();
-                                                            Object.values(e.target.files).forEach((file) => {
-                                                                formData.append("file", file);
-                                                            });
+                                            <UploadImageWidget imagePath={'business'} displayStyle={'default'} displayImage={true} setImage={setImageUrl} />
 
-                                                            const response = await fetch("/api/upload", {
-                                                                method: "POST",
-                                                                body: formData,
-                                                            });
-
-                                                            const result = await response.json();
-                                                            if (result.success) {
-                                                                alert("Upload ok : " + result.name);
-                                                            } else {
-                                                                alert("Upload failed");
-                                                            }
-                                                        }
-                                                    }}
-                                                />
-
-                                            </label>
                                             <div className="flex-1">
                                                 <FormField
                                                     control={businessForm.control}
@@ -660,7 +636,7 @@ function RegisterForm({step}:{step: string}) {
                                                         <FormLabel>Country</FormLabel>
                                                         <FormControl>
                                                             <Select
-                                                                disabled={isPending || countries.length === 0}
+                                                                disabled={isPending}
                                                                 onValueChange={field.onChange}
                                                                 value={field.value}>
                                                                 <SelectTrigger>
@@ -751,38 +727,7 @@ function RegisterForm({step}:{step: string}) {
                                                 <span className="flex-end"><ChevronDownIcon/></span>
                                             </div>
                                             <div className="mt-4 flex">
-                                                <label
-                                                    className="cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col">
-                                                    <span><ImageIcon/></span>
-                                                    <span className="text-xs font-bold">Logo</span>
-
-                                                    <input
-                                                        className="hidden"
-                                                        type="file"
-                                                        name="file"
-                                                        accept="image/*"
-                                                        onChange={async (e) => {
-                                                            if (e.target.files) {
-                                                                const formData = new FormData();
-                                                                Object.values(e.target.files).forEach((file) => {
-                                                                    formData.append("file", file);
-                                                                });
-
-                                                                const response = await fetch("/api/upload", {
-                                                                    method: "POST",
-                                                                    body: formData,
-                                                                });
-
-                                                                const result = await response.json();
-                                                                if (result.success) {
-                                                                    alert("Upload ok : " + result.name);
-                                                                } else {
-                                                                    alert("Upload failed");
-                                                                }
-                                                            }
-                                                        }}
-                                                    />
-                                                </label>
+                                                <UploadImageWidget imagePath={'business'} displayStyle={'default'} displayImage={true} setImage={setLocationImageUrl} />
                                                 <div className="flex-1">
                                                     <FormField
                                                         control={locationForm.control}

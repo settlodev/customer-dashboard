@@ -1,23 +1,23 @@
 import React from "react";
-// import {NavbarTwoColumns} from "@/components/landing-page/NavbarTwoColumns";
-// import {Logo} from "@/components/landing-page/Logo";
-// import Link from "next/link";
-// import {ChevronRightIcon} from "@nextui-org/shared-icons";
-// import {UserIcon, ShieldQuestion} from "lucide-react";
-// import {Section} from "@/components/landing-page/Section";
-// import {deleteAuthCookie} from "@/lib/auth-utils";
-// import {useSession} from "next-auth/react";
+import {Logo} from "@/components/landing-page/Logo";
+import Link from "next/link";
+import {ChevronRightIcon} from "@nextui-org/shared-icons";
+import {UserIcon, ShieldQuestion} from "lucide-react";
+import {Section} from "@/components/landing-page/Section";
+import {deleteAuthCookie} from "@/lib/auth-utils";
+import {useSession} from "next-auth/react";
+import NavbarTwoColumns from "@/components/landing-page/NavbarTwoColumns";
 
 export function SignupNavbar () {
-    // const {data: session} = useSession();
-    // const doLogout=async () => {
-    //     await deleteAuthCookie();
-    //     window.location.reload();
-    // }
+    const {data: session} = useSession();
+    const doLogout=async () => {
+        await deleteAuthCookie();
+        window.location.reload();
+    }
 
     return (<div className="w-full border-b-1 bg-gray-50">
-            {/* <Section yPadding="py-2 lg:py-4 md:py-4">
-                <NavbarTwoColumns logo={<Logo xl/>}>
+             <Section yPadding="py-2 lg:py-4 md:py-4">
+                <NavbarTwoColumns key={1} session={session}>
                     {session?.user?
                         <>
                             <li className='text-medium font-bold border-1 rounded-full pl-4 pr-4 pt-2 pb-2 text-emerald-500 flex gap-1 items-center border-emerald-500'>
@@ -43,7 +43,7 @@ export function SignupNavbar () {
                             </div>
                         </li>}
                 </NavbarTwoColumns>
-            </Section> */}
+            </Section>
 
         </div>
     )

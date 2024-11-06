@@ -71,4 +71,8 @@ export const businessTimes=
         {"name": "05:00", "label": "05:00 AM"}
     ];
 
-export const DefaultCountry = "0f2ca331-2412-4c72-9458-87eb49bed8e4";
+export const DefaultCountry = "3a40d10a-075d-493f-ab56-82cd291a05ec";
+export const ItemStatuses = [
+    {"name": "Active", "value": true},
+    {"name": "In-Active", "value": false}
+];

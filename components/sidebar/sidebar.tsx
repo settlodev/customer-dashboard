@@ -3,7 +3,6 @@
 import React, {useState} from "react";
 import {Sidebar} from "./sidebar.styles";
 import {CompaniesDropdown} from "./companies-dropdown";
-import {useSidebarContext} from "../layouts/layout-context";
 import {BusinessPropsType} from "@/types/business/business-props-type";
 import {menuItems} from "@/types/menu_items";
 import Link from "next/link";
@@ -19,7 +18,7 @@ import {
 } from "lucide-react";
 
 export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
-  const {collapsed, setCollapsed} = useSidebarContext();
+  //const {collapsed, setCollapsed} = useSidebarContext();
   const [visibleIndex, setVisibleIndex] = useState<number>(0);
   const myMenuItems = menuItems();
 
@@ -48,13 +47,11 @@ export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
   if(business) {
     return (
         <aside className="h-screen z-[20] sticky top-0 transition-transform -translate-x-full sm:translate-x-0">
-          {collapsed ? (
+          {/*{collapsed ? (
               <div className={Sidebar.Overlay()} onClick={setCollapsed}/>
-          ) : null}
+          ) : null}*/}
           <div
-              className={`${Sidebar({
-                collapsed: collapsed,
-              })} bg-gray-800 dark:bg-gray-800`}>
+              className={`${Sidebar()} bg-gray-800 dark:bg-gray-800`}>
 
             <div className={`${Sidebar.Header()} border-b-1 border-b-gray-700 pb-4 ml-0 mr-0 pl-0 pr-0`}>
               <CompaniesDropdown data={data}/>
