@@ -137,3 +137,12 @@ export declare interface ErrorMessageType{
     error: string
 }
 
+export declare interface PrivilegeItem{
+    id: UUID;
+    name: string;
+    code: string;
+    status: boolean;
+    canDelete: boolean;
+    isArchived: boolean;
+}
+

@@ -80,8 +80,6 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
 
             const existingUser = await getUserById(token.sub);
 
-            console.log("existingUser:", existingUser);
-
             if (!existingUser) return token;
             token.bio = existingUser.bio;
             token.role = existingUser.role;
