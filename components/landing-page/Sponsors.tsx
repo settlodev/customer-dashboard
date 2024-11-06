@@ -18,7 +18,7 @@ const brandLogos = [
     alt: 'Turso',
   },
   {
-    src: '/images/brand/brand-05.svg',
+    src: '/images/brand/markjuice.jpeg',
     alt: 'Turso',
   },
 ]
@@ -27,14 +27,15 @@ const Sponsors = () => (
   <section className='py-12 px-4 flex flex-col items-center justify-center bg-gradient-to-bl from-[#FFFFFF] via-[#FFFFFF] to-[#87d5c7] w-full'>
   
     <div className='flex flex-col items-center justify-center '>
-      <div className='flex flex-col items-center justify-center gap-1 mb-3 lg:w-[44%]'>
+      <div className='flex flex-col items-center justify-center gap-1 mb-3 lg:w-[54%]'>
         <h2 className='text-[30px] font-medium text-gray-900 text-center lg:font-bold lg:text-3xl'>Trusted by top brands</h2>
         <p className='hidden text-[18px] font-normal text-center text-gray-900 mt-3 lg:block lg:text-[22px]'>Join thousands of businesses thriving with  Settlo: the smart POS solution that simplifies your operations and boosts growth</p>
       </div>
-    <div className='flex items-center justify-center gap-2  p-3 h-full md:grid md:grid-cols-4 '>
+    </div>
+   <div className='flex flex-wrap items-center justify-center gap-3 p-3 h-full lg:flex-nowrap'>
       {brandLogos.map((logo) => (
         <Image
-        className='rounded-md h-15 w-15'
+        className='rounded-md h-15 w-15 lg:h-20 lg:w-20'
           key={logo.src}
           src={logo.src}
           alt={logo.alt}
@@ -44,7 +45,7 @@ const Sponsors = () => (
         />
       ))}
     </div>
-    </div>
+   
   </section>
 );
 
