@@ -209,10 +209,7 @@ export const register = async (
         console.log("regData is:", regData);
 
         if(regData){
-            if(regData.emailVerified === null) {
-                const emailSent = await sendVerificationEmail(regData.name, regData.emailVerificationToken!, regData.email);
-                console.log("emailSent is:", emailSent);
-            }
+            await sendVerificationEmail(regData.name, regData.emailVerificationToken!, regData.email);
 
             await signIn("credentials", {
                 email: credentials.email,
@@ -236,6 +233,7 @@ export const register = async (
         });
     }
 }
+
 export const updateUser = async (
     credentials: z.infer<typeof UpdateUserSchema>,
 ): Promise<FormResponse> => {

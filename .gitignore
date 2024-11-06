@@ -37,3 +37,5 @@ next-env.d.ts
 #./middleware.ts
 .env
 *.lock
+.idea/php.xml
+.idea/.name

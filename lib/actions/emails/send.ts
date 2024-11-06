@@ -7,9 +7,9 @@ export async function sendPasswordResetEmail(token: string, email: string) {
     console.log("Sending email for password reset email", token);
     try {
         const {data,error} = await resend.emails.send({
-            from:"Tech <support@settlo.co.tz>",
+            from:"Settlo Technologies <no-reply@settlo.co.tz>",
             to: email,
-            subject: "Reset Password Link",
+            subject: "Settlo Technologies Password Reset",
             react: ResetPasswordEmailTemplate({token}),
         })
         if(error) {
@@ -27,19 +27,17 @@ export async function sendPasswordResetEmail(token: string, email: string) {
 export async function sendVerificationEmail(name:string, token: string|null|undefined, email: string) {
     try {
         const {data,error} = await resend.emails.send({
-            from: "Tech <support@settlo.co.tz>",
+            from: "Settlo Technologies <onboarding@settlo.co.tz>",
             to: email,
-            subject: "Complete Settlo Registration",
+            subject: "Settlo Technologies Email verification",
             react: VerifyEmailTemplate({token, name}),
         })
         if(error) {
-            console.log("Error sending email", error);
             return Response.json({error}, {status: 500});
         }
 
         return Response.json({data}, {status: 200});
     } catch (error) {
-        console.log("Error sending email", error);
         return Response.json({error}, {status: 500});
 
     }
