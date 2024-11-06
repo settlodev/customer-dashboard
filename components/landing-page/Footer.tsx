@@ -1,37 +1,222 @@
 import Link from 'next/link';
+import Image from 'next/image';
+import { Instagram, Linkedin, Mail, MapPin, PhoneIcon, Twitter, Youtube } from 'lucide-react';
 
-import { Background } from './Background';
-import { CenteredFooter } from './CenteredFooter';
-import { Section } from './Section';
-import { Logo } from './Logo';
+const socialMedia = [
+  {
+    name: 'Instagram',
+    href: 'https://twitter.com/settlo',
+    icon: <Instagram />
+  },
+  {
+    name: 'Twitter',
+    href: 'https://github.com/settlo',
+    icon: <Twitter />
+  },
+  {
+    name: 'LinkedIn',
+    href: 'https://instagram.com/settlo',
+    icon: <Linkedin />
+  },
 
-const Footer = () => (
-  <Background color="bg-gray-50">
-    <Section yPadding="py-16">
-      <CenteredFooter
-        logo={<Logo />}
-        iconList={
-          <>
+  {
+    name: 'Youtube',
+    href: 'https://instagram.com/settlo',
+    icon: <Youtube />
+  },
 
-          </>
-        }>
-        <li className="pl-3 pr-3 text-sm font-medium">
-          <Link href="/">Home</Link>
-        </li>
-        <li className="pl-3 pr-3 text-sm font-medium">
-          <Link href="/">Support</Link>
-        </li>
-        <li className="pl-3 pr-3 text-sm font-medium">
-          <Link href="/">Contact</Link>
-        </li>
-        <li className="pl-3 pr-3 text-sm font-medium">
-          <Link href="/">
-            Feedback
-          </Link>
-        </li>
-      </CenteredFooter>
-    </Section>
-  </Background>
-);
+];
+
+const businessType = [
+  {
+    name: 'Retails',
+    href: '/'
+  },
+  {
+    name: 'Restaurants',
+    href: '/'
+  },
+  {
+    name: 'Hotels',
+    href: '/'
+  },
+  {
+    name: 'Bars & Breweries',
+    href: '/'
+  },
+];
+
+const quickLinks = [
+  {
+    name: 'About Us',
+    href: '/'
+  },
+  {
+    name: 'Culture',
+    href: '/'
+  },
+  {
+    name: 'Join Our Team',
+    href: '/'
+  },
+
+];
+
+const LegalLinks = [
+  {
+    name: 'Privacy Policy',
+    href: '/'
+  },
+  {
+    name: 'Terms of Service',
+    href: '/'
+  },
+  {
+    name: 'FAQ',
+    href: '/'
+  },
+];
+
+const ContactLinks = [
+  {
+
+    to: 'support@settlo.co.tz',
+    icon: <Mail height={18} width={18} size={20} />
+  },
+  {
+
+    to: '(+255) 0759 229 777',
+    icon: <PhoneIcon height={18} width={18} size={20} />
+  },
+  {
+
+    to: '8th Floor Noble Centre Building, Bagamoyo Road, Dar es Salaam, Tanzania',
+    icon: <MapPin height={18} width={18} size={20} />
+  },
+];
+
+
+const Footer = () => {
+  return (
+    <section className='w-full'>
+      <div className='flex flex-col gap-8 bg-[#161C28] text-white px-4 py-8 l'>
+        
+        <div className='flex flex-col lg:flex-row lg:justify-between lg:items-center lg:gap-10'>
+        <div className='flex flex-col gap-4'>
+          <div className='flex flex-row items-center justify-start gap-2'>
+            <Link href="/">
+              <Image src="/images/logo.png" alt="logo" width={25} height={25} />
+            </Link>
+            <span className='text-xl font-bold text-white'>SettloPro</span>
+          </div>
+
+          <div className="flex flex-col mb-4 w-full">
+            {/* <h5 className="font-bold">Contact Us</h5> */}
+
+            {
+              ContactLinks.map((item, key) => (
+                <Link key={key} href={item.to}>
+                  <div className='flex flex-row items-center justify-start gap-2'>
+                    <span className='text-[14px] font-normal text-white cursor-pointer'>{item.icon}</span>
+                    <span className='text-[14px] font-normal text-white cursor-pointer'>{item.to}</span>
+                  </div>
+                </Link>
+              ))
+            }
+          </div>
+        </div>
+        <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
+          
+          <div className='flex flex-col gap-2'>
+          <h3 className='font-bold'>Business Type</h3>
+            {
+              businessType.map((item, key) => (
+                <Link key={key} href={item.href}>
+                  <div className='flex flex-row items-center justify-start gap-2'>
+                    <span className='text-[14px] font-normal text-white cursor-pointer hover:text-emerald-500'>{item.name}</span>
+                  </div>
+                </Link>
+              ))
+            }
+          </div>
+
+          <div className='flex flex-col gap-2'>
+            <h3 className='font-bold'>Company</h3>
+            {
+              quickLinks.map((item, key) => (
+                <Link key={key} href={item.href}>
+                  <div className='flex flex-row items-center justify-start gap-2'>
+                    <span className='text-[14px] font-normal text-white cursor-pointer hover:text-emerald-500'>{item.name}</span>
+                  </div>
+                </Link>
+              ))
+            }
+          </div>
+          <div className='flex flex-col gap-2'>
+            <h3 className='font-bold'>Legal</h3>
+            {
+              LegalLinks.map((item, key) => (
+                <Link key={key} href={item.href}>
+                  <div className='flex flex-row items-center justify-start gap-2'>
+                    <span className='text-[14px] font-normal text-white cursor-pointer'>{item.name}</span>
+                  </div>
+                </Link>
+              ))}
+          </div>
+        
+
+        </div>
+        </div>
+
+        <div className='flex flex-row items-center justify-center gap-10'>
+          {
+            socialMedia.map((item, key) => (
+              <Link key={key} href={item.href}>
+                <div className='flex flex-row items-center justify-start gap-2'>
+                  <span className='text-xl font-bold text-white cursor-pointer'>{item.icon}</span>
+                  {/* <span className='text-xl font-bold text-black'>{item.name}</span> */}
+                </div>
+              </Link>
+            ))
+          }
+
+        </div>
+
+        <p className='text-[12px] font-normal text-white text-center mb-3'>
+          &copy; 2024 Settlo Technologies Ltd. All rights reserved.
+        </p>
+
+      </div>
+    </section>
+  )
+}
+// <Background color="bg-gray-50">
+//   <Section yPadding="py-16">
+//     <CenteredFooter
+//       logo={<Logo />}
+//       iconList={
+//         <>
+
+//         </>
+//       }>
+//       <li className="pl-3 pr-3 text-sm font-medium">
+//         <Link href="/">Home</Link>
+//       </li>
+//       <li className="pl-3 pr-3 text-sm font-medium">
+//         <Link href="/">Support</Link>
+//       </li>
+//       <li className="pl-3 pr-3 text-sm font-medium">
+//         <Link href="/">Contact</Link>
+//       </li>
+//       <li className="pl-3 pr-3 text-sm font-medium">
+//         <Link href="/">
+//           Feedback
+//         </Link>
+//       </li>
+//     </CenteredFooter>
+//   </Section>
+// </Background>
+
+// );÷
 
 export { Footer };

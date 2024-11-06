@@ -9,17 +9,17 @@ type ISectionProps = {
 
 const Section = (props: ISectionProps) => (
   <div
-    className={`mx-auto container lg:pl-28 lg:pr-28 ${
-      props.yPadding ? props.yPadding : 'py-16'
+    className={`flex flex-col  ${
+      props.yPadding ? props.yPadding : 'py-12'
     }`}
   >
     {(props.title || props.description) && (
-      <div className="mb-12 text-center">
+      <div className="mb-12 text-center items-center justify-center">
         {props.title && (
-          <h2 className="text-4xl font-bold text-gray-900">{props.title}</h2>
+          <h2 className="text-[20px] font-bold text-gray-900 lg:text-[36px] lg:font-bold">{props.title}</h2>
         )}
         {props.description && (
-          <div className="mt-4 text-xl md:px-20">{props.description}</div>
+          <div className="mt-3 text-[16px] text-center pl-2 text-gray-900 font-normal lg:text-xl md:px-20">{props.description}</div>
         )}
       </div>
     )}

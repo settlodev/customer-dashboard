@@ -4,6 +4,7 @@ import className from 'classnames';
 type IButtonProps = {
   xl?: boolean;
   children: string;
+  className?: string;
 };
 
 const Button = (props: IButtonProps) => {

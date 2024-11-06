@@ -1,70 +1,63 @@
 import Link from 'next/link';
+import Image from 'next/image';
 
-import { Background } from './Background';
-import { Button } from './Button';
-import { HeroOneButton } from './HeroOneButton';
-import { Section } from './Section';
-import { NavbarTwoColumns } from './NavbarTwoColumns';
-import { Logo } from './Logo';
-import {ChevronRightIcon} from "@nextui-org/shared-icons";
-import {UserIcon} from "lucide-react";
-import {deleteAuthCookie} from "@/lib/auth-utils";
-import {Session} from "next-auth";
-
-const Hero = ({session}: {session: Session | null}) => {
-    const doLogout=async () => {
-        await deleteAuthCookie();
-        window.location.reload();
+const buttons = [
+    {
+        label: 'Start Free Trial!',
+        href: '/register',
+    },
+    {
+        label: 'Talk to Sales',
+        href: '/contact',
     }
-    return (<Background color="bg-gray-100">
-            <Section yPadding="py-6">
-                <NavbarTwoColumns logo={<Logo xl/>}>
-                    {!session?.user?
-                        <>
-                            <li className='text-medium font-bold mr-3'>
-                                <Link href="/login">Sign in</Link>
-                            </li>
-                            <li className='text-medium font-bold border-1 rounded-full pl-4 pr-4 pt-2 pb-2 flex gap-1 items-center bg-emerald-500 text-lime-50'>
-                                <Link href="/register">Sign up</Link>
-                                <ChevronRightIcon fontSize={20}/>
-                            </li>
-                        </>: <>
-                            <li className='text-medium font-bold border-1 rounded-full pl-4 pr-4 pt-2 pb-2 flex gap-1 items-center bg-emerald-500 text-lime-50'>
-                                <UserIcon fontSize={20}/>
-                                <Link href="/dashboard">Dashboard</Link>
-                            </li>
-
-                            <li className='text-medium font-bold ml-3 flex items-center justify-center'>
-                                <Link onClick={()=>doLogout()} href={'#'}>Logout</Link>
-                                <ChevronRightIcon fontSize={20}/>
-                            </li>
-                        </>
-                    }
-                </NavbarTwoColumns>
-            </Section>
-
-            <Section yPadding="pt-20 pb-32">
-                <HeroOneButton
-                    title={
-                        <>
-                            {'Start.Manage.Grow\n'}
-                            <span className="text-emerald-400 font-bold">Your business with Settlo</span>
-                        </>
-                    }
-                    description="The easiest way to manage and track your business"
-                    button={
-                        <Link className='rounded-full' href="/register">
-                            <div className="flex items-center w-full justify-center">
-                                <div
-                                    className="rounded-full border-1 border-emerald-700 bg-emerald-500 pl-10 pr-10 pt-3 pb-3 text-emerald-50 font-bold">
-                                    <Button xl>Get Started Today</Button>
-                                </div>
-                            </div>
+]
+const Hero = () => {
+    // const doLogout = async () => {
+    //     await deleteAuthCookie();
+    //     window.location.reload();
+    // }
+    return (
+        <section className="py-12 px-4 flex flex-col items-center justify-center bg-gradient-to-tr from-[#F5F5F5] via-[#FFFFFF] to-[#87d5c7] text-transparent w-full">
+        <div className="container  w-full lg:max-w-[1280px]  lg:mt-14 lg:h-[380px]">
+        <header className="flex flex-col items-center justify-center gap-4 lg:flex-row">
+            <div className='flex flex-col items-center justify-center lg:items-start  gap-6'> 
+                <h1 className="text-[30px] text-start w-full tracking-[-5%] font-bold text-gray-900 lg:text-4xl lg:text-start ">
+                    {'Transform your business with Settlo,'}
+                    <br />
+                    <span className="text-emerald-400 font-bold mt-4">the ultimate POS solution.</span>
+                </h1>
+                <p className="text-[18px] text-start tracking-[-5%] font-normal text-gray-900 lg:text-2xl lg:text-start lg:font-medium">
+                    Streamline operations, boot sales, and gain insights effortlessly
+                    <span>with Settlo&apos;s intuitive POS system.</span>   
+                </p>
+               
+                <div className='flex flex-row gap-4 items-center justify-center '>
+                {
+                    buttons.map((item, index) => (
+                        <Link key={index} className="flex flex-row gap-4" href={item.href}>
+                            
+                        <button className={buttons.length -1 === index ? "bg-white text-black border-1 rounded-full pl-5 pr-5 pt-3 pb-3 border-emerald-700 hover:bg-emerald-500 hover:text-white text-[14px] font-medium lg:text-[16px]" :"border-1 rounded-full pl-5 pr-5 pt-3 pb-3 bg-emerald-500 text-white text-[14px] font-medium lg:text-[16px]"  }>{item.label}</button>
+                            
                         </Link>
-                    }
+                    ))
+                }
+                </div>
+            </div>
+
+            <div className='mt-4 justify-center items-center lg:mr-6'>
+                <Image
+                    className="rounded-lg mb-4 object-cover w-full"
+                    src="/images/user/hero3.jpg"
+                    alt="Hero Image"
+                    loading='lazy'
+                    width={600}
+                    height={100}
                 />
-            </Section>
-        </Background>
+            </div>
+        </header>
+    </div>
+        </section>
+    
     );
 }
 
