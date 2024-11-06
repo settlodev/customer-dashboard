@@ -75,7 +75,7 @@ export declare interface AuthToken {
     locationComplete: boolean;
     subscriptionComplete: boolean;
     businessId: UUID | null;
-    emailVerificationToken: string|null;
+    //emailVerificationToken: string|null;
     // businesses: Business[];
     // locations: Location[];
     // activeBusiness: string | null;
@@ -107,7 +107,6 @@ export type ExtendedUser = DefaultSession["user"] & {
     locationComplete: boolean;
     subscriptionComplete: boolean;
     businessId: UUID | null;
-    emailVerificationToken: string | null;
 };
 
 export declare interface RegisterResponse {

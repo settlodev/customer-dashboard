@@ -68,7 +68,7 @@ export const createAuthToken = async (user: ExtendedUser) => {
         phoneNumber: user.phoneNumber,
         emailVerified: user.emailVerified,
         phoneNumberVerified: user.phoneNumberVerified,
-        emailVerificationToken: user.emailVerificationToken,
+        //emailVerificationToken: user.emailVerificationToken,
         consent: user.consent,
         theme: user.theme,
         subscriptionStatus: user.subscriptionStatus,

@@ -18,14 +18,6 @@ export const AuthLayoutWrapper = ({ children }: Props) => {
     const hideSidePanel = _.includes(hideFromRoutes, router);
 
     return (<div className={`${!hideSidePanel && ''} bg-gray-100 relative w-full`}>
-            {/*{(hideSidePanel) ?
-                <SignupNavbar />
-            :
-                <div className="">
-                    <SignupNavbar />
-                </div>
-            }*/}
-
             <SignupNavbar />
 
             {!hideSidePanel ?

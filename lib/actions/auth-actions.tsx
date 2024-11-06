@@ -201,22 +201,18 @@ export const register = async (
     }
 
     //Make sure token does not exist
-    await deleteAuthCookie();
+    //await deleteAuthCookie();
 
     try {
         const apiClient = new ApiClient();
 
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
 
-        console.log("regData is:", regData);
-
         if(regData){
-            if(regData.emailVerified === null) {
-                const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
-                console.log("my token response is:", response)
-                if(response) {
-                    await sendVerificationEmail(regData.name, response as string, regData.email);
-                }
+            const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
+            console.log("my token response is:", response)
+            if(response) {
+                await sendVerificationEmail(regData.name, response as string, regData.email);
             }
 
             await signIn("credentials", {
