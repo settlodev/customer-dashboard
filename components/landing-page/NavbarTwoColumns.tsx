@@ -22,7 +22,7 @@ const mobileList = [
   { title: "Book A Demo", href: "/contact" }
 ];
 /* eslint-disable-next-line @typescript-eslint/no-unused-vars */
-export default function Navbar() {
+export default function Navbar({ session }: { session: Session | null }) {
   const [isOpen, setIsOpen] = useState(false);
 
   const toggleMobileMenu = () => {
