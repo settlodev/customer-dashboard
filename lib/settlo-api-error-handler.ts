@@ -13,28 +13,27 @@ export const handleSettloApiError = (error: unknown) => {
                     };
                 case 403:
                     return {
-                        error:
-                            "Error: You do not have sufficient permissions to perform this action.",
+                        error: "Error: You do not have sufficient permissions to perform this action.",
                     };
                 case 404:
                     return {
-                        error:
-                            "Sorry, we could not find a valid resource with your request, please try again.",
+                        error: "Sorry, we could not find a valid resource with your request, please try again.",
                     };
                 case 601:
                     return {
-                        error:
-                            "Email already registered",
+                        error: "Email already registered",
                     };
                 case 602:
                     return {
-                        error:
-                            "Phone number already registered",
+                        error: "Phone number already registered",
                     };
                 case 603:
                     return {
-                        error:
-                            "Login failed, wrong credentials",
+                        error: "Login failed, wrong credentials",
+                    };
+                case 500:
+                    return {
+                        error: "There is error with the system, please try again later",
                     };
                 default:
                     return {
@@ -44,14 +43,12 @@ export const handleSettloApiError = (error: unknown) => {
             }
         } else {
             return {
-                error:
-                    "Something went wrong while processing your request, please try again.",
+                error: "Something went wrong while processing your request, please try again.",
             };
         }
     } else {
         return {
-            error:
-                "Something went wrong while processing your request, please try again.",
+            error: "Something went wrong while processing your request, please try again.",
         };
     }
 };

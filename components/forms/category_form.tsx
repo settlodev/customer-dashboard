@@ -4,9 +4,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, {useEffect, useState, useTransition} from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-import { Switch } from "@nextui-org/switch";
-import { cn } from "@nextui-org/react";
-
 import { Separator } from "../ui/separator";
 
 import {
@@ -25,16 +22,18 @@ import {CategorySchema} from "@/types/category/schema";
 import {FormError} from "@/components/widgets/form-error";
 import {Input} from "@/components/ui/input";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 import ProductCategorySelector from "@/components/widgets/product-category-selector";
 import ItemStatusSelector from "@/components/widgets/item-status-selector";
+import {ItemStatuses} from "@/types/constants";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
+    console.log("item is:", item);
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
-    const [isActive, setIsActive] = React.useState(item ? item.status : true);
-    const [imageUrl, setImageUrl] = useState<string>('');
+    //const [isActive, setIsActive] = React.useState(item ? item.status : true);
+    const [imageUrl, setImageUrl] = useState<string>(item && item.image?item.image: "");
     const [categories, setCategories] = useState<Category[] | null>([]);
+    const [status, setStatus] = useState<string>(JSON.stringify(item?item.status: ItemStatuses[0].value));
 
     useEffect(() => {
         const getData = async () => {
@@ -44,20 +43,28 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
         getData();
     }, []);
 
+    const selectStatus = (item: string)=>{
+        //const myItem = JSON.parse(item);
+        setStatus(item);
+    }
     const form = useForm<z.infer<typeof CategorySchema>>({
         resolver: zodResolver(CategorySchema),
         defaultValues: {
             ...item,
             image: imageUrl ? imageUrl : (item && item.image?item.image: ""),
             parentId: item?.parentId || "",
-            status: item ? item.status : true,
-        },
+            status: status
+        }
     });
 
     const submitData = (values: z.infer<typeof CategorySchema>) => {
         setResponse(undefined);
 
-        values.image = imageUrl;
+        if(imageUrl) {
+            values.image = imageUrl;
+        }
+
+        values.status = JSON.parse(status);
 
         startTransition(() => {
             if (item) {
@@ -131,6 +138,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                                                 label="Category"
                                                 placeholder="Select category"
                                                 categories={categories}
+                                                value={item && item.parentId?item.parentId: ""}
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -148,13 +156,13 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                                         <FormLabel>Category Status </FormLabel>
                                         <FormControl>
                                             <ItemStatusSelector
-                                                onChange={field.onChange}
+                                                onChange={selectStatus}
                                                 onBlur={field.onBlur}
                                                 isRequired
                                                 isDisabled={isPending}
                                                 label="Status"
+                                                value={JSON.stringify(status)}
                                                 placeholder="Select Status"
-                                                categories={categories}
                                             />
                                         </FormControl>
                                         <FormMessage />

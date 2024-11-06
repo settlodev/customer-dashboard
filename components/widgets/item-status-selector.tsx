@@ -1,5 +1,6 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import {ItemStatuses} from "@/types/constants";
+import {StatusItem} from "@/types/types";
 
 interface ItemStatusSelectorProps {
     label: string;
@@ -25,12 +26,12 @@ function ItemStatusSelector({
             </SelectTrigger>
             <SelectContent>
                 {statuses && statuses.length > 0 ?
-                    statuses.map((item, index) => {
-                        return <SelectItem key={index} value={String(item.value)}>
+                    statuses.map((item: StatusItem, index) => {
+                        return <SelectItem aria-selected={true} key={index} value={JSON.stringify(item.value)}>
                             {item.name}
                         </SelectItem>
                     })
-                    : <></>}
+                : <></>}
             </SelectContent>
         </Select>
     )

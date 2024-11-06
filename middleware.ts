@@ -62,9 +62,9 @@ export default auth((req) => {
         if (!authToken?.locationComplete && nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
           return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl));
         }else{
-          if(nextUrl.pathname !== SELECT_BUSINESS_URL) {
+          /*if(nextUrl.pathname !== SELECT_BUSINESS_URL) {
             return Response.redirect(new URL(SELECT_BUSINESS_URL, nextUrl));
-          }
+          }*/
         }
       } else {
         if (!authToken?.businessComplete && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {

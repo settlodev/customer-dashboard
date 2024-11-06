@@ -10,10 +10,12 @@ import {ErrorMessageType} from "@/types/types";
 class ApiClient {
     private instance: AxiosInstance;
     private readonly baseURL: string;
+    public isPlain: boolean;
 
     constructor() {
 
         this.baseURL = process.env.SERVICE_URL || "";
+        this.isPlain = false;
 
         // Remove this when we have our own certificate
         this.instance = axios.create({
@@ -30,7 +32,9 @@ class ApiClient {
             const token = await getAuthToken();
             //console.log("API Client token:", token?.authToken);
             if (token?.authToken) {
-                config.headers["Authorization"] = `Bearer ${token.authToken}`;
+                if(!this.isPlain) {
+                    config.headers["Authorization"] = `Bearer ${token?.authToken}`;
+                }
             }
 
             config.headers["Content-Type"] = "application/json";
@@ -42,7 +46,6 @@ class ApiClient {
     public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
         try {
             const response = await this.instance.get<T>(url, config);
-
             return response.data;
         } catch (error) {
             throw handleSettloApiError(error as ErrorMessageType);

@@ -512,11 +512,12 @@ function RegisterForm({step}:{step: string}) {
                                             <FormSuccess message="Email sent successfully" />
                                         </CardDescription>
                                     :<Button type="submit" className="mt-4"  disabled={isPending}>
-                                            {isPending?
-                                                <Loader2Icon className="w-6 h-6 animate-spin"/>:
-                                                "Resend verification email"
-                                            }
-                                        </Button>}
+                                        {isPending?
+                                            <Loader2Icon className="w-6 h-6 animate-spin"/>:
+                                            "Resend verification email"
+                                        }
+                                    </Button>}
+
                                 </CardContent>
                             </Card>
                             <div className="hidden">

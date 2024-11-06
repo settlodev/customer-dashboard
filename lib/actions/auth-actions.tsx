@@ -17,6 +17,7 @@ import { parseStringify } from "@/lib/utils";
 import {createAuthToken, deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
+import {cookies} from "next/headers";
 
 export async function logout() {
     try {
@@ -204,14 +205,18 @@ export const register = async (
 
     try {
         const apiClient = new ApiClient();
+
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
 
         console.log("regData is:", regData);
 
         if(regData){
             if(regData.emailVerified === null) {
-                const emailSent = await sendVerificationEmail(regData.name, regData.emailVerificationToken!, regData.email);
-                console.log("emailSent is:", emailSent);
+                const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
+                console.log("my token response is:", response)
+                if(response) {
+                    await sendVerificationEmail(regData.name, response as string, regData.email);
+                }
             }
 
             await signIn("credentials", {
@@ -346,6 +351,7 @@ export const updatePassword = async (
 
 export const resendVerificationEmail = async (name: any, email: any): Promise<FormResponse> => {
     const apiClient = new ApiClient();
+
     const response = await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
     console.log("my response is:", response)
     if(response) {
@@ -364,17 +370,26 @@ export const resendVerificationEmail = async (name: any, email: any): Promise<Fo
     }
 }
 
-export const verifyEmailToken = async (token: string): Promise<string> => {
+export const verifyEmailToken = async (token: string) => {
     const apiClient = new ApiClient();
-    const response = await apiClient.get(`/api/auth/verify-token/${token}`, {});
-    const session = await auth();
-    const myUser = await getUserById(session?.user.id);
-    await createAuthToken(myUser);
-    console.log("myUser2:", myUser);
-
-    if(typeof response === "string"){
-        return response;
-    }else{
-        return "Error"
+    apiClient.isPlain = true;
+    try {
+        const response = await apiClient.get(`/api/auth/verify-token/${token}`);
+        console.log("Verify response: ", response);
+        const mySession = await auth();
+        if(mySession?.user) {
+            const cookie = cookies().get("authToken")?.value;
+            const session = JSON.parse(cookie as string);
+            const myUser = await getUserById(session.id);
+            myUser.authToken = session.authToken as string;
+            myUser.refreshToken = session.refreshToken as string;
+            await createAuthToken(myUser);
+            return "Successful activated token";
+        }else{
+            return "Continue to login";
+        }
+    }catch (error){
+        console.log("My error", error);
+        return "Error occurred during email verification";
     }
 }
