@@ -67,7 +67,7 @@ const buttonContainer = {
 };
 
 const button = {
-    backgroundColor: "#0569f2",
+    backgroundColor: "#00DBA2",
     borderRadius: "3px",
     fontWeight: "600",
     color: "#fff",
@@ -80,7 +80,7 @@ const button = {
 
 const main = {
     backgroundColor: "#fff",
-    color: "#0569f2",
+    color: "#00DBA2",
     borderRadius: "3px",
 };
 
@@ -92,7 +92,7 @@ const container = {
 };
 
 const h1 = {
-    color: "#0569f2",
+    color: "#00DBA2",
     fontFamily:
         "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
     fontSize: "20px",
