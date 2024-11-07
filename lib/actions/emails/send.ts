@@ -24,7 +24,7 @@ export async function sendPasswordResetEmail(token: string, email: string) {
 
     }
 }
-export async function sendVerificationEmail(name:string, token: string|null|undefined, email: string) {
+export async function sendVerificationEmail(name:string, token: string, email: string) {
     try {
         const {data,error} = await resend.emails.send({
             from: "Settlo Technologies <onboarding@settlo.co.tz>",
