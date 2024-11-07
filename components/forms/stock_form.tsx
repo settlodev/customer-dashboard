@@ -27,15 +27,9 @@ import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import _ from "lodash";
-import { fetchAllCategories } from "@/lib/actions/category-actions";
-import { Category } from "@/types/category/type";
-import { Department } from "@/types/department/type";
-import { fectchAllDepartments } from "@/lib/actions/department-actions";
-import { Brand } from "@/types/brand/type";
 import { ChevronDownIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { fectchAllBrands } from "@/lib/actions/brand-actions";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import { ToastAction } from "../ui/toast";
 import { StockSchema } from "@/types/stock/schema";
@@ -51,28 +45,12 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
     const [success,] = useState<string | undefined>("");
 
     const [variants, setVariants] = useState<StockFormVariant[]>([]);
-    const [categories, setCategories] = useState<Category[] | null>([]);
-    const [departments, setDepartments] = useState<Department[]>([]);
-    const [brands, setBrands] = useState<Brand[]>([]);
 
     const [variantImageUrl, setVariantImageUrl] = useState<string>('');
-    const [imageUrl, setImageUrl] = useState<string>('');
     const [selectedVariant, setSelectedVariant] = useState<StockFormVariant | null>(null);
 
     const { toast } = useToast();
-    useEffect(() => {
-        const getData = async () => {
-            const categories = await fetchAllCategories();
-            setCategories(categories);
-
-            const departments = await fectchAllDepartments();
-            setDepartments(departments);
-
-            const brands = await fectchAllBrands();
-            setBrands(brands);
-        }
-        getData();
-    }, []);
+    
 
     const form = useForm<z.infer<typeof StockSchema>>({
         resolver: zodResolver(StockSchema),
@@ -428,7 +406,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                                     <div className="flex-1 pt-1 pb-1">
                                                         <p className="text-md font-medium">{variant.name}</p>
                                                         <p className="text-xs font-medium">VALUE: {variant.startingValue} |
-                                                            QUANTITY: {variant.startingQuantity} </p>
+                                                            QUANTITY: {variant.startingQuantity} | ALERT LEVEL {variant.alertLevel} </p>
                                                     </div>
                                                     {item ? ( 
                                                         <p
