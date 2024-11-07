@@ -22,6 +22,7 @@ import {cookies} from "next/headers";
 export async function logout() {
     try {
         await signOut();
+        //await router.replace('/login');
     } catch (error) {
         if (error instanceof AuthError) {
             throw error;
