@@ -42,7 +42,6 @@ import {
     Loader2Icon,
     ChevronRight,
     ChevronDownIcon,
-    ImageIcon
 } from "lucide-react";
 import { fetchCountries } from "@/lib/actions/countries-actions";
 import { Country } from "@/types/country/type";
