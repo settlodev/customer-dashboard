@@ -17,10 +17,10 @@ export const useSidebarContext = () => {
 };
 */
 
-interface SidebarContext {
+/*interface SidebarContext {
   collapsed: boolean;
   setCollapsed: () => void;
-}
+}*/
 
 export const SidebarContext = ({
   collapsed: false,

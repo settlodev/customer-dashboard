@@ -143,6 +143,16 @@ export declare interface PrivilegeItem{
     status: boolean;
     canDelete: boolean;
     isArchived: boolean;
+    privilegeActions: [];
+}
+
+export declare interface PrivilegeActionItem{
+    id: UUID;
+    name: string;
+    code: string;
+    status: boolean;
+    canDelete: boolean;
+    isArchived: boolean;
 }
 
 export declare interface StatusItem{
