@@ -1,5 +1,4 @@
 import axios, { AxiosError } from "axios";
-import {router} from "next/client";
 
 export const handleSettloApiError = async (error: unknown) => {
     if (axios.isAxiosError(error)) {

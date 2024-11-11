@@ -143,7 +143,7 @@ export declare interface PrivilegeItem{
     status: boolean;
     canDelete: boolean;
     isArchived: boolean;
-    privilegeActions: [];
+    privilegeActions: PrivilegeActionItem[];
 }
 
 export declare interface PrivilegeActionItem{
