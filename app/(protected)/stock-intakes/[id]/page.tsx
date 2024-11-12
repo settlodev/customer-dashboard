@@ -4,29 +4,28 @@ import {notFound} from "next/navigation";
 import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import { Stock } from "@/types/stock/type";
-import { getStock } from "@/lib/actions/stock-actions";
-import StockForm from "@/components/forms/stock_form";
+import { StockIntake } from "@/types/stock-intake/type";
+import { getStockIntake } from "@/lib/actions/stock-intake-actions";
+import StockIntakeForm from "@/components/forms/stock_intake_form";
 
-export default async function StockPage({params}:{params:{id:string}}){
-
-    const isNewItem = params.id === "new";
-    let item: ApiResponse<Stock> | null = null;
+export default async function StockIntakePage({params}:{params:{stockVariant:string,id:string}}){
+    const {stockVariant, id} = params
+    const isNewItem = id === "new";
+    let item: ApiResponse<StockIntake> | null = null;
 
     if(!isNewItem){
         try{
-            item = await  getStock(params.id as UUID);
+            item = await  getStockIntake(id as UUID,stockVariant as UUID);
             if(item.totalElements == 0) notFound();
         }
         catch (error){
             if(isNotFoundError(error)) throw error;
 
-            //throw new Error("Failed to load product details");
         }
     }
 
-    const breadCrumbItems=[{title:"Stocks",link:"/stocks"},
-        {title: isNewItem ? "New":item?.content[0].name || "Edit",link:""}]
+    const breadCrumbItems=[{title:"Stock Intake",link:"/stock-intakes"},
+        {title: isNewItem ? "New":item?.content[0].id || "Edit",link:""}]
 
     return(
         <div className={`flex-1 space-y-4 p-4 md:p-8 pt-6`}>
@@ -35,26 +34,26 @@ export default async function StockPage({params}:{params:{id:string}}){
                     <BreadcrumbsNav items={breadCrumbItems}/>
                 </div>
             </div>
-            <StockCard isNewItem={isNewItem} item={item?.content[0]}/>
+            <StockIntakeCard isNewItem={isNewItem} item={item?.content[0]}/>
         </div>
     )
 }
 
-const StockCard =({isNewItem, item}:{
+const StockIntakeCard =({isNewItem, item}:{
     isNewItem:boolean,
-    item: Stock | null | undefined
+    item: StockIntake | null | undefined
 }) =>(
     <Card>
        <CardHeader>
            <CardTitle>
-               {isNewItem ? "Add Stock" : "Edit Stock"}
+               {isNewItem ? "Record Stock Intake" : "Edit stock intake"}
            </CardTitle>
            <CardDescription>
-               {isNewItem ? "Add Stock to your business location": "Edit Stock details"}
+               {isNewItem ? "Record stock intake to your business location": "Edit stock intake details"}
            </CardDescription>
        </CardHeader>
         <CardContent>
-            <StockForm item={item}/>
+            <StockIntakeForm item={item}/>
         </CardContent>
     </Card>
 )

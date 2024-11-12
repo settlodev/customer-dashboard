@@ -4,11 +4,12 @@ import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
-import {CellAction} from "@/components/tables/stock/cell-action";
-import { Stock } from "@/types/stock/type";
+import {CellAction} from "@/components/tables/stock-intake/cell-action";
+import { StockIntake } from "@/types/stock-intake/type";
 
 
-export const columns: ColumnDef<Stock>[] = [
+
+export const columns: ColumnDef<StockIntake>[] = [
     {
         id: "select",
         header: ({ table }) => (
@@ -29,7 +30,7 @@ export const columns: ColumnDef<Stock>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "name",
+        accessorKey: "stockVariantName",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -37,7 +38,7 @@ export const columns: ColumnDef<Stock>[] = [
                     className="text-left p-0"
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Name
+                    Stock Variant
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
@@ -45,37 +46,64 @@ export const columns: ColumnDef<Stock>[] = [
     },
  
     {
-        accessorKey: "stockVariants",
-        header: "Starting Value",
+        accessorKey: "quantity",
+        header: "Quantity",
         enableHiding: true,
         cell: ({ row }) => {
-            const variants = row.original.stockVariants; 
-            const startingValue = variants.length > 0 ? variants[0].startingValue : "N/A"; 
-            const formattedValue = typeof startingValue === 'number' ? startingValue.toLocaleString() : startingValue;
-            return <span>{formattedValue}</span>;
+            const quantity = row.original.quantity;
+            const formatted = new Intl.NumberFormat("en-US").format(quantity);
+            return <div className="w-[100px]">{formatted}</div>;
         }
-    },
-    {
-        accessorKey: "stockVariants",
-        header: "Starting Quantity",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const variants = row.original.stockVariants; 
-            const startingQuantity = variants.length > 0 ? variants[0].startingQuantity : "N/A"; 
-            const formattedQuantity = typeof startingQuantity === 'number' ? startingQuantity.toLocaleString() : startingQuantity;
-            return <span>{formattedQuantity}</span>;
-        }
+       
     },
     {
         
-        accessorKey: "stockVariants",
-        header: "Stock Alert Level",
+        accessorKey: "value",
+        header: "Value / Amount",
         enableHiding: true,
         cell: ({ row }) => {
-            const variants = row.original.stockVariants; 
-            const alertLevel = variants.length > 0 ? variants[0].alertLevel : 0; 
-            const formattedAlertLevel = typeof alertLevel === 'number' ? alertLevel.toLocaleString() : alertLevel;
-            return <span>{formattedAlertLevel}</span>;},
+            const value = row.original.value;
+            const formatted = new Intl.NumberFormat("en-US").format(value);
+            return <div className="w-[100px]">{formatted}</div>;
+        }
+       
+    },
+    {
+        
+        accessorKey: "orderDate",
+        header: "Order Date",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const orderDate = row.original.orderDate;
+            const formatted = new Intl.DateTimeFormat("en-US").format(new Date(orderDate));
+            return <div className="w-[100px]">{formatted}</div>;
+        }
+       
+    },
+    {
+        
+        accessorKey: "deliveryDate",
+        header: "Delivery Date",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const deliveryDate = row.original.deliveryDate;
+            const formatted = new Intl.DateTimeFormat("en-US").format(new Date(deliveryDate));
+            return <div className="w-[100px]">{formatted}</div>;
+        }
+       
+    },
+
+    {
+        
+        accessorKey: "batchExpiryDate",
+        header: "Expiry Date",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const batchExpiryDate = row.original.batchExpiryDate;
+            const formatted = new Intl.DateTimeFormat("en-US").format(new Date(batchExpiryDate));
+            return <div className="w-[100px]">{formatted}</div>;
+        }
+       
     },
    
     {
@@ -98,6 +126,8 @@ export const columns: ColumnDef<Stock>[] = [
     },
     {
         id: "actions",
+        accessorKey: "actions",
+        enableHiding: false,
         cell: ({ row }) => <CellAction data={row.original} />,
     },
 ];

@@ -9,11 +9,11 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import { Stock } from "@/types/stock/type";
-import { StockSchema } from "@/types/stock/schema";
 import { console } from "node:inspector";
+import { StockIntake } from "@/types/stock-intake/type";
+import { StockIntakeSchema } from "@/types/stock-intake/schema";
 
-export const fetchStock = async () : Promise<Stock[]> => {
+export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
     await  getAuthenticatedUser();
 
     try {
@@ -22,37 +22,36 @@ export const fetchStock = async () : Promise<Stock[]> => {
         const location = await getCurrentLocation();
 
         const data = await  apiClient.get(
-            `/api/stock/${location?.id}`,
+            `/api/stock-intakes/${location?.id}/all`,
         );
-
+        console.log("The list of Stock Intakes in this location: ", data)
         return parseStringify(data);
-
     }
     catch (error){
         throw error;
     }
 }
-export const searchStock = async (
+export const searchStockIntakes = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Stock>> =>{
+): Promise<ApiResponse<StockIntake>> =>{
     await getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
         const query ={
-            filters: [
-                {
-                    key:"name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
+            // filters: [
+            //     {
+            //         key:"string",
+            //         operator:"EQUAL",
+            //         field_type:"BOOLEAN",
+            //         value:q
+            //     }
+            // ],
             sorts:[
                 {
-                    key:"name",
+                    key:"orderDate",
                     direction:"ASC"
                 }
             ],
@@ -60,10 +59,12 @@ export const searchStock = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
+        console.log("The location passed is: ", location)
         const data = await  apiClient.post(
-            `/api/stock/${location?.id}`,
+            `/api/stock-intakes/${location?.id}/all`,
             query
         );
+        
         return parseStringify(data);
     }
     catch (error){
@@ -71,56 +72,57 @@ export const searchStock = async (
     }
 
 }
-export const  createStock= async (
-    stock: z.infer<typeof StockSchema>
+export const createStockIntake = async (
+    stockIntake: z.infer<typeof StockIntakeSchema>
 ): Promise<FormResponse | void> => {
-
     let formResponse: FormResponse | null = null;
 
-    const validData= StockSchema.safeParse(stock)
+    const validData = StockIntakeSchema.safeParse(stockIntake);
 
-    if (!validData.success){
+    if (!validData.success) {
         formResponse = {
-            responseType:"error",
-            message:"Please fill all the required fields",
-            error:new Error(validData.error.message)
-      }
-      return parseStringify(formResponse)
+            responseType: "error",
+            message: "Please fill all the required fields",
+            error: new Error(validData.error.message)
+        };
+        return parseStringify(formResponse);
     }
 
-    const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
-
+    const stockVariantId = validData.data.stockVariant;
     const payload = {
         ...validData.data,
-        location: location?.id,
-        business: business?.id
-    }
-    console.log("payload:", payload);
+    };
+    console.log("The payload to create stock intake:", payload);
 
     try {
         const apiClient = new ApiClient();
-        await apiClient.post(
-            `/api/stock/${location?.id}/create`,
+       const response = await apiClient.post(
+            `/api/stock-intakes/${stockVariantId}/create`,
             payload
         );
-    }
-    catch (error){
-        console.error("Error creating product",error)
+        console.log("Stock Intake created successfully", response);
+    } catch (error) {
+        console.error("Error creating product", error);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
-    revalidatePath("/stocks");
-    redirect("/stocks");
-}
 
-export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
+    if (formResponse) {
+        return parseStringify(formResponse);
+    }
+
+    revalidatePath("/stock-intakes");
+    redirect("/stock-intakes");
+};
+
+
+export const getStockIntake= async (id:UUID, stockVariant:UUID) : Promise<ApiResponse<StockIntake>> => {
+
+    console.log("The id  & stockVariant to get stock intake: ", id , stockVariant)
+
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -135,24 +137,22 @@ export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
         page: 0,
         size: 1,
     }
-    const location = await getCurrentLocation();
+    console.log("The query to get stock intake: ", query)
     const response = await apiClient.post(
-        `/api/stock/${location?.id}`,
+        `/api/stock-intakes/${stockVariant}/${id}`,
         query,
     );
-
-    console.log("The response to get stock: ", response)
 
     return parseStringify(response)
 }
 
 
-export const updateStock = async (
+export const updateStockIntake = async (
     id: UUID,
-    stock: z.infer<typeof StockSchema>
+    stockIntake: z.infer<typeof StockIntakeSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const validData = StockSchema.safeParse(stock);
+    const validData = StockIntakeSchema.safeParse(stockIntake);
 
     if (!validData.success) {
         formResponse = {
@@ -170,13 +170,13 @@ export const updateStock = async (
         location: location?.id,
         business: business?.id
     };
-    console.log("The payload to update stock", payload);
+    console.log("The payload to update stock intake", payload);
 
     try {
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/stock/${location?.id}/${id}`,
+            `/api/stock-intakes/${location?.id}/${id}`,
             payload
         );
 
@@ -192,26 +192,24 @@ export const updateStock = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/stocks");
-    redirect("/stocks");
+    revalidatePath("/stock-intakes");
+    redirect("/stocks-intakes");
 };
 
-export const deleteStock = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Stock ID is required to perform this request");
+export const deleteStockIntake = async (id: UUID, stockVariant:UUID): Promise<void> => {
+    if (!id && !stockVariant) throw new Error("Stock Intake ID & stockVariant is required to perform this request");
 
     await getAuthenticatedUser();
 
-    console.log("Deleting stock with ID:", id);
+    console.log("Deleting stock intake with ID:", id, stockVariant);
 
    try{
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
-
     await apiClient.delete(
-        `/api/stock/${location?.id}/${id}`,
+        `/api/stock-intakes/${stockVariant}/${id}`,
     );
-    revalidatePath("/stocks");
+    revalidatePath("/stock-intakes");
 
    }
    catch (error){

@@ -106,7 +106,7 @@ const DateTimePicker = ({
                       handleTimeChange("minutes", minute.toString());
                       const newDate = new Date(date || new Date());
                       newDate.setMinutes(minute);
-                      field.onChange(newDate.toISOString()); // Convert to string
+                      field.onChange(newDate.toISOString()); 
                     }}
                   >
                     {minute.toString().padStart(2, "0")}

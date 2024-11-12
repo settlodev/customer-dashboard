@@ -9,17 +9,17 @@ import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Variant } from "@/types/variant/type";
 import { StockVariantSchema } from "@/types/stockVariant/schema";
+import { StockVariant } from "@/types/stockVariant/type";
 
-export const fetchVariants = async () : Promise<Variant[]> => {
+export const fetchStockVariants = async (stockId: string) : Promise<StockVariant[]> => {
     await  getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
 
-        const product = "5b6ba5c1-106a-43a3-b3be-e91ce4279add"
-
+    
         const data = await  apiClient.get(
-            `/api/variants/${product}`,
+            `/api/stock-variants/${stockId}`,
         );
 
         return parseStringify(data);

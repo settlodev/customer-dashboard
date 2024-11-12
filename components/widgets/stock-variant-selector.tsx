@@ -1,10 +1,10 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Staff } from "@/types/staff";
+import {StockVariant } from "@/types/stockVariant/type";
 
-interface StaffProps {
+interface StockVariantProps {
     label: string;
     placeholder: string;
-    staffs: Staff[];
+    stockVariants: StockVariant[];
     isRequired?: boolean;
     value?: string;
     isDisabled?: boolean;
@@ -12,21 +12,21 @@ interface StaffProps {
     onChange: (value: string) => void;
     onBlur: () => void;
 }
-function StaffSelectorWidget({
+function StockVariantSelector({
     placeholder,
     value,
     isDisabled,
     onChange,
-    staffs
-}: StaffProps) {
+    stockVariants
+}: StockVariantProps) {
     return (
         <Select value={value} onValueChange={onChange} disabled={isDisabled}>
             <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select staff"}/>
+                <SelectValue placeholder={placeholder || "Select stock variant"}/>
             </SelectTrigger>
             <SelectContent>
-                {staffs && staffs.length > 0 ?
-                    staffs.map((item, index) => {
+                {stockVariants && stockVariants.length > 0 ?
+                    stockVariants.map((item, index) => {
                         return <SelectItem key={index} value={item.id}>
                             {item.name}
                         </SelectItem>
@@ -36,4 +36,4 @@ function StaffSelectorWidget({
         </Select>
     )
 }
-export default StaffSelectorWidget
+export default StockVariantSelector

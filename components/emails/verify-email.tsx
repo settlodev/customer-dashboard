@@ -37,7 +37,7 @@ export default function VerifyEmailTemplate({ name, token }: VerifyEmailProps) {
                             <Section style={verificationSection}>
                                 <Section style={buttonContainer}>
                                     <Button
-                                        href={`${process.env.SERVICE_URL}/email-verification?token=${token}`}
+                                        href={`${process.env.NEXT_PUBLIC_APP_URL}/email-verification?token=${token}`}
                                         style={button}
                                     >
                                         Click here to verify email
