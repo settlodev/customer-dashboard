@@ -77,7 +77,7 @@ export const searchCategories = async (
 
 export const createCategory = async (
     category: z.infer<typeof CategorySchema>,
-): Promise<FormResponse | void> => {
+): Promise<FormResponse> => {
     let formResponse: FormResponse | null = null;
     const authenticatedUser = await getAuthenticatedUser();
 
@@ -100,10 +100,13 @@ export const createCategory = async (
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
 
-        await apiClient.post(
+        const response = await apiClient.post(
             `/api/categories/${location?.id}/create`,
             validatedData.data,
         );
+
+        return parseStringify(response);
+
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",

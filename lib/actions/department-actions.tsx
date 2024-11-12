@@ -23,7 +23,7 @@ export const fectchAllDepartments = async () : Promise<Department[]> => {
         const departmentData = await  apiClient.get(
             `/api/departments/${location?.id}`,
         );
-       
+
         return parseStringify(departmentData);
 
     }
@@ -73,7 +73,7 @@ export const searchDepartment = async (
 }
 export const  createDepartment= async (
     department: z.infer<typeof DepartmentSchema>
-): Promise<FormResponse | void> => {
+): Promise<FormResponse> => {
 
     let formResponse: FormResponse | null = null;
 
@@ -98,8 +98,8 @@ export const  createDepartment= async (
     }
     try {
         const apiClient = new ApiClient();
-      
-        await apiClient.post(
+
+        formResponse = await apiClient.post(
             `/api/departments/${location?.id}/create`,
             payload
         );
@@ -116,6 +116,7 @@ export const  createDepartment= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
+
     revalidatePath("/departments");
     redirect("/departments")
 }
@@ -140,7 +141,7 @@ export const getDepartment= async (id:UUID) : Promise<ApiResponse<Department>> =
         `/api/departments/${location?.id}`,
         query,
     );
-    
+
     return parseStringify(departmentResponse)
 }
 
@@ -178,12 +179,12 @@ export const updateDepartment = async (
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/departments/${location?.id}/${id}`, 
+            `/api/departments/${location?.id}/${id}`,
             payload
         );
 
     } catch (error) {
-        console.error("Error updating department", error); 
+        console.error("Error updating department", error);
         formResponse = {
             responseType: "error",
             message:
@@ -208,7 +209,7 @@ export const deleteDepartment = async (id: UUID): Promise<void> => {
     const apiClient = new ApiClient();
 
     const location = await getCurrentLocation();
-   
+
     await apiClient.delete(
         `/api/departments/${location?.id}/${id}`,
     );

@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios";
 
-export const handleSettloApiError = (error: unknown) => {
+export const handleSettloApiError = async (error: unknown) => {
     if (axios.isAxiosError(error)) {
         const axiosError = error as AxiosError;
         console.log("axiosError.response:", axiosError.response)
@@ -12,6 +12,7 @@ export const handleSettloApiError = (error: unknown) => {
                         error: "Unauthorized, you are not allowed to perform this action.",
                     };
                 case 403:
+
                     return {
                         error: "Error: You do not have sufficient permissions to perform this action.",
                     };

@@ -14,25 +14,29 @@ import {
     Form,
     FormControl,
     FormField,
-    FormItem,
+    FormItem, FormLabel,
     FormMessage,
 } from "@/components/ui/form";
 import { createRole, updateRole } from "@/lib/actions/role-actions";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
-import {FormResponse, PrivilegeItem} from "@/types/types";
+import {FormResponse, PrivilegeActionItem, PrivilegeItem} from "@/types/types";
 import {RoleSchema} from "@/types/roles/schema";
 import {FormError} from "@/components/widgets/form-error";
 import {Role} from "@/types/roles/type";
 import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
+// import { Textarea } from "../ui/textarea";
 import {fetchAllSections} from "@/lib/actions/privileges-actions";
+import _ from "lodash";
+import {UUID} from "node:crypto";
 
 const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     const [isActive, setIsActive] = useState(item ? item.status : true);
-    const [privs, setPrivileges] = useState<PrivilegeItem[]|null>(null);
+    const [privileges] = useState<PrivilegeItem[]>([]);
+    const [sections, setSections] = useState<PrivilegeItem[]>([]);
+    const [role] = useState<Role|null>(item?item: null);
 
     const form = useForm<z.infer<typeof RoleSchema>>({
         resolver: zodResolver(RoleSchema),
@@ -41,6 +45,12 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
 
     const submitData = (values: z.infer<typeof RoleSchema>) => {
         setResponse(undefined);
+
+        console.log("privileges are:", privileges);
+
+        values.privileges = JSON.stringify(privileges);
+
+        return false;
 
         startTransition(() => {
             if (item) {
@@ -58,17 +68,30 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const initialized = useRef(false);
 
     useEffect(()=>{
+
         async function getData(){
             if (!initialized.current) {
                 initialized.current = true
                 const data = await fetchAllSections();
                 console.log("data is:", data);
-                console.log("privs is:", privs);
-                setPrivileges(data);
+                setSections(data);
             }
         }
         getData();
+
     },[]);
+
+    const selectAction= (role: UUID | undefined, section_id: string, action_id: string)=>{
+        /*const the_priv = {
+            "role_id": role?role: null,
+            "section_id": section_id,
+            "action_id": action_id};
+        if (!_.find(privileges, the_priv)) {
+            const privs = [...privileges, the_priv];
+            setPrivileges(privs);
+        }*/
+        console.log(role, section_id, action_id);
+    }
 
     return (
         <Form {...form}>
@@ -78,8 +101,9 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                     <FormField
                         control={form.control}
                         name="name"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
+                                <FormLabel>Role Name</FormLabel>
                                 <FormControl>
                                     <Input
                                         {...field}
@@ -89,14 +113,15 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                         placeholder="Enter role name"
                                     />
                                 </FormControl>
-                                <FormMessage />
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
+
                     <FormField
                         control={form.control}
                         name="status"
-                        render={({ field }) => (
+                        render={({field}) => (
                             <FormItem>
                                 <FormControl>
                                     <Switch
@@ -133,16 +158,16 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                         </div>
                                     </Switch>
                                 </FormControl>
-                                <FormMessage />
+                                <FormMessage/>
                             </FormItem>
                         )}
                     />
                 </div>
 
-                <FormField
+                {/*<FormField
                     control={form.control}
                     name="description"
-                    render={({ field }) => (
+                    render={({field}) => (
                         <FormItem>
                             <FormControl>
                                 <Textarea
@@ -153,15 +178,57 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                     // radius="sm"
                                 />
                             </FormControl>
-                            <FormMessage />
+                            <FormMessage/>
                         </FormItem>
                     )}
-                />
+                />*/}
 
+                <div className='popup-content'>
+                    <>
+                        <div className='input-row input-row-multiple'>
+                            <h4 style={{paddingBottom: 10}}>Select Privileges</h4>
+                            <div>
+                                {sections?.map((priv, index) => {
+                                        return (<div key={index} style={{paddingBottom: 10}}>
+                                                <p key={index} style={{paddingBottom: 5, fontWeight: "bold", color: "#860037"}}>
+                                                    {priv.name}
+                                                </p>
+                                                {priv.privilegeActions.map((action: PrivilegeActionItem, i) => {
+                                                        const obj =
+                                                            {
+                                                                role_id: role?.id,
+                                                                section_id: priv.id,
+                                                                action_id: action.id
+                                                            };
+                                                        const selected = _.find(privileges, obj, 0);
+                                                        return action.name ? (
+                                                            <label
+                                                                onClick={() => selectAction(role?.id, priv.id, action.id)}
+                                                                key={i}
+                                                                style={{textTransform: "capitalize", paddingRight: 0, width: "20%"}}>
+                                                                {role ? (
+                                                                    <input checked={selected!==null} type={"checkbox"} value={action.id}/>
+                                                                ) : (
+                                                                    <input type={"checkbox"} value={action.id}/>
+                                                                )}
+                                                                <span>{" "}{action.name}</span>
+                                                            </label>
+                                                        ) : (<></>
+                                                        );
+                                                    }
+                                                )}
+                                            </div>
+                                        );
+                                    }
+                                )}
+                            </div>
+                        </div>
+                    </>
+                </div>
 
                 <div className="flex h-5 items-center space-x-4">
-                    <CancelButton />
-                    <Separator orientation="vertical" />
+                    <CancelButton/>
+                    <Separator orientation="vertical"/>
                     <SubmitButton
                         isPending={isPending}
                         label={item ? "Update role details" : "Create role"}
