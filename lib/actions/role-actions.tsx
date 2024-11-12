@@ -94,7 +94,7 @@ export const createRole = async (
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        
+        console.log("validatedData.data: ", validatedData.data);
         const payload= {
             ...validatedData.data,
             location: location?.id

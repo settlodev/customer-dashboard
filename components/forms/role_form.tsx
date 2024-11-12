@@ -20,7 +20,7 @@ import {
 import { createRole, updateRole } from "@/lib/actions/role-actions";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
-import {FormResponse, PrivilegeActionItem, PrivilegeItem} from "@/types/types";
+import {FormPrivilegeActionItem, FormResponse, PrivilegeActionItem, PrivilegeItem} from "@/types/types";
 import {RoleSchema} from "@/types/roles/schema";
 import {FormError} from "@/components/widgets/form-error";
 import {Role} from "@/types/roles/type";
@@ -34,9 +34,9 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     const [isActive, setIsActive] = useState(item ? item.status : true);
-    const [privileges] = useState<PrivilegeItem[]>([]);
+    const [privileges, setPrivileges] = useState<string[]>([]);
     const [sections, setSections] = useState<PrivilegeItem[]>([]);
-    const [role] = useState<Role|null>(item?item: null);
+    const [role, setRole] = useState<Role|null>(item?item: null);
 
     const form = useForm<z.infer<typeof RoleSchema>>({
         resolver: zodResolver(RoleSchema),
@@ -45,24 +45,22 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
 
     const submitData = (values: z.infer<typeof RoleSchema>) => {
         setResponse(undefined);
+        if(privileges.length > 0) {
+            values.privilegeActionsIds = privileges;
 
-        console.log("privileges are:", privileges);
-
-        values.privileges = JSON.stringify(privileges);
-
-        return false;
-
-        startTransition(() => {
-            if (item) {
-                updateRole(item.id, values).then((data) => {
-                    if (data) setResponse(data);
-                });
-            } else {
-                createRole(values).then((data) => {
-                    if (data) setResponse(data);
-                });
-            }
-        });
+            console.log("values:", values);
+            startTransition(() => {
+                if (item) {
+                    updateRole(item.id, values).then((data) => {
+                        if (data) setResponse(data);
+                    });
+                } else {
+                    createRole(values).then((data) => {
+                        if (data) setResponse(data);
+                    });
+                }
+            });
+        }
     };
 
     const initialized = useRef(false);
@@ -81,16 +79,11 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
 
     },[]);
 
-    const selectAction= (role: UUID | undefined, section_id: string, action_id: string)=>{
-        /*const the_priv = {
-            "role_id": role?role: null,
-            "section_id": section_id,
-            "action_id": action_id};
-        if (!_.find(privileges, the_priv)) {
-            const privs = [...privileges, the_priv];
-            setPrivileges(privs);
-        }*/
-        console.log(role, section_id, action_id);
+    const selectAction= (action_id: UUID)=>{
+
+        if (!_.find(privileges, action_id)) {
+            setPrivileges([...privileges, action_id]);
+        }
     }
 
     return (
@@ -190,10 +183,11 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                             <div>
                                 {sections?.map((priv, index) => {
                                         return (<div key={index} style={{paddingBottom: 10}}>
-                                                <p key={index} style={{paddingBottom: 5, fontWeight: "bold", color: "#860037"}}>
+                                                <p className="font-bold text-medium mb-2" key={index}>
                                                     {priv.name}
                                                 </p>
-                                                {priv.privilegeActions.map((action: PrivilegeActionItem, i) => {
+                                                <div className="flex gap-2 border-b-1 pb-2">
+                                                {priv.privilegeActions && priv.privilegeActions.map((action: PrivilegeActionItem, i) => {
                                                         const obj =
                                                             {
                                                                 role_id: role?.id,
@@ -201,22 +195,20 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                                                 action_id: action.id
                                                             };
                                                         const selected = _.find(privileges, obj, 0);
-                                                        return action.name ? (
-                                                            <label
-                                                                onClick={() => selectAction(role?.id, priv.id, action.id)}
-                                                                key={i}
-                                                                style={{textTransform: "capitalize", paddingRight: 0, width: "20%"}}>
+                                                        return action.action ? (
+                                                            <label onClick={() => selectAction(action.id)} key={i}>
                                                                 {role ? (
                                                                     <input checked={selected!==null} type={"checkbox"} value={action.id}/>
                                                                 ) : (
                                                                     <input type={"checkbox"} value={action.id}/>
                                                                 )}
-                                                                <span>{" "}{action.name}</span>
+                                                                <span className="font-medium text-xs">{" "}{action.action}</span>
                                                             </label>
                                                         ) : (<></>
                                                         );
                                                     }
                                                 )}
+                                                </div>
                                             </div>
                                         );
                                     }

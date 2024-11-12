@@ -12,7 +12,7 @@ import {useRouter} from "next/navigation";
 const DropdownUser = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const session = useSession();
-  console.log("session:", session);
+  //console.log("session:", session);
     const router = useRouter();
 
     const handleLogout = useCallback(async () => {

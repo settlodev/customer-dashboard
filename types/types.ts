@@ -148,11 +148,17 @@ export declare interface PrivilegeItem{
 
 export declare interface PrivilegeActionItem{
     id: UUID;
-    name: string;
-    code: string;
+    privilegeSectionName: string;
+    action: string;
+    privilegeSection: UUID;
+    privilegeSectionCode: string;
     status: boolean;
     canDelete: boolean;
     isArchived: boolean;
+}
+
+export declare interface FormPrivilegeActionItem{
+    id: UUID;
 }
 
 export declare interface StatusItem{

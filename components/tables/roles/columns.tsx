@@ -64,7 +64,11 @@ export const columns: ColumnDef<Role>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => <StateColumn state={row.original.status} />,
+    cell: ({ row }) => {
+      return <>
+        {JSON.stringify(row.original)}
+        <StateColumn state={row.original.status} /></>
+    },
     enableHiding: false,
   },
   {
