@@ -66,7 +66,7 @@ export const columns: ColumnDef<Role>[] = [
     },
     cell: ({ row }) => {
       return <>
-        {JSON.stringify(row.original)}
+        <span className="mr-2">{row.original.privilegeActions.length} Permissions</span>
         <StateColumn state={row.original.status} /></>
     },
     enableHiding: false,
