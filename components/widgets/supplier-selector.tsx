@@ -1,10 +1,10 @@
+import { Supplier } from "@/types/supplier/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Staff } from "@/types/staff";
 
-interface StaffProps {
+interface SupplierProps {
     label: string;
     placeholder: string;
-    staffs: Staff[];
+    suppliers: Supplier[];
     isRequired?: boolean;
     value?: string;
     isDisabled?: boolean;
@@ -12,21 +12,21 @@ interface StaffProps {
     onChange: (value: string) => void;
     onBlur: () => void;
 }
-function StaffSelectorWidget({
+function SupplierSelector({
     placeholder,
     value,
     isDisabled,
     onChange,
-    staffs
-}: StaffProps) {
+    suppliers
+}: SupplierProps) {
     return (
         <Select value={value} onValueChange={onChange} disabled={isDisabled}>
             <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select staff"}/>
+                <SelectValue placeholder={placeholder || "Select supplier"}/>
             </SelectTrigger>
             <SelectContent>
-                {staffs && staffs.length > 0 ?
-                    staffs.map((item, index) => {
+                {suppliers && suppliers.length > 0 ?
+                    suppliers.map((item, index) => {
                         return <SelectItem key={index} value={item.id}>
                             {item.name}
                         </SelectItem>
@@ -36,4 +36,4 @@ function StaffSelectorWidget({
         </Select>
     )
 }
-export default StaffSelectorWidget
+export default SupplierSelector

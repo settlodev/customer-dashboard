@@ -4,11 +4,11 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import {DataTable} from "@/components/tables/data-table";
-import {columns} from '@/components/tables/stock/column'
-import { searchStock } from "@/lib/actions/stock-actions";
-import { Stock } from "@/types/stock/type";
+import {columns} from '@/components/tables/stock-intake/column'
+import { searchStockIntakes } from "@/lib/actions/stock-intake-actions";
+import { StockIntake } from "@/types/stock-intake/type";
 
-const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
+const breadCrumbItems = [{title: "Stock Intake", link: "/stock-intakes"}];
  type ParamsProps ={
      searchParams:{
          [key:string]:string | undefined
@@ -20,9 +20,9 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
      const page = Number(searchParams.page) || 0;
      const pageLimit = Number(searchParams.limit);
 
-     const responseData = await searchStock(q,page,pageLimit);
+     const responseData = await searchStockIntakes(q,page,pageLimit);
 
-     const data:Stock[]=responseData.content;
+     const data:StockIntake[]=responseData.content;
      const total =responseData.totalElements;
      const pageCount = responseData.totalPages
 
@@ -34,7 +34,7 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
                 </div>
                 <div className={`flex items-center space-x-2`}>
                     <Button>
-                        <Link href={`/stocks/new`}>Add Stock</Link>
+                        <Link href={`/stock-intakes/new`}>Add Stock Intake</Link>
                     </Button>
                 </div>
             </div>
@@ -42,8 +42,8 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
                 total > 0 || q != "" ? (
                     <Card x-chunk="data-table">
                         <CardHeader>
-                            <CardTitle>Stock</CardTitle>
-                            <CardDescription>Manage Stock in your business location</CardDescription>
+                            <CardTitle>Stock Intake</CardTitle>
+                            <CardDescription>Manage stock intake in your location</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <DataTable columns={columns}
@@ -57,7 +57,7 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
                     </Card>
                 ):
                     (
-                        <NoItems newItemUrl={`/stocks/new`} itemName={`Stock`}/>
+                        <NoItems newItemUrl={`/stock-intakes/new`} itemName={`Stock intakes`}/>
                     )
             }
         </div>

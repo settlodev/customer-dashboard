@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -37,7 +38,7 @@ import { StockVariantSchema } from "@/types/stockVariant/schema";
 import { createStock, updateStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { StockFormVariant } from "@/types/stockVariant/type";
-import { createStockVariant, deleteStockVariant, updateStockVariant } from "@/lib/actions/variant-stock-actions";
+import { createStockVariant, deleteStockVariant, updateStockVariant } from "@/lib/actions/stock-variant-actions";
 
 function StockForm({ item }: { item: Stock | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -112,16 +113,16 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
             if (item) {
                 updateStock(item.id, values).then((data) => {
                     //if (data) setResponse(data);
-                    console.log(" Update product data:", data)
+                    console.log(" Update stock data:", data)
                 });
             } else {
                 createStock(values)
                     .then((data) => {
-                        console.log("Create product data: ", data);
+                        console.log("Create stock data: ", data);
                         //if (data) setResponse(data);
                     })
                     .catch((err) => {
-                        console.log("Error while creating product: ", err);
+                        console.log("Error while creating stock: ", err);
                     });
             }
         });
@@ -142,11 +143,11 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
         }
 
         const stockId = item?.id;
-        console.log("Selected product ID:", stockId);
+        console.log("Selected stock ID:", stockId);
 
         try {
             if (!stockId) {
-                console.error("Product ID is missing");
+                console.error("Stock ID is missing");
                 return;
             }
             const response = createStockVariant(stockId, values);
@@ -406,7 +407,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                                     <div className="flex-1 pt-1 pb-1">
                                                         <p className="text-md font-medium">{variant.name}</p>
                                                         <p className="text-xs font-medium">VALUE: {variant.startingValue} |
-                                                            QUANTITY: {variant.startingQuantity} | ALERT LEVEL {variant.alertLevel} </p>
+                                                            QUANTITY: {variant.startingQuantity} | ALERT LEVEL: {variant.alertLevel} </p>
                                                     </div>
                                                     {item ? ( 
                                                         <p
@@ -458,11 +459,9 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                             className={`gap-1`}>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Add stock variants</CardTitle>
+                                    <CardTitle>Add Stock variants</CardTitle>
                                     <CardDescription>{item ? "Edit variants" : "Add variants"}</CardDescription>
-                                    {item && (
-                                        <span className="text-sm text-white bg-blue-500 p-2 rounded">Please,select the variant you want to edit on stock variants</span>
-                                    )}
+                                   
                                 </CardHeader>
 
                                 <CardContent>
@@ -498,7 +497,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                         name="startingValue"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Starting Stock Value</FormLabel>
+                                                <FormLabel>Starting Value (Amount)</FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         placeholder="0.00"
@@ -516,7 +515,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                         name="startingQuantity"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Starting Stock Quantity</FormLabel>
+                                                <FormLabel>Starting Quantity</FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         placeholder="0.00"
@@ -525,6 +524,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                                         type={'number'} step={0.1}
                                                     />
                                                 </FormControl>
+                                                
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -543,6 +543,9 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                                         type={'number'} step={0.1}
                                                     />
                                                 </FormControl>
+                                                <FormDescription>
+                                                    Quantity below this level will trigger an alert
+                                                </FormDescription>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
