@@ -17,12 +17,12 @@ export default function ResetPasswordEmailTemplate({token}: EmailProps) {
                 If you did request a password reset, please click the button
                 below to reset your password:
             </p>
-           
-            <Button href={`${process.env.SERVICE_URL}/update-password?token=${token}`}>
+
+            <Button href={`${process.env.NEXT_PUBLIC_APP_URL}/update-password?token=${token}`}>
                 Reset Password Link
             </Button>
         </div>
         </Container>
-       </Html>    
+       </Html>
        );
 }
