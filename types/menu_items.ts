@@ -59,7 +59,7 @@ export const menuItems=(args?: MenuItemArgType) => {
                 ]
         },
         {
-            label: "Marketing",
+            label: "Communication",
             showSeparator: false,
             collapsible: false,
             current: args?.isCurrentItem,
