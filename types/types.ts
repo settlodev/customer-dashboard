@@ -107,6 +107,7 @@ export type ExtendedUser = DefaultSession["user"] & {
     locationComplete: boolean;
     subscriptionComplete: boolean;
     businessId: UUID | null;
+    gender: string;
 };
 
 export declare interface RegisterResponse {

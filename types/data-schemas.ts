@@ -1,5 +1,6 @@
 import { isValidPhoneNumber } from "libphonenumber-js";
-import {object, string} from "zod";
+import {nativeEnum, object, string} from "zod";
+import { Gender } from "./enums";
 
 
 export const LoginSchema = object({
@@ -38,6 +39,7 @@ export const RegisterSchema = object({
         "Please enter a valid password",
     ),
     country:string({required_error:"Country is required"}).uuid("Please select a valid country"),
+    gender:nativeEnum(Gender)
 });
 
 export const UpdateUserSchema = object({

@@ -203,23 +203,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                             );
                                         }}
                                     />
-                                    <FormField
-                                        control={form.control}
-                                        name="employeeNumber"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Staff Employee Number <span className="text-sm text-muted-foreground font-normal">optional</span></FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        placeholder="Enter staff employee number"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                 
                                     <FormField
                                         control={form.control}
                                         name="jobTitle"
@@ -482,6 +466,23 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
                                                     );
                                                 }}
                                             />
+                                               <FormField
+                                        control={form.control}
+                                        name="employeeNumber"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Staff Employee Number <span className="text-sm text-muted-foreground font-normal">optional</span></FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        {...field}
+                                                        disabled={isPending}
+                                                        placeholder="Enter staff employee number"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                         </div>
                                         </CardContent>
                                     </Card>

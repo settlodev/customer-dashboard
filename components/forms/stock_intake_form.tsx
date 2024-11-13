@@ -203,7 +203,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                                         onBlur={field.onBlur}
                                                         isRequired
                                                         isDisabled={isPending}
-                                                        label="Department"
+                                                        label="Stock Variant"
                                                         placeholder="Select stock variant"
                                                         stockVariants={stockVariants}
                                                     />

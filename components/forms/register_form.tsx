@@ -59,6 +59,7 @@ import {businessTimes, DefaultCountry} from "@/types/constants";
 import {useSession} from "next-auth/react";
 import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
+import GenderSelector from "../widgets/gender-selector";
 interface signUpStepItemType{
     id: string;
     label: string;
@@ -424,6 +425,31 @@ function RegisterForm({step}:{step: string}) {
                                                 </FormItem>
                                             )}
                                         />
+
+                                <FormField
+                                                control={form.control}
+                                                name="gender"
+                                                render={({ field }) => {
+                                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                                    const { ref: _ref, ...customSelectRef } = field;
+
+                                                    return (
+                                                    <FormItem>
+                                                        <FormLabel>Gender</FormLabel>
+                                                        <FormControl>
+                                                        <GenderSelector
+                                                            {...customSelectRef}
+                                                            isRequired
+                                                            isDisabled={isPending}
+                                                            label="Gender"
+                                                            placeholder="Select your gender"
+                                                        />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                    );
+                                                }}
+                                                />
 
                                     </div>
 

@@ -1,7 +1,7 @@
 import { boolean, number, object, preprocess, string } from "zod";
 
 export const AddonSchema = object({
-    title: string({ message: "Addon name is required" }).min(3,"Please enter a valid addon/ name"),
+    title: string({ message: "Addon name is required" }).min(3,"Please enter a valid addon name"),
     price:preprocess(
         (val) => {
           if (typeof val === "string" && val.trim() !== "") {
@@ -10,9 +10,13 @@ export const AddonSchema = object({
       
           return val;
         },
-        number({ message: "Please brand price should be valid number" })
-          .nonnegative({ message: "Please brand price should be positive number" })
-          .gt(0, { message: "Please brand price should be greater than 0" }),
+        number({ message: "Please addon price should be valid number" })
+          .nonnegative({ message: "Please addon price should be positive number" })
     ),
+    addonTracking:boolean(),
+    stockVariant:string().uuid("Please select a valid stock variant").optional(),
+    stock:string().optional(),
+    product:string().optional(),
+    productVariant:string().uuid("Please select a valid product variant").optional(),
     status: boolean().optional(),
 });
