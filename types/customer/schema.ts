@@ -16,18 +16,14 @@ export const CustomerSchema = object({
         .min(1, "Please enter a valid email address")
         .email("Please enter a valid email address")
         .optional(),
-    phoneNumber: string({ required_error: "Phone number is required" })
+    phoneNumber: string({ message: "Customer Phone number is required" })
         .refine(isValidPhoneNumber, {
             message: "Invalid phone number",
         })
-        .optional(),
-
+    ,
     gender: nativeEnum(Gender),
-    allowNotifications: boolean(),
+    allowNotifications: boolean().optional(),
     status:boolean().optional(),
-    // location: string({ required_error: "Customer location is required" }).uuid(
-    //     "Please select a valid locations",
-    // ),
 });
 
 

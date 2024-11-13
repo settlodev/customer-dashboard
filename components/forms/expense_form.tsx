@@ -26,6 +26,7 @@ import { createExpense, updateExpense } from "@/lib/actions/expense-actions";
 import { fetchExpenseCategories } from "@/lib/actions/expense-categories-actions";
 import { ExpenseCategory } from "@/types/expenseCategories/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import DateTimePicker from "../widgets/datetimepicker";
 
 function ExpenseForm({ item }: { item: Expense | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -35,6 +36,9 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
   const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>(
     []
   );
+  const [date, setDate] = useState<Date | undefined>(
+    item?.date ? new Date(item.date) : undefined
+);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -83,6 +87,26 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
       }
     });
   };
+
+  const handleTimeChange = (type: "hour" | "minutes", value: string) => {
+    if (!date) return;
+  
+    const newDate = new Date(date); // Start with the current date state
+  
+    if (type === "hour") {
+      newDate.setHours(Number(value));
+    } else if (type === "minutes") {
+      newDate.setMinutes(Number(value));
+    }
+  
+    setDate(newDate); // Update the date state with the modified time
+  };
+  
+
+  const handleDateSelect = (date: Date) => {
+    setDate(date);
+  };
+
   return (
     <Form {...form}>
       <form
@@ -162,6 +186,25 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
                     </FormItem>
                   )}
                 />
+
+              <FormField
+                  control={form.control}
+                  name="date"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Expense Date</FormLabel>
+                      <DateTimePicker
+                        field={field}
+                        date={date}
+                        setDate={setDate}
+                        handleTimeChange={handleTimeChange}
+                        onDateSelect={handleDateSelect}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+         
 
               </div>
             </>

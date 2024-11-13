@@ -27,6 +27,7 @@ import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 import { PhoneInput } from "../ui/phone-input";
 import { Loader2Icon } from "lucide-react";
 import { Switch } from "../ui/switch";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 
 function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -77,95 +78,189 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className={`gap-1`}
       >
-        <div>
-            <>
-                <FormError message={error} />
-                <FormSuccess message={success} />
-                <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="name"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Full Name</FormLabel>
-                                <FormControl>
-                                    <Input
-                                        placeholder="Enter supplier full name "
-                                        {...field}
-                                        disabled={isPending}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+        <div className="space-y-6">
+          <>
+            <FormError message={error} />
+            <FormSuccess message={success} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Supplier Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter supplier full name "
+                        {...field}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                    <FormField
-                        control={form.control}
-                        name="email"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Email Address</FormLabel>
-                                <FormControl>
-                                    <Input placeholder="johndoe@example.com" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="johndoe@example.com" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                    <FormField
-                        control={form.control}
-                        name="phoneNumber"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-col items-start">
-                                <FormLabel>Supplier Phone Number</FormLabel>
-                                <FormControl className="w-full border-1 rounded-sm">
-                                    <PhoneInput
-                                        placeholder="Enter supplier phone number"
-                                        {...field}
-                                        disabled={isPending}
-                                    />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+              <FormField
+                control={form.control}
+                name="phoneNumber"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col items-start">
+                    <FormLabel>Supplier Phone Number</FormLabel>
+                    <FormControl className="w-full border-1 rounded-sm">
+                      <PhoneInput
+                        placeholder="Enter supplier phone number"
+                        {...field}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                    {item && (
-                        <div className="grid gap-2">
-                            <FormField
-                                control={form.control}
-                                name="status"
+              <FormField
+                control={form.control}
+                name="physicalAddress"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col items-start">
+                    <FormLabel>Supplier Physical Address</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter supplier physical address" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                        <FormLabel>
+              {item && (
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="status"
 
-                                            Supplier Status
-                                            <span className={item.status ? "text-green-500" : "text-red-500"}>
-                              ({item.status ? "Active" : "Inactive"})
-                            </span>
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <FormLabel>
 
-                                        </FormLabel>
-                                        <FormControl>
-                                            <Switch
+                          Supplier Status
+                          <span className={item.status ? "text-green-500" : "text-red-500"}>
+                            ({item.status ? "Active" : "Inactive"})
+                          </span>
 
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                                disabled={isPending}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    )
-                    }
+                        </FormLabel>
+                        <FormControl>
+                          <Switch
 
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
-            </>
+              )
+              }
+            </div>
+            <Card className="col-span-2">
+                <CardHeader>
+                  <CardTitle>Contact Person</CardTitle>
+                  <CardDescription>
+                    Add contact person details of supplier
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="contactPerson"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Person</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              disabled={isPending}
+                              placeholder="Enter contact person name"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                     <FormField
+                      control={form.control}
+                      name="contactPersonTitle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Person Title <span className="text-gray-400 text-sm">optional</span></FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              disabled={isPending}
+                              placeholder="Enter contact person title"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="contactPersonPhoneNumber"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col items-start mt-1">
+                          <FormLabel>Contact Person Phone Number</FormLabel>
+                          <FormControl className="w-full border-1 rounded-sm">
+                            <PhoneInput
+                              {...field}
+                              disabled={isPending}
+                              placeholder="Enter contact person phone number"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="contactPersonEmail"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Person Email <span className="text-gray-400 text-sm">optional</span></FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              disabled={isPending}
+                              placeholder="supplier@example.com"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                </CardContent>
+              </Card>
+          </>
 
           <div className="flex h-5 items-center space-x-4 mt-10">
             <CancelButton />

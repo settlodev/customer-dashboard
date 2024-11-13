@@ -13,5 +13,22 @@ export const SupplierSchema = object({
     })  .refine(isValidPhoneNumber, {
         message: "Invalid phone number",
     }),
+    contactPerson: string({
+        required_error: "Contact person of supplier is required",
+    }).min(3, "Contact person of supplier should be at least 3 characters").max(50, "Contact person of supplier can not be more than 50 characters").optional(),
+    contactPersonPhoneNumber: string({
+        required_error: "Contact person phone number of supplier is required",
+    }).refine(isValidPhoneNumber, {
+        message: "Invalid phone number",
+    }).optional(),
+    contactPersonTitle: string({
+        required_error: "Contact person title of supplier is required",
+    }).min(3, "Contact person title of supplier should be at least 3 characters").max(50, "Contact person title of supplier can not be more than 50 characters").optional(),
+    contactPersonEmail: string({
+        required_error: "Email of supplier is required",
+    }).email("Not a valid email").optional(),
+    physicalAddress: string({
+        required_error: "Physical address of supplier is required",
+    }).min(3, "Physical address of supplier should be at least 3 characters").max(50, "Physical address of supplier can not be more than 50 characters"),
     status: boolean().optional(),
 })

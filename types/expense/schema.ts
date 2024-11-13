@@ -16,5 +16,6 @@ export const ExpenseSchema = object({
           .nonnegative({ message: "Please expense amount should be positive number" })
           .gt(0, { message: "Please expense amount should be greater than 0" }),
       ),
+      date: string({ required_error: "Date is required" }),
     
 })
