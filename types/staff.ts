@@ -12,16 +12,11 @@ import {
 import { isValidPhoneNumber } from "libphonenumber-js";
 
 export const StaffSchema = object({
-  name: string({ required_error: "First name is required" }).min(
+  name: string({ required_error: "Staff full name is required" }).min(
     1,
     "Please enter a valid first name"
   ),
-  passCode: preprocess((val) => {
-    if (typeof val === "string" && val.trim() !== "") {
-      return parseInt(val);
-    }
-    return val;
-  }, number({ message: "Passcode is required" })),
+ 
   color: preprocess((val) => (val === null ? "" : val), string().optional()),
   email: string()
     .min(1, "Please enter a valid email address")
@@ -40,7 +35,7 @@ export const StaffSchema = object({
   ),
   salary: string({ message: "Salary is required" }).uuid(
     "Please select a valid salary"
-  ),
+  ).optional(),
   role: string({ message: "Staff role is required" }).uuid(
     "Please select a valid role"
   ),
@@ -67,7 +62,7 @@ export const StaffSchema = object({
     }
     return val;
   }, date().optional()),
-  jobTitle: string(),
+  jobTitle: string({message:"Job title is required"}).min(3, "Please enter a valid job title"),
 
   emergencyName: preprocess((val) => (val === null ? "" : val), string().optional()),
   emergencyNumber: preprocess((val) => (val === null ? "" : val), string().optional()),
