@@ -374,7 +374,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                         </div>
 
                                         <div className="flex mt-6 pt-4 border-t-1 border-t-gray-200 gap-10">
-                                            <Button type="submit" disabled={isPending} className="bg-emerald-500 flex-1">Save Category</Button>
+                                            <Button type="submit" disabled={isPending} className="bg-emerald-500 flex-1">Save </Button>
                                             <div onClick={()=>setCategoryModalVisible(false)} className="cursor-pointer text-emerald-500 font-medium flex flex-1 gap-1 items-center justify-center border-1 border-emerald-500 p-1 rounded-md"><span>Cancel</span></div>
                                         </div>
                                     </div>
@@ -428,7 +428,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                         </div>
 
                                         <div className="flex mt-6 pt-4 border-t-1 border-t-gray-200 gap-10">
-                                            <Button type="submit" disabled={isPending} className="bg-emerald-500 flex-1">Save Department</Button>
+                                            <Button type="submit" disabled={isPending} className="bg-emerald-500 flex-1">Save</Button>
                                             <div onClick={()=>setDepartmentModalVisible(false)} className="cursor-pointer text-emerald-500 font-medium flex flex-1 gap-1 items-center justify-center border-1 border-emerald-500 p-1 rounded-md"><span>Cancel</span></div>
                                         </div>
                                     </div>
@@ -511,7 +511,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                                 categories={categories}
                                                             />
                                                         </FormControl>:
-                                                        <><p className="border-1 border-gray-100 rounded-md p-2 text-red-500">You dont have any category</p></>
+                                                        <><p className="border-1 text-sm border-gray-100 rounded-md p-2 text-red-500">You dont have any category</p></>
                                                     }
                                                     <FormMessage/>
                                                 </FormItem>
@@ -545,7 +545,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                                 placeholder="Select department"
                                                                 departments={departments}
                                                         />: <>
-                                                                <p className="border-1 border-gray-100 rounded-md p-2 text-red-500">You dont have any department</p>
+                                                                <p className="border-1 text-sm border-gray-100 rounded-md p-2 text-red-500">You dont have any department</p>
                                                             </>
                                                         }
                                                             </FormControl>
