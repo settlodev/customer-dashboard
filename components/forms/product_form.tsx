@@ -40,7 +40,7 @@ import ProductDepartmentSelector from "@/components/widgets/product-department-s
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import { VariantSchema } from "@/types/variant/schema";
 import { Brand } from "@/types/brand/type";
-import {ChevronDownIcon, PlusIcon} from "lucide-react";
+import {ChevronDownIcon, PlusIcon, SearchIcon} from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
@@ -52,6 +52,8 @@ import { ToastAction } from "../ui/toast";
 import {CategorySchema} from "@/types/category/schema";
 import {Button} from "@/components/ui/button";
 import {DepartmentSchema} from "@/types/department/schema";
+import { fetchUnits } from "@/lib/actions/unit-actions";
+import { Units } from "@/types/unit/type";
 
 function ProductForm({ item }: { item: Product | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -63,6 +65,9 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
+    const [units, setUnits] = useState<Units[]>([]);
+    const [filteredUnits, setFilteredUnits] = useState<Units[]>([]);
+    const [searchTerm, setSearchTerm] = useState("");
 
     //const [file, setFile] = useState<File | null>(null)
     const [variantImageUrl, setVariantImageUrl] = useState<string>('');
@@ -74,19 +79,39 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     const [departmentModalVisible, setDepartmentModalVisible] = useState<boolean>(false);
 
     const {toast} = useToast();
+    
     useEffect(() => {
         const getData = async () => {
-            const categories = await fetchAllCategories();
-            setCategories(categories);
-
-            const departments = await fectchAllDepartments();
-            setDepartments(departments);
-
-            const brands = await fectchAllBrands();
-            setBrands(brands);
+          try {
+            const [categoryResponse,departmentResponse,brandResponse,unitResponse] = await Promise.all([
+                fetchAllCategories(),
+                fectchAllDepartments(),
+                fectchAllBrands(),
+                fetchUnits()
+            ])
+            setCategories(categoryResponse);
+            setDepartments(departmentResponse);
+            setBrands(brandResponse);
+            setUnits(unitResponse);
+            setFilteredUnits(unitResponse);
+        } catch (error) {
+    
+            throw error;
+            // toast({ title: "Error loading data", description: error.message });
         }
+        };
         getData();
     }, []);
+
+    useEffect(() => {
+        if (searchTerm === "") {
+          setFilteredUnits([]);
+        } else {
+          setFilteredUnits(
+            units.filter(unit => unit.name.toLowerCase().includes(searchTerm.toLowerCase()))
+          );
+        }
+      }, [searchTerm, units]);
 
     const form = useForm<z.infer<typeof ProductSchema>>({
         resolver: zodResolver(ProductSchema),
@@ -106,7 +131,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
         defaultValues: {
             name: '',
             price: 0,
-            cost: 0,
             sku: '',
             quantity: 0,
             description: '',
@@ -121,7 +145,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                 id: variant.id,
                 name: variant.name,
                 price: variant.price,
-                cost: variant.cost,
+              
                 sku: variant.sku ? variant.sku : '',
                 quantity: variant.quantity,
                 description: variant.description,
@@ -745,8 +769,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                             <span>{index + 1}</span></p>
                                                         <div className="flex-1 pt-1 pb-1">
                                                             <p className="text-md font-medium">{variant.name}</p>
-                                                            <p className="text-xs font-medium">PRICE: {variant.price} |
-                                                                COST: {variant.cost} | QTY: {variant.quantity}</p>
+                                                            <p className="text-xs font-medium">PRICE: {variant.price} | QTY: {variant.quantity}</p>
                                                         </div>
                                                         {item ? (
                                                             <p
@@ -838,7 +861,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                             name="price"
                                             render={({field}) => (
                                                 <FormItem>
-                                                    <FormLabel>Price</FormLabel>
+                                                    <FormLabel>Selling Price</FormLabel>
                                                     <FormControl>
                                                         <Input
                                                             placeholder="0.00"
@@ -852,7 +875,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                 </FormItem>
                                             )}
                                         />
-                                        <FormField
+                                        {/* <FormField
                                             control={variantForm.control}
                                             name="cost"
                                             render={({field}) => (
@@ -869,7 +892,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                     <FormMessage/>
                                                 </FormItem>
                                             )}
-                                        />
+                                        /> */}
                                         <FormField
                                             control={variantForm.control}
                                             name="quantity"
@@ -901,6 +924,67 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                                             {...field}
                                                             disabled={isPending}
                                                         />
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}
+                                        />
+                                         <FormField
+                                            control={variantForm.control}
+                                            name="barcode"
+                                            render={({field}) => (
+                                                <FormItem>
+                                                    <FormLabel>Barcode</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            placeholder="Enter Barcode"
+                                                            {...field}
+                                                            disabled={isPending}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={variantForm.control}
+                                            name="unit"
+                                            render={({field}) => (
+                                                <FormItem>
+                                                    <FormLabel>Unit</FormLabel>
+                                                    <FormControl>
+                                                    <div className="relative flex flex-col w-full max-w-sm">
+                                                    
+                                                    <div className="flex items-center border border-gray-300 rounded-lg px-2.5 py-1.5">
+                                                        <SearchIcon className="h-4 w-4 mr-2.5" />
+                                                        <Input
+                                                        type="search"
+                                                        placeholder="Search..."
+                                                        className="w-full border-0"
+                                                        value={searchTerm}
+                                                        disabled={isPending}
+                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                        />
+                                                    </div>
+                                                    
+                                                    { searchTerm && filteredUnits.length > 0 && (
+                                                        <div className="absolute mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-md z-10">
+                                                        {filteredUnits.map((unit) => (
+                                                            <div
+                                                            key={unit.id}
+                                                            className="cursor-pointer px-4 py-2 hover:bg-gray-100"
+                                                            onClick={() => {
+                                                                field.onChange(unit.id); 
+                                                                setSearchTerm(unit.name);
+                                                                setFilteredUnits([]);
+                                                            }}
+                                                            >
+                                                            {unit.name}
+                                                            </div>
+                                                        ))}
+                                                        </div>
+                                                    )}
+                                                    </div>
                                                     </FormControl>
                                                     <FormMessage/>
                                                 </FormItem>

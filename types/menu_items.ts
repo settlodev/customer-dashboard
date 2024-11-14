@@ -25,11 +25,26 @@ export const menuItems=(args?: MenuItemArgType) => {
                 [
                     {title: "Products", link: "/products", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Categories", link: "/categories", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Stock Intake", link: "/stock-intakes", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Suppliers", link: "/suppliers", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Brands", "link": "/brands", "current": args?.isCurrentItem, "icon": "cart"},
                     {title: "Addons", "link": "/addons", "current": args?.isCurrentItem, "icon": "cart"},
+                    {title: "Units", link: "/units", current: args?.isCurrentItem, icon: "cart"},
+                ]
+        },
+        {
+            label: "Stock",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'stock',
+            items:
+                [
+                  
+                    {title: "Manage Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Stock Intake", link: "/stock-intakes", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Stock Recount", link: "/stock-intake", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Stock Transfer", "link": "/stock-intake", "current": args?.isCurrentItem, "icon": "cart"},
+                    
                 ]
         },
         {

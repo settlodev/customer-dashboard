@@ -91,7 +91,7 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
     if (!date) return;
   
-    const newDate = new Date(date); // Start with the current date state
+    const newDate = new Date(date); 
   
     if (type === "hour") {
       newDate.setHours(Number(value));
@@ -99,7 +99,7 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
       newDate.setMinutes(Number(value));
     }
   
-    setDate(newDate); // Update the date state with the modified time
+    setDate(newDate); 
   };
   
 

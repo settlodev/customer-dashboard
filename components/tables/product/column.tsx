@@ -55,16 +55,6 @@ export const columns: ColumnDef<Product>[] = [
         enableHiding: true,
     },
     {
-        accessorKey: "variants",
-        enableHiding: false,
-        header: 'Cost',
-        cell: ({ row }) => {
-            const variants = row.original.variants; 
-            const cost = variants.length > 0 ? variants[0].cost : "N/A"; 
-            return <span>{cost}</span>; 
-        },
-    },
-    {
         accessorKey: "variants", // Change this to access the variants array
         enableHiding: false,
         header: ' Price',

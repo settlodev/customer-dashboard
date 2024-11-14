@@ -20,12 +20,14 @@ const DateTimePicker = ({
   setDate,
   handleTimeChange,
   onDateSelect,
+  minDate
 }: {
   field: FieldType;
   date: Date | undefined;
   setDate: (date: Date | undefined) => void;
   handleTimeChange: (type: handleTimeChangeType, value: string) => void;
   onDateSelect: (date: Date) => void;
+  minDate?:Date
 }) => {
   return (
     <Popover>
@@ -52,12 +54,17 @@ const DateTimePicker = ({
             selected={date}
             onSelect={(selectedDate) => {
               if (selectedDate) {
-                // Convert the selected date to a string before updating the form field
                 const formattedDate = selectedDate.toISOString();
                 setDate(selectedDate);
                 onDateSelect(selectedDate);
-                field.onChange(formattedDate); // Update the field with the string representation
+                field.onChange(formattedDate); 
               }
+            }}
+            disabled={(date) => {
+              if (!minDate) return false;
+              const today = new Date();
+              today.setHours(0, 0, 0, 0); 
+              return date < today; 
             }}
             initialFocus
           />
@@ -80,7 +87,7 @@ const DateTimePicker = ({
                         handleTimeChange("hour", hour.toString());
                         const newDate = new Date(date || new Date());
                         newDate.setHours(hour);
-                        field.onChange(newDate.toISOString()); // Convert to string
+                        field.onChange(newDate.toISOString()); 
                       }}
                     >
                       {hour}

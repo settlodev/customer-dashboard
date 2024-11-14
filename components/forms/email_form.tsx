@@ -381,6 +381,7 @@ const EmailForm = ({
                       setDate={setSchuledDate}
                       handleTimeChange={handleTimeChange}
                       onDateSelect={handleDateSelect}
+                      minDate={new Date()}
                     />
                     <FormDescription>
                       Schedule an email to be sent at a specific date and time.

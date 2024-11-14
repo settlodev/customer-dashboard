@@ -116,17 +116,32 @@ const ReservationForm = ({
     };
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
-    const currentDate = new Date();
-    const newDate = new Date(currentDate);
+    if(!reservationDate || !startDate || !endDate) return ;
+
+    const newDate = new Date(reservationDate);
+    const newStartDate = new Date(startDate)
+    const newEndDate = new Date(endDate)
+
     if (type === "hour") {
       newDate.setHours(Number(value));
+      newStartDate.setHours(Number(value));
+      newEndDate.setHours(Number(value))
     } else if (type === "minutes") {
       newDate.setMinutes(Number(value));
+      newStartDate.setMinutes(Number(value));
+      newEndDate.setMinutes(Number(value))
     }
+    setReservationDate(newDate);
+    setStartDate(newStartDate);
+    setEndDate(newEndDate);
   };
 
   const handleDateSelect = (date: Date) => {
+
+
+    setReservationDate(date)
     setStartDate(date);
+    setEndDate(date)
   };
 
   return (
@@ -245,6 +260,7 @@ const ReservationForm = ({
                         setDate={setReservationDate}
                         handleTimeChange={handleTimeChange}
                         onDateSelect={handleDateSelect}
+                        minDate={new Date()}
                       />
                       <FormDescription>
                         Please select your preferred date of reservation.
@@ -291,6 +307,7 @@ const ReservationForm = ({
                         setDate={setStartDate}
                         handleTimeChange={handleTimeChange}
                         onDateSelect={handleDateSelect}
+                        minDate={new Date()}
                       />
                       <FormDescription>
                         Please select your preferred start date and time.
@@ -314,6 +331,7 @@ const ReservationForm = ({
                         setDate={setEndDate}
                         handleTimeChange={handleTimeChange}
                         onDateSelect={handleDateSelect}
+                        minDate={new Date()}
                       />
                       <FormDescription>
                         Please select your preferred end date and time.

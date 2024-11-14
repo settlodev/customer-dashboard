@@ -132,13 +132,27 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     };
 
     const handleTimeChange = (type: "hour" | "minutes", value: string) => {
-        const currentDate = new Date();
-        const newDate = new Date(currentDate);
+        if (!orderDate || !setOrderDate || !setDeliveryDate) return;
+      
+        const newDate = new Date(orderDate);
+        const newDeliveryDate = new Date(orderDate);
+        const newBatchExpiryDate = new Date(orderDate);
+      
         if (type === "hour") {
           newDate.setHours(Number(value));
+          newDeliveryDate.setHours(Number(value));
+          newBatchExpiryDate.setHours(Number(value));
         } else if (type === "minutes") {
           newDate.setMinutes(Number(value));
+          newDeliveryDate.setMinutes(Number(value));
+          newBatchExpiryDate.setMinutes(Number(value));
+
+          
         }
+      
+        setOrderDate(newDate); 
+        setDeliveryDate(newDeliveryDate)
+        setBatchExpiryDate(newBatchExpiryDate)
       };
     
       const handleDateSelect = (date: Date) => {

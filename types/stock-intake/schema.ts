@@ -21,7 +21,7 @@ export const StockIntakeSchema = object({
         },
         number({message:"Value/Amount of inventory is required"}).nonnegative({message:"Value can not be negative"}).gt(0,{message:"Value can not be zero"})
     ),
-    batchExpiryDate: string({ required_error: "Batch expiry date is required" }),
+    batchExpiryDate: string({ required_error: "Batch expiry date is required" }).optional(),
     orderDate: string({ required_error: "Order date is required" }),
     deliveryDate: string({ required_error: "Delivery date is required" }),
     status: boolean().optional(),

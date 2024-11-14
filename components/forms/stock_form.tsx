@@ -267,74 +267,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                     </div>
                                 </div>
 
-                                {/* <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-3 gap-4 mt-2">
-                                    <FormField
-                                        control={form.control}
-                                        name="category"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Category</FormLabel>
-                                                <FormControl>
-                                                    <ProductCategorySelector
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Category"
-                                                        placeholder="Select category"
-                                                        categories={categories}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="department"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Department</FormLabel>
-                                                <FormControl>
-                                                    <ProductDepartmentSelector
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Department"
-                                                        placeholder="Select department"
-                                                        departments={departments}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="brand"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Brand</FormLabel>
-                                                <FormControl>
-                                                    <ProductBrandSelector
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Brand"
-                                                        placeholder="Select brand"
-                                                        brands={brands}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div> */}
+                                
 
                                 <div className="mt-4">
                                     <FormField
@@ -445,7 +378,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                 <Separator orientation="vertical" />
                                 <SubmitButton
                                     isPending={isPending || variants.length === 0}
-                                    label={item ? "Update stock" : "Save stock"}
+                                    label={item ? "Update stock" : "Add stock"}
                                 />
                             </div>
                         </form>

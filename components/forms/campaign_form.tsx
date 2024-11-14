@@ -31,6 +31,7 @@ import { Checkbox } from "../ui/checkbox";
 import { CampaignSchema } from "@/types/campaign/schema";
 import { Campaign } from "@/types/campaign/type";
 import { audienceType } from "@/types/enums";
+import Link from "next/link";
 
 const CampaignForm = ({
   item,
@@ -147,9 +148,16 @@ const CampaignForm = ({
                     <Input
                       placeholder="SETTLO"
                       {...field}
-                      disabled={isPending}
+                      disabled
                     />
                   </FormControl>
+                  <FormDescription>
+                    <Link href='#'>
+                    <span className="text-sm text-emerald-500 cursor-pointer">
+                      Please request senderId to be able to campaign
+                    </span>
+                    </Link>
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -222,7 +230,7 @@ const CampaignForm = ({
               name="communicationTemplate"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Template <span className="text-blue-500">(Optional)</span></FormLabel>
+                  <FormLabel>Template <span className="text-emerald-500 text-sm">(Optional)</span></FormLabel>
                   <FormControl>
                     <Select
                       disabled={isPending || templates.length === 0}
@@ -341,13 +349,14 @@ const CampaignForm = ({
                 name="scheduled"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel>Schedule Campaign <span className="text-blue-500">(Optional)</span></FormLabel>
+                    <FormLabel>Schedule Campaign <span className="text-emerald-500 text-sm">(Optional)</span></FormLabel>
                     <DateTimePicker
                       field={field}
                       date={scheduledDate}
                       setDate={setSchuledDate}
                       handleTimeChange={handleTimeChange}
                       onDateSelect={handleDateSelect}
+                      minDate={new Date()}
                     />
                     <FormDescription>
                       Optional enter date and time to schedule sending process

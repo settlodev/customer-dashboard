@@ -20,16 +20,10 @@ export const VariantSchema = object({
         },
         number({message:"Quantity is required"}).nonnegative({message:"Quantity can not be negative"}).gt(0,{message:"Quantity can not be zero"})
     ),
-    cost: preprocess(
-        (val)=>{
-            if(typeof val==="string" && val.trim()!==""){
-                return parseInt(val)
-            }
-            return val
-        },
-        number({message:"Cost is required"}).nonnegative({message:"Cost can not be negative"}).gt(0,{message:"Cost can not be zero"})
-    ),
+  
     sku: string().optional(),
+    barcode: string().optional(),
+    unit: string().optional(),
     description: string().optional(),
     image: string().nullable().optional(),
     color: string().nullable().optional()

@@ -14,11 +14,14 @@ export declare interface Product {
     canDelete: boolean,
     business: UUID,
     category: UUID,
+    categoryName:string,
     location: UUID,
     department: UUID,
     departmentName: string,
     brand: UUID,
     brandName: string,
+    taxClass:string
+    taxIncluded:boolean
     isArchived: boolean,
     variants: Variant[]
 }
