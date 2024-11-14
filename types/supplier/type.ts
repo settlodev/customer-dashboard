@@ -5,10 +5,10 @@ export declare interface Supplier  {
     name: string
     email: string
     phoneNumber: string
-    contactPerson: string
+    contactPersonName: string
     contactPersonTitle: string
     contactPersonEmail: string
-    contactPersonPhoneNumber: string
+    contactPersonPhone: string
     physicalAddress: string
     business:string
     location:string

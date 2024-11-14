@@ -675,11 +675,11 @@ function RegisterForm({step}:{step: string}) {
                                                                                     key={index}
                                                                                     value={country.id}>
                                                                                     {country.name}{" "}
-                                                                                    {/* Assuming 'name' is the country name */}
                                                                                 </SelectItem>
                                                                             )
                                                                         )
                                                                         : null}
+                                                                       
                                                                 </SelectContent>
                                                             </Select>
                                                         </FormControl>

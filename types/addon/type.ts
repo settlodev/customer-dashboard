@@ -5,10 +5,9 @@ export declare interface Addon {
     title:string;
     location:string;
     price:number;
-    addonTracking:boolean;
-    stock:string;
-    stockVariant:UUID;
-    product:UUID;
+    isTracked:boolean;
+    stockVariant:string;
+    variants:string[];
     status:boolean;
     canDelete:boolean;
     isArchived:boolean

@@ -46,28 +46,31 @@ export const columns: ColumnDef<Expense>[] = [
     },
   },
   {
-    accessorKey: "expenseCategory",
+    accessorKey: "expenseCategoryName",
     header: "Expense Category",
   },
   {
     id: "amount",
     accessorKey: "amount",
-    header: ({ column }) => {
-      return (
-        <Button
-          className="text-left p-0"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Total Amount
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
+    cell: ({ row }) => {
+      const amount = parseFloat(row.getValue("amount"));
+      const formattedAmount = amount.toLocaleString("en", {
+        style: "currency",
+        currency: "TZS",
+      });
+      return <div>{formattedAmount}</div>;
     },
-   
     enableHiding: false,
   },
- 
+   {
+    id:'date',
+    accessorKey:"date",
+    cell: ({row})=>{
+      const date = row.original.date;
+      const format = new Intl.DateTimeFormat("en").format(new Date(date))
+      return <div>{format}</div>
+    }
+   },
   {
     id: "status",
     accessorKey: "status",

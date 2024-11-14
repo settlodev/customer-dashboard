@@ -45,7 +45,7 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [stockVariants, setStockVariants] = useState<StockVariant[]>([]);
   const [addonTracking, setAddonTracking] = useState<boolean>(false);
   const [products, setProducts] = useState<Product[]>([]);
-  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [, setSelectedProduct] = useState<Product | null>(null);
   const [productVariants, setProductVariants] = useState<Variant[]>([]);
   const { toast } = useToast();
 
@@ -176,7 +176,7 @@ const handleProductChange = (productId: string) => {
                 />
                 <FormField
                                         control={form.control}
-                                        name="addonTracking"
+                                        name="isTracked"
                                         render={({ field }) => (
                                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2">
                                                 <FormLabel>Allow Addon Tracking</FormLabel>
@@ -272,7 +272,7 @@ const handleProductChange = (productId: string) => {
 
                                   <FormField
                                         control={form.control}
-                                        name="productVariant"
+                                        name="variants"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Product Variant </FormLabel>

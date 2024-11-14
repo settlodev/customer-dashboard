@@ -190,7 +190,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="contactPerson"
+                      name="contactPersonName"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Contact Person</FormLabel>
@@ -224,7 +224,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                     />
                     <FormField
                       control={form.control}
-                      name="contactPersonPhoneNumber"
+                      name="contactPersonPhone"
                       render={({ field }) => (
                         <FormItem className="flex flex-col items-start mt-1">
                           <FormLabel>Contact Person Phone Number</FormLabel>
