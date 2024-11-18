@@ -238,7 +238,7 @@ export const uploadCSV = async ({ fileData, fileName }: { fileData: string; file
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
         const response = await apiClient.post(
-            `/api/products/${location?.id}/upload-csvx`,
+            `/api/products/${location?.id}/upload-csv`,
             formattedCSVData, // Send as plain text
             {
                 headers: {

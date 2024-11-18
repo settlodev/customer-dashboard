@@ -8,8 +8,7 @@ export const fetchSubscriptions = async (): Promise<Subscription[]> => {
         const apiClient = new ApiClient();
         const response = await apiClient.get<Subscription[]>("/api/subscriptions/");
         const sortedSubscriptions  = response.sort((a, b) => a.amount - b.amount);
-        console.log("The response from the API for subscriptions is:", sortedSubscriptions);
-        return parseStringify(response);
+        return parseStringify(sortedSubscriptions);
     } catch (error) {
         throw error;
     }   

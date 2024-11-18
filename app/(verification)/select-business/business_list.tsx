@@ -31,14 +31,9 @@ export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
     return (<>
             <SignupNavbar />
             <div className="container mx-auto flex flex-col items-center justify-center">
-            <div className="flex items-center justify-center flex-col">
-                {/*<div className="overflow-hidden p-2 mb-4 mt-6">
-                    <Image src="/images/new_logo.svg" alt="Settlo Logo" width={200} height={100}/>
-                </div>*/}
-                <div className="overflow-hidden mb-6 text-center mt-6">
-                    {business && <h1 className="font-bold text-[32px] text-gray-700">{business.name}</h1>}
-                    <h1 className="font-bold text-md text-gray-500">Select your business {business ? "location":''}</h1>
-                </div>
+            <div className="flex flex-col items-center justify-center overflow-hidden mb-6 text-center mt-6 gap-3">
+                    {business && <h1 className="font-bold text-[26px] text-gray-700 capitalize lg:text-[32px]">{business.name}</h1>}
+                    <h1 className="text-[16px] font-bold text-md text-gray-500">Select your business {business ? "location":''}</h1>
             </div>
 
             <div className="flex items-center justify-center md:w-1/3">

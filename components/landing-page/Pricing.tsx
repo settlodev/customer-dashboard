@@ -18,7 +18,6 @@ export const Pricing = () => {
         const getSubscription = async () => {
             try {
                 const data = await fetchSubscriptions()
-                console.log("The list of subscriptions is:", data)
                 setSubscription(data)
             } catch (error) {
                 console.log(error)

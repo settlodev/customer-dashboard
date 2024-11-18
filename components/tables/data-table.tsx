@@ -51,7 +51,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DoubleArrowLeftIcon, DoubleArrowRightIcon } from "@radix-ui/react-icons";
-import { DialogDemo } from "../csv/CSVImport";
+import { CSVDialog} from "../csv/CSVImport";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -220,7 +220,7 @@ export function DataTable<TData, TValue>({
             </DropdownMenuContent>
           </DropdownMenu>
 
-         {pathname === "/products" ?  <DialogDemo /> : null}
+         {pathname === "/products" ?  <CSVDialog /> : null}
 
           <Button
             className="h-8 gap-1"
