@@ -1,4 +1,3 @@
-import exp from "constants"
 import { UUID } from "crypto"
 
 export declare interface Subscription {

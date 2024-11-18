@@ -55,7 +55,7 @@ const PricingCard = ({ packageName, amount,subscriptionFeatures }: PricingCardPr
     const featuresToShow = showAll ? subscriptionFeatures : subscriptionFeatures.slice(0, 10);
 
     return (
-        <div className="flex flex-col items-start justify-center bg-white w-[340px] border-2 rounded-md pl-5 pr-5 pt-3 pb-3 shadow-lg lg:w-[400px] lg:h-[500px] lg:p-6 gap-4">
+        <div className="flex flex-col items-start justify-center bg-white w-[340px] border-2 rounded-md pl-5 pr-5 pt-3 pb-3 shadow-lg lg:w-[400px] lg:min-h-[500px] lg:p-6 gap-4">
             <div>
             <p className="text-[20px] font-medium text-center lg:text-start text-gray-900 uppercase">{packageName}</p>
             </div>
