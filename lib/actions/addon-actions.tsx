@@ -24,8 +24,6 @@ export const fectchAdons = async () : Promise<Addon[]> => {
             `/api/brands/${location?.id}`,
         );
 
-        console.log("All the addons found are: ", addonData)
-       
         return parseStringify(addonData);
 
     }
@@ -67,7 +65,7 @@ export const searchAddon = async (
             `/api/addons/${location?.id}`,
             query
         );
-        console.log("The addon data is: ", addonData)
+        
         return parseStringify(addonData);
     }
     catch (error){
