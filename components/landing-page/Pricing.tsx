@@ -49,7 +49,7 @@ export const Pricing = () => {
 
 }
 
-const PricingCard = ({ packageName, amount, discount, packageCode, subscriptionFeatures }: PricingCardProps) => {
+const PricingCard = ({ packageName, amount,subscriptionFeatures }: PricingCardProps) => {
     const formattedAmount = amount.toLocaleString('en-US', { style: 'currency', currency: 'TZS' });
     const [showAll, setShowAll] = useState(false);
     const featuresToShow = showAll ? subscriptionFeatures : subscriptionFeatures.slice(0, 10);
