@@ -38,10 +38,10 @@ import ProductSelector from "../widgets/product-selector";
 function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error, ] = useState<string | undefined>("");
-  const [success, ] = useState<string | undefined>("");
+  const [error,] = useState<string | undefined>("");
+  const [success,] = useState<string | undefined>("");
   const [stocks, setStocks] = useState<Stock[]>([]);
-  const [,setSelectedStock] = useState<Stock | null>(null);
+  const [, setSelectedStock] = useState<Stock | null>(null);
   const [stockVariants, setStockVariants] = useState<StockVariant[]>([]);
   const [addonTracking, setAddonTracking] = useState<boolean>(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -49,59 +49,92 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [productVariants, setProductVariants] = useState<Variant[]>([]);
   const { toast } = useToast();
 
+  const form = useForm<z.infer<typeof AddonSchema>>({
+    resolver: zodResolver(AddonSchema),
+    defaultValues: { status: true }, // Initial default
+  });
+  
   useEffect(() => {
     const getData = async () => {
       try {
-        const [stockResponse,productResponse] = await Promise.all([
-            fetchStock(),
-            fectchAllProducts(),
-        ])
+        const [stockResponse, productResponse] = await Promise.all([
+          fetchStock(),
+          fectchAllProducts(),
+        ]);
         setStocks(stockResponse);
         setProducts(productResponse);
-    } catch (error) {
+  
+        if (item) {
+          setAddonTracking(item.isTracked);
+          
+       
+          
+          const stock = stockResponse.find((stk) => stk.id === item.stockVariant?.stock) || null;
+          setSelectedStock(stock);
+          setStockVariants(stock ? stock.stockVariants : []);
 
+          const productId = Array.isArray(item.variants)
+          ? item.variants.length > 0
+            ? item.variants[0]?.product
+            : undefined
+          : item.variants?.product;
+          const product = productResponse.find((prd) => prd.id === productId) || null;
+        
+          setSelectedProduct(product);
+          setProductVariants(product ? product.variants : []);
+
+             form.reset({
+              ...item,
+              stock: item.stockVariant?.stock, 
+              stockVariant: item.stockVariant?.id, 
+              product: productId, 
+              variants: Array.isArray(item.variants)
+                ? item.variants.map((variant) => variant.id) 
+                : item.variants && typeof item.variants.id === 'string'
+                ? [item.variants.id] 
+                : [], 
+            });
+        }
+      } catch (error) {
+        // Handle error appropriately
         throw error;
-        // toast({ title: "Error loading data", description: error.message });
-    }
+      }
     };
     getData();
-}, []);
+  }, [item, form, setStocks, setProducts]);
+  
 
-const handleAddonTrackingChange = (value: boolean) => {
-  setAddonTracking(value);
-  toast({
-    title: "Addon Tracking",
-    description: value
-      ? "You will need to select stock and product variant(s) to track this addon."
-      : "You won't be able to track the stock and product variant for this addon.",
-    variant:value ? "default" : "destructive",
-    duration: 3000,
-  })
-};
+  const handleAddonTrackingChange = (value: boolean) => {
+    setAddonTracking(value);
+    console.log("Addon tracking enabled:", value);
+    toast({
+      title: "Addon Tracking",
+      description: value
+        ? "You will need to select stock and product variant(s) to track this addon."
+        : "You won't be able to track the stock and product variant for this addon.",
+      variant: value ? "default" : "destructive",
+      duration: 3000,
+    })
+  };
 
-const handleStockChange = (stockId: string) => {
-  const stock = stocks.find((stk) => stk.id === stockId) || null;
-  setSelectedStock(stock);
-  setStockVariants(stock ? stock.stockVariants : []);
-};
+  const handleStockChange = (stockId: string) => {
+    const stock = stocks.find((stk) => stk.id === stockId) || null;
+    setSelectedStock(stock);
+    setStockVariants(stock ? stock.stockVariants : []);
+  };
 
-const handleProductChange = (productId: string) => {
-  const product = products.find((prd) => prd.id === productId) || null;
-  setSelectedProduct(product);
-  setProductVariants(product ? product.variants : []);
-};
-
-  const form = useForm<z.infer<typeof AddonSchema>>({
-    resolver: zodResolver(AddonSchema),
-    defaultValues: item ? item : { status: true },
-  });
+  const handleProductChange = (productId: string) => {
+    const product = products.find((prd) => prd.id === productId) || null;
+    setSelectedProduct(product);
+    setProductVariants(product ? product.variants : []);
+  };
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
-        description:typeof errors.message === 'string' && errors.message
+        description: typeof errors.message === 'string' && errors.message
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
@@ -137,8 +170,8 @@ const handleProductChange = (productId: string) => {
           <>
 
             <>
-            <FormError message={error}/>
-            <FormSuccess message={success}/>
+              <FormError message={error} />
+              <FormSuccess message={success} />
               <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -175,149 +208,19 @@ const handleProductChange = (productId: string) => {
                   )}
                 />
                 <FormField
-                                        control={form.control}
-                                        name="isTracked"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2">
-                                                <FormLabel>Allow Addon Tracking</FormLabel>
-                                                <FormControl>
-                                                    <Switch
-
-                                                        checked={field.value}
-                                                        onCheckedChange={(value) => {
-                                                            field.onChange(value);
-                                                            handleAddonTrackingChange(value);
-                                                        }}
-                                                        disabled={isPending}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                   {addonTracking && (
-                    <>
-                                  <FormField
-                                        control={form.control}
-                                        name="stock"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Stock </FormLabel>
-                                                <FormControl>
-                                                    <StockSelector
-                                                        value={field.value}
-                                                        onChange={(value) => {
-                                                            field.onChange(value);
-                                                            handleStockChange(value);
-                                                        }}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Stock"
-                                                        placeholder="Select stock"
-                                                        stocks={stocks}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name="stockVariant"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Stock Variant</FormLabel>
-                                                <FormControl>
-                                                    <StockVariantSelector
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Stock Variant"
-                                                        placeholder="Select stock variant"
-                                                        stockVariants={stockVariants}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                   <FormField
-                                        control={form.control}
-                                        name="product"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Product </FormLabel>
-                                                <FormControl>
-                                                    <ProductSelector
-                                                        value={field.value}
-                                                        onChange={(value) => {
-                                                            field.onChange(value);
-                                                            handleProductChange(value);
-                                                        }}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Product"
-                                                        placeholder="Select Product"
-                                                        products={products}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                  <FormField
-                                        control={form.control}
-                                        name="variants"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Product Variant </FormLabel>
-                                                <FormControl>
-                                                    <MultiSelect
-                                                        options={
-                                                            [
-                                                              ...productVariants.map(
-                                                                (variant) => ({
-                                                                    label: variant.name,
-                                                                    value: variant.id,
-                                                                })
-                                                            )
-                                                            ]
-                                                        }
-                                                        onValueChange={(field as any).onChange}
-                                                        defaultValue={(field as any).value}
-                                                        placeholder="Select variant"
-                                                        variant="inverted"
-                                                        animation={2}
-                                                        maxCount={3}
-                                                        {...field}
-                                                      />
-
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                    </>
-                                )}
-
-{                item && (
-                  <div className="grid gap-2">
-                <FormField
                   control={form.control}
-                  name="status"
+                  name="isTracked"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <FormLabel>Addon Status</FormLabel>
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-2">
+                      <FormLabel>Allow Addon Tracking</FormLabel>
                       <FormControl>
                         <Switch
 
                           checked={field.value}
-                          onCheckedChange={field.onChange}
+                          onCheckedChange={(value) => {
+                            field.onChange(value);
+                            handleAddonTrackingChange(value);
+                          }}
                           disabled={isPending}
                         />
                       </FormControl>
@@ -325,9 +228,139 @@ const handleProductChange = (productId: string) => {
                     </FormItem>
                   )}
                 />
-              </div>
+                {addonTracking && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="stock"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock </FormLabel>
+                          <FormControl>
+                            <StockSelector
+                              value={field.value}
+                              onChange={(value) => {
+                                field.onChange(value);
+                                handleStockChange(value);
+                              }}
+                              onBlur={field.onBlur}
+                              isRequired
+                              isDisabled={isPending}
+                              label="Stock"
+                              placeholder="Select stock"
+                              stocks={stocks}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="stockVariant"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stock Variant</FormLabel>
+                          <FormControl>
+                            <StockVariantSelector
+                              value={field.value}
+                              onChange={field.onChange}
+                              onBlur={field.onBlur}
+                              isRequired
+                              isDisabled={isPending}
+                              label="Stock Variant"
+                              placeholder="Select stock variant"
+                              stockVariants={stockVariants}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="product"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product </FormLabel>
+                          <FormControl>
+                            <ProductSelector
+                              value={field.value}
+                              onChange={(value) => {
+                                field.onChange(value);
+                                handleProductChange(value);
+                              }}
+                              onBlur={field.onBlur}
+                              isRequired
+                              isDisabled={isPending}
+                              label="Product"
+                              placeholder="Select Product"
+                              products={products}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="variants"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Product Variant </FormLabel>
+                          <FormControl>
+                            <MultiSelect
+                              options={
+                                [
+                                  ...productVariants.map(
+                                    (variant) => ({
+                                      label: variant.name,
+                                      value: variant.id,
+                                    })
+                                  )
+                                ]
+                              }
+                              onValueChange={(field as any).onChange}
+                              defaultValue={(field as any).value}
+                              placeholder="Select variant"
+                              variant="inverted"
+                              animation={2}
+                              maxCount={3}
+                              {...field}
+                            />
+
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+
+                {item && (
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <FormLabel>Addon Status</FormLabel>
+                          <FormControl>
+                            <Switch
+
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 )
-              }
+                }
               </div>
             </>
           </>

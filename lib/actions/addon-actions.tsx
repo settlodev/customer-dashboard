@@ -23,6 +23,8 @@ export const fectchAdons = async () : Promise<Addon[]> => {
         const addonData = await  apiClient.get(
             `/api/brands/${location?.id}`,
         );
+
+        console.log("All the addons found are: ", addonData)
        
         return parseStringify(addonData);
 
@@ -60,10 +62,12 @@ export const searchAddon = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
+        console.log("The location passed is: ", location)
         const addonData = await  apiClient.post(
             `/api/addons/${location?.id}`,
             query
         );
+        console.log("The addon data is: ", addonData)
         return parseStringify(addonData);
     }
     catch (error){

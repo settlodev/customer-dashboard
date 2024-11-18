@@ -3,7 +3,6 @@ import {ColumnDef} from "@tanstack/react-table";
 import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
-import {StateColumn} from "@/components/tables/state-column";
 import {CellAction} from "@/components/tables/stock/cell-action";
 import { Stock } from "@/types/stock/type";
 
@@ -46,58 +45,25 @@ export const columns: ColumnDef<Stock>[] = [
  
     {
         accessorKey: "stockVariants",
-        header: "Starting Value",
+        header: "Total variants",
         enableHiding: true,
         cell: ({ row }) => {
             const variants = row.original.stockVariants; 
-            const startingValue = variants.length > 0 ? variants[0].startingValue : "N/A"; 
-            const formattedValue = typeof startingValue === 'number' ? startingValue.toLocaleString() : startingValue;
-            return <span>{formattedValue}</span>;
+            const totalVariants = variants.length > 0 ? variants.length : 0; 
+            return <span>{totalVariants}</span>;
         }
     },
-    {
-        accessorKey: "stockVariants",
-        header: "Starting Quantity",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const variants = row.original.stockVariants; 
-            const startingQuantity = variants.length > 0 ? variants[0].startingQuantity : "N/A"; 
-            const formattedQuantity = typeof startingQuantity === 'number' ? startingQuantity.toLocaleString() : startingQuantity;
-            return <span>{formattedQuantity}</span>;
-        }
-    },
-    {
-        
-        accessorKey: "stockVariants",
-        header: "Stock Alert Level",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const variants = row.original.stockVariants; 
-            const alertLevel = variants.length > 0 ? variants[0].alertLevel : 0; 
-            const formattedAlertLevel = typeof alertLevel === 'number' ? alertLevel.toLocaleString() : alertLevel;
-            return <span>{formattedAlertLevel}</span>;},
-    },
-   
+     
     {
         id: "status",
         accessorKey: "status",
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Status
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
-        cell: ({ row }) => <StateColumn state={row.original.status} />,
+        header: 'Stock Status',
         enableHiding: false,
     },
     {
         id: "actions",
+        // header: "Actions",
+        enableHiding: false,
         cell: ({ row }) => <CellAction data={row.original} />,
     },
 ];

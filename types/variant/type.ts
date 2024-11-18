@@ -17,7 +17,7 @@ export declare interface Variant {
     taxIncluded: boolean,
     taxAmount: number,
     taxClass: string,
-    product: Product,
+    product: string,
     tag: UUID,
     isArchived: boolean
     unit: string

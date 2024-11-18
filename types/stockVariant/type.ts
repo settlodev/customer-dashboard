@@ -11,7 +11,7 @@ export declare interface StockVariant {
     imageOption: string,
     status: boolean,
     canDelete: boolean,
-    stock: Stock,
+    stock: string,
     isArchived: boolean
 }
 

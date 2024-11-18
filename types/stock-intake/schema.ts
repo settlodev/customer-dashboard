@@ -26,5 +26,5 @@ export const StockIntakeSchema = object({
     deliveryDate: string({ required_error: "Delivery date is required" }),
     status: boolean().optional(),
     supplier: string({message:"Please select a supplier"}).uuid().optional(),
-    staff: string({message:"Please select a staff"}).uuid().optional(),
+    staff: string({message:"Please select a staff"}).uuid(),
 });

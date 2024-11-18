@@ -47,52 +47,38 @@ export const columns: ColumnDef<Product>[] = [
     {
         accessorKey: "categoryName",
         enableHiding: true,
-        header: 'Category'
+        header: 'Category',
+        cell: ({ row }) => {
+            const category = row.original.categoryName;
+            return <span>{category ? category : "None"}</span>;
+        }
     },
     {
         accessorKey: "brandName",
         header: "Brand",
         enableHiding: true,
+        cell: ({ row }) => {
+            const brand = row.original.brandName;
+            return <span>{brand ? brand : "None"}</span>;
+        }
     },
     {
         accessorKey: "variants", // Change this to access the variants array
         enableHiding: false,
-        header: ' Price',
+        header: 'No. of Variants',
         cell: ({ row }) => {
             const variants = row.original.variants; 
-            const price = variants.length > 0 ? variants[0].price : "N/A"; 
-            return <span>{price}</span>; 
+            return <span>{variants.length}</span>;
         },
     },
 
     {
-        accessorKey: "variant",
-        header: "Quantity",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const variants = row.original.variants; 
-            const quantity = variants.length > 0 ? variants[0].quantity : "N/A"; 
-            return <span>{quantity}</span>;
-        }
-    },
-    {
-        id: "outOfStock",
-        header: "Stock Status",
-        cell: ({ row }) => {
-            const variants = row.original.variants; 
-            const quantity = variants.length > 0 ? variants[0].quantity : 0; 
-            return quantity === 0 ? <span className="px-2 py-1 rounded-full bg-red-500 text-sm text-white">OutOfStock</span> : <span className="px-2 py-1 rounded-full bg-green-500 text-sm text-white">InStock</span>; // Show "Out of Stock" if quantity is 0
-        },
-        enableHiding: true,
-    },
-    {
-        accessorKey: "variant",
+        accessorKey: "sku",
         header: "SKU",
         enableHiding: true,
         cell: ({ row }) => {
-            const variants = row.original.variants; 
-            const sku = variants.length > 0 ? variants[0].sku : "N/A"; 
-            return <span>{sku}</span>;
+            const sku = row.original.sku; 
+            return <span>{sku ? sku : "None"}</span>;
         }
     },
    
