@@ -98,7 +98,7 @@ const ContactLinks = [
 
 const Footer = () => {
   return (
-    <section className='w-full'>
+    <section className='w-full '>
       <div className='flex flex-col gap-8 bg-[#161C28] text-white px-4 py-8 l'>
         
         <div className='flex flex-col lg:flex-row lg:justify-between lg:items-center lg:gap-10'>
@@ -125,7 +125,7 @@ const Footer = () => {
             }
           </div>
         </div>
-        <div className='grid grid-cols-2 gap-4 lg:grid-cols-4'>
+        <div className='grid grid-cols-2 gap-4 lg:grid-cols-4 md:grid-cols-3'>
           
           <div className='flex flex-col gap-2'>
           <h3 className='font-bold'>Business Type</h3>

@@ -27,7 +27,8 @@ function ItemStatusSelector({
             <SelectContent>
                 {statuses && statuses.length > 0 ?
                     statuses.map((item: StatusItem, index) => {
-                        return <SelectItem aria-selected={true} key={index} value={JSON.stringify(item.value)}>
+                        return <SelectItem
+                        aria-selected={true} key={index} value={String(item.value)}>
                             {item.name}
                         </SelectItem>
                     })

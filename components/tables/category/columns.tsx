@@ -46,10 +46,6 @@ export const columns: ColumnDef<Category>[] = [
     },
   },
   {
-    accessorKey: "description",
-    header: "Description",
-  },
-  {
     id: "status",
     accessorKey: "status",
     header: ({ column }) => {

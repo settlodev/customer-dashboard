@@ -1,8 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, {useEffect, useState, useTransition} from "react";
-import { useForm } from "react-hook-form";
+import React, {useCallback, useEffect, useState, useTransition} from "react";
+import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 import { Separator } from "../ui/separator";
 
@@ -25,15 +25,17 @@ import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import ProductCategorySelector from "@/components/widgets/product-category-selector";
 import ItemStatusSelector from "@/components/widgets/item-status-selector";
 import {ItemStatuses} from "@/types/constants";
+import {useToast } from "@/hooks/use-toast";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
-    console.log("item is:", item);
+    // console.log("item is:", item);
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     //const [isActive, setIsActive] = React.useState(item ? item.status : true);
     const [imageUrl, setImageUrl] = useState<string>(item && item.image?item.image: "");
     const [categories, setCategories] = useState<Category[] | null>([]);
-    const [status, setStatus] = useState<string>(JSON.stringify(item?item.status: ItemStatuses[0].value));
+    const [status, setStatus] = useState<boolean>(item?item.status: ItemStatuses[0].value);
+    const { toast } = useToast();
 
     useEffect(() => {
         const getData = async () => {
@@ -43,19 +45,28 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
         getData();
     }, []);
 
-    const selectStatus = (item: string)=>{
-        //const myItem = JSON.parse(item);
-        setStatus(item);
-    }
+   
     const form = useForm<z.infer<typeof CategorySchema>>({
         resolver: zodResolver(CategorySchema),
         defaultValues: {
             ...item,
             image: imageUrl ? imageUrl : (item && item.image?item.image: ""),
             parentId: item?.parentId || "",
-            status: status
+            status: item ? !!item.status : false,
         }
     });
+    const onInvalid = useCallback(
+        (errors: FieldErrors) => {
+          toast({
+            variant: "destructive",
+            title: "Uh oh! something went wrong",
+            description:typeof errors.message === 'string' && errors.message
+              ? errors.message
+              : "There was an issue submitting your form, please try later",
+          });
+        },
+        [toast]
+      );
 
     const submitData = (values: z.infer<typeof CategorySchema>) => {
         setResponse(undefined);
@@ -64,7 +75,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
             values.image = imageUrl;
         }
 
-        values.status = JSON.parse(status);
+        values.status = status;
 
         startTransition(() => {
             if (item) {
@@ -72,14 +83,29 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                     ...values,
                     parentId: values.parentId || item.parentId || "",
                 };
-                console.log("Updated values:", updatedValues);
 
                 updateCategory(item.id, updatedValues).then((data) => {
                     if (data) setResponse(data);
+
+                    if(data?.responseType === "success") {
+                        toast({
+                            variant: "default",
+                            title: "Category updated successfully",
+                            description: "Category has been updated successfully",
+                        });
+                    }
                 });
             } else {
                 createCategory(values).then((data) => {
                     if (data) setResponse(data);
+                    
+                    if(data?.responseType === "success") {
+                        toast({
+                            variant: "default",
+                            title: "Category created successfully",
+                            description: "Category has been created successfully",
+                        });
+                    }
                 });
             }
         });
@@ -88,7 +114,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
     return (
         <Form {...form}>
             <FormError message={response?.message} />
-            <form className="space-y-8]" onSubmit={form.handleSubmit(submitData)}>
+            <form className="space-y-8]" onSubmit={form.handleSubmit(submitData, onInvalid)}>
                 <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
                     <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
                         <div className="mt-4 flex">
@@ -156,12 +182,16 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                                         <FormLabel>Category Status </FormLabel>
                                         <FormControl>
                                             <ItemStatusSelector
-                                                onChange={selectStatus}
+                                                onChange={(newStatus) => {
+                                                    const booleanValue = newStatus === "true"; 
+                                                    field.onChange(booleanValue); 
+                                                    setStatus(booleanValue); 
+                                                }}
                                                 onBlur={field.onBlur}
                                                 isRequired
                                                 isDisabled={isPending}
                                                 label="Status"
-                                                value={JSON.stringify(status)}
+                                                value={String(status)}
                                                 placeholder="Select Status"
                                             />
                                         </FormControl>
@@ -170,51 +200,6 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
                                 )}
                             />
-
-                            {/*<FormField
-                                control={form.control}
-                                name="status"
-                                render={({field}) => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <Switch
-                                                {...field}
-                                                checked={field.value}
-                                                classNames={{
-                                                    base: cn(
-                                                        "inline-flex flex-row-reverse w-full max-w-full bg-content1 hover:bg-content2 items-center",
-                                                        "justify-between cursor-pointer rounded-lg gap-2 p-2 border-2 border-destructive",
-                                                        "data-[selected=true]:border-success",
-                                                    ),
-                                                    wrapper: "p-0 h-3 overflow-visible",
-                                                    thumb: cn(
-                                                        "w-6 h-6 border-2 shadow-lg",
-                                                        "group-data-[hover=true]:border-primary",
-                                                        //selected
-                                                        "group-data-[selected=true]:ml-6",
-                                                        // pressed
-                                                        "group-data-[pressed=true]:w-7",
-                                                        "group-data-[selected]:group-data-[pressed]:ml-4",
-                                                    ),
-                                                }}
-                                                color="success"
-                                                isDisabled={isPending}
-                                                isSelected={isActive}
-                                                value={String(field.value)}
-                                                onValueChange={setIsActive}
-                                            >
-                                                <div className="flex flex-col gap-1">
-                                                    <p className="text-sm">Category status</p>
-                                                    <p className="text-tiny text-default-400">
-                                                        Category will be visible on your POS devices
-                                                    </p>
-                                                </div>
-                                            </Switch>
-                                        </FormControl>
-                                        <FormMessage/>
-                                    </FormItem>
-                                )}
-                            />*/}
                         </div>
 
                         <div className="flex h-5 items-center space-x-4">
@@ -222,7 +207,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                             <Separator orientation="vertical"/>
                             <SubmitButton
                                 isPending={isPending}
-                                label={item ? "Update category details" : "Create category"}
+                                label={item ? "Update " : "Create"}
                             />
                         </div>
                     </div>

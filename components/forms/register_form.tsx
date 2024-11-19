@@ -2,39 +2,39 @@
 
 import { Button } from "@/components/ui/button";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import React, {useCallback, useEffect, useState, useTransition} from "react";
-import {EmailVerificationSchema, RegisterSchema} from "@/types/data-schemas";
-import {FieldErrors, useForm} from "react-hook-form";
+import React, { useCallback, useEffect, useState, useTransition } from "react";
+import { EmailVerificationSchema, RegisterSchema } from "@/types/data-schemas";
+import { FieldErrors, useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
+    Form,
+    FormControl,
+    FormDescription,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
 } from "../ui/form";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
 } from "../ui/select";
 
-import {BusinessTimeType, FormResponse} from "@/types/types";
+import { BusinessTimeType, FormResponse } from "@/types/types";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
-import {register, resendVerificationEmail} from "@/lib/actions/auth-actions";
+import { register, resendVerificationEmail } from "@/lib/actions/auth-actions";
 import {
     CheckIcon,
     EyeIcon,
@@ -46,26 +46,26 @@ import {
 import { fetchCountries } from "@/lib/actions/countries-actions";
 import { Country } from "@/types/country/type";
 import _ from "lodash";
-import {BusinessSchema} from "@/types/business/schema";
-import {createBusiness} from "@/lib/actions/auth/business";
-import {useToast} from "@/hooks/use-toast";
-import {Business} from "@/types/business/type";
+import { BusinessSchema } from "@/types/business/schema";
+import { createBusiness } from "@/lib/actions/auth/business";
+import { useToast } from "@/hooks/use-toast";
+import { Business } from "@/types/business/type";
 import BusinessTypeSelector from "@/components/widgets/business-type-selector";
-import {Textarea} from "@/components/ui/textarea";
-import {LocationSchema} from "@/types/location/schema";
-import {createBusinessLocation} from "@/lib/actions/auth/location";
+import { Textarea } from "@/components/ui/textarea";
+import { LocationSchema } from "@/types/location/schema";
+import { createBusinessLocation } from "@/lib/actions/auth/location";
 import { PhoneInput } from "../ui/phone-input";
-import {businessTimes, DefaultCountry} from "@/types/constants";
-import {useSession} from "next-auth/react";
-import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
+import { businessTimes, DefaultCountry } from "@/types/constants";
+import { useSession } from "next-auth/react";
+import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import GenderSelector from "../widgets/gender-selector";
-interface signUpStepItemType{
+interface signUpStepItemType {
     id: string;
     label: string;
     title: string;
 }
-const signUpSteps=[
+const signUpSteps = [
     {
         id: "step1",
         label: "01",
@@ -88,8 +88,8 @@ const signUpSteps=[
     }
 ]
 
-function RegisterForm({step}:{step: string}) {
-    const mCurrentStep = step?signUpSteps[_.findIndex(signUpSteps, {id: step})]:signUpSteps[0];
+function RegisterForm({ step }: { step: string }) {
+    const mCurrentStep = step ? signUpSteps[_.findIndex(signUpSteps, { id: step })] : signUpSteps[0];
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
@@ -104,7 +104,7 @@ function RegisterForm({step}:{step: string}) {
     const [locationImageUrl, setLocationImageUrl] = useState<string>("");
 
     useEffect(() => {
-        async function getBusiness(){
+        async function getBusiness() {
             const myBusiness = await getCurrentBusiness();
             setCurrentBusiness(myBusiness);
         }
@@ -116,16 +116,16 @@ function RegisterForm({step}:{step: string}) {
     const session = useSession();
 
     /*TODO: Business form information*/
-    const {toast} = useToast();
+    const { toast } = useToast();
 
     const form = useForm<z.infer<typeof RegisterSchema>>({
         resolver: zodResolver(RegisterSchema),
-        defaultValues: {country: defaultCountry},
+        defaultValues: { country: defaultCountry },
     });
 
     const emailVerificationForm = useForm<z.infer<typeof EmailVerificationSchema>>({
         resolver: zodResolver(EmailVerificationSchema),
-        defaultValues: {email: session.data?.user?.email, name: session.data?.user?.name},
+        defaultValues: { email: session.data?.user?.email, name: session.data?.user?.name },
     });
 
     const businessForm = useForm<z.infer<typeof BusinessSchema>>({
@@ -155,8 +155,8 @@ function RegisterForm({step}:{step: string}) {
                 title: "Uh oh! Something went wrong.",
                 description:
                     typeof errors.message === 'string'
-                    ? errors.message
-                    : "There was an issue submitting your form, please try later",
+                        ? errors.message
+                        : "There was an issue submitting your form, please try later",
             });
         },
         [toast]
@@ -173,17 +173,17 @@ function RegisterForm({step}:{step: string}) {
         };
         getCountries();
 
-        if(step){
+        if (step) {
             //console.log("step is:", step);
-            if(step === "step2"){
+            if (step === "step2") {
                 setStepsDone([...stepsDone, signUpSteps[0]])
             }
-            if(step === "step3"){
+            if (step === "step3") {
                 const doneSteps = [...stepsDone, signUpSteps[0], signUpSteps[1]];
                 //console.log("Done steps: ", doneSteps)
                 setStepsDone(doneSteps)
             }
-            if(step === "step4"){
+            if (step === "step4") {
                 const doneSteps = [...stepsDone, signUpSteps[0], signUpSteps[1], signUpSteps[2]];
                 //console.log("Done steps: ", doneSteps)
                 setStepsDone(doneSteps)
@@ -225,7 +225,7 @@ function RegisterForm({step}:{step: string}) {
     const submitBusinessData = (values: z.infer<typeof BusinessSchema>) => {
         //setResponse(undefined);
 
-        if(imageUrl){
+        if (imageUrl) {
             values.image = imageUrl;
         }
         startTransition(() => {
@@ -252,7 +252,7 @@ function RegisterForm({step}:{step: string}) {
 
     const submitLocationData = useCallback(
         (values: z.infer<typeof LocationSchema>) => {
-            if(locationImageUrl){
+            if (locationImageUrl) {
                 values.image = locationImageUrl;
             }
             startTransition(() => {
@@ -277,14 +277,14 @@ function RegisterForm({step}:{step: string}) {
     const submitEmailVerificationData = useCallback(
         (values: z.infer<typeof EmailVerificationSchema>) => {
             startTransition(() => {
-                resendVerificationEmail(values.name, values.email).then((resp)=>{
-                    if(resp.responseType === 'error'){
+                resendVerificationEmail(values.name, values.email).then((resp) => {
+                    if (resp.responseType === 'error') {
                         toast({
                             variant: "destructive",
                             title: "Uh oh! Something went wrong.",
                             description: resp.message
                         });
-                    }else{
+                    } else {
                         setEmailSent(true);
                     }
                 });
@@ -293,49 +293,57 @@ function RegisterForm({step}:{step: string}) {
         []
     );
 
-    return (<div className="lg:pl-16 md:pl-16 lg:pr-20 md:pr-16">
-            <div className="pt-5 pb-5 flex gap-4 lg:mr-16">
-                {signUpSteps.map((item, index) => {
-                    const isCurrent = currentStep.id === item.id || _.includes(stepsDone, item);
-                    return <>
-                        <div className="flex flex-col items-center justify-center flex-1">
-                            <div className="flex-1 font-bold text-sm mt-3">
-                                {_.includes(stepsDone, item) ?
-                                    <span
-                                        className="w-6 h-6 overflow-hidden bg-blue-500 rounded-full flex items-center justify-center">
-                                        <CheckIcon size={16} className="text-gray-50"/>
-                                    </span>
-                                    : <span className={`font-bold text-center ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.label}</span>}
-                            </div>
-                            <div className={`flex-1 font-bold text-center mt-3 ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{item.title}</div>
-                        </div>
-                        {index + 1 < signUpSteps.length ?
-                            <div className="flex items-center justify-center flex-1 mt-8 pl-2 lg:pr-8 md:pr-8">
-                                <span className="w-[10px] h-[10px] bg-gray-400 rounded-full"></span>
-                                <span className="h-[1px] bg-gray-400 w-[90%]"></span>
-                                <span className="w-[10px] h-[10px] bg-gray-400 rounded-full"></span>
-                            </div>
-                        : <></>}
-                    </>
-                })}
+    return (
+        <div className=" flex flex-col items-center justify-center w-full lg:pl-16 md:pl-16 lg:pr-20 md:pr-16">
+           
+
+<div className="flex items-center justify-center gap-4 w-full">
+    {signUpSteps.map((item, index) => {
+        const isCurrent = currentStep.id === item.id || _.includes(stepsDone, item);
+        return (
+            <div key={item.id} className="flex flex-col items-center justify-center relative mt-10 w-full">
+                <div className="flex items-center justify-center">
+                    <span
+                        className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${_.includes(stepsDone, item) ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-400'}`}>
+                        {_.includes(stepsDone, item) ? (
+                            <CheckIcon size={16} className="text-gray-50" />
+                        ) : (
+                            <span className={`font-bold text-center ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{index + 1}</span>
+                        )}
+                    </span>
+                </div>
+
+                {/* Connecting line */}
+                {index + 1 < signUpSteps.length && (
+                    <div className="absolute top-[50%] left-[70%] lg:left-[55%] md:left-[56%] w-full h-[2px] bg-gray-400 transform -translate-y-1/2"></div>
+                )}
+
+                {/* <div className={`mt-2 font-bold text-center ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>
+                    {item.label}
+                </div> */}
             </div>
+        );
+    })}
+</div>
 
             {currentStep.id === "step1" ?
-                <Card className="mt-6 lg:mr-10 pl-6 pr-6 pt-2 pb-5">
+                <Card className="w-full sm:w-auto mt-6 lg:mr-10 pl-6 pr-6 pt-2 pb-5">
                     <CardHeader>
-                        <CardTitle className="text-[32px] mb-3">Personal Information</CardTitle>
+                        <CardTitle className=" font-bold text-[24px] lg:text-[32px] mb-3">Personal Information</CardTitle>
                         <CardDescription>
                             Enter your personal information
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <FormError message={error}/>
-                        <FormSuccess message={success}/>
+                        <FormError message={error} />
+                        <FormSuccess message={success} />
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(submitData)}>
                                 <div className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                     <h3 className="font-bold flex-1">Basic Information</h3>
-                                    <span className="flex-end"><ChevronDownIcon/></span>
+                                    <span className="flex-end">
+                                        <ChevronDownIcon />
+                                    </span>
                                 </div>
                                 <div className="grid gap-4">
                                     <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
@@ -343,7 +351,7 @@ function RegisterForm({step}:{step: string}) {
                                             <FormField
                                                 control={form.control}
                                                 name="firstName"
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>First Name</FormLabel>
                                                         <FormControl>
@@ -351,7 +359,7 @@ function RegisterForm({step}:{step: string}) {
                                                         </FormControl>
                                                         <FormDescription>
                                                         </FormDescription>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
@@ -360,7 +368,7 @@ function RegisterForm({step}:{step: string}) {
                                             <FormField
                                                 control={form.control}
                                                 name="lastName"
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Last Name</FormLabel>
                                                         <FormControl>
@@ -368,7 +376,7 @@ function RegisterForm({step}:{step: string}) {
                                                         </FormControl>
                                                         <FormDescription>
                                                         </FormDescription>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
@@ -379,7 +387,7 @@ function RegisterForm({step}:{step: string}) {
                                         <FormField
                                             control={form.control}
                                             name="country"
-                                            render={({field}) => (
+                                            render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Country</FormLabel>
                                                     <FormControl>
@@ -399,11 +407,11 @@ function RegisterForm({step}:{step: string}) {
                                                                             {country.name}
                                                                         </SelectItem>
                                                                     ))
-                                                                : <></>}
+                                                                    : <></>}
                                                             </SelectContent>
                                                         </Select>
                                                     </FormControl>
-                                                    <FormMessage/>
+                                                    <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
@@ -411,59 +419,59 @@ function RegisterForm({step}:{step: string}) {
                                         <FormField
                                             control={form.control}
                                             name="phoneNumber"
-                                            render={({field}) => (
+                                            render={({ field }) => (
                                                 <FormItem className="flex flex-col mt-1">
                                                     <FormLabel>Phone Number</FormLabel>
                                                     <FormControl className="w-full border-1 rounded-sm">
-                                                    <PhoneInput
-                                                        placeholder="Enter phone number"
-                                                        {...field} disabled={isPending}
-                                                      />
+                                                        <PhoneInput
+                                                            placeholder="Enter phone number"
+                                                            {...field} disabled={isPending}
+                                                        />
                                                     </FormControl>
                                                     <FormDescription></FormDescription>
-                                                    <FormMessage/>
+                                                    <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
 
-                                <FormField
-                                                control={form.control}
-                                                name="gender"
-                                                render={({ field }) => {
-                                                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                                                    const { ref: _ref, ...customSelectRef } = field;
+                                        <FormField
+                                            control={form.control}
+                                            name="gender"
+                                            render={({ field }) => {
+                                                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                                                const { ref: _ref, ...customSelectRef } = field;
 
-                                                    return (
+                                                return (
                                                     <FormItem>
                                                         <FormLabel>Gender</FormLabel>
                                                         <FormControl>
-                                                        <GenderSelector
-                                                            {...customSelectRef}
-                                                            isRequired
-                                                            isDisabled={isPending}
-                                                            label="Gender"
-                                                            placeholder="Select your gender"
-                                                        />
+                                                            <GenderSelector
+                                                                {...customSelectRef}
+                                                                isRequired
+                                                                isDisabled={isPending}
+                                                                label="Gender"
+                                                                placeholder="Select your gender"
+                                                            />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
-                                                    );
-                                                }}
-                                                />
+                                                );
+                                            }}
+                                        />
 
                                     </div>
 
                                     <div
                                         className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                         <h3 className="font-bold flex-1">Login Information</h3>
-                                        <span className="flex-end"><ChevronDownIcon/></span>
+                                        <span className="flex-end"><ChevronDownIcon /></span>
                                     </div>
 
                                     <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
                                         <FormField
                                             control={form.control}
                                             name="email"
-                                            render={({field}) => (
+                                            render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Email</FormLabel>
                                                     <FormControl>
@@ -475,7 +483,7 @@ function RegisterForm({step}:{step: string}) {
                                                         />
                                                     </FormControl>
                                                     <FormDescription>{/* Enter user name */}</FormDescription>
-                                                    <FormMessage/>
+                                                    <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
@@ -483,70 +491,67 @@ function RegisterForm({step}:{step: string}) {
                                         <FormField
                                             control={form.control}
                                             name="password"
-                                            render={({field}) => (
+                                            render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Password</FormLabel>
                                                     <FormControl>
                                                         <div className="relative">
                                                             <Input disabled={isPending} type={showPassword ? "text" : "password"}
-                                                                   placeholder="Enter password" {...field} />
+                                                                placeholder="Enter password" {...field} />
                                                             <span onClick={() => setShowPassword(!showPassword)}
-                                                                  className="absolute right-0 top-0 h-full w-10 flex items-center justify-center z-40 cursor-pointer">
-                                                      {showPassword ? <EyeOffIcon size={20}/> :
-                                                          <EyeIcon size={20}/>}</span>
+                                                                className="absolute right-0 top-0 h-full w-10 flex items-center justify-center z-40 cursor-pointer">
+                                                                {showPassword ? <EyeOffIcon size={20} /> :
+                                                                    <EyeIcon size={20} />}</span>
                                                         </div>
                                                     </FormControl>
                                                     <FormDescription>{/* Enter user name */}</FormDescription>
-                                                    <FormMessage/>
+                                                    <FormMessage />
                                                 </FormItem>
                                             )}
                                         />
                                     </div>
                                 </div>
 
-                                <div className="flex items-center">
-                                    <div className="flex-1">
+                                <div className="">
+                                    <div className="w-full sm:w-auto">
                                         <Button
                                             type="submit"
                                             disabled={isPending || emailVerified}
-                                            className={`mt-4 pl-10 pr-10`}>
+                                            className="w-full sm:w-auto mt-4 p-7 hover:bg-emerald-500">
                                             {(isPending) ?
-                                                <Loader2Icon className="w-6 h-6 animate-spin"/>:
-                                                <>Next: Business info <ChevronRight/></>
+                                                <Loader2Icon className="w-6 h-6 animate-spin" /> :
+                                                <>Next: Business info <ChevronRight /></>
                                             }
                                         </Button>
                                     </div>
-                                    {/*<div className="self-end flex items-center">
-                                        <span>Next: {nextStepLabel()}</span>
-                                        <ChevronRight/></div>*/}
                                 </div>
                             </form>
                         </Form>
                     </CardContent>
                 </Card>
-                : (currentStep.id === "step2" || step === "step2") ?<>
-                    <FormError message={error}/>
-                    <FormSuccess message={success}/>
+                : (currentStep.id === "step2" || step === "step2") ? <>
+                    <FormError message={error} />
+                    <FormSuccess message={success} />
                     <Form {...emailVerificationForm}>
                         <form onSubmit={emailVerificationForm.handleSubmit(submitEmailVerificationData)}>
-                            <Card className="mt-6 lg:mr-10 pl-6 pr-6 pt-2 pb-5">
+                            <Card className="w-full sm:w-auto mt-6">
                                 <CardHeader>
                                     <CardTitle className="text-[32px] mb-3">Verify email</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <CardDescription>
+                                    <CardDescription className="text-[18px] font-normal">
                                         We have sent link with activation instruction to {session.data?.user?.email}
                                     </CardDescription>
-                                    {emailSent?
+                                    {emailSent ?
                                         <CardDescription className="text-green-500 py-4 flex">
                                             <FormSuccess message="Email sent successfully" />
                                         </CardDescription>
-                                    :<Button type="submit" className="mt-4"  disabled={isPending}>
-                                        {isPending?
-                                            <Loader2Icon className="w-6 h-6 animate-spin"/>:
-                                            "Resend verification email"
-                                        }
-                                    </Button>}
+                                        : <Button type="submit" className="mt-4" disabled={isPending}>
+                                            {isPending ?
+                                                <Loader2Icon className="w-6 h-6 animate-spin" /> :
+                                                "Resend verification email"
+                                            }
+                                        </Button>}
 
                                 </CardContent>
                             </Card>
@@ -555,7 +560,7 @@ function RegisterForm({step}:{step: string}) {
                                 <FormField
                                     control={emailVerificationForm.control}
                                     name="name"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Name</FormLabel>
                                             <FormControl>
@@ -564,14 +569,14 @@ function RegisterForm({step}:{step: string}) {
                                                     disabled={isPending}
                                                 />
                                             </FormControl>
-                                            <FormMessage/>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
                                 <FormField
                                     control={emailVerificationForm.control}
                                     name="email"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Email</FormLabel>
                                             <FormControl>
@@ -580,7 +585,7 @@ function RegisterForm({step}:{step: string}) {
                                                     disabled={isPending}
                                                 />
                                             </FormControl>
-                                            <FormMessage/>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -588,16 +593,16 @@ function RegisterForm({step}:{step: string}) {
                             </div>
                         </form>
                     </Form>
-                    </>
-                : (currentStep.id === "step3" || step === "step3") ? <>
-                        <Card className="mt-6 lg:mr-10 md:mr-10  pl-6 pr-6 pt-2 pb-5">
+                </>
+                    : (currentStep.id === "step3" || step === "step3") ? <>
+                        <Card className="w-full  mt-6 lg:mr-10 md:mr-10  pl-6 pr-6 pt-2 pb-5">
                             <CardHeader>
-                                <CardTitle className="text-[32px] mb-3">Business Information</CardTitle>
-                                <CardDescription className="text-[18px]">Enter details for your business</CardDescription>
+                                <CardTitle className="text-[24px] font-normal lg:text-[32px] mb-3">Business Information</CardTitle>
+                                <CardDescription className="text-[18px] font-normal">Enter details for your business</CardDescription>
                             </CardHeader>
                             <CardContent>
-                                <FormError message={error}/>
-                                <FormSuccess message={success}/>
+                                <FormError message={error} />
+                                <FormSuccess message={success} />
                                 <Form {...businessForm}>
                                     <form
                                         className="space-y-8"
@@ -612,7 +617,7 @@ function RegisterForm({step}:{step: string}) {
                                                 <FormField
                                                     control={businessForm.control}
                                                     name="name"
-                                                    render={({field}) => (
+                                                    render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel>Business Name</FormLabel>
                                                             <FormControl>
@@ -622,7 +627,7 @@ function RegisterForm({step}:{step: string}) {
                                                                     disabled={isPending}
                                                                 />
                                                             </FormControl>
-                                                            <FormMessage/>
+                                                            <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
@@ -634,9 +639,9 @@ function RegisterForm({step}:{step: string}) {
                                             <FormField
                                                 control={businessForm.control}
                                                 name="businessType"
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
-                                                         <FormLabel>Type of business</FormLabel>
+                                                        <FormLabel>Type of business</FormLabel>
                                                         <FormControl>
                                                             <BusinessTypeSelector
                                                                 value={field.value}
@@ -648,7 +653,7 @@ function RegisterForm({step}:{step: string}) {
                                                                 placeholder="Select business type"
                                                             />
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
@@ -656,7 +661,7 @@ function RegisterForm({step}:{step: string}) {
                                             <FormField
                                                 control={businessForm.control}
                                                 name="country"
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Country</FormLabel>
                                                         <FormControl>
@@ -665,7 +670,7 @@ function RegisterForm({step}:{step: string}) {
                                                                 onValueChange={field.onChange}
                                                                 value={field.value}>
                                                                 <SelectTrigger>
-                                                                    <SelectValue placeholder="Select your country"/>
+                                                                    <SelectValue placeholder="Select your country" />
                                                                 </SelectTrigger>
                                                                 <SelectContent>
                                                                     {countries.length > 0
@@ -679,11 +684,11 @@ function RegisterForm({step}:{step: string}) {
                                                                             )
                                                                         )
                                                                         : null}
-                                                                       
+
                                                                 </SelectContent>
                                                             </Select>
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
@@ -692,7 +697,7 @@ function RegisterForm({step}:{step: string}) {
                                             <FormField
                                                 control={businessForm.control}
                                                 name="description"
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Business Description</FormLabel>
                                                         <FormControl>
@@ -704,22 +709,22 @@ function RegisterForm({step}:{step: string}) {
                                                                 maxLength={200}
                                                             />
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
                                         </div>
 
-                                        <div className="flex items-center">
-                                            <div className="flex-1">
+                                        <div className="">
+                                            <div className="w-full sm:w-auto ">
 
                                                 <Button
                                                     type="submit"
                                                     disabled={isPending}
-                                                    className={`mt-4 pl-10 pr-10`}>
+                                                    className={`w-full sm:w-auto mt-3 p-6`}>
                                                     {isPending ?
-                                                        <Loader2Icon className="w-6 h-6 animate-spin"/> :
-                                                        <> Next: Location info <ChevronRight/></>
+                                                        <Loader2Icon className="w-6 h-6 animate-spin" /> :
+                                                        <> Next: Location info <ChevronRight /></>
                                                     }
                                                 </Button>
                                             </div>
@@ -733,11 +738,11 @@ function RegisterForm({step}:{step: string}) {
                             </CardContent>
                         </Card>
                     </>
-                    : (currentStep.id === "step4" || step === "step4") ? <>
-                            <Card className="mt-6 lg:mr-10 md:mr-10 pl-6 pr-6 pt-2 pb-5">
+                        : (currentStep.id === "step4" || step === "step4") ? <>
+                            <Card className="w-full mt-6 lg:mr-10 md:mr-10 pl-6 pr-6 pt-2 pb-5">
                                 <CardHeader>
-                                    <CardTitle>Setup business location</CardTitle>
-                                    <CardDescription>
+                                    <CardTitle className="text-[24px] font-medium lg:text-[32px] mb-3">Setup business location</CardTitle>
+                                    <CardDescription className="text-[16px] font-normal">
                                         Setup your business locations,if you have multiple locations
                                     </CardDescription>
                                 </CardHeader>
@@ -749,7 +754,7 @@ function RegisterForm({step}:{step: string}) {
                                             <div
                                                 className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Location Information</h3>
-                                                <span className="flex-end"><ChevronDownIcon/></span>
+                                                <span className="flex-end"><ChevronDownIcon /></span>
                                             </div>
                                             <div className="mt-4 flex">
                                                 <UploadImageWidget imagePath={'business'} displayStyle={'default'} displayImage={true} setImage={setLocationImageUrl} />
@@ -757,7 +762,7 @@ function RegisterForm({step}:{step: string}) {
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="name"
-                                                        render={({field}) => (
+                                                        render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Location Name</FormLabel>
                                                                 <FormControl>
@@ -767,7 +772,7 @@ function RegisterForm({step}:{step: string}) {
                                                                         disabled={isPending}
                                                                     />
                                                                 </FormControl>
-                                                                <FormMessage/>
+                                                                <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
@@ -778,7 +783,7 @@ function RegisterForm({step}:{step: string}) {
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="phone"
-                                                        render={({field}) => (
+                                                        render={({ field }) => (
                                                             <FormItem className="flex flex-col mt-1">
                                                                 <FormLabel>Phone Number</FormLabel>
                                                                 <FormControl className="w-full border-1 rounded-sm">
@@ -788,7 +793,7 @@ function RegisterForm({step}:{step: string}) {
                                                                     />
                                                                 </FormControl>
                                                                 <FormDescription>{/* Enter user name */}</FormDescription>
-                                                                <FormMessage/>
+                                                                <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
@@ -797,7 +802,7 @@ function RegisterForm({step}:{step: string}) {
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="email"
-                                                        render={({field}) => (
+                                                        render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Email</FormLabel>
                                                                 <FormControl>
@@ -808,7 +813,7 @@ function RegisterForm({step}:{step: string}) {
                                                                         placeholder="Enter business location email"
                                                                     />
                                                                 </FormControl>
-                                                                <FormMessage/>
+                                                                <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
@@ -817,14 +822,14 @@ function RegisterForm({step}:{step: string}) {
                                             <div
                                                 className="pl-0 pr-3 pt-8 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Business address</h3>
-                                                <span className="flex-end"><ChevronDownIcon/></span>
+                                                <span className="flex-end"><ChevronDownIcon /></span>
                                             </div>
                                             <div className="lg:grid grid-cols-2  gap-4 mt-2">
                                                 <div className="grid gap-2">
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="city"
-                                                        render={({field}) => (
+                                                        render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>City / Region</FormLabel>
                                                                 <FormControl>
@@ -834,7 +839,7 @@ function RegisterForm({step}:{step: string}) {
                                                                         placeholder="Which city do you operate?"
                                                                     />
                                                                 </FormControl>
-                                                                <FormMessage/>
+                                                                <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
@@ -844,7 +849,7 @@ function RegisterForm({step}:{step: string}) {
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="address"
-                                                        render={({field}) => (
+                                                        render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Full business address</FormLabel>
                                                                 <FormControl>
@@ -854,63 +859,24 @@ function RegisterForm({step}:{step: string}) {
                                                                         placeholder="Enter business location address"
                                                                     />
                                                                 </FormControl>
-                                                                <FormMessage/>
+                                                                <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
                                                 </div>
                                             </div>
-                                            {/*<div className="lg:grid grid-cols-2 gap-4 mt-2">
-                                                <div className="grid gap-2">
-                                                    <FormField
-                                                        control={locationForm.control}
-                                                        name="region"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <FormLabel>Region</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                        disabled={isPending}
-                                                                        placeholder="Which region do you operate?"
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                                <div className="grid gap-2">
-                                                    <FormField
-                                                        control={locationForm.control}
-                                                        name="street"
-                                                        render={({field}) => (
-                                                            <FormItem>
-                                                                <FormLabel>Street</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                        disabled={isPending}
-                                                                        placeholder="Which street do you operate?"
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage/>
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-                                            </div>*/}
+                                          
                                             <div
                                                 className="pl-0 pr-3 pt-8 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Operating times</h3>
-                                                <span className="flex-end"><ChevronDownIcon/></span>
+                                                <span className="flex-end"><ChevronDownIcon /></span>
                                             </div>
                                             <div className="lg:grid grid-cols-2 gap-4 mt-2">
                                                 <div className="grid gap-2">
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="openingTime"
-                                                        render={({field}) => (
+                                                        render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Opening Time</FormLabel>
                                                                 <FormControl>
@@ -920,13 +886,13 @@ function RegisterForm({step}:{step: string}) {
                                                                         value={field.value}>
                                                                         <SelectTrigger>
                                                                             <SelectValue
-                                                                                placeholder="Select opening time"/>
+                                                                                placeholder="Select opening time" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
                                                                             {businessTimes.length > 0
                                                                                 ? businessTimes.map((item: BusinessTimeType, index: number) => (
                                                                                     <SelectItem key={index}
-                                                                                                value={item.name}>
+                                                                                        value={item.name}>
                                                                                         {item.label}
                                                                                     </SelectItem>
                                                                                 ))
@@ -934,7 +900,7 @@ function RegisterForm({step}:{step: string}) {
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </FormControl>
-                                                                <FormMessage/>
+                                                                <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
@@ -944,7 +910,7 @@ function RegisterForm({step}:{step: string}) {
                                                     <FormField
                                                         control={locationForm.control}
                                                         name="closingTime"
-                                                        render={({field}) => (
+                                                        render={({ field }) => (
                                                             <FormItem>
                                                                 <FormLabel>Closing Time</FormLabel>
                                                                 <FormControl>
@@ -954,13 +920,13 @@ function RegisterForm({step}:{step: string}) {
                                                                         value={field.value}>
                                                                         <SelectTrigger>
                                                                             <SelectValue
-                                                                                placeholder="Select closing time"/>
+                                                                                placeholder="Select closing time" />
                                                                         </SelectTrigger>
                                                                         <SelectContent>
                                                                             {businessTimes.length > 0
                                                                                 ? businessTimes.map((item: BusinessTimeType, index: number) => (
                                                                                     <SelectItem key={index}
-                                                                                                value={item.name}>
+                                                                                        value={item.name}>
                                                                                         {item.label}
                                                                                     </SelectItem>
                                                                                 ))
@@ -968,7 +934,7 @@ function RegisterForm({step}:{step: string}) {
                                                                         </SelectContent>
                                                                     </Select>
                                                                 </FormControl>
-                                                                <FormMessage/>
+                                                                <FormMessage />
                                                             </FormItem>
                                                         )}
                                                     />
@@ -976,16 +942,16 @@ function RegisterForm({step}:{step: string}) {
                                             </div>
 
 
-                                            <div className="flex items-center">
-                                                <div className="flex-1">
+                                            <div className="">
+                                                <div className="w-full sm:w-auto">
 
                                                     <Button
                                                         type="submit"
                                                         disabled={isPending}
-                                                        className={`mt-4 pl-10 pr-10`}>
+                                                        className={`w-full sm:w-auto mt-3 p-7`}>
                                                         {isPending ?
-                                                            <Loader2Icon className="w-6 h-6 animate-spin"/> :
-                                                            <> Complete <ChevronRight/></>
+                                                            <Loader2Icon className="w-6 h-6 animate-spin" /> :
+                                                            <span className=" flex font-semibold text-[16px]"> Complete <ChevronRight /></span>
                                                         }
                                                     </Button>
                                                 </div>
@@ -996,15 +962,9 @@ function RegisterForm({step}:{step: string}) {
                                 </CardContent>
                             </Card>
                         </>
-                    : <p>End</p>
+                            : <p>End</p>
             }
 
-            {/*{!session?.user?
-                <div className="mt-6 text-sm flex items-center font-bold">
-                    <ChevronLeft size={18}/>
-                    <Link href="/login">Back to login</Link>
-                </div>
-            :<></>}*/}
         </div>
     );
 }
