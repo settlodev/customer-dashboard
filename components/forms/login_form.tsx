@@ -67,7 +67,9 @@ function LoginForm() {
         });
     }, []);
 
-    return (<Card className="mx-auto max-w-md w-[500px] mt-10 lg:mt-0 md:mt-0">
+    return (
+  <section>
+      <Card className="w-full mx-auto max-w-md  mt-10 lg:mt-0 md:mt-0">
             <CardHeader className="border-b-1 mb-4 px-8">
                 <CardTitle className="text-[32px] font-bold mb-2">Welcome back</CardTitle>
                 <CardDescription>
@@ -134,6 +136,7 @@ function LoginForm() {
                 <Link href="/register">Don&apos;t have an account? <span className="font-bold text-emerald-500">Register here</span></Link>
             </div>
         </Card>
+  </section>
     )
 }
 

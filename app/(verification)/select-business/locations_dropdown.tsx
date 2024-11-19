@@ -50,7 +50,7 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
                                     className="flex gap-2 rounded-full bg-emerald-500 pr-4 pl-4 py-2 text-white font-medium text-sm"
                                     onClick={() => startTransition(() => setLocation(myLocation))}>
                                 {
-                                    isPending ? <Loader2Icon className="w-6 h-6 animate-spin text-red-500"/> : 'Select' // Show loader or text
+                                    isPending ? <Loader2Icon className="w-6 h-6 animate-spin text-white dark:text-gray-500"/> : 'Select' // Show loader or text
                                 }
                             </button>
                             </div>

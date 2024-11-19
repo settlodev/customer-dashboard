@@ -12,7 +12,7 @@ import LandingPageNav from "./LandingPageNav";
 
 const Base = () => {
     return (
-    <div className="flex flex-col items-center justify-center w-full antialiased max-w-[1280px] mx-auto">
+    <div className="min-h-screen flex flex-col items-center justify-center w-full antialiased max-w-[1280px] mx-auto">
         {/* <Meta title={AppConfig.title} description={AppConfig.description} /> */}
         <LandingPageNav />
         <Hero />
