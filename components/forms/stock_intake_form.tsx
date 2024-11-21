@@ -1,7 +1,6 @@
 "use client";
 
 
-import { Input } from "@/components/ui/input";
 import { useForm } from "react-hook-form";
 import {
     Form,
@@ -21,7 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { Switch } from "@/components/ui/switch";
-import { fetchStock} from "@/lib/actions/stock-actions";
+import { fetchStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { StockIntake } from "@/types/stock-intake/type";
 import { fetchSuppliers } from "@/lib/actions/supplier-actions";
@@ -34,9 +33,10 @@ import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { Staff } from "@/types/staff";
 import StockSelector from "../widgets/stock-selector";
-import {StockVariant } from "@/types/stockVariant/type";
+import { StockVariant } from "@/types/stockVariant/type";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import { fetchStockVariants } from "@/lib/actions/stock-variant-actions";
+import { NumericFormat } from "react-number-format";
 
 function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -62,7 +62,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     useEffect(() => {
         const getData = async () => {
             try {
-                const [stockResponse, supplierResponse,staffResponse] = await Promise.all([
+                const [stockResponse, supplierResponse, staffResponse] = await Promise.all([
                     fetchStock(),
                     fetchSuppliers(),
                     fetchAllStaff(),
@@ -86,7 +86,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const handleStockChange = (stockId: string) => {
         setSelectedStock(stockId);
     };
-    
+
 
     const form = useForm<z.infer<typeof StockIntakeSchema>>({
         resolver: zodResolver(StockIntakeSchema),
@@ -111,7 +111,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const submitData = (values: z.infer<typeof StockIntakeSchema>) => {
 
         console.log("Submitting data:", values);
-       
+
         startTransition(() => {
             if (item) {
                 updateStockIntake(item.id, values).then((data) => {
@@ -133,33 +133,33 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
     const handleTimeChange = (type: "hour" | "minutes", value: string) => {
         if (!orderDate || !setOrderDate || !setDeliveryDate) return;
-      
+
         const newDate = new Date(orderDate);
         const newDeliveryDate = new Date(orderDate);
         const newBatchExpiryDate = new Date(orderDate);
-      
-        if (type === "hour") {
-          newDate.setHours(Number(value));
-          newDeliveryDate.setHours(Number(value));
-          newBatchExpiryDate.setHours(Number(value));
-        } else if (type === "minutes") {
-          newDate.setMinutes(Number(value));
-          newDeliveryDate.setMinutes(Number(value));
-          newBatchExpiryDate.setMinutes(Number(value));
 
-          
+        if (type === "hour") {
+            newDate.setHours(Number(value));
+            newDeliveryDate.setHours(Number(value));
+            newBatchExpiryDate.setHours(Number(value));
+        } else if (type === "minutes") {
+            newDate.setMinutes(Number(value));
+            newDeliveryDate.setMinutes(Number(value));
+            newBatchExpiryDate.setMinutes(Number(value));
+
+
         }
-      
-        setOrderDate(newDate); 
+
+        setOrderDate(newDate);
         setDeliveryDate(newDeliveryDate)
         setBatchExpiryDate(newBatchExpiryDate)
-      };
-    
-      const handleDateSelect = (date: Date) => {
+    };
+
+    const handleDateSelect = (date: Date) => {
         setOrderDate(date);
         setDeliveryDate(date);
         setBatchExpiryDate(date);
-      };
+    };
     return (
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
             <div className="flex gap-10">
@@ -172,110 +172,125 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                 <FormError message={error} />
                                 <FormSuccess message={success} />
 
-                                <div className="lg:grid grid-cols-2  gap-4 mt-2"> 
-                                <div className="mt-4 flex">
-                                    <div className="flex-1">
-                                    <FormField
-                                        control={form.control}
-                                        name="stock"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Stock </FormLabel>
-                                                <FormControl>
-                                                    <StockSelector
-                                                        value={field.value}
-                                                        onChange={(value) => {
-                                                            field.onChange(value);
-                                                            handleStockChange(value);
-                                                        }}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Stock"
-                                                        placeholder="Select stock"
-                                                        stocks={stocks}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                <div className="lg:grid grid-cols-2  gap-4 mt-2">
+                                    <div className="mt-4 flex">
+                                        <div className="flex-1">
+                                            <FormField
+                                                control={form.control}
+                                                name="stock"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Stock </FormLabel>
+                                                        <FormControl>
+                                                            <StockSelector
+                                                                value={field.value}
+                                                                onChange={(value) => {
+                                                                    field.onChange(value);
+                                                                    handleStockChange(value);
+                                                                }}
+                                                                onBlur={field.onBlur}
+                                                                isRequired
+                                                                isDisabled={isPending}
+                                                                label="Stock"
+                                                                placeholder="Select stock"
+                                                                stocks={stocks}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="mt-4 flex">
+                                        <div className="flex-1">
+                                            <FormField
+                                                control={form.control}
+                                                name="stockVariant"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Stock Variant</FormLabel>
+                                                        <FormControl>
+                                                            <StockVariantSelector
+                                                                value={field.value}
+                                                                onChange={field.onChange}
+                                                                onBlur={field.onBlur}
+                                                                isRequired
+                                                                isDisabled={isPending}
+                                                                label="Stock Variant"
+                                                                placeholder="Select stock variant"
+                                                                stockVariants={stockVariants}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="mt-4 flex">
-                                    <div className="flex-1">
-                                    <FormField
-                                        control={form.control}
-                                        name="stockVariant"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Stock Variant</FormLabel>
-                                                <FormControl>
-                                                    <StockVariantSelector
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Stock Variant"
-                                                        placeholder="Select stock variant"
-                                                        stockVariants={stockVariants}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    </div>
-                                </div>
-                           </div>
 
                                 <div className="lg:grid grid-cols-2  gap-4 mt-2">
-                                <div className="mt-4 flex">
-                                    <div className="flex-1">
-                                        <FormField
-                                            control={form.control}
-                                            name="quantity"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Quantity</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Enter stock intake quantity"
-                                                            {...field}
-                                                            disabled={isPending}
-                                                            type="number"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                    <div className="mt-4 flex">
+                                        <div className="flex-1">
+                                            <FormField
+                                                control={form.control}
+                                                name="quantity"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Quantity</FormLabel>
+                                                        <FormControl>
+                                                            <NumericFormat
+                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                value={field.value}
+                                                                disabled={isPending}
+                                                                placeholder="Enter stock intake quantity"
+                                                                thousandSeparator={true}
+                                                                allowNegative={false}
+                                                                onValueChange={(values) => {
+                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                    field.onChange(rawValue);
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div className="mt-4 flex">
-                                    <div className="flex-1">
-                                        <FormField
-                                            control={form.control}
-                                            name="value"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Value / Amount</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            placeholder="Enter stock intake value"
-                                                            {...field}
-                                                            disabled={isPending}
-                                                            type="number"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+
+
+                                    <div className="mt-4 flex">
+                                        <div className="flex-1">
+                                            <FormField
+                                                control={form.control}
+                                                name="value"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Value / Amount</FormLabel>
+                                                        <FormControl>
+
+                                                        <NumericFormat
+                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                value={field.value}
+                                                                disabled={isPending}
+                                                                placeholder="Enter stock intake value"
+                                                                thousandSeparator={true}
+                                                                allowNegative={false}
+                                                                onValueChange={(values) => {
+                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                    field.onChange(rawValue);
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
                                 </div>
 
                                 <div className="lg:grid grid-cols-2  gap-4 mt-2">
@@ -285,18 +300,18 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                             name="orderDate"
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-col">
-                                                <FormLabel>Date of Order</FormLabel>
-                                                <DateTimePicker
-                                                    field={field}
-                                                    date={orderDate}
-                                                    setDate={setOrderDate}
-                                                    handleTimeChange={handleTimeChange}
-                                                    onDateSelect={handleDateSelect}
-                                                />
-                                                <FormMessage />
+                                                    <FormLabel>Date of Order</FormLabel>
+                                                    <DateTimePicker
+                                                        field={field}
+                                                        date={orderDate}
+                                                        setDate={setOrderDate}
+                                                        handleTimeChange={handleTimeChange}
+                                                        onDateSelect={handleDateSelect}
+                                                    />
+                                                    <FormMessage />
                                                 </FormItem>
                                             )}
-                                            />
+                                        />
                                     </div>
                                     <div className="grid gap-2">
                                         <FormField
@@ -304,71 +319,93 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                             name="deliveryDate"
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-col">
-                                                <FormLabel>Delivery Date</FormLabel>
-                                                <DateTimePicker
-                                                    field={field}
-                                                    date={deliveryDate}
-                                                    setDate={setDeliveryDate}
-                                                    handleTimeChange={handleTimeChange}
-                                                    onDateSelect={handleDateSelect}
-                                                />
-                                                <FormMessage />
+                                                    <FormLabel>Delivery Date</FormLabel>
+                                                    <DateTimePicker
+                                                        field={field}
+                                                        date={deliveryDate}
+                                                        setDate={setDeliveryDate}
+                                                        handleTimeChange={handleTimeChange}
+                                                        onDateSelect={handleDateSelect}
+                                                    />
+                                                    <FormMessage />
                                                 </FormItem>
                                             )}
-                                            />
+                                        />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4 mt-4">
-                                   
-                                <div className="grid gap-2">
+
+                                    <div className="grid gap-2">
                                         <FormField
                                             control={form.control}
                                             name="batchExpiryDate"
                                             render={({ field }) => (
                                                 <FormItem className="flex flex-col">
-                                                <FormLabel>Batch Expiry Date</FormLabel>
-                                                <DateTimePicker
-                                                    field={field}
-                                                    date={batchExpiryDate}
-                                                    setDate={setBatchExpiryDate}
-                                                    handleTimeChange={handleTimeChange}
-                                                    onDateSelect={handleDateSelect}
-                                                />
-                                                <FormMessage />
+                                                    <FormLabel>Batch Expiry Date</FormLabel>
+                                                    <DateTimePicker
+                                                        field={field}
+                                                        date={batchExpiryDate}
+                                                        setDate={setBatchExpiryDate}
+                                                        handleTimeChange={handleTimeChange}
+                                                        onDateSelect={handleDateSelect}
+                                                    />
+                                                    <FormMessage />
                                                 </FormItem>
                                             )}
+                                        />
+                                    </div>
+                                    {item && (
+                                        <div className="grid gap-2">
+                                            <FormField
+                                                control={form.control}
+                                                name="status"
+                                                defaultValue={false}
+                                                render={({ field }) => (
+                                                    <FormItem
+                                                        className="flex lg:mt-4 items-center gap-2 border-1 pt-1 pb-2 pl-3 pr-3 rounded-md">
+                                                        <FormLabel className="flex-1">Stock Intake Status</FormLabel>
+                                                        <FormControl className="self-end">
+                                                            <Switch
+                                                                checked={field.value !== undefined ? field.value : false}
+                                                                onCheckedChange={field.onChange}
+                                                                disabled={isPending}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
                                             />
-                                    </div>
-                                   {item && (
-                                    <div className="grid gap-2">
-                                       <FormField
-                                           control={form.control}
-                                           name="status"
-                                           defaultValue={false}
-                                           render={({ field }) => (
-                                               <FormItem
-                                                   className="flex lg:mt-4 items-center gap-2 border-1 pt-1 pb-2 pl-3 pr-3 rounded-md">
-                                                   <FormLabel className="flex-1">Stock Intake Status</FormLabel>
-                                                   <FormControl className="self-end">
-                                                       <Switch
-                                                           checked={field.value !== undefined ? field.value : false}
-                                                           onCheckedChange={field.onChange}
-                                                           disabled={isPending}
-                                                       />
-                                                   </FormControl>
-                                                   <FormMessage />
-                                               </FormItem>
-                                           )}
-                                       />
-                                    </div>
-                                   )}
-                                   
-                                 
+                                        </div>
+                                    )}
 
-                               </div>
+
+
+                                </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4 mt-2">
-                                   
+
+                                    <FormField
+                                        control={form.control}
+                                        name="staff"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Staff</FormLabel>
+                                                <FormControl>
+                                                    <StaffSelectorWidget
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        onBlur={field.onBlur}
+                                                        isRequired
+                                                        isDisabled={isPending}
+                                                        label="Department"
+                                                        placeholder="Select staff"
+                                                        staffs={staffs}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <FormField
                                         control={form.control}
                                         name="supplier"
@@ -391,29 +428,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                             </FormItem>
                                         )}
                                     />
-                                     <FormField
-                                        control={form.control}
-                                        name="staff"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Staff <span className="text-xs text-muted-foreground">(optional)</span></FormLabel>
-                                                <FormControl>
-                                                    <StaffSelectorWidget
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="Department"
-                                                        placeholder="Select staff"
-                                                        staffs={staffs}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                 
+
                                 </div>
                             </div>
 

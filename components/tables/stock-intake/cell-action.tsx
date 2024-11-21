@@ -5,8 +5,8 @@ import React from "react";
 import {useDisclosure} from "@nextui-org/modal";
 import {EyeIcon} from "@nextui-org/shared-icons";
 
-import { StockIntake } from "@/types/stock-intake/type";
 import ItemModal from "../item-modal";
+import { StockIntake } from "@/types/stock-intake/type";
 
 interface CellActionProps {
     data: StockIntake & { stockVariant: string };
@@ -48,11 +48,12 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             </div>
 
             
-                <ItemModal
+                 <ItemModal
                     isOpen={isOpen}
                     onOpenChange={onOpenChange}
                     data={data}
                 />
+              
         
         </>
     )

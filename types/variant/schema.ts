@@ -1,4 +1,4 @@
-import {object, string, number, preprocess} from "zod";
+import {object, string, number, preprocess, boolean} from "zod";
 
 export const VariantSchema = object({
     name: string({ required_error: "Variant name is required" }),
@@ -26,7 +26,8 @@ export const VariantSchema = object({
     unit: string().optional(),
     description: string().optional(),
     image: string().nullable().optional(),
-    color: string().nullable().optional()
+    color: string().nullable().optional(), 
+    stockVariant: string().uuid().optional(),
 });
 
 

@@ -34,3 +34,11 @@ export enum audienceType{
     CUSTOMER="CUSTOMER",
     STAFF = "STAFF",
 }
+
+export enum reasonForStockModification {
+    NEWSTOCK="NEW STOCK",
+    INVENTORYRECOUNT = "INVENTORY RECOUNT",
+    DAMAGE = 'DAMAGE',
+    THEFT = ' THEFT',
+    INTERNALUSE = 'INTERNAL USE'
+}

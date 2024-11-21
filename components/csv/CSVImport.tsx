@@ -63,7 +63,7 @@ const validateCSV = (
     if (quantityIndex !== -1) {
       const quantity = parseInt(row[quantityIndex], 10);
       if (isNaN(quantity) || quantity <= 0) {
-        rowErrors.push(`Row ${currentRowIndex}: "Quantity" must be a positive integer.`);
+        rowErrors.push(`Row ${currentRowIndex}: "Quantity" must be greater than zero.`);
       }
     }
 

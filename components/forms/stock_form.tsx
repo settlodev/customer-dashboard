@@ -39,6 +39,7 @@ import { createStock, updateStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { StockFormVariant } from "@/types/stockVariant/type";
 import { createStockVariant, deleteStockVariant, updateStockVariant } from "@/lib/actions/stock-variant-actions";
+import { NumericFormat } from "react-number-format";
 
 function StockForm({ item }: { item: Stock | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -424,6 +425,33 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                             />
                                         </div>
                                     </div>
+
+                                    <FormField
+                                        control={variantForm.control}
+                                        name="startingQuantity"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Starting Quantity</FormLabel>
+                                                <FormControl>
+                                                    
+                                                <NumericFormat
+                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                value={field.value}
+                                                                disabled={isPending}
+                                                                placeholder="0.00"
+                                                                thousandSeparator={true}
+                                                                allowNegative={false}
+                                                                onValueChange={(values) => {
+                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                    field.onChange(rawValue);
+                                                                }}
+                                                            />
+                                               </FormControl>
+                                                
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                    
                                     <FormField
                                         control={variantForm.control}
@@ -432,36 +460,25 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                             <FormItem>
                                                 <FormLabel>Starting Value (Amount)</FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        placeholder="0.00"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        type={'number'} step={0.1}
-                                                    />
-                                                </FormControl>
+                                                    
+                                                <NumericFormat
+                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                value={field.value}
+                                                                disabled={isPending}
+                                                                placeholder="0.00"
+                                                                thousandSeparator={true}
+                                                                allowNegative={false}
+                                                                onValueChange={(values) => {
+                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                    field.onChange(rawValue);
+                                                                }}
+                                                            />
+                                               </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="startingQuantity"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Starting Quantity</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="0.00"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        type={'number'} step={0.1}
-                                                    />
-                                                </FormControl>
-                                                
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
+                                    
                                     <FormField
                                         control={variantForm.control}
                                         name="alertLevel"
@@ -469,12 +486,21 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                             <FormItem>
                                                 <FormLabel>Alter Level</FormLabel>
                                                 <FormControl>
-                                                    <Input
-                                                        placeholder="0.00"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        type={'number'} step={0.1}
-                                                    />
+                                                <FormControl>
+                                                    
+                                                <NumericFormat
+                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                value={field.value}
+                                                                disabled={isPending}
+                                                                placeholder="0.00"
+                                                                thousandSeparator={true}
+                                                                allowNegative={false}
+                                                                onValueChange={(values) => {
+                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                    field.onChange(rawValue);
+                                                                }}
+                                                            />
+                                               </FormControl>
                                                 </FormControl>
                                                 <FormDescription>
                                                     Quantity below this level will trigger an alert

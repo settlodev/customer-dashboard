@@ -22,6 +22,7 @@ export declare interface Variant {
     isArchived: boolean
     unit: string
     unitName:string
+    stockVariant:string
 }
 
 export declare interface FormVariantItem {
@@ -35,5 +36,7 @@ export declare interface FormVariantItem {
     description?: string|undefined,
     image?: string|undefined|null,
     color?: string|undefined|null,
-    unit?: string|undefined
+    unit?: string|undefined,
+    trackInventory?: boolean
+    stockVariant?:string
 }

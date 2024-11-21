@@ -28,10 +28,8 @@ import {ItemStatuses} from "@/types/constants";
 import {useToast } from "@/hooks/use-toast";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
-    // console.log("item is:", item);
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
-    //const [isActive, setIsActive] = React.useState(item ? item.status : true);
     const [imageUrl, setImageUrl] = useState<string>(item && item.image?item.image: "");
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [status, setStatus] = useState<boolean>(item?item.status: ItemStatuses[0].value);

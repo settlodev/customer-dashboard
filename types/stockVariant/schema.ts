@@ -9,7 +9,7 @@ export const StockVariantSchema = object({
             }
             return val
         },
-        number({message:"Price is required"}).nonnegative({message:"Starting value can not be negative"}).gt(0,{message:"Starting value can not be zero"})
+        number({message:"Price is required"}).nonnegative({message:"Starting value can not be negative"})
     ),
     startingQuantity:preprocess(
         (val)=>{
@@ -18,7 +18,7 @@ export const StockVariantSchema = object({
             }
             return val
         },
-        number({message:"Starting quantity is required"}).nonnegative({message:"Starting quantity can not be negative"}).gt(0,{message:"Starting quantity can not be zero"})
+        number({message:"Starting quantity is required"}).nonnegative({message:"Starting quantity can not be negative"})
     ),
  
     alertLevel: preprocess(
@@ -28,7 +28,7 @@ export const StockVariantSchema = object({
             }
             return val
         },
-        number({message:"Alter level is required"}).nonnegative({message:"Alter level can not be negative"}).gt(0,{message:"Alter level can not be zero"})
+        number({message:"Alter level is required"}).nonnegative({message:"Alter level can not be negative"})
     ),
     imageOption: string().nullable().optional(),
 });

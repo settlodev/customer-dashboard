@@ -100,13 +100,12 @@ export const createCategory = async (
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
 
-        const response = await apiClient.post(
+       await apiClient.post(
             `/api/categories/${location?.id}/create`,
             validatedData.data,
         );
 
-        return parseStringify(response);
-
+    
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",

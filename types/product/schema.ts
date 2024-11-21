@@ -16,5 +16,7 @@ export const ProductSchema = object({
     taxIncluded: boolean().optional(),
     taxClass: string().optional(),
     slug: string().optional(),
-    variants: array(VariantSchema).optional()
+    variants: array(VariantSchema).optional(),
+    // stock: string().uuid().optional(),
+    // stockVariant: string().uuid().optional(),
 });
