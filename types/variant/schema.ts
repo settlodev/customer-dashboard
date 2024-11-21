@@ -27,7 +27,7 @@ export const VariantSchema = object({
     description: string().optional(),
     image: string().nullable().optional(),
     color: string().nullable().optional(), 
-    stockVariant: string().uuid().optional(),
+    stockVariant: string().optional(),
 });
 
 

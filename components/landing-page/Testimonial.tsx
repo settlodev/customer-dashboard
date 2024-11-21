@@ -40,6 +40,8 @@ export const Testimonial = () => {
                                     src={item.image}
                                     alt={item.name}
                                     className="w-14 h-14 rounded-full object-cover"
+                                    width={60}
+                                    height={60}
                                 />
                                 <div className='flex flex-col items-center justify-center '>
                                     <h3 className="text-[16px] text-gray-900 text-start font-bold">{item.name}</h3>
