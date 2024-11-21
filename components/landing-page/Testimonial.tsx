@@ -1,3 +1,4 @@
+import Image from "next/image";
 
 const testimonials = [
     {
@@ -35,7 +36,7 @@ export const Testimonial = () => {
                             <p className="h-0.5 w-full bg-gray-500 m-3 "/>
 
                             <div className="flex flex-row gap-2 items-center justify-center mb-3">
-                                <img    
+                                <Image
                                     src={item.image}
                                     alt={item.name}
                                     className="w-14 h-14 rounded-full object-cover"
@@ -45,7 +46,7 @@ export const Testimonial = () => {
                                     <p className="text-[14px] font-medium text-center text-gray-900">{item.title}</p>
                                 </div>
                             </div>
-                            
+
                         </div>
                     ))}
                 </div>
@@ -53,4 +54,3 @@ export const Testimonial = () => {
         </section>
     )
 }
-    

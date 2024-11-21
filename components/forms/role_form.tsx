@@ -25,7 +25,6 @@ import {RoleSchema} from "@/types/roles/schema";
 import {FormError} from "@/components/widgets/form-error";
 import {Role} from "@/types/roles/type";
 import { Input } from "../ui/input";
-// import { Textarea } from "../ui/textarea";
 import {fetchAllSections} from "@/lib/actions/privileges-actions";
 import _ from "lodash";
 import {UUID} from "node:crypto";
@@ -134,9 +133,6 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                 <FormControl>
                                     <Input
                                         {...field}
-                                        // isRequired
-                                        // isDisabled={isPending}
-                                        // label="Role name"
                                         placeholder="Enter role name"
                                     />
                                 </FormControl>
@@ -164,9 +160,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                             thumb: cn(
                                                 "w-6 h-6 border-2 shadow-lg",
                                                 "group-data-[hover=true]:border-primary",
-                                                //selected
                                                 "group-data-[selected=true]:ml-6",
-                                                // pressed
                                                 "group-data-[pressed=true]:w-7",
                                                 "group-data-[selected]:group-data-[pressed]:ml-4",
                                             ),

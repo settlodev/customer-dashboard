@@ -43,8 +43,6 @@ import {
     ChevronRight,
     ChevronDownIcon,
 } from "lucide-react";
-import { fetchCountries } from "@/lib/actions/countries-actions";
-import { Country } from "@/types/country/type";
 import _ from "lodash";
 import { BusinessSchema } from "@/types/business/schema";
 import { createBusiness } from "@/lib/actions/auth/business";
@@ -55,16 +53,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { LocationSchema } from "@/types/location/schema";
 import { createBusinessLocation } from "@/lib/actions/auth/location";
 import { PhoneInput } from "../ui/phone-input";
-import { businessTimes, DefaultCountry } from "@/types/constants";
+import { businessTimes } from "@/types/constants";
 import { useSession } from "next-auth/react";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import GenderSelector from "../widgets/gender-selector";
-interface signUpStepItemType {
+import CountrySelector from "@/components/widgets/country-selector";
+
+interface SignUpStepItemType {
     id: string;
     label: string;
     title: string;
 }
+
 const signUpSteps = [
     {
         id: "step1",
@@ -86,16 +87,20 @@ const signUpSteps = [
         label: "04",
         title: "Location Info",
     }
-]
+];
 
 function RegisterForm({ step }: { step: string }) {
-    const mCurrentStep = step ? signUpSteps[_.findIndex(signUpSteps, { id: step })] : signUpSteps[0];
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
-    const [countries, setCountries] = useState([]);
-    const [stepsDone, setStepsDone] = useState<signUpStepItemType[]>([]);
-    const [currentStep, setCurrentStep] = useState<signUpStepItemType>(mCurrentStep);
+    const [stepsDone, setStepsDone] = useState<SignUpStepItemType[]>(() => {
+        const currentStepIndex = signUpSteps.findIndex(s => s.id === step);
+        if (currentStepIndex <= 0) return [];
+        return signUpSteps.slice(0, currentStepIndex);
+    });
+    const [currentStep, setCurrentStep] = useState<SignUpStepItemType>(() => {
+        return signUpSteps.find(s => s.id === step) || signUpSteps[0];
+    });
     const [showPassword, setShowPassword] = useState<boolean>(false);
     const [currentBusiness, setCurrentBusiness] = useState<Business | undefined>(undefined);
     const [emailVerified] = useState<boolean>(false);
@@ -112,7 +117,6 @@ function RegisterForm({ step }: { step: string }) {
         getBusiness();
     }, []);
 
-    const defaultCountry = DefaultCountry;
     const session = useSession();
 
     /*TODO: Business form information*/
@@ -120,7 +124,7 @@ function RegisterForm({ step }: { step: string }) {
 
     const form = useForm<z.infer<typeof RegisterSchema>>({
         resolver: zodResolver(RegisterSchema),
-        defaultValues: { country: defaultCountry },
+        defaultValues: { },
     });
 
     const emailVerificationForm = useForm<z.infer<typeof EmailVerificationSchema>>({
@@ -131,7 +135,6 @@ function RegisterForm({ step }: { step: string }) {
     const businessForm = useForm<z.infer<typeof BusinessSchema>>({
         resolver: zodResolver(BusinessSchema),
         defaultValues: {
-            country: defaultCountry,
             email: session?.data?.user.email
         }
     });
@@ -149,7 +152,6 @@ function RegisterForm({ step }: { step: string }) {
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
-            //console.log("errors");
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",
@@ -163,39 +165,19 @@ function RegisterForm({ step }: { step: string }) {
     );
 
     useEffect(() => {
-        const getCountries = async () => {
-            try {
-                const response = await fetchCountries();
-                setCountries(response);
-            } catch (error) {
-                console.error("Error fetching countries", error);
-            }
+        const getBusiness = async () => {
+            const myBusiness = await getCurrentBusiness();
+            setCurrentBusiness(myBusiness);
         };
-        getCountries();
-
-        if (step) {
-            //console.log("step is:", step);
-            if (step === "step2") {
-                setStepsDone([...stepsDone, signUpSteps[0]])
-            }
-            if (step === "step3") {
-                const doneSteps = [...stepsDone, signUpSteps[0], signUpSteps[1]];
-                //console.log("Done steps: ", doneSteps)
-                setStepsDone(doneSteps)
-            }
-            if (step === "step4") {
-                const doneSteps = [...stepsDone, signUpSteps[0], signUpSteps[1], signUpSteps[2]];
-                //console.log("Done steps: ", doneSteps)
-                setStepsDone(doneSteps)
-            }
-        }
-
+        getBusiness();
     }, []);
 
-    const setMyCurrentStep = () => {
-        const currentStepIndex = signUpSteps.indexOf(currentStep) + 1;
-        setCurrentStep(signUpSteps[currentStepIndex]);
-    }
+    const setMyCurrentStep = useCallback(() => {
+        const currentStepIndex = signUpSteps.findIndex(s => s.id === currentStep.id);
+        if (currentStepIndex < signUpSteps.length - 1) {
+            setCurrentStep(signUpSteps[currentStepIndex + 1]);
+        }
+    }, [currentStep.id]);
 
     const submitData = async (values: z.infer<typeof RegisterSchema>) => {
         startTransition(() => {
@@ -208,10 +190,6 @@ function RegisterForm({ step }: { step: string }) {
                     if (data.responseType === "error") {
                         setError(data.message);
                     } else {
-                        //setSuccess(data.message);
-                        //window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
-                        //setStepsDone([...stepsDone, currentStep]);
-                        //setMyCurrentStep();
                         window.location.reload();
                     }
                 })
@@ -222,9 +200,7 @@ function RegisterForm({ step }: { step: string }) {
         });
     }
 
-    const submitBusinessData = (values: z.infer<typeof BusinessSchema>) => {
-        //setResponse(undefined);
-
+    const submitBusinessData = useCallback((values: z.infer<typeof BusinessSchema>) => {
         if (imageUrl) {
             values.image = imageUrl;
         }
@@ -232,7 +208,7 @@ function RegisterForm({ step }: { step: string }) {
             createBusiness(values)
                 .then(async (data) => {
                     if (data && "id" in data) {
-                        setStepsDone([...stepsDone, currentStep]);
+                        setStepsDone(prev => [...prev, currentStep]);
                         setMyCurrentStep();
                         window.location.reload();
                     } else if (data && data.responseType === "error") {
@@ -248,7 +224,7 @@ function RegisterForm({ step }: { step: string }) {
                     );
                 });
         });
-    };
+    }, [imageUrl, currentStep, setMyCurrentStep]);
 
     const submitLocationData = useCallback(
         (values: z.infer<typeof LocationSchema>) => {
@@ -290,41 +266,34 @@ function RegisterForm({ step }: { step: string }) {
                 });
             });
         },
-        []
+        [toast]
     );
 
     return (
         <div className=" flex flex-col items-center justify-center w-full lg:pl-16 md:pl-16 lg:pr-20 md:pr-16">
-           
+            <div className="flex items-center justify-center gap-4 w-full">
+                {signUpSteps.map((item, index) => {
+                    const isCurrent = currentStep.id === item.id || _.includes(stepsDone, item);
+                    return (
+                        <div key={item.id} className="flex flex-col items-center justify-center relative mt-10 w-full">
+                            <div className="flex items-center justify-center">
+                                <span
+                                    className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${_.includes(stepsDone, item) ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-400'}`}>
+                                    {_.includes(stepsDone, item) ? (
+                                        <CheckIcon size={16} className="text-gray-50" />
+                                    ) : (
+                                        <span className={`font-bold text-center ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{index + 1}</span>
+                                    )}
+                                </span>
+                            </div>
 
-<div className="flex items-center justify-center gap-4 w-full">
-    {signUpSteps.map((item, index) => {
-        const isCurrent = currentStep.id === item.id || _.includes(stepsDone, item);
-        return (
-            <div key={item.id} className="flex flex-col items-center justify-center relative mt-10 w-full">
-                <div className="flex items-center justify-center">
-                    <span
-                        className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${_.includes(stepsDone, item) ? 'bg-emerald-500 border-emerald-500' : 'bg-white border-gray-400'}`}>
-                        {_.includes(stepsDone, item) ? (
-                            <CheckIcon size={16} className="text-gray-50" />
-                        ) : (
-                            <span className={`font-bold text-center ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>{index + 1}</span>
-                        )}
-                    </span>
-                </div>
-
-                {/* Connecting line */}
-                {index + 1 < signUpSteps.length && (
-                    <div className="absolute top-[50%] left-[70%] lg:left-[55%] md:left-[56%] w-full h-[2px] bg-gray-400 transform -translate-y-1/2"></div>
-                )}
-
-                {/* <div className={`mt-2 font-bold text-center ${isCurrent ? 'text-gray-800' : 'text-gray-400'}`}>
-                    {item.label}
-                </div> */}
+                            {index + 1 < signUpSteps.length && (
+                                <div className="absolute top-[50%] left-[70%] lg:left-[55%] md:left-[56%] w-full h-[2px] bg-gray-400 transform -translate-y-1/2"></div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
-        );
-    })}
-</div>
 
             {currentStep.id === "step1" ?
                 <Card className="w-full sm:w-auto mt-6 lg:mr-10 pl-6 pr-6 pt-2 pb-5">
@@ -389,27 +358,14 @@ function RegisterForm({ step }: { step: string }) {
                                             name="country"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Country</FormLabel>
+                                                    <FormLabel>Nationality</FormLabel>
                                                     <FormControl>
-                                                        <Select
-                                                            disabled={isPending || countries.length === 0}
-                                                            onValueChange={field.onChange}
-                                                            value={field.value}>
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select your country" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {countries.length > 0
-                                                                    ? countries.map((country: Country, index: number) => (
-                                                                        <SelectItem
-                                                                            key={index}
-                                                                            value={country.id}>
-                                                                            {country.name}
-                                                                        </SelectItem>
-                                                                    ))
-                                                                    : <></>}
-                                                            </SelectContent>
-                                                        </Select>
+                                                        <CountrySelector
+                                                            {...field}
+                                                            isRequired
+                                                            isDisabled={isPending}
+                                                            placeholder="Select your nationality"
+                                                        />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -663,30 +619,13 @@ function RegisterForm({ step }: { step: string }) {
                                                 name="country"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Country</FormLabel>
+                                                        <FormLabel>Country of registration</FormLabel>
                                                         <FormControl>
-                                                            <Select
-                                                                disabled={isPending}
-                                                                onValueChange={field.onChange}
-                                                                value={field.value}>
-                                                                <SelectTrigger>
-                                                                    <SelectValue placeholder="Select your country" />
-                                                                </SelectTrigger>
-                                                                <SelectContent>
-                                                                    {countries.length > 0
-                                                                        ? countries.map(
-                                                                            (country: Business, index: number) => (
-                                                                                <SelectItem
-                                                                                    key={index}
-                                                                                    value={country.id}>
-                                                                                    {country.name}{" "}
-                                                                                </SelectItem>
-                                                                            )
-                                                                        )
-                                                                        : null}
-
-                                                                </SelectContent>
-                                                            </Select>
+                                                            <CountrySelector
+                                                                {...field}
+                                                                isDisabled={isPending}
+                                                                placeholder="Select country of registration"
+                                                            />
                                                         </FormControl>
                                                         <FormMessage />
                                                     </FormItem>
@@ -728,9 +667,6 @@ function RegisterForm({ step }: { step: string }) {
                                                     }
                                                 </Button>
                                             </div>
-                                            {/*<div className="self-end flex items-center">
-                                                <span>Next: {nextStepLabel()}</span>
-                                                <ChevronRight/></div>*/}
                                         </div>
 
                                     </form>
@@ -741,9 +677,9 @@ function RegisterForm({ step }: { step: string }) {
                         : (currentStep.id === "step4" || step === "step4") ? <>
                             <Card className="w-full mt-6 lg:mr-10 md:mr-10 pl-6 pr-6 pt-2 pb-5">
                                 <CardHeader>
-                                    <CardTitle className="text-[24px] font-medium lg:text-[32px] mb-3">Setup business location</CardTitle>
+                                    <CardTitle className="text-[24px] font-medium lg:text-[32px] mb-3">Setup location</CardTitle>
                                     <CardDescription className="text-[16px] font-normal">
-                                        Setup your business locations,if you have multiple locations
+                                        Setup your business location details
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
@@ -767,7 +703,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                 <FormLabel>Location Name</FormLabel>
                                                                 <FormControl>
                                                                     <Input
-                                                                        placeholder="Enter business name"
+                                                                        placeholder="Enter location name"
                                                                         {...field}
                                                                         disabled={isPending}
                                                                     />
@@ -792,7 +728,6 @@ function RegisterForm({ step }: { step: string }) {
                                                                         {...field} disabled={isPending}
                                                                     />
                                                                 </FormControl>
-                                                                <FormDescription>{/* Enter user name */}</FormDescription>
                                                                 <FormMessage />
                                                             </FormItem>
                                                         )}
@@ -810,7 +745,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                         {...field}
                                                                         disabled={isPending}
                                                                         type="email"
-                                                                        placeholder="Enter business location email"
+                                                                        placeholder="Enter location email address"
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />
@@ -865,7 +800,7 @@ function RegisterForm({ step }: { step: string }) {
                                                     />
                                                 </div>
                                             </div>
-                                          
+
                                             <div
                                                 className="pl-0 pr-3 pt-8 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Operating times</h3>
@@ -881,7 +816,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                 <FormLabel>Opening Time</FormLabel>
                                                                 <FormControl>
                                                                     <Select
-                                                                        disabled={isPending || countries.length === 0}
+                                                                        disabled={isPending }
                                                                         onValueChange={field.onChange}
                                                                         value={field.value}>
                                                                         <SelectTrigger>
@@ -915,7 +850,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                 <FormLabel>Closing Time</FormLabel>
                                                                 <FormControl>
                                                                     <Select
-                                                                        disabled={isPending || countries.length === 0}
+                                                                        disabled={isPending}
                                                                         onValueChange={field.onChange}
                                                                         value={field.value}>
                                                                         <SelectTrigger>
@@ -962,7 +897,7 @@ function RegisterForm({ step }: { step: string }) {
                                 </CardContent>
                             </Card>
                         </>
-                            : <p>End</p>
+                    : <p>End</p>
             }
 
         </div>

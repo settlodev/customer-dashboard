@@ -25,7 +25,7 @@ export function SignupNavbar () {
                             <div className="relative h-8 w-8 mr-2">
                                 <Image
                                     src="/images/logo.png"
-                                    alt="Logo"
+                                    alt="Settlo Pro"
                                     fill
                                     sizes="32px"
                                     className="cursor-pointer object-contain"
