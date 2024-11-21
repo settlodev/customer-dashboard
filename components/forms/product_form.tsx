@@ -108,16 +108,8 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
 
                 if (item) {
                     setInventoryTracking(item.trackInventory);
-
-
-
-                    // const selectedOption = combinedOptions.find(
-                    //     (opt) => opt.id === item.variants[0]?.stockVariant
-                    // );
                     form.reset({
                         ...item,
-                        // trackInventory: item.trackInventory,
-                        // stock: selectedOption?.id
                     });
                 }
 
@@ -393,7 +385,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     //     // Update raw price state
     //     setRawPrice(value);
     // };
-    
+
 
     return (<>
         {categoryModalVisible ?
@@ -907,7 +899,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                             <FormItem className="flex flex-col">
                                                 <FormLabel>Selling Price</FormLabel>
                                                 <FormControl>
-                                                    
+
                                                 <NumericFormat
                                                                 className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
                                                                 value={field.value}
@@ -933,7 +925,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                             <FormItem>
                                                 <FormLabel>Quantity</FormLabel>
                                                 <FormControl>
-                                                    
+
                                                 <NumericFormat
                                                                 className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
                                                                 value={field.value}
@@ -1029,7 +1021,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
                                             </FormItem>
                                         )}
                                     />
-                                   
+
                                     {inventoryTracking && (
                                         <FormField
                                             control={variantForm.control}

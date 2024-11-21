@@ -33,10 +33,6 @@ function LocationPage() {
         return <p>Loading...</p>
     }
 
-    /*return (
-        locationData.length > 0 ? <CreatedBusinessLocationList locations={locationData}/> : <LocationAuthForm />
-    );*/
-
     return <RegisterForm step="step4" />
 }
 

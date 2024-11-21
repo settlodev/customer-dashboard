@@ -53,8 +53,6 @@ function LoginForm() {
                     if (data.responseType === "error") {
                         setError(data.message);
                     } else {
-                        //setSuccess(data.message);
-                        // Redirect to dashboard after successful login
                         window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
                     }
                 })
@@ -73,7 +71,7 @@ function LoginForm() {
             <CardHeader className="border-b-1 mb-4 px-8">
                 <CardTitle className="text-[32px] font-bold mb-2">Welcome back</CardTitle>
                 <CardDescription>
-                    Enter your email or phone login to your account
+                    Enter your credentials below to access your account
                 </CardDescription>
             </CardHeader>
             <CardContent className="pb-4 px-8">
@@ -89,9 +87,9 @@ function LoginForm() {
                                     name="email"
                                     render={({field}) => (
                                         <FormItem>
-                                            <FormLabel>Username</FormLabel>
+                                            <FormLabel>Email address</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="Enter Username" {...field} />
+                                                <Input placeholder="Enter email address" {...field} />
                                             </FormControl>
                                             <FormMessage/>
                                         </FormItem>
@@ -107,12 +105,16 @@ function LoginForm() {
                                             <FormLabel>Password</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
-                                                    <Input type={showPassword ? "text" : "password"}
-                                                           placeholder="Enter password" {...field} />
-                                                    <span onClick={() => setShowPassword(!showPassword)}
-                                                          className="absolute right-0 top-0 h-full w-10 flex items-center justify-center z-40 cursor-pointer">
-                                                      {showPassword ? <EyeOffIcon size={20}/> :
-                                                          <EyeIcon size={20}/>}</span>
+                                                    <Input
+                                                        type={showPassword ? "text" : "password"}
+                                                        placeholder="Enter password"
+                                                        {...field}
+                                                    />
+                                                    <span
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="absolute right-0 top-0 h-full w-10 flex items-center justify-center z-40 cursor-pointer">
+                                                            {showPassword ? <EyeOffIcon size={20}/> : <EyeIcon size={20}/>}
+                                                    </span>
                                                 </div>
                                             </FormControl>
                                             <FormMessage/>

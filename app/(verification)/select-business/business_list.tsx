@@ -2,26 +2,14 @@
 
 import {Business} from "@/types/business/type";
 import Image from "next/image";
-import React, {useEffect, useState} from "react";
+import React, {useState} from "react";
 import {SelectLocation} from "@/app/(verification)/select-business/locations_dropdown";
 import {refreshBusiness} from "@/lib/actions/business/refresh";
 import {ArrowLeftIcon} from "@radix-ui/react-icons";
 import {SignupNavbar} from "@/app/(auth)/register/sign_up_navbar";
 
 export const SelectBusiness = ({ businesses }: { businesses: Business[]}) => {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
     const [business, setBusiness] = useState<Business|null>(null);
-
-    useEffect(()=>{
-        async function getData(){
-            if(businesses.length === 1){
-                setBusiness(businesses[0]);
-                await refreshBusiness(businesses[0]);
-            }
-        }
-        getData();
-    }, []);
 
     const setCurrentBusiness = async(mBusiness: Business)=>{
         setBusiness(mBusiness);

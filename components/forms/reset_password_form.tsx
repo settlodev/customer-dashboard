@@ -14,7 +14,6 @@ import Link from "next/link";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 
-
 function ResetPasswordForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
@@ -65,11 +64,11 @@ function ResetPasswordForm() {
                 name="email"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel>Email address</FormLabel>
                         <FormControl>
                             <Input
                                 type="email"
-                                placeholder="johndoe@settlo.co.tz"
+                                placeholder="Enter email address"
                                 {...field}
                             />
                         </FormControl>
@@ -84,8 +83,7 @@ function ResetPasswordForm() {
                 <Button
                     type="submit"
                     disabled={isPending}
-                    className="w-full"
-                >
+                    className="w-full">
                     Reset Password Link
                 </Button>
             </div>

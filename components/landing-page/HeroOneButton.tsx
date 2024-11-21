@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { ReactNode } from 'react';
 
 type IHeroOneButtonProps = {
@@ -20,8 +21,7 @@ const HeroOneButton = (props: IHeroOneButtonProps) => (
   </div>
 
   <div className='mt-0'>
-    <img
-      className=""
+    <Image
       src="/images/user/hero2.jpg"
       alt="Hero Image"
       loading='lazy'
