@@ -30,29 +30,29 @@ export const columns: ColumnDef<StockTransfer>[] = [
     },
     {
         
-        accessorKey: "fromLocation",
+        accessorKey: "fromLocationName",
         header: "From",
         enableHiding: true,
         cell: ({ row }) => {
-            const from = row.original.fromLocation;
-            return <div className="w-[100px]">{from}</div>;
+            const from = row.original.fromLocationName;
+            return <div className="text-[16px]">{from}</div>;
         }
        
     },
     {
         
-        accessorKey: "toLocation",
+        accessorKey: "toLocationName",
         header: "To",
         enableHiding: true,
         cell: ({ row }) => {
-            const to = row.original.staff;
-            return <div className="w-[100px]">{to}</div>;
+            const to = row.original.toLocationName;
+            return <div className="text-[16px] ">{to}</div>;
         }
        
     },
     
     {
-        accessorKey: "stockVariant",
+        accessorKey: "stockVariantName",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -93,11 +93,11 @@ export const columns: ColumnDef<StockTransfer>[] = [
    
     {
         
-        accessorKey: "staff",
+        accessorKey: "staffName",
         header: "Staff",
         enableHiding: true,
         cell: ({ row }) => {
-            const staff = row.original.staff;
+            const staff = row.original.staffName;
             return <div className="w-[100px]">{staff}</div>;
         }
        

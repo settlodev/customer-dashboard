@@ -188,7 +188,7 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                                                 isDisabled={isPending}
                                                                 label="To Location"
                                                                 placeholder="Select to location"
-                                                                locations={locations}
+                                                                locations={locations.filter(location => location.id !== form.getValues("fromLocation"))}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />

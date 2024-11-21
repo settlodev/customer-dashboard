@@ -5,6 +5,7 @@ import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {CellAction} from "@/components/tables/stock/cell-action";
 import { Stock } from "@/types/stock/type";
+import { StateColumn } from "../state-column";
 
 
 export const columns: ColumnDef<Stock>[] = [
@@ -57,7 +58,19 @@ export const columns: ColumnDef<Stock>[] = [
     {
         id: "status",
         accessorKey: "status",
-        header: 'Stock Status',
+        header: ({ column }) => {
+            return (
+                <Button
+                    className="text-left p-0"
+                    variant="ghost"
+                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+                >
+                    Status
+                    <ArrowUpDown className="ml-2 h-4 w-4" />
+                </Button>
+            );
+        },
+        cell: ({ row }) => <StateColumn state={row.original.status} />,
         enableHiding: false,
     },
     {
