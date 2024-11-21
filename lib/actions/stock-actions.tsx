@@ -219,7 +219,7 @@ export const deleteStock = async (id: UUID): Promise<void> => {
    }
 }
 
-export const uploadCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
+export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
     console.log("Starting CSV upload");
 
     if (!fileName.endsWith(".csv")) {
@@ -243,8 +243,8 @@ export const uploadCSV = async ({ fileData, fileName }: { fileData: string; file
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
         const response = await apiClient.post(
-            `/api/products/${location?.id}/upload-csvx`,
-            formattedCSVData, // Send as plain text
+            `/api/stock/${location?.id}/upload-csv`,
+            formattedCSVData, 
             {
                 headers: {
                     "Content-Type": "text/csv",
