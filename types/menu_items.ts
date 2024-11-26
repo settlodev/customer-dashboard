@@ -46,6 +46,8 @@ export const menuItems=(args?: MenuItemArgType) => {
                     {title: "Stock Modification", link: "/stock-modifications", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Stock Transfer", "link": "/stock-transfers", "current": args?.isCurrentItem, "icon": "cart"},
                     {title: "Addons", "link": "/addons", "current": args?.isCurrentItem, "icon": "cart"},
+                    {title: "Recipes", "link": "/recipes", "current": args?.isCurrentItem, "icon": "cart"},
+                    {title: "Modifiers", link: "/modifiers", current: args?.isCurrentItem, icon: "cart"},
                     
                 ]
         },

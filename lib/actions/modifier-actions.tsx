@@ -9,10 +9,10 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
-import { Addon } from "@/types/addon/type";
-import { AddonSchema } from "@/types/addon/schema";
+import { Modifier } from "@/types/modifiers/type";
+import { ModifierSchema } from "@/types/modifiers/schema";
 
-export const fectchAdons = async () : Promise<Addon[]> => {
+export const fetchModifier = async () : Promise<Modifier[]> => {
     await  getAuthenticatedUser();
 
     try {
@@ -20,11 +20,11 @@ export const fectchAdons = async () : Promise<Addon[]> => {
 
         const location = await getCurrentLocation();
 
-        const recipeData = await  apiClient.get(
-            `/api/addons/${location?.id}`,
+        const modifierData = await  apiClient.get(
+            `/api/modifiers/${location?.id}`,
         );
 
-        return parseStringify(recipeData);
+        return parseStringify(modifierData);
 
     }
     catch (error){
@@ -32,11 +32,12 @@ export const fectchAdons = async () : Promise<Addon[]> => {
     }
 }
 
-export const searchAddon = async (
+
+export const searchModifier = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Addon>> =>{
+): Promise<ApiResponse<Modifier>> =>{
     await getAuthenticatedUser();
 
 
@@ -45,7 +46,7 @@ export const searchAddon = async (
         const query ={
             filters: [
                 {
-                    key:"title",
+                    key:"name",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -53,7 +54,7 @@ export const searchAddon = async (
             ],
             sorts:[
                 {
-                    key:"title",
+                    key:"name",
                     direction:"ASC"
                 }
             ],
@@ -61,33 +62,32 @@ export const searchAddon = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        console.log("The location passed is: ", location)
-        const addonData = await  apiClient.post(
-            `/api/addons/${location?.id}`,
+        const modifierData = await  apiClient.post(
+            `/api/modifiers/${location?.id}`,
             query
         );
         
-        return parseStringify(addonData);
+        return parseStringify(modifierData);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  createAddon= async (
-    addon: z.infer<typeof AddonSchema>
+export const  createModifier= async (
+    modifier: z.infer<typeof ModifierSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const validAddonData= AddonSchema.safeParse(addon)
+    const validModifierData= ModifierSchema.safeParse(modifier)
 
 
-    if (!validAddonData.success){
+    if (!validModifierData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(validAddonData.error.message)
+            error:new Error(validModifierData.error.message)
       }
       return parseStringify(formResponse)
     }
@@ -95,22 +95,21 @@ export const  createAddon= async (
     const location = await getCurrentLocation();
 
     const payload = {
-        ...validAddonData.data,
+        ...validModifierData.data,
         location: location?.id
     }
 
-    console.log("payload:", payload);
     try {
         const apiClient = new ApiClient();
       
 
         await apiClient.post(
-            `/api/addons/${location?.id}/create`,
+            `/api/modifiers/${location?.id}/create`,
             payload
         );
     }
     catch (error){
-        console.error("Error while creating addons",error)
+        console.error("Error while creating modifiers",error)
         formResponse = {
             responseType: "error",
             message:
@@ -121,11 +120,11 @@ export const  createAddon= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/addons");
-    redirect("/addons")
+    revalidatePath("/modifiers");
+    redirect("/modifiers");
 }
 
-export const getAddon= async (id:UUID) : Promise<ApiResponse<Addon>> => {
+export const getModifier= async (id:UUID) : Promise<ApiResponse<Modifier>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -141,35 +140,33 @@ export const getAddon= async (id:UUID) : Promise<ApiResponse<Addon>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const addon= await apiClient.post(
-        `/api/addons/${location?.id}`,
+    const modifier= await apiClient.post(
+        `/api/modifiers/${location?.id}`,
         query,
     );
     
-    return parseStringify(addon)
+    return parseStringify(modifier)
 }
 
-
-
-export const updateAddon = async (
+export const updateModifier = async (
     id: UUID,
-    addon: z.infer<typeof AddonSchema>
+    modifier: z.infer<typeof ModifierSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const validAddonData = AddonSchema.safeParse(addon);
+    const validModifierData = ModifierSchema.safeParse(modifier);
 
-    if (!validAddonData.success) {
+    if (!validModifierData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(validAddonData.error.message),
+            error: new Error(validModifierData.error.message),
         };
         return parseStringify(formResponse);
     }
 
     const location = await getCurrentLocation();
     const payload = {
-        ...validAddonData.data,
+        ...validModifierData.data,
         location: location?.id,
     };
 
@@ -177,12 +174,12 @@ export const updateAddon = async (
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/addons/${location?.id}/${id}`, 
+            `/api/modifiers/${location?.id}/${id}`, 
             payload
         );
 
     } catch (error) {
-        console.error("Error while updating addon", error); 
+        console.error("Error while updating modifier", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -194,12 +191,12 @@ export const updateAddon = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/addons");
-    redirect("/addons");
+    revalidatePath("/modifiers");
+    redirect("/modifiers");
 };
 
-export const deleteAddon = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Addon ID is required to perform this request");
+export const deleteModifier = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Modifier ID is required to perform this request");
 
     await getAuthenticatedUser();
 
@@ -209,12 +206,13 @@ export const deleteAddon = async (id: UUID): Promise<void> => {
     const location = await getCurrentLocation();
    
     await apiClient.delete(
-        `/api/addons/${location?.id}/${id}`,
+        `/api/modifiers/${location?.id}/${id}`,
     );
-    revalidatePath("/addons");
+    revalidatePath("/modifiers");
     
    }
    catch (error){
        throw error
    }
 }
+

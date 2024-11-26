@@ -9,10 +9,10 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
-import { Addon } from "@/types/addon/type";
-import { AddonSchema } from "@/types/addon/schema";
+import { Recipe } from "@/types/recipe/type";
+import { RecipeSchema } from "@/types/recipe/schema";
 
-export const fectchAdons = async () : Promise<Addon[]> => {
+export const fetchRecipes = async () : Promise<Recipe[]> => {
     await  getAuthenticatedUser();
 
     try {
@@ -20,11 +20,11 @@ export const fectchAdons = async () : Promise<Addon[]> => {
 
         const location = await getCurrentLocation();
 
-        const recipeData = await  apiClient.get(
-            `/api/addons/${location?.id}`,
+        const addonData = await  apiClient.get(
+            `/api/recipes/${location?.id}`,
         );
 
-        return parseStringify(recipeData);
+        return parseStringify(addonData);
 
     }
     catch (error){
@@ -32,11 +32,12 @@ export const fectchAdons = async () : Promise<Addon[]> => {
     }
 }
 
-export const searchAddon = async (
+
+export const searchRecipe = async (
     q:string,
     page:number,
     pageLimit:number
-): Promise<ApiResponse<Addon>> =>{
+): Promise<ApiResponse<Recipe>> =>{
     await getAuthenticatedUser();
 
 
@@ -45,7 +46,7 @@ export const searchAddon = async (
         const query ={
             filters: [
                 {
-                    key:"title",
+                    key:"name",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -53,7 +54,7 @@ export const searchAddon = async (
             ],
             sorts:[
                 {
-                    key:"title",
+                    key:"name",
                     direction:"ASC"
                 }
             ],
@@ -61,51 +62,58 @@ export const searchAddon = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        console.log("The location passed is: ", location)
-        const addonData = await  apiClient.post(
-            `/api/addons/${location?.id}`,
+        const recipeData = await  apiClient.post(
+            `/api/recipes/${location?.id}`,
             query
         );
         
-        return parseStringify(addonData);
+        return parseStringify(recipeData);
     }
     catch (error){
         throw error;
     }
 
 }
-export const  createAddon= async (
-    addon: z.infer<typeof AddonSchema>
+export const  createRecipe= async (
+    recipe: z.infer<typeof RecipeSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const validAddonData= AddonSchema.safeParse(addon)
+    const validRecipeData= RecipeSchema.safeParse(recipe)
+    
+    console.log("The validated data",validRecipeData)
 
 
-    if (!validAddonData.success){
+    if (!validRecipeData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(validAddonData.error.message)
+            error:new Error(validRecipeData.error.message)
       }
       return parseStringify(formResponse)
     }
 
     const location = await getCurrentLocation();
-
+   
     const payload = {
-        ...validAddonData.data,
-        location: location?.id
-    }
+        ...validRecipeData.data,
+        location: location?.id,
+        recipeStockVariants: validRecipeData.data.stockVariants?.map(variant => ({
+            stockVariant: variant.id, 
+            quantity: variant.quantity
+        })) ?? []
+    };
+    delete payload.stockVariants;
 
-    console.log("payload:", payload);
+    console.log("The whole payload is", payload);
+
     try {
         const apiClient = new ApiClient();
       
 
         await apiClient.post(
-            `/api/addons/${location?.id}/create`,
+            `/api/recipes/${location?.id}/create`,
             payload
         );
     }
@@ -121,11 +129,11 @@ export const  createAddon= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    revalidatePath("/addons");
-    redirect("/addons")
+    revalidatePath("/recipes");
+    redirect("/recipes");
 }
 
-export const getAddon= async (id:UUID) : Promise<ApiResponse<Addon>> => {
+export const getRecipe= async (id:UUID) : Promise<ApiResponse<Recipe>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -141,48 +149,54 @@ export const getAddon= async (id:UUID) : Promise<ApiResponse<Addon>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const addon= await apiClient.post(
-        `/api/addons/${location?.id}`,
+    const recipe= await apiClient.post(
+        `/api/recipes/${location?.id}`,
         query,
     );
     
-    return parseStringify(addon)
+    return parseStringify(recipe)
 }
 
-
-
-export const updateAddon = async (
+export const updateRecipe = async (
     id: UUID,
-    addon: z.infer<typeof AddonSchema>
+    recipe: z.infer<typeof RecipeSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const validAddonData = AddonSchema.safeParse(addon);
+    const validRecipeData = RecipeSchema.safeParse(recipe);
 
-    if (!validAddonData.success) {
+    if (!validRecipeData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(validAddonData.error.message),
+            error: new Error(validRecipeData.error.message),
         };
         return parseStringify(formResponse);
     }
 
     const location = await getCurrentLocation();
+    
     const payload = {
-        ...validAddonData.data,
+        ...validRecipeData.data,
         location: location?.id,
+        recipeStockVariants: validRecipeData.data.stockVariants?.map(variant => ({
+            stockVariant: variant.id, 
+            quantity: variant.quantity
+        })) ?? []
     };
+    delete payload.stockVariants;
+
+    console.log("The payload to update recipe", payload);
 
     try {
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/addons/${location?.id}/${id}`, 
+            `/api/recipes/${location?.id}/${id}`, 
             payload
         );
 
     } catch (error) {
-        console.error("Error while updating addon", error); 
+        console.error("Error while updating recipe", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -194,14 +208,16 @@ export const updateAddon = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/addons");
-    redirect("/addons");
+    revalidatePath("/recipes");
+    redirect("/recipes");
 };
 
-export const deleteAddon = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Addon ID is required to perform this request");
+export const deleteRecipe = async (id: UUID): Promise<void> => {
+    if (!id) throw new Error("Recipe ID is required to perform this request");
 
     await getAuthenticatedUser();
+
+    console.log("Deleting recipe with ID:", id);
 
    try{
     const apiClient = new ApiClient();
@@ -209,12 +225,13 @@ export const deleteAddon = async (id: UUID): Promise<void> => {
     const location = await getCurrentLocation();
    
     await apiClient.delete(
-        `/api/addons/${location?.id}/${id}`,
+        `/api/recipes/${location?.id}/${id}`,
     );
-    revalidatePath("/addons");
+    revalidatePath("/recipes");
     
    }
    catch (error){
        throw error
    }
 }
+

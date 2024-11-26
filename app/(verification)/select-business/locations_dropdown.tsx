@@ -1,13 +1,16 @@
+'use client'
 import Image from "next/image";
 import {Location} from "@/types/location/type";
 import {refreshLocation} from "@/lib/actions/business/refresh";
 import { toast } from "@/hooks/use-toast";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Loader2Icon } from "lucide-react";
 
 export function SelectLocation ({ locations }: { locations: Location[]}){
-    const [isPending, startTransition] = useTransition();
-    const setLocation = async(location: Location)=>{
+    const [ , startTransition] = useTransition();
+    const [pendingIndex, setPendingIndex] = useState<number | null>(null);
+    const setLocation = async(location: Location, index: number)=>{
+        setPendingIndex(index);
 
         if(location.subscriptionStatus === "EXPIRED"){
             console.log("Selected Location:", location.subscriptionStatus);
@@ -25,6 +28,7 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
             await refreshLocation(location);
          document.location.href='/dashboard'
         }
+        setPendingIndex(null);
     }
 
     return (<>
@@ -46,11 +50,11 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
                             </div>
                             <div
                                 className="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
-                                                            <button type="button"
+                            <button type="button"
                                     className="flex gap-2 rounded-full bg-emerald-500 pr-4 pl-4 py-2 text-white font-medium text-sm"
-                                    onClick={() => startTransition(() => setLocation(myLocation))}>
+                                    onClick={() => startTransition(() => setLocation(myLocation,index))}>
                                 {
-                                    isPending ? <Loader2Icon className="w-6 h-6 animate-spin text-white dark:text-gray-500"/> : 'Select' // Show loader or text
+                                    pendingIndex === index ? <Loader2Icon className="w-6 h-6 animate-spin text-white dark:text-gray-500"/> : 'Select' // Show loader or text
                                 }
                             </button>
                             </div>
