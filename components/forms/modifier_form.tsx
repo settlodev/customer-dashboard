@@ -357,7 +357,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
             <Separator orientation="vertical" />
             <SubmitButton
               isPending={isPending}
-              label={item ? "Update recipe details" : "Add recipe"}
+              label={item ? "Update modifier details" : "Add modifier"}
             />
           </div>
         </div>

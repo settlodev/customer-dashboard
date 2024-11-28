@@ -5,6 +5,7 @@ export declare interface Modifier {
     id:UUID;
     name:string;
     variant:Variant;
+    variantName:string;
     modifierItems: ModifierItems[];
     isMandatory:boolean;
     isMaximum:boolean;

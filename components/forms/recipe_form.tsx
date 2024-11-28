@@ -284,6 +284,7 @@ function RecipeForm({ item }: { item: Recipe | null | undefined }) {
                   name={`stockVariants.${index}.quantity`}
                   render={({ field }) => (
                     <FormItem>
+                      @ts-ignore
                       {/* <FormLabel>Quantity for {variant.displayName}</FormLabel> */}
                       <FormLabel>Quantity</FormLabel>
                       <FormControl>

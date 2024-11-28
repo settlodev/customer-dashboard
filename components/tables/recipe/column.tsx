@@ -49,24 +49,6 @@ export const columns: ColumnDef<Recipe>[] = [
         header: "Product Variant",
         enableHiding: false,
     },
-
-    {
-        accessorKey: "recipeStockVariants",
-        header: "Stock Variants",
-        cell: ({ row }) => {
-            const stockVariantNames = row.original.recipeStockVariants.map(variant => variant.stockVariantName).join(", ") || "N/A";
-            return <div>{stockVariantNames}</div>;
-        }
-    },
-    {
-        accessorKey: "recipeStockVariants",
-        header: "Quantity",
-        cell: ({ row }) => {
-            const quantity = row.original.recipeStockVariants.map(variant => variant.quantity).join(", ") || "N/A";
-            return <div>{quantity}</div>;
-        }
-    },
-  
     {
         id: "status",
         accessorKey: "status",

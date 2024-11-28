@@ -7,6 +7,7 @@ export declare interface Recipe {
     name:string;
     recipeStockVariants:recipeVariants[];
     variant:Variant;
+    variantName:string;
     location:string;
     status:boolean;
     canDelete:boolean;

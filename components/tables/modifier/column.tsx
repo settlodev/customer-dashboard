@@ -49,12 +49,7 @@ export const columns: ColumnDef<Modifier>[] = [
         header: "Product Variant",
         enableHiding: false,
     },
-    {
-        accessorKey: "items",
-        header: "Items",
-        enableHiding: false,
-    },
-  
+
     {
         id: "status",
         accessorKey: "status",

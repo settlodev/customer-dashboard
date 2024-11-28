@@ -57,7 +57,7 @@ const breadCrumbItems = [{title: "Stock Transfer", link: "/stock-transfers"}];
                     </Card>
                 ):
                     (
-                        <NoItems newItemUrl={`/stock-transfers/new`} itemName={`Stock Transfer`}/>
+                        <NoItems newItemUrl={`/stock-transfers/new`} itemName={`Stock Transfer`} stockTransfer="To perform stock transfer make sure you have at least two business locations"/>
                     )
             }
         </div>

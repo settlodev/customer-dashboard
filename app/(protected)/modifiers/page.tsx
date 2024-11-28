@@ -31,13 +31,13 @@ const breadCrumbItems = [{title:"Modifier",link:"/modifier"}];
 
     return (
         <div className={`flex-1 space-y-4 md:p-8 pt-6`}>
-            <div className={`flex items-center justify-between mb-2`}>
+            <div className={`flex items-center justify-between mb-2 px-4`}>
                 <div className={`relative flex-1 md:max-w-md`}>
                     <BreadcrumbsNav items={breadCrumbItems} />
                 </div>
                 <div className={`flex items-center space-x-2`}>
                     <Button>
-                        <Link href={`/modifiers/new`}>
+                        <Link href={`/modifiers/new`} className="text-sm">
                             Add Modifier
                         </Link>
                     </Button>
