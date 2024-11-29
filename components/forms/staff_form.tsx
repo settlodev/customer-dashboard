@@ -340,7 +340,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
 
                                                         checked={field.value}
                                                         onCheckedChange={(value) => {
-                                                            field.onChange(value);
+                                                            field.onChange();
                                                             setAllowDashboardAccess(value);
                                                         }}
                                                         disabled={isPending}

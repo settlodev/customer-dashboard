@@ -71,41 +71,95 @@ export const searchDepartment = async (
     }
 
 }
-export const  createDepartment= async (
-    department: z.infer<typeof DepartmentSchema>
+// export const  createDepartment= async (
+//     department: z.infer<typeof DepartmentSchema>
+// ): Promise<FormResponse> => {
+
+//     let formResponse: FormResponse | null = null;
+
+//     const departmentValidData= DepartmentSchema.safeParse(department)
+
+//     if (!departmentValidData.success){
+//         formResponse = {
+//             responseType:"error",
+//             message:"Please fill all the required fields",
+//             error:new Error(departmentValidData.error.message)
+//       }
+//       return parseStringify(formResponse)
+//     }
+
+//     const location = await getCurrentLocation();
+//     const business = await getCurrentBusiness();
+
+//     const payload = {
+//         ...departmentValidData.data,
+//         location: location?.id,
+//         business: business?.id
+//     }
+//     try {
+//         const apiClient = new ApiClient();
+
+//         formResponse = await apiClient.post(
+//             `/api/departments/${location?.id}/create`,
+//             payload
+//         );
+//     }
+//     catch (error){
+//         console.error("Error creating department",error)
+//         formResponse = {
+//             responseType: "error",
+//             message:
+//                 "Something went wrong while processing your request, please try again",
+//             error: error instanceof Error ? error : new Error(String(error)),
+//         };
+//     }
+//     if (formResponse){
+//         return parseStringify(formResponse)
+//     }
+
+//     revalidatePath("/departments");
+//     redirect("/departments")
+// }
+
+export const createDepartment = async (
+    department: z.infer<typeof DepartmentSchema>,
+    context: "product" | "department", 
 ): Promise<FormResponse> => {
-
     let formResponse: FormResponse | null = null;
+    const authenticatedUser = await getAuthenticatedUser();
 
-    const departmentValidData= DepartmentSchema.safeParse(department)
+    if ("responseType" in authenticatedUser)
+        return parseStringify(authenticatedUser);
 
-    if (!departmentValidData.success){
+    const validatedData = DepartmentSchema.safeParse(department);
+
+    if (!validatedData.success) {
         formResponse = {
-            responseType:"error",
-            message:"Please fill all the required fields",
-            error:new Error(departmentValidData.error.message)
-      }
-      return parseStringify(formResponse)
+            responseType: "error",
+            message: "Please fill in all the fields marked with * before proceeding",
+            error: new Error(validatedData.error.message),
+        };
+
+        return parseStringify(formResponse);
     }
 
     const location = await getCurrentLocation();
     const business = await getCurrentBusiness();
+    
+         const payload = {
+             ...validatedData.data,
+             location: location?.id,
+             business: business?.id
+        }
 
-    const payload = {
-        ...departmentValidData.data,
-        location: location?.id,
-        business: business?.id
-    }
     try {
         const apiClient = new ApiClient();
 
-        formResponse = await apiClient.post(
+        await apiClient.post(
             `/api/departments/${location?.id}/create`,
             payload
         );
-    }
-    catch (error){
-        console.error("Error creating department",error)
+    } catch (error: unknown) {
         formResponse = {
             responseType: "error",
             message:
@@ -113,13 +167,23 @@ export const  createDepartment= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
+
+    if (formResponse) {
+        return parseStringify(formResponse);
     }
 
-    revalidatePath("/departments");
-    redirect("/departments")
-}
+    // Conditionally revalidate and redirect based on the context
+    if (context === "department") {
+        revalidatePath("/departments");
+        redirect("/departments");
+    }
+
+    return parseStringify({
+        responseType: "success",
+        message: "Department created successfully",
+    });
+};
+
 
 export const getDepartment= async (id:UUID) : Promise<ApiResponse<Department>> => {
     const apiClient = new ApiClient();

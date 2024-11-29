@@ -42,3 +42,18 @@ export enum reasonForStockModification {
     THEFT = ' THEFT',
     INTERNALUSE = 'INTERNAL USE'
 }
+
+
+export enum orderStatus {
+    PENDING = "PENDING",
+    PROCESSING = "PROCESSING",
+    DELIVERED = "DELIVERED",
+    CANCELLED = "CANCELLED",
+    RETURNED = "RETURNED",
+    COMPLETED = "COMPLETED",
+}
+
+export enum orderType {
+    DIRECT = "DIRECT SALE",
+    CREDIT = "CREDIT SALE",
+}

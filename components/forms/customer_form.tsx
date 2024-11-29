@@ -36,11 +36,16 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
 
   const form = useForm<z.infer<typeof CustomerSchema>>({
     resolver: zodResolver(CustomerSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues: { 
+                ...item,
+                allowNotifications: true,
+                status: true 
+                },
   });
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
+      console.log("Form Errors:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
@@ -53,6 +58,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof CustomerSchema>) => {
+    console.log("Submitting data:", values);
     startTransition(() => {
       if (item) {
         updateCustomer(item.id, values).then((data) => {
@@ -181,7 +187,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                       <FormControl>
                         <Switch
 
-                          checked={field.value !== undefined ? field.value : true}
+                          checked={field.value}
                           onCheckedChange={field.onChange}
                           disabled={isPending}
                         />

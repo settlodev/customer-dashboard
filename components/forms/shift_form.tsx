@@ -22,7 +22,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { FormResponse } from "@/types/types";
+import { BusinessTimeType, FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
@@ -34,6 +34,7 @@ import { ShiftSchema } from "@/types/shift/schema";
 import { createShift, updateShift } from "@/lib/actions/shift-actions";
 import { fectchAllDepartments } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
+import { businessTimes } from "@/types/constants";
 
 function ShiftForm({ item }: { item: Shift | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -161,50 +162,77 @@ function ShiftForm({ item }: { item: Shift | null | undefined }) {
                   )}
                 />
 
-            <FormField
-                    control={form.control}
-                    name="startTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Starting Time</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            disabled={isPending}
-                            placeholder="HH:MM (24 hour format)"
-                            pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
-                            title="Please enter time in 24-hour format (HH:mm)"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                        When does the shift start
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                 <FormField
-                    control={form.control}
-                    name="endTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Ending Time</FormLabel>
-                        <FormControl>
-                          <Input
-                            {...field}
-                            disabled={isPending}
-                            placeholder="HH:MM (24 hour format)"
-                            pattern="^(0[0-9]|1[0-9]|2[0-3]):[0-5][0-9]$"
-                            title="Please enter time in 24-hour format (HH:mm)"
-                          />
-                        </FormControl>
-                        <FormDescription>
-                        When does the shift end
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+           
+
+                <FormField
+                  control={form.control}
+                  name="startTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Starting Time</FormLabel>
+                      <FormControl>
+                        <Select
+                          disabled={isPending}
+                          onValueChange={field.onChange}
+                          value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder="Select starting time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {businessTimes.length > 0
+                              ? businessTimes.map((item: BusinessTimeType, index: number) => (
+                                <SelectItem key={index}
+                                  value={item.name}>
+                                  {item.label}
+                                </SelectItem>
+                              ))
+                              : <></>}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        When does the shift start?
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                   <FormField
+                  control={form.control}
+                  name="endTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ending Time</FormLabel>
+                      <FormControl>
+                        <Select
+                          disabled={isPending}
+                          onValueChange={field.onChange}
+                          value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue
+                              placeholder="Select ending time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {businessTimes.length > 0
+                              ? businessTimes.map((item: BusinessTimeType, index: number) => (
+                                <SelectItem key={index}
+                                  value={item.name}>
+                                  {item.label}
+                                </SelectItem>
+                              ))
+                              : <></>}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        When does the end start?
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
 
               </div>

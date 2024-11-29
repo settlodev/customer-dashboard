@@ -6,7 +6,7 @@ interface ProductCategorySelectorProps {
     placeholder: string;
     categories: Category[]|null;
     isRequired?: boolean;
-    value?: string;
+    value: string;
     isDisabled?: boolean;
     description?: string;
     onChange: (value: string) => void;

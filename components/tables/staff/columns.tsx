@@ -8,16 +8,16 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
 import { Staff } from "@/types/staff";
-import { useState } from "react";
-const PassCodeCell = ({ passCode }: { passCode: number }) => {
-  const [isVisible, setIsVisible] = useState(false); 
+// import { useState } from "react";
+// const PassCodeCell = ({ passCode }: { passCode: number }) => {
+//   const [isVisible, setIsVisible] = useState(false); 
 
-  return (
-    <span onClick={() => setIsVisible(!isVisible)} className="cursor-pointer">
-      {isVisible ? String(passCode) : "*****"} 
-    </span>
-  );
-}
+//   return (
+//     <span onClick={() => setIsVisible(!isVisible)} className="cursor-pointer">
+//       {isVisible ? String(passCode) : "*****"} 
+//     </span>
+//   );
+// }
 
 export const columns: ColumnDef<Staff>[] = [
   {
@@ -70,15 +70,15 @@ export const columns: ColumnDef<Staff>[] = [
     enableHiding: true,
     header: "Phone Number",
   },
-  {
-    accessorKey: "passCode",
-    enableHiding: true,
-    header: "Passcode",
-    cell: ({ row }) => {
-      const passCode = row.getValue("passCode") as number;
-      return <PassCodeCell passCode={passCode} />; 
-    },
-  },
+  // {
+  //   accessorKey: "passCode",
+  //   enableHiding: true,
+  //   header: "Passcode",
+  //   cell: ({ row }) => {
+  //     const passCode = row.getValue("passCode") as number;
+  //     return <PassCodeCell passCode={passCode} />; 
+  //   },
+  // },
   {
     accessorKey: "posAccess",
     enableHiding: true,

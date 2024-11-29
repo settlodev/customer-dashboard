@@ -58,7 +58,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
           if (data) setResponse(data);
         });
       } else {
-        createDepartment(values)
+        createDepartment(values, 'department')
           .then((data) => {
             console.log(data);
             if (data) setResponse(data);

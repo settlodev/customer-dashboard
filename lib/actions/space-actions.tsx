@@ -99,12 +99,12 @@ export const createSpace = async (
   
   try {
     const apiClient = new ApiClient();
-    const spaceData = await apiClient.post(
+    await apiClient.post(
       `/api/tables-and-spaces/${location?.id}/create`,
       payload
     );
 
-    return parseStringify(spaceData);
+    
   } catch (error) {
     console.error("Error creating supplier", error);
     formResponse = {

@@ -49,10 +49,11 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
         defaultValues: {
             ...item,
             image: imageUrl ? imageUrl : (item && item.image?item.image: ""),
-            parentId: item?.parentId || "",
+            parentCategory: item?.parentCategory || "",
             status: item ? !!item.status : false,
         }
     });
+    console.log("The item: ", item);
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
           toast({
@@ -79,7 +80,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
             if (item) {
                 const updatedValues = {
                     ...values,
-                    parentId: values.parentId || item.parentId || "",
+                    parentCategory: values.parentCategory || item.parentCategory || "",
                 };
 
                 updateCategory(item.id, updatedValues).then((data) => {
@@ -94,7 +95,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                     }
                 });
             } else {
-                createCategory(values).then((data) => {
+                createCategory(values, 'category').then((data) => {
                     if (data) setResponse(data);
                     
                     if(data?.responseType === "success") {
@@ -148,7 +149,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
-                                name="parentId"
+                                name="parentCategory"
                                 render={({field}) => (
 
                                     <FormItem>
@@ -160,9 +161,9 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                                                 isRequired
                                                 isDisabled={isPending}
                                                 label="Category"
-                                                placeholder="Select category"
+                                                placeholder="Select parent category"
                                                 categories={categories}
-                                                value={item && item.parentId?item.parentId: ""}
+                                                value={field.value || ""}
                                             />
                                         </FormControl>
                                         <FormMessage />

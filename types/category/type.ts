@@ -4,7 +4,7 @@ export declare interface Category {
     "id": UUID,
     "name": string,
     "image": string,
-    "parentId": UUID,
+    "parentCategory": UUID,
     "status": boolean,
     "canDelete": boolean,
     "location": UUID,

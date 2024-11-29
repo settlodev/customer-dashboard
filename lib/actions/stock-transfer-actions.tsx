@@ -100,7 +100,7 @@ export const createStockTransfer = async (
         );
         console.log("Stock transfer successfully", response);
     } catch (error) {
-        console.error("Error creating product", error);
+        console.error("Error creating stock transfer", error);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",

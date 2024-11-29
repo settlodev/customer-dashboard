@@ -85,7 +85,6 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     );
 
     const submitData = (values: z.infer<typeof StockTransferSchema>) => {
-        console.log("Submitting data:", values);
 
         startTransition(() => {
             if (item) {

@@ -82,9 +82,6 @@ export const  createRecipe= async (
 
     const validRecipeData= RecipeSchema.safeParse(recipe)
     
-    console.log("The validated data",validRecipeData)
-
-
     if (!validRecipeData.success){
         formResponse = {
             responseType:"error",
@@ -106,7 +103,7 @@ export const  createRecipe= async (
     };
     delete payload.stockVariants;
 
-    console.log("The whole payload is", payload);
+    
 
     try {
         const apiClient = new ApiClient();

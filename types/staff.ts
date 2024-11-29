@@ -68,8 +68,8 @@ export const StaffSchema = object({
   emergencyNumber: preprocess((val) => (val === null ? "" : val), string().optional()),
   emergencyRelationship: preprocess((val) => (val === null ? "" : val), string().optional()),
   notes: preprocess((val) => (val === null ? "" : val), string().optional()),
-  posAccess: boolean(),
-  dashboardAccess: boolean(),
+  posAccess: boolean().optional(),
+  dashboardAccess: boolean().optional(),
 });
 
 export declare interface Staff {

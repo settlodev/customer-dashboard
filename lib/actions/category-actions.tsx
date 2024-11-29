@@ -14,6 +14,7 @@ import {Category} from "@/types/category/type";
 import {CategorySchema} from "@/types/category/schema";
 import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
 
+
 export const fetchAllCategories = async (): Promise<Category[] | null> => {
     await getAuthenticatedUser();
 
@@ -77,6 +78,7 @@ export const searchCategories = async (
 
 export const createCategory = async (
     category: z.infer<typeof CategorySchema>,
+    context: "product" | "category", // New parameter to indicate the context
 ): Promise<FormResponse> => {
     let formResponse: FormResponse | null = null;
     const authenticatedUser = await getAuthenticatedUser();
@@ -100,12 +102,10 @@ export const createCategory = async (
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
 
-       await apiClient.post(
+        await apiClient.post(
             `/api/categories/${location?.id}/create`,
             validatedData.data,
         );
-
-    
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -119,9 +119,18 @@ export const createCategory = async (
         return parseStringify(formResponse);
     }
 
-    revalidatePath("/categories");
-    redirect("/categories");
+    // Conditionally revalidate and redirect based on the context
+    if (context === "category") {
+        revalidatePath("/categories");
+        redirect("/categories");
+    }
+
+    return parseStringify({
+        responseType: "success",
+        message: "Category created successfully",
+    });
 };
+
 
 export const updateCategory = async (
     id: UUID,
@@ -165,9 +174,7 @@ export const updateCategory = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-
-    revalidatePath("/categories");
-    redirect("/categories");
+   
 };
 
 export const getCategory = async (id: UUID): Promise<ApiResponse<Category>> => {

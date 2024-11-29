@@ -58,8 +58,11 @@ import { Stock } from "@/types/stock/type";
 import { fetchStock } from "@/lib/actions/stock-actions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { NumericFormat } from 'react-number-format';
+// import { useRouter } from 'next/router';
 
-function ProductForm({ item }: { item: Product | null | undefined }) {
+const ProductForm =({ item }: { item: Product | null | undefined }) => {
+    // const router = useRouter();
+
     const [isPending, startTransition] = useTransition();
     const [error] = useState<string | undefined>("");
     const [success,] = useState<string | undefined>("");
@@ -82,7 +85,6 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
     const [inventoryTracking, setInventoryTracking] = useState<boolean>(false);
     const [, setStocks] = useState<Stock[]>([]);
     const [combinedStockOptions, setCombinedStockOptions] = useState<{ id: string; displayName: string }[]>([]);
-    // const [, setRawPrice] = useState('');
 
     const { toast } = useToast();
 
@@ -230,7 +232,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
         }
 
         startTransition(() => {
-            createCategory(values)
+            createCategory(values,'product')
                 .then(async () => {
                     const categories = await fetchAllCategories();
                     setCategories(categories);
@@ -249,7 +251,7 @@ function ProductForm({ item }: { item: Product | null | undefined }) {
         }
 
         startTransition(() => {
-            createDepartment(values)
+            createDepartment(values,'product')
                 .then(async () => {
                     const departments = await fectchAllDepartments();
                     setDepartments(departments);
