@@ -22,12 +22,12 @@ export const VariantSchema = object({
     ),
   
     sku: string().optional(),
-    barcode: string().optional(),
+    barcode: string().nullable().optional(),
     unit: string().optional(),
     description: string().optional(),
     image: string().nullable().optional(),
     color: string().nullable().optional(), 
-    stockVariant: string().optional(),
+    stockVariant: string().nullable().optional(),
 });
 
 

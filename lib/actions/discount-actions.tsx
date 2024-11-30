@@ -11,6 +11,7 @@ import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { Discount } from "@/types/discount/type";
 import { DiscountSchema } from "@/types/discount/schema";
+// import { resolveError } from "../settlo-api-error-handler";
 
 export const fectchAllDicounts = async () : Promise<Discount[]> => {
     await  getAuthenticatedUser();
@@ -107,7 +108,8 @@ export const  createDiscount= async (
         );
     }
     catch (error){
-        console.error("Error creating discount",error)
+        // const myError = await resolveError(error);
+        // console.error("Error creating discount", myError[0]?.error as string);
         formResponse = {
             responseType: "error",
             message:
@@ -169,6 +171,7 @@ export const updateDiscount = async (
         ...discountValidData.data,
         location: location?.id,
     };
+    console.log("The payload to update discount", payload);
 
     try {
         const apiClient = new ApiClient();

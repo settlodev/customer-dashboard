@@ -37,7 +37,7 @@ export const taxClasses=
         },
         {
             "code" : 1,
-            "name" : "Zanzibar",
+            "name" : "ZANZIBAR",
             "displayName" : "Zanzibar",
             "amount" : 15.0,
             "description" : "Zanzibar Tax Rates"

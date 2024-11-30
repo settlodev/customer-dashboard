@@ -55,7 +55,7 @@ export default function StockModal({
                           </div>
                           <div className="flex items-center border-b border-gray-300 p-2">
                             <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
-                              Status
+                              Stock status
                             </span>
                             <span className="w-2/3 pl-2 text-sm">
                               {data.status === true ? (
@@ -101,7 +101,7 @@ export default function StockModal({
                                 </div>
                                 <div className="flex items-center p-2 border-b border-gray-300">
                                   <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
-                                    Price
+                                    Starting Quantity
                                   </span>
                                   <span className="w-2/3 pl-2 text-sm">
                                     {variant.startingQuantity}
@@ -109,7 +109,7 @@ export default function StockModal({
                                 </div>
                                 <div className="flex items-center p-2 border-b border-gray-300">
                                   <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
-                                    SKU
+                                    Starting Value
                                   </span>
                                   <span className="w-2/3 pl-2 text-sm">
                                     {variant.startingValue}

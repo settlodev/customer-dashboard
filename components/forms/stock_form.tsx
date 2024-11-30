@@ -484,7 +484,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                         name="alertLevel"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Alter Level</FormLabel>
+                                                <FormLabel>Alert Level</FormLabel>
                                                 <FormControl>
                                                 <FormControl>
                                                     

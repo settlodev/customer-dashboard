@@ -167,7 +167,7 @@ export const updateProduct = async (
         location: location?.id,
         business: business?.id
     };
-    console.log("The payload to update product", payload);
+    // console.log("The payload to update product", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -178,7 +178,7 @@ export const updateProduct = async (
         );
 
     } catch (error) {
-        console.error("Error updating product", error);
+        // console.error("Error updating product", error);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",

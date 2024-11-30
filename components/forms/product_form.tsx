@@ -76,7 +76,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
     const [searchTerm, setSearchTerm] = useState("");
 
     const [variantImageUrl, setVariantImageUrl] = useState<string>('');
-    const [imageUrl, setImageUrl] = useState<string>('');
+    const [, setImageUrl] = useState<string>('');
     const [categoryImageUrl, setCategoryImageUrl] = useState<string>('');
     const [departmentImageUrl, setDepartmentImageUrl] = useState<string>('');
     const [selectedVariant, setSelectedVariant] = useState<FormVariantItem | null>(null);
@@ -182,7 +182,10 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
 
     useEffect(() => {
         if (selectedVariant) {
-            variantForm.reset(selectedVariant);
+            variantForm.reset({
+                ...selectedVariant,
+                stockVariant: selectedVariant.stockVariant || undefined,
+            });
         }
     }, [selectedVariant, variantForm]);
 
@@ -199,12 +202,11 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
         },
         [toast]
     );
-
     const submitData = (values: z.infer<typeof ProductSchema>) => {
-        values.variants = variants;
-        if (imageUrl) {
-            values.image = imageUrl;
-        }
+        values.variants = variants.map((variant: any) => ({
+            ...variant,
+            stockVariant: variant.stockVariant ? variant.stockVariant : undefined,
+        }));
 
         startTransition(() => {
             if (item) {
@@ -307,14 +309,14 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
 
         const variantId = selectedVariant?.id;
         const productId = item?.id;
-        console.log("Selected variant ID:", variantId);
+        // console.log("Selected variant ID:", variantId);
 
         try {
             if (!variantId || !productId) {
                 throw new Error("Variant ID or product ID is missing");
             }
-            const response = await updateVariant(variantId, productId, values);
-            console.log("Variant updated response:", response);
+            await updateVariant(variantId, productId, values);
+            // console.log("Variant updated response:", response);
 
             setVariants((prevVariants) => {
                 return prevVariants.map((variant) =>
@@ -618,7 +620,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                                 <FormLabel>Brand</FormLabel>
                                                 <FormControl>
                                                     <ProductBrandSelector
-                                                        value={field.value}
+                                                        value={field.value || ""}
                                                         onChange={field.onChange}
                                                         onBlur={field.onBlur}
                                                         isRequired
@@ -972,6 +974,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                                     <Input
                                                         placeholder="Enter Barcode"
                                                         {...field}
+                                                        value={field.value || ''}
                                                         disabled={isPending}
                                                     />
                                                 </FormControl>
@@ -1033,7 +1036,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                                     <FormLabel>Stock Variant</FormLabel>
                                                     <FormControl>
                                                         <Select
-                                                            value={field.value}
+                                                            value={field.value || ''}
                                                             onValueChange={field.onChange}
                                                             disabled={isPending}
                                                         >

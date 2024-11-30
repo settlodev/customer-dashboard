@@ -7,6 +7,11 @@ export const handleSettloApiError = async (error: unknown) => {
 
         if (axiosError.response) {
             switch (axiosError.response.status) {
+                // case 400:
+                //     return {
+                //         error: "Discount can not be in the past date.",
+                //     };
+                
                 case 401:
                     return {
                         error: "Unauthorized, you are not allowed to perform this action.",
@@ -53,3 +58,14 @@ export const handleSettloApiError = async (error: unknown) => {
         };
     }
 };
+
+// export const resolveError = async (error: unknown) => {
+//     const promise1 = new Promise((resolve, reject) => {
+//         setTimeout(() => {
+//           resolve(error);
+//         }, 1000);
+//       });
+//       return await Promise.all([promise1]).then(values => values)   
+// };
+
+

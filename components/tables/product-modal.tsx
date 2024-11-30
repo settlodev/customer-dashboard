@@ -73,7 +73,7 @@ export default function ProductModal({
                       </div>
                       <div className="flex items-center border-b border-gray-300 p-2">
                         <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Track Inventory</span>
-                        <span className="w-2/3 pl-2 text-sm">{data.status === true ? <span className="bg-emerald-500 text-sm text-white rounded-sm p-1">Yes</span> : <span className="text-sm">No</span>}</span>
+                        <span className="w-2/3 pl-2 text-sm">{data.trackInventory === true ? <span className="bg-emerald-500 text-sm text-white rounded-sm p-1">Yes</span> : <span className="text-sm">No</span>}</span>
                       </div>
                       <div className="flex items-center border-b border-gray-300 p-2">
                         <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Sell Online</span>

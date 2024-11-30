@@ -32,11 +32,11 @@ export declare interface FormVariantItem {
    
     quantity: number,
     sku?: string|undefined,
-    barcode?: string|undefined,
+    barcode?: string|undefined|null,
     description?: string|undefined,
     image?: string|undefined|null,
     color?: string|undefined|null,
     unit?: string|undefined,
     trackInventory?: boolean
-    stockVariant?:string
+    stockVariant?:string|null
 }

@@ -5,6 +5,7 @@ import { FieldErrors, useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -24,13 +25,10 @@ import { Discount } from "@/types/discount/type";
 import { DiscountSchema } from "@/types/discount/schema";
 import { createDiscount, updateDiscount } from "@/lib/actions/discount-actions";
 import DiscountTypeSelector from "../widgets/discount-type-selector";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { cn } from "@/lib/utils"
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns"
-import { Calendar } from "../ui/calendar";
-import { formatNumber, formatDateForZod } from "@/lib/utils";
+import { formatNumber} from "@/lib/utils";
 import { Switch } from "../ui/switch";
+import DateTimePicker from "../widgets/datetimepicker";
+import { NumericFormat } from "react-number-format";
 
 
 
@@ -38,23 +36,51 @@ import { Switch } from "../ui/switch";
 function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error, ] = useState<string | undefined>("");
+  const [error,] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
-  const [validFrom, setValidFrom] = useState<Date | undefined>(item?.validFrom ? new Date(item.validFrom) : undefined);
+  const [validFrom, setValidFrom] = useState<Date | undefined>(
+    item?.validFrom ? new Date(item.validFrom) : undefined
+  );
+  // const [validFrom, setValidFrom] = useState<Date | undefined>(item?.validFrom ? new Date(item.validFrom) : undefined);
   const [validTo, setValidTo] = useState<Date | undefined>(item?.validTo ? new Date(item.validTo) : undefined);
   const { toast } = useToast();
 
+  const handleTimeChange = (type: "hour" | "minutes", value: string) => {
+
+    const newValidFromDate = validFrom ? new Date(validFrom) : new Date();
+    const newValidToDate = validTo ? new Date(validTo) : new Date();
+
+    if (type === "hour") {
+      newValidFromDate.setHours(Number(value));
+      newValidToDate.setHours(Number(value))
+    } else if (type === "minutes") {
+      newValidFromDate.setMinutes(Number(value));
+      newValidToDate.setMinutes(Number(value))
+    }
+    setValidFrom(newValidFromDate);
+    setValidTo(newValidToDate);
+  };
+
+  const handleDateSelect = (date: Date) => {
+    setValidFrom(date);
+    setValidTo(date)
+  };
+
   const form = useForm<z.infer<typeof DiscountSchema>>({
     resolver: zodResolver(DiscountSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues: {
+      ...item,
+      discountValue:typeof item?.discountValue === 'string' ? Number(item.discountValue) : item?.discountValue,
+       status: true },
   });
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
+      console.log("The errors are: ", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
-        description:typeof errors.message === 'string' && errors.message
+        description: typeof errors.message === 'string' && errors.message
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
@@ -80,6 +106,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
       }
     });
   };
+
   return (
     <Form {...form}>
       <form
@@ -137,14 +164,17 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                     <FormItem>
                       <FormLabel>Discount Value</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Enter discount value"
-                          {...field}
+                        <NumericFormat
+                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                          value={field.value}
                           disabled={isPending}
-                          value={field.value ? formatNumber(field.value) : ''}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/,/g, '');
-                            field.onChange(value ? parseFloat(value) : undefined);
+                          placeholder="Enter discount value"
+                          thousandSeparator={true}
+                          allowNegative={false}
+                          onValueChange={(values) => {
+                            console.log(values);
+                            const rawValue = Number(values.value.replace(/,/g, "").replace(/\.00$/, ''));
+                            field.onChange(rawValue);
                           }}
                         />
                       </FormControl>
@@ -201,45 +231,24 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                 />
 
 
+
                 <FormField
                   control={form.control}
                   name="validFrom"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valid From</FormLabel>
-                      <FormControl>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <div className="relative">
-                              <input
-                                {...field}
-                                type="text"
-                                readOnly
-                                className={cn(
-                                  "w-full p-2 border rounded-md text-left font-normal",
-                                  !validFrom && "text-muted-foreground"
-                                )}
-                                value={validFrom ? format(validFrom, "PPP") : "Pick a date"}
-                                disabled={isPending}
-                              />
-                              <span className="absolute inset-y-0 right-0 flex items-center pr-2">
-                                <CalendarIcon className="h-4 w-4 text-gray-500" />
-                              </span>
-                            </div>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={validFrom}
-                              onSelect={(date) => {
-                                setValidFrom(date);
-                                field.onChange(formatDateForZod(date));
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </FormControl>
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Valid From </FormLabel>
+                      <DateTimePicker
+                        field={field}
+                        date={validFrom}
+                        setDate={setValidFrom}
+                        handleTimeChange={handleTimeChange}
+                        onDateSelect={handleDateSelect}
+                        minDate={new Date()}
+                      />
+                      <FormDescription>
+                        Please select your preferred start date and time.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -249,47 +258,25 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                   control={form.control}
                   name="validTo"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Valid To</FormLabel>
-                      <FormControl>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <div className="relative">
-                              <input
-                                {...field}
-                                type="text"
-                                readOnly
-                                className={cn(
-                                  "w-full p-2 border rounded-md text-left font-normal",
-                                  !validTo && "text-muted-foreground"
-                                )}
-                                value={validTo ? format(validTo, "PPP") : "Pick a date"}
-                                disabled={isPending}
-                              />
-                              <span className="absolute inset-y-0 right-0 flex items-center pr-2">
-                                <CalendarIcon className="h-4 w-4 text-gray-500" />
-                              </span>
-                            </div>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0">
-                            <Calendar
-                              mode="single"
-                              selected={validTo}
-                              onSelect={(date) => {
-                                setValidTo(date);
-                                field.onChange(formatDateForZod(date));
-                              }}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                      </FormControl>
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Valid To </FormLabel>
+                      <DateTimePicker
+                        field={field}
+                        date={validTo}
+                        setDate={setValidTo}
+                        handleTimeChange={handleTimeChange}
+                        onDateSelect={handleDateSelect}
+                        minDate={new Date()}
+                      />
+                      <FormDescription>
+                        Please select your preferred end date and time.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-{item && (
+                {item && (
                   <div className="grid gap-2">
                     <FormField
                       control={form.control}

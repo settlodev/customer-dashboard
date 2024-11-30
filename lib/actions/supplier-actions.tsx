@@ -149,6 +149,7 @@ export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
     `/api/suppliers/${location?.id}`,
     query
   );
+  console.log("Supplier Response", supplierResponse)
   return parseStringify(supplierResponse);
 };
 
