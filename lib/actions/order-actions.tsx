@@ -40,7 +40,7 @@ export const searchOrder = async (
         const query ={
             filters: [
                 {
-                    key:"name",
+                    key:"orderNumber",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -48,7 +48,7 @@ export const searchOrder = async (
             ],
             sorts:[
                 {
-                    key:"name",
+                    key:"orderNumber",
                     direction:"ASC"
                 }
             ],
@@ -60,7 +60,6 @@ export const searchOrder = async (
             `/api/orders/${location?.id}`,
             query
         );
-        console.log("The order data", orderData)
         return parseStringify(orderData);
     }
     catch (error){

@@ -77,7 +77,7 @@ export const columns: ColumnDef<Orders>[] = [
             return (
                 <div className="flex items-center px-2 py-1 rounded">
                     {orderType === "DIRECT_SALE" && (
-                        <span className="text-white bg-green-500 p-1 rounded-sm">Direct</span>
+                        <span className="text-white bg-[#FF8755] p-1 rounded-sm">Direct</span>
                     )}
                     {orderType === "CREDIT_SALE" && (
                         <span className="text-white bg-yellow-500 p-1 rounded-sm">Credit</span>

@@ -44,7 +44,7 @@ const breadCrumbItems = [{title:"Orders",link:"/orders"}];
                         <CardContent>
                             <DataTable columns={columns}
                                        data={data}
-                                       searchKey="staff"
+                                       searchKey="orderNumber"
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
