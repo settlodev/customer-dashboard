@@ -96,7 +96,6 @@ export const  createStock= async (
         location: location?.id,
         business: business?.id
     }
-    console.log("payload:", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -104,6 +103,11 @@ export const  createStock= async (
             `/api/stock/${location?.id}/create`,
             payload
         );
+
+        formResponse = {
+            responseType: "success",
+            message: "Stock created successfully",
+        };
     }
     catch (error){
         console.error("Error creating product",error)
@@ -113,11 +117,8 @@ export const  createStock= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
-    revalidatePath("/stocks");
-    redirect("/stocks");
+    revalidatePath("/stocks")
+    return parseStringify(formResponse);
 }
 
 export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
@@ -141,7 +142,6 @@ export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
         query,
     );
 
-    console.log("The response to get stock: ", response)
 
     return parseStringify(response)
 }
@@ -170,7 +170,6 @@ export const updateStock = async (
         location: location?.id,
         business: business?.id
     };
-    console.log("The payload to update stock", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -180,6 +179,11 @@ export const updateStock = async (
             payload
         );
 
+        formResponse = {
+            responseType: "success",
+            message: "Stock updated successfully",
+        };
+
     } catch (error) {
         console.error("Error updating stock", error);
         formResponse = {
@@ -188,12 +192,8 @@ export const updateStock = async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-    revalidatePath("/stocks");
-    redirect("/stocks");
+    revalidatePath("/stocks")
+    return parseStringify(formResponse);
 };
 
 export const deleteStock = async (id: UUID): Promise<void> => {

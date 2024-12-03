@@ -23,6 +23,7 @@ import { FormSuccess } from "../widgets/form-success";
 import { createSpace, updateSpace } from "@/lib/actions/space-actions";
 import { SpaceSchema } from "@/types/space/schema";
 import { Space } from "@/types/space/type";
+import { useRouter } from "next/navigation";
 
 function SpaceForm({ item }: { item: Space | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -30,6 +31,7 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
   const [error, ] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof SpaceSchema>>({
     resolver: zodResolver(SpaceSchema),
@@ -54,12 +56,26 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
       if (item) {
         updateSpace(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/spaces");
+          }
         });
       } else {
         createSpace(values)
           .then((data) => {
             console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/spaces");
+            }
           })
           .catch((err) => {
             console.log(err);

@@ -23,6 +23,7 @@ import { FormSuccess } from "../widgets/form-success";
 import { Brand } from "@/types/brand/type";
 import { BrandSchema } from "@/types/brand/schema";
 import { createBrand, updateBrand } from "@/lib/actions/brand-actions";
+import { useRouter } from "next/navigation";
 
 function BrandForm({ item }: { item: Brand | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -30,6 +31,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
   const [error, ] = useState<string | undefined>("");
   const [success, ] = useState<string | undefined>("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof BrandSchema>>({
     resolver: zodResolver(BrandSchema),
@@ -54,12 +56,26 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
       if (item) {
         updateBrand(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/brands");
+          }
         });
       } else {
         createBrand(values)
           .then((data) => {
             console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/brands");
+            }
           })
           .catch((err) => {
             console.log(err);

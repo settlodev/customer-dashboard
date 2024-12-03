@@ -31,6 +31,7 @@ import { RecipeSchema } from "@/types/recipe/schema";
 import { createRecipe, updateRecipe } from "@/lib/actions/recipe-actions";
 import { StockVariant } from "@/types/stockVariant/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { useRouter } from "next/navigation";
 
 
 // interface StockVariantType {
@@ -53,14 +54,14 @@ function RecipeForm({ item }: { item: Recipe | null | undefined }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [, setCombinedProductOptions] = useState<{ id: string; displayName: string }[]>([]);
   const [combinedStockOptions, setCombinedStockOptions] = useState<{ id: string; displayName: string }[]>([]);
-
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof RecipeSchema>>({
     resolver: zodResolver(RecipeSchema),
     defaultValues: {
       name: item?.name || "",
-      status: item?.status || false,
+      status: item ? item.status : true,
       variant: item?.variant ? item.variant.toString() : "",
       stockVariants: item?.recipeStockVariants.map((recipeVariant) => ({
         id: recipeVariant.stockVariant,
@@ -159,17 +160,29 @@ function RecipeForm({ item }: { item: Recipe | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof RecipeSchema>) => {
-    console.log("Submitting data:", values);
     startTransition(() => {
       if (item) {
         updateRecipe(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/recipes");
+          }
         });
       } else {
         createRecipe(values)
           .then((data) => {
-            console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/recipes");
+            }
           })
           .catch((err) => {
             console.log(err);

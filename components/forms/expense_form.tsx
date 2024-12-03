@@ -27,6 +27,8 @@ import { fetchExpenseCategories } from "@/lib/actions/expense-categories-actions
 import { ExpenseCategory } from "@/types/expenseCategories/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import DateTimePicker from "../widgets/datetimepicker";
+import { useRouter } from "next/navigation";
+
 
 function ExpenseForm({ item }: { item: Expense | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -40,6 +42,8 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
     item?.date ? new Date(item.date) : undefined
 );
   const { toast } = useToast();
+  const router = useRouter();
+
 
   useEffect(() => {
     const getExpenseCategories = async () => {
@@ -73,20 +77,38 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
     startTransition(() => {
       if (item) {
         updateExpense(item.id, values).then((data) => {
-          if (data) setResponse(data);
+          if (data) {
+            setResponse(data);
+            if (data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/expenses"); 
+            }
+          }
         });
       } else {
         createExpense(values)
           .then((data) => {
-            console.log(data);
-            if (data) setResponse(data);
+            if (data) {
+              setResponse(data);
+              if (data.responseType === "success") {
+                toast({
+                  title: "Success",
+                  description: data.message,
+                });
+                router.push("/expenses"); 
+              }
+            }
           })
           .catch((err) => {
-            console.log(err);
+            console.error(err);
           });
       }
     });
   };
+
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
     if (!date) return;

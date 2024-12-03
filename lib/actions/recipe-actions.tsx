@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Recipe } from "@/types/recipe/type";
@@ -113,6 +112,10 @@ export const  createRecipe= async (
             `/api/recipes/${location?.id}/create`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Recipe created successfully",
+        };
     }
     catch (error){
         console.error("Error while creating addons",error)
@@ -123,11 +126,8 @@ export const  createRecipe= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
-    revalidatePath("/recipes");
-    redirect("/recipes");
+    revalidatePath("/recipes")
+    return parseStringify(formResponse)
 }
 
 export const getRecipe= async (id:UUID) : Promise<ApiResponse<Recipe>> => {
@@ -182,7 +182,6 @@ export const updateRecipe = async (
     };
     delete payload.stockVariants;
 
-    console.log("The payload to update recipe", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -191,6 +190,11 @@ export const updateRecipe = async (
             `/api/recipes/${location?.id}/${id}`, 
             payload
         );
+
+        formResponse = {
+            responseType: "success",
+            message: "Recipe updated successfully",
+        };
 
     } catch (error) {
         console.error("Error while updating recipe", error); 
@@ -202,11 +206,8 @@ export const updateRecipe = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/recipes");
-    redirect("/recipes");
+    return parseStringify(formResponse);
 };
 
 export const deleteRecipe = async (id: UUID): Promise<void> => {

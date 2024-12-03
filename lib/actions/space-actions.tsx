@@ -7,7 +7,6 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Space } from "@/types/space/type";
 import { SpaceSchema } from "@/types/space/schema";
@@ -104,6 +103,11 @@ export const createSpace = async (
       payload
     );
 
+    formResponse = {
+      responseType: "success",
+      message: "Space created successfully",
+    };
+
     
   } catch (error) {
     console.error("Error creating supplier", error);
@@ -114,11 +118,8 @@ export const createSpace = async (
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
-  if (formResponse) {
-    return parseStringify(formResponse);
-  }
   revalidatePath("/spaces");
-  redirect("/spaces");
+  return parseStringify(formResponse);
 };
 
 export const getSpace = async (id: UUID): Promise<ApiResponse<Space>> => {
@@ -181,6 +182,11 @@ export const updateSpace = async (
           payload
       );
 
+      formResponse = {
+          responseType: "success",
+          message: "Space updated successfully",
+      };
+
   } catch (error) {
       console.error("Error updating space", error); 
       formResponse = {
@@ -190,12 +196,8 @@ export const updateSpace = async (
           error: error instanceof Error ? error : new Error(String(error)),
       };
   }
-
-  if (formResponse) {
-      return parseStringify(formResponse);
-  }
   revalidatePath("/spaces");
-  redirect("/spaces");
+  return parseStringify(formResponse);
 };
 
 

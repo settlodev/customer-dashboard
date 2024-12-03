@@ -47,18 +47,14 @@ export const columns: ColumnDef<Salary>[] = [
     {
         accessorKey: "amount",
         enableHiding: false,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Amount
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
+        cell: ({ row }) => {
+            const amount = row.getValue("amount") as number;
+            const formatted = Intl.NumberFormat("en", {
+                style: "currency",
+                currency: "TZS",
+            }).format(amount);
+            return <div className="text-left font-medium">{formatted}</div>;
+        }
     },
     {
         accessorKey: "bankName",

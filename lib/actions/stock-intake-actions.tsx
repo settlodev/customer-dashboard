@@ -92,15 +92,17 @@ export const createStockIntake = async (
     const payload = {
         ...validData.data,
     };
-    console.log("The payload to create stock intake:", payload);
 
     try {
         const apiClient = new ApiClient();
-       const response = await apiClient.post(
+       await apiClient.post(
             `/api/stock-intakes/${stockVariantId}/create`,
             payload
         );
-        console.log("Stock Intake created successfully", response);
+        formResponse = {
+            responseType: "success",
+            message: "Stock Intake created successfully",
+        }
     } catch (error) {
         console.error("Error creating product", error);
         formResponse = {
@@ -109,13 +111,8 @@ export const createStockIntake = async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
     revalidatePath("/stock-intakes");
-    redirect("/stock-intakes");
+    return parseStringify(formResponse);
 };
 
 
@@ -170,7 +167,6 @@ export const updateStockIntake = async (
         location: location?.id,
         business: business?.id
     };
-    console.log("The payload to update stock intake", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -179,6 +175,10 @@ export const updateStockIntake = async (
             `/api/stock-intakes/${location?.id}/${id}`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Stock Intake updated successfully",
+        };
 
     } catch (error) {
         console.error("Error updating stock", error);
@@ -189,11 +189,8 @@ export const updateStockIntake = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/stock-intakes");
-    redirect("/stocks-intakes");
+   return parseStringify(formResponse);
 };
 
 export const deleteStockIntake = async (id: UUID, stockVariant:UUID): Promise<void> => {

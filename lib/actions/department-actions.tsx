@@ -71,55 +71,7 @@ export const searchDepartment = async (
     }
 
 }
-// export const  createDepartment= async (
-//     department: z.infer<typeof DepartmentSchema>
-// ): Promise<FormResponse> => {
 
-//     let formResponse: FormResponse | null = null;
-
-//     const departmentValidData= DepartmentSchema.safeParse(department)
-
-//     if (!departmentValidData.success){
-//         formResponse = {
-//             responseType:"error",
-//             message:"Please fill all the required fields",
-//             error:new Error(departmentValidData.error.message)
-//       }
-//       return parseStringify(formResponse)
-//     }
-
-//     const location = await getCurrentLocation();
-//     const business = await getCurrentBusiness();
-
-//     const payload = {
-//         ...departmentValidData.data,
-//         location: location?.id,
-//         business: business?.id
-//     }
-//     try {
-//         const apiClient = new ApiClient();
-
-//         formResponse = await apiClient.post(
-//             `/api/departments/${location?.id}/create`,
-//             payload
-//         );
-//     }
-//     catch (error){
-//         console.error("Error creating department",error)
-//         formResponse = {
-//             responseType: "error",
-//             message:
-//                 "Something went wrong while processing your request, please try again",
-//             error: error instanceof Error ? error : new Error(String(error)),
-//         };
-//     }
-//     if (formResponse){
-//         return parseStringify(formResponse)
-//     }
-
-//     revalidatePath("/departments");
-//     redirect("/departments")
-// }
 
 export const createDepartment = async (
     department: z.infer<typeof DepartmentSchema>,

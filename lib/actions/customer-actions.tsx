@@ -7,7 +7,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
@@ -102,6 +101,10 @@ export const  createCustomer= async (
             `/api/customers/${location?.id}/create`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Customer created successfully",
+        };
     }
     catch (error){
         console.error("Error creating customer",error)
@@ -112,11 +115,9 @@ export const  createCustomer= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
+
     revalidatePath("/customers");
-    redirect("/customers")
+    return parseStringify(formResponse);
 }
 
 export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
@@ -170,16 +171,18 @@ export const updateCustomer = async (
     
 
     try {
-        console.log("Executing in try block to update customer");
         const apiClient = new ApiClient();
 
         await apiClient.put(
             `/api/customers/${location?.id}/${id}`, 
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Customer updated successfully",
+        };
 
     } catch (error) {
-        console.error("Error updating customer", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -188,11 +191,8 @@ export const updateCustomer = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/customers");
-    redirect("/customers");
+    return parseStringify(formResponse);
 };
 
 export const deleteCustomer = async (id: UUID): Promise<void> => {

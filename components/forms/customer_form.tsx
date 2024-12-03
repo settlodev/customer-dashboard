@@ -26,6 +26,7 @@ import { Switch } from "../ui/switch";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { PhoneInput } from "../ui/phone-input";
+import { useRouter } from "next/navigation";
 
 function CustomerForm({ item }: { item: Customer | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -33,6 +34,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
   const [error, ] = useState<string | undefined>("");
   const [success, ] = useState<string | undefined>("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof CustomerSchema>>({
     resolver: zodResolver(CustomerSchema),
@@ -58,24 +60,43 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof CustomerSchema>) => {
-    console.log("Submitting data:", values);
+    // Initialize the router
+  
     startTransition(() => {
       if (item) {
         updateCustomer(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+  
+            // Redirect after showing the toast
+            router.push("/customers");
+          }
         });
       } else {
         createCustomer(values)
           .then((data) => {
-            console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+  
+              // Redirect after showing the toast
+              router.push("/customers");
+            }
           })
           .catch((err) => {
-            console.log(err);
+            console.error(err);
           });
       }
     });
   };
+  
   return (
     <Form {...form}>
       <form

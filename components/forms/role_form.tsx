@@ -28,26 +28,25 @@ import { Input } from "../ui/input";
 import {fetchAllSections} from "@/lib/actions/privileges-actions";
 import _ from "lodash";
 import {UUID} from "node:crypto";
-import {toast} from "@/hooks/use-toast";
+import {useToast} from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
 
 const RoleForm = ({ item }: { item: Role | null | undefined }) => {
-    //console.log("Item is:", item);
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     const [isActive, setIsActive] = useState(item ? item.status : true);
     const [privileges, setPrivileges] = useState<string[]>([]);
     const [sections, setSections] = useState<PrivilegeItem[]>([]);
     const [role] = useState<Role|null>(item?item: null);
+    const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         if(item){
             const myPrivs: string[] = [];
             item.privilegeActions.map(priv=>{
-                //console.log("priv is:", priv);
                 myPrivs.push(priv.id);
             });
-
-            //console.log("myPrivs is:", myPrivs);
             setPrivileges(myPrivs);
         }
     }, [item]);
@@ -68,10 +67,24 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                 if (item) {
                     updateRole(item.id, values).then((data) => {
                         if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            router.push("/roles");
+                        }
                     });
                 } else {
                     createRole(values).then((data) => {
                         if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            router.push("/roles");
+                        }
                     });
                 }
             });
@@ -86,7 +99,6 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
             if (!initialized.current) {
                 initialized.current = true
                 const data = await fetchAllSections();
-                console.log("data is:", data);
                 setSections(data);
             }
         }
@@ -96,8 +108,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
 
     const onInvalid = useCallback(
         (errors: any) => {
-            console.log("values:", privileges, item);
-            console.log("These errors occurred:", errors);
+           
             toast({
                 variant: "destructive",
                 title: "Uh oh! something went wrong",
@@ -114,7 +125,6 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
         if (!_.find(privileges, action_id)) {
             const privs = [...privileges, action_id];
             setPrivileges(privs);
-            console.log("privs are:", privs);
         }
     }
 
@@ -185,7 +195,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                     />
                 </div>
 
-                {/*<FormField
+                         {/*<FormField
                     control={form.control}
                     name="description"
                     render={({field}) => (
@@ -203,7 +213,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                         </FormItem>
                     )}
                 />*/}
-
+               
                 <div className='popup-content'>
                     <>
                         <div className='input-row input-row-multiple'>

@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
@@ -92,15 +91,17 @@ export const createStockModification = async (
         ...validData.data,
         location: location?.id
     };
-    console.log("The payload to record stock modification:", payload);
 
     try {
         const apiClient = new ApiClient();
-       const response = await apiClient.post(
+       await apiClient.post(
             `/api/stock-modifications/${location?.id}/create`,
             payload
         );
-        console.log("Stock modification modified successfully", response);
+        formResponse = {
+            responseType: "success",
+            message: "Stock modification created successfully",
+        }
     } catch (error) {
         console.error("Error creating product", error);
         formResponse = {
@@ -110,12 +111,8 @@ export const createStockModification = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
     revalidatePath("/stock-modifications");
-    redirect("/stock-modifications");
+    return parseStringify(formResponse);
 };
 
 

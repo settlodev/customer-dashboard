@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Brand } from "@/types/brand/type";
@@ -104,6 +103,10 @@ export const  createBrand= async (
             `/api/brands/${location?.id}/create`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Brand created successfully",
+        };
     }
     catch (error){
         console.error("Error while creating brand",error)
@@ -114,11 +117,9 @@ export const  createBrand= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
+
     revalidatePath("/brands");
-    redirect("/brands")
+    return parseStringify(formResponse)
 }
 
 export const getBrand= async (id:UUID) : Promise<ApiResponse<Brand>> => {
@@ -179,6 +180,11 @@ export const updateBrand = async (
             payload
         );
 
+        formResponse = {
+            responseType: "success",
+            message: "Brand updated successfully",
+        };
+
     } catch (error) {
         console.error("Error while updating brand", error); 
         formResponse = {
@@ -189,11 +195,8 @@ export const updateBrand = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/brands");
-    redirect("/brands");
+    return parseStringify(formResponse);
 };
 
 export const deleteBrand = async (id: UUID): Promise<void> => {

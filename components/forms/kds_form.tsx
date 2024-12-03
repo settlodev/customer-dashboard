@@ -26,6 +26,7 @@ import { KDS } from "@/types/kds/type";
 import { fectchAllDepartments } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { useRouter } from "next/navigation";
 
 function KDSForm({ item }: { item: KDS | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -34,6 +35,7 @@ function KDSForm({ item }: { item: KDS | null | undefined }) {
   const [success,] = useState<string | undefined>("");
   const { toast } = useToast();
   const [departments, setDepartments] = useState<Department[]>([]);
+  const router = useRouter();
 
 
   useEffect(() => {
@@ -72,12 +74,26 @@ function KDSForm({ item }: { item: KDS | null | undefined }) {
         updateKDS(item.id, values)
         .then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/kds");
+          }
         });
       } else {
         createKDS(values)
           .then((data) => {
             console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/kds");
+            }
           })
           .catch((err) => {
             console.log(err);

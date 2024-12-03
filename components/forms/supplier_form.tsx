@@ -28,6 +28,7 @@ import { PhoneInput } from "../ui/phone-input";
 import { Loader2Icon } from "lucide-react";
 import { Switch } from "../ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { useRouter } from "next/navigation";
 
 function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -35,6 +36,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [error,] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof SupplierSchema>>({
     resolver: zodResolver(SupplierSchema),
@@ -59,12 +61,26 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
       if (item) {
         updateSupplier(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/suppliers");
+          }
         });
       } else {
         createSupplier(values)
           .then((data) => {
             console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/suppliers");
+            }
           })
           .catch((err) => {
             console.log(err);
@@ -140,7 +156,12 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   <FormItem className="flex flex-col items-start">
                     <FormLabel>Supplier Physical Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter supplier physical address" {...field} />
+                      <Input placeholder="Enter supplier physical address"
+                       {...field} 
+                       disabled={isPending}
+                       value={field.value || ""}
+                      //  onChange={field.value || ""}
+                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

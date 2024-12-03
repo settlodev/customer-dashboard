@@ -24,6 +24,7 @@ import { DepartmentSchema } from "@/types/department/schema";
 import { createDepartment, updateDepartment } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
 import { Switch } from "../ui/switch";
+import { useRouter } from "next/navigation";
 
 function DepartmentForm({ item }: { item: Department | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -31,6 +32,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
   const [error, ] = useState<string | undefined>("");
   const [success, ] = useState<string | undefined>("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof DepartmentSchema>>({
     resolver: zodResolver(DepartmentSchema),
@@ -56,12 +58,25 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
       if (item) {
         updateDepartment(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/departments");
+          }
         });
       } else {
         createDepartment(values, 'department')
           .then((data) => {
-            console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/departments");
+            }
           })
           .catch((err) => {
             console.log(err);

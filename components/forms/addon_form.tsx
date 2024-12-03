@@ -34,6 +34,8 @@ import { StockVariant } from "@/types/stockVariant/type";
 import { Variant } from "@/types/variant/type";
 import { MultiSelect } from "../ui/multi-select";
 import ProductSelector from "../widgets/product-selector";
+import { useRouter } from "next/navigation";
+import { NumericFormat } from "react-number-format";
 
 function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -48,12 +50,13 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [, setSelectedProduct] = useState<Product | null>(null);
   const [productVariants, setProductVariants] = useState<Variant[]>([]);
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof AddonSchema>>({
     resolver: zodResolver(AddonSchema),
-    defaultValues: { status: true }, // Initial default
+    defaultValues: { status: true },
   });
-  
+
   useEffect(() => {
     const getData = async () => {
       try {
@@ -63,37 +66,37 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
         ]);
         setStocks(stockResponse);
         setProducts(productResponse);
-  
+
         if (item) {
           setAddonTracking(item.isTracked);
-          
-       
-          
+
+
+
           const stock = stockResponse.find((stk) => stk.id === item.stockVariant?.stock) || null;
           setSelectedStock(stock);
           setStockVariants(stock ? stock.stockVariants : []);
 
           const productId = Array.isArray(item.variants)
-          ? item.variants.length > 0
-            ? item.variants[0]?.product
-            : undefined
-          : item.variants?.product;
+            ? item.variants.length > 0
+              ? item.variants[0]?.product
+              : undefined
+            : item.variants?.product;
           const product = productResponse.find((prd) => prd.id === productId) || null;
-        
+
           setSelectedProduct(product);
           setProductVariants(product ? product.variants : []);
 
-             form.reset({
-              ...item,
-              stock: item.stockVariant?.stock, 
-              stockVariant: item.stockVariant?.id, 
-              product: productId, 
-              variants: Array.isArray(item.variants)
-                ? item.variants.map((variant) => variant.id) 
-                : item.variants && typeof item.variants.id === 'string'
-                ? [item.variants.id] 
-                : [], 
-            });
+          form.reset({
+            ...item,
+            stock: item.stockVariant?.stock,
+            stockVariant: item.stockVariant?.id,
+            product: productId,
+            variants: Array.isArray(item.variants)
+              ? item.variants.map((variant) => variant.id)
+              : item.variants && typeof item.variants.id === 'string'
+                ? [item.variants.id]
+                : [],
+          });
         }
       } catch (error) {
         // Handle error appropriately
@@ -102,7 +105,7 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
     };
     getData();
   }, [item, form, setStocks, setProducts]);
-  
+
 
   const handleAddonTrackingChange = (value: boolean) => {
     setAddonTracking(value);
@@ -147,12 +150,25 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
       if (item) {
         updateAddon(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/addons");
+          }
         });
       } else {
         createAddon(values)
           .then((data) => {
-            console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/addons");
+            }
           })
           .catch((err) => {
             console.log(err);
@@ -197,10 +213,17 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
                     <FormItem>
                       <FormLabel>Addon Price</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Enter addon price"
-                          {...field}
+                        <NumericFormat
+                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                          value={field.value}
                           disabled={isPending}
+                          placeholder="0.00"
+                          thousandSeparator={true}
+                          allowNegative={false}
+                          onValueChange={(values) => {
+                            const rawValue = Number(values.value.replace(/,/g, ""));
+                            field.onChange(rawValue);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />

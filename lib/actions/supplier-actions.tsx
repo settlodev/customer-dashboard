@@ -9,7 +9,6 @@ import { SupplierSchema } from "@/types/supplier/schema";
 import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 
 export const fetchSuppliers = async (): Promise<Supplier[]> => {
@@ -106,6 +105,10 @@ export const createSupplier = async (
       `/api/suppliers/${location?.id}/create`,
       payload
     );
+    formResponse = {
+      responseType: "success",
+      message: "Supplier created successfully",
+    };
 
   } catch (error) {
     console.error("Error creating supplier", error);
@@ -116,13 +119,8 @@ export const createSupplier = async (
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
-  
-  if (formResponse) {
-    return parseStringify(formResponse);
-  }
-
   revalidatePath("/suppliers");
-  redirect("/suppliers");
+  return parseStringify(formResponse);
 };
 
 
@@ -184,14 +182,17 @@ export const updateSupplier = async (
   try {
       const apiClient = new ApiClient();
 
-      const updateSupplierResponse = await apiClient.put(
+      await apiClient.put(
           `/api/suppliers/${location?.id}/${id}`, 
           payload
       );
 
-      console.log("Update Supplier Response", updateSupplierResponse);
+      formResponse = {
+          responseType: "success",
+          message: "Supplier updated successfully",
+      };
+
   } catch (error) {
-      console.error("Error updating supplier", error); 
       formResponse = {
           responseType: "error",
           message:
@@ -200,11 +201,8 @@ export const updateSupplier = async (
       };
   }
 
-  if (formResponse) {
-      return parseStringify(formResponse);
-  }
   revalidatePath("/suppliers");
-  redirect("/suppliers");
+  return parseStringify(formResponse);
 };
 
 

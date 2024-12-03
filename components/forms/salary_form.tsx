@@ -30,13 +30,16 @@ import { FormSuccess } from "../widgets/form-success";
 import { SalarySchema } from "@/types/salary/schema";
 import { createSalary, updateSalary } from "@/lib/actions/salary-actions";
 import { Salary } from "@/types/salary/type";
+import { useRouter } from "next/navigation";
+import { NumericFormat } from "react-number-format";
 
 function SalaryForm({ item }: { item: Salary | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error, ] = useState<string | undefined>("");
-  const [success, ] = useState<string | undefined>("");
+  const [error,] = useState<string | undefined>("");
+  const [success,] = useState<string | undefined>("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof SalarySchema>>({
     resolver: zodResolver(SalarySchema),
@@ -56,18 +59,29 @@ function SalaryForm({ item }: { item: Salary | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof SalarySchema>) => {
-
-    console.log("Submitting data:", values);
     startTransition(() => {
       if (item) {
         updateSalary(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/salaries");
+          }
         });
       } else {
         createSalary(values)
           .then((data) => {
-            console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/salaries");
+            }
           })
           .catch((err) => {
             console.log(err);
@@ -90,10 +104,10 @@ function SalaryForm({ item }: { item: Salary | null | undefined }) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-            <FormError message={error}/>
-            <FormSuccess message={success}/>
+              <FormError message={error} />
+              <FormSuccess message={success} />
               <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
-                
+
                 <FormField
                   control={form.control}
                   name="amount"
@@ -101,10 +115,17 @@ function SalaryForm({ item }: { item: Salary | null | undefined }) {
                     <FormItem>
                       <FormLabel>Amount</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Enter salary amount"
-                          {...field}
+                        <NumericFormat
+                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                          value={field.value}
                           disabled={isPending}
+                          placeholder="Enter salary amount"
+                          thousandSeparator={true}
+                          allowNegative={false}
+                          onValueChange={(values) => {
+                            const rawValue = Number(values.value.replace(/,/g, ""));
+                            field.onChange(rawValue);
+                          }}
                         />
                       </FormControl>
                       <FormMessage />
@@ -121,6 +142,7 @@ function SalaryForm({ item }: { item: Salary | null | undefined }) {
                         <Input
                           placeholder="Enter salary frequency"
                           {...field}
+                          type="number"
                           disabled={isPending}
                         />
                       </FormControl>
@@ -180,7 +202,7 @@ function SalaryForm({ item }: { item: Salary | null | undefined }) {
                   )}
                 />
 
-            
+
 
 
               </div>

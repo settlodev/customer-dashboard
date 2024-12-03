@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
 import { Salary } from "@/types/salary/type";
@@ -97,16 +96,18 @@ export const  createSalary= async (
         location: location?.id,
     }
 
-    console.log("The payload to create salary", payload);
 
     try {
         const apiClient = new ApiClient();
-      
-
         await apiClient.post(
             `/api/salaries/${location?.id}/create`,
             payload
         );
+
+        formResponse = {
+            responseType: "success",
+            message: "Salary created successfully",
+        };
     }
     catch (error){
         console.error("Error while creating salary",error)
@@ -117,11 +118,9 @@ export const  createSalary= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
+  
     revalidatePath("/salaries");
-    redirect("/salaries")
+    return parseStringify(formResponse)
 }
 
 export const getSalary= async (id:UUID) : Promise<ApiResponse<Salary>> => {
@@ -172,7 +171,6 @@ export const updateSalary = async (
         ...validSalaryData.data,
         location: location?.id,
     };
-    console.log("The payload to update salary", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -181,6 +179,10 @@ export const updateSalary = async (
             `/api/salaries/${location?.id}/${id}`, 
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Salary updated successfully",
+        };
 
     } catch (error) {
         console.error("Error while updating salary", error); 
@@ -192,11 +194,9 @@ export const updateSalary = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
+    
     revalidatePath("/salaries");
-    redirect("/salaries");
+    return parseStringify(formResponse);
 };
 
 export const deleteSalary = async (id: UUID): Promise<void> => {

@@ -58,7 +58,8 @@ import { Stock } from "@/types/stock/type";
 import { fetchStock } from "@/lib/actions/stock-actions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { NumericFormat } from 'react-number-format';
-// import { useRouter } from 'next/router';
+import { FormResponse } from "@/types/types";
+import { useRouter } from 'next/navigation';
 
 const ProductForm =({ item }: { item: Product | null | undefined }) => {
     // const router = useRouter();
@@ -85,8 +86,9 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
     const [inventoryTracking, setInventoryTracking] = useState<boolean>(false);
     const [, setStocks] = useState<Stock[]>([]);
     const [combinedStockOptions, setCombinedStockOptions] = useState<{ id: string; displayName: string }[]>([]);
-
+    const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         const getData = async () => {
@@ -211,14 +213,28 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
         startTransition(() => {
             if (item) {
                 updateProduct(item.id, values).then((data) => {
-                    //if (data) setResponse(data);
-                    console.log(" Update product data:", data)
+                    if (data) setResponse(data);
+                    if (data && data.responseType === "success") {
+                        toast({
+                            title: "Success",
+                            description: data.message,
+                        });
+                        router.push("/products");
+                    }
+                   
                 });
             } else {
                 createProduct(values)
                     .then((data) => {
                         console.log("Create product data: ", data);
-                        //if (data) setResponse(data);
+                        if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            router.push("/products");
+                        }
                     })
                     .catch((err) => {
                         console.log("Error while creating product: ", err);

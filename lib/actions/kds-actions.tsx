@@ -7,7 +7,6 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { KDS } from "@/types/kds/type";
 import { KDSSchema } from "@/types/kds/schema";
@@ -101,12 +100,15 @@ export const createKDS = async (
   
   try {
     const apiClient = new ApiClient();
-    const kdsData = await apiClient.post(
+   await apiClient.post(
       `/api/kds/${location?.id}/create`,
       payload
     );
-
-    return parseStringify(kdsData);
+    formResponse = {
+      responseType: "success",
+      message: "KDS created successfully",
+    };
+    
   } catch (error) {
     console.error("Error creating supplier", error);
     formResponse = {
@@ -116,11 +118,10 @@ export const createKDS = async (
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
-  if (formResponse) {
-    return parseStringify(formResponse);
-  }
+
   revalidatePath("/kds");
-  redirect("/kds");
+  return parseStringify(formResponse);
+ 
 };
 
 export const getKDS = async (id: UUID): Promise<ApiResponse<KDS>> => {
@@ -183,6 +184,11 @@ export const updateKDS = async (
           payload
       );
 
+      formResponse = {
+          responseType: "success",
+          message: "KDS updated successfully",
+      };
+
   } catch (error) {
       console.error("Error updating kds", error); 
       formResponse = {
@@ -193,11 +199,8 @@ export const updateKDS = async (
       };
   }
 
-  if (formResponse) {
-      return parseStringify(formResponse);
-  }
   revalidatePath("/kds");
-  redirect("/kds");
+  return parseStringify(formResponse);
 };
 
 
@@ -210,7 +213,9 @@ export const deleteKDS = async (id: UUID): Promise<void> => {
       const location = await getCurrentLocation();
 
       await apiClient.delete(`/api/kds/${location?.id}/${id}`);
+
       revalidatePath("/kds");
+
   } catch (error) {
       throw error;
   }

@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Addon } from "@/types/addon/type";
@@ -61,11 +60,11 @@ export const searchAddon = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        console.log("The location passed is: ", location)
         const addonData = await  apiClient.post(
             `/api/addons/${location?.id}`,
             query
         );
+
         
         return parseStringify(addonData);
     }
@@ -99,7 +98,6 @@ export const  createAddon= async (
         location: location?.id
     }
 
-    console.log("payload:", payload);
     try {
         const apiClient = new ApiClient();
       
@@ -108,6 +106,10 @@ export const  createAddon= async (
             `/api/addons/${location?.id}/create`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Addon created successfully",
+        };
     }
     catch (error){
         console.error("Error while creating addons",error)
@@ -118,11 +120,9 @@ export const  createAddon= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
+
     revalidatePath("/addons");
-    redirect("/addons")
+    return parseStringify(formResponse)
 }
 
 export const getAddon= async (id:UUID) : Promise<ApiResponse<Addon>> => {
@@ -181,8 +181,12 @@ export const updateAddon = async (
             payload
         );
 
+        formResponse = {
+            responseType: "success",
+            message: "Addon updated successfully",
+        };
+
     } catch (error) {
-        console.error("Error while updating addon", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -191,11 +195,8 @@ export const updateAddon = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/addons");
-    redirect("/addons");
+    return parseStringify(formResponse);
 };
 
 export const deleteAddon = async (id: UUID): Promise<void> => {

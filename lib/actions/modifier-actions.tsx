@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Modifier } from "@/types/modifiers/type";
@@ -107,6 +106,10 @@ export const  createModifier= async (
             `/api/modifiers/${location?.id}/create`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Modifier created successfully",
+        };
     }
     catch (error){
         console.error("Error while creating modifiers",error)
@@ -117,11 +120,8 @@ export const  createModifier= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
     revalidatePath("/modifiers");
-    redirect("/modifiers");
+    return parseStringify(formResponse);
 }
 
 export const getModifier= async (id:UUID) : Promise<ApiResponse<Modifier>> => {
@@ -178,6 +178,11 @@ export const updateModifier = async (
             payload
         );
 
+        formResponse = {
+            responseType: "success",
+            message: "Modifier updated successfully",
+        };
+
     } catch (error) {
         console.error("Error while updating modifier", error); 
         formResponse = {
@@ -188,11 +193,8 @@ export const updateModifier = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/modifiers");
-    redirect("/modifiers");
+    return parseStringify(formResponse);
 };
 
 export const deleteModifier = async (id: UUID): Promise<void> => {

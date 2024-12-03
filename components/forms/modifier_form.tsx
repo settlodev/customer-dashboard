@@ -30,6 +30,7 @@ import { createModifier, updateModifier } from "@/lib/actions/modifier-actions";
 import { NumericFormat } from "react-number-format";
 import { CirclePlus, Trash } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { useRouter } from "next/navigation";
 
 
 function ModifierForm({ item }: { item: Modifier | null | undefined }) {
@@ -44,8 +45,8 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
   const [itemName, setItemName] = useState<string>("");
   const [itemPrice, setItemPrice] = useState<number>(0);
   const [isMultiple, setIsMultiple] = useState<boolean>(false);
-
   const { toast } = useToast();
+  const router = useRouter();
 
   const addItem = () => {
     if (itemName && itemPrice >= 0) {
@@ -124,17 +125,31 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof ModifierSchema>) => {
-    console.log("Submitting data:", values);
-  console.log("Modifier Items:", values.modifierItems);
     startTransition(() => {
       if (item) {
         updateModifier(item.id, values).then((data) => {
           if (data) setResponse(data);
+
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/modifiers");
+          }
         });
       } else {
         createModifier(values)
           .then((data) => {
             if (data) setResponse(data);
+
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/modifiers");
+            }
           })
           .catch((err) => {
             console.log(err);
@@ -219,7 +234,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
                     value={itemPrice}
                     name="price"
                     disabled={isPending}
-                    placeholder="0.00"
+                    placeholder="Enter item price"
                     thousandSeparator={true}
                     allowNegative={false}
                     onValueChange={(values) => {

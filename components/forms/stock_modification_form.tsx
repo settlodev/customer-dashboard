@@ -32,6 +32,8 @@ import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Staff } from "@/types/staff";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
+import { FormResponse } from "@/types/types";
+import { useRouter } from "next/navigation";
 
 function StockModificationForm({ item }: { item: StockModification | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -39,6 +41,10 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
     const [success] = useState<string | undefined>("");
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [staffs, setStaffs] = useState<Staff[]>([]);
+    const [, setResponse] = useState<FormResponse | undefined>();
+    const { toast } = useToast();
+    const router = useRouter();
+
 
     const reasons: { id: string; label: string }[] = [
         { id: reasonForStockModification.NEWSTOCK, label: "New Stock" },
@@ -48,7 +54,6 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
         { id: reasonForStockModification.THEFT, label: "Theft" },
     ];
 
-    const { toast } = useToast();
 
     useEffect(() => {
         const getData = async () => {
@@ -98,7 +103,14 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
             } else {
                 createStockModification(values)
                     .then((data) => {
-                        console.log("Created stock modification:", data);
+                        if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            router.push("/stock-modifications");
+                        }
                     })
                     .catch((err) => {
                         console.error("Error creating stock modification:", err);

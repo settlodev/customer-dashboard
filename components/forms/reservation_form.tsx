@@ -40,6 +40,7 @@ import{useToast} from "@/hooks/use-toast";
 import { Product } from "@/types/product/type";
 import { fectchAllProducts } from "@/lib/actions/product-actions";
 import { Switch } from "../ui/switch";
+import { useRouter } from "next/navigation";
 
 const ReservationForm = ({
   item,
@@ -60,6 +61,7 @@ const ReservationForm = ({
     const [customers, setCustomers] = useState<Customer[]>([]);
     const [rooms, setRooms] = useState<Product[]>([]);
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
       const fetchData = async () => {
@@ -98,18 +100,30 @@ const ReservationForm = ({
 
     const submitData = (values: z.infer<typeof ReservationSchema>) => {
 
-        console.log("Submitting data:", values);
-
         setResponse(undefined);
 
         startTransition(() => {
           if (item) {
             updateReservation(item.id, values).then((data) => {
               if (data) setResponse(data);
+              if (data && data.responseType === "success") {
+                toast({
+                  title: "Success",
+                  description: data.message,
+                });
+                router.push("/reservations");
+              }
             });
           } else {
             createReservation(values).then((data) => {
               if (data) setResponse(data);
+              if (data && data.responseType === "success") {
+                toast({
+                  title: "Success",
+                  description: data.message,
+                });
+                router.push("/reservations");
+              }
             });
           }
         });
@@ -386,7 +400,7 @@ const ReservationForm = ({
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <FormLabel>
 
-                            Customer Status
+                            Reservation Status
                             <span className={item.status ? "text-green-500" : "text-red-500"}>
                               ({item.status ? "Active" : "Inactive"})
                             </span>

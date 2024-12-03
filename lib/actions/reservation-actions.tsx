@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { Reservation } from "@/types/reservation/type";
@@ -78,13 +77,13 @@ export const  createReservation= async (
 
     let formResponse: FormResponse | null = null;
 
-    const VavlidReservationData= ReservationSchema.safeParse(reservation)
+    const ValidReservationData= ReservationSchema.safeParse(reservation)
 
-    if (!VavlidReservationData.success){
+    if (!ValidReservationData.success){
         formResponse = {
             responseType:"error",
             message:"Please fill all the required fields",
-            error:new Error(VavlidReservationData.error.message)
+            error:new Error(ValidReservationData.error.message)
       }
       return parseStringify(formResponse)
     }
@@ -93,7 +92,7 @@ export const  createReservation= async (
     const business = await getCurrentBusiness();
 
     const payload = {
-        ...VavlidReservationData.data,
+        ...ValidReservationData.data,
         location: location?.id,
         business: business?.id
     }
@@ -105,6 +104,10 @@ export const  createReservation= async (
             `/api/reservations/${location?.id}/create`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Reservation created successfully",
+        };
     }
     catch (error){
         console.error("Error creating reservation",error)
@@ -115,11 +118,11 @@ export const  createReservation= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
+   
     revalidatePath("/reservations");
-    redirect("/reservations")
+    return parseStringify(formResponse)
+
+    
 }
 
 export const getReservation= async (id:UUID) : Promise<ApiResponse<Reservation>> => {
@@ -180,7 +183,10 @@ export const updateReservation = async (
             `/api/reservations/${location?.id}/${id}`,
             payload
         );
-
+        formResponse = {
+            responseType: "success",
+            message: "Reservation updated successfully",
+        }
     } catch (error) {
         console.error("Error updating reservation", error);
         formResponse = {
@@ -191,11 +197,9 @@ export const updateReservation = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/reservations");
-    redirect("/reservations");
+    return parseStringify(formResponse);
+   
 };
 
 export const deleteReservation = async (id: UUID): Promise<void> => {

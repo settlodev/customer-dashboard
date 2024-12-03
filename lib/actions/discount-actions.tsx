@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { Discount } from "@/types/discount/type";
@@ -106,10 +105,12 @@ export const  createDiscount= async (
             `/api/discounts/${location?.id}/create`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Discount created successfully",
+        };
     }
     catch (error){
-        // const myError = await resolveError(error);
-        // console.error("Error creating discount", myError[0]?.error as string);
         formResponse = {
             responseType: "error",
             message:
@@ -117,11 +118,9 @@ export const  createDiscount= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
+
     revalidatePath("/discounts");
-    redirect("/discounts")
+    return parseStringify(formResponse);
 }
 
 export const getDiscount= async (id:UUID) : Promise<ApiResponse<Discount>> => {
@@ -171,7 +170,6 @@ export const updateDiscount = async (
         ...discountValidData.data,
         location: location?.id,
     };
-    console.log("The payload to update discount", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -180,6 +178,11 @@ export const updateDiscount = async (
             `/api/discounts/${location?.id}/${id}`, 
             payload
         );
+
+        formResponse = {
+            responseType: "success",
+            message: "Discount updated successfully",
+        };
 
     } catch (error) {
         console.error("Error updating discount", error); 
@@ -191,11 +194,8 @@ export const updateDiscount = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/discounts");
-    redirect("/discounts");
+    return parseStringify(formResponse);
 };
 
 export const deleteDiscount = async (id: UUID): Promise<void> => {

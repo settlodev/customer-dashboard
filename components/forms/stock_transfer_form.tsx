@@ -32,6 +32,8 @@ import { Staff } from "@/types/staff";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { Location } from "@/types/location/type";
 import LocationSelector from "../widgets/location-selector";
+import { FormResponse } from "@/types/types";
+import { useRouter } from "next/navigation";
 
 function StockTransferForm({ item }: { item: StockTransfer | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -40,9 +42,9 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [staffs, setStaffs] = useState<Staff[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
-
-
+    const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         const getData = async () => {
@@ -92,7 +94,14 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
             } else {
                 createStockTransfer(values)
                     .then((data) => {
-                        console.log("Created stock transfer:", data);
+                        if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            router.push("/stock-transfers");
+                        }
                     })
                     .catch((err) => {
                         console.error("Error creating stock transfer:", err);

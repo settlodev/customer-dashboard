@@ -40,18 +40,21 @@ import { Stock } from "@/types/stock/type";
 import { StockFormVariant } from "@/types/stockVariant/type";
 import { createStockVariant, deleteStockVariant, updateStockVariant } from "@/lib/actions/stock-variant-actions";
 import { NumericFormat } from "react-number-format";
+import { FormResponse } from "@/types/types";
+import { useRouter } from "next/navigation";
 
 function StockForm({ item }: { item: Stock | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     const [error] = useState<string | undefined>("");
     const [success,] = useState<string | undefined>("");
-
+    const [, setResponse] = useState<FormResponse | undefined>();
     const [variants, setVariants] = useState<StockFormVariant[]>([]);
 
     const [variantImageUrl, setVariantImageUrl] = useState<string>('');
     const [selectedVariant, setSelectedVariant] = useState<StockFormVariant | null>(null);
 
     const { toast } = useToast();
+    const router = useRouter();
     
 
     const form = useForm<z.infer<typeof StockSchema>>({
@@ -113,14 +116,26 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
         startTransition(() => {
             if (item) {
                 updateStock(item.id, values).then((data) => {
-                    //if (data) setResponse(data);
-                    console.log(" Update stock data:", data)
+                    if (data) setResponse(data);
+                    if (data && data.responseType === "success") {
+                        toast({
+                            title: "Success",
+                            description: data.message,
+                        });
+                        router.push("/stocks");
+                    }
                 });
             } else {
                 createStock(values)
                     .then((data) => {
-                        console.log("Create stock data: ", data);
-                        //if (data) setResponse(data);
+                        if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            router.push("/stocks");
+                        }
                     })
                     .catch((err) => {
                         console.log("Error while creating stock: ", err);
@@ -258,6 +273,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                                         <Input
                                                             placeholder="Enter stock name"
                                                             {...field}
+                                                            value={field.value}
                                                             disabled={isPending}
                                                         />
                                                     </FormControl>

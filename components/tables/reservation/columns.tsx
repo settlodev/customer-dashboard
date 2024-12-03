@@ -39,11 +39,15 @@ export const columns: ColumnDef<Reservation>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Name
+          Name of Reserver
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
+  },
+  {
+    accessorKey: "customerName",
+    header: "Customer Name",
   },
   {
     accessorKey: "phone",
@@ -54,8 +58,17 @@ export const columns: ColumnDef<Reservation>[] = [
     header: "Email address",
   },
   {
+    accessorKey: "numberOfPeople",
+    header: "No of Guest",
+  },
+  {
     accessorKey: "date",
-    header: "Date of Reservation",
+    header: "Reservation Date",
+    cell: ({ row }) => {
+      const date = row.original.date;
+      const format = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(date))
+      return <div>{format}</div>
+    }
   },
   {
     accessorKey: "productName",
@@ -64,10 +77,20 @@ export const columns: ColumnDef<Reservation>[] = [
   {
     accessorKey: "startDate",
     header: "Date In",
+    cell: ({ row }) => {
+      const date = row.original.startDate;
+      const format = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(date))
+      return <div>{format}</div>
+    }
   },
   {
     accessorKey: "endDate",
     header: "Date Out",
+    cell: ({ row }) => {
+      const date = row.original.endDate;
+      const format = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(date))
+      return <div>{format}</div>
+    }
   },
   {
     id: "status",

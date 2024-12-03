@@ -3,7 +3,6 @@
 import { UUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import * as z from "zod";
 
 import { Role } from "@/types/roles/type";
@@ -104,6 +103,10 @@ export const createRole = async (
             `/api/roles/${location?.id}/create`,
             payload,
         );
+        formResponse = {
+            responseType: "success",
+            message: "Role created successfully",
+        }
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -113,12 +116,8 @@ export const createRole = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
     revalidatePath("/roles");
-    redirect("/roles");
+    return parseStringify(formResponse);
 };
 
 export const updateRole = async (
@@ -152,6 +151,11 @@ export const updateRole = async (
             `/api/roles/${location?.id}/${id}`,
             payload,
         );
+
+        formResponse = {
+            responseType: "success",
+            message: "Role updated successfully",
+        }
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -161,12 +165,8 @@ export const updateRole = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
     revalidatePath("/roles");
-    redirect("/roles");
+    return parseStringify(formResponse);
 };
 
 export const getRole = async (id: UUID): Promise<ApiResponse<Role>> => {

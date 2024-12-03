@@ -35,16 +35,16 @@ import { createShift, updateShift } from "@/lib/actions/shift-actions";
 import { fectchAllDepartments } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
 import { businessTimes } from "@/types/constants";
+import { useRouter } from "next/navigation";
 
 function ShiftForm({ item }: { item: Shift | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error, ] = useState<string | undefined>("");
   const [success, ] = useState<string | undefined>("");
-  const [departments, setDepartments] = useState<Department[]>(
-    []
-  );
+  const [departments, setDepartments] = useState<Department[]>([]);
   const { toast } = useToast();
+  const router = useRouter();
 
   useEffect(() => {
     const getDepartments = async () => {
@@ -82,12 +82,25 @@ function ShiftForm({ item }: { item: Shift | null | undefined }) {
       if (item) {
         updateShift(item.id, values).then((data) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/shifts");
+          }
         });
       } else {
         createShift(values)
           .then((data) => {
-            console.log(data);
             if (data) setResponse(data);
+            if (data && data.responseType === "success") {
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/shifts");
+            }
           })
           .catch((err) => {
             console.log(err);

@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { Shift } from "@/types/shift/type";
@@ -112,6 +111,10 @@ export const  createShift= async (
             `/api/shifts/${location?.id}/create`,
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Shift created successfully",
+        };
     }
     catch (error){
         console.error("Error while creating shift",error)
@@ -122,11 +125,10 @@ export const  createShift= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    if (formResponse){
-        return parseStringify(formResponse)
-    }
+  
     revalidatePath("/shifts");
-    redirect("/shifts")
+    return parseStringify(formResponse)
+    
 }
 
 export const getShift= async (id:UUID) : Promise<ApiResponse<Shift>> => {
@@ -179,8 +181,6 @@ export const updateShift = async (
         location: location?.id,
         business: business?.id
     };
-    console.log("updating the shift id", id);
-    console.log("The payload to update shift", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -189,6 +189,10 @@ export const updateShift = async (
             `/api/shifts/${location?.id}/${id}`, 
             payload
         );
+        formResponse = {
+            responseType: "success",
+            message: "Shift updated successfully",
+        };
 
     } catch (error) {
         console.error("Error while updating shift", error); 
@@ -200,11 +204,9 @@ export const updateShift = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/shifts");
-    redirect("/shifts");
+    return parseStringify(formResponse);
+   
 };
 
 export const deleteShift = async (id: UUID): Promise<void> => {

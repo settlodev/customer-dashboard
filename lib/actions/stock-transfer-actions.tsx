@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
@@ -94,11 +93,14 @@ export const createStockTransfer = async (
 
     try {
         const apiClient = new ApiClient();
-       const response = await apiClient.post(
+       await apiClient.post(
             `/api/stock-transfers/${location?.id}/create`,
             payload
         );
-        console.log("Stock transfer successfully", response);
+        formResponse = {
+            responseType: "success",
+            message: "Stock transfer created successfully",
+        };
     } catch (error) {
         console.error("Error creating stock transfer", error);
         formResponse = {
@@ -108,12 +110,8 @@ export const createStockTransfer = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
     revalidatePath("/stock-transfers");
-    redirect("/stock-transfers");
+   return parseStringify(formResponse);
 };
 
 

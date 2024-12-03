@@ -3,9 +3,7 @@
 import { UUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import * as z from "zod";
-
 import { Staff } from "@/types/staff";
 import { ApiResponse, FormResponse } from "@/types/types";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
@@ -106,12 +104,14 @@ export const createStaff = async (
             business: business?.id
         }
 
-        console.log("The payload to create staff", payload);
-
         await apiClient.post(
             `/api/staff/${location?.id}/create`,
             payload,
         );
+        formResponse = {
+            responseType: "success",
+            message: "Staff created successfully",
+        }
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -120,13 +120,8 @@ export const createStaff = async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
-    revalidatePath("/staff");
-    redirect("/staff");
+    revalidatePath("/staffs");
+    return parseStringify(formResponse);
 };
 
 export const updateStaff = async (
@@ -158,12 +153,14 @@ export const updateStaff = async (
             business: business?.id
         }
 
-        console.log("The payload to update staff", payload);
-
         await apiClient.put(
             `/api/staff/${location?.id}/${id}`,
             payload,
         );
+        formResponse = {
+            responseType: "success",
+            message: "Staff updated successfully",
+        }
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -173,12 +170,9 @@ export const updateStaff = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
-    revalidatePath("/staff");
-    redirect("/staff");
+    revalidatePath("/staffs");
+    return parseStringify(formResponse);
+    
 };
 
 export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {

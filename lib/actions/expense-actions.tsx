@@ -4,7 +4,6 @@
 import { UUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import * as z from "zod";
 
 import { ApiResponse, FormResponse } from "@/types/types";
@@ -96,19 +95,23 @@ export const createExpense = async (
     const business = await getCurrentBusiness();
   
     const payload = {
-      ...validatedExpenseData.data,
-      location: location?.id,
-      business: business?.id,
+        ...validatedExpenseData.data,
+        location: location?.id,
+        business: business?.id,
     };
 
     try {
         const apiClient = new ApiClient();
-        
 
         await apiClient.post(
             `/api/expenses/${location?.id}/create`,
             payload
         );
+
+        formResponse = {
+            responseType: "success",
+            message: "Expense successfully created!",
+        };
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -118,13 +121,11 @@ export const createExpense = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
     revalidatePath("/expenses");
-    redirect("/expenses");
+    return parseStringify(formResponse);
 };
+
+
 
 
 export const updateExpense = async (
@@ -159,6 +160,11 @@ export const updateExpense = async (
             payload
         );
 
+        formResponse = {
+            responseType: "success",
+            message: "Expense successfully updated!",
+        };
+
     } catch (error) {
         console.error("Error updating expense", error); 
         formResponse = {
@@ -169,11 +175,8 @@ export const updateExpense = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
     revalidatePath("/expenses");
-    redirect("/expenses");
+    return parseStringify(formResponse);
 };
 
 export const getExpense = async (id: UUID): Promise<ApiResponse<Expense>> => {

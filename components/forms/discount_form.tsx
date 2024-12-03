@@ -29,6 +29,7 @@ import { formatNumber} from "@/lib/utils";
 import { Switch } from "../ui/switch";
 import DateTimePicker from "../widgets/datetimepicker";
 import { NumericFormat } from "react-number-format";
+import { useRouter } from "next/navigation";
 
 
 
@@ -41,9 +42,9 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [validFrom, setValidFrom] = useState<Date | undefined>(
     item?.validFrom ? new Date(item.validFrom) : undefined
   );
-  // const [validFrom, setValidFrom] = useState<Date | undefined>(item?.validFrom ? new Date(item.validFrom) : undefined);
   const [validTo, setValidTo] = useState<Date | undefined>(item?.validTo ? new Date(item.validTo) : undefined);
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
 
@@ -91,14 +92,27 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const submitData = (values: z.infer<typeof DiscountSchema>) => {
     startTransition(() => {
       if (item) {
-        updateDiscount(item.id, values).then((data) => {
+        updateDiscount(item.id, values).then((data: FormResponse | void) => {
           if (data) setResponse(data);
+          if (data && data.responseType === "success") {
+            toast({
+              title: "Success",
+              description: data.message,
+            });
+            router.push("/discounts");
+          }
         });
       } else {
         createDiscount(values)
-          .then((data) => {
-            console.log(data);
-            if (data) setResponse(data);
+          .then((data: FormResponse | void) => {
+            if (data && data.responseType === "success") {
+              setResponse(data);
+              toast({
+                title: "Success",
+                description: data.message,
+              });
+              router.push("/discounts");
+            }
           })
           .catch((err) => {
             console.log(err);

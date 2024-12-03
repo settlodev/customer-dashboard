@@ -12,7 +12,6 @@ import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
 import { Staff, StaffSchema } from "@/types/staff";
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
-// import {Switch} from "@radix-ui/react-switch";
 import { Textarea } from "@/components/ui/textarea";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
@@ -30,6 +29,8 @@ import { Switch } from "../ui/switch";
 import { fetchCountries } from "@/lib/actions/countries-actions";
 import { Country } from "@/types/country/type";
 import { DefaultCountry } from "@/types/constants";
+import { useRouter } from "next/navigation";
+
 
 const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const { toast } = useToast();
@@ -40,6 +41,7 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
     const [roles, setRoles] = useState<Role[]>([]);
     const [countries, setCountries] = useState<Country[]>([]);
     const [allowDashboardAccess, setAllowDashboardAccess] = useState<boolean>(false);
+    const router = useRouter();
 
     useEffect(() => {
         const getDepartments = async () => {
@@ -123,10 +125,24 @@ const StaffForm = ({ item }: { item: Staff | null | undefined }) => {
             if (item) {
                 updateStaff(item.id, values).then((data) => {
                     if (data) setResponse(data);
+                    if (data && data.responseType === "success") {
+                        toast({
+                            title: "Success",
+                            description: data.message,
+                        });
+                        router.push("/staff");
+                    }
                 });
             } else {
                 createStaff(values).then((data) => {
                     if (data) setResponse(data);
+                    if (data && data.responseType === "success") {
+                        toast({
+                            title: "Success",
+                            description: data.message,
+                        });
+                        router.push("/staff");
+                    }
                 });
             }
         });

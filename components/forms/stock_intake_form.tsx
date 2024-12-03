@@ -37,6 +37,8 @@ import { StockVariant } from "@/types/stockVariant/type";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import { fetchStockVariants } from "@/lib/actions/stock-variant-actions";
 import { NumericFormat } from "react-number-format";
+import { FormResponse } from "@/types/types";
+import { useRouter } from "next/navigation";
 
 function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -56,9 +58,12 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const [batchExpiryDate, setBatchExpiryDate] = useState<Date | undefined>(
         item?.batchExpiryDate ? new Date(item.batchExpiryDate) : undefined
     );
-
-
+    const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
+    const router = useRouter();
+
+
+
     useEffect(() => {
         const getData = async () => {
             try {
@@ -109,20 +114,29 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     );
 
     const submitData = (values: z.infer<typeof StockIntakeSchema>) => {
-
-        console.log("Submitting data:", values);
-
         startTransition(() => {
             if (item) {
                 updateStockIntake(item.id, values).then((data) => {
-                    //if (data) setResponse(data);
-                    console.log(" Update stock intake data:", data)
+                    if (data) setResponse(data);
+                    if (data && data.responseType === "success") {
+                        toast({
+                            title: "Success",
+                            description: data.message,
+                        });
+                        router.push("/stock-intakes");
+                    }
                 });
             } else {
                 createStockIntake(values,)
                     .then((data) => {
-                        console.log("Creating stock intake: ", data);
-                        //if (data) setResponse(data);
+                        if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            router.push("/stock-intakes");
+                        }
                     })
                     .catch((err) => {
                         console.log("Error while creating stock intake: ", err);
