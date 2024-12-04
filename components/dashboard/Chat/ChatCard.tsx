@@ -1,113 +1,62 @@
-import Link from "next/link";
 import Image from "next/image";
-import { VisitedCustomer } from "@/types/visited-customer";
+import { SoldItems } from "@/types/dashboard/type";
+interface Props {
+  SoldItems: SoldItems[]
+}
 
-const chatData: VisitedCustomer[] = [
-  {
-    avatar: "/images/user/user-01.png",
-    name: "Devid Heilo",
-    text: "How are you?",
-    time: 12,
-    textCount: 3,
-    dot: 3,
-  },
-  {
-    avatar: "/images/user/user-02.png",
-    name: "Henry Fisher",
-    text: "Waiting for you!",
-    time: 12,
-    textCount: 0,
-    dot: 1,
-  },
-  {
-    avatar: "/images/user/user-04.png",
-    name: "Jhon Doe",
-    text: "What's up?",
-    time: 32,
-    textCount: 0,
-    dot: 3,
-  },
-  {
-    avatar: "/images/user/user-05.png",
-    name: "Jane Doe",
-    text: "Great",
-    time: 32,
-    textCount: 2,
-    dot: 6,
-  },
-  {
-    avatar: "/images/user/user-01.png",
-    name: "Jhon Doe",
-    text: "How are you?",
-    time: 32,
-    textCount: 0,
-    dot: 3,
-  },
-  {
-    avatar: "/images/user/user-03.png",
-    name: "Jhon Doe",
-    text: "How are you?",
-    time: 32,
-    textCount: 3,
-    dot: 6,
-  },
-];
-
-const ChatCard = () => {
+const ChatCard: React.FC<Props> = ({ SoldItems }) => {
   return (
     <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
       <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-        Top customers
+        Sold Items
       </h4>
 
-      <div>
-        {chatData.map((chat, key) => (
-          <Link
-            href="/public"
-            className="flex items-center gap-5 px-7.5 py-3 hover:bg-gray-3 dark:hover:bg-meta-4"
-            key={key}
-          >
-            <div className="relative h-14 w-14 rounded-full">
-              <Image
-                width={56}
-                height={56}
-                src={chat.avatar}
-                alt="User"
-                style={{
-                  width: "auto",
-                  height: "auto",
-                }}
-              />
-              <span
-                className={`absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white ${
-                  chat.dot === 6 ? "bg-meta-6" : `bg-meta-${chat.dot}`
-                } `}
-              ></span>
-            </div>
-
-            <div className="flex flex-1 items-center justify-between">
-              <div>
-                <h5 className="font-bold text-black dark:text-white">
-                  {chat.name}
-                </h5>
-                <p>
-                  <span className="text-sm text-black dark:text-white">
-                    TSH 500,000
-                  </span>
-                  <span className="text-xs"> {chat.time} min</span>
-                </p>
-              </div>
-              {chat.textCount !== 0 && (
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary">
-                  <span className="text-sm font-medium text-white">
-                    {" "}
-                    {chat.textCount}
-                  </span>
+      <div className="flex flex-col gap-2">
+        {
+          SoldItems?.length > 0 ? (
+            SoldItems.map((item, key) => (
+              <div
+                className="flex items-center gap-5 px-7.5 py-3 bg-[#f7f7fd] hover:bg-gray-3 dark:hover:bg-meta-4"
+                key={key}
+              >
+                <div className="relative h-14 w-14 rounded-full">
+                  <Image
+                    width={56}
+                    height={56}
+                    src={item.image}
+                    alt="User"
+                    style={{
+                      width: "auto",
+                      height: "auto",
+                    }}
+                    className="rounded-lg object-cover"
+                  />
                 </div>
-              )}
+    
+                <div className="flex flex-1 items-center justify-between">
+                  <div>
+                    <h5 className="font-bold text-black capitalize dark:text-white">
+                      {item.name}
+                    </h5>
+                    <p className="flex items-center gap-2">
+                      <span className="text-sm font-medium text-black dark:text-white">
+                        TSH {Intl.NumberFormat("en").format(item.price)}
+                      </span>
+                      <span className="text-xs font-medium"> {Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: 'numeric' }).format(new Date(item.soldDate))}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))
+          ):
+          (
+            <div className="flex items-center justify-center">
+              <p className="text-sm text-gray-600 dark:text-gray-300">
+                No data available
+              </p>
             </div>
-          </Link>
-        ))}
+          )
+        }
       </div>
     </div>
   );
