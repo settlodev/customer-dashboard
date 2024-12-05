@@ -26,6 +26,8 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { useTransition } from "react";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
+// import { Orders } from "@/types/orders/type";
+// import { searchOrder } from "@/lib/actions/order-actions";
 
 
 const FormSchema = z.object({
@@ -41,9 +43,11 @@ const FormSchema = z.object({
 
 interface SingleInputDateRangeWithTimePickerProps {
   setSummaries: React.Dispatch<React.SetStateAction<SummaryResponse>>;
+  // setOrders: React.Dispatch<React.SetStateAction<Orders[]>>;
+
 }
 
-export function SingleInputDateRangeWithTimePicker({ setSummaries }: SingleInputDateRangeWithTimePickerProps) {
+export function SingleInputDateRangeWithTimePicker({ setSummaries,}: SingleInputDateRangeWithTimePickerProps) {
   const [, startTransition] = useTransition();
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -54,18 +58,35 @@ export function SingleInputDateRangeWithTimePicker({ setSummaries }: SingleInput
   });
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
-    startTransition(() => {
+    startTransition(async () => {
       const { from: startDate, to: endDate } = data.dateRange;
-      fetchSummaries(
-        startDate.toISOString(),
-        endDate.toISOString()
-      )
-        .then((response) => {
-          setSummaries(response as SummaryResponse);
-        })
-        .catch((error) => {
-          console.error("Error fetching summaries:", error);
-        });
+  
+      try {
+        // Fetch summaries
+        const summaryResponse = await fetchSummaries(
+          startDate.toISOString(),
+          endDate.toISOString()
+        );
+        setSummaries(summaryResponse as SummaryResponse);
+  
+        // Search orders based on the date range
+        // const from_date = startDate.toISOString()
+        // const to_date = endDate.toISOString()
+
+        // const filters = [{
+        //   "key": "openedDate",
+        //   "operator": "BETWEEN",
+        //   "field_type": "DATE",
+        //   "value:": from_date,
+        //   "value_to": to_date,
+        // }]; 
+        // console.log("Filters are as follow:", filters)
+        // const ordersResponse= await searchOrder(1, 5,"", filters); 
+        // console.log("Orders are as follow:", ordersResponse);
+        // setOrders(ordersResponse); 
+      } catch (error) {
+        console.error("Error fetching summaries or orders:", error);
+      }
     });
   }
   
@@ -101,8 +122,9 @@ export function SingleInputDateRangeWithTimePicker({ setSummaries }: SingleInput
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className=" flex gap-2 items-center justify-center">
+    
+    <Form {...form} >
+      <form onSubmit={form.handleSubmit(onSubmit)} className=" flex gap-2 items-center justify-center ">
         <FormField
           control={form.control}
           name="dateRange"
@@ -121,8 +143,8 @@ export function SingleInputDateRangeWithTimePicker({ setSummaries }: SingleInput
                       {field.value?.from && field.value?.to ? (
                         `${format(
                           field.value.from,
-                          "PPP HH:mm"
-                        )} - ${format(field.value.to, "PPP HH:mm")}`
+                          "MMM do, yyyy HH:mm"
+                        )} - ${format(field.value.to, "MMM do, yyyy HH:mm")}`
                       ) : (
                         <span className="text-sm">Select date and time range</span>
                       )}
@@ -228,5 +250,6 @@ export function SingleInputDateRangeWithTimePicker({ setSummaries }: SingleInput
         <Button type="submit">filter</Button>
       </form>
     </Form>
+    
   );
 }

@@ -4,19 +4,19 @@ interface Props {
   SoldItems: SoldItems[]
 }
 
-const ChatCard: React.FC<Props> = ({ SoldItems }) => {
+const SolidItemsCard: React.FC<Props> = ({ SoldItems }) => {
   return (
     <div className="col-span-12 rounded-sm border border-stroke bg-white py-6 shadow-default dark:border-strokedark dark:bg-boxdark xl:col-span-4">
-      <h4 className="mb-6 px-7.5 text-xl font-semibold text-black dark:text-white">
-        Sold Items
+      <h4 className="mb-3 px-7.5 text-xl font-semibold text-black dark:text-white">
+        Top 5 Sold Items
       </h4>
 
       <div className="flex flex-col gap-2">
         {
           SoldItems?.length > 0 ? (
-            SoldItems.map((item, key) => (
+            SoldItems.slice(0, 5).map((item, key) => (
               <div
-                className="flex items-center gap-5 px-7.5 py-3 bg-[#f7f7fd] hover:bg-gray-3 dark:hover:bg-meta-4"
+                className="flex items-center justify-center gap-5 px-4 py-1 bg-[#f7f7fd] hover:bg-gray-3 dark:hover:bg-meta-4"
                 key={key}
               >
                 <div className="relative h-14 w-14 rounded-full">
@@ -24,11 +24,8 @@ const ChatCard: React.FC<Props> = ({ SoldItems }) => {
                     width={56}
                     height={56}
                     src={item.image}
-                    alt="User"
-                    style={{
-                      width: "auto",
-                      height: "auto",
-                    }}
+                    alt="Item"
+                   
                     className="rounded-lg object-cover"
                   />
                 </div>
@@ -42,7 +39,7 @@ const ChatCard: React.FC<Props> = ({ SoldItems }) => {
                       <span className="text-sm font-medium text-black dark:text-white">
                         TSH {Intl.NumberFormat("en").format(item.price)}
                       </span>
-                      <span className="text-xs font-medium"> {Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: 'numeric' }).format(new Date(item.soldDate))}</span>
+                      <span className="text-xs font-medium"> {Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: 'numeric', hour12: true }).format(new Date(item.soldDate))}</span>
                     </p>
                   </div>
                 </div>
@@ -62,4 +59,4 @@ const ChatCard: React.FC<Props> = ({ SoldItems }) => {
   );
 };
 
-export default ChatCard;
+export default SolidItemsCard;

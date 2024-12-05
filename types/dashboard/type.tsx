@@ -8,11 +8,8 @@ export default interface SummaryResponse {
   totalPaidAmount: number;
   totalUnpaidAmount: number;
   topSellingItems: TopSellingItems[];
-  paymentStatusSummary: {
-    paidOrders: number;
-    partiallyPaidOrders: number;
-    unpaidOrders: number;
-  };
+  paymentStatusSummary: PaymentStatusSummary;
+  paymentMethodTotals: PaymentMethods[];
   averageSale: number;
   closingBalance: number;
   complimentary: number;
@@ -30,6 +27,16 @@ export default interface SummaryResponse {
   numberOfSoldItems: number;
 }
 
+export interface PaymentStatusSummary {
+  paidOrders: number;
+  partiallyPaidOrders: number;
+  unpaidOrders: number;
+};
+
+export interface PaymentMethods {
+  paymentMethodName: string;
+  amount: number;
+}
 
 export interface SoldItems {
     name:string;

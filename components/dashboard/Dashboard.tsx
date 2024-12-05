@@ -1,27 +1,31 @@
 "use client";
-// import dynamic from "next/dynamic";
+import dynamic from "next/dynamic";
 import React, { useEffect, useState } from "react";
-// import ChartOne from "@/components/dashboard/Charts/ChartOne";
-import ChatCard from "@/components/dashboard/Chat/ChatCard";
-// import TableOne from "./Tables/TableOne";
+import ChartOne from "@/components/dashboard/Charts/ChartOne";
 import CardDataStats from "./CardDataStats";
 import {  SingleInputDateRangeWithTimePicker } from "../ui/date-picker-with-range";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
 import { BadgeDollarSign, BadgePercent, ChartLine, ChartNoAxesCombined, ChartPie, CreditCard, DollarSign, Scale, ShoppingCart } from "lucide-react";
+import SolidItemsCard from "@/components/dashboard/Chat/ChatCard";
+import TableOne from "./Tables/TableOne";
+import { fetchOrders } from "@/lib/actions/order-actions";
+import { Orders } from "@/types/orders/type";
+// import ChartTwo from "./Charts/ChartTwo";
 
-// const ChartThree = dynamic(() => import("@/components/dashboard/Charts/ChartThree"), {
-//   ssr: false,
-// }); 
+const PaymentMethod = dynamic(() => import("@/components/dashboard/Charts/ChartThree"), {
+  ssr: false,
+}); 
 const Dashboard: React.FC = () => {
   const [summaries, setSummaries] = useState<SummaryResponse | null>(null); 
+  const [orders, setOrders] = useState<Orders[]>([]);
 
   useEffect(() => {
     const getSummaries = async () => {
       try {
-        const response = await fetchSummaries();
-        // console.log("Fetched summaries:", response);
-        setSummaries(response as SummaryResponse);
+        const [summary,orders] = await Promise.all([fetchSummaries(), fetchOrders()]);
+        setSummaries(summary as SummaryResponse);
+        setOrders(orders);
       } catch (error) {
         console.error("Error fetching summaries:", error);
       }
@@ -30,9 +34,6 @@ const Dashboard: React.FC = () => {
     getSummaries();
   }, []);
 
-  // console.log("Summaries:", summaries);
-
-
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
@@ -40,6 +41,7 @@ const Dashboard: React.FC = () => {
         <div>
          
         </div>
+        {/* <SingleInputDateRangeWithTimePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>} setOrders={setOrders}/> */}
         <SingleInputDateRangeWithTimePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>}/>
 
       </div>
@@ -85,7 +87,7 @@ const Dashboard: React.FC = () => {
      <CardDataStats title="Gross Sale" total={`${summaries ? Intl.NumberFormat().format(summaries.grossSales) : "0.00"}`}>
      <ChartLine />
      </CardDataStats>
-     <CardDataStats title="Margin" total={`${summaries ? Intl.NumberFormat().format(summaries.margins) : "0.00"}`}>
+     <CardDataStats title="Gross Profit Margin" total={`${summaries ? Intl.NumberFormat().format(summaries.margins)  : "0.00"} %`}>
      <ChartPie />
      </CardDataStats>
      <CardDataStats title="Closing Balance" total={`${summaries ? Intl.NumberFormat().format(summaries.closingBalance) : "0.00"}`}>
@@ -94,14 +96,14 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-        {/* <ChartOne /> */}
-        {/*<ChartTwo />*/}
-        {/* <ChartThree /> */}
+        <ChartOne />
+        {/* <ChartTwo /> */}
+        <PaymentMethod  paymentChannels={summaries ? summaries.paymentMethodTotals : []}/>
         {/*<MapOne />*/}
         <div className="col-span-12 xl:col-span-8">
-          {/* <TableOne /> */}
+          <TableOne orders={orders} />
         </div>
-    <ChatCard SoldItems={summaries ? summaries.soldItems : []} />
+    <SolidItemsCard SoldItems={summaries ? summaries.soldItems : []} />
 </div>
     </div>
   );
