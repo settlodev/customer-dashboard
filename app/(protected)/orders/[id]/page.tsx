@@ -63,19 +63,19 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
 
                                 <div className="flex justify-between items-center border-b">
                                     {
-                                        orderData.orderType === "DIRECT_SALE" && (
+                                        orderData.orderType === "IMMEDIATE" && (
                                             <>
                                                 <p className="text-[16px] font-medium capitalize">order type</p>
-                                                <p className="text-sm font-bold">Direct Sale</p>
+                                                <p className="text-sm font-bold">Immediate</p>
                                             </>
                                         )
                                     }
 
                                     {
-                                        orderData.orderType === "CREDIT_SALE" && (
+                                        orderData.orderType === "RESERVATION" && (
                                             <>
                                                 <p className="text-[16px] font-medium capitalize">order type</p>
-                                                <p className="text-sm font-bold">Credit Sale</p>
+                                                <p className="text-sm font-bold">Reservation</p>
                                             </>
                                         )
                                     }
@@ -145,9 +145,28 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                         <p className="text-[14px] font-bold">{Intl.NumberFormat("en-US").format(item.amount)}/=</p>
                                     </div>
                                     <div className="flex justify-between items-center border-b">
+                                        {
+                                            orderData.paymentType === "DIRECT_SALE" && (
+                                                <>
+                                                <p className="text-[16px] font-medium capitalize">Payment Type</p>
+                                                <p className="text-sm font-bold">Direct Sale</p>
+                                                </>
+                                            )
+                                        }
+                                        {
+                                            orderData.paymentType === "CREDIT_SALE" && (
+                                                <>
+                                                <p className="text-[16px] font-medium capitalize">Payment Type</p>
+                                                <p className="text-sm font-bold">Credit Sale</p>
+                                                </>
+                                            )
+                                        }
+                                    </div>
+                                    <div className="flex justify-between items-center border-b">
                                         <p className="text-[16px]capitalize font-medium">Payment Method</p>
                                         <p className="text-sm font-bold uppercase">{orderData.transactions[0]?.paymentMethodName}</p>
                                     </div>
+
                                     <div className="flex justify-between items-center border-b">
                                         {
                                             orderData.orderPaymentStatus === "PAID" && (

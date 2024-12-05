@@ -21,6 +21,7 @@ const breadCrumbItems = [{title:"Orders",link:"/orders"}];
      const pageLimit = Number(searchParams.limit);
 
      const responseData = await searchOrder(q,page,pageLimit);
+     console.log("Order responseData:", responseData);
 
      const data:Orders[]=responseData.content;
      const total =responseData.totalElements;

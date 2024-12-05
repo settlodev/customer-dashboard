@@ -17,6 +17,7 @@ export interface Orders {
     discount: string
     items: OrderItems[]
     orderType: string
+    paymentType: string
     orderPaymentStatus: string
     openedDate: string
     closedDate: string

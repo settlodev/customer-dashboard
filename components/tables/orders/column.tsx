@@ -76,11 +76,11 @@ export const columns: ColumnDef<Orders>[] = [
             const orderType = row.original.orderType;
             return (
                 <div className="flex items-center px-2 py-1 rounded">
-                    {orderType === "DIRECT_SALE" && (
-                        <span className="text-white bg-[#FF8755] p-1 rounded-sm">Direct</span>
+                    {orderType === "IMMEDIATE" && (
+                        <span className="text-white bg-[#FF8755] p-1 rounded-sm">Immediate</span>
                     )}
-                    {orderType === "CREDIT_SALE" && (
-                        <span className="text-white bg-yellow-500 p-1 rounded-sm">Credit</span>
+                    {orderType === "RESERVATION" && (
+                        <span className="text-white bg-yellow-500 p-1 rounded-sm">Reservation</span>
                     )}
                 </div>
             )
