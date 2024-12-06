@@ -9,7 +9,7 @@ import { Loader2Icon } from "lucide-react";
 export function SelectLocation ({ locations }: { locations: Location[]}){
     const [ , startTransition] = useTransition();
     const [pendingIndex, setPendingIndex] = useState<number | null>(null);
-    const setLocation = async(location: Location, index: number)=>{
+    const setLocation = async(location: Location, index: number) => {
         setPendingIndex(index);
 
         if(location.subscriptionStatus === "EXPIRED"){
@@ -26,7 +26,7 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
         }
         else{
             await refreshLocation(location);
-         document.location.href='/dashboard'
+            document.location.href='/dashboard';
         }
         setPendingIndex(null);
     }
@@ -52,7 +52,11 @@ export function SelectLocation ({ locations }: { locations: Location[]}){
                                 className="inline-flex items-center text-base font-semibold text-gray-900 dark:text-white">
                             <button type="button"
                                     className="flex gap-2 rounded-full bg-emerald-500 pr-4 pl-4 py-2 text-white font-medium text-sm"
-                                    onClick={() => startTransition(() => setLocation(myLocation,index))}>
+                                    onClick={() => {
+                                        startTransition(() => {
+                                            setLocation(myLocation, index);
+                                        });
+                                    }}>
                                 {
                                     pendingIndex === index ? <Loader2Icon className="w-6 h-6 animate-spin text-white dark:text-gray-500"/> : 'Select' // Show loader or text
                                 }
