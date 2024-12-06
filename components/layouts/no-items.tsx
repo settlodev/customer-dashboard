@@ -8,17 +8,16 @@ import { buttonVariants } from "@/components/ui/button";
 interface NoItemsProps {
     newItemUrl: string;
     itemName: string;
-    stockTransfer?: string;
+    // stockTransfer?: string;
 }
 
-export default function NoItems({ newItemUrl, itemName, stockTransfer }: NoItemsProps) {
+export default function NoItems({ newItemUrl, itemName}: NoItemsProps) {
     return (
         <div className="h-[calc(100vh-240px)] border border-dashed">
             <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
                 <h1 className="text-[1.5rem] font-bold leading-tight">
                     No {itemName} data found
                 </h1>
-                <h3 className="text-lg text-center text-black-200">{stockTransfer}</h3>
                 <p className="text-sm text-center text-muted-foreground">
                     There are no {itemName} records found at the moment, add new{" "}
                     {itemName} record to start viewing data.
