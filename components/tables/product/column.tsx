@@ -10,6 +10,7 @@ import {Product} from "@/types/product/type";
 
 export const columns: ColumnDef<Product>[] = [
     {
+        
         id: "select",
         header: ({ table }) => (
             <Checkbox
@@ -27,6 +28,18 @@ export const columns: ColumnDef<Product>[] = [
         ),
         enableSorting: false,
         enableHiding: false,
+    },
+    {
+        accessorKey: "variants",
+        header: "Image",
+        enableHiding: false,
+        cell: ({ row }) => {
+            const image = row.original.variants[0].image;
+            console.log("Image URL:", image);
+            return ( image ? <img src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" loading="lazy" /> : 
+                <div className="w-10 h-10 rounded-lg bg-emerald-500"></div>
+            );
+        }
     },
     {
         accessorKey: "name",

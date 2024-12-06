@@ -1,0 +1,4 @@
+Product Name,Category Name,Variant Name,Price,Quantity,SKU,Barcode,Department,Stock Name,Stock Variant Name,Starting Quantity,Starting Value,Alert Level
+T-shirt,Clothes,Large,10000,100,tcs,234235253552,Clothes Dpt,T-Shirt,Large,100,1000000,25
+Jean,Clothes,Large,15000,100,jcs,234235253553,Clothes Dpt,Jean,Large,100,1500000,25
+Cargo Pans,Clothes,Large,20000,100,ccs,234235253554,Clothes Dpt,Cargo Pans,Large,100,2000000,25

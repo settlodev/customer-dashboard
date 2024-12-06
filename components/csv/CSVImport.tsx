@@ -44,6 +44,7 @@ const validateCSV = (
     // Required Field Validation
     const requiredFields = ["Product Name", "Category Name", "Variant Name", "Price", "Quantity"];
     requiredFields.forEach((field) => {
+      
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && (!row[fieldIndex] || row[fieldIndex].trim() === "")) {
         rowErrors.push(`Row ${currentRowIndex}: "${field}" cannot be empty.`);
@@ -75,7 +76,7 @@ const validateCSV = (
   return { isValid: errors.length === 0, errors, rows };
 };
 
-export function CSVDialog() {
+export function ProductCSVDialog() {
   const expectedHeaders = [
     "Product Name",
     "Category Name",

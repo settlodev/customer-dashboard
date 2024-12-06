@@ -101,7 +101,7 @@ export const columns: ColumnDef<StockIntake>[] = [
         cell: ({ row }) => {
             const batchExpiryDate = row.original.batchExpiryDate;
             const formatted = new Intl.DateTimeFormat("en-US").format(new Date(batchExpiryDate));
-            return <div className="w-[100px]">{formatted}</div>;
+            return <div className="w-[100px]">{batchExpiryDate !== null ? formatted : "-"}</div>;
         }
        
     },

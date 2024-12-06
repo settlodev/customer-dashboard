@@ -25,6 +25,10 @@ export const handleSettloApiError = async (error: unknown) => {
                     return {
                         error: "Sorry, we could not find a valid resource with your request, please try again.",
                     };
+                case 409:
+                    return {
+                    error:"Delete first the stock variant, then delete the stock",
+                }    
                 case 601:
                     return {
                         error: "Email already registered",

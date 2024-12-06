@@ -201,7 +201,6 @@ export const deleteStock = async (id: UUID): Promise<void> => {
 
     await getAuthenticatedUser();
 
-    console.log("Deleting stock with ID:", id);
 
    try{
     const apiClient = new ApiClient();
@@ -215,7 +214,9 @@ export const deleteStock = async (id: UUID): Promise<void> => {
 
    }
    catch (error){
+       console.error("Error deleting stock", error);
        throw error
+       
    }
 }
 
@@ -244,6 +245,53 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
         const location = await getCurrentLocation();
         const response = await apiClient.post(
             `/api/stock/${location?.id}/upload-csv`,
+            formattedCSVData, 
+            {
+                headers: {
+                    "Content-Type": "text/csv",
+                },
+                transformRequest: [(data) => data],
+            }
+        );
+        
+        console.log("CSV upload response", response);
+
+        // Revalidate or redirect after successful upload
+        revalidatePath("/products");
+        redirect("/products");
+    } catch (error) {
+        console.error("Error uploading CSV file:", error);
+
+        return ;
+        // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+};
+
+export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
+    console.log("Starting CSV upload");
+
+    if (!fileName.endsWith(".csv")) {
+        throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
+    }
+
+    const lines = fileData.split("\n");
+    const isCSVContent = lines.every(line => line.split(",").length > 1);
+
+    if (!isCSVContent) {
+        throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
+    }
+
+    console.log("CSV content to be sent:", fileData); 
+
+    const formattedCSVData = fileData.replace(/\r\n/g, '\n'); 
+
+    console.log("Formatted CSV data:", formattedCSVData); 
+
+    try {
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        const response = await apiClient.post(
+            `/api/stock/${location?.id}/upload-products-and-stock-csv`,
             formattedCSVData, 
             {
                 headers: {

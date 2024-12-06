@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Icon } from "@iconify/react";
 import React from "react";
-import { uploadStockCSV } from "@/lib/actions/stock-actions";
+import { uploadProductWithStockCSV } from "@/lib/actions/stock-actions";
 
 // Validation Function
 const validateCSV = (
@@ -42,8 +42,10 @@ const validateCSV = (
     const currentRowIndex = rowIndex + 2; // Adjusting for 1-based index with headers
 
     // Required Field Validation
-    const requiredFields = ["Stock Name", "Stock Variant Name", "starting Quantity", "starting Value", "Alert Level"];
+    const requiredFields = ["Product Name", "Category Name", "Variant Name", "Price", "Quantity", "Stock Name", "Stock Variant Name", "starting Quantity", "starting Value", "Alert Level"];
     requiredFields.forEach((field) => {
+
+
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && (!row[fieldIndex] || row[fieldIndex].trim() === "")) {
         rowErrors.push(`Row ${currentRowIndex}: "${field}" cannot be empty.`);
@@ -51,6 +53,22 @@ const validateCSV = (
     });
 
     // Specific Field Validation
+    const priceIndex = headers.indexOf("Price");
+    if (priceIndex !== -1) {
+      const price = parseFloat(row[priceIndex]);
+      if (isNaN(price) || price <= 0) {
+        rowErrors.push(`Row ${currentRowIndex}: "Price" must be greater than zero.`);
+      }
+    }
+
+    const quantityIndex = headers.indexOf("Quantity");
+    if (quantityIndex !== -1) {
+      const quantity = parseInt(row[quantityIndex], 10);
+      if (isNaN(quantity) || quantity <= 0) {
+        rowErrors.push(`Row ${currentRowIndex}: "Quantity" must be greater than zero.`);
+      }
+    }
+
     const startingQuantityIndex = headers.indexOf("Starting Quantity");
     if (startingQuantityIndex !== -1) {
       const startingQuantity = parseFloat(row[startingQuantityIndex]);
@@ -83,8 +101,16 @@ const validateCSV = (
   return { isValid: errors.length === 0, errors, rows };
 };
 
-export function CSVStockDialog() {
+export function ProductWithStockCSVDialog() {
   const expectedHeaders = [
+    "Product Name",
+    "Category Name",
+    "Variant Name",
+    "Price",
+    "Quantity",
+    "SKU",
+    "Barcode",
+    "Department",
     "Stock Name",
     "Stock Variant Name",
     "Starting Quantity",
@@ -105,8 +131,17 @@ export function CSVStockDialog() {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
+
+      console.log("File selected:", selectedFile.name);
+
       const fileText = await selectedFile.text();
+
+      console.log("File content read successfully.");
+
       const result = validateCSV(fileText, expectedHeaders);
+
+      console.log("Validation result:", result);
+
       setValidationResult(result);
       setFile(selectedFile);
       setFileContent(fileText);
@@ -128,7 +163,7 @@ export function CSVStockDialog() {
   const handleUpload = async () => {
     if (file && fileContent && validationResult?.isValid) {
       try {
-        await uploadStockCSV({ fileData: fileContent, fileName: file.name });
+        await uploadProductWithStockCSV({ fileData: fileContent, fileName: file.name });
         resetForm();
         setIsOpen(false);
       } catch (error) {
@@ -159,7 +194,7 @@ export function CSVStockDialog() {
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">
         <DialogHeader>
-          <DialogTitle>Upload CSV</DialogTitle>
+          <DialogTitle>Import Stock with products</DialogTitle>
           <DialogDescription>
             Select a CSV file to upload. Please ensure that the file is formatted correctly.
           </DialogDescription>
@@ -178,12 +213,11 @@ export function CSVStockDialog() {
               <table className="min-w-full border-collapse border border-gray-300">
                 <thead>
                   <tr>
-                  {validationResult?.rows?.length > 0 && validationResult.rows[0]?.map((header, index) => (
-  <th key={index} className="border px-2 py-1 bg-gray-100">
-    {header}
-  </th>
-))}
-
+                    {validationResult?.rows?.length > 0 && validationResult.rows[0]?.map((header, index) => (
+                      <th key={index} className="border px-2 py-1 bg-gray-100">
+                        {header}
+                      </th>
+                    ))}
 
                   </tr>
                 </thead>
