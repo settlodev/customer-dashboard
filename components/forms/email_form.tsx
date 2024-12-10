@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import dynamic from "next/dynamic";
+// import dynamic from "next/dynamic";
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
@@ -36,9 +36,10 @@ import { MultiSelect } from "../ui/multi-select";
 import { Staff } from "@/types/staff";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { fetchTemplates } from "@/lib/actions/communication-templates-actions";
+import { Textarea } from "../ui/textarea";
 
-const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
-import "react-quill/dist/quill.snow.css";
+// const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
+// import "react-quill/dist/quill.snow.css";
 
 const EmailForm = ({
   item,
@@ -277,7 +278,7 @@ const EmailForm = ({
                 <FormControl>
 
 
-                  <ReactQuill
+                  {/* <ReactQuill
                     theme="snow"
                     placeholder="Enter message"
                     value={field.value}
@@ -310,6 +311,13 @@ const EmailForm = ({
                         ["link", "image", "video"],
                       ],
                     }}
+                  /> */}
+                  <Textarea
+                    placeholder="Enter message"
+                    {...field}
+                    disabled={isPending}
+                    maxLength={1000}
+
                   />
                 </FormControl>
 

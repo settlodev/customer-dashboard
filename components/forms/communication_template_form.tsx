@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback,  useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
-import dynamic from "next/dynamic";
+// import dynamic from "next/dynamic";
 
 import {
   Form,
@@ -26,9 +26,10 @@ import { createTemplate, updateTemplate } from "@/lib/actions/communication-temp
 import BroadCastTypeSelector from "../widgets/broadcast-type-selector";
 // import ReactQuill from "react-quill";
 import { Switch } from "../ui/switch";
+import { Textarea } from "../ui/textarea";
 
-const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
-import "react-quill/dist/quill.snow.css";
+// const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
+// import "react-quill/dist/quill.snow.css";
 
 const TemplateForm = ({
   item,
@@ -137,7 +138,7 @@ const TemplateForm = ({
                     <FormItem>
                       <FormLabel>Message</FormLabel>
                       <FormControl>
-                        <ReactQuill
+                        {/* <ReactQuill
                           theme="snow"
                           placeholder="Enter message"
                           {...field}
@@ -161,7 +162,14 @@ const TemplateForm = ({
                               ["link", "image", "video"],
                             ],
                           }}
-                        />
+                        /> */}
+                        <Textarea
+                    placeholder="Enter message"
+                    {...field}
+                    disabled={isPending}
+                    maxLength={1000}
+
+                  />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
