@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
+import dynamic from "next/dynamic";
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
@@ -32,10 +32,13 @@ import { Email } from "@/types/email/type";
 import { EmailSchema } from "@/types/email/schema";
 import { sendEmail } from "@/lib/actions/broadcast-email-action";
 import { MultiSelect } from "../ui/multi-select";
-import ReactQuill from "react-quill";
+// import ReactQuill from "react-quill";
 import { Staff } from "@/types/staff";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { fetchTemplates } from "@/lib/actions/communication-templates-actions";
+
+const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
+import "react-quill/dist/quill.snow.css";
 
 const EmailForm = ({
   item,

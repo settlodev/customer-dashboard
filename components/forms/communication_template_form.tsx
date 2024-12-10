@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import React, { useCallback,  useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
+import dynamic from "next/dynamic";
 
 import {
   Form,
@@ -23,8 +24,11 @@ import { Template } from "@/types/communication-templates/types";
 import { TemplateSchema } from "@/types/communication-templates/schema";
 import { createTemplate, updateTemplate } from "@/lib/actions/communication-templates-actions";
 import BroadCastTypeSelector from "../widgets/broadcast-type-selector";
-import ReactQuill from "react-quill";
+// import ReactQuill from "react-quill";
 import { Switch } from "../ui/switch";
+
+const ReactQuill = dynamic(() => import("react-quill"), { ssr: false });
+import "react-quill/dist/quill.snow.css";
 
 const TemplateForm = ({
   item,
