@@ -43,7 +43,7 @@ function ResetPasswordForm() {
                 })
                 .catch((err: Error) => {
                     setError("An unexpected error occurred. Please try again.");
-                    console.error(err);
+                    // console.error(err);
                 });
         });
     }, []);
