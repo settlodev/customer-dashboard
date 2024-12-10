@@ -22,7 +22,7 @@ import { Button } from "../ui/button";
 import { Loader2Icon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Template } from "@/types/communication-templates/types";
-import "react-quill/dist/quill.snow.css";
+// import "react-quill/dist/quill.snow.css";
 import DateTimePicker from "../widgets/datetimepicker";
 import { Customer } from "@/types/customer/type";
 import {fetchAllCustomers } from "@/lib/actions/customer-actions";

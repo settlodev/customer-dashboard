@@ -13,7 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import "react-quill/dist/quill.snow.css";
+// import "react-quill/dist/quill.snow.css";
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
