@@ -13,7 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-
+import "react-quill/dist/quill.snow.css";
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
@@ -24,7 +24,6 @@ import { TemplateSchema } from "@/types/communication-templates/schema";
 import { createTemplate, updateTemplate } from "@/lib/actions/communication-templates-actions";
 import BroadCastTypeSelector from "../widgets/broadcast-type-selector";
 import ReactQuill from "react-quill";
-import "react-quill/dist/quill.snow.css";
 import { Switch } from "../ui/switch";
 
 const TemplateForm = ({
@@ -136,7 +135,7 @@ const TemplateForm = ({
                       <FormControl>
                         <ReactQuill
                           theme="snow"
-                          placeholder="Enter business description"
+                          placeholder="Enter message"
                           {...field}
                           value={field.value}
                           onChange={(value) => {
