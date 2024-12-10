@@ -14,7 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Icon } from "@iconify/react";
 import React from "react";
-import { uploadProductWithStockCSV } from "@/lib/actions/stock-actions";
+
+import { useCSVUpload } from "@/hooks/upload";
+import { Progress } from "@radix-ui/react-progress";
 
 // Validation Function
 const validateCSV = (
@@ -128,6 +130,8 @@ export function ProductWithStockCSVDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { uploadProgress, error, uploadCSV } = useCSVUpload();
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
@@ -160,10 +164,11 @@ export function ProductWithStockCSVDialog() {
       .catch(() => alert("Failed to download template"));
   };
 
+
   const handleUpload = async () => {
     if (file && fileContent && validationResult?.isValid) {
       try {
-        await uploadProductWithStockCSV({ fileData: fileContent, fileName: file.name });
+        await uploadCSV({ fileData: fileContent, fileName: file.name });
         resetForm();
         setIsOpen(false);
       } catch (error) {
@@ -249,6 +254,14 @@ export function ProductWithStockCSVDialog() {
               </table>
             </div>
           )}
+
+{uploadProgress > 0 && (
+            <div className="mt-4">
+              <Progress value={uploadProgress} className="w-full bg-emerald-500" />
+              <p className="text-sm text-gray-600">{uploadProgress}% uploaded</p>
+            </div>
+          )}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
         </div>
         <DialogFooter>
           <Button onClick={handleTemplateDownload} variant="outline" size="sm" className="gap-1">

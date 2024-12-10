@@ -57,38 +57,7 @@ export function SingleInputDateRangeWithTimePicker({ setSummaries,}: SingleInput
     }
   });
 
-  // function onSubmit(data: z.infer<typeof FormSchema>) {
-  //   startTransition(async () => {
-  //     const { from: startDate, to: endDate } = data.dateRange;
-  
-  //     try {
-  //       // Fetch summaries
-  //       const summaryResponse = await fetchSummaries(
-  //         startDate.toISOString(),
-  //         endDate.toISOString()
-  //       );
-  //       setSummaries(summaryResponse as SummaryResponse);
-  
-  //       // Search orders based on the date range
-  //       // const from_date = startDate.toISOString()
-  //       // const to_date = endDate.toISOString()
 
-  //       // const filters = [{
-  //       //   "key": "openedDate",
-  //       //   "operator": "BETWEEN",
-  //       //   "field_type": "DATE",
-  //       //   "value:": from_date,
-  //       //   "value_to": to_date,
-  //       // }]; 
-  //       // console.log("Filters are as follow:", filters)
-  //       // const ordersResponse= await searchOrder(1, 5,"", filters); 
-  //       // console.log("Orders are as follow:", ordersResponse);
-  //       // setOrders(ordersResponse); 
-  //     } catch (error) {
-  //       console.error("Error fetching summaries or orders:", error);
-  //     }
-  //   });
-  // }
   
   function onSubmit(data: z.infer<typeof FormSchema>) {
     startTransition(() => {
@@ -98,6 +67,7 @@ export function SingleInputDateRangeWithTimePicker({ setSummaries,}: SingleInput
         endDate.toISOString()
       )
         .then((response) => {
+          console.log(response);
           setSummaries(response as SummaryResponse);
         })
         .catch((error) => {

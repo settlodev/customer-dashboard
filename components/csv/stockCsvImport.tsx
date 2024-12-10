@@ -105,8 +105,17 @@ export function CSVStockDialog() {
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
+
+      console.log("File selected:", selectedFile.name);
+
       const fileText = await selectedFile.text();
+
+      console.log("File content read successfully.");
+
       const result = validateCSV(fileText, expectedHeaders);
+
+      console.log("Validation result:", result);
+
       setValidationResult(result);
       setFile(selectedFile);
       setFileContent(fileText);
@@ -178,11 +187,11 @@ export function CSVStockDialog() {
               <table className="min-w-full border-collapse border border-gray-300">
                 <thead>
                   <tr>
-                  {validationResult?.rows?.length > 0 && validationResult.rows[0]?.map((header, index) => (
-  <th key={index} className="border px-2 py-1 bg-gray-100">
-    {header}
-  </th>
-))}
+                    {validationResult?.rows?.length > 0 && validationResult.rows[0]?.map((header, index) => (
+                      <th key={index} className="border px-2 py-1 bg-gray-100">
+                        {header}
+                      </th>
+                    ))}
 
 
                   </tr>

@@ -303,13 +303,17 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
         
         console.log("CSV upload response", response);
 
-        // Revalidate or redirect after successful upload
-        revalidatePath("/products");
-        redirect("/products");
+        revalidatePath("/stocks");
+        redirect("/stocks");
     } catch (error) {
-        console.error("Error uploading CSV file:", error);
 
-        return ;
-        // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
+        if (typeof error === "object" && error !== null && "digest" in error && (error as any).digest.startsWith("NEXT_REDIRECT")) {
+            console.log("Redirect triggered, ignoring error:", error);
+            return;
+        }
+
+        console.error("Error uploading CSV file:", error);
+        throw error; 
     }
+    
 };
