@@ -58,6 +58,13 @@ export const  handleSettloApiError =  async (error: unknown): Promise<ErrorMessa
                         error: "Login failed, wrong credentials",
                         message: "Login failed, wrong credentials",
                     };
+                case 604:
+                    return {
+                    status: 604,
+                    code : "EMAIL VERIFIED",
+                    error:"Email already verified",
+                    message:"Email already verified",
+                }    
                 case 500:
                     return {
                         status: 500,

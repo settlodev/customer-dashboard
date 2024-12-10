@@ -361,26 +361,50 @@ export const resendVerificationEmail = async (name: any, email: any): Promise<Fo
     }
 }
 
-export const verifyEmailToken = async (token: string) => {
+export const verifyEmailToken = async (token: string): Promise<boolean> => {
     const apiClient = new ApiClient();
     apiClient.isPlain = true;
+
     try {
-        const response = await apiClient.get(`/api/auth/verify-token/${token}`);
-        console.log("Verify response: ", response);
-        const mySession = await auth();
-        if(mySession?.user) {
-            const cookie = cookies().get("authToken")?.value;
-            const session = JSON.parse(cookie as string);
-            const myUser = await getUserById(session.id);
-            myUser.authToken = session.authToken as string;
-            myUser.refreshToken = session.refreshToken as string;
-            await createAuthToken(myUser);
-            return "Successful activated token";
-        }else{
-            return "Continue to login";
+        const response = await apiClient.get<any>(`/api/auth/verify-token/${token}`);
+        console.log("Verify response:", response );
+
+        if (response) {
+            return true;
         }
-    }catch (error){
-        console.log("My error", error);
-        return "Error occurred during email verification";
+        return false; // Verification failed
+    } catch (error: any) {
+        const formattedError = await error
+        console.error("Error during email verification:", formattedError);
+        return false;
     }
-}
+};
+
+
+export const autoLoginUser = async (): Promise<string> => {
+    try {
+        const mySession = await auth();
+
+        if (mySession?.user) {
+            const cookie = cookies().get("authToken")?.value;
+
+            if (cookie) {
+                const session = JSON.parse(cookie as string);
+                const myUser = await getUserById(session.id);
+
+                if (myUser) {
+                    myUser.authToken = session.authToken as string;
+                    myUser.refreshToken = session.refreshToken as string;
+                    await createAuthToken(myUser);
+
+                    return "Successful activated token";
+                }
+            }
+        }
+        return "Continue to login";
+    } catch (error) {
+        console.error("Error during auto-login:", error);
+        return "Error while processing auto-login";
+    }
+};
+
