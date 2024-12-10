@@ -24,6 +24,7 @@ function ResetPasswordForm() {
         resolver: zodResolver(ResetPasswordSchema),
         defaultValues: {},
     });
+    const { reset } = form;
 
     const submitData = useCallback((values: z.infer<typeof ResetPasswordSchema>) => {
         startTransition(() => {
@@ -37,7 +38,7 @@ function ResetPasswordForm() {
                         setError(data.message);
                     } else {
                         setSuccess(data.message);
-
+                        reset()
                     }
                 })
                 .catch((err: Error) => {

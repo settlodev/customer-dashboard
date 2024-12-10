@@ -310,8 +310,7 @@ export const updatePassword = async (
 ): Promise<FormResponse> => {
     const validatePassword = UpdatePasswordSchema.safeParse(passwordData);
 
-    console.log("Password data being validated:", passwordData);
-    console.log("Validation result:", validatePassword);
+   
 
     if (!validatePassword.success) {
         return parseStringify({
@@ -324,7 +323,7 @@ export const updatePassword = async (
         ...validatePassword.data,
         token: passwordData.token
     }
-    console.log("The payload to update password", payload);
+    
     const apiClient = new ApiClient();
     try {
 
