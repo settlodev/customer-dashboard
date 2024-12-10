@@ -201,8 +201,6 @@ export const register = async (
         });
     }
 
-    //Make sure token does not exist
-    //await deleteAuthCookie();
 
     try {
         const apiClient = new ApiClient();
@@ -211,7 +209,6 @@ export const register = async (
 
         if(regData){
             const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
-            console.log("my token response is:", response)
             if(response) {
                 await sendVerificationEmail(regData.name, response as string, regData.email);
             }
@@ -227,15 +224,14 @@ export const register = async (
             responseType: "success",
             message: "Registration successful, redirecting to login...",
         });
-    } catch (error) {
-        console.log("Signup error:", error);
-        const mError = JSON.stringify(error);
-        const myNewError = JSON.parse(mError);
+    } catch (error : any) {
+        const formattedError = await error;
+
         return parseStringify({
-            responseType: "error",
-            message: myNewError.error,
-            error: error instanceof Error ? error : new Error(String(error)),
-        });
+        responseType: "error",
+        message:  formattedError.message, 
+        error: error instanceof Error ? error : new Error(String(error)),
+    });
     }
 }
 export const updateUser = async (
@@ -279,7 +275,6 @@ export const resetPassword = async (
 ): Promise<FormResponse> => {
     const validateEmail = ResetPasswordSchema.safeParse(email);
 
-    console.log("validateEmail", validateEmail);
 
     if (!validateEmail.success) {
         return parseStringify({
