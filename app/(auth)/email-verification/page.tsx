@@ -28,16 +28,16 @@ function VerificationPage() {
                             console.log("Auto-login message:", autoLoginMessage );
 
                             if (autoLoginMessage === "Successful activated token") {
-                                window.location.href = "/dashboard"; // Redirect to the dashboard
+                                window.location.href = "/dashboard"; 
                             } else {
-                                window.location.href = "/login"; // Redirect to login if auto-login fails
+                                window.location.href = "/login"; 
                             }
                         } else {
-                            window.location.href = "/user-verification?error=1"; // Redirect with error
+                            window.location.href = "/user-verification?error=1"; 
                         }
                     } catch (error) {
                         console.error("Verification error:", error);
-                        window.location.href = "/user-verification?error=1"; // Redirect with error
+                        window.location.href = "/user-verification?error=1"; 
                     }
                 }
             }
@@ -49,9 +49,9 @@ function VerificationPage() {
     }, [params]);
 
     return (
-        <p className="py-10 flex items-center justify-center">
+        <div className="py-10 flex items-center justify-center">
             <Loader2Icon className="animate-spin" />
-        </p>
+        </div>
     );
 }
 
