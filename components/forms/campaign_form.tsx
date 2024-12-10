@@ -23,7 +23,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Template } from "@/types/communication-templates/types";
 import { Textarea } from "../ui/textarea";
 import { fetchTemplates } from "@/lib/actions/communication-templates-actions";
-import "react-quill/dist/quill.snow.css";
 import DateTimePicker from "../widgets/datetimepicker";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { sendCampaign } from "@/lib/actions/campaign_action";
