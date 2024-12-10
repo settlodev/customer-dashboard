@@ -22,7 +22,7 @@ export default function ResetPasswordEmailTemplate({token}: EmailProps) {
                 </Text>
                 <Section style={buttonContainer}>
                     <Button
-                        href={`${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`}
+                        href={`${process.env.NEXT_PUBLIC_APP_URL}/update-password?token=${token}`}
                         style={button}
                     >
                         Reset Password
