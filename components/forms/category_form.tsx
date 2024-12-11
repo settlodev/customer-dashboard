@@ -28,6 +28,8 @@ import {ItemStatuses} from "@/types/constants";
 import {useToast } from "@/hooks/use-toast";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
+    console.log("The item is",item)
+
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     const [imageUrl, setImageUrl] = useState<string>(item && item.image?item.image: "");
@@ -53,7 +55,6 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
             status: item ? !!item.status : false,
         }
     });
-    console.log("The item: ", item);
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
           toast({
@@ -83,7 +84,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                     parentCategory: values.parentCategory || item.parentCategory || "",
                 };
 
-                updateCategory(item.id, updatedValues).then((data) => {
+                updateCategory(item.id, updatedValues,'category').then((data) => {
                     if (data) setResponse(data);
 
                     if(data?.responseType === "success") {
@@ -91,6 +92,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                             variant: "default",
                             title: "Category updated successfully",
                             description: "Category has been updated successfully",
+                            duration:5000
                         });
                     }
                 });
@@ -103,6 +105,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                             variant: "default",
                             title: "Category created successfully",
                             description: "Category has been created successfully",
+                            duration:5000
                         });
                     }
                 });

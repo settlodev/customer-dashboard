@@ -24,6 +24,7 @@ import { Brand } from "@/types/brand/type";
 import { BrandSchema } from "@/types/brand/schema";
 import { createBrand, updateBrand } from "@/lib/actions/brand-actions";
 import { useRouter } from "next/navigation";
+import { Switch } from "../ui/switch";
 
 function BrandForm({ item }: { item: Brand | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -52,6 +53,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof BrandSchema>) => {
+    console.log("The data",values)
     startTransition(() => {
       if (item) {
         updateBrand(item.id, values).then((data) => {
@@ -60,19 +62,21 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
             toast({
               title: "Success",
               description: data.message,
+              duration:5000
             });
             router.push("/brands");
           }
         });
       } else {
         createBrand(values)
+        
           .then((data) => {
-            console.log(data);
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
               toast({
                 title: "Success",
                 description: data.message,
+                duration:5000
               });
               router.push("/brands");
             }
@@ -89,11 +93,10 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className={`gap-1`}
       >
-        <div>
-          <>
+        <div >
             <FormError message={error}/>
             <FormSuccess message={success}/>
-              <div>
+              <div className="flex flex-col gap-3">
                 <FormField
                   control={form.control}
                   name="name"
@@ -111,8 +114,30 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
                     </FormItem>
                   )}
                 />
-              </div>
-          </>
+                 {item && (
+                  <div className="grid gap-2">
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                          <FormLabel>Brand Status</FormLabel>
+                          <FormControl>
+                            <Switch
+
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              disabled={isPending}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                )
+                }
+            </div>
           <div className="flex h-5 items-center space-x-4 mt-10">
             <CancelButton />
             <Separator orientation="vertical" />

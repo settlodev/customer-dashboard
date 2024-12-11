@@ -47,18 +47,6 @@ export const columns: ColumnDef<Brand>[] = [
     {
         id: "status",
         accessorKey: "status",
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Status
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
         cell: ({ row }) => <StateColumn state={row.original.status} />,
         enableHiding: false,
     },

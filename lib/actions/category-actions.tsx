@@ -135,6 +135,7 @@ export const createCategory = async (
 export const updateCategory = async (
     id: UUID,
     category: z.infer<typeof CategorySchema>,
+    context: "product" | "category",
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
     const authenticatedUser = await getAuthenticatedUser();
@@ -171,9 +172,15 @@ export const updateCategory = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
+    if (context === "category") {
+        revalidatePath("/categories");
+        redirect("/categories");
     }
+
+    return parseStringify({
+        responseType: "success",
+        message: "Category created successfully",
+    });
    
 };
 

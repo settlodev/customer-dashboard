@@ -8,6 +8,7 @@ import { StateColumn } from "@/components/tables/state-column";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {Category} from "@/types/category/type";
+import Image from "next/image";
 
 export const columns: ColumnDef<Category>[] = [
   {
@@ -30,6 +31,17 @@ export const columns: ColumnDef<Category>[] = [
     enableHiding: false,
   },
   {
+    accessorKey: "image",
+    header: "Image",
+    enableHiding: false,
+    cell: ({ row }) => {
+        const image = row.original.image;
+        return ( image ? <Image src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" width={50} height={50} loading="lazy" /> : 
+            <div className="w-10 h-10 rounded-lg bg-emerald-500"></div>
+        );
+    }
+},
+  {
     accessorKey: "name",
     enableHiding: false,
     header: ({ column }) => {
@@ -39,7 +51,7 @@ export const columns: ColumnDef<Category>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Category name
+          Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );

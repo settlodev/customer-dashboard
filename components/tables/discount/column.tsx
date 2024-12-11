@@ -47,6 +47,7 @@ export const columns: ColumnDef<Discount>[] = [
     {
         accessorKey: "discountCode",
         enableHiding: true,
+        
         header: ({ column }) => {
             return (
                 <Button

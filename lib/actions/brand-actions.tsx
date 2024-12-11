@@ -108,8 +108,9 @@ export const  createBrand= async (
             message: "Brand created successfully",
         };
     }
-    catch (error){
-        console.error("Error while creating brand",error)
+    catch (error: any){
+        const formattedError = await error;
+        console.error("Error while creating brand",formattedError )
         formResponse = {
             responseType: "error",
             message:

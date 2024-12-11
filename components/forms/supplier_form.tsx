@@ -65,6 +65,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
             toast({
               title: "Success",
               description: data.message,
+              duration:5000
             });
             router.push("/suppliers");
           }
@@ -78,6 +79,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
               toast({
                 title: "Success",
                 description: data.message,
+                duration:5000
               });
               router.push("/suppliers");
             }
@@ -167,38 +169,6 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   </FormItem>
                 )}
               />
-
-              {item && (
-                <div className="grid gap-2">
-                  <FormField
-                    control={form.control}
-                    name="status"
-
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <FormLabel>
-
-                          Supplier Status
-                          <span className={item.status ? "text-green-500" : "text-red-500"}>
-                            ({item.status ? "Active" : "Inactive"})
-                          </span>
-
-                        </FormLabel>
-                        <FormControl>
-                          <Switch
-
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )
-              }
             </div>
             <Card className="col-span-2">
                 <CardHeader>
@@ -231,7 +201,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                       name="contactPersonTitle"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Contact Person Title <span className="text-gray-400 text-sm">optional</span></FormLabel>
+                          <FormLabel>Contact Person Job Title <span className="text-gray-400 text-sm">optional</span></FormLabel>
                           <FormControl>
                             <Input
                               {...field}
@@ -280,7 +250,38 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   </div>
 
                 </CardContent>
-              </Card>
+            </Card>
+            {item && (
+                <div className="grid gap-2">
+                  <FormField
+                    control={form.control}
+                    name="status"
+
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <FormLabel>
+
+                          Supplier Status
+                          <span className={item.status ? "text-green-500" : "text-red-500"}>
+                            ({item.status ? "Active" : "Inactive"})
+                          </span>
+
+                        </FormLabel>
+                        <FormControl>
+                          <Switch
+
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )
+              }
           </>
 
           <div className="flex h-5 items-center space-x-4 mt-10">
