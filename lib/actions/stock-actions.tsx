@@ -78,7 +78,7 @@ export const  createStock= async (
     let formResponse: FormResponse | null = null;
 
     const validData= StockSchema.safeParse(stock)
-
+    
     if (!validData.success){
         formResponse = {
             responseType:"error",
@@ -96,6 +96,7 @@ export const  createStock= async (
         location: location?.id,
         business: business?.id
     }
+    console.log("The payload is ",payload)
 
     try {
         const apiClient = new ApiClient();
@@ -110,7 +111,7 @@ export const  createStock= async (
         };
     }
     catch (error){
-        console.error("Error creating product",error)
+        const formattedError = await error;
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",

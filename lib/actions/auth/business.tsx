@@ -44,7 +44,7 @@ export const createBusiness = async (
         payload
       );
 
-      console.log("Response from API after creating business ", response);
+      // console.log("Response from API after creating business ", response);
 
       if (response) {
         const token = cookies().get("authToken")?.value;

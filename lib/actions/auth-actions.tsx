@@ -206,7 +206,6 @@ export const register = async (
         const apiClient = new ApiClient();
 
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
-
         if(regData){
             const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
             if(response) {
@@ -225,11 +224,12 @@ export const register = async (
             message: "Registration successful, redirecting to login...",
         });
     } catch (error : any) {
+        console.log("Error is: ", error)
         const formattedError = await error;
 
         return parseStringify({
         responseType: "error",
-        message:  formattedError.message, 
+        message:  formattedError.error, 
         error: error instanceof Error ? error : new Error(String(error)),
     });
     }

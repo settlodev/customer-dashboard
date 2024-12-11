@@ -45,7 +45,6 @@ class ApiClient {
     public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
         try {
             const response = await this.instance.get<T>(url, config);
-            console.log("Response from API:", response);
             return response.data;
         } catch (error) {
             throw handleSettloApiError(error as ErrorMessageType);

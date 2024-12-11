@@ -42,6 +42,7 @@ function LoginForm() {
     });
 
     const submitData = useCallback((values: z.infer<typeof LoginSchema>) => {
+        console.log("Submitting data:", values);
         startTransition(() => {
             login(values)
                 .then((data: FormResponse) => {

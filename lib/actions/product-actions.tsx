@@ -77,6 +77,7 @@ export const  createProduct= async (
     let formResponse: FormResponse | null = null;
 
     const validData= ProductSchema.safeParse(product)
+    
 
     if (!validData.success){
         formResponse = {
@@ -99,17 +100,19 @@ export const  createProduct= async (
 
     try {
         const apiClient = new ApiClient();
-        await apiClient.post(
+       const response = await apiClient.post(
             `/api/products/${location?.id}/create`,
             payload
         );
+        console.log("Product created response:", response);
         formResponse = {
             responseType: "success",
             message: "Product created successfully",
         };
     }
     catch (error){
-        console.error("Error creating product",error)
+        const formattedError = await error;
+        console.error("Error creating product", formattedError) ;
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",

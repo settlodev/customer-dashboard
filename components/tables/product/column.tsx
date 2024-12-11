@@ -36,8 +36,7 @@ export const columns: ColumnDef<Product>[] = [
         enableHiding: false,
         cell: ({ row }) => {
             const image = row.original.variants[0].image;
-            console.log("Image URL:", image);
-            return ( image ? <Image src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" loading="lazy" /> : 
+            return ( image ? <Image src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" width={50} height={50} loading="lazy" /> : 
                 <div className="w-10 h-10 rounded-lg bg-emerald-500"></div>
             );
         }

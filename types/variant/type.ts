@@ -5,8 +5,6 @@ export declare interface Variant {
     id: UUID,
     name: string,
     price: number,
- 
-    quantity: number,
     sku: string,
     barcode: string,
     description: string,
@@ -29,8 +27,6 @@ export declare interface FormVariantItem {
     id?: UUID,
     name: string,
     price: number,
-   
-    quantity: number,
     sku?: string|undefined,
     barcode?: string|undefined|null,
     description?: string|undefined,

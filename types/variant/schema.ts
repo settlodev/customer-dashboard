@@ -11,16 +11,6 @@ export const VariantSchema = object({
         },
         number({message:"Price is required"}).nonnegative({message:"price can not be negative"}).gt(0,{message:"Price can not be zero"})
     ),
-    quantity:preprocess(
-        (val)=>{
-            if(typeof val==="string" && val.trim()!==""){
-                return parseInt(val)
-            }
-            return val
-        },
-        number({message:"Quantity is required"}).nonnegative({message:"Quantity can not be negative"})
-    ),
-  
     sku: string().optional(),
     barcode: string().nullable().optional(),
     unit: string().optional(),

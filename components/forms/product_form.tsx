@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import {
     Form,
     FormControl,
+    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -40,7 +41,7 @@ import ProductDepartmentSelector from "@/components/widgets/product-department-s
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import { VariantSchema } from "@/types/variant/schema";
 import { Brand } from "@/types/brand/type";
-import { ChevronDownIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, Eye, PlusIcon, SearchIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
@@ -55,13 +56,16 @@ import { DepartmentSchema } from "@/types/department/schema";
 import { fetchUnits } from "@/lib/actions/unit-actions";
 import { Units } from "@/types/unit/type";
 import { Stock } from "@/types/stock/type";
-import { fetchStock } from "@/lib/actions/stock-actions";
+import { createStock, fetchStock } from "@/lib/actions/stock-actions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { NumericFormat } from 'react-number-format';
 import { FormResponse } from "@/types/types";
 import { useRouter } from 'next/navigation';
+import { StockSchema } from "@/types/stock/schema";
+import { StockVariantSchema } from "@/types/stockVariant/schema";
+import { StockFormVariant } from "@/types/stockVariant/type";
 
-const ProductForm =({ item }: { item: Product | null | undefined }) => {
+const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     // const router = useRouter();
 
     const [isPending, startTransition] = useTransition();
@@ -69,6 +73,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
     const [success,] = useState<string | undefined>("");
 
     const [variants, setVariants] = useState<FormVariantItem[]>([]);
+    const [stockVariants, setStockVariants] = useState<StockFormVariant[]>([]);
     const [categories, setCategories] = useState<Category[] | null>([]);
     const [departments, setDepartments] = useState<Department[]>([]);
     const [brands, setBrands] = useState<Brand[]>([]);
@@ -77,13 +82,15 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
     const [searchTerm, setSearchTerm] = useState("");
 
     const [variantImageUrl, setVariantImageUrl] = useState<string>('');
-    const [, setImageUrl] = useState<string>('');
+    const [stockVariantImageUrl, setStockVariantImageUrl] = useState<string>('');
+    const [imageUrl, setImageUrl] = useState<string>('');
     const [categoryImageUrl, setCategoryImageUrl] = useState<string>('');
     const [departmentImageUrl, setDepartmentImageUrl] = useState<string>('');
     const [selectedVariant, setSelectedVariant] = useState<FormVariantItem | null>(null);
     const [categoryModalVisible, setCategoryModalVisible] = useState<boolean>(false);
     const [departmentModalVisible, setDepartmentModalVisible] = useState<boolean>(false);
     const [inventoryTracking, setInventoryTracking] = useState<boolean>(false);
+    const [stockModalVisible, setStockModalVisible] = useState<boolean>(false);
     const [, setStocks] = useState<Stock[]>([]);
     const [combinedStockOptions, setCombinedStockOptions] = useState<{ id: string; displayName: string }[]>([]);
     const [, setResponse] = useState<FormResponse | undefined>();
@@ -108,6 +115,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                 setStocks(stockResponse);
 
                 const combinedOptions = stockResponse.flatMap(stock => stock.stockVariants.map(variant => ({ id: variant.id, displayName: `${stock.name} - ${variant.name}` })));
+                console.log("The combined stock is", combinedOptions)
                 setCombinedStockOptions(combinedOptions);
 
                 if (item) {
@@ -148,19 +156,35 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
         resolver: zodResolver(DepartmentSchema)
     });
 
+    const stockForm = useForm<z.infer<typeof StockSchema>>({
+        resolver: zodResolver(StockSchema)
+    })
+
+    const stockVariantForm = useForm<z.infer<typeof StockVariantSchema>>({
+        resolver: zodResolver(StockVariantSchema),
+        defaultValues: {
+            name: '',
+            startingValue: 0,
+            startingQuantity: 0,
+            alertLevel: 0,
+            imageOption: '',
+        },
+    })
+
     const variantForm = useForm<z.infer<typeof VariantSchema>>({
         resolver: zodResolver(VariantSchema),
         defaultValues: {
             name: '',
             price: 0,
             sku: '',
-            quantity: 0,
             description: '',
             image: '',
             unit: '',
             stockVariant: '',
         },
     });
+
+
 
     useEffect(() => {
         if (item && item.variants) {
@@ -171,7 +195,6 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                 price: variant.price,
 
                 sku: variant.sku ? variant.sku : '',
-                quantity: variant.quantity,
                 description: variant.description,
                 image: variant.image ? variant.image : '',
                 color: variant.color ? variant.color : '',
@@ -205,6 +228,9 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
         [toast]
     );
     const submitData = (values: z.infer<typeof ProductSchema>) => {
+        if (imageUrl) {
+            values.image = imageUrl;
+        }
         values.variants = variants.map((variant: any) => ({
             ...variant,
             stockVariant: variant.stockVariant ? variant.stockVariant : undefined,
@@ -221,7 +247,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                         });
                         router.push("/products");
                     }
-                   
+
                 });
             } else {
                 createProduct(values)
@@ -250,7 +276,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
         }
 
         startTransition(() => {
-            createCategory(values,'product')
+            createCategory(values, 'product')
                 .then(async () => {
                     const categories = await fetchAllCategories();
                     setCategories(categories);
@@ -269,17 +295,35 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
         }
 
         startTransition(() => {
-            createDepartment(values,'product')
+            createDepartment(values, 'product')
                 .then(async () => {
                     const departments = await fectchAllDepartments();
                     setDepartments(departments);
                     setDepartmentModalVisible(false);
                 })
                 .catch((err) => {
-                    console.log("Error while creating product: ", err);
+                    console.log("Error while creating department: ", err);
                 });
         });
     };
+
+    const submitStockData = (values: z.infer<typeof StockSchema>) => {
+        values.stockVariants = stockVariants;
+
+        console.log("The submit data for stock is", values)
+        startTransition(() => {
+            createStock(values)
+                .then(async () => {
+                    const stocks = await fetchStock();
+                    console.log("The stocks are ", stocks)
+                    setStocks(stocks);
+                    setStockModalVisible(false)
+                })
+                .catch((err) => {
+                    console.log("Error while creating stock: ", err)
+                })
+        })
+    }
 
     const saveVariantItem = (values: z.infer<typeof VariantSchema>) => {
         if (variantImageUrl) {
@@ -387,9 +431,11 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
     const openDepartmentModal = () => {
         setDepartmentModalVisible(true)
     }
+    const openStockModal = () => {
+        setStockModalVisible(true)
+    }
     const handleInventoryTrackingChange = (value: boolean) => {
         setInventoryTracking(value);
-        console.log("Addon tracking enabled:", value);
         toast({
             title: "Inventory Tracking",
             description: value
@@ -400,11 +446,20 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
         })
     };
 
-    // const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    //     const value = e.target.value;
-    //     // Update raw price state
-    //     setRawPrice(value);
-    // };
+    const saveStockVariantItem = (values: z.infer<typeof StockVariantSchema>) => {
+        console.log("Stock variant is", values)
+        if (variantImageUrl) {
+            values.imageOption = variantImageUrl ? variantImageUrl : '';
+        }
+        setStockVariants([values, ...stockVariants]);
+        stockVariantForm.reset();
+        setSelectedVariant(null);
+    }
+    const removeStockVariant = (index: number) => {
+        const mVariants = [...stockVariants];
+        mVariants.splice(index, 1);
+        setStockVariants(_.compact(mVariants));
+    }
 
 
     return (<>
@@ -517,8 +572,285 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
             : <></>
         }
 
+        {stockModalVisible ?
+            <>
+                <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
+                <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
+                    <div className="w-[950px] p-5 bg-white rounded-md">
+                        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
+                            <div className="flex flex-col-reverse lg:flex-row gap-10">
+                                <div className="flex-1 lg:w-1/3">
+                                    <Form {...stockForm}>
+                                        <form
+                                            onSubmit={stockForm.handleSubmit(submitStockData, onInvalid)}
+                                            className={`gap-1`}>
+                                            <div>
+                                                <FormError message={error} />
+                                                <FormSuccess message={success} />
+                                                <div className="bg-gray-200 pl-3 pr-3 pt-2 pb-2 border-0 border-emerald-100- flex">
+                                                    <h3 className="font-bold flex-1">Add stock to track inventory</h3>
+                                                    <span className="flex-end"><ChevronDownIcon /></span>
+                                                </div>
+
+                                                <div className="mt-4 flex">
+                                                    <div className="flex-1">
+                                                        <FormField
+                                                            control={stockForm.control}
+                                                            name="name"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Stock Name</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            placeholder="Enter stock name"
+                                                                            {...field}
+                                                                            value={field.value}
+                                                                            disabled={isPending}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4">
+                                                    <FormField
+                                                        control={stockForm.control}
+                                                        name="description"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Description</FormLabel>
+                                                                <FormControl>
+                                                                    <Textarea
+                                                                        placeholder="Enter stock description"
+                                                                        {...field}
+                                                                        disabled={isPending}
+                                                                        className="resize-none bg-gray-50"
+                                                                        maxLength={200}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </div>
+
+                                                <div
+                                                    className="bg-gray-200 pl-3 pr-3 pt-2 pb-2 border-0 border-emerald-100- flex mt-4">
+                                                    <h3 className="font-bold flex-1">Stock Variants</h3>
+                                                    <span className="flex-end"><ChevronDownIcon /></span>
+                                                </div>
+
+                                                {stockVariants.length > 0 ?
+                                                    <div className="border-t-1 border-t-gray-100 p-5">
+                                                        <h3 className="font-bold pb-2">Variants</h3>
+                                                        <div className="border-emerald-500 border-0 rounded-md pt-2 pb-2 pl-0 pr-0">
+                                                            {stockVariants.map((variant: StockFormVariant, index) => {
+                                                                return <div
+                                                                    className="flex border-1 border-emerald-200 mt-0 items-center pt-0 pb-0 pl-0 mb-1"
+                                                                    key={index}
+                                                                // onClick={() => handleEditVariant(stockVariants)}  
+                                                                >
+                                                                    <p className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4">
+                                                                        <span>{index + 1}</span></p>
+                                                                    <div className="flex-1 pt-1 pb-1">
+                                                                        <p className="text-md font-medium">{variant.name}</p>
+                                                                        <p className="text-xs font-medium">VALUE: {variant.startingValue} |
+                                                                            QUANTITY: {variant.startingQuantity} | ALERT LEVEL: {variant.alertLevel} </p>
+                                                                    </div>
+                                                                    {item ? (
+                                                                        <p
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                // confirmDeleteVariant(stockVariants); 
+                                                                            }}
+                                                                            className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
+                                                                        >
+                                                                            <span>Delete</span>
+                                                                        </p>
+                                                                    ) : (
+                                                                        <p
+                                                                            onClick={() => removeStockVariant(index)}
+                                                                            className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
+                                                                        >
+                                                                            <span>Remove</span>
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            })}
+                                                        </div>
+                                                    </div> : <><p className="pt-3 pb-5 text-sm">No variants added</p>
+                                                        {variants.length === 0 &&
+                                                            <p className="text-danger-500 text-sm">Add at least one variant then
+                                                                click save</p>}
+                                                    </>
+                                                }
+
+
+                                            </div>
+
+                                            <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
+                                                <Button variant='default' onClick={() => { setStockModalVisible(false) }}>cancel</Button>
+                                                <Separator orientation="vertical" />
+                                                <SubmitButton
+                                                    isPending={isPending || stockVariants.length === 0}
+                                                    label={"Add stock"}
+                                                />
+                                            </div>
+                                        </form>
+                                    </Form>
+                                </div>
+
+                                <div className="">
+                                    <Form {...stockVariantForm}>
+                                        <form
+                                            onSubmit={stockVariantForm.handleSubmit(saveStockVariantItem, onInvalid)}
+                                            className={`gap-1`}>
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle>Add Stock variants</CardTitle>
+                                                </CardHeader>
+
+                                                <CardContent>
+                                                    <FormError message={error} />
+                                                    <FormSuccess message={success} />
+
+                                                    <div className="mt-4 flex">
+                                                        <UploadImageWidget imagePath={'products'} displayStyle={'default'} displayImage={true} setImage={setVariantImageUrl} />
+
+                                                        <div className="flex-1">
+                                                            <FormField
+                                                                control={stockVariantForm.control}
+                                                                name="name"
+                                                                render={({ field }) => (
+                                                                    <FormItem>
+                                                                        <FormLabel>Variant Name</FormLabel>
+                                                                        <FormControl>
+                                                                            <Input
+                                                                                placeholder="Variant name ex: Small"
+                                                                                {...field}
+                                                                                disabled={isPending}
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormMessage />
+                                                                    </FormItem>
+                                                                )}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    <FormField
+                                                        control={stockVariantForm.control}
+                                                        name="startingQuantity"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Starting Quantity</FormLabel>
+                                                                <FormControl>
+
+                                                                    <NumericFormat
+                                                                        className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                        value={field.value}
+                                                                        disabled={isPending}
+                                                                        placeholder="0.00"
+                                                                        thousandSeparator={true}
+                                                                        allowNegative={false}
+                                                                        onValueChange={(values) => {
+                                                                            const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                            field.onChange(rawValue);
+                                                                        }}
+                                                                    />
+                                                                </FormControl>
+
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
+                                                    <FormField
+                                                        control={stockVariantForm.control}
+                                                        name="startingValue"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Starting Value (Amount)</FormLabel>
+                                                                <FormControl>
+
+                                                                    <NumericFormat
+                                                                        className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                        value={field.value}
+                                                                        disabled={isPending}
+                                                                        placeholder="0.00"
+                                                                        thousandSeparator={true}
+                                                                        allowNegative={false}
+                                                                        onValueChange={(values) => {
+                                                                            const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                            field.onChange(rawValue);
+                                                                        }}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
+                                                    <FormField
+                                                        control={stockVariantForm.control}
+                                                        name="alertLevel"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Alert Level</FormLabel>
+                                                                <FormControl>
+                                                                    <FormControl>
+
+                                                                        <NumericFormat
+                                                                            className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                            value={field.value}
+                                                                            disabled={isPending}
+                                                                            placeholder="0.00"
+                                                                            thousandSeparator={true}
+                                                                            allowNegative={false}
+                                                                            onValueChange={(values) => {
+                                                                                const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                                field.onChange(rawValue);
+                                                                            }}
+                                                                        />
+                                                                    </FormControl>
+                                                                </FormControl>
+                                                                <FormDescription>
+                                                                    Quantity below this level will trigger an alert
+                                                                </FormDescription>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
+                                                </CardContent>
+
+                                                <div className="flex ml-6 mb-6">
+
+                                                    <SubmitButton
+                                                        isPending={isPending}
+                                                        label={'Save Variant'}
+                                                        onClick={
+                                                            stockVariantForm.handleSubmit(saveStockVariantItem, onInvalid)
+                                                        }
+                                                    />
+                                                </div>
+                                            </Card>
+                                        </form>
+                                    </Form>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </>
+            : <></>
+        }
+
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-            <div className="flex gap-10">
+            <div className="flex flex-col-reverse lg:flex-row gap-10">
                 <div className="flex-1">
                     <Form {...form}>
                         <form
@@ -653,7 +985,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                 </div>
 
                                 <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-3 gap-4 mt-4">
-                                <FormField
+                                    <FormField
                                         control={form.control}
                                         name="trackInventory"
                                         render={({ field }) => (
@@ -825,7 +1157,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                                         <span>{index + 1}</span></p>
                                                     <div className="flex-1 pt-1 pb-1">
                                                         <p className="text-md font-medium">{variant.name}</p>
-                                                        <p className="text-xs font-medium">PRICE: {variant.price} | QTY: {variant.quantity}</p>
+                                                        <p className="text-xs font-medium">PRICE: {variant.price}</p>
                                                     </div>
                                                     {item ? (
                                                         <p
@@ -870,25 +1202,25 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                     </Form>
                 </div>
 
-                <div className="w-1/3">
+                <div className="flex lg:w-1/3">
                     <Form {...variantForm}>
                         <form
                             onSubmit={variantForm.handleSubmit(saveVariantItem, onInvalid)}
                             className={`gap-1`}>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Add variants</CardTitle>
+                                    <CardTitle className="hidden">Add variants</CardTitle>
                                     <CardDescription>{item ? "Edit variants" : "Add variants"}</CardDescription>
                                     {item && (
                                         <span className="text-sm text-white bg-blue-500 p-2 rounded">Please,select the variant you want to edit on product variants</span>
                                     )}
                                 </CardHeader>
 
-                                <CardContent>
+                                <CardContent className="gap-3">
                                     <FormError message={error} />
                                     <FormSuccess message={success} />
 
-                                    <div className="mt-4 flex">
+                                    <div className="flex">
                                         <UploadImageWidget imagePath={'products'} displayStyle={'default'}
                                             displayImage={true} setImage={setVariantImageUrl} />
 
@@ -916,49 +1248,23 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                         control={variantForm.control}
                                         name="price"
                                         render={({ field }) => (
-                                            <FormItem className="flex flex-col">
+                                            <FormItem className="flex flex-col mt-2">
                                                 <FormLabel>Selling Price</FormLabel>
                                                 <FormControl>
 
-                                                <NumericFormat
-                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                value={field.value}
-                                                                disabled={isPending}
-                                                                placeholder="0.00"
-                                                                thousandSeparator={true}
-                                                                allowNegative={false}
-                                                                onValueChange={(values) => {
-                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                    field.onChange(rawValue);
-                                                                }}
-                                                            />
+                                                    <NumericFormat
+                                                        className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                        value={field.value}
+                                                        disabled={isPending}
+                                                        placeholder="0.00"
+                                                        thousandSeparator={true}
+                                                        allowNegative={false}
+                                                        onValueChange={(values) => {
+                                                            const rawValue = Number(values.value.replace(/,/g, ""));
+                                                            field.onChange(rawValue);
+                                                        }}
+                                                    />
                                                 </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="quantity"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Quantity</FormLabel>
-                                                <FormControl>
-
-                                                <NumericFormat
-                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                value={field.value}
-                                                                disabled={isPending}
-                                                                placeholder="0.00"
-                                                                thousandSeparator={true}
-                                                                allowNegative={false}
-                                                                onValueChange={(values) => {
-                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                    field.onChange(rawValue);
-                                                                }}
-                                                            />
-                                               </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}
@@ -967,7 +1273,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                         control={variantForm.control}
                                         name="sku"
                                         render={({ field }) => (
-                                            <FormItem>
+                                            <FormItem className="flex flex-col mt-2">
                                                 <FormLabel>SKU</FormLabel>
                                                 <FormControl>
                                                     <Input
@@ -984,7 +1290,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                         control={variantForm.control}
                                         name="barcode"
                                         render={({ field }) => (
-                                            <FormItem>
+                                            <FormItem className="flex flex-col mt-2">
                                                 <FormLabel>Barcode</FormLabel>
                                                 <FormControl>
                                                     <Input
@@ -1002,7 +1308,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                         control={variantForm.control}
                                         name="unit"
                                         render={({ field }) => (
-                                            <FormItem>
+                                            <FormItem className="flex flex-col mt-2">
                                                 <FormLabel>Unit</FormLabel>
                                                 <FormControl>
                                                     <div className="relative flex flex-col w-full max-w-sm">
@@ -1012,11 +1318,12 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                                             <Input
                                                                 type="search"
                                                                 placeholder="Search e.g Kilogram"
-                                                                className="w-full border-0"
+                                                                className=" "
                                                                 value={searchTerm}
                                                                 disabled={isPending}
                                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                             />
+                                                            <Eye className="h-6 w-6" />
                                                         </div>
 
                                                         {searchTerm && filteredUnits.length > 0 && (
@@ -1024,7 +1331,7 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                                                 {filteredUnits.map((unit) => (
                                                                     <div
                                                                         key={unit.id}
-                                                                        className="cursor-pointer px-4 py-2 hover:bg-gray-100"
+                                                                        className="cursor-pointer px-4 py-2"
                                                                         onClick={() => {
                                                                             field.onChange(unit.id);
                                                                             setSearchTerm(unit.name);
@@ -1042,43 +1349,56 @@ const ProductForm =({ item }: { item: Product | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-
                                     {inventoryTracking && (
-                                        <FormField
-                                            control={variantForm.control}
-                                            name="stockVariant"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Stock Variant</FormLabel>
-                                                    <FormControl>
-                                                        <Select
-                                                            value={field.value || ''}
-                                                            onValueChange={field.onChange}
-                                                            disabled={isPending}
-                                                        >
-                                                            <SelectTrigger>
-                                                                <SelectValue placeholder="Select stock variant" />
-                                                            </SelectTrigger>
-                                                            <SelectContent>
-                                                                {combinedStockOptions.map((option) => (
-                                                                    <SelectItem key={option.id} value={option.id}>
-                                                                        {option.displayName}
-                                                                    </SelectItem>
-                                                                ))}
-                                                            </SelectContent>
-                                                        </Select>
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
+                                        <>
+                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
+                                                <FormField
+                                                    control={variantForm.control}
+                                                    name="stockVariant"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-col mt-2">
+                                                            <FormLabel>Stock Variant</FormLabel>
+                                                            <FormControl>
+                                                                <Select
+                                                                    value={field.value || ''}
+                                                                    onValueChange={field.onChange}
+                                                                    disabled={isPending}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Select stock variant" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent>
+                                                                        {combinedStockOptions.map((option) => (
+                                                                            <SelectItem key={option.id} value={option.id}>
+                                                                                {option.displayName}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ) : (
+                                                <div className="flex flex-col mt-2 gap-2">
+                                                    <p className="text-sm text-red-500 font-bold">No stock available</p>
+                                                    <Button onClick={(e) => {
+                                                        e.preventDefault(),
+                                                            openStockModal()
+                                                        openStockModal
+                                                    }}>Add Stock</Button>
+                                                </div>
                                             )}
-                                        />
+                                        </>
                                     )}
+
 
                                     <FormField
                                         control={variantForm.control}
                                         name="description"
                                         render={({ field }) => (
-                                            <FormItem>
+                                            <FormItem className="flex flex-col mt-2">
                                                 <FormLabel>Description</FormLabel>
                                                 <FormControl>
                                                     <Input
