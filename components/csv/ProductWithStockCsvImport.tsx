@@ -255,9 +255,9 @@ export function ProductWithStockCSVDialog() {
             </div>
           )}
 
-{uploadProgress > 0 && (
-            <div className="mt-4">
-              <Progress value={uploadProgress} className="w-full bg-emerald-500" />
+          {uploadProgress > 0 && (
+            <div className="mt-4 h-4 bg-emerald-500">
+              <Progress value={uploadProgress} className="w-full" />
               <p className="text-sm text-gray-600">{uploadProgress}% uploaded</p>
             </div>
           )}

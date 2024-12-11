@@ -76,8 +76,8 @@ export const columns: ColumnDef<Product>[] = [
         }
     },
     {
-        accessorKey: "variants", // Change this to access the variants array
-        enableHiding: false,
+        accessorKey: "variants", 
+        enableHiding: true,
         header: 'No. of Variants',
         cell: ({ row }) => {
             const variants = row.original.variants; 
@@ -98,6 +98,7 @@ export const columns: ColumnDef<Product>[] = [
     {
         id: "status",
         accessorKey: "status",
+        enableHiding:true,
         header: ({ column }) => {
             return (
                 <Button
@@ -111,7 +112,7 @@ export const columns: ColumnDef<Product>[] = [
             );
         },
         cell: ({ row }) => <StateColumn state={row.original.status} />,
-        enableHiding: false,
+        
     },
     {
         id: "actions",

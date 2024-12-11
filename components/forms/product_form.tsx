@@ -82,7 +82,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     const [searchTerm, setSearchTerm] = useState("");
 
     const [variantImageUrl, setVariantImageUrl] = useState<string>('');
-    const [stockVariantImageUrl, setStockVariantImageUrl] = useState<string>('');
+    // const [stockVariantImageUrl, setStockVariantImageUrl] = useState<string>('');
     const [imageUrl, setImageUrl] = useState<string>('');
     const [categoryImageUrl, setCategoryImageUrl] = useState<string>('');
     const [departmentImageUrl, setDepartmentImageUrl] = useState<string>('');
@@ -1384,9 +1384,8 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                 <div className="flex flex-col mt-2 gap-2">
                                                     <p className="text-sm text-red-500 font-bold">No stock available</p>
                                                     <Button onClick={(e) => {
-                                                        e.preventDefault(),
-                                                            openStockModal()
-                                                        openStockModal
+                                                        e.preventDefault();
+                                                            openStockModal();
                                                     }}>Add Stock</Button>
                                                 </div>
                                             )}

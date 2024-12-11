@@ -110,10 +110,10 @@ export const  createStock= async (
             message: "Stock created successfully",
         };
     }
-    catch (error){
+    catch (error: any){
         const formattedError = await error;
         formResponse = {
-            responseType: "error",
+            responseType: formattedError.message,
             message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };

@@ -17,11 +17,11 @@ import { motion } from "framer-motion";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
-  ListFilter,
+  // ListFilter,
   Search,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Icon } from "@iconify/react";
+// import { Icon } from "@iconify/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,14 +42,14 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { DataTableViewOptions } from "@/components/tables/column-toggle";
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+// import {
+//   DropdownMenu,
+//   DropdownMenuCheckboxItem,
+//   DropdownMenuContent,
+//   DropdownMenuLabel,
+//   DropdownMenuSeparator,
+//   DropdownMenuTrigger,
+// } from "@/components/ui/dropdown-menu";
 import { DoubleArrowLeftIcon, DoubleArrowRightIcon } from "@radix-ui/react-icons";
 import { ProductCSVDialog} from "../csv/CSVImport";
 import { CSVStockDialog } from "../csv/stockCsvImport";
@@ -199,7 +199,7 @@ export function DataTable<TData, TValue>({
         <div className="flex items-center space-x-2">
           <DataTableViewOptions table={table} />
 
-          <DropdownMenu>
+          {/* <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 className="h-8 gap-1"
@@ -220,13 +220,13 @@ export function DataTable<TData, TValue>({
               <DropdownMenuCheckboxItem>Active</DropdownMenuCheckboxItem>
               <DropdownMenuCheckboxItem>Disabled</DropdownMenuCheckboxItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu> */}
 
          {pathname === "/products" ?  <ProductCSVDialog /> : null}
          {pathname === "/stocks" ?  <CSVStockDialog /> : null}
          {pathname === "/stocks" ?  <ProductWithStockCSVDialog /> : null}
 
-          <Button
+          {/* <Button
             className="h-8 gap-1"
             disabled={true}
             size="sm"
@@ -236,7 +236,7 @@ export function DataTable<TData, TValue>({
             <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
               Export
             </span>
-          </Button>
+          </Button> */}
         </div>
       </div>
 

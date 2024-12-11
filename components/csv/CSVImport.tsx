@@ -12,9 +12,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { uploadCSV } from "@/lib/actions/product-actions";
 import { Icon } from "@iconify/react";
 import React from "react";
+import { useCSVUpload } from "@/hooks/uploadProduct";
+import { Progress } from "../ui/progress";
 
 // Validation Function
 const validateCSV = (
@@ -42,7 +43,7 @@ const validateCSV = (
     const currentRowIndex = rowIndex + 2; // Adjusting for 1-based index with headers
 
     // Required Field Validation
-    const requiredFields = ["Product Name", "Category Name", "Variant Name", "Price", "Quantity"];
+    const requiredFields = ["Product Name", "Category Name", "Variant Name", "Price",];
     requiredFields.forEach((field) => {
       
       const fieldIndex = headers.indexOf(field);
@@ -60,14 +61,7 @@ const validateCSV = (
       }
     }
 
-    const quantityIndex = headers.indexOf("Quantity");
-    if (quantityIndex !== -1) {
-      const quantity = parseInt(row[quantityIndex], 10);
-      if (isNaN(quantity) || quantity <= 0) {
-        rowErrors.push(`Row ${currentRowIndex}: "Quantity" must be greater than zero.`);
-      }
-    }
-
+    
     if (rowErrors.length > 0) {
       errors.push(...rowErrors);
     }
@@ -82,9 +76,9 @@ export function ProductCSVDialog() {
     "Category Name",
     "Variant Name",
     "Price",
-    "Quantity",
     "SKU",
-    "barcode",
+    "Barcode",
+    "Department"
   ];
 
   const [fileContent, setFileContent] = useState<string | null>(null);
@@ -97,11 +91,23 @@ export function ProductCSVDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { uploadProgress, error, uploadCSV } = useCSVUpload();
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
+
     if (selectedFile) {
+
+      // console.log("File selected:", selectedFile.name);
+
       const fileText = await selectedFile.text();
+
+      // console.log("File content read successfully.");
+
       const result = validateCSV(fileText, expectedHeaders);
+
+      // console.log("Validation result:", result);
+
       setValidationResult(result);
       setFile(selectedFile);
       setFileContent(fileText);
@@ -109,10 +115,10 @@ export function ProductCSVDialog() {
   };
 
   const handleTemplateDownload = () => {
-    fetch("/csv/product-template.csv")
+    fetch("/csv/product-csv-template.csv")
       .then((res) => {
         if (res.ok) {
-          window.open("/csv/product-template.csv", "_blank");
+          window.open("/csv/product-csv-template.csv", "_blank");
         } else {
           alert("Template not found");
         }
@@ -149,7 +155,7 @@ export function ProductCSVDialog() {
           onClick={() => setIsOpen(true)}
         >
           <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Import</span>
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Import Product CSV</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">
@@ -173,7 +179,13 @@ export function ProductCSVDialog() {
               <table className="min-w-full border-collapse border border-gray-300">
                 <thead>
                   <tr>
-                    {validationResult.rows[0].map((header, index) => (
+                    {/* {validationResult.rows[0].map((header, index) => (
+                      <th key={index} className="border px-2 py-1 bg-gray-100">
+                        {header}
+                      </th>
+                    ))} */}
+
+                      {validationResult?.rows?.length > 0 && validationResult.rows[0]?.map((header, index) => (
                       <th key={index} className="border px-2 py-1 bg-gray-100">
                         {header}
                       </th>
@@ -208,6 +220,13 @@ export function ProductCSVDialog() {
               </table>
             </div>
           )}
+            {uploadProgress > 0 && (
+            <div className="mt-4 h-4 bg-emerald-500">
+              <Progress value={uploadProgress} className="w-full" />
+              <p className="text-sm text-gray-600">{uploadProgress}% uploaded</p>
+            </div>
+          )}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
         </div>
         <DialogFooter>
         <Button onClick={handleTemplateDownload} variant="outline" size="sm" className="gap-1">

@@ -219,7 +219,7 @@ export const deleteProduct = async (id: UUID): Promise<void> => {
    }
 }
 
-export const uploadCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
+export const uploadProductCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
 
     if (!fileName.endsWith(".csv")) {
         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
