@@ -134,7 +134,7 @@ export declare interface ErrorMessageType{
     status: number;
     code: string;
     message: string;
-    error: string
+    error: Error
 }
 
 export declare interface PrivilegeItem{

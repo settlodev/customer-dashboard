@@ -1,257 +1,171 @@
-"use client"
+"use client";
 
-import React, {useState} from "react";
-import {Sidebar} from "./sidebar.styles";
-import {CompaniesDropdown} from "./companies-dropdown";
-import {BusinessPropsType} from "@/types/business/business-props-type";
-import {menuItems} from "@/types/menu_items";
+import React, { useState } from "react";
+import { CompaniesDropdown } from "./companies-dropdown";
+import { BusinessPropsType } from "@/types/business/business-props-type";
+import { menuItems } from "@/types/menu_items";
 import Link from "next/link";
 import {
     UsersIcon,
-    ContactIcon,
-    ChartNoAxesColumn,
+    Contact as ContactIcon,
+    BarChart3 as ChartNoAxesColumn,
     Package2,
     Info,
     ReceiptText,
     Settings,
-    ChevronDownIcon
+    ChevronDown,
+    X
 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+    Sheet,
+    SheetContent,
+    SheetTrigger
+} from "@/components/ui/sheet";
 
-export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
-  //const {collapsed, setCollapsed} = useSidebarContext();
-  const [visibleIndex, setVisibleIndex] = useState<number>(0);
-  const myMenuItems = menuItems();
+interface SidebarProps {
+    data: BusinessPropsType;
+    isMobile?: boolean;
+    onClose?: () => void;
+}
 
-  const getIcon=(iconName: string)=>{
-      const size:number = 20;
-      const color:string = '#A3FFD6';
-      if(iconName === 'dashboard') {
-          return <ChartNoAxesColumn size={size} color={color} />
-      }else if(iconName === 'inventory') {
-          return <Package2 size={size} color={color} />
-      }else if(iconName === 'sales') {
-          return <ReceiptText size={size} color={color} />
-      }else if(iconName === 'customers') {
-          return <ContactIcon size={size} color={color} />
-      }else if(iconName === 'users') {
-          return <UsersIcon size={size} color={color} />
-      }else if(iconName === 'general') {
-          return <Info size={size} color={color} />
-      }else{
-          return <Info size={size} color={color} />
-      }
-  }
+const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
+    const [visibleIndex, setVisibleIndex] = useState<number>(0);
+    const myMenuItems = menuItems();
 
-  const {business} = data;
-  if(business) {
+    const getIcon = (iconName: string) => {
+        const size = 20;
+        const color = '#A3FFD6';
+        const icons = {
+            dashboard: <ChartNoAxesColumn size={size} color={color} />,
+            inventory: <Package2 size={size} color={color} />,
+            sales: <ReceiptText size={size} color={color} />,
+            customers: <ContactIcon size={size} color={color} />,
+            users: <UsersIcon size={size} color={color} />,
+            general: <Info size={size} color={color} />,
+        };
+
+        return icons[iconName as keyof typeof icons] || <Info size={size} color={color} />;
+    };
+
+    const { business } = data;
+
+    if (!business) return null;
+
     return (
-        <aside className="h-screen z-[20] sticky top-0 transition-transform -translate-x-full sm:translate-x-0">
-          <div
-              className={`${Sidebar()} bg-gray-800 dark:bg-gray-800`}>
-
-            <div className={`${Sidebar.Header()} border-b-1 border-b-gray-700 pb-4 ml-0 mr-0 pl-0 pr-0`}>
-              <CompaniesDropdown data={data}/>
+        <div className="flex h-full flex-col">
+            <div className="flex items-center justify-between border-b border-gray-700 p-4">
+                <CompaniesDropdown data={data}/>
+                {isMobile && (
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={onClose}
+                        className="lg:hidden text-gray-400 hover:text-gray-100"
+                    >
+                        <X className="h-5 w-5" />
+                    </Button>
+                )}
             </div>
-            <div className={Sidebar.Body()}>
-              <div className="h-full px-1 py-4 dark:bg-gray-800">
-                  <ul className="space-y-2 font-medium">
-                      {myMenuItems.map((label, labelIndex: number) => {
-                          return <li key={labelIndex}>
-                              <a href="#" className="flex items-center p-2 text-gray-100 rounded-lg dark:text-white hover:bg-gray-700 dark:hover:bg-gray-700 group w-full" onClick={()=>setVisibleIndex(labelIndex)}>
-                                  <div className="flex-1 flex items-center ">
-                                      <span className="text-xs">{getIcon(label.icon)}</span>
-                                      <span className="ml-2">{label.label}</span>
-                                  </div>
-                                  <ChevronDownIcon className="self-end" />
-                              </a>
 
-                              {(visibleIndex === labelIndex) &&
-                                  <ul id={`label-${labelIndex}`}
-                                      className="py-2 space-y-2">
-                                      {label.items.map((item, index) => {
-                                          return (<li key={index}
-                                                      className="flex items-center w-full transition duration-75 rounded-lg hover:bg-gray-700">
-                                              <Link href={item.link}
-                                                    className="flex items-center py-1 px-2 text-gray-200 rounded-lg dark:text-white group">
-                                                  <span className="ms-3 text-sm">{item.title}</span>
-                                              </Link>
-                                          </li>)
-                                      })}
-                                      <li className="flex pt-4 mt-4 space-y-2 font-medium border-b-1 border-b-gray-700 dark:border-gray-700 w-full"></li>
-                                  </ul>}
-                          </li>
-                      })}
-                  </ul>
-                  <div className="absolute left-0 bottom-0 w-full">
-                      <div className="flex pt-4 mt-4 mb-2 space-y-2 font-medium border-b-1 border-b-gray-700 dark:border-gray-700 w-full"></div>
-                      <Link href="#"
-                            className="pl-4 flex items-center p-0 text-gray-400 rounded-lg dark:text-white hover:bg-gray-700 dark:hover:bg-gray-700 group"
-                            onClick={() => {
-                            }}>
-                          <Settings size={18}/>
-                          <span className="ml-2">Settings</span>
-                      </Link>
-                      <div
-                          className="flex pt-2 mt-0 mb-2 space-y-2 font-medium border-b-1 border-b-gray-700 dark:border-gray-700 w-full"></div>
-                      <p className="text-xs text-gray-500 mt-2 p-2  mb-4 pl-4">&copy; {(new Date()).getFullYear()} Settlo
-                          Technologies Ltd</p>
-                  </div>
-              </div>
+            <div className="flex-1 overflow-y-auto">
+                <nav className="flex-1 space-y-1 px-2 py-4">
+                    {myMenuItems.map((section, sectionIndex) => (
+                        <div key={sectionIndex} className="py-2">
+                            <button
+                                onClick={() => setVisibleIndex(visibleIndex === sectionIndex ? -1 : sectionIndex)}
+                                className={cn(
+                                    "flex w-full items-center justify-between rounded-lg p-2",
+                                    "text-gray-100 hover:bg-gray-700",
+                                    "transition-colors duration-200"
+                                )}
+                            >
+                                <div className="flex items-center">
+                                    <span className="text-xs">{getIcon(section.icon)}</span>
+                                    <span className="ml-2 text-sm font-medium">{section.label}</span>
+                                </div>
+                                <ChevronDown
+                                    className={cn(
+                                        "h-4 w-4 transition-transform duration-200",
+                                        visibleIndex === sectionIndex && "rotate-180"
+                                    )}
+                                />
+                            </button>
+
+                            {visibleIndex === sectionIndex && (
+                                <div className="mt-2 space-y-1">
+                                    {section.items.map((item, index) => (
+                                        <Link
+                                            key={index}
+                                            href={item.link}
+                                            onClick={isMobile ? onClose : undefined}
+                                            className={cn(
+                                                "block w-full rounded-lg px-2 py-1.5 pl-10",
+                                                "text-sm text-gray-200 hover:bg-gray-700",
+                                                "transition-colors duration-200"
+                                            )}
+                                        >
+                                            {item.title}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    ))}
+                </nav>
             </div>
-          </div>
-            {/*<div
-              className={Sidebar({
-                collapsed: collapsed,
-              })}>
-            <div className={Sidebar.Header()}>
-              <CompaniesDropdown data={data}/>
+
+            <div className="border-t border-gray-700 p-4">
+                <Link
+                    href="/settings"
+                    className={cn(
+                        "flex items-center rounded-lg px-2 py-1.5",
+                        "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
+                        "transition-colors duration-200"
+                    )}
+                >
+                    <Settings className="mr-2 h-4 w-4"/>
+                    <span>Settings</span>
+                </Link>
+
+                <p className="mt-4 text-xs text-gray-500">
+                    &copy; {new Date().getFullYear()} Settlo Technologies Ltd
+                </p>
             </div>
-            <div className="flex flex-col justify-between h-full">
-              <div className={Sidebar.Body()}>
+        </div>
+    );
+};
 
-                <SidebarMenu title="Dashbboard">
-                  <SidebarItem
-                      isActive={pathname === "/summary"}
-                      title="Summary"
-                      icon={<HomeIcon/>}
-                      href="/summary"
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/top-selling"}
-                      title="Top selling items"
-                      icon={<BarChartIcon/>}
-                      href="/top-selling"
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/staff-report"}
-                      title="Staff report"
-                      icon={<PieChartIcon/>}
-                      href="/staff-report"
-                  />
-                </SidebarMenu>
+export const SidebarWrapper = ({ data }: { data: BusinessPropsType }) => {
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-                <SidebarMenu title="Inventory">
-                  <SidebarItem
-                      isActive={pathname === "/products"}
-                      title="Products"
-                      icon={<ChevronRightIcon/>}
-                      href="/products"
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/suppliers"}
-                      title="Suppliers"
-                      icon={<ChevronRightIcon/>}
-                      href="/suppliers"
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/categories"}
-                      title="Categories"
-                      icon={<ChevronRightIcon/>}
-                      href="/categories"
-                  />
+    return (
+        <>
+            {/* Desktop Sidebar */}
+            <aside className="hidden lg:block left-0 top-0 h-screen w-64 bg-gray-800">
+                <SidebarContent data={data} />
+            </aside>
 
-                </SidebarMenu>
-
-                <SidebarMenu title="Sales">
-                  <SidebarItem
-                      isActive={pathname === "/orders"}
-                      title="Completed Orders"
-                      icon={<ChevronRightIcon/>}
-                      href='/orders'
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/tickets"}
-                      title="Tickets"
-                      icon={<ChevronRightIcon/>}
-                      href='/tickets'
-                  />
-                </SidebarMenu>
-                <SidebarMenu title="Customers">
-
-                  <SidebarItem
-                      isActive={pathname === "/customers"}
-                      title="Customers"
-                      icon={<ChevronRightIcon/>}
-                      href='/customers'
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/discounts"}
-                      title="Discounts"
-                      icon={<ChevronRightIcon/>}
-                      href='/discounts'
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/sms"}
-                      title="SMS marketing"
-                      icon={<ChevronRightIcon/>}
-                      href='/sms'
-                  />
-                </SidebarMenu>
-                <SidebarMenu title="Users">
-                  <SidebarItem
-                      isActive={pathname === "/roles"}
-                      title="Roles"
-                      icon={<ChevronRightIcon/>}
-                      href='/roles'
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/users"}
-                      title="Users"
-                      icon={<ChevronRightIcon/>}
-                      href='/users'
-                  />
-                </SidebarMenu>
-                <SidebarMenu title="General">
-                  <SidebarItem
-                      isActive={pathname === "/countries"}
-                      title="Countries"
-                      icon={<ChevronRightIcon/>}
-                      href='/countries'
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/departments"}
-                      title="Departments"
-                      icon={<ChevronRightIcon/>}
-                      href='/departments'
-                  />
-
-                  <SidebarItem
-                      isActive={pathname === "/business"}
-                      title="Business"
-                      icon={<ChevronRightIcon/>}
-                      href='/business'
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/expenses"}
-                      title="Expenses"
-                      icon={<ChevronRightIcon/>}
-                      href='/expenses'
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/tables"}
-                      title="Tables & Spaces"
-                      icon={<ChevronRightIcon/>}
-                      href='/tables'
-                  />
-                  <SidebarItem
-                      isActive={pathname === "/kds"}
-                      title="KDS"
-                      icon={<ChevronRightIcon/>}
-                      href='/kds'
-                  />
-
-                </SidebarMenu>
-
-              </div>
-
-              <div className={Sidebar.Footer()}>
-                <p className="text-xs">&copy; {(new Date()).getFullYear()} Settlo Tech Ltd</p>
-              </div>
-            </div>
-          </div>*/}
-        </aside>
-  );
-  } else {
-    return <></>
-  }
+            {/* Mobile Sidebar */}
+            <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+                <SheetTrigger asChild>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="fixed top-4 left-4 z-40 lg:hidden"
+                    >
+                        <ChartNoAxesColumn className="h-6 w-6" />
+                    </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 p-0 bg-gray-800">
+                    <SidebarContent
+                        data={data}
+                        isMobile={true}
+                        onClose={() => setIsSidebarOpen(false)}
+                    />
+                </SheetContent>
+            </Sheet>
+        </>
+    );
 };

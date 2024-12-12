@@ -29,6 +29,7 @@ export default async function LocationPage({
             item = await getLocation(params.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
+            console.log(error);
             // Ignore redirect error
             if (isNotFoundError(error)) throw error;
 

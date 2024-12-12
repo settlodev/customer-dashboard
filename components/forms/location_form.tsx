@@ -283,7 +283,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
               </div>
             </div>
             <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              
+
               {
                 item && (
                   <div className="grid gap-2">
@@ -331,20 +331,19 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                 )}
               />
             </div>
-
-            {isPending ? (
-              <div className="flex justify-center items-center bg-black rounded p-2 text-white">
-                <Loader2Icon className="w-6 h-6 animate-spin" />
-              </div>
-            ) : (
-              <Button
-                type="submit"
-                disabled={isPending}
-                className={`mt-4 w-full capitalize`}
-              >
-                setup business location
-              </Button>
-            )}
+          <Button
+              type="submit"
+              disabled={isPending}
+              className="mt-4 w-full">
+              {isPending ? (
+                  <>
+                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                      Processing
+                  </>
+              ) : (
+                  <>{item ? 'Update business location' : 'Setup business location'}</>
+              )}
+          </Button>
           </form>
         </Form>
       </>

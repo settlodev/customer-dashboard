@@ -47,7 +47,7 @@ class ApiClient {
             const response = await this.instance.get<T>(url, config);
             return response.data;
         } catch (error) {
-            throw handleSettloApiError(error as ErrorMessageType);
+            throw await handleSettloApiError(error as ErrorMessageType);
         }
     }
 
@@ -61,7 +61,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            throw handleSettloApiError(error as ErrorMessageType);
+            throw await handleSettloApiError(error as ErrorMessageType);
         }
     }
 
@@ -75,7 +75,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            throw handleSettloApiError(error as ErrorMessageType);
+            throw await handleSettloApiError(error as ErrorMessageType);
         }
     }
 
@@ -85,7 +85,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            throw handleSettloApiError(error as ErrorMessageType);
+            throw await handleSettloApiError(error as ErrorMessageType);
         }
     }
 }

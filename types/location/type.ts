@@ -16,7 +16,7 @@ export interface Location {
     status: boolean;
     canDelete: boolean;
     setting: string;
-    business: string;
+    business: UUID;
     endDate: string;
     subscriptionStatus: subscriptionStatus;
     isArchived: boolean;

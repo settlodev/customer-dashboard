@@ -15,19 +15,34 @@ import {Location} from "@/types/location/type";
 import {LocationSchema} from "@/types/location/schema";
 
 export const fetchAllLocations = async (): Promise<Location[] | null> => {
-    await getAuthenticatedUser();
-
     try {
-        const business = await getCurrentBusiness();
+        console.log('👤 Getting authenticated user...');
+        const user = await getAuthenticatedUser();
+        console.log('✅ Authenticated user:', user);
 
+        console.log('🏢 Fetching current business...');
+        const business = await getCurrentBusiness();
+        console.log('📦 Current business:', business);
+
+        if (!business) {
+            console.warn('⚠️ No business found, returning null');
+            return null;
+        }
+
+        console.log(`🔄 Creating API client and fetching locations for business ID: ${business.id}`);
         const apiClient = new ApiClient();
 
         const locationsData = await apiClient.get(
-            `/api/locations/${business?.id}`,
+            `/api/locations/${business.id}`,
         );
+        console.log('📍 Raw locations data:', locationsData);
 
-        return parseStringify(locationsData);
+        const parsedLocations = parseStringify(locationsData);
+        console.log('✨ Parsed locations:', parsedLocations);
+
+        return parsedLocations;
     } catch (error) {
+        console.error('❌ Error in fetchAllLocations:', error);
         throw error;
     }
 };
@@ -48,7 +63,7 @@ export const searchLocations = async (
                 {
                     key: "name",
                     operator: "LIKE",
-                    field_type: "STRING",
+                    field_type: "UUID_STRING",
                     value: q,
                 },
             ],
@@ -68,65 +83,104 @@ export const searchLocations = async (
             query,
         );
 
+        console.log(data)
         return parseStringify(data);
 
     } catch (error) {
+
+        console.log(error)
         throw error;
     }
 };
 
 export const createLocation = async (
     location: z.infer<typeof LocationSchema>,
-): Promise<FormResponse | void> => {
+): Promise<FormResponse> => {
     let formResponse: FormResponse | null = null;
-    const authenticatedUser = await getAuthenticatedUser();
-
-    if ("responseType" in authenticatedUser)
-        return parseStringify(authenticatedUser);
-
-    const validatedData = LocationSchema.safeParse(location);
-
-    console.log("Validation result:", validatedData);
-
-    if (!validatedData.success) {
-        formResponse = {
-            responseType: "error",
-            message: "Please fill in all the fields marked with * before proceeding",
-            error: new Error(validatedData.error.message),
-        };
-
-        return parseStringify(formResponse);
-    }
 
     try {
-        const apiClient = new ApiClient();
+        // Authentication check
+        const authenticatedUser = await getAuthenticatedUser();
+        if ("responseType" in authenticatedUser) {
+            return parseStringify({
+                responseType: "error",
+                message: "Authentication failed",
+                error: new Error("User not authenticated")
+            });
+        }
+
+        // Validate input data
+        const validatedData = LocationSchema.safeParse(location);
+        if (!validatedData.success) {
+            return parseStringify({
+                responseType: "error",
+                message: "Please fill in all the fields marked with * before proceeding",
+                error: new Error(validatedData.error.message),
+            });
+        }
+
+        // Get current business
         const business = await getCurrentBusiness();
+        if (!business?.id) {
+            console.error('Business ID not found', {
+                authenticatedUser,
+                location
+            });
+            return parseStringify({
+                responseType: "error",
+                message: "Business information not found",
+                error: new Error("Business ID is required")
+            });
+        }
 
-
+        // Prepare payload
         const payload = {
             ...validatedData.data,
-            business: business?.id,
+            business: business.id,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
         };
 
-        await apiClient.post(
-            `/api/locations/${business?.id}/create`,
+        const apiClient = new ApiClient();
+        const response = await apiClient.post(
+            `/api/locations/${business.id}/create`,
             payload,
         );
+
+        formResponse = parseStringify({
+            responseType: "success",
+            message: "Location created successfully",
+            data: response
+        });
+
     } catch (error: unknown) {
-        formResponse = {
+        console.error('Error creating location', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            location
+        });
+
+        return parseStringify({
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
-        };
+        });
     }
 
     if (formResponse) {
-        return parseStringify(formResponse);
+        if (formResponse.responseType === "success") {
+            revalidatePath("/locations");
+            redirect("/locations");
+        }
+        return formResponse;
     }
 
-    revalidatePath("/locations");
-    redirect("/locations");
+    // Fallback
+    return parseStringify({
+        responseType: "error",
+        message: "An unexpected error occurred",
+        error: new Error("No response was generated")
+    });
 };
 
 export const updateLocation = async (

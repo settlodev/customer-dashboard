@@ -10,6 +10,7 @@ import {revalidatePath} from "next/cache";
 import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
+import {redirect} from "next/navigation";
 
 export const fetchAllCustomers = async () : Promise<Customer[]> => {
     await  getAuthenticatedUser();
@@ -22,7 +23,7 @@ export const fetchAllCustomers = async () : Promise<Customer[]> => {
         const customerData = await  apiClient.get(
             `/api/customers/${location?.id}`,
         );
-       
+
         return parseStringify(customerData);
 
     }
@@ -95,7 +96,7 @@ export const  createCustomer= async (
     }
     try {
         const apiClient = new ApiClient();
-      
+
 
         await apiClient.post(
             `/api/customers/${location?.id}/create`,
@@ -117,6 +118,7 @@ export const  createCustomer= async (
     }
 
     revalidatePath("/customers");
+    redirect("/customers");
     return parseStringify(formResponse);
 }
 
@@ -140,7 +142,7 @@ export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
         `/api/customers/${location?.id}`,
         query,
     );
-    
+
     return parseStringify(customerResponse)
 }
 
@@ -168,13 +170,13 @@ export const updateCustomer = async (
         location: location?.id,
     };
 
-    
+
 
     try {
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/customers/${location?.id}/${id}`, 
+            `/api/customers/${location?.id}/${id}`,
             payload
         );
         formResponse = {
@@ -204,12 +206,12 @@ export const deleteCustomer = async (id: UUID): Promise<void> => {
     const apiClient = new ApiClient();
 
     const location = await getCurrentLocation();
-   
+
     await apiClient.delete(
         `/api/customers/${location?.id}/${id}`,
     );
     revalidatePath("/customers");
-    
+
    }
    catch (error){
        throw error

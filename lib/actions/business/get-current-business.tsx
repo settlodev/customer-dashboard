@@ -8,15 +8,63 @@ import {endpoints} from "@/types/endpoints";
 import ApiClient from "@/lib/settlo-api-client";
 import {UUID} from "node:crypto";
 import {Location} from "@/types/location/type";
+import {getBusiness} from "@/lib/actions/business/get";
 
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {
-    const businessCookie = cookies().get("currentBusiness");
-    if (!businessCookie) return undefined;
+    console.log('🏢 Starting getCurrentBusiness...');
 
     try {
-        return JSON.parse(businessCookie.value) as Business;
+        // Check for existing business cookie
+        const businessCookie = cookies().get("currentBusiness");
+        console.log('🍪 Business cookie status:', businessCookie ? 'found' : 'not found');
+
+        // If cookie exists, try to parse it
+        if (businessCookie) {
+            try {
+                const parsedBusiness = JSON.parse(businessCookie.value) as Business;
+                console.log('✅ Successfully retrieved business from cookie');
+                return parsedBusiness;
+            } catch (error) {
+                console.error('❌ Failed to parse business cookie:', error);
+                // Remove invalid cookie
+                cookies().delete("currentBusiness");
+            }
+        }
+
+        // No cookie or invalid cookie, fetch fresh data
+        console.log('🔄 Fetching fresh business data...');
+        const currentLocation = await getCurrentLocation();
+
+        if (!currentLocation?.business) {
+            console.warn('⚠️ No business ID found in current location');
+            return undefined;
+        }
+
+        const currentBusiness = await getBusiness(currentLocation.business);
+
+        if (!currentBusiness) {
+            console.warn('⚠️ No business found for ID:', currentLocation.business);
+            return undefined;
+        }
+
+        // Set new cookie with business data
+        try {
+            cookies().set("currentBusiness", JSON.stringify(currentBusiness), {
+                path: "/",
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 7 * 24 * 60 * 60, // 7 days
+            });
+            console.log('✅ Successfully set new business cookie');
+        } catch (error) {
+            console.error('❌ Failed to set business cookie:', error);
+            // Continue without setting cookie
+        }
+
+        return parseStringify(currentBusiness);
     } catch (error) {
-        console.error("Failed to parse business cookie:", error);
+        console.error('❌ Error in getCurrentBusiness:', error);
         return undefined;
     }
 };
