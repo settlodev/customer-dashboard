@@ -18,6 +18,7 @@ export const VariantSchema = object({
     image: string().nullable().optional(),
     color: string().nullable().optional(), 
     stockVariant: string().nullable().optional(),
+    recipe:string().nullable().optional(),
 });
 
 

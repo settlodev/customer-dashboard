@@ -30,7 +30,6 @@ import { businessTimes } from "@/types/constants";
 import { Switch } from "../ui/switch";
 
 const LocationForm = ({ item }: { item: Location | null | undefined }) => {
-  console.log("The item found is",item)
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
 

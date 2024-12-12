@@ -8,7 +8,7 @@ import {
     CardTitle
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import {
     Form,
     FormControl,
@@ -64,7 +64,36 @@ import { useRouter } from 'next/navigation';
 import { StockSchema } from "@/types/stock/schema";
 import { StockVariantSchema } from "@/types/stockVariant/schema";
 import { StockFormVariant } from "@/types/stockVariant/type";
-// import { console } from "inspector";
+import { createRecipe, fetchRecipes } from "@/lib/actions/recipe-actions";
+import { Recipe } from "@/types/recipe/type";
+import { RecipeSchema } from "@/types/recipe/schema";
+import { MultiSelect } from "../ui/multi-select";
+const inventoryType = [
+    {
+        id: 1,
+        "name": "stock"
+    },
+    {
+        id: 2,
+        "name": "recipe"
+    }
+]
+interface NoItemMessageProp {
+    message: string,
+    onClick: any
+
+}
+const NoItemsMessage = ({ message, onClick }: NoItemMessageProp) => (
+    <div className="flex flex-col mt-2 gap-2">
+        <p className="text-sm text-red-500 font-bold">{message}</p>
+        <Button onClick={(e) => {
+            e.preventDefault();
+            onClick();
+        }}>
+            Add {message.includes('recipe') ? 'Recipe' : 'Stock'}
+        </Button>
+    </div>
+);
 
 const ProductForm = ({ item }: { item: Product | null | undefined }) => {
 
@@ -93,23 +122,29 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     const [categoryModalVisible, setCategoryModalVisible] = useState<boolean>(false);
     const [departmentModalVisible, setDepartmentModalVisible] = useState<boolean>(false);
     const [unitModalVisible, setUnitModalVisible] = useState<boolean>(false);
-    const [inventoryTracking, setInventoryTracking] = useState<boolean>(false);
+    const [, setInventoryTracking] = useState<boolean>(false);
     const [stockModalVisible, setStockModalVisible] = useState<boolean>(false);
+    const [recipeModalVisible, setRecipeModalVisible] = useState<boolean>(false);
+    const [inventoryTrackingType, setInventoryTrackingType] = useState<boolean>(false);
     const [, setStocks] = useState<Stock[]>([]);
+    const [recipes, setRecipes] = useState<Recipe[]>([]);
     const [combinedStockOptions, setCombinedStockOptions] = useState<{ id: string; displayName: string }[]>([]);
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
+    const [stockSelected, setStockSelected] = useState<string>('');
+    const [recipeSelected, setRecipeSelected] = useState<string>('');
 
     useEffect(() => {
         const getData = async () => {
             try {
-                const [categoryResponse, departmentResponse, brandResponse, unitResponse, stockResponse] = await Promise.all([
+                const [categoryResponse, departmentResponse, brandResponse, unitResponse, stockResponse, recipeResponse] = await Promise.all([
                     fetchAllCategories(),
                     fectchAllDepartments(),
                     fectchAllBrands(),
                     fetchUnits(),
-                    fetchStock()
+                    fetchStock(),
+                    fetchRecipes()
                 ])
                 setCategories(categoryResponse);
                 setDepartments(departmentResponse);
@@ -117,6 +152,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                 setUnits(unitResponse);
                 setFilteredUnits(unitResponse);
                 setStocks(stockResponse);
+                setRecipes(recipeResponse);
 
                 const combinedOptions = stockResponse.flatMap(stock => stock.stockVariants.map(variant => ({ id: variant.id, displayName: `${stock.name} - ${variant.name}` })));
                 console.log("The combined stock is", combinedOptions)
@@ -164,6 +200,10 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
         resolver: zodResolver(StockSchema)
     })
 
+    const recipeForm = useForm<z.infer<typeof RecipeSchema>>({
+        resolver: zodResolver(RecipeSchema)
+    })
+
     const stockVariantForm = useForm<z.infer<typeof StockVariantSchema>>({
         resolver: zodResolver(StockVariantSchema),
         defaultValues: {
@@ -185,6 +225,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
             image: '',
             unit: '',
             stockVariant: '',
+            recipe: ''
         },
     });
 
@@ -328,6 +369,23 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                 })
         })
     }
+    const submitRecipeData = (values: z.infer<typeof RecipeSchema>) => {
+        // values.stockVariants = stockVariants;
+
+        console.log("The submit data for stock is", values)
+        startTransition(() => {
+            createRecipe(values)
+                .then(async () => {
+                    const recipes = await fetchRecipes();
+                    console.log("The recipes are ", recipes)
+                    setRecipes(recipes);
+                    setRecipeModalVisible(false)
+                })
+                .catch((err) => {
+                    console.log("Error while creating recipe: ", err)
+                })
+        })
+    }
 
     const saveVariantItem = (values: z.infer<typeof VariantSchema>) => {
         if (variantImageUrl) {
@@ -366,7 +424,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     }
 
     const handleUpdateVariant = async (values: z.infer<typeof VariantSchema>) => {
-        
+
 
         if (variantImageUrl) {
             values.image = variantImageUrl;
@@ -440,16 +498,29 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     const openStockModal = () => {
         setStockModalVisible(true)
     }
+    const openRecipeModal = () => {
+        setRecipeModalVisible(true)
+    }
+
+    const { fields: selectedVariants, append, remove } = useFieldArray({
+        control: recipeForm.control,
+        name: "stockVariants",
+      })
     const handleInventoryTrackingChange = (value: boolean) => {
-        setInventoryTracking(value);
-        toast({
-            title: "Inventory Tracking",
-            description: value
-                ? "You will need to select stock and stock variant(s) to track this product."
-                : "You won't be able to track the stock and stock variant for this product.",
-            variant: "default",
-            duration: 3000,
-        })
+        console.log("The inventory tracking value is", value)
+
+        if (value === true) {
+            setInventoryTracking(value);
+            setInventoryTrackingType(!inventoryTrackingType)
+        }
+        // toast({
+        //     title: "Inventory Tracking",
+        //     description: value
+        //         ? "You will need to select stock and stock variant(s) to track this product."
+        //         : "You won't be able to track the stock and stock variant for this product.",
+        //     variant: "default",
+        //     duration: 3000,
+        // })
     };
 
     const saveStockVariantItem = (values: z.infer<typeof StockVariantSchema>) => {
@@ -469,10 +540,19 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     const openUnitModal = () => {
         setUnitModalVisible(true)
     }
-    const handleUnitSelected = (unit:any) =>{
+    const handleUnitSelected = (unit: any) => {
         setSearchTerm(unit.name)
         setFilteredUnits([])
         setUnitModalVisible(false)
+    }
+
+    const handleTypeSelected = (type: any) => {
+        console.log("The type selected is", type)
+        if (type.name === 'stock') {
+            setStockSelected(type.name)
+        }
+        setRecipeSelected(type.name)
+        setInventoryTrackingType(false)
     }
 
 
@@ -864,27 +944,189 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
             : <></>
         }
 
-{unitModalVisible ? (
-    <>
-        <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
-        <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
-            <div className="w-[550px] h-[350px] p-5 bg-white rounded-md flex flex-col">
-                
-                <div className="flex-grow overflow-y-auto">
-                    {units.map((unit) => (
-                        <div key={unit.id} className="p-2 border-b cursor-pointer" onClick={()=>{handleUnitSelected(unit)}}>
-                            <p className="text-sm">{unit.name}</p>
+        {recipeModalVisible ?
+            <>
+                <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
+                <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
+                    <div className="w-[250px] p-5 bg-white rounded-md">
+                        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
+                            <div className="flex flex-col-reverse lg:flex-row gap-10">
+                                <div className="flex-1 lg:w-1/3">
+                                    <Form {...recipeForm}>
+                                        <form
+                                            onSubmit={recipeForm.handleSubmit(submitRecipeData, onInvalid)}
+                                            className={`gap-1`}>
+                                            <div>
+                                                <FormError message={error} />
+                                                <FormSuccess message={success} />
+                                                <div className="bg-gray-200 pl-3 pr-3 pt-2 pb-2 border-0 border-emerald-100- flex">
+                                                    <h3 className="font-bold flex-1">Add recipe to track inventory</h3>
+                                                    <span className="flex-end"><ChevronDownIcon /></span>
+                                                </div>
+
+                                                <div className="mt-4 flex">
+                                                    <div className="flex-1">
+                                                        <FormField
+                                                            control={stockForm.control}
+                                                            name="name"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Recipe Name</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            placeholder="Enter recipe name"
+                                                                            {...field}
+                                                                            value={field.value}
+                                                                            disabled={isPending}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <FormField
+                                                    control={recipeForm.control}
+                                                    name="stockVariants"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Stock Variant</FormLabel>
+                                                            <FormControl>
+                                                                <MultiSelect
+                                                                    options={combinedStockOptions.map((option) => ({
+                                                                        label: option.displayName,
+                                                                        value: option.id,
+                                                                    }))}
+                                                                    onValueChange={(selectedValues) => {
+                                                                        // const existingVariants = form.getValues("stockVariants") || [];
+
+                                                                        const updatedVariants = selectedValues.map((value) => {
+                                                                            // const existingVariant = existingVariants.find((variant) => variant.id === value);
+                                                                            const stockVariant = combinedStockOptions.find((option) => option.id === value);
+
+                                                                            return {
+                                                                                id: value,
+                                                                                displayName: stockVariant ? stockVariant.displayName : "",
+                                                                                quantity: 0,
+                                                                            };
+                                                                        });
+
+                                                                        remove(); 
+                                                                        // updatedVariants.forEach((variant) => append(variant));
+                                                                    }}
+                                                                    {...field}
+                                                                    placeholder="Select variant"
+                                                                    // value={form.watch("stockVariants")?.map((variant) => variant.id) || []}
+                                                                />
+
+
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+
+                                                <div className="flex flex-col">
+                                                    {selectedVariants.map((variant, index) => (
+                                                        <FormField
+                                                            key={variant.id}
+                                                            control={recipeForm.control}
+                                                            name={`stockVariants.${index}.quantity`}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    {/* <FormLabel>Quantity for {variant.displayName}</FormLabel> */}
+                                                                    <FormLabel>Quantity</FormLabel>
+                                                                    <FormControl>
+                                                                        <Input
+                                                                            type="number"
+                                                                            placeholder="Enter quantity"
+                                                                            {...field} // Correctly bind field props
+                                                                            value={field.value || variant.quantity} // Preserve existing value
+                                                                            onChange={(e) => {
+                                                                                const newValue = parseFloat(e.target.value);
+                                                                                field.onChange(newValue); // Update form state
+                                                                                // form.setValue(`stockVariants.${index}.quantity`, newValue); 
+                                                                            }}
+                                                                            disabled={isPending}
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
+                                                    ))}
+
+                                                </div>
+
+                                            </div>
+
+                                            <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
+                                                <Button variant='default' onClick={() => { setRecipeModalVisible(false) }}>cancel</Button>
+                                                <Separator orientation="vertical" />
+                                                <SubmitButton
+                                                    isPending={isPending}
+                                                    label={"Add recipe"}
+                                                />
+                                            </div>
+                                        </form>
+                                    </Form>
+                                </div>
+
+
+                            </div>
                         </div>
-                    ))}
+
+                    </div>
                 </div>
-                
-                <div className="mt-4">
-                <button onClick={()=>{setUnitModalVisible(false)}} className="bg-black-2 p-2 rounded-md text-white text-sm capitalize">cancel</button>
+            </>
+            : <></>
+        }
+
+        {unitModalVisible ? (
+            <>
+                <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
+                <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
+                    <div className="w-[550px] h-[350px] p-5 bg-white rounded-md flex flex-col">
+
+                        <div className="flex-grow overflow-y-auto">
+                            {units.map((unit) => (
+                                <div key={unit.id} className="p-2 border-b cursor-pointer" onClick={() => { handleUnitSelected(unit) }}>
+                                    <p className="text-sm">{unit.name}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-4">
+                            <button onClick={() => { setUnitModalVisible(false) }} className="bg-black-2 p-2 rounded-md text-white text-sm capitalize">cancel</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </>
-) : null}
+            </>
+        ) : null}
+
+        {inventoryTrackingType ? (
+            <>
+                <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
+                <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
+                    <div className="w-[250px] h-[200px] p-5 bg-white rounded-md flex flex-col">
+                        <p>What do you want to track</p>
+                        <div className="flex-grow overflow-y-auto">
+                            {inventoryType.map((type) => (
+                                <div key={type.id} className="p-2 border-b cursor-pointer mt-2" onClick={() => { handleTypeSelected(type) }}>
+                                    <p className="text-sm uppercase font-bold">{type.name}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-4">
+                            <button onClick={() => { setInventoryTrackingType(false) }} className="bg-black-2 p-2 rounded-md text-white text-sm capitalize">cancel</button>
+                        </div>
+                    </div>
+                </div>
+            </>
+        ) : null}
 
 
 
@@ -1343,7 +1585,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                         )}
                                     />
 
-                                    {inventoryTracking && (
+                                    {stockSelected && (
                                         <>
                                             {combinedStockOptions && combinedStockOptions.length > 0 ? (
                                                 <FormField
@@ -1351,7 +1593,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                     name="stockVariant"
                                                     render={({ field }) => (
                                                         <FormItem className="flex flex-col mt-2">
-                                                            <FormLabel>Stock Variant</FormLabel>
+                                                            <FormLabel>Stock Item</FormLabel>
                                                             <FormControl>
                                                                 <Select
                                                                     value={field.value || ''}
@@ -1359,9 +1601,9 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                                     disabled={isPending}
                                                                 >
                                                                     <SelectTrigger>
-                                                                        <SelectValue placeholder="Select stock variant" />
+                                                                        <SelectValue placeholder="Select stock item" />
                                                                     </SelectTrigger>
-                                                                    
+
                                                                     <SelectContent className="flex-grow overflow-y-auto">
                                                                         {combinedStockOptions.map((option) => (
                                                                             <SelectItem key={option.id} value={option.id}>
@@ -1387,6 +1629,61 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                         </>
                                     )}
 
+                                    {recipeSelected && (
+                                        <>
+                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
+                                                // Check if there are recipes available
+                                                recipes && recipes.length > 0 ? (
+                                                    <FormField
+                                                        control={variantForm.control}
+                                                        name="recipe"
+                                                        render={({ field }) => (
+                                                            <FormItem className="flex flex-col mt-2">
+                                                                <FormLabel>Recipe</FormLabel>
+                                                                <FormControl>
+                                                                    <Select
+                                                                        value={field.value || ''}
+                                                                        onValueChange={field.onChange}
+                                                                        disabled={isPending}
+                                                                    >
+                                                                        <SelectTrigger>
+                                                                            <SelectValue placeholder="Select stock item" />
+                                                                        </SelectTrigger>
+
+                                                                        <SelectContent className="flex-grow overflow-y-auto">
+                                                                            {recipes.map((option) => (
+                                                                                <SelectItem key={option.id} value={option.id}>
+                                                                                    {option.name}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    // No recipes available
+                                                    <NoItemsMessage
+                                                        message="No recipe available"
+                                                        onClick={openRecipeModal}
+                                                    />
+                                                )
+                                            ) : (
+                                                // No stock options available
+                                                <NoItemsMessage
+                                                    message="No stock available"
+                                                    onClick={openStockModal}
+                                                />
+                                            )}
+                                        </>
+                                    )}
+
+
+
+
+
                                     <FormField
                                         control={variantForm.control}
                                         name="unit"
@@ -1401,7 +1698,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                                 type="search"
                                                                 placeholder="Search e.g Kilogram"
                                                                 className=" "
-                                                                value={searchTerm}
+                                                                value={searchTerm || ""}
                                                                 disabled={isPending}
                                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                             />

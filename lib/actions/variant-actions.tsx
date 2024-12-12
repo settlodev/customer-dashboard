@@ -92,7 +92,7 @@ export const  createVariant= async (
         ...validData.data,
         product: productId
     }
-    console.log("payload:", payload);
+    // console.log("payload:", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -161,7 +161,7 @@ export const updateVariant = async (
         ...validData.data,
         product: productId
     };
-    console.log("The payload to update product", payload);
+    console.log("The payload to update item", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -172,7 +172,7 @@ export const updateVariant = async (
         );
 
     } catch (error) {
-        console.error("Error updating product", error);
+        console.error("Error updating item", error);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",

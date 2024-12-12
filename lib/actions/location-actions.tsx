@@ -22,7 +22,7 @@ export const fetchAllLocations = async (): Promise<Location[] | null> => {
 
         console.log('🏢 Fetching current business...');
         const business = await getCurrentBusiness();
-        console.log('📦 Current business:', business);
+        // console.log('📦 Current business:', business);
 
         if (!business) {
             console.warn('⚠️ No business found, returning null');
@@ -35,10 +35,10 @@ export const fetchAllLocations = async (): Promise<Location[] | null> => {
         const locationsData = await apiClient.get(
             `/api/locations/${business.id}`,
         );
-        console.log('📍 Raw locations data:', locationsData);
+        // console.log('📍 Raw locations data:', locationsData);
 
         const parsedLocations = parseStringify(locationsData);
-        console.log('✨ Parsed locations:', parsedLocations);
+        // console.log('✨ Parsed locations:', parsedLocations);
 
         return parsedLocations;
     } catch (error) {

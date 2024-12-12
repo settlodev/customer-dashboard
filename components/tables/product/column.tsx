@@ -31,11 +31,11 @@ export const columns: ColumnDef<Product>[] = [
         enableHiding: false,
     },
     {
-        accessorKey: "variants",
+        accessorKey: "image",
         header: "Image",
         enableHiding: false,
         cell: ({ row }) => {
-            const image = row.original.variants[0].image;
+            const image = row.original.image;
             return ( image ? <Image src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" width={50} height={50} loading="lazy" /> : 
                 <div className="w-10 h-10 rounded-lg bg-emerald-500"></div>
             );
