@@ -24,7 +24,6 @@ export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
 
   const getIcon=(iconName: string)=>{
       const size:number = 20;
-      //const color:string = '#7CF5FF';
       const color:string = '#A3FFD6';
       if(iconName === 'dashboard') {
           return <ChartNoAxesColumn size={size} color={color} />
@@ -47,9 +46,6 @@ export const SidebarWrapper = ({data}: {data: BusinessPropsType}) => {
   if(business) {
     return (
         <aside className="h-screen z-[20] sticky top-0 transition-transform -translate-x-full sm:translate-x-0">
-          {/*{collapsed ? (
-              <div className={Sidebar.Overlay()} onClick={setCollapsed}/>
-          ) : null}*/}
           <div
               className={`${Sidebar()} bg-gray-800 dark:bg-gray-800`}>
 
