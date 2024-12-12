@@ -47,7 +47,7 @@ const LocationAuthForm = () => {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description:typeof errors.message === 'string' 
+        description:typeof errors.message === 'string'
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
@@ -130,7 +130,7 @@ const LocationAuthForm = () => {
                         </FormControl>
                         <FormMessage />
                       </FormItem>
-                      
+
                     )}
                   />
                 </div>
@@ -147,6 +147,7 @@ const LocationAuthForm = () => {
                             disabled={isPending}
                             type="email"
                             placeholder="Enter business location email"
+                            value={field.value || ""}
                           />
                         </FormControl>
                         <FormMessage />
@@ -207,6 +208,7 @@ const LocationAuthForm = () => {
                         <FormControl>
                           <Input
                             {...field}
+                            value={field.value || ""}
                             disabled={isPending}
                             placeholder="Which region do you operate?"
                           />
@@ -226,6 +228,7 @@ const LocationAuthForm = () => {
                         <FormControl>
                           <Input
                             {...field}
+                            value={field.value || ""}
                             disabled={isPending}
                             placeholder="Which street do you operate?"
                           />
@@ -297,6 +300,7 @@ const LocationAuthForm = () => {
                     <FormControl>
                       <Textarea
                         {...field}
+                        value={field.value || ""}
                         disabled={isPending}
                         placeholder="Describe your business location"
                       />
