@@ -41,7 +41,7 @@ import ProductDepartmentSelector from "@/components/widgets/product-department-s
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import { VariantSchema } from "@/types/variant/schema";
 import { Brand } from "@/types/brand/type";
-import { ChevronDownIcon, Eye, Pencil, PlusIcon, SearchIcon, X } from "lucide-react";
+import { ChevronDownIcon, Eye, Pencil, PlusIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
@@ -366,7 +366,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     }
 
     const handleUpdateVariant = async (values: z.infer<typeof VariantSchema>) => {
-        
+
 
         if (variantImageUrl) {
             values.image = variantImageUrl;
@@ -665,7 +665,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                                 return <div
                                                                     className="flex border-1 border-emerald-200 mt-0 items-center pt-0 pb-0 pl-0 mb-1"
                                                                     key={index}
-                                                                // onClick={() => handleEditVariant(stockVariants)}  
+                                                                // onClick={() => handleEditVariant(stockVariants)}
                                                                 >
                                                                     <p className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4">
                                                                         <span>{index + 1}</span></p>
@@ -678,7 +678,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                                         <p
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                // confirmDeleteVariant(stockVariants); 
+                                                                                // confirmDeleteVariant(stockVariants);
                                                                             }}
                                                                             className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
                                                                         >
@@ -869,7 +869,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
         <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
         <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
             <div className="w-[550px] h-[350px] p-5 bg-white rounded-md flex flex-col">
-                
+
                 <div className="flex-grow overflow-y-auto">
                     {units.map((unit) => (
                         <div key={unit.id} className="p-2 border-b cursor-pointer" onClick={()=>{handleUnitSelected(unit)}}>
@@ -877,7 +877,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                         </div>
                     ))}
                 </div>
-                
+
                 <div className="mt-4">
                 <button onClick={()=>{setUnitModalVisible(false)}} className="bg-black-2 p-2 rounded-md text-white text-sm capitalize">cancel</button>
                 </div>
@@ -1361,7 +1361,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                                     <SelectTrigger>
                                                                         <SelectValue placeholder="Select stock variant" />
                                                                     </SelectTrigger>
-                                                                    
+
                                                                     <SelectContent className="flex-grow overflow-y-auto">
                                                                         {combinedStockOptions.map((option) => (
                                                                             <SelectItem key={option.id} value={option.id}>

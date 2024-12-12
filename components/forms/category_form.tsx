@@ -26,7 +26,7 @@ import ProductCategorySelector from "@/components/widgets/product-category-selec
 import ItemStatusSelector from "@/components/widgets/item-status-selector";
 import {ItemStatuses} from "@/types/constants";
 import {useToast } from "@/hooks/use-toast";
-import {FolderTree, Tag} from "lucide-react";
+import {Tag} from "lucide-react";
 import {Card, CardContent, CardHeader, CardTitle} from "../ui/card";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
