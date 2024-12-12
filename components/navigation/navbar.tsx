@@ -1,7 +1,8 @@
 "use client"
+
 import React, {useState} from "react";
 import {Session} from "next-auth";
-import Header from "@/components/Header";
+import Header from "@/components/navigation/index";
 interface Props {
   children: React.ReactNode;
   data: Session|null

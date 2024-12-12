@@ -1,5 +1,3 @@
-// import { Meta } from './Meta';
-// import { AppConfig } from './AppConfig';
 import {CallToAction } from './Banner';
 import { Footer } from './Footer';
 import { Hero } from './Hero';
@@ -8,13 +6,12 @@ import { VerticalFeatures } from './VerticalFeatures';
 import { Testimonial } from './Testimonial';
 import { FAQS } from './Faqs';
 import { Pricing } from './Pricing';
-import LandingPageNav from "./LandingPageNav";
+import {LoggedOutNavbar} from "@/components/navigation/logged-out-user-nav";
 
 const Base = () => {
     return (
     <div className="min-h-screen flex flex-col items-center justify-center w-full antialiased max-w-[1280px] mx-auto">
-        {/* <Meta title={AppConfig.title} description={AppConfig.description} /> */}
-        <LandingPageNav />
+        <LoggedOutNavbar />
         <Hero />
         <Sponsors />
         <VerticalFeatures />

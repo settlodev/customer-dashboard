@@ -1,13 +1,13 @@
 "use server";
 
-import { UUID } from "node:crypto";
+import {UUID} from "node:crypto";
 
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import {revalidatePath} from "next/cache";
+import {redirect} from "next/navigation";
 import * as z from "zod";
 
-import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { parseStringify } from "@/lib/utils";
+import {getAuthenticatedUser} from "@/lib/auth-utils";
+import {parseStringify} from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
@@ -16,33 +16,21 @@ import {LocationSchema} from "@/types/location/schema";
 
 export const fetchAllLocations = async (): Promise<Location[] | null> => {
     try {
-        console.log('👤 Getting authenticated user...');
-        const user = await getAuthenticatedUser();
-        console.log('✅ Authenticated user:', user);
-
-        console.log('🏢 Fetching current business...');
         const business = await getCurrentBusiness();
-        console.log('📦 Current business:', business);
 
         if (!business) {
-            console.warn('⚠️ No business found, returning null');
             return null;
         }
 
-        console.log(`🔄 Creating API client and fetching locations for business ID: ${business.id}`);
         const apiClient = new ApiClient();
 
         const locationsData = await apiClient.get(
             `/api/locations/${business.id}`,
         );
-        console.log('📍 Raw locations data:', locationsData);
 
-        const parsedLocations = parseStringify(locationsData);
-        console.log('✨ Parsed locations:', parsedLocations);
-
-        return parsedLocations;
+        return parseStringify(locationsData);
     } catch (error) {
-        console.error('❌ Error in fetchAllLocations:', error);
+        console.error('Error in fetchAllLocations:', error);
         throw error;
     }
 };
@@ -87,8 +75,7 @@ export const searchLocations = async (
         return parseStringify(data);
 
     } catch (error) {
-
-        console.log(error)
+        console.error('Error in search locations:', error);
         throw error;
     }
 };

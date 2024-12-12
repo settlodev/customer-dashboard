@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
-import { Loader2Icon } from "lucide-react";
+import {Building2, Clock, Loader2Icon, Mail, MapPin} from "lucide-react";
 import { Location } from "@/types/location/type";
 import { createLocation, updateLocation } from "@/lib/actions/location-actions";
 import { toast } from "@/hooks/use-toast";
@@ -28,9 +28,9 @@ import { PhoneInput } from "../ui/phone-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { businessTimes } from "@/types/constants";
 import { Switch } from "../ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 
 const LocationForm = ({ item }: { item: Location | null | undefined }) => {
-  console.log("The item found is",item)
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
 
@@ -38,16 +38,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
     resolver: zodResolver(LocationSchema),
     defaultValues: {
       ...item,
-      status:item ? item.status : true ,
-      name: item ? item.name : "",
-      phone: item ? item.phone : "",
-      email: item ? item.email : "",
-      city: item ? item.city : "",
-      region: item ? item.region : "",
-      street: item ? item.street :"",
-      openingTime: item ? item.openingTime: "",
-      closingTime: item ? item.closingTime: "",
-      description: item ? item.description: ""
+      status:item ? item.status : true
     },
   });
 
@@ -80,275 +71,299 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
     });
   };
 
-  return (
-    <>
-      <>
+    return (
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
+            <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="mx-auto space-y-8">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Building2 className="w-5 h-5" />
+                            Basic Information
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="name"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Location Name</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    disabled={isPending}
+                                                    placeholder="Eg. Mark Juices Sinza"
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Eg. Mark Juices Sinza"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col items-start">
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl className="w-full border-1 rounded-sm ">
-                        <PhoneInput
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Enter business location phone number"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          type="email"
-                          placeholder="Enter business location email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location Address</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Enter business location address"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
+                            <FormField
+                                control={form.control}
+                                name="phone"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Phone Number</FormLabel>
+                                        <FormControl>
+                                            <PhoneInput
+                                                {...field}
+                                                disabled={isPending}
+                                                placeholder="Enter business location phone number"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
 
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="openingTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Opening Time</FormLabel>
-                      <FormControl>
-                        <Select
-                          disabled={isPending}
-                          onValueChange={field.onChange}
-                          value={field.value}>
-                          <SelectTrigger>
-                            <SelectValue
-                              placeholder="Select opening time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {businessTimes.length > 0
-                              ? businessTimes.map((item: BusinessTimeType, index: number) => (
-                                <SelectItem key={index}
-                                  value={item.name}>
-                                  {item.label}
-                                </SelectItem>
-                              ))
-                              : <></>}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        When do you open your business location?
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="closingTime"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Closing Time</FormLabel>
-                      <FormControl>
-                        <Select
-                          disabled={isPending}
-                          onValueChange={field.onChange}
-                          value={field.value}>
-                          <SelectTrigger>
-                            <SelectValue
-                              placeholder="Select closing time" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {businessTimes.length > 0
-                              ? businessTimes.map((item: BusinessTimeType, index: number) => (
-                                <SelectItem key={index}
-                                  value={item.name}>
-                                  {item.label}
-                                </SelectItem>
-                              ))
-                              : <></>}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        When do you close your business location?
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2  gap-4 mt-2">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="city"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>City / Region</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Which city do you operate?"
+                            <FormField
+                                control={form.control}
+                                name="email"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Email</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    value={field.value || ""}
+                                                    disabled={isPending}
+                                                    type="email"
+                                                    placeholder="Enter business location email"
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="address"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Location Address</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    disabled={isPending}
+                                                    placeholder="Enter business location address"
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Clock className="w-5 h-5" />
+                            Business Hours
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="openingTime"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Opening Time</FormLabel>
+                                        <FormControl>
+                                            <Select
+                                                disabled={isPending}
+                                                onValueChange={field.onChange}
+                                                value={field.value}>
+                                                <SelectTrigger className="pl-10">
+                                                    <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                    <SelectValue placeholder="Select opening time" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {businessTimes.map((item: BusinessTimeType, index: number) => (
+                                                        <SelectItem key={index} value={item.name}>
+                                                            {item.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                        <FormDescription>
+                                            When do you open your business location?
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="closingTime"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Closing Time</FormLabel>
+                                        <FormControl>
+                                            <Select
+                                                disabled={isPending}
+                                                onValueChange={field.onChange}
+                                                value={field.value}>
+                                                <SelectTrigger className="pl-10">
+                                                    <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                    <SelectValue placeholder="Select closing time" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {businessTimes.map((item: BusinessTimeType, index: number) => (
+                                                        <SelectItem key={index} value={item.name}>
+                                                            {item.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </FormControl>
+                                        <FormDescription>
+                                            When do you close your business location?
+                                        </FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <MapPin className="w-5 h-5" />
+                            Address Details
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="city"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>City / Region</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    disabled={isPending}
+                                                    placeholder="Which city do you operate?"
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="street"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Full business address</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    value={field.value || ""}
+                                                    disabled={isPending}
+                                                    placeholder="Enter business location address"
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+
+                        <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Description</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            {...field}
+                                            disabled={isPending}
+                                            value={field.value || ""}
+                                            placeholder="Describe your business location"
+                                            className="min-h-[100px]"
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="street"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full business address</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Enter business location address"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
+                    </CardContent>
+                </Card>
 
-              {
-                item && (
-                  <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <FormLabel>Location Status</FormLabel>
-                      <FormControl>
-                        <Switch
-
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-                )
-              }
-            </div>
-
-
-            <div className="grid gap-2 mt-2">
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description of your business location</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        disabled={isPending}
-                        value={field.value || ""}
-                        placeholder="Describe your business location"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                {item && (
+                    <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div>
+                                    <FormLabel className="text-base">Location Status</FormLabel>
+                                    <FormDescription>Enable or disable this business location</FormDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch
+                                        checked={field.value ?? false}
+                                        onCheckedChange={field.onChange}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 )}
-              />
-            </div>
-          <Button
-              type="submit"
-              disabled={isPending}
-              className="mt-4 w-full">
-              {isPending ? (
-                  <>
-                      <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                      Processing
-                  </>
-              ) : (
-                  <>{item ? 'Update business location' : 'Setup business location'}</>
-              )}
-          </Button>
-          </form>
+
+                <Button
+                    type="submit"
+                    disabled={isPending}
+                    className="w-full h-11">
+                    {isPending ? (
+                        <div className="flex items-center gap-2">
+                            <Loader2Icon className="h-4 w-4 animate-spin" />
+                            Processing
+                        </div>
+                    ) : (
+                        item ? 'Update business location' : 'Setup business location'
+                    )}
+                </Button>
+            </form>
         </Form>
-      </>
-    </>
-  );
+    );
 };
 
 export default LocationForm;

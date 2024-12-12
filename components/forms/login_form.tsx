@@ -42,7 +42,6 @@ function LoginForm() {
     });
 
     const submitData = useCallback((values: z.infer<typeof LoginSchema>) => {
-        console.log("Submitting data:", values);
         startTransition(() => {
             login(values)
                 .then((data: FormResponse) => {
@@ -67,14 +66,14 @@ function LoginForm() {
     }, []);
 
     return (
-  <section>
-      <Card className="w-full mx-auto max-w-md  mt-10 lg:mt-0 md:mt-0">
-            <CardHeader className="border-b-1 mb-4 px-8">
-                <CardTitle className="text-[32px] font-bold mb-2">Welcome back</CardTitle>
-                <CardDescription>
-                    Enter your credentials below to access your account
-                </CardDescription>
-            </CardHeader>
+        <section>
+            <Card className="w-full mx-auto max-w-md mt-10 lg:mt-0 md:mt-0">
+                <CardHeader>
+                    <CardTitle>Welcome back</CardTitle>
+                    <CardDescription>
+                        Enter your credentials below to access your account
+                    </CardDescription>
+                </CardHeader>
             <CardContent className="pb-4 px-8">
                 <FormError message={error}/>
                 <FormSuccess message={success}/>

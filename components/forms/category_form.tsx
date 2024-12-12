@@ -26,6 +26,8 @@ import ProductCategorySelector from "@/components/widgets/product-category-selec
 import ItemStatusSelector from "@/components/widgets/item-status-selector";
 import {ItemStatuses} from "@/types/constants";
 import {useToast } from "@/hooks/use-toast";
+import {FolderTree, Tag} from "lucide-react";
+import {Card, CardContent, CardHeader, CardTitle} from "../ui/card";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
     console.log("The item is",item)
@@ -45,14 +47,14 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
         getData();
     }, []);
 
-   
+
     const form = useForm<z.infer<typeof CategorySchema>>({
         resolver: zodResolver(CategorySchema),
         defaultValues: {
             ...item,
             image: imageUrl ? imageUrl : (item && item.image?item.image: ""),
             parentCategory: item?.parentCategory || "",
-            status: item ? !!item.status : false,
+            status: item ? item.status : false,
         }
     });
     const onInvalid = useCallback(
@@ -99,7 +101,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
             } else {
                 createCategory(values, 'category').then((data) => {
                     if (data) setResponse(data);
-                    
+
                     if(data?.responseType === "success") {
                         toast({
                             variant: "default",
@@ -115,108 +117,121 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
     return (
         <Form {...form}>
-            <FormError message={response?.message} />
-            <form className="space-y-8]" onSubmit={form.handleSubmit(submitData, onInvalid)}>
-                <div className="grid gap-4 md:grid-cols-[1fr_250px] lg:grid-cols-3 lg:gap-8">
-                    <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-                        <div className="mt-4 flex">
-                            <UploadImageWidget
-                                imagePath={'categories'}
-                                displayStyle={'default'}
-                                displayImage={true}
-                                showLabel={false}
-                                label="Image"
-                                setImage={setImageUrl}
-                            />
-                            <div className="flex-1">
+            <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
+                <FormError message={response?.message} />
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Tag className="w-5 h-5" />
+                            Category Details
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-6 items-start">
+                            <div className="space-y-4">
+                                <FormLabel className="block mb-2">Category Image</FormLabel>
+                                <div className="bg-gray-50 rounded-lg p-4 content-center">
+                                    <UploadImageWidget
+                                        imagePath={'categories'}
+                                        displayStyle={'default'}
+                                        displayImage={true}
+                                        showLabel={false}
+                                        label="Image"
+                                        setImage={setImageUrl}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
                                 <FormField
                                     control={form.control}
                                     name="name"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Category Name</FormLabel>
                                             <FormControl>
-                                                <Input
-                                                    placeholder="Enter category name"
-                                                    {...field}
-                                                    disabled={isPending}
-                                                />
+                                                <div className="relative">
+                                                    <Tag className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                    <Input
+                                                        className="pl-10"
+                                                        placeholder="Enter category name"
+                                                        {...field}
+                                                        disabled={isPending}
+                                                    />
+                                                </div>
                                             </FormControl>
-                                            <FormMessage/>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="parentCategory"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Parent Category</FormLabel>
+                                                <FormControl>
+                                                    <ProductCategorySelector
+                                                        onChange={field.onChange}
+                                                        onBlur={field.onBlur}
+                                                        isRequired
+                                                        isDisabled={isPending}
+                                                        label="Category"
+                                                        placeholder="Select parent category"
+                                                        categories={categories}
+                                                        value={field.value || ""}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="status"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Category Status</FormLabel>
+                                                <FormControl>
+                                                    <ItemStatusSelector
+                                                        onChange={(newStatus) => {
+                                                            const booleanValue = newStatus === "true";
+                                                            field.onChange(booleanValue);
+                                                            setStatus(booleanValue);
+                                                        }}
+                                                        onBlur={field.onBlur}
+                                                        isRequired
+                                                        isDisabled={isPending}
+                                                        label="Status"
+                                                        value={String(status)}
+                                                        placeholder="Select Status"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                             </div>
                         </div>
+                    </CardContent>
+                </Card>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <FormField
-                                control={form.control}
-                                name="parentCategory"
-                                render={({field}) => (
-
-                                    <FormItem>
-                                        <FormLabel>Parent Category</FormLabel>
-                                        <FormControl>
-                                            <ProductCategorySelector
-                                                onChange={field.onChange}
-                                                onBlur={field.onBlur}
-                                                isRequired
-                                                isDisabled={isPending}
-                                                label="Category"
-                                                placeholder="Select parent category"
-                                                categories={categories}
-                                                value={field.value || ""}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({field}) => (
-
-                                    <FormItem>
-                                        <FormLabel>Category Status </FormLabel>
-                                        <FormControl>
-                                            <ItemStatusSelector
-                                                onChange={(newStatus) => {
-                                                    const booleanValue = newStatus === "true"; 
-                                                    field.onChange(booleanValue); 
-                                                    setStatus(booleanValue); 
-                                                }}
-                                                onBlur={field.onBlur}
-                                                isRequired
-                                                isDisabled={isPending}
-                                                label="Status"
-                                                value={String(status)}
-                                                placeholder="Select Status"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-
-                                )}
-                            />
-                        </div>
-
-                        <div className="flex h-5 items-center space-x-4">
-                            <CancelButton/>
-                            <Separator orientation="vertical"/>
-                            <SubmitButton
-                                isPending={isPending}
-                                label={item ? "Update " : "Create"}
-                            />
-                        </div>
-                    </div>
-                    </div>
+                <div className="flex items-center space-x-4 pt-6">
+                    <CancelButton />
+                    <Separator orientation="vertical" className="h-8" />
+                    <SubmitButton
+                        isPending={isPending}
+                        label={item ? "Update category" : "Create category"}
+                    />
+                </div>
             </form>
         </Form>
-);
+    );
 };
 
 export default CategoryForm;

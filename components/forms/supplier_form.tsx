@@ -1,8 +1,7 @@
 "use client";
 
-
 import { Input } from "@/components/ui/input";
-import { FieldErrors, useForm } from "react-hook-form";
+import { useForm } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -13,7 +12,7 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
@@ -25,9 +24,9 @@ import { Supplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
 import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 import { PhoneInput } from "../ui/phone-input";
-import { Loader2Icon } from "lucide-react";
+import {Building2, Loader2Icon, Mail, MapPin, Phone, User} from "lucide-react";
 import { Switch } from "../ui/switch";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { useRouter } from "next/navigation";
 
 function SupplierForm({ item }: { item: Supplier | null | undefined }) {
@@ -42,19 +41,6 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
     resolver: zodResolver(SupplierSchema),
     defaultValues: item ? item : { status: true },
   });
-
-  const onInvalid = useCallback(
-    (errors: FieldErrors) => {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! something went wrong",
-        description: typeof errors.message === 'string' && errors.message
-          ? errors.message
-          : "There was an issue submitting your form, please try later",
-      });
-    },
-    [toast]
-  );
 
   const submitData = (values: z.infer<typeof SupplierSchema>) => {
     startTransition(() => {
@@ -90,221 +76,255 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
       }
     });
   };
-  return (
+
+return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className={`gap-1`}
-      >
-        <div className="space-y-6">
-          <>
-            <FormError message={error} />
-            <FormSuccess message={success} />
-            <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Supplier Name</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Enter supplier full name "
-                        {...field}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+        <form onSubmit={form.handleSubmit(submitData)}>
+            <div className="space-y-8">
+                <FormError message={error} />
+                <FormSuccess message={success} />
 
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="johndoe@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Building2 className="w-5 h-5" />
+                            Supplier Information
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Supplier Name</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                            <Input
+                                                className="pl-10"
+                                                placeholder="Enter supplier full name"
+                                                {...field}
+                                                disabled={isPending}
+                                            />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-              <FormField
-                control={form.control}
-                name="phoneNumber"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col items-start">
-                    <FormLabel>Supplier Phone Number</FormLabel>
-                    <FormControl className="w-full border-1 rounded-sm">
-                      <PhoneInput
-                        placeholder="Enter supplier phone number"
-                        {...field}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                        <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Email Address</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                            <Input className="pl-10" placeholder="johndoe@example.com" {...field} />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-              <FormField
-                control={form.control}
-                name="physicalAddress"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col items-start">
-                    <FormLabel>Supplier Physical Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter supplier physical address"
-                       {...field} 
-                       disabled={isPending}
-                       value={field.value || ""}
-                      //  onChange={field.value || ""}
-                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <Card className="col-span-2">
-                <CardHeader>
-                  <CardTitle>Contact Person</CardTitle>
-                  <CardDescription>
-                    Add contact person details of supplier
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="contactPersonName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Person</FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Enter contact person name"
+                        <FormField
+                            control={form.control}
+                            name="phoneNumber"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Phone Number</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                            <PhoneInput
+                                                className="pl-10"
+                                                placeholder="Enter supplier phone number"
+                                                {...field}
+                                                disabled={isPending}
+                                            />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="physicalAddress"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Physical Address</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                            <Input
+                                                className="pl-10"
+                                                placeholder="Enter supplier physical address"
+                                                {...field}
+                                                disabled={isPending}
+                                                value={field.value || ""}
+                                            />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <User className="w-5 h-5" />
+                            Contact Person Details
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="contactPersonName"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Contact Person Name</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                            <Input
+                                                className="pl-10"
+                                                {...field}
+                                                disabled={isPending}
+                                                placeholder="Enter contact person name"
+                                            />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="contactPersonTitle"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        Job Title
+                                        <span className="text-gray-400 text-sm ml-2">(optional)</span>
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Input
+                                            {...field}
+                                            disabled={isPending}
+                                            placeholder="Enter contact person title"
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="contactPersonPhone"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Contact Phone Number</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                            <PhoneInput
+                                                className="pl-10"
+                                                {...field}
+                                                disabled={isPending}
+                                                placeholder="Enter contact person phone number"
+                                            />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+                        <FormField
+                            control={form.control}
+                            name="contactPersonEmail"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>
+                                        Contact Email
+                                        <span className="text-gray-400 text-sm ml-2">(optional)</span>
+                                    </FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                            <Input
+                                                className="pl-10"
+                                                {...field}
+                                                disabled={isPending}
+                                                placeholder="contact@example.com"
+                                            />
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </CardContent>
+                </Card>
+
+                {item && (
+                    <Card>
+                        <CardContent className="pt-6">
+                            <FormField
+                                control={form.control}
+                                name="status"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div>
+                                            <FormLabel className="text-base">Supplier Status</FormLabel>
+                                            <span className={`ml-2 ${item.status ? "text-green-500" : "text-red-500"}`}>
+                      ({item.status ? "Active" : "Inactive"})
+                    </span>
+                                        </div>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                                disabled={isPending}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
                             />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                     <FormField
-                      control={form.control}
-                      name="contactPersonTitle"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Person Job Title <span className="text-gray-400 text-sm">optional</span></FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Enter contact person title"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="contactPersonPhone"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-col items-start mt-1">
-                          <FormLabel>Contact Person Phone Number</FormLabel>
-                          <FormControl className="w-full border-1 rounded-sm">
-                            <PhoneInput
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Enter contact person phone number"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="contactPersonEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Person Email <span className="text-gray-400 text-sm">optional</span></FormLabel>
-                          <FormControl>
-                            <Input
-                              {...field}
-                              disabled={isPending}
-                              placeholder="supplier@example.com"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                        </CardContent>
+                    </Card>
+                )}
 
-                </CardContent>
-            </Card>
-            {item && (
-                <div className="grid gap-2">
-                  <FormField
-                    control={form.control}
-                    name="status"
-
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <FormLabel>
-
-                          Supplier Status
-                          <span className={item.status ? "text-green-500" : "text-red-500"}>
-                            ({item.status ? "Active" : "Inactive"})
-                          </span>
-
-                        </FormLabel>
-                        <FormControl>
-                          <Switch
-
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+                <div className="flex items-center space-x-4 pt-6">
+                    <CancelButton />
+                    <Separator orientation="vertical" className="h-8" />
+                    {isPending ? (
+                        <button disabled className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md">
+                            <Loader2Icon className="w-5 h-5 animate-spin" />
+                            Processing
+                        </button>
+                    ) : (
+                        <SubmitButton
+                            isPending={isPending}
+                            label={item ? "Update supplier details" : "Add supplier"}
+                        />
                     )}
-                  />
                 </div>
-              )
-              }
-          </>
-
-          <div className="flex h-5 items-center space-x-4 mt-10">
-            <CancelButton />
-            <Separator orientation="vertical" />
-            {
-              isPending ? (
-                <div className="flex justify-center items-center bg-black rounded p-2 text-white">
-                  <Loader2Icon className="w-6 h-6 animate-spin" />
-                </div>
-              ) : (
-                <SubmitButton
-                  isPending={isPending}
-                  label={item ? "Update supplier details" : "Add supplier "}
-                />
-              )
-            }
-          </div>
-        </div>
-
-      </form>
+            </div>
+        </form>
     </Form>
-  );
+    );
 }
 
 export default SupplierForm;
