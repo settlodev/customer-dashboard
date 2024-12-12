@@ -101,8 +101,9 @@ export const createStockTransfer = async (
             responseType: "success",
             message: "Stock transfer created successfully",
         };
-    } catch (error) {
-        console.error("Error creating stock transfer", error);
+    } catch (error: any) {
+        const formattedError = await error
+        console.error("Error creating stock transfer", formattedError);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",

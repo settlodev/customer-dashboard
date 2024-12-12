@@ -60,7 +60,7 @@ export const columns: ColumnDef<StockTransfer>[] = [
                     className="text-left p-0"
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Stock Variant
+                    Stock Item
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );

@@ -179,11 +179,7 @@ export function ProductCSVDialog() {
               <table className="min-w-full border-collapse border border-gray-300">
                 <thead>
                   <tr>
-                    {/* {validationResult.rows[0].map((header, index) => (
-                      <th key={index} className="border px-2 py-1 bg-gray-100">
-                        {header}
-                      </th>
-                    ))} */}
+                    
 
                       {validationResult?.rows?.length > 0 && validationResult.rows[0]?.map((header, index) => (
                       <th key={index} className="border px-2 py-1 bg-gray-100">

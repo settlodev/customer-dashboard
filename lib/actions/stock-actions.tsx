@@ -197,7 +197,8 @@ export const updateStock = async (
     return parseStringify(formResponse);
 };
 
-export const deleteStock = async (id: UUID): Promise<void> => {
+export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
+    let formResponse: FormResponse | null = null;
     if (!id) throw new Error("Stock ID is required to perform this request");
 
     await getAuthenticatedUser();
@@ -214,9 +215,16 @@ export const deleteStock = async (id: UUID): Promise<void> => {
     revalidatePath("/stocks");
 
    }
-   catch (error){
-       console.error("Error deleting stock", error);
-       throw error
+   catch (error: any){
+    const formattedError = await error;
+       console.error("Error deleting stock", formattedError.message );
+       
+       formResponse = {
+        responseType: "error",
+        message: formattedError.message,
+        error: error instanceof Error ? error : new Error(String(error)),
+    };
+    throw formattedError.message;
        
    }
 }

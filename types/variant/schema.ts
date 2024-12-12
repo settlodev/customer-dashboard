@@ -14,7 +14,7 @@ export const VariantSchema = object({
     sku: string().optional(),
     barcode: string().nullable().optional(),
     unit: string().optional(),
-    description: string().optional(),
+    description: string().nullable().optional(),
     image: string().nullable().optional(),
     color: string().nullable().optional(), 
     stockVariant: string().nullable().optional(),

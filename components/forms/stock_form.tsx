@@ -246,7 +246,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
 
     return (
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-            <div className="flex gap-10">
+            <div className="flex flex-col-reverse lg:flex-row gap-10">
                 <div className="flex-1">
                     <Form {...form}>
                         <form
@@ -308,7 +308,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                     />
                                 </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-3 gap-4 mt-4">
+                                <div className="mt-4">
                                    
 
                                    
@@ -402,7 +402,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                     </Form>
                 </div>
 
-                <div className="w-1/3">
+                <div className="flex lg:w-1/3">
                     <Form {...variantForm}>
                         <form
                             onSubmit={variantForm.handleSubmit(saveVariantItem, onInvalid)}

@@ -117,7 +117,7 @@ export default function StockModal({
                                 </div>
                                 <div className="flex items-center p-2 border-b border-gray-300">
                                   <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
-                                    Barcode
+                                    Alert Level
                                   </span>
                                   <span className="w-2/3 pl-2 text-sm">
                                     {variant.alertLevel}

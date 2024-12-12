@@ -53,7 +53,6 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof BrandSchema>) => {
-    console.log("The data",values)
     startTransition(() => {
       if (item) {
         updateBrand(item.id, values).then((data) => {

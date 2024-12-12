@@ -41,7 +41,7 @@ import ProductDepartmentSelector from "@/components/widgets/product-department-s
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import { VariantSchema } from "@/types/variant/schema";
 import { Brand } from "@/types/brand/type";
-import { ChevronDownIcon, Eye, PlusIcon, SearchIcon } from "lucide-react";
+import { ChevronDownIcon, Eye, Pencil, PlusIcon, SearchIcon, X } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
@@ -64,8 +64,11 @@ import { useRouter } from 'next/navigation';
 import { StockSchema } from "@/types/stock/schema";
 import { StockVariantSchema } from "@/types/stockVariant/schema";
 import { StockFormVariant } from "@/types/stockVariant/type";
+// import { console } from "inspector";
 
 const ProductForm = ({ item }: { item: Product | null | undefined }) => {
+
+    console.log("The item to edit is", item)
     // const router = useRouter();
 
     const [isPending, startTransition] = useTransition();
@@ -89,6 +92,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     const [selectedVariant, setSelectedVariant] = useState<FormVariantItem | null>(null);
     const [categoryModalVisible, setCategoryModalVisible] = useState<boolean>(false);
     const [departmentModalVisible, setDepartmentModalVisible] = useState<boolean>(false);
+    const [unitModalVisible, setUnitModalVisible] = useState<boolean>(false);
     const [inventoryTracking, setInventoryTracking] = useState<boolean>(false);
     const [stockModalVisible, setStockModalVisible] = useState<boolean>(false);
     const [, setStocks] = useState<Stock[]>([]);
@@ -362,6 +366,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     }
 
     const handleUpdateVariant = async (values: z.infer<typeof VariantSchema>) => {
+        
 
         if (variantImageUrl) {
             values.image = variantImageUrl;
@@ -423,6 +428,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     }
 
     const handleEditVariant = (variant: FormVariantItem) => {
+        console.log("The variant selected is", variant)
         setSelectedVariant(variant);
     }
     const openCategoryModal = () => {
@@ -441,7 +447,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
             description: value
                 ? "You will need to select stock and stock variant(s) to track this product."
                 : "You won't be able to track the stock and stock variant for this product.",
-            variant: value ? "default" : "destructive",
+            variant: "default",
             duration: 3000,
         })
     };
@@ -460,6 +466,15 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
         mVariants.splice(index, 1);
         setStockVariants(_.compact(mVariants));
     }
+    const openUnitModal = () => {
+        setUnitModalVisible(true)
+    }
+    const handleUnitSelected = (unit:any) =>{
+        setSearchTerm(unit.name)
+        setFilteredUnits([])
+        setUnitModalVisible(false)
+    }
+
 
 
     return (<>
@@ -849,6 +864,30 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
             : <></>
         }
 
+{unitModalVisible ? (
+    <>
+        <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
+        <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
+            <div className="w-[550px] h-[350px] p-5 bg-white rounded-md flex flex-col">
+                
+                <div className="flex-grow overflow-y-auto">
+                    {units.map((unit) => (
+                        <div key={unit.id} className="p-2 border-b cursor-pointer" onClick={()=>{handleUnitSelected(unit)}}>
+                            <p className="text-sm">{unit.name}</p>
+                        </div>
+                    ))}
+                </div>
+                
+                <div className="mt-4">
+                <button onClick={()=>{setUnitModalVisible(false)}} className="bg-black-2 p-2 rounded-md text-white text-sm capitalize">cancel</button>
+                </div>
+            </div>
+        </div>
+    </>
+) : null}
+
+
+
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
             <div className="flex flex-col-reverse lg:flex-row gap-10">
                 <div className="flex-1">
@@ -879,6 +918,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                             placeholder="Enter product name"
                                                             {...field}
                                                             disabled={isPending}
+                                                            value={field.value || ""}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -888,7 +928,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-3 gap-4 mt-2">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-2 gap-4 mt-2">
                                     <FormField
                                         control={form.control}
                                         name="category"
@@ -982,9 +1022,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-                                </div>
 
-                                <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-3 gap-4 mt-4">
                                     <FormField
                                         control={form.control}
                                         name="trackInventory"
@@ -1017,7 +1055,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                 <FormLabel className="flex-1">Sell Online</FormLabel>
                                                 <FormControl className="self-end">
                                                     <Switch
-                                                        checked={field.value !== undefined ? field.value : false}
+                                                        checked={field.value}
                                                         onCheckedChange={field.onChange}
                                                         disabled={isPending}
                                                     />
@@ -1036,7 +1074,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                 <FormLabel className="flex-1">Tax Included</FormLabel>
                                                 <FormControl className="self-end">
                                                     <Switch
-                                                        checked={field.value !== undefined ? field.value : false}
+                                                        checked={field.value}
                                                         onCheckedChange={field.onChange}
                                                         disabled={isPending}
                                                     />
@@ -1046,8 +1084,6 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                         )}
                                     />
                                 </div>
-
-
 
                                 <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4 mt-4">
                                     <FormField
@@ -1059,7 +1095,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                 <FormLabel>Tax Class</FormLabel>
                                                 <FormControl>
                                                     <ProductTaxSelector
-                                                        value={field.value}
+                                                        value={field.value || ""}
                                                         onChange={field.onChange}
                                                         onBlur={field.onBlur}
                                                         isRequired
@@ -1073,7 +1109,6 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-
                                     <FormField
                                         control={form.control}
                                         name="sku"
@@ -1092,6 +1127,9 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
+                                </div>
+                                <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4 mt-4">
+
                                     {item && (
                                         <FormField
                                             control={form.control}
@@ -1099,11 +1137,11 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                             defaultValue={false}
                                             render={({ field }) => (
                                                 <FormItem
-                                                    className="flex lg:mt-4 items-center gap-2 border-1 pt-1 pb-2 pl-3 pr-3 rounded-md">
+                                                    className="flex lg:mt-4 items-center justify-center gap-2 border-1 pt-1 pb-2 pl-3 pr-3 rounded-md">
                                                     <FormLabel className="flex-1">Product Status</FormLabel>
                                                     <FormControl className="self-end">
                                                         <Switch
-                                                            checked={field.value !== undefined ? field.value : false}
+                                                            checked={field.value}
                                                             onCheckedChange={field.onChange}
                                                             disabled={isPending}
                                                         />
@@ -1113,7 +1151,6 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                             )}
                                         />
                                     )}
-
                                 </div>
                                 <div className="mt-4">
                                     <FormField
@@ -1129,6 +1166,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                         disabled={isPending}
                                                         className="resize-none bg-gray-50"
                                                         maxLength={200}
+                                                        value={field.value || ""}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -1148,36 +1186,39 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                         <h3 className="font-bold pb-2">Variants</h3>
                                         <div className="border-emerald-500 border-0 rounded-md pt-2 pb-2 pl-0 pr-0">
                                             {variants.map((variant: FormVariantItem, index) => {
-                                                return <div
-                                                    className="flex border-1 border-emerald-200 mt-0 items-center pt-0 pb-0 pl-0 mb-1"
-                                                    key={index}
-                                                    onClick={() => handleEditVariant(variant)}
-                                                >
-                                                    <p className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4">
-                                                        <span>{index + 1}</span></p>
-                                                    <div className="flex-1 pt-1 pb-1">
-                                                        <p className="text-md font-medium">{variant.name}</p>
-                                                        <p className="text-xs font-medium">PRICE: {variant.price}</p>
+                                                return (
+                                                    <div
+                                                        className="flex border-1 border-emerald-200 mt-0 items-center pt-0 pb-0 pl-0 mb-1"
+                                                        key={index}
+
+                                                    >
+                                                        <p className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4">
+                                                            <span>{index + 1}</span></p>
+                                                        <div className="flex-1 flex-col gap-2 pt-1 pb-1">
+                                                            <p className="text-md font-medium">{variant.name}</p>
+                                                            <p className="text-xs font-medium">PRICE: {variant.price}</p>
+                                                        </div>
+                                                        <Pencil onClick={() => handleEditVariant(variant)} size={14} className="h-12 w-12 flex items-center pl-4 pr-4 bg-emerald-50  border-l-1 border-l-emerald-200 cursor-pointer " />
+                                                        {item ? (
+                                                            <p
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    confirmDeleteVariant(variant);
+                                                                }}
+                                                                className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
+                                                            >
+                                                                <span>Delete</span>
+                                                            </p>
+                                                        ) : (
+                                                            <p
+                                                                onClick={() => removeVariant(index)}
+                                                                className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
+                                                            >
+                                                                <span>Remove</span>
+                                                            </p>
+                                                        )}
                                                     </div>
-                                                    {item ? (
-                                                        <p
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                confirmDeleteVariant(variant);
-                                                            }}
-                                                            className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
-                                                        >
-                                                            <span>Delete</span>
-                                                        </p>
-                                                    ) : (
-                                                        <p
-                                                            onClick={() => removeVariant(index)}
-                                                            className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
-                                                        >
-                                                            <span>Remove</span>
-                                                        </p>
-                                                    )}
-                                                </div>
+                                                )
                                             })}
                                         </div>
                                     </div> : <><p className="pt-3 pb-5 text-sm">No variants added</p>
@@ -1211,9 +1252,6 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                 <CardHeader>
                                     <CardTitle className="hidden">Add variants</CardTitle>
                                     <CardDescription>{item ? "Edit variants" : "Add variants"}</CardDescription>
-                                    {item && (
-                                        <span className="text-sm text-white bg-blue-500 p-2 rounded">Please,select the variant you want to edit on product variants</span>
-                                    )}
                                 </CardHeader>
 
                                 <CardContent className="gap-3">
@@ -1304,6 +1342,51 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
+
+                                    {inventoryTracking && (
+                                        <>
+                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
+                                                <FormField
+                                                    control={variantForm.control}
+                                                    name="stockVariant"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-col mt-2">
+                                                            <FormLabel>Stock Variant</FormLabel>
+                                                            <FormControl>
+                                                                <Select
+                                                                    value={field.value || ''}
+                                                                    onValueChange={field.onChange}
+                                                                    disabled={isPending}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Select stock variant" />
+                                                                    </SelectTrigger>
+                                                                    
+                                                                    <SelectContent className="flex-grow overflow-y-auto">
+                                                                        {combinedStockOptions.map((option) => (
+                                                                            <SelectItem key={option.id} value={option.id}>
+                                                                                {option.displayName}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ) : (
+                                                <div className="flex flex-col mt-2 gap-2">
+                                                    <p className="text-sm text-red-500 font-bold">No stock available</p>
+                                                    <Button onClick={(e) => {
+                                                        e.preventDefault();
+                                                        openStockModal();
+                                                    }}>Add Stock</Button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
                                     <FormField
                                         control={variantForm.control}
                                         name="unit"
@@ -1313,8 +1396,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                 <FormControl>
                                                     <div className="relative flex flex-col w-full max-w-sm">
 
-                                                        <div className="flex items-center border border-gray-300 rounded-lg px-2.5 py-1.5">
-                                                            <SearchIcon className="h-4 w-4 mr-2.5" />
+                                                        <div className="flex items-center gap-2 border-r-1 border-t-1 border-b-1 rounded-sm border-gray-300">
                                                             <Input
                                                                 type="search"
                                                                 placeholder="Search e.g Kilogram"
@@ -1323,7 +1405,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                                 disabled={isPending}
                                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                             />
-                                                            <Eye className="h-6 w-6" />
+                                                            <Eye className="h-6 w-6" onClick={openUnitModal} />
                                                         </div>
 
                                                         {searchTerm && filteredUnits.length > 0 && (
@@ -1349,49 +1431,6 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                             </FormItem>
                                         )}
                                     />
-                                    {inventoryTracking && (
-                                        <>
-                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
-                                                <FormField
-                                                    control={variantForm.control}
-                                                    name="stockVariant"
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-col mt-2">
-                                                            <FormLabel>Stock Variant</FormLabel>
-                                                            <FormControl>
-                                                                <Select
-                                                                    value={field.value || ''}
-                                                                    onValueChange={field.onChange}
-                                                                    disabled={isPending}
-                                                                >
-                                                                    <SelectTrigger>
-                                                                        <SelectValue placeholder="Select stock variant" />
-                                                                    </SelectTrigger>
-                                                                    <SelectContent>
-                                                                        {combinedStockOptions.map((option) => (
-                                                                            <SelectItem key={option.id} value={option.id}>
-                                                                                {option.displayName}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            ) : (
-                                                <div className="flex flex-col mt-2 gap-2">
-                                                    <p className="text-sm text-red-500 font-bold">No stock available</p>
-                                                    <Button onClick={(e) => {
-                                                        e.preventDefault();
-                                                            openStockModal();
-                                                    }}>Add Stock</Button>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
 
                                     <FormField
                                         control={variantForm.control}
@@ -1404,6 +1443,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                         placeholder="Enter variant description"
                                                         {...field}
                                                         disabled={isPending}
+                                                        value={field.value || ""}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />

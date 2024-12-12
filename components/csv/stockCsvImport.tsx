@@ -14,7 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Icon } from "@iconify/react";
 import React from "react";
-import { uploadStockCSV } from "@/lib/actions/stock-actions";
+import { useCSVUpload } from "@/hooks/uploadStock";
+import { Progress } from "../ui/progress";
 
 // Validation Function
 const validateCSV = (
@@ -102,6 +103,8 @@ export function CSVStockDialog() {
   const [isOpen, setIsOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { uploadProgress, error, uploadCSV } = useCSVUpload();
+
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
     if (selectedFile) {
@@ -137,7 +140,7 @@ export function CSVStockDialog() {
   const handleUpload = async () => {
     if (file && fileContent && validationResult?.isValid) {
       try {
-        await uploadStockCSV({ fileData: fileContent, fileName: file.name });
+        await uploadCSV({ fileData: fileContent, fileName: file.name });
         resetForm();
         setIsOpen(false);
       } catch (error) {
@@ -163,7 +166,7 @@ export function CSVStockDialog() {
           onClick={() => setIsOpen(true)}
         >
           <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Import</span>
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap md:hidden">Import Stock</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">
@@ -224,6 +227,13 @@ export function CSVStockDialog() {
               </table>
             </div>
           )}
+          {uploadProgress > 0 && (
+            <div className="mt-4 h-4 bg-emerald-500">
+              <Progress value={uploadProgress} className="w-full" />
+              <p className="text-sm text-gray-600">{uploadProgress}% uploaded</p>
+            </div>
+          )}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
         </div>
         <DialogFooter>
           <Button onClick={handleTemplateDownload} variant="outline" size="sm" className="gap-1">

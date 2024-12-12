@@ -30,12 +30,25 @@ import { businessTimes } from "@/types/constants";
 import { Switch } from "../ui/switch";
 
 const LocationForm = ({ item }: { item: Location | null | undefined }) => {
+  console.log("The item found is",item)
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
 
   const form = useForm<z.infer<typeof LocationSchema>>({
     resolver: zodResolver(LocationSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues: {
+      ...item,
+      status:item ? item.status : true ,
+      name: item ? item.name : "",
+      phone: item ? item.phone : "",
+      email: item ? item.email : "",
+      city: item ? item.city : "",
+      region: item ? item.region : "",
+      street: item ? item.street :"",
+      openingTime: item ? item.openingTime: "",
+      closingTime: item ? item.closingTime: "",
+      description: item ? item.description: ""
+    },
   });
 
   const onInvalid = useCallback(
@@ -252,7 +265,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
               <div className="grid gap-2">
                 <FormField
                   control={form.control}
-                  name="address"
+                  name="street"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Full business address</FormLabel>
@@ -309,6 +322,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                       <Textarea
                         {...field}
                         disabled={isPending}
+                        value={field.value || ""}
                         placeholder="Describe your business location"
                       />
                     </FormControl>

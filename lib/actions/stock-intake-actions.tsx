@@ -43,9 +43,9 @@ export const searchStockIntakes = async (
         const query ={
             // filters: [
             //     {
-            //         key:"string",
-            //         operator:"EQUAL",
-            //         field_type:"BOOLEAN",
+            //         key:"name",
+            //         operator:"LIKE",
+            //         field_type:"STRING",
             //         value:q
             //     }
             // ],
@@ -59,12 +59,12 @@ export const searchStockIntakes = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        console.log("The location passed is: ", location)
+        // console.log("The location passed is: ", location)
         const data = await  apiClient.post(
             `/api/stock-intakes/${location?.id}/all`,
             query
         );
-        
+        console.log("The list of Stock Intakes in this location: ", data)
         return parseStringify(data);
     }
     catch (error){

@@ -78,8 +78,6 @@ export const  createBrand= async (
 
     const validBrandData= BrandSchema.safeParse(brand)
 
-    console.log("Valid brand data", validBrandData)
-
     if (!validBrandData.success){
         formResponse = {
             responseType:"error",
@@ -110,11 +108,9 @@ export const  createBrand= async (
     }
     catch (error: any){
         const formattedError = await error;
-        console.error("Error while creating brand",formattedError )
         formResponse = {
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message:formattedError.message,
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }

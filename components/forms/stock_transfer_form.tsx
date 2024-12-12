@@ -34,6 +34,7 @@ import { Location } from "@/types/location/type";
 import LocationSelector from "../widgets/location-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
+import { StockVariant } from "@/types/stockVariant/type";
 
 function StockTransferForm({ item }: { item: StockTransfer | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -45,11 +46,13 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
+    const [selectedVariant, setSelectedVariant] = useState<StockVariant>();
+
 
     useEffect(() => {
         const getData = async () => {
             try {
-                const [stockResponse,staffResponse,locationResponse] = await Promise.all([
+                const [stockResponse, staffResponse, locationResponse] = await Promise.all([
                     fetchStock(),
                     fetchAllStaff(),
                     fetchAllLocations(),
@@ -64,13 +67,13 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
         getData();
     }, []);
 
-    
+
     const form = useForm<z.infer<typeof StockTransferSchema>>({
         resolver: zodResolver(StockTransferSchema),
         defaultValues: {
             ...item,
             status: true,
-            
+
         },
     });
 
@@ -87,7 +90,7 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     );
 
     const submitData = (values: z.infer<typeof StockTransferSchema>) => {
-
+        console.log("The transfer value", values)
         startTransition(() => {
             if (item) {
                 console.log("Update logic for existing stock modification");
@@ -110,6 +113,17 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
         });
     };
 
+    const handleVariantChange = (variantId: string) => {
+        console.log("The value selected is", variantId)
+        const variant = stocks.flatMap(stock => stock.stockVariants).find(v => v.id === variantId);
+        console.log("The selected variant is", variant)
+        if (variant) {
+            setSelectedVariant(variant);
+            // form.setValue('quantity', variant.startingQuantity); // Set initial quantity to available
+            // form.setValue('value', variant.startingValue); // Set initial value
+        }
+    };
+
     return (
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
             <div className="flex gap-10">
@@ -122,7 +136,7 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                             <div>
                                 <FormError message={error} />
                                 <FormSuccess message={success} />
-
+                                <div className="lg:grid grid-cols-2  gap-4 mt-2">
                                 <FormField
                                     control={form.control}
                                     name="stockVariant"
@@ -130,16 +144,13 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                         <FormItem>
                                             <FormLabel>Stock Variant</FormLabel>
                                             <FormControl>
-                                                <Select
-                                                    onValueChange={field.onChange}
-                                                    value={field.value}
-                                                >
+                                                <Select onValueChange={(value) => { handleVariantChange(value); field.onChange(value); }} value={field.value}>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select  Variant" />
+                                                        <SelectValue placeholder="Select Variant" />
                                                     </SelectTrigger>
                                                     <SelectContent>
-                                                        {stocks.map((stock) =>
-                                                            stock.stockVariants.map((variant) => (
+                                                        {stocks.map(stock =>
+                                                            stock.stockVariants.map(variant => (
                                                                 <SelectItem key={variant.id} value={variant.id}>
                                                                     {`${stock.name} - ${variant.name}`}
                                                                 </SelectItem>
@@ -152,6 +163,14 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                         </FormItem>
                                     )}
                                 />
+                                {selectedVariant && (
+                                    <div className=" flex flex-col mt-2 border border-emerald-300 animate-bounce rounded-md py-2 px-3 cursor-pointer hover:animate-none">
+                                        <p className="text-sm"><span className=" uppercase font-bold text-emerald-500 mr-2">note:</span>The transfer can not exceed the available quantity</p>
+                                        <p className="text-sm">Quantity: {Intl.NumberFormat().format(selectedVariant.startingQuantity)}</p>
+                                        <p className="text-sm">Value: {Intl.NumberFormat().format(selectedVariant.startingValue)}</p>
+                                    </div>
+                                )}
+                                </div>
                                 <div className="lg:grid grid-cols-2  gap-4 mt-2">
                                     <div className="mt-4 flex">
                                         <div className="flex-1">
@@ -219,18 +238,18 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                                         <FormControl>
                                                             <FormControl>
 
-                                                            <NumericFormat
-                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                value={field.value}
-                                                                disabled={isPending}
-                                                                placeholder="Enter stock quantity"
-                                                                thousandSeparator={true}
-                                                                allowNegative={false}
-                                                                onValueChange={(values) => {
-                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                    field.onChange(rawValue);
-                                                                }}
-                                                            />
+                                                                <NumericFormat
+                                                                    className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                                    value={field.value}
+                                                                    disabled={isPending}
+                                                                    placeholder="Enter stock quantity"
+                                                                    thousandSeparator={true}
+                                                                    allowNegative={false}
+                                                                    onValueChange={(values) => {
+                                                                        const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                        field.onChange(rawValue);
+                                                                    }}
+                                                                />
                                                             </FormControl>
                                                         </FormControl>
                                                         <FormMessage />
@@ -250,7 +269,7 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                                         <FormLabel>Value / Amount</FormLabel>
                                                         <FormControl>
 
-                                                        <NumericFormat
+                                                            <NumericFormat
                                                                 className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
                                                                 value={field.value}
                                                                 disabled={isPending}
