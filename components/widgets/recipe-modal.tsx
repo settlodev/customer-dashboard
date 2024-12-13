@@ -32,6 +32,7 @@ const RecipeFormSection = ({
     remove: () => void;
     OnCancel: () => void
 }) => (
+    
     <Form {...recipeForm}>
         <form onSubmit={recipeForm.handleSubmit(submitRecipeData, onInvalid)} className="gap-1">
             <FormError message={error} />
@@ -67,7 +68,8 @@ const RecipeFormSection = ({
                 </div>
             </div>
 
-            {/* Input for stock variants */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
+                  {/* Input for stock variants */}
             <FormField
                 control={recipeForm.control}
                 name="stockVariants"
@@ -95,7 +97,7 @@ const RecipeFormSection = ({
                                 }}
                                 {...field}
                                 placeholder="Select variant"
-                                className="z-99999"
+                                className="z-[9999] relative"
                             />
                         </FormControl>
                         <FormMessage />
@@ -103,7 +105,6 @@ const RecipeFormSection = ({
                 )}
             />
 
-            {/* Input for variant quantities */}
             <div className="flex flex-col">
                 {selectedVariants.map((variant, index) => (
                     <FormField
@@ -132,10 +133,14 @@ const RecipeFormSection = ({
                     />
                 ))}
             </div>
+            </div>
 
             {/* Actions section for saving or canceling */}
             <div className="flex items-center space-x-4 mt-4 border-t border-t-gray-200 pt-5">
-                <Button variant="default" onClick={() => OnCancel()}>
+                <Button variant="default" onClick={() => {
+                    OnCancel()
+                    recipeForm.reset();
+                    }}>
                     Cancel
                 </Button>
                 <Separator orientation="vertical" />

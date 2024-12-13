@@ -15,7 +15,7 @@ import { NumericFormat } from "react-number-format";
 
 
 const ModalContainer = ({ children}: { children: React.ReactNode }) => (
-    <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
+    <div className="fixed w-[100%] h-[100%] z-50 left-0 top-0 flex items-center justify-center">
         <div className="w-[950px] p-5 bg-white rounded-md">{children}</div>
     </div>
 );

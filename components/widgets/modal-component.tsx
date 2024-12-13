@@ -7,13 +7,13 @@ import { FormSuccess } from "./form-success";
 import UploadImageWidget from "./UploadImageWidget";
 
 const ModalOverlay = () => (
-    <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
+    <div className="fixed w-[100%] h-[100%] bg-black z-40 left-0 top-0 opacity-20"></div>
 );
-export { ModalOverlay };
+
 
 const ModalContent = ({ title, children, onCancel }: { title: string; children: React.ReactNode; onCancel: () => void }) => (
     <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
-        <div className="w-[500px] p-5 bg-white rounded-md">
+        <div className="w-[350px] p-5 bg-white rounded-md">
             <CardTitle className="border-b-1 border-b-gray-200 pb-4 mb-4">{title}</CardTitle>
             {children}
             <div
@@ -80,5 +80,4 @@ const ModalForm = ({
         </form>
     </Form>
 );
-export { ModalForm };
-export default ModalContent;
+export {ModalOverlay, ModalForm, ModalContent };

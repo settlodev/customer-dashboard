@@ -30,7 +30,7 @@ import { Product } from "@/types/product/type";
 import { ProductSchema } from "@/types/product/schema";
 import { createProduct, updateProduct } from "@/lib/actions/product-actions";
 import { FormVariantItem } from "@/types/variant/type";
-import _ from "lodash";
+import _, {}from "lodash";
 import { createCategory, fetchAllCategories } from "@/lib/actions/category-actions";
 import { Category } from "@/types/category/type";
 import { Department } from "@/types/department/type";
@@ -50,13 +50,11 @@ import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import { createVariant, deleteVariant, updateVariant } from "@/lib/actions/variant-actions";
 import { ToastAction } from "../ui/toast";
 import { CategorySchema } from "@/types/category/schema";
-import { Button } from "@/components/ui/button";
 import { DepartmentSchema } from "@/types/department/schema";
 import { fetchUnits } from "@/lib/actions/unit-actions";
 import { Units } from "@/types/unit/type";
 import { Stock } from "@/types/stock/type";
 import { createStock, fetchStock } from "@/lib/actions/stock-actions";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { NumericFormat } from 'react-number-format';
 import { FormResponse } from "@/types/types";
 import { useRouter } from 'next/navigation';
@@ -66,11 +64,11 @@ import { StockFormVariant } from "@/types/stockVariant/type";
 import { createRecipe, fetchRecipes } from "@/lib/actions/recipe-actions";
 import { Recipe } from "@/types/recipe/type";
 import { RecipeSchema } from "@/types/recipe/schema";
-// import { MultiSelect } from "../ui/multi-select";
-import NoItemsMessage from "../widgets/no-items-message";
-import ModalContent, { ModalForm, ModalOverlay } from "../widgets/modal-component";
+import { ModalForm, ModalOverlay,ModalContent} from "../widgets/modal-component";
 import { ModalContainer, StockFormSection, StockVariantFormSection } from "../widgets/stock-modal";
 import RecipeFormSection from "../widgets/recipe-modal";
+import InventoryTracker from "../widgets/inventory-tracker";
+
 const inventoryType = [
     {
         id: 1,
@@ -109,7 +107,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     const [categoryModalVisible, setCategoryModalVisible] = useState<boolean>(false);
     const [departmentModalVisible, setDepartmentModalVisible] = useState<boolean>(false);
     const [unitModalVisible, setUnitModalVisible] = useState<boolean>(false);
-    const [, setInventoryTracking] = useState<boolean>(false);
+    const [inventoryTracking, setInventoryTracking] = useState<boolean>(false);
     const [stockModalVisible, setStockModalVisible] = useState<boolean>(false);
     const [recipeModalVisible, setRecipeModalVisible] = useState<boolean>(false);
     const [inventoryTrackingType, setInventoryTrackingType] = useState<boolean>(false);
@@ -119,8 +117,8 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
-    const [stockSelected, setStockSelected] = useState<string>('');
-    const [recipeSelected, setRecipeSelected] = useState<string>('');
+    const [stockSelected, setStockSelected] = useState<boolean>(false);
+    const [recipeSelected, setRecipeSelected] = useState<boolean>(false);
 
     useEffect(() => {
         const getData = async () => {
@@ -142,7 +140,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                 setRecipes(recipeResponse);
 
                 const combinedOptions = stockResponse.flatMap(stock => stock.stockVariants.map(variant => ({ id: variant.id, displayName: `${stock.name} - ${variant.name}` })));
-                console.log("The combined stock is", combinedOptions)
+                console.log("The combined stock is", combinedOptions.length)
                 setCombinedStockOptions(combinedOptions);
 
                 if (item) {
@@ -381,8 +379,6 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
         setVariants([values, ...variants]);
         variantForm.reset();
         setSelectedVariant(null);
-
-        console.log("The details of the variant:", values);
     }
 
     const handleSaveVariant = (values: z.infer<typeof VariantSchema>) => {
@@ -419,14 +415,12 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
 
         const variantId = selectedVariant?.id;
         const productId = item?.id;
-        // console.log("Selected variant ID:", variantId);
 
         try {
             if (!variantId || !productId) {
                 throw new Error("Variant ID or product ID is missing");
             }
             await updateVariant(variantId, productId, values);
-            // console.log("Variant updated response:", response);
 
             setVariants((prevVariants) => {
                 return prevVariants.map((variant) =>
@@ -493,22 +487,17 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
         control: recipeForm.control,
         name: "stockVariants",
       })
-    const handleInventoryTrackingChange = (value: boolean) => {
-        console.log("The inventory tracking value is", value)
-
+      const handleInventoryTrackingChange = (value: boolean) => {
         if (value === true) {
             setInventoryTracking(value);
-            setInventoryTrackingType(!inventoryTrackingType)
+            setInventoryTrackingType(true); 
+        } else {
+            setInventoryTracking(false);
+            setInventoryTrackingType(false); 
+            setStockSelected(false); 
+            setRecipeSelected(false); 
         }
-        // toast({
-        //     title: "Inventory Tracking",
-        //     description: value
-        //         ? "You will need to select stock and stock variant(s) to track this product."
-        //         : "You won't be able to track the stock and stock variant for this product.",
-        //     variant: "default",
-        //     duration: 3000,
-        // })
-    };
+    }
 
     const saveStockVariantItem = (values: z.infer<typeof StockVariantSchema>) => {
         console.log("Stock variant is", values)
@@ -536,10 +525,18 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
     const handleTypeSelected = (type: any) => {
         console.log("The type selected is", type)
         if (type.name === 'stock') {
-            setStockSelected(type.name)
+            // setStockSelected(type.name)
+            setStockSelected(true)
+            setRecipeSelected(false)
+            setInventoryTrackingType(false)
         }
-        setRecipeSelected(type.name)
+        else{
+        // setRecipeSelected(type.name)
+        setRecipeSelected(true)
+        setStockSelected(false)
         setInventoryTrackingType(false)
+        }
+        
     }
 
 
@@ -632,7 +629,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
         <>
             <ModalOverlay />
             <ModalContainer>
-                <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
+                <div className="grid auto-rows-max items-center gap-4 lg:col-span-2 lg:gap-8">
                     <div className="flex flex-col-reverse lg:flex-row gap-10">
                         <RecipeFormSection
                             recipeForm={recipeForm}
@@ -1155,7 +1152,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                         )}
                                     />
 
-                                    {stockSelected && (
+                                    {/* {stockSelected && (
                                         <>
                                             {combinedStockOptions && combinedStockOptions.length > 0 ? (
                                                 <FormField
@@ -1173,7 +1170,6 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                                     <SelectTrigger>
                                                                         <SelectValue placeholder="Select stock item" />
                                                                     </SelectTrigger>
-
                                                                     <SelectContent className="flex-grow overflow-y-auto">
                                                                         {combinedStockOptions.map((option) => (
                                                                             <SelectItem key={option.id} value={option.id}>
@@ -1188,71 +1184,66 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                     )}
                                                 />
                                             ) : (
-                                                <div className="flex flex-col mt-2 gap-2">
-                                                    <p className="text-sm text-red-500 font-bold">No stock available</p>
-                                                    <Button onClick={(e) => {
-                                                        e.preventDefault();
-                                                        openStockModal();
-                                                    }}>Add Stock</Button>
-                                                </div>
+                                                <NoItemsMessage 
+                                                    message="No stock available" 
+                                                    onClick={openStockModal} 
+                                                />
                                             )}
                                         </>
                                     )}
 
                                     {recipeSelected && (
                                         <>
-                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
-                                                // Check if there are recipes available
-                                                recipeSelected && recipes.length > 0 ? (
-                                                    <FormField
-                                                        control={variantForm.control}
-                                                        name="recipe"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex flex-col mt-2">
-                                                                <FormLabel>Recipe</FormLabel>
-                                                                <FormControl>
-                                                                    <Select
-                                                                        value={field.value || ''}
-                                                                        onValueChange={field.onChange}
-                                                                        disabled={isPending}
-                                                                    >
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select stock item" />
-                                                                        </SelectTrigger>
-
-                                                                        <SelectContent className="flex-grow overflow-y-auto">
-                                                                            {recipes.map((option) => (
-                                                                                <SelectItem key={option.id} value={option.id}>
-                                                                                    {option.name}
-                                                                                </SelectItem>
-                                                                            ))}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                ) : (
-                                                    
-                                                    <NoItemsMessage
-                                                        message="No recipe available"
-                                                        onClick={openRecipeModal}
-                                                    />
-                                                )
+                                            {recipes && recipes.length > 0 ? (
+                                                <FormField
+                                                    control={variantForm.control}
+                                                    name="recipe"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-col mt-2">
+                                                            <FormLabel>Recipe</FormLabel>
+                                                            <FormControl>
+                                                                <Select
+                                                                    value={field.value || ''}
+                                                                    onValueChange={field.onChange}
+                                                                    disabled={isPending}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Select recipe" />
+                                                                    </SelectTrigger>
+                                                                    <SelectContent className="flex-grow overflow-y-auto">
+                                                                        {recipes.map((option) => (
+                                                                            <SelectItem key={option.id} value={option.id}>
+                                                                                {option.name}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
                                             ) : (
-                                                
-                                                <NoItemsMessage
-                                                    message="No stock available"
-                                                    onClick={openStockModal}
+                                                // Show Add Recipe button only if no recipes are available
+                                                <NoItemsMessage 
+                                                    message="No recipe available" 
+                                                    onClick={openRecipeModal} 
                                                 />
                                             )}
                                         </>
-                                    )}
+                                    )} */}
 
-
-
-
+                                <InventoryTracker
+                                stockSelected={stockSelected}
+                                recipeSelected={recipeSelected}
+                                combinedStockOptions={combinedStockOptions}
+                                recipes={recipes}
+                                variantForm={variantForm}
+                                isPending={isPending}
+                                openStockModal={openStockModal}
+                                openRecipeModal={openRecipeModal}
+                                trackInventory={inventoryTracking}
+                                />
 
                                     <FormField
                                         control={variantForm.control}

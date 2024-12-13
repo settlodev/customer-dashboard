@@ -25,7 +25,7 @@ export default function DeleteModal({
     <>
       <Modal
         backdrop="blur"
-        className="w-1/4 p-4 rounded-2xl border-t-gray-300"
+        className="lg:w-1/4 p-4 rounded-2xl border-t-gray-300"
         isDismissable={false}
         isKeyboardDismissDisabled={true}
         isOpen={isOpen}

@@ -8,6 +8,6 @@ const stockVariantsSchema = object({
 export const RecipeSchema = object({
   name: string({ message: "Recipe name is required" }).min(3, "Please enter a valid recipe name"),
   stockVariants: stockVariantsSchema.array().min(1, "At least one stock variant must be added").optional(),
-  variant: string().uuid("Please select a valid product variant"),
+  variant: string().uuid("Please select a valid product variant").optional(),
   status: boolean().optional(),
 });

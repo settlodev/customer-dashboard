@@ -36,7 +36,7 @@ export const taxClasses=
             "description" : "Exempt items"
         },
         {
-            "code" : 1,
+            "code" : 6,
             "name" : "ZANZIBAR",
             "displayName" : "Zanzibar",
             "amount" : 15.0,
