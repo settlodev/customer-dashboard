@@ -17,18 +17,17 @@ export const fetchStockVariants = async (stockId: string) : Promise<StockVariant
     try {
         const apiClient = new ApiClient();
 
-    
         const data = await  apiClient.get(
             `/api/stock-variants/${stockId}`,
         );
 
         return parseStringify(data);
-
     }
     catch (error){
         throw error;
     }
 }
+
 export const searchVariants = async (
     q:string,
     page:number,
@@ -86,7 +85,7 @@ export const  createStockVariant= async (
       return parseStringify(formResponse)
     }
 
-    
+
     const payload = {
         ...validData.data,
         stock: stockId
@@ -111,7 +110,7 @@ export const  createStockVariant= async (
     if (formResponse){
         return parseStringify(formResponse)
     }
-    
+
 }
 
 export const getVariant= async (id:UUID) : Promise<ApiResponse<Variant>> => {
@@ -182,7 +181,7 @@ export const updateStockVariant = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
- 
+
 };
 
 export const deleteStockVariant = async (id: UUID, stockId: UUID): Promise<void> => {
@@ -196,7 +195,7 @@ export const deleteStockVariant = async (id: UUID, stockId: UUID): Promise<void>
     await apiClient.delete(
         `/api/stock-variants/${stockId}/${id}`,
     );
-    
+
    }
    catch (error){
        throw error

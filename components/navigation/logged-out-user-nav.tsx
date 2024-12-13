@@ -25,17 +25,6 @@ interface LoggedOutNavbarProps {
 
 export async function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
     const session = await auth();
-    const LoginButton = () => (
-        <Button
-            asChild
-            className="hidden md:inline-flex bg-emerald-500 hover:bg-emerald-600 text-white rounded-sm transition-all duration-200 ease-in-out transform hover:scale-105"
-        >
-            <Link href="/login" className="flex items-center">
-                Login
-                <ChevronRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"/>
-            </Link>
-        </Button>
-    );
 
     const MobileNav = () => (
         <SheetContent side="left" className="w-72">
@@ -132,7 +121,17 @@ export async function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
                             <span className="ml-2 font-medium">Help</span>
                         </Link>
 
-                        {(!session?.user && !hideLogin) && <LoginButton />}
+                        {(!session?.user && !hideLogin) &&
+                            <Button
+                                asChild
+                                className="hidden md:inline-flex bg-emerald-500 hover:bg-emerald-600 text-white rounded-sm transition-all duration-200 ease-in-out transform hover:scale-105"
+                            >
+                                <Link href="/login" className="flex items-center">
+                                    Login
+                                    <ChevronRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1"/>
+                                </Link>
+                            </Button>
+                        }
 
                         { session &&  <UserDropdown user={session.user}/> }
                     </div>

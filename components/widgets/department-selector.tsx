@@ -22,13 +22,13 @@ interface Props {
 }
 
 const DepartmentSelector: React.FC<Props> = ({
-                                           placeholder,
-                                           isRequired,
-                                           value,
-                                           isDisabled,
-                                           description,
-                                           onChange,
-                                       }) => {
+       placeholder,
+       isRequired,
+       value,
+       isDisabled,
+       description,
+       onChange,
+   }) => {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 

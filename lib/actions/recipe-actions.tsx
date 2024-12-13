@@ -10,6 +10,7 @@ import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Recipe } from "@/types/recipe/type";
 import { RecipeSchema } from "@/types/recipe/schema";
+import {redirect} from "next/navigation";
 
 export const fetchRecipes = async () : Promise<Recipe[]> => {
     await  getAuthenticatedUser();
@@ -65,7 +66,7 @@ export const searchRecipe = async (
             `/api/recipes/${location?.id}`,
             query
         );
-        
+
         return parseStringify(recipeData);
     }
     catch (error){
@@ -80,7 +81,7 @@ export const  createRecipe= async (
     let formResponse: FormResponse | null = null;
 
     const validRecipeData= RecipeSchema.safeParse(recipe)
-    
+
     if (!validRecipeData.success){
         formResponse = {
             responseType:"error",
@@ -91,22 +92,20 @@ export const  createRecipe= async (
     }
 
     const location = await getCurrentLocation();
-   
+
     const payload = {
         ...validRecipeData.data,
         location: location?.id,
         recipeStockVariants: validRecipeData.data.stockVariants?.map(variant => ({
-            stockVariant: variant.id, 
+            stockVariant: variant.id,
             quantity: variant.quantity
         })) ?? []
     };
     delete payload.stockVariants;
 
-    
-
     try {
         const apiClient = new ApiClient();
-      
+
 
         await apiClient.post(
             `/api/recipes/${location?.id}/create`,
@@ -126,8 +125,11 @@ export const  createRecipe= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
+
+    if ( formResponse?.responseType === "error") return formResponse;
+
     revalidatePath("/recipes")
-    return parseStringify(formResponse)
+    redirect("/recipes")
 }
 
 export const getRecipe= async (id:UUID) : Promise<ApiResponse<Recipe>> => {
@@ -150,7 +152,7 @@ export const getRecipe= async (id:UUID) : Promise<ApiResponse<Recipe>> => {
         `/api/recipes/${location?.id}`,
         query,
     );
-    
+
     return parseStringify(recipe)
 }
 
@@ -171,23 +173,23 @@ export const updateRecipe = async (
     }
 
     const location = await getCurrentLocation();
-    
+
     const payload = {
         ...validRecipeData.data,
         location: location?.id,
         recipeStockVariants: validRecipeData.data.stockVariants?.map(variant => ({
-            stockVariant: variant.id, 
+            stockVariant: variant.id,
             quantity: variant.quantity
         })) ?? []
     };
-    delete payload.stockVariants;
 
+    delete payload.stockVariants;
 
     try {
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/recipes/${location?.id}/${id}`, 
+            `/api/recipes/${location?.id}/${id}`,
             payload
         );
 
@@ -197,7 +199,7 @@ export const updateRecipe = async (
         };
 
     } catch (error) {
-        console.error("Error while updating recipe", error); 
+        console.error("Error while updating recipe", error);
         formResponse = {
             responseType: "error",
             message:
@@ -206,8 +208,10 @@ export const updateRecipe = async (
         };
     }
 
+    if (formResponse?.responseType === "error") return formResponse;
+
     revalidatePath("/recipes");
-    return parseStringify(formResponse);
+    redirect("/recipes");
 };
 
 export const deleteRecipe = async (id: UUID): Promise<void> => {
@@ -221,12 +225,12 @@ export const deleteRecipe = async (id: UUID): Promise<void> => {
     const apiClient = new ApiClient();
 
     const location = await getCurrentLocation();
-   
+
     await apiClient.delete(
         `/api/recipes/${location?.id}/${id}`,
     );
     revalidatePath("/recipes");
-    
+
    }
    catch (error){
        throw error

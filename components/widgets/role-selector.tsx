@@ -22,13 +22,13 @@ interface Props {
 }
 
 const RoleSelector: React.FC<Props> = ({
-                                              placeholder,
-                                              isRequired,
-                                              value,
-                                              isDisabled,
-                                              description,
-                                              onChange,
-                                          }) => {
+      placeholder,
+      isRequired,
+      value,
+      isDisabled,
+      description,
+      onChange,
+  }) => {
     const [roles, setRoles] = useState<Role[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
@@ -49,33 +49,27 @@ const RoleSelector: React.FC<Props> = ({
 
     return (
         <div className="space-y-2">
+
             <Select
                 defaultValue={value}
                 disabled={isDisabled || isLoading}
                 value={value}
                 required={isRequired}
-                onValueChange={onChange}
-            >
+                onValueChange={onChange}>
                 <SelectTrigger className="w-full">
-                    <SelectValue
-                        placeholder={placeholder || "Select role"}
-                    />
+                    <SelectValue placeholder={placeholder || "Select role"} />
                 </SelectTrigger>
                 <SelectContent>
                     {roles.map((role) => (
-                        <SelectItem
-                            key={role.id}
-                            value={role.id}
-                        >
+                        <SelectItem key={role.id} value={role.id}>
                             {role.name}
                         </SelectItem>
                     ))}
                 </SelectContent>
             </Select>
+
             {description && (
-                <p className="text-sm text-gray-500">
-                    {description}
-                </p>
+                <p className="text-sm text-gray-500">{description}</p>
             )}
         </div>
     );
