@@ -1,11 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useRouter } from "next/navigation";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Trash2, Plus, Loader2 } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,20 +16,19 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import {
-  Card,
   CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { createRecipe, updateRecipe } from "@/lib/actions/recipe-actions";
 import { useTransition } from "react";
-import {FormError} from "@/components/widgets/form-error";
-import {FormResponse} from "@/types/types";
-import {Recipe} from "@/types/recipe/type";
-import {RecipeSchema} from "@/types/recipe/schema";
+import { FormError } from "@/components/widgets/form-error";
+import { FormResponse } from "@/types/types";
+import { Recipe } from "@/types/recipe/type";
+import { RecipeSchema } from "@/types/recipe/schema";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import CancelButton from "@/components/widgets/cancel-button";
+import {Separator} from "@/components/ui/separator";
+import {SubmitButton} from "@/components/widgets/submit-button";
 
 type RecipeFormProps = {
   item: Recipe | null | undefined;
@@ -38,7 +36,6 @@ type RecipeFormProps = {
 };
 
 export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
-  const router = useRouter();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [isPending, startTransition] = useTransition();
 
@@ -48,9 +45,9 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
       name: item?.name || "",
       status: item?.status ?? true,
       stockVariants: item?.recipeStockVariants.map(variant => ({
-        stockId: variant.stockVariant,
-        quantity: variant.quantity,
-      })) || [{ stockId: "", quantity: 0 }],
+        id: variant.stockVariant,
+        quantity: parseFloat(String(variant.quantity)),
+      })) || [{ id: "", quantity: 0 }],
     },
   });
 
@@ -58,6 +55,11 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
     control: form.control,
     name: "stockVariants",
   });
+
+  // Get all currently selected stock variant IDs
+  const selectedStockVariants = fields.map((field, index) =>
+      form.getValues(`stockVariants.${index}.id`) as string
+  ).filter(Boolean);
 
   const submitData = (values: z.infer<typeof RecipeSchema>) => {
     setResponse(undefined);
@@ -82,19 +84,15 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
   };
 
   return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle>{item ? "Edit Recipe" : "Create New Recipe"}</CardTitle>
-        </CardHeader>
         <Form {...form}>
           <FormError message={response?.message} />
           <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-6 max-w-screen-md">
               {/* Recipe Name */}
               <FormField
                   control={form.control}
                   name="name"
-                  render={({ field }) => (
+                  render={({field}) => (
                       <FormItem>
                         <FormLabel>Recipe Name</FormLabel>
                         <FormControl>
@@ -104,7 +102,7 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                               disabled={isPending}
                           />
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage/>
                       </FormItem>
                   )}
               />
@@ -117,10 +115,10 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => append({ id: "", quantity: 0 })}
+                      onClick={() => append({id: "", quantity: 0})}
                       disabled={isPending}
                   >
-                    <Plus className="w-4 h-4 mr-2" />
+                    <Plus className="w-4 h-4 mr-2"/>
                     Add Ingredient
                   </Button>
                 </div>
@@ -128,58 +126,61 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                 {fields.map((field, index) => (
                     <div
                         key={field.id}
-                        className="flex gap-4 items-start p-4 rounded-lg border bg-card"
+                        className="flex gap-4 items-center p-4 rounded-lg border bg-card"
                     >
-                      <div className="flex-1 space-y-4">
-                        <FormField
-                            control={form.control}
-                            name={`stockVariants.${index}.id`}
-                            render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Stock Variant</FormLabel>
-                                  <FormControl>
-                                    <StockVariantSelector
-                                        {...field}
-                                        onChange={field.onChange}
-                                        placeholder="Select stock variant"
-                                        isDisabled={isPending}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                      <div className="flex-1 grid grid-cols-12 gap-4 items-start">
+                        <div className="col-span-8">
+                          <FormField
+                              control={form.control}
+                              name={`stockVariants.${index}.id`}
+                              render={({field}) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <StockVariantSelector
+                                          value={field.value}
+                                          onChange={field.onChange}
+                                          placeholder="Select stock variant"
+                                          isDisabled={isPending}
+                                          disabledValues={selectedStockVariants.filter(id => id !== field.value)}
+                                      />
+                                    </FormControl>
+                                    <FormMessage/>
+                                  </FormItem>
+                              )}
+                          />
+                        </div>
 
-                        <FormField
-                            control={form.control}
-                            name={`stockVariants.${index}.quantity`}
-                            render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Quantity</FormLabel>
-                                  <FormControl>
-                                    <Input
-                                        type="number"
-                                        step="0.01"
-                                        {...field}
-                                        onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                                        disabled={isPending}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        <div className="col-span-4">
+                          <FormField
+                              control={form.control}
+                              name={`stockVariants.${index}.quantity`}
+                              render={({field}) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <Input
+                                          type="number"
+                                          step="0.01"
+                                          {...field}
+                                          onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
+                                          disabled={isPending}
+                                          placeholder="Quantity"
+                                      />
+                                    </FormControl>
+                                    <FormMessage/>
+                                  </FormItem>
+                              )}
+                          />
+                        </div>
                       </div>
 
                       <Button
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="mt-8"
                           onClick={() => remove(index)}
                           disabled={fields.length === 1 || isPending}
                       >
-                        <Trash2 className="w-4 h-4 text-red-500" />
+                        <Trash2 className="w-4 h-4 text-red-500"/>
                       </Button>
                     </div>
                 ))}
@@ -190,7 +191,7 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                   <FormField
                       control={form.control}
                       name="status"
-                      render={({ field }) => (
+                      render={({field}) => (
                           <FormItem className="flex items-center justify-between p-4 rounded-lg border">
                             <div className="space-y-0.5">
                               <FormLabel>Recipe Status</FormLabel>
@@ -211,22 +212,16 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
               )}
             </CardContent>
 
-            <CardFooter className="flex justify-between">
-              <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => router.push("/recipes")}
-                  disabled={isPending}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isPending}>
-                {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                {item ? "Update Recipe" : "Create Recipe"}
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
-  );
+            <div className="flex h-5 items-center space-x-4 mt-4">
+              <CancelButton/>
+              <Separator orientation="vertical"/>
+              <SubmitButton
+                  isPending={isPending}
+                  label={item ? "Update recipe" : "Create recipe"}
+              />
+            </div>
+        </form>
+    </Form>
+    )
+  ;
 }

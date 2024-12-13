@@ -10,6 +10,7 @@ import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Recipe } from "@/types/recipe/type";
 import { RecipeSchema } from "@/types/recipe/schema";
+import {redirect} from "next/navigation";
 
 export const fetchRecipes = async () : Promise<Recipe[]> => {
     await  getAuthenticatedUser();
@@ -102,8 +103,6 @@ export const  createRecipe= async (
     };
     delete payload.stockVariants;
 
-
-
     try {
         const apiClient = new ApiClient();
 
@@ -126,8 +125,11 @@ export const  createRecipe= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
+
+    if ( formResponse?.responseType === "error") return formResponse;
+
     revalidatePath("/recipes")
-    return parseStringify(formResponse)
+    redirect("/recipes")
 }
 
 export const getRecipe= async (id:UUID) : Promise<ApiResponse<Recipe>> => {

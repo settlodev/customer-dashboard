@@ -1,4 +1,5 @@
-import {Button} from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 type SubmitButtonProps = {
   label: string;
@@ -8,18 +9,21 @@ type SubmitButtonProps = {
 };
 
 export const SubmitButton = ({
-  label,
-  isPending,
-  onClick
-}: SubmitButtonProps) => {
+     label,
+     isPending,
+     isDisabled,
+     onClick
+   }: SubmitButtonProps) => {
   return (
-    <Button
-      color="primary"
-      disabled={isPending}
-      type="submit"
-      onClick={onClick}
-    >
-      {label}
-    </Button>
+      <Button
+          type="submit"
+          disabled={isPending || isDisabled}
+          onClick={onClick}
+      >
+        {isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+        {isPending ? "Processing..." : label}
+      </Button>
   );
 };
+
+export default SubmitButton;

@@ -8,9 +8,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { fetchStock } from "@/lib/actions/stock-actions";
 import {Stock} from "@/types/stock/type";
-import { StockVariant } from "@/types/stockVariant/type";
-import {fetchStock} from "@/lib/actions/stock-actions";
+import {StockVariant} from "@/types/stockVariant/type";
 
 interface Props {
     label?: string;
@@ -20,6 +20,7 @@ interface Props {
     isDisabled?: boolean;
     description?: string;
     onChange: (value: string) => void;
+    disabledValues?: string[];
 }
 
 const StockVariantSelector: React.FC<Props> = ({
@@ -29,6 +30,7 @@ const StockVariantSelector: React.FC<Props> = ({
        isDisabled,
        description,
        onChange,
+       disabledValues = [],
    }) => {
     const [stocks, setStocks] = useState<Stock[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -55,7 +57,8 @@ const StockVariantSelector: React.FC<Props> = ({
     const variantOptions = stocks.flatMap(stock =>
         stock.stockVariants.map(variant => ({
             id: variant.id,
-            displayName: getDisplayName(stock, variant)
+            displayName: getDisplayName(stock, variant),
+            disabled: disabledValues.includes(variant.id)
         }))
     );
 
@@ -69,19 +72,24 @@ const StockVariantSelector: React.FC<Props> = ({
                 onValueChange={onChange}
             >
                 <SelectTrigger className="w-full">
-                    <SelectValue placeholder={placeholder || "Select stock variant"} />
+                    <SelectValue placeholder={placeholder || "Select stock variant"}/>
                 </SelectTrigger>
                 <SelectContent>
                     {variantOptions.map((option) => (
-                        <SelectItem key={option.id} value={option.id}>
+                        <SelectItem
+                            key={option.id}
+                            value={option.id}
+                            disabled={option.disabled}
+                        >
                             {option.displayName}
                         </SelectItem>
                     ))}
                 </SelectContent>
             </Select>
-
             {description && (
-                <p className="text-sm text-gray-500">{description}</p>
+                <p className="text-sm text-gray-500">
+                    {description}
+                </p>
             )}
         </div>
     );
