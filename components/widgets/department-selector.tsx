@@ -8,8 +8,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Country } from "@/types/country/type";
-import { fetchCountries } from "@/lib/actions/countries-actions";
+import {Department} from "@/types/department/type";
+import {fectchAllDepartments} from "@/lib/actions/department-actions";
 
 interface Props {
     label?: string;
@@ -21,30 +21,30 @@ interface Props {
     onChange: (value: string) => void;
 }
 
-const CountrySelector: React.FC<Props> = ({
-      placeholder,
-      isRequired,
-      value,
-      isDisabled,
-      description,
-      onChange,
-  }) => {
-    const [countries, setCountries] = useState<Country[]>([]);
+const DepartmentSelector: React.FC<Props> = ({
+                                           placeholder,
+                                           isRequired,
+                                           value,
+                                           isDisabled,
+                                           description,
+                                           onChange,
+                                       }) => {
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
-        async function loadCountries() {
+        async function loadDepartments() {
             try {
                 setIsLoading(true);
-                const fetchedCountries = await fetchCountries();
-                setCountries(fetchedCountries);
+                const fetchedDepartments = await fectchAllDepartments();
+                setDepartments(fetchedDepartments);
             } catch (error: any) {
-                console.log("Error fetching countries:", error);
+                console.log("Error fetching departments:", error);
             } finally {
                 setIsLoading(false);
             }
         }
-        loadCountries();
+        loadDepartments();
     }, []);
 
     return (
@@ -58,16 +58,16 @@ const CountrySelector: React.FC<Props> = ({
             >
                 <SelectTrigger className="w-full">
                     <SelectValue
-                        placeholder={placeholder || "Select country"}
+                        placeholder={placeholder || "Select department"}
                     />
                 </SelectTrigger>
                 <SelectContent>
-                    {countries.map((country) => (
+                    {departments.map((department) => (
                         <SelectItem
-                            key={country.id}
-                            value={country.id}
+                            key={department.id}
+                            value={department.id}
                         >
-                            {country.name}
+                            {department.name}
                         </SelectItem>
                     ))}
                 </SelectContent>
@@ -81,4 +81,4 @@ const CountrySelector: React.FC<Props> = ({
     );
 };
 
-export default CountrySelector;
+export default DepartmentSelector;

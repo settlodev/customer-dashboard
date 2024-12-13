@@ -1,5 +1,3 @@
-"use client";
-
 import Link from 'next/link';
 import Image from 'next/image';
 import {MenuIcon, ShieldQuestion, ChevronRight} from 'lucide-react';
@@ -11,6 +9,7 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import DarkModeSwitcher from "./dark-mode-switcher";
+import {auth} from "@/auth";
 
 const navigationLinks = [
     {title: "Solutions", href: "/#solutions"},
@@ -24,8 +23,8 @@ interface LoggedOutNavbarProps {
     hideLogin?: boolean;
 }
 
-export function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
-
+export async function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
+    const session = await auth();
     const LoginButton = () => (
         <Button
             asChild
@@ -77,7 +76,8 @@ export function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
     );
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <header
+            className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
             <div className="container mx-auto">
                 <div className="flex h-16 items-center justify-between px-4">
                     <div className="flex items-center gap-4">
@@ -102,7 +102,8 @@ export function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
                                     priority
                                 />
                             </div>
-                            <span className="hidden md:inline-block font-bold bg-gradient-to-r from-emerald-500 to-emerald-400 bg-clip-text text-transparent">
+                            <span
+                                className="hidden md:inline-block font-bold bg-gradient-to-r from-emerald-500 to-emerald-400 bg-clip-text text-transparent">
                                 Settlo
                             </span>
                         </Link>
@@ -131,9 +132,9 @@ export function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
                             <span className="ml-2 font-medium">Help</span>
                         </Link>
 
-                        {!hideLogin && <LoginButton />}
+                        {(!session?.user && !hideLogin) && <LoginButton />}
 
-                        <UserDropdown />
+                        { session &&  <UserDropdown user={session.user}/> }
                     </div>
                 </div>
             </div>

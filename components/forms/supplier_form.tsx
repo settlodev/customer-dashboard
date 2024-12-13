@@ -279,31 +279,27 @@ return (
                 </Card>
 
                 {item && (
-                    <Card>
-                        <CardContent className="pt-6">
-                            <FormField
-                                control={form.control}
-                                name="status"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                        <div>
-                                            <FormLabel className="text-base">Supplier Status</FormLabel>
-                                            <span className={`ml-2 ${item.status ? "text-green-500" : "text-red-500"}`}>
+                    <FormField
+                        control={form.control}
+                        name="status"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div>
+                                    <FormLabel className="text-base">Supplier Status</FormLabel>
+                                    <span className={`ml-2 ${item.status ? "text-green-500" : "text-red-500"}`}>
                       ({item.status ? "Active" : "Inactive"})
                     </span>
-                                        </div>
-                                        <FormControl>
-                                            <Switch
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                                disabled={isPending}
-                                            />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
+                                </div>
+                                <FormControl>
+                                    <Switch
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        disabled={isPending}
+                                    />
+                                </FormControl>
+                            </FormItem>
+                        )}
+                    />
                 )}
 
                 <div className="flex items-center space-x-4 pt-6">

@@ -26,7 +26,6 @@ import { Switch } from "../ui/switch";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { PhoneInput } from "../ui/phone-input";
-import { useRouter } from "next/navigation";
 
 function CustomerForm({ item }: { item: Customer | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -34,14 +33,13 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
   const [error, ] = useState<string | undefined>("");
   const [success, ] = useState<string | undefined>("");
   const { toast } = useToast();
-  const router = useRouter();
 
   const form = useForm<z.infer<typeof CustomerSchema>>({
     resolver: zodResolver(CustomerSchema),
-    defaultValues: { 
+    defaultValues: {
                 ...item,
                 allowNotifications: true,
-                status: true 
+                status: true
                 },
   });
 
@@ -60,8 +58,6 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof CustomerSchema>) => {
-    // Initialize the router
-  
     startTransition(() => {
       if (item) {
         updateCustomer(item.id, values).then((data) => {
@@ -71,9 +67,6 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
               title: "Success",
               description: data.message,
             });
-  
-            // Redirect after showing the toast
-            router.push("/customers");
           }
         });
       } else {
@@ -85,9 +78,6 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                 title: "Success",
                 description: data.message,
               });
-  
-              // Redirect after showing the toast
-              router.push("/customers");
             }
           })
           .catch((err) => {
@@ -96,7 +86,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
       }
     });
   };
-  
+
   return (
     <Form {...form}>
       <form
@@ -175,7 +165,11 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                     <FormItem>
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="johndoe@example.com" {...field} />
+                        <Input
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder="Enter customer email address"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -260,8 +254,6 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
             />
           </div>
         </div>
-
-        {/* </div> */}
       </form>
     </Form>
   );

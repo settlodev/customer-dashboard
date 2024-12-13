@@ -123,11 +123,11 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                       <FormLabel>Department Color</FormLabel>
                       <FormControl>
                         <Input
-                         placeholder="Enter department color"
+                          placeholder="Enter department color"
                           {...field}
                           type="color"
-                         disabled={isPending}
-                         value={field.value ?? ''}
+                          disabled={isPending}
+                          value={field.value ?? ''}
                          />
                       </FormControl>
                       <FormMessage />

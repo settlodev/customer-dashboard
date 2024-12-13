@@ -73,9 +73,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
     const submitData = (values: z.infer<typeof CategorySchema>) => {
         setResponse(undefined);
 
-        if(imageUrl) {
-            values.image = imageUrl;
-        }
+        if(imageUrl) values.image = imageUrl;
 
         values.status = status;
 

@@ -1,7 +1,6 @@
 "use client"
 
 import { signOut } from "next-auth/react";
-import { useCurrentUser } from "@/hooks/use-current-user";
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -12,15 +11,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Settings, User, Briefcase, LogOut, ChevronDown } from "lucide-react";
 import UserAvatar from "@/components/widgets/user-avatar";
+import { ExtendedUser } from "@/types/types";
 
-export const UserDropdown = () => {
-    const user = useCurrentUser();
+interface UserDropdownProps {
+    user: ExtendedUser;
+}
 
-    if (!user) {
-        //signOut();
-        return null;
-    }
-
+export const UserDropdown = ({ user }: UserDropdownProps) => {
     const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
     const initials = fullName.split(' ').map(n => n[0]).join('');
 

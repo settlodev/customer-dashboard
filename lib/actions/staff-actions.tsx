@@ -11,6 +11,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { StaffSchema } from "@/types/staff";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import {redirect} from "next/navigation";
 
 export const fetchAllStaff = async (): Promise<Staff[]> => {
     await getAuthenticatedUser();
@@ -94,7 +95,7 @@ export const createStaff = async (
 
     try {
         const apiClient = new ApiClient();
-        
+
         const location = await getCurrentLocation();
         const business = await getCurrentBusiness();
 
@@ -120,8 +121,11 @@ export const createStaff = async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    revalidatePath("/staffs");
-    return parseStringify(formResponse);
+
+    if( formResponse.responseType === "error" ) return parseStringify(formResponse);
+
+    revalidatePath("/staff");
+    redirect("/staff");
 };
 
 export const updateStaff = async (
@@ -170,9 +174,11 @@ export const updateStaff = async (
         };
     }
 
-    revalidatePath("/staffs");
-    return parseStringify(formResponse);
-    
+    if( formResponse.responseType === "error" ) return parseStringify(formResponse);
+
+    revalidatePath("/staff");
+    redirect("/staff");
+
 };
 
 export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {

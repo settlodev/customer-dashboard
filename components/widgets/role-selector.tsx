@@ -8,8 +8,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Country } from "@/types/country/type";
-import { fetchCountries } from "@/lib/actions/countries-actions";
+import {Role} from "@/types/roles/type";
+import {fetchAllRoles} from "@/lib/actions/role-actions";
 
 interface Props {
     label?: string;
@@ -21,30 +21,30 @@ interface Props {
     onChange: (value: string) => void;
 }
 
-const CountrySelector: React.FC<Props> = ({
-      placeholder,
-      isRequired,
-      value,
-      isDisabled,
-      description,
-      onChange,
-  }) => {
-    const [countries, setCountries] = useState<Country[]>([]);
+const RoleSelector: React.FC<Props> = ({
+                                              placeholder,
+                                              isRequired,
+                                              value,
+                                              isDisabled,
+                                              description,
+                                              onChange,
+                                          }) => {
+    const [roles, setRoles] = useState<Role[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
-        async function loadCountries() {
+        async function loadRoles() {
             try {
                 setIsLoading(true);
-                const fetchedCountries = await fetchCountries();
-                setCountries(fetchedCountries);
+                const fetchedRoles = await fetchAllRoles();
+                setRoles(fetchedRoles);
             } catch (error: any) {
-                console.log("Error fetching countries:", error);
+                console.log("Error fetching roles:", error);
             } finally {
                 setIsLoading(false);
             }
         }
-        loadCountries();
+        loadRoles();
     }, []);
 
     return (
@@ -58,16 +58,16 @@ const CountrySelector: React.FC<Props> = ({
             >
                 <SelectTrigger className="w-full">
                     <SelectValue
-                        placeholder={placeholder || "Select country"}
+                        placeholder={placeholder || "Select role"}
                     />
                 </SelectTrigger>
                 <SelectContent>
-                    {countries.map((country) => (
+                    {roles.map((role) => (
                         <SelectItem
-                            key={country.id}
-                            value={country.id}
+                            key={role.id}
+                            value={role.id}
                         >
-                            {country.name}
+                            {role.name}
                         </SelectItem>
                     ))}
                 </SelectContent>
@@ -81,4 +81,4 @@ const CountrySelector: React.FC<Props> = ({
     );
 };
 
-export default CountrySelector;
+export default RoleSelector;

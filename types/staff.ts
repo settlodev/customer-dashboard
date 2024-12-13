@@ -4,7 +4,6 @@ import {
   boolean,
   date,
   nativeEnum,
-  number,
   object,
   preprocess,
   string,
@@ -16,7 +15,6 @@ export const StaffSchema = object({
     1,
     "Please enter a valid first name"
   ),
- 
   color: preprocess((val) => (val === null ? "" : val), string().optional()),
   email: string()
     .min(1, "Please enter a valid email address")
@@ -35,13 +33,12 @@ export const StaffSchema = object({
   ),
   salary: string({ message: "Salary is required" }).uuid(
     "Please select a valid salary"
-  ).optional(),
+  ).optional().nullish(),
   role: string({ message: "Staff role is required" }).uuid(
     "Please select a valid role"
   ),
-
   address: preprocess((val) => (val === null ? "" : val), string().optional()),
-  employeeNumber: string().optional(),
+  employeeNumber: string().optional().nullish(),
   gender: nativeEnum(Gender),
   dateOfBirth: preprocess((val) => {
     if (val === null) return undefined;
@@ -63,7 +60,6 @@ export const StaffSchema = object({
     return val;
   }, date().optional()),
   jobTitle: string({message:"Job title is required"}).min(3, "Please enter a valid job title"),
-
   emergencyName: preprocess((val) => (val === null ? "" : val), string().optional()),
   emergencyNumber: preprocess((val) => (val === null ? "" : val), string().optional()),
   emergencyRelationship: preprocess((val) => (val === null ? "" : val), string().optional()),
@@ -103,5 +99,5 @@ export declare interface Staff {
   nationality?: string;
   joiningDate: Date;
 
-  
+
 }

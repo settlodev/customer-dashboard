@@ -1,13 +1,15 @@
 import { cookies } from "next/headers";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-    const searchParams = request.nextUrl.searchParams;
-    const redirectTo = searchParams.get("redirect") || "/login";
+export async function GET() {
+    const cookieStore = await cookies();
 
-    // Clear the authToken cookie
-    cookies().delete("authToken");
+    cookieStore.delete("authToken");
+    cookieStore.delete("next-auth.session-token");
+    cookieStore.delete("next-auth.csrf-token");
 
-    // Redirect to the specified page
-    return NextResponse.redirect(new URL(redirectTo, request.url));
+    return NextResponse.json(
+        { message: "Previous user sessions cleared" },
+        { status: 200 },
+    );
 }

@@ -8,8 +8,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Country } from "@/types/country/type";
-import { fetchCountries } from "@/lib/actions/countries-actions";
+import {Salary} from "@/types/salary/type";
+import {fectchSalaries} from "@/lib/actions/salary-actions";
 
 interface Props {
     label?: string;
@@ -21,30 +21,30 @@ interface Props {
     onChange: (value: string) => void;
 }
 
-const CountrySelector: React.FC<Props> = ({
-      placeholder,
-      isRequired,
-      value,
-      isDisabled,
-      description,
-      onChange,
-  }) => {
-    const [countries, setCountries] = useState<Country[]>([]);
+const SalarySelector: React.FC<Props> = ({
+                                                 placeholder,
+                                                 isRequired,
+                                                 value,
+                                                 isDisabled,
+                                                 description,
+                                                 onChange,
+                                             }) => {
+    const [salaries, setSalaries] = useState<Salary[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
-        async function loadCountries() {
+        async function loadSalaries() {
             try {
                 setIsLoading(true);
-                const fetchedCountries = await fetchCountries();
-                setCountries(fetchedCountries);
+                const fetchedSalaries = await fectchSalaries();
+                setSalaries(fetchedSalaries);
             } catch (error: any) {
-                console.log("Error fetching countries:", error);
+                console.log("Error fetching salaries:", error);
             } finally {
                 setIsLoading(false);
             }
         }
-        loadCountries();
+        loadSalaries();
     }, []);
 
     return (
@@ -58,16 +58,16 @@ const CountrySelector: React.FC<Props> = ({
             >
                 <SelectTrigger className="w-full">
                     <SelectValue
-                        placeholder={placeholder || "Select country"}
+                        placeholder={placeholder || "Select salary"}
                     />
                 </SelectTrigger>
                 <SelectContent>
-                    {countries.map((country) => (
+                    {salaries.map((salary) => (
                         <SelectItem
-                            key={country.id}
-                            value={country.id}
+                            key={salary.id}
+                            value={salary.id}
                         >
-                            {country.name}
+                            {salary.bankName}
                         </SelectItem>
                     ))}
                 </SelectContent>
@@ -81,4 +81,4 @@ const CountrySelector: React.FC<Props> = ({
     );
 };
 
-export default CountrySelector;
+export default SalarySelector;

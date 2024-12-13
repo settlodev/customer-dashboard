@@ -35,9 +35,7 @@ export const refreshLocation = async (data: Location): Promise<void> => {
         name: "currentLocation",
         value: JSON.stringify(data)
     });
-    try {
-        revalidatePath("/dashboard");
-    } catch (error) {
-        throw error;
-    }
+
+    revalidatePath("/dashboard");
+    redirect("/dashboard");
 };

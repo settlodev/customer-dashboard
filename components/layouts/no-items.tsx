@@ -8,7 +8,6 @@ import { buttonVariants } from "@/components/ui/button";
 interface NoItemsProps {
     newItemUrl: string;
     itemName: string;
-    // stockTransfer?: string;
 }
 
 export default function NoItems({ newItemUrl, itemName}: NoItemsProps) {
@@ -22,7 +21,7 @@ export default function NoItems({ newItemUrl, itemName}: NoItemsProps) {
                     There are no {itemName} records found at the moment, add new{" "}
                     {itemName} record to start viewing data.
                 </p>
-               
+
                 <div className="mt-6 flex gap-4">
                     <Link
                         className={cn(buttonVariants({ variant: "default" }))}

@@ -1,5 +1,3 @@
-
-
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import {DataTable} from "@/components/tables/data-table";
@@ -32,13 +30,13 @@ const breadCrumbItems = [{title:"Units",link:"/units"}];
                 <div className={`relative flex-1 md:max-w-md`}>
                     <BreadcrumbsNav items={breadCrumbItems} />
                 </div>
-              
+
             </div>
             {
                 total > 0 || q != "" ? (
                     <Card x-chunk="data-table">
                         <CardHeader>
-                            <CardTitle>Unit List</CardTitle>
+                            <CardTitle>Units</CardTitle>
                             <CardDescription>A list of all units</CardDescription>
                         </CardHeader>
                         <CardContent>

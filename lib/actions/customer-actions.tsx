@@ -117,9 +117,10 @@ export const  createCustomer= async (
         };
     }
 
+    if ( formResponse?.responseType === "error" ) return parseStringify(formResponse)
+
     revalidatePath("/customers");
     redirect("/customers");
-    return parseStringify(formResponse);
 }
 
 export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
@@ -193,8 +194,10 @@ export const updateCustomer = async (
         };
     }
 
+    if ( formResponse?.responseType === "error" ) return parseStringify(formResponse)
+
     revalidatePath("/customers");
-    return parseStringify(formResponse);
+    redirect("/customers");
 };
 
 export const deleteCustomer = async (id: UUID): Promise<void> => {
@@ -210,6 +213,7 @@ export const deleteCustomer = async (id: UUID): Promise<void> => {
     await apiClient.delete(
         `/api/customers/${location?.id}/${id}`,
     );
+
     revalidatePath("/customers");
 
    }
