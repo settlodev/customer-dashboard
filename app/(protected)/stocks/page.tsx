@@ -14,7 +14,7 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
          [key:string]:string | undefined
      }
  };
- async function Page({searchParams}:ParamsProps) {
+ async function StockPage({searchParams}:ParamsProps) {
 
      const q = searchParams.search || "";
      const page = Number(searchParams.page) || 0;
@@ -47,11 +47,11 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
                         </CardHeader>
                         <CardContent>
                             <DataTable columns={columns}
-                                       data={data}
-                                       searchKey="name"
-                                       pageNo={page}
-                                       total={total}
-                                       pageCount={pageCount}
+                               data={data}
+                               searchKey="name"
+                               pageNo={page}
+                               total={total}
+                               pageCount={pageCount}
                             />
                         </CardContent>
                     </Card>
@@ -64,4 +64,4 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
     );
 }
 
-export default Page
+export default StockPage

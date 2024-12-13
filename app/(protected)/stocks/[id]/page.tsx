@@ -8,8 +8,7 @@ import { Stock } from "@/types/stock/type";
 import { getStock } from "@/lib/actions/stock-actions";
 import StockForm from "@/components/forms/stock_form";
 
-export default async function StockPage({params}:{params:{id:string}}){
-
+export default async function StockItemPage({params}:{params:{id:string}}){
     const isNewItem = params.id === "new";
     let item: ApiResponse<Stock> | null = null;
 
@@ -21,7 +20,7 @@ export default async function StockPage({params}:{params:{id:string}}){
         catch (error){
             if(isNotFoundError(error)) throw error;
 
-            //throw new Error("Failed to load product details");
+            throw new Error("Failed to load product details");
         }
     }
 
