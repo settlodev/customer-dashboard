@@ -95,7 +95,6 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
     );
 
     const submitData = (values: z.infer<typeof StockModificationSchema>) => {
-        console.log("Submitting data:", values);
 
         startTransition(() => {
             if (item) {
@@ -137,14 +136,14 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                     name="stockVariant"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Stock Variant</FormLabel>
+                                            <FormLabel>Stock Item</FormLabel>
                                             <FormControl>
                                                 <Select
                                                     onValueChange={field.onChange}
                                                     value={field.value}
                                                 >
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select  Variant" />
+                                                        <SelectValue placeholder="Select stock item" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {stocks.map((stock) =>
@@ -312,7 +311,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                     <Separator orientation="vertical" />
                                     <SubmitButton
                                         isPending={isPending}
-                                        label={item ? "Update Stock Modification" : "Modify Stock"}
+                                        label={item ? "Update Stock" : "Modify Stock"}
                                     />
                                 </div>
                             </div>

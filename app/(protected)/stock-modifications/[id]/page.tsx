@@ -46,10 +46,10 @@ const StockModificationCard =({isNewItem, item}:{
     <Card>
        <CardHeader>
            <CardTitle>
-               {isNewItem ? "Modify Stock Variant" : ""}
+               {isNewItem ? "Modify Stock Item" : ""}
            </CardTitle>
            <CardDescription>
-               {isNewItem ? "Modify stock variant for your business location": ""}
+               {isNewItem ? "Modify stock item for your business location": ""}
            </CardDescription>
        </CardHeader>
         <CardContent>

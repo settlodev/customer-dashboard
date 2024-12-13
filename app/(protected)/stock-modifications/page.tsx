@@ -34,7 +34,7 @@ const breadCrumbItems = [{title: "Stock Modification", link: "/stock-modificatio
                 </div>
                 <div className={`flex items-center space-x-2`}>
                     <Button>
-                        <Link href={`/stock-modifications/new`}>Modify Stock Variant </Link>
+                        <Link href={`/stock-modifications/new`}>Modify Stock Item </Link>
                     </Button>
                 </div>
             </div>

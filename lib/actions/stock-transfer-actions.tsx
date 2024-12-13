@@ -106,7 +106,7 @@ export const createStockTransfer = async (
         console.error("Error creating stock transfer", formattedError);
         formResponse = {
             responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
+            message: formattedError.message,
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }

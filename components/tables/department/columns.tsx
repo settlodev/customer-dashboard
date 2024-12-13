@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Department } from "@/types/department/type";
 import { StateColumn } from "../state-column";
+import Image from "next/image";
 
 export const columns: ColumnDef<Department>[] = [
   {
@@ -29,6 +30,17 @@ export const columns: ColumnDef<Department>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+  {
+    accessorKey: "image",
+    header: "Image",
+    enableHiding: false,
+    cell: ({ row }) => {
+        const image = row.original.image;
+        return ( image ? <Image src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" width={50} height={50} loading="lazy" /> : 
+            <div className="w-10 h-10 rounded-lg bg-emerald-500"></div>
+        );
+    }
+},
   {
     accessorKey: "name",
     enableHiding: false,
