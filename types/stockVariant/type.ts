@@ -1,5 +1,4 @@
 import { UUID } from 'crypto';
-import { Stock } from '../stock/type';
 
 export declare interface StockVariant {
     id: UUID,

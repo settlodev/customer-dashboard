@@ -32,6 +32,7 @@ export const fetchStock = async () : Promise<Stock[]> => {
         throw error;
     }
 }
+
 export const searchStock = async (
     q:string,
     page:number,

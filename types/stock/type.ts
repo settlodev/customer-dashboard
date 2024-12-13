@@ -12,5 +12,3 @@ export declare interface Stock {
     isArchived: boolean,
     stockVariants: StockVariant[]
 }
-
-

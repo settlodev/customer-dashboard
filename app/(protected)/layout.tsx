@@ -2,7 +2,7 @@ import React, {Suspense} from "react";
 import { Toaster } from "@/components/ui/toaster"
 import {SessionProvider} from "next-auth/react";
 import {auth} from "@/auth";
-import {NavbarWrapper} from "@/components/navigation/navbar";
+import {NavbarWrapper} from "@/components/navigation/navbar-wrapper";
 import {SidebarWrapper} from "@/components/sidebar/sidebar";
 import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {fetchAllLocations} from "@/lib/actions/location-actions";
@@ -32,7 +32,7 @@ export default async function RootLayout({children}: {
                     <div className="relative flex-1 overflow-y-auto">
                         <div className="flex min-h-full w-full flex-col gap-4">
                             <Suspense fallback={"Loading"}>
-                                <NavbarWrapper data={session}>
+                                <NavbarWrapper session={session}>
                                     <div className="flex-1">{children}</div>
                                 </NavbarWrapper>
                             </Suspense>
