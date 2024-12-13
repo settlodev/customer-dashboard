@@ -1,5 +1,3 @@
-
-
 import {Button} from "@/components/ui/button";
 import Link from "next/link";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
@@ -9,7 +7,6 @@ import {DataTable} from "@/components/tables/data-table";
 import {columns} from '@/components/tables/recipe/column'
 import { searchRecipe } from "@/lib/actions/recipe-actions";
 import { Recipe } from "@/types/recipe/type";
-
 
 const breadCrumbItems = [{title:"Recipes",link:"/recipes"}];
  type ParamsProps ={
@@ -52,18 +49,18 @@ const breadCrumbItems = [{title:"Recipes",link:"/recipes"}];
                         </CardHeader>
                         <CardContent>
                             <DataTable columns={columns}
-                                       data={data}
-                                       searchKey="name"
-                                       pageNo={page}
-                                       total={total}
-                                       pageCount={pageCount}
+                               data={data}
+                               searchKey="name"
+                               pageNo={page}
+                               total={total}
+                               pageCount={pageCount}
                             />
                         </CardContent>
                     </Card>
                 ):
-                    (
-                        <NoItems newItemUrl={`/recipes/new`} itemName={`recipes`}/>
-                    )
+                (
+                    <NoItems newItemUrl={`/recipes/new`} itemName={`recipes`}/>
+                )
             }
         </div>
     );

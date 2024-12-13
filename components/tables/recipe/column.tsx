@@ -1,4 +1,5 @@
 "use client";
+
 import {ColumnDef} from "@tanstack/react-table";
 import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
@@ -6,7 +7,6 @@ import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
 import {CellAction} from "@/components/tables/recipe/cell-action";
 import { Recipe } from "@/types/recipe/type";
-
 
 export const columns: ColumnDef<Recipe>[] = [
     {
@@ -43,11 +43,6 @@ export const columns: ColumnDef<Recipe>[] = [
                 </Button>
             );
         },
-    },
-    {
-        accessorKey: "variantName",
-        header: "Product Variant",
-        enableHiding: false,
     },
     {
         id: "status",
