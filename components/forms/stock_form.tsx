@@ -186,7 +186,6 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
 
         const variantId = selectedVariant?.id;
         const stockId = item?.id;
-        console.log("Selected variant ID:", variantId);
 
         try {
             if (!variantId || !stockId) {
@@ -338,7 +337,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
 
                                 <div
                                     className="bg-gray-200 pl-3 pr-3 pt-2 pb-2 border-0 border-emerald-100- flex mt-4">
-                                    <h3 className="font-bold flex-1">Stock Variants</h3>
+                                    <h3 className="font-bold flex-1">Stock Item</h3>
                                     <span className="flex-end"><ChevronDownIcon /></span>
                                 </div>
 
@@ -356,8 +355,10 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                                         <span>{index + 1}</span></p>
                                                     <div className="flex-1 pt-1 pb-1">
                                                         <p className="text-md font-medium">{variant.name}</p>
-                                                        <p className="text-xs font-medium">VALUE: {variant.startingValue} |
-                                                            QUANTITY: {variant.startingQuantity} | ALERT LEVEL: {variant.alertLevel} </p>
+                                                        <p className="text-xs font-medium">
+                                                            QUANTITY: {Intl.NumberFormat().format(variant.startingQuantity)} |
+                                                            VALUE: {Intl.NumberFormat().format(variant.startingValue)} |
+                                                             ALERT LEVEL: {variant.alertLevel} </p>
                                                     </div>
                                                     {item ? ( 
                                                         <p
@@ -380,9 +381,9 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                                 </div>
                                             })}
                                         </div>
-                                    </div> : <><p className="pt-3 pb-5 text-sm">No variants added</p>
+                                    </div> : <><p className="pt-3 pb-5 text-sm">No item added</p>
                                         {variants.length === 0 &&
-                                            <p className="text-danger-500 text-sm">Add at least one variant then
+                                            <p className="text-danger-500 text-sm">Add at least one item then
                                                 click save</p>}
                                     </>
                                 }
@@ -409,7 +410,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                             className={`gap-1`}>
                             <Card>
                                 <CardHeader>
-                                    <CardTitle>Add Stock variants</CardTitle>
+                                    <CardTitle>Add Stock Item</CardTitle>
                                     <CardDescription>{item ? "Edit variants" : "Add variants"}</CardDescription>
                                    
                                 </CardHeader>
@@ -427,7 +428,7 @@ function StockForm({ item }: { item: Stock | null | undefined }) {
                                                 name="name"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Variant Name</FormLabel>
+                                                        <FormLabel>Item Name</FormLabel>
                                                         <FormControl>
                                                             <Input
                                                                 placeholder="Variant name ex: Small"

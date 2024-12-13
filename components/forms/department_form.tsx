@@ -25,18 +25,29 @@ import { createDepartment, updateDepartment } from "@/lib/actions/department-act
 import { Department } from "@/types/department/type";
 import { Switch } from "../ui/switch";
 import { useRouter } from "next/navigation";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Tag } from "lucide-react";
+import UploadImageWidget from "../widgets/UploadImageWidget";
 
 function DepartmentForm({ item }: { item: Department | null | undefined }) {
+
+
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error, ] = useState<string | undefined>("");
-  const [success, ] = useState<string | undefined>("");
+  const [error,] = useState<string | undefined>("");
+  const [success,] = useState<string | undefined>("");
+  const [imageUrl, setImageUrl] = useState<string>(item && item.image?item.image: "");
+
   const { toast } = useToast();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof DepartmentSchema>>({
     resolver: zodResolver(DepartmentSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues: {
+      ...item,
+      image: imageUrl ? imageUrl : (item && item.image?item.image: ""),
+      status: item ? item.status : false,
+  }
   });
 
   const onInvalid = useCallback(
@@ -45,7 +56,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
-        description:typeof errors.message === 'string' && errors.message
+        description: typeof errors.message === 'string' && errors.message
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
@@ -54,6 +65,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof DepartmentSchema>) => {
+    if(imageUrl) values.image = imageUrl;
     startTransition(() => {
       if (item) {
         updateDepartment(item.id, values).then((data) => {
@@ -88,15 +100,36 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className={`gap-1`}
       >
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-          <>
-            <>
-            <FormError message={error}/>
-            <FormSuccess message={success}/>
-              <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
-                <FormField
+          <FormError message={error} />
+          <FormSuccess message={success} />
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Tag w-5 h-5 />
+                Department details
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-6 items-start">
+                            <div className="space-y-4">
+                                <FormLabel className="block mt-2 mb-2">Depart Image</FormLabel>
+                                <div className="bg-gray-50 rounded-lg p-4 content-center">
+                                    <UploadImageWidget
+                                        imagePath={'departments'}
+                                        displayStyle={'default'}
+                                        displayImage={true}
+                                        showLabel={false}
+                                        label="Image"
+                                        setImage={setImageUrl}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                            <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
@@ -114,7 +147,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     </FormItem>
                   )}
                 />
-
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
                   control={form.control}
                   name="color"
@@ -134,27 +167,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                     </FormItem>
                   )}
                 />
-
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Department Image</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="file"
-                          placeholder="Enter department image"
-                          {...field}
-                          disabled={isPending}
-                          value={field.value ?? ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              {item && (
+                {item && (
                   <div className="grid gap-2">
                     <FormField
                       control={form.control}
@@ -185,9 +198,12 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                   </div>
                 )
                 }
-              </div>
-            </>
-          </>
+                </div>
+                            </div>
+            </div>                
+            </CardContent>
+          </Card>
+
           <div className="flex h-5 items-center space-x-4 mt-4">
             <CancelButton />
             <Separator orientation="vertical" />
@@ -198,7 +214,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
           </div>
         </div>
 
-        {/* </div> */}
+
       </form>
     </Form>
   );

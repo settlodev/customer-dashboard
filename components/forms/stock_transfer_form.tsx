@@ -79,7 +79,7 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
 
     const onInvalid = useCallback(
         (errors: any) => {
-            console.error("Validation errors:", errors);
+            console.error("Validation errors:", errors );
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong",
@@ -90,7 +90,6 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     );
 
     const submitData = (values: z.infer<typeof StockTransferSchema>) => {
-        console.log("The transfer value", values)
         startTransition(() => {
             if (item) {
                 console.log("Update logic for existing stock modification");
@@ -114,13 +113,10 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     };
 
     const handleVariantChange = (variantId: string) => {
-        console.log("The value selected is", variantId)
         const variant = stocks.flatMap(stock => stock.stockVariants).find(v => v.id === variantId);
-        console.log("The selected variant is", variant)
         if (variant) {
             setSelectedVariant(variant);
-            // form.setValue('quantity', variant.startingQuantity); // Set initial quantity to available
-            // form.setValue('value', variant.startingValue); // Set initial value
+          
         }
     };
 
@@ -142,11 +138,11 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                     name="stockVariant"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>Stock Variant</FormLabel>
+                                            <FormLabel>Stock Item</FormLabel>
                                             <FormControl>
                                                 <Select onValueChange={(value) => { handleVariantChange(value); field.onChange(value); }} value={field.value}>
                                                     <SelectTrigger>
-                                                        <SelectValue placeholder="Select Variant" />
+                                                        <SelectValue placeholder="Select Stock Item" />
                                                     </SelectTrigger>
                                                     <SelectContent>
                                                         {stocks.map(stock =>
@@ -258,40 +254,8 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                             />
                                         </div>
                                     </div>
-
                                     <div className="mt-4 flex">
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="value"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Value / Amount</FormLabel>
-                                                        <FormControl>
-
-                                                            <NumericFormat
-                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                value={field.value}
-                                                                disabled={isPending}
-                                                                placeholder="Enter stock value"
-                                                                thousandSeparator={true}
-                                                                allowNegative={false}
-                                                                onValueChange={(values) => {
-                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                    field.onChange(rawValue);
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 grid lg:grid-cols-2 gap-4">
-                                    {/* staff selector */}
+                                    <div className="flex-1">
                                     <FormField
                                         control={form.control}
                                         name="staff"
@@ -314,8 +278,13 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                             </FormItem>
                                         )}
                                     />
+                                    </div>
+                                    </div>
+                                   
+                                </div>
 
-                                    {/* Comment */}
+                                <div className="mt-4 grid lg:grid-cols-1 gap-4">
+                                   
                                     <FormField
                                         control={form.control}
                                         name="comment"

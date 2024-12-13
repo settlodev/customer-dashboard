@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, {useCallback, useState, useTransition} from "react";
+import React, { useCallback, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -30,12 +30,12 @@ interface StaffFormProps {
 }
 
 const StaffForm: React.FC<StaffFormProps> = ({
-                                                       item,
-                                                       onFormSubmitted,
-                                                   }) => {
+    item,
+    onFormSubmitted,
+}) => {
     const { toast } = useToast();
     const [isSubmitting, startTransition] = useTransition();
-    const [response, setResponse] = useState<FormResponse | undefined>();
+    const [, setResponse] = useState<FormResponse | undefined>();
     const [isDashboardEnabled, setIsDashboardEnabled] = useState(item?.dashboardAccess ?? false);
 
     const form = useForm<z.infer<typeof StaffSchema>>({
@@ -99,7 +99,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="name"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Full Name</FormLabel>
                                         <FormControl>
@@ -109,7 +109,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                 placeholder="Enter full name"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -117,7 +117,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="phone"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Phone Number</FormLabel>
                                         <FormControl>
@@ -127,7 +127,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                 placeholder="Enter phone number"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -135,7 +135,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="gender"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Gender</FormLabel>
                                         <FormControl>
@@ -146,7 +146,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                 placeholder="Select gender"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -154,7 +154,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="nationality"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Nationality</FormLabel>
                                         <FormControl>
@@ -165,7 +165,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                 placeholder="Select nationality"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -185,17 +185,17 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="jobTitle"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Job Title</FormLabel>
                                         <FormControl>
                                             <Input
                                                 {...field}
                                                 disabled={isSubmitting}
-                                               placeholder="Enter job title"
+                                                placeholder="Enter job title"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -203,7 +203,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="department"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Department</FormLabel>
                                         <FormControl>
@@ -213,7 +213,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                 placeholder="Select department"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -221,7 +221,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="role"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Role</FormLabel>
                                         <FormControl>
@@ -231,7 +231,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                 placeholder="Select role"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -251,7 +251,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                 <FormField
                                     control={form.control}
                                     name="dashboardAccess"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem
                                             className="flex flex-row items-center justify-between rounded-lg border p-4">
                                             <div className="space-y-0.5">
@@ -277,7 +277,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                 <FormField
                                     control={form.control}
                                     name="posAccess"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem
                                             className="flex flex-row items-center justify-between rounded-lg border p-4">
                                             <div className="space-y-0.5">
@@ -302,21 +302,21 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                 <FormField
                                     control={form.control}
                                     name="email"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Email Address</FormLabel>
                                             <FormControl>
                                                 <Input
                                                     {...field}
                                                     disabled={isSubmitting}
-                                                   type="email"
-                                                   placeholder="Enter email address"
+                                                    type="email"
+                                                    placeholder="Enter email address"
                                                 />
                                             </FormControl>
                                             <FormDescription>
                                                 Required for dashboard login
                                             </FormDescription>
-                                            <FormMessage/>
+                                            <FormMessage />
                                         </FormItem>
                                     )}
                                 />
@@ -336,17 +336,17 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="emergencyName"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Contact Name</FormLabel>
                                         <FormControl>
                                             <Input
                                                 {...field}
                                                 disabled={isSubmitting}
-                                               placeholder="Enter contact name"
+                                                placeholder="Enter contact name"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -354,7 +354,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="emergencyNumber"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Contact Phone</FormLabel>
                                         <FormControl>
@@ -364,7 +364,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                 placeholder="Enter contact number"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -372,17 +372,17 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="emergencyRelationship"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Relationship</FormLabel>
                                         <FormControl>
                                             <Input
                                                 {...field}
-                                               disabled={isSubmitting}
-                                               placeholder="Enter relationship"
+                                                disabled={isSubmitting}
+                                                placeholder="Enter relationship"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -401,7 +401,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             <FormField
                                 control={form.control}
                                 name="notes"
-                                render={({field}) => (
+                                render={({ field }) => (
                                     <FormItem>
                                         <FormControl>
                                             <Textarea
@@ -411,7 +411,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                 className="min-h-[100px]"
                                             />
                                         </FormControl>
-                                        <FormMessage/>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
                             />
@@ -421,7 +421,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
 
                 <div className="flex h-5 items-center space-x-4">
                     <CancelButton />
-                    <Separator orientation="vertical"/>
+                    <Separator orientation="vertical" />
                     <SubmitButton
                         isPending={isSubmitting}
                         label={item ? "Update staff details" : "Create staff"}
