@@ -198,7 +198,7 @@ export const updateStock = async (
 };
 
 export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
-    let formResponse: FormResponse | null = null;
+    // let formResponse: FormResponse | null = null;
     if (!id) throw new Error("Stock ID is required to perform this request");
 
     await getAuthenticatedUser();
@@ -219,11 +219,11 @@ export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
     const formattedError = await error;
        console.error("Error deleting stock", formattedError.message );
        
-       formResponse = {
-        responseType: "error",
-        message: formattedError.message,
-        error: error instanceof Error ? error : new Error(String(error)),
-    };
+    //    formResponse = {
+    //     responseType: "error",
+    //     message: formattedError.message,
+    //     error: error instanceof Error ? error : new Error(String(error)),
+    // };
     throw formattedError.message;
        
    }

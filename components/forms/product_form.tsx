@@ -12,7 +12,6 @@ import { useFieldArray, useForm } from "react-hook-form";
 import {
     Form,
     FormControl,
-    FormDescription,
     FormField,
     FormItem,
     FormLabel,
@@ -41,7 +40,7 @@ import ProductDepartmentSelector from "@/components/widgets/product-department-s
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import { VariantSchema } from "@/types/variant/schema";
 import { Brand } from "@/types/brand/type";
-import { ChevronDownIcon, Eye, Pencil, PlusIcon, SearchIcon, X } from "lucide-react";
+import { ChevronDownIcon, Eye, Pencil, PlusIcon} from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";
@@ -67,7 +66,7 @@ import { StockFormVariant } from "@/types/stockVariant/type";
 import { createRecipe, fetchRecipes } from "@/lib/actions/recipe-actions";
 import { Recipe } from "@/types/recipe/type";
 import { RecipeSchema } from "@/types/recipe/schema";
-import { MultiSelect } from "../ui/multi-select";
+// import { MultiSelect } from "../ui/multi-select";
 import NoItemsMessage from "../widgets/no-items-message";
 import ModalContent, { ModalForm, ModalOverlay } from "../widgets/modal-component";
 import { ModalContainer, StockFormSection, StockVariantFormSection } from "../widgets/stock-modal";
@@ -86,7 +85,6 @@ const inventoryType = [
 
 const ProductForm = ({ item }: { item: Product | null | undefined }) => {
 
-    console.log("The item to edit is", item)
     // const router = useRouter();
 
     const [isPending, startTransition] = useTransition();
@@ -491,7 +489,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
         setRecipeModalVisible(true)
     }
 
-    const { fields: selectedVariants, append, remove } = useFieldArray({
+    const { fields: selectedVariants, remove } = useFieldArray({
         control: recipeForm.control,
         name: "stockVariants",
       })
@@ -1057,7 +1055,288 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                     </Form>
                 </div>
 
-             
+                <div className="flex lg:w-1/3">
+                    <Form {...variantForm}>
+                        <form
+                            onSubmit={variantForm.handleSubmit(saveVariantItem, onInvalid)}
+                            className={`gap-1`}>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle className="hidden">Add variants</CardTitle>
+                                    <CardDescription>{item ? "Edit variants" : "Add variants"}</CardDescription>
+                                </CardHeader>
+
+                                <CardContent className="gap-3">
+                                    <FormError message={error} />
+                                    <FormSuccess message={success} />
+
+                                    <div className="flex">
+                                        <UploadImageWidget imagePath={'products'} displayStyle={'default'}
+                                            displayImage={true} setImage={setVariantImageUrl} />
+
+                                        <div className="flex-1">
+                                            <FormField
+                                                control={variantForm.control}
+                                                name="name"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Variant Name</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                placeholder="Enter variant name ex: Small"
+                                                                {...field}
+                                                                disabled={isPending}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+                                    <FormField
+                                        control={variantForm.control}
+                                        name="price"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col mt-2">
+                                                <FormLabel>Selling Price</FormLabel>
+                                                <FormControl>
+
+                                                    <NumericFormat
+                                                        className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
+                                                        value={field.value}
+                                                        disabled={isPending}
+                                                        placeholder="0.00"
+                                                        thousandSeparator={true}
+                                                        allowNegative={false}
+                                                        onValueChange={(values) => {
+                                                            const rawValue = Number(values.value.replace(/,/g, ""));
+                                                            field.onChange(rawValue);
+                                                        }}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={variantForm.control}
+                                        name="sku"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col mt-2">
+                                                <FormLabel>SKU</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="Enter SKU"
+                                                        {...field}
+                                                        disabled={isPending}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={variantForm.control}
+                                        name="barcode"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col mt-2">
+                                                <FormLabel>Barcode</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="Enter Barcode"
+                                                        {...field}
+                                                        value={field.value || ''}
+                                                        disabled={isPending}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    {stockSelected && (
+                                        <>
+                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
+                                                <FormField
+                                                    control={variantForm.control}
+                                                    name="stockVariant"
+                                                    render={({ field }) => (
+                                                        <FormItem className="flex flex-col mt-2">
+                                                            <FormLabel>Stock Item</FormLabel>
+                                                            <FormControl>
+                                                                <Select
+                                                                    value={field.value || ''}
+                                                                    onValueChange={field.onChange}
+                                                                    disabled={isPending}
+                                                                >
+                                                                    <SelectTrigger>
+                                                                        <SelectValue placeholder="Select stock item" />
+                                                                    </SelectTrigger>
+
+                                                                    <SelectContent className="flex-grow overflow-y-auto">
+                                                                        {combinedStockOptions.map((option) => (
+                                                                            <SelectItem key={option.id} value={option.id}>
+                                                                                {option.displayName}
+                                                                            </SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            ) : (
+                                                <div className="flex flex-col mt-2 gap-2">
+                                                    <p className="text-sm text-red-500 font-bold">No stock available</p>
+                                                    <Button onClick={(e) => {
+                                                        e.preventDefault();
+                                                        openStockModal();
+                                                    }}>Add Stock</Button>
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {recipeSelected && (
+                                        <>
+                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
+                                                // Check if there are recipes available
+                                                recipeSelected && recipes.length > 0 ? (
+                                                    <FormField
+                                                        control={variantForm.control}
+                                                        name="recipe"
+                                                        render={({ field }) => (
+                                                            <FormItem className="flex flex-col mt-2">
+                                                                <FormLabel>Recipe</FormLabel>
+                                                                <FormControl>
+                                                                    <Select
+                                                                        value={field.value || ''}
+                                                                        onValueChange={field.onChange}
+                                                                        disabled={isPending}
+                                                                    >
+                                                                        <SelectTrigger>
+                                                                            <SelectValue placeholder="Select stock item" />
+                                                                        </SelectTrigger>
+
+                                                                        <SelectContent className="flex-grow overflow-y-auto">
+                                                                            {recipes.map((option) => (
+                                                                                <SelectItem key={option.id} value={option.id}>
+                                                                                    {option.name}
+                                                                                </SelectItem>
+                                                                            ))}
+                                                                        </SelectContent>
+                                                                    </Select>
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                ) : (
+                                                    
+                                                    <NoItemsMessage
+                                                        message="No recipe available"
+                                                        onClick={openRecipeModal}
+                                                    />
+                                                )
+                                            ) : (
+                                                
+                                                <NoItemsMessage
+                                                    message="No stock available"
+                                                    onClick={openStockModal}
+                                                />
+                                            )}
+                                        </>
+                                    )}
+
+
+
+
+
+                                    <FormField
+                                        control={variantForm.control}
+                                        name="unit"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col mt-2">
+                                                <FormLabel>Unit</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative flex flex-col w-full max-w-sm">
+
+                                                        <div className="flex items-center gap-2 border-r-1 border-t-1 border-b-1 rounded-sm border-gray-300">
+                                                            <Input
+                                                                type="search"
+                                                                placeholder="Search e.g Kilogram"
+                                                                className=" "
+                                                                value={searchTerm || ""}
+                                                                disabled={isPending}
+                                                                onChange={(e) => setSearchTerm(e.target.value)}
+                                                            />
+                                                            <Eye className="h-6 w-6" onClick={openUnitModal} />
+                                                        </div>
+
+                                                        {searchTerm && filteredUnits.length > 0 && (
+                                                            <div className="absolute mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-md z-10">
+                                                                {filteredUnits.map((unit) => (
+                                                                    <div
+                                                                        key={unit.id}
+                                                                        className="cursor-pointer px-4 py-2"
+                                                                        onClick={() => {
+                                                                            field.onChange(unit.id);
+                                                                            setSearchTerm(unit.name);
+                                                                            setFilteredUnits([]);
+                                                                        }}
+                                                                    >
+                                                                        {unit.name}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={variantForm.control}
+                                        name="description"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-col mt-2">
+                                                <FormLabel>Description</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="Enter variant description"
+                                                        {...field}
+                                                        disabled={isPending}
+                                                        value={field.value || ""}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </CardContent>
+
+                                <div className="flex ml-6 mb-6">
+
+                                    <SubmitButton
+                                        isPending={isPending}
+                                        label={selectedVariant ? 'Update Variant' : 'Save Variant'}
+                                        onClick={
+                                            item
+                                                ? (selectedVariant
+                                                    ? variantForm.handleSubmit(handleUpdateVariant, onInvalid)
+                                                    : variantForm.handleSubmit(handleSaveVariant, onInvalid))
+                                                : variantForm.handleSubmit(saveVariantItem, onInvalid)
+                                        }
+                                    />
+                                </div>
+                            </Card>
+                        </form>
+                    </Form>
+                </div>
             </div>
         </div>
 

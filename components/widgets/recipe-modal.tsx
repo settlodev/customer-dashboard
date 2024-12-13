@@ -1,4 +1,4 @@
-import { StockFormVariant } from "@/types/stockVariant/type";
+// import { StockFormVariant } from "@/types/stockVariant/type";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { FormError } from "./form-error";
 import { FormSuccess } from "./form-success";
@@ -90,6 +90,7 @@ const RecipeFormSection = ({
                                         };
                                     });
                                     remove();
+                                    recipeForm.setValue("stockVariants", updatedVariants);
                                     // Append updated variants if needed
                                 }}
                                 {...field}
