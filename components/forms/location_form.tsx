@@ -29,6 +29,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { businessTimes } from "@/types/constants";
 import { Switch } from "../ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import CancelButton from "../widgets/cancel-button";
+import { Separator } from "../ui/separator";
 
 const LocationForm = ({ item }: { item: Location | null | undefined }) => {
   const [isPending, startTransition] = useTransition();
@@ -348,10 +350,15 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                     />
                 )}
 
+                
+
+                <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
+                <CancelButton />
+                <Separator orientation="vertical" />
                 <Button
                     type="submit"
                     disabled={isPending}
-                    className="w-full h-11">
+                    className="h-11">
                     {isPending ? (
                         <div className="flex items-center gap-2">
                             <Loader2Icon className="h-4 w-4 animate-spin" />
@@ -361,6 +368,7 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
                         item ? 'Update business location' : 'Setup business location'
                     )}
                 </Button>
+                            </div>
             </form>
         </Form>
     );
