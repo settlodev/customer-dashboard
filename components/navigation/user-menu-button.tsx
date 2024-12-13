@@ -1,6 +1,6 @@
 "use client"
 
-import { useSession, signOut } from "next-auth/react";
+import { signOut } from "next-auth/react";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import {
     DropdownMenu,
@@ -13,16 +13,15 @@ import { Button } from "@/components/ui/button";
 import { Settings, User, Briefcase, LogOut, ChevronDown } from "lucide-react";
 import UserAvatar from "@/components/widgets/user-avatar";
 
-const UserDropdown = () => {
-    const { data: session } = useSession();
+export const UserDropdown = () => {
     const user = useCurrentUser();
 
     if (!user) {
-        signOut();
+        //signOut();
         return null;
     }
 
-    const fullName = `${session?.user?.firstName || ''} ${session?.user?.lastName || ''}`.trim();
+    const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
     const initials = fullName.split(' ').map(n => n[0]).join('');
 
     return (
@@ -33,12 +32,12 @@ const UserDropdown = () => {
                         <div className="hidden lg:block text-right">
                             <p className="text-sm font-medium leading-none">{fullName}</p>
                             <p className="text-xs text-muted-foreground">
-                                {session?.user?.email}
+                                {user?.email}
                             </p>
                         </div>
 
                         <UserAvatar
-                            src={session?.user?.avatar}
+                            src={user?.avatar}
                             alt={fullName}
                             fallback={initials}
                             className="h-8 w-8"

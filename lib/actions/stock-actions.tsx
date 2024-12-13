@@ -78,7 +78,7 @@ export const  createStock= async (
     let formResponse: FormResponse | null = null;
 
     const validData= StockSchema.safeParse(stock)
-    
+
     if (!validData.success){
         formResponse = {
             responseType:"error",
@@ -198,7 +198,6 @@ export const updateStock = async (
 };
 
 export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
-    // let formResponse: FormResponse | null = null;
     if (!id) throw new Error("Stock ID is required to perform this request");
 
     await getAuthenticatedUser();
@@ -216,16 +215,10 @@ export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
 
    }
    catch (error: any){
-    const formattedError = await error;
-       console.error("Error deleting stock", formattedError.message );
-       
-    //    formResponse = {
-    //     responseType: "error",
-    //     message: formattedError.message,
-    //     error: error instanceof Error ? error : new Error(String(error)),
-    // };
-    throw formattedError.message;
-       
+        const formattedError = await error;
+        console.error("Error deleting stock", formattedError.message );
+
+        throw formattedError.message;
    }
 }
 
@@ -243,18 +236,18 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
     }
 
-    console.log("CSV content to be sent:", fileData); 
+    console.log("CSV content to be sent:", fileData);
 
-    const formattedCSVData = fileData.replace(/\r\n/g, '\n'); 
+    const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
-    console.log("Formatted CSV data:", formattedCSVData); 
+    console.log("Formatted CSV data:", formattedCSVData);
 
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
         const response = await apiClient.post(
             `/api/stock/${location?.id}/upload-csv`,
-            formattedCSVData, 
+            formattedCSVData,
             {
                 headers: {
                     "Content-Type": "text/csv",
@@ -262,7 +255,7 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
                 transformRequest: [(data) => data],
             }
         );
-        
+
         console.log("CSV upload response", response);
 
         // Revalidate or redirect after successful upload
@@ -290,18 +283,18 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
     }
 
-    console.log("CSV content to be sent:", fileData); 
+    console.log("CSV content to be sent:", fileData);
 
-    const formattedCSVData = fileData.replace(/\r\n/g, '\n'); 
+    const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
-    console.log("Formatted CSV data:", formattedCSVData); 
+    console.log("Formatted CSV data:", formattedCSVData);
 
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
         const response = await apiClient.post(
             `/api/stock/${location?.id}/upload-products-and-stock-csv`,
-            formattedCSVData, 
+            formattedCSVData,
             {
                 headers: {
                     "Content-Type": "text/csv",
@@ -309,7 +302,7 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
                 transformRequest: [(data) => data],
             }
         );
-        
+
         console.log("CSV upload response", response);
 
         revalidatePath("/stocks");
@@ -322,7 +315,7 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
         }
 
         console.error("Error uploading CSV file:", error);
-        throw error; 
+        throw error;
     }
-    
+
 };

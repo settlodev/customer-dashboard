@@ -3,8 +3,8 @@ import { Sheet, SheetTrigger } from "@/components/ui/sheet";
 import { MenuIcon } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import DarkModeSwitcher from "./DarkModeSwitcher";
-import DropdownUser from "./DropdownUser";
+import DarkModeSwitcher from "./dark-mode-switcher";
+import DropdownUser from "./user-menu-button";
 
 interface HeaderProps {
   sidebarOpen: boolean;
@@ -28,7 +28,7 @@ const Header = ({ sidebarOpen, setSidebarOpen }: HeaderProps) => {
             <Link href="/" className="flex items-center space-x-2">
               <Image
                   src="/images/logo.png"
-                  alt="Logo"
+                  alt="Settlo"
                   width={32}
                   height={32}
                   className="h-8 w-8"

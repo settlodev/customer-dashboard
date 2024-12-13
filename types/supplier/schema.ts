@@ -15,12 +15,12 @@ export const SupplierSchema = object({
     }),
     contactPersonName: string({
         required_error: "Contact person of supplier is required",
-    }).min(3, "Contact person of supplier should be at least 3 characters").max(50, "Contact person of supplier can not be more than 50 characters").optional(),
+    }).min(3, "Contact person of supplier should be at least 3 characters").max(50, "Contact person of supplier can not be more than 50 characters"),
     contactPersonPhone: string({
         required_error: "Contact person phone number of supplier is required",
     }).refine(isValidPhoneNumber, {
         message: "Invalid phone number",
-    }).optional(),
+    }),
     contactPersonTitle: string({
         required_error: "Contact person title of supplier is required",
     }).min(3, "Contact person title of supplier should be at least 3 characters").max(50, "Contact person title of supplier can not be more than 50 characters").optional(),

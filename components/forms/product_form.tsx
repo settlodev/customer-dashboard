@@ -40,7 +40,7 @@ import ProductDepartmentSelector from "@/components/widgets/product-department-s
 import ProductBrandSelector from "@/components/widgets/product-brand-selector";
 import { VariantSchema } from "@/types/variant/schema";
 import { Brand } from "@/types/brand/type";
-import { ChevronDownIcon, Eye, Pencil, PlusIcon} from "lucide-react";
+import { ChevronDownIcon, Eye, Pencil, PlusIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import ProductTaxSelector from "@/components/widgets/product-tax-selector";

@@ -2,7 +2,7 @@ import React, {Suspense} from "react";
 import { Toaster } from "@/components/ui/toaster"
 import {SessionProvider} from "next-auth/react";
 import {auth} from "@/auth";
-import {NavbarWrapper} from "@/components/navbar/navbar";
+import {NavbarWrapper} from "@/components/navigation/navbar";
 import {SidebarWrapper} from "@/components/sidebar/sidebar";
 import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {fetchAllLocations} from "@/lib/actions/location-actions";

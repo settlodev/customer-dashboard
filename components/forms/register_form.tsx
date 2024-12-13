@@ -298,7 +298,7 @@ function RegisterForm({ step }: { step: string }) {
             {currentStep.id === "step1" ?
                 <Card className="w-full sm:w-auto mt-6 lg:mr-10 pl-6 pr-6 pt-2 pb-5">
                     <CardHeader>
-                        <CardTitle className=" font-bold text-[24px] lg:text-[32px] mb-3">Personal Information</CardTitle>
+                        <CardTitle>Personal Information</CardTitle>
                         <CardDescription>
                             Enter your personal information
                         </CardDescription>
@@ -492,7 +492,7 @@ function RegisterForm({ step }: { step: string }) {
                         <form onSubmit={emailVerificationForm.handleSubmit(submitEmailVerificationData)}>
                             <Card className="w-full sm:w-auto mt-6">
                                 <CardHeader>
-                                    <CardTitle className="text-[32px] mb-3">Verify email</CardTitle>
+                                    <CardTitle>Verify email</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <CardDescription className="text-[18px] font-normal">
@@ -553,8 +553,8 @@ function RegisterForm({ step }: { step: string }) {
                     : (currentStep.id === "step3" || step === "step3") ? <>
                         <Card className="w-full  mt-6 lg:mr-10 md:mr-10  pl-6 pr-6 pt-2 pb-5">
                             <CardHeader>
-                                <CardTitle className="text-[24px] font-normal lg:text-[32px] mb-3">Business Information</CardTitle>
-                                <CardDescription className="text-[18px] font-normal">Enter details for your business</CardDescription>
+                                <CardTitle>Business Information</CardTitle>
+                                <CardDescription>Enter details for your business</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <FormError message={error} />
@@ -677,8 +677,8 @@ function RegisterForm({ step }: { step: string }) {
                         : (currentStep.id === "step4" || step === "step4") ? <>
                             <Card className="w-full mt-6 lg:mr-10 md:mr-10 pl-6 pr-6 pt-2 pb-5">
                                 <CardHeader>
-                                    <CardTitle className="text-[24px] font-medium lg:text-[32px] mb-3">Setup location</CardTitle>
-                                    <CardDescription className="text-[16px] font-normal">
+                                    <CardTitle>Setup location</CardTitle>
+                                    <CardDescription>
                                         Setup your business location details
                                     </CardDescription>
                                 </CardHeader>
@@ -745,6 +745,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                         {...field}
                                                                         disabled={isPending}
                                                                         type="email"
+                                                                        value={field.value || ""}
                                                                         placeholder="Enter location email address"
                                                                     />
                                                                 </FormControl>
