@@ -68,6 +68,10 @@ import { createRecipe, fetchRecipes } from "@/lib/actions/recipe-actions";
 import { Recipe } from "@/types/recipe/type";
 import { RecipeSchema } from "@/types/recipe/schema";
 import { MultiSelect } from "../ui/multi-select";
+import NoItemsMessage from "../widgets/no-items-message";
+import ModalContent, { ModalForm, ModalOverlay } from "../widgets/modal-component";
+import { ModalContainer, StockFormSection, StockVariantFormSection } from "../widgets/stock-modal";
+import RecipeFormSection from "../widgets/recipe-modal";
 const inventoryType = [
     {
         id: 1,
@@ -78,22 +82,7 @@ const inventoryType = [
         "name": "recipe"
     }
 ]
-interface NoItemMessageProp {
-    message: string,
-    onClick: any
 
-}
-const NoItemsMessage = ({ message, onClick }: NoItemMessageProp) => (
-    <div className="flex flex-col mt-2 gap-2">
-        <p className="text-sm text-red-500 font-bold">{message}</p>
-        <Button onClick={(e) => {
-            e.preventDefault();
-            onClick();
-        }}>
-            Add {message.includes('recipe') ? 'Recipe' : 'Stock'}
-        </Button>
-    </div>
-);
 
 const ProductForm = ({ item }: { item: Product | null | undefined }) => {
 
@@ -558,531 +547,114 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
 
 
     return (<>
-        {categoryModalVisible ?
+         {categoryModalVisible && (
             <>
-                <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
-                <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
-                    <div className="w-[500px] p-5 bg-white rounded-md">
-                        <CardTitle className="border-b-1 border-b-gray-200 pb-4 mb-4">
-                            Create category
-                        </CardTitle>
+                <ModalOverlay />
+                <ModalContent
+                    title="Create category"
+                    onCancel={() => setCategoryModalVisible(false)}
+                >
+                    <ModalForm
+                        form={categoryForm}
+                        onSubmit={submitCategoryData}
+                        error={error}
+                        success={success}
+                        isPending={isPending}
+                        imagePath="categories"
+                        setImage={setCategoryImageUrl}
+                        fieldName="name"
+                        placeholder="Enter category name"
+                        label="Category Name"
+                    />
+                </ModalContent>
+            </>
+        )}
 
-                        <Form {...categoryForm}>
-                            <form
-                                onSubmit={categoryForm.handleSubmit(submitCategoryData, onInvalid)}
-                                className={`gap-1`}>
-                                <div>
-                                    <FormError message={error} />
-                                    <FormSuccess message={success} />
-                                    <div className="mt-4 flex">
-                                        <UploadImageWidget imagePath={'categories'} displayStyle={'default'}
-                                            displayImage={true} setImage={setCategoryImageUrl} />
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={categoryForm.control}
-                                                name="name"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Category Name</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="Enter category name"
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
+    {departmentModalVisible && (
+            <>
+                <ModalOverlay />
+                <ModalContent
+                    title="Create department"
+                    onCancel={() => setDepartmentModalVisible(false)}
+                >
+                    <ModalForm
+                        form={departmentForm}
+                        onSubmit={submitDepartmentData}
+                        error={error}
+                        success={success}
+                        isPending={isPending}
+                        imagePath="categories"
+                        setImage={setDepartmentImageUrl}
+                        fieldName="name"
+                        placeholder="Enter department name"
+                        label="Department Name"
+                    />
+                </ModalContent>
+            </>
+        )}
 
-                                    <div className="flex mt-6 pt-4 border-t-1 border-t-gray-200 gap-10">
-                                        <Button type="submit" disabled={isPending} className="bg-emerald-500 flex-1">Save </Button>
-                                        <div onClick={() => setCategoryModalVisible(false)} className="cursor-pointer text-emerald-500 font-medium flex flex-1 gap-1 items-center justify-center border-1 border-emerald-500 p-1 rounded-md"><span>Cancel</span></div>
-                                    </div>
-                                </div>
-
-                            </form>
-                        </Form>
-
+        {stockModalVisible && (
+        // Render modal overlay and container
+        <>
+            <ModalOverlay />
+            <ModalContainer>
+                <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
+                    <div className="flex flex-col-reverse lg:flex-row gap-10">
+                        <StockFormSection
+                            stockForm={stockForm}
+                            submitStockData={submitStockData}
+                            onInvalid={onInvalid}
+                            error={error}
+                            success={success}
+                            isPending={isPending}
+                            stockVariants={stockVariants}
+                            removeStockVariant={removeStockVariant}
+                            // setStockImageUrl={setImageUrl}
+                            OnCancel={() => setStockModalVisible(false)}
+                        />
+                        <StockVariantFormSection
+                            stockVariantForm={stockVariantForm}
+                            saveStockVariantItem={saveStockVariantItem}
+                            onInvalid={onInvalid}
+                            error={error}
+                            success={success}
+                            isPending={isPending}
+                            setVariantImageUrl={setVariantImageUrl}
+                        />
                     </div>
                 </div>
-            </>
-            : <></>
+            </ModalContainer>
+        </>
+    )
         }
 
-        {departmentModalVisible ?
-            <>
-                <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
-                <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
-                    <div className="w-[500px] p-5 bg-white rounded-md">
-                        <CardTitle className="border-b-1 border-b-gray-200 pb-4 mb-4">
-                            Create department
-                        </CardTitle>
-
-                        <Form {...departmentForm}>
-                            <form
-                                onSubmit={departmentForm.handleSubmit(submitDepartmentData, onInvalid)}
-                                className={`gap-1`}>
-                                <div>
-                                    <FormError message={error} />
-                                    <FormSuccess message={success} />
-                                    <div className="mt-4 flex">
-                                        <UploadImageWidget imagePath={'categories'} displayStyle={'default'} displayImage={true} setImage={setDepartmentImageUrl} />
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={departmentForm.control}
-                                                name="name"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Department Name</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="Enter department name"
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex mt-6 pt-4 border-t-1 border-t-gray-200 gap-10">
-                                        <Button type="submit" disabled={isPending} className="bg-emerald-500 flex-1">Save</Button>
-                                        <div onClick={() => setDepartmentModalVisible(false)} className="cursor-pointer text-emerald-500 font-medium flex flex-1 gap-1 items-center justify-center border-1 border-emerald-500 p-1 rounded-md"><span>Cancel</span></div>
-                                    </div>
-                                </div>
-
-                            </form>
-                        </Form>
-
+{
+    recipeModalVisible && (
+        // Render modal overlay and container
+        <>
+            <ModalOverlay />
+            <ModalContainer>
+                <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
+                    <div className="flex flex-col-reverse lg:flex-row gap-10">
+                        <RecipeFormSection
+                            recipeForm={recipeForm}
+                            submitRecipeData={submitRecipeData}
+                            onInvalid={onInvalid}
+                            error={error}
+                            success={success}
+                            isPending={isPending}
+                            combinedStockOptions={combinedStockOptions}
+                            selectedVariants={selectedVariants}
+                            remove={remove}
+                            OnCancel={() => setRecipeModalVisible(false)}
+                        />
                     </div>
                 </div>
-            </>
-            : <></>
-        }
+            </ModalContainer>
+        </>
+    )
+}
 
-        {stockModalVisible ?
-            <>
-                <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
-                <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
-                    <div className="w-[950px] p-5 bg-white rounded-md">
-                        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-                            <div className="flex flex-col-reverse lg:flex-row gap-10">
-                                <div className="flex-1 lg:w-1/3">
-                                    <Form {...stockForm}>
-                                        <form
-                                            onSubmit={stockForm.handleSubmit(submitStockData, onInvalid)}
-                                            className={`gap-1`}>
-                                            <div>
-                                                <FormError message={error} />
-                                                <FormSuccess message={success} />
-                                                <div className="bg-gray-200 pl-3 pr-3 pt-2 pb-2 border-0 border-emerald-100- flex">
-                                                    <h3 className="font-bold flex-1">Add stock to track inventory</h3>
-                                                    <span className="flex-end"><ChevronDownIcon /></span>
-                                                </div>
-
-                                                <div className="mt-4 flex">
-                                                    <div className="flex-1">
-                                                        <FormField
-                                                            control={stockForm.control}
-                                                            name="name"
-                                                            render={({ field }) => (
-                                                                <FormItem>
-                                                                    <FormLabel>Stock Name</FormLabel>
-                                                                    <FormControl>
-                                                                        <Input
-                                                                            placeholder="Enter stock name"
-                                                                            {...field}
-                                                                            value={field.value}
-                                                                            disabled={isPending}
-                                                                        />
-                                                                    </FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                    </div>
-                                                </div>
-                                                <div className="mt-4">
-                                                    <FormField
-                                                        control={stockForm.control}
-                                                        name="description"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Description</FormLabel>
-                                                                <FormControl>
-                                                                    <Textarea
-                                                                        placeholder="Enter stock description"
-                                                                        {...field}
-                                                                        disabled={isPending}
-                                                                        className="resize-none bg-gray-50"
-                                                                        maxLength={200}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <div
-                                                    className="bg-gray-200 pl-3 pr-3 pt-2 pb-2 border-0 border-emerald-100- flex mt-4">
-                                                    <h3 className="font-bold flex-1">Stock Variants</h3>
-                                                    <span className="flex-end"><ChevronDownIcon /></span>
-                                                </div>
-
-                                                {stockVariants.length > 0 ?
-                                                    <div className="border-t-1 border-t-gray-100 p-5">
-                                                        <h3 className="font-bold pb-2">Variants</h3>
-                                                        <div className="border-emerald-500 border-0 rounded-md pt-2 pb-2 pl-0 pr-0">
-                                                            {stockVariants.map((variant: StockFormVariant, index) => {
-                                                                return <div
-                                                                    className="flex border-1 border-emerald-200 mt-0 items-center pt-0 pb-0 pl-0 mb-1"
-                                                                    key={index}
-                                                                // onClick={() => handleEditVariant(stockVariants)}  
-                                                                >
-                                                                    <p className="flex items-center text-gray-500 self-start pl-4 pr-4 font-bold text-xs border-r-1 border-r-emerald-200 h-14 mr-4">
-                                                                        <span>{index + 1}</span></p>
-                                                                    <div className="flex-1 pt-1 pb-1">
-                                                                        <p className="text-md font-medium">{variant.name}</p>
-                                                                        <p className="text-xs font-medium">VALUE: {variant.startingValue} |
-                                                                            QUANTITY: {variant.startingQuantity} | ALERT LEVEL: {variant.alertLevel} </p>
-                                                                    </div>
-                                                                    {item ? (
-                                                                        <p
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                // confirmDeleteVariant(stockVariants); 
-                                                                            }}
-                                                                            className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
-                                                                        >
-                                                                            <span>Delete</span>
-                                                                        </p>
-                                                                    ) : (
-                                                                        <p
-                                                                            onClick={() => removeStockVariant(index)}
-                                                                            className="flex items-center text-red-700 self-end pl-4 pr-4 font-bold bg-emerald-50 text-xs border-l-1 border-l-emerald-200 h-14 cursor-pointer"
-                                                                        >
-                                                                            <span>Remove</span>
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            })}
-                                                        </div>
-                                                    </div> : <><p className="pt-3 pb-5 text-sm">No variants added</p>
-                                                        {variants.length === 0 &&
-                                                            <p className="text-danger-500 text-sm">Add at least one variant then
-                                                                click save</p>}
-                                                    </>
-                                                }
-
-
-                                            </div>
-
-                                            <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
-                                                <Button variant='default' onClick={() => { setStockModalVisible(false) }}>cancel</Button>
-                                                <Separator orientation="vertical" />
-                                                <SubmitButton
-                                                    isPending={isPending || stockVariants.length === 0}
-                                                    label={"Add stock"}
-                                                />
-                                            </div>
-                                        </form>
-                                    </Form>
-                                </div>
-
-                                <div className="">
-                                    <Form {...stockVariantForm}>
-                                        <form
-                                            onSubmit={stockVariantForm.handleSubmit(saveStockVariantItem, onInvalid)}
-                                            className={`gap-1`}>
-                                            <Card>
-                                                <CardHeader>
-                                                    <CardTitle>Add Stock variants</CardTitle>
-                                                </CardHeader>
-
-                                                <CardContent>
-                                                    <FormError message={error} />
-                                                    <FormSuccess message={success} />
-
-                                                    <div className="mt-4 flex">
-                                                        <UploadImageWidget imagePath={'products'} displayStyle={'default'} displayImage={true} setImage={setVariantImageUrl} />
-
-                                                        <div className="flex-1">
-                                                            <FormField
-                                                                control={stockVariantForm.control}
-                                                                name="name"
-                                                                render={({ field }) => (
-                                                                    <FormItem>
-                                                                        <FormLabel>Variant Name</FormLabel>
-                                                                        <FormControl>
-                                                                            <Input
-                                                                                placeholder="Variant name ex: Small"
-                                                                                {...field}
-                                                                                disabled={isPending}
-                                                                            />
-                                                                        </FormControl>
-                                                                        <FormMessage />
-                                                                    </FormItem>
-                                                                )}
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    <FormField
-                                                        control={stockVariantForm.control}
-                                                        name="startingQuantity"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Starting Quantity</FormLabel>
-                                                                <FormControl>
-
-                                                                    <NumericFormat
-                                                                        className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                        value={field.value}
-                                                                        disabled={isPending}
-                                                                        placeholder="0.00"
-                                                                        thousandSeparator={true}
-                                                                        allowNegative={false}
-                                                                        onValueChange={(values) => {
-                                                                            const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                            field.onChange(rawValue);
-                                                                        }}
-                                                                    />
-                                                                </FormControl>
-
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
-                                                    <FormField
-                                                        control={stockVariantForm.control}
-                                                        name="startingValue"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Starting Value (Amount)</FormLabel>
-                                                                <FormControl>
-
-                                                                    <NumericFormat
-                                                                        className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                        value={field.value}
-                                                                        disabled={isPending}
-                                                                        placeholder="0.00"
-                                                                        thousandSeparator={true}
-                                                                        allowNegative={false}
-                                                                        onValueChange={(values) => {
-                                                                            const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                            field.onChange(rawValue);
-                                                                        }}
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
-                                                    <FormField
-                                                        control={stockVariantForm.control}
-                                                        name="alertLevel"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Alert Level</FormLabel>
-                                                                <FormControl>
-                                                                    <FormControl>
-
-                                                                        <NumericFormat
-                                                                            className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                            value={field.value}
-                                                                            disabled={isPending}
-                                                                            placeholder="0.00"
-                                                                            thousandSeparator={true}
-                                                                            allowNegative={false}
-                                                                            onValueChange={(values) => {
-                                                                                const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                                field.onChange(rawValue);
-                                                                            }}
-                                                                        />
-                                                                    </FormControl>
-                                                                </FormControl>
-                                                                <FormDescription>
-                                                                    Quantity below this level will trigger an alert
-                                                                </FormDescription>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-
-                                                </CardContent>
-
-                                                <div className="flex ml-6 mb-6">
-
-                                                    <SubmitButton
-                                                        isPending={isPending}
-                                                        label={'Save Variant'}
-                                                        onClick={
-                                                            stockVariantForm.handleSubmit(saveStockVariantItem, onInvalid)
-                                                        }
-                                                    />
-                                                </div>
-                                            </Card>
-                                        </form>
-                                    </Form>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            </>
-            : <></>
-        }
-
-        {recipeModalVisible ?
-            <>
-                <div className="fixed w-[100%] h-[100%] bg-black z-999 left-0 top-0 opacity-20"></div>
-                <div className="fixed w-[100%] h-[100%] z-999 left-0 top-0 flex items-center justify-center">
-                    <div className="w-[250px] p-5 bg-white rounded-md">
-                        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-                            <div className="flex flex-col-reverse lg:flex-row gap-10">
-                                <div className="flex-1 lg:w-1/3">
-                                    <Form {...recipeForm}>
-                                        <form
-                                            onSubmit={recipeForm.handleSubmit(submitRecipeData, onInvalid)}
-                                            className={`gap-1`}>
-                                            <div>
-                                                <FormError message={error} />
-                                                <FormSuccess message={success} />
-                                                <div className="bg-gray-200 pl-3 pr-3 pt-2 pb-2 border-0 border-emerald-100- flex">
-                                                    <h3 className="font-bold flex-1">Add recipe to track inventory</h3>
-                                                    <span className="flex-end"><ChevronDownIcon /></span>
-                                                </div>
-
-                                                <div className="mt-4 flex">
-                                                    <div className="flex-1">
-                                                        <FormField
-                                                            control={stockForm.control}
-                                                            name="name"
-                                                            render={({ field }) => (
-                                                                <FormItem>
-                                                                    <FormLabel>Recipe Name</FormLabel>
-                                                                    <FormControl>
-                                                                        <Input
-                                                                            placeholder="Enter recipe name"
-                                                                            {...field}
-                                                                            value={field.value}
-                                                                            disabled={isPending}
-                                                                        />
-                                                                    </FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                    </div>
-                                                </div>
-
-                                                <FormField
-                                                    control={recipeForm.control}
-                                                    name="stockVariants"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Stock Variant</FormLabel>
-                                                            <FormControl>
-                                                                <MultiSelect
-                                                                    options={combinedStockOptions.map((option) => ({
-                                                                        label: option.displayName,
-                                                                        value: option.id,
-                                                                    }))}
-                                                                    onValueChange={(selectedValues) => {
-                                                                        // const existingVariants = form.getValues("stockVariants") || [];
-
-                                                                        const updatedVariants = selectedValues.map((value) => {
-                                                                            // const existingVariant = existingVariants.find((variant) => variant.id === value);
-                                                                            const stockVariant = combinedStockOptions.find((option) => option.id === value);
-
-                                                                            return {
-                                                                                id: value,
-                                                                                displayName: stockVariant ? stockVariant.displayName : "",
-                                                                                quantity: 0,
-                                                                            };
-                                                                        });
-
-                                                                        remove(); 
-                                                                        // updatedVariants.forEach((variant) => append(variant));
-                                                                    }}
-                                                                    {...field}
-                                                                    placeholder="Select variant"
-                                                                    // value={form.watch("stockVariants")?.map((variant) => variant.id) || []}
-                                                                />
-
-
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-
-                                                <div className="flex flex-col">
-                                                    {selectedVariants.map((variant, index) => (
-                                                        <FormField
-                                                            key={variant.id}
-                                                            control={recipeForm.control}
-                                                            name={`stockVariants.${index}.quantity`}
-                                                            render={({ field }) => (
-                                                                <FormItem>
-                                                                    {/* <FormLabel>Quantity for {variant.displayName}</FormLabel> */}
-                                                                    <FormLabel>Quantity</FormLabel>
-                                                                    <FormControl>
-                                                                        <Input
-                                                                            type="number"
-                                                                            placeholder="Enter quantity"
-                                                                            {...field} // Correctly bind field props
-                                                                            value={field.value || variant.quantity} // Preserve existing value
-                                                                            onChange={(e) => {
-                                                                                const newValue = parseFloat(e.target.value);
-                                                                                field.onChange(newValue); // Update form state
-                                                                                // form.setValue(`stockVariants.${index}.quantity`, newValue); 
-                                                                            }}
-                                                                            disabled={isPending}
-                                                                        />
-                                                                    </FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                    ))}
-
-                                                </div>
-
-                                            </div>
-
-                                            <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
-                                                <Button variant='default' onClick={() => { setRecipeModalVisible(false) }}>cancel</Button>
-                                                <Separator orientation="vertical" />
-                                                <SubmitButton
-                                                    isPending={isPending}
-                                                    label={"Add recipe"}
-                                                />
-                                            </div>
-                                        </form>
-                                    </Form>
-                                </div>
-
-
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-            </>
-            : <></>
-        }
 
         {unitModalVisible ? (
             <>
@@ -1485,288 +1057,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                     </Form>
                 </div>
 
-                <div className="flex lg:w-1/3">
-                    <Form {...variantForm}>
-                        <form
-                            onSubmit={variantForm.handleSubmit(saveVariantItem, onInvalid)}
-                            className={`gap-1`}>
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="hidden">Add variants</CardTitle>
-                                    <CardDescription>{item ? "Edit variants" : "Add variants"}</CardDescription>
-                                </CardHeader>
-
-                                <CardContent className="gap-3">
-                                    <FormError message={error} />
-                                    <FormSuccess message={success} />
-
-                                    <div className="flex">
-                                        <UploadImageWidget imagePath={'products'} displayStyle={'default'}
-                                            displayImage={true} setImage={setVariantImageUrl} />
-
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={variantForm.control}
-                                                name="name"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Variant Name</FormLabel>
-                                                        <FormControl>
-                                                            <Input
-                                                                placeholder="Enter variant name ex: Small"
-                                                                {...field}
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="price"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col mt-2">
-                                                <FormLabel>Selling Price</FormLabel>
-                                                <FormControl>
-
-                                                    <NumericFormat
-                                                        className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                        value={field.value}
-                                                        disabled={isPending}
-                                                        placeholder="0.00"
-                                                        thousandSeparator={true}
-                                                        allowNegative={false}
-                                                        onValueChange={(values) => {
-                                                            const rawValue = Number(values.value.replace(/,/g, ""));
-                                                            field.onChange(rawValue);
-                                                        }}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="sku"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col mt-2">
-                                                <FormLabel>SKU</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Enter SKU"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="barcode"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col mt-2">
-                                                <FormLabel>Barcode</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Enter Barcode"
-                                                        {...field}
-                                                        value={field.value || ''}
-                                                        disabled={isPending}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {stockSelected && (
-                                        <>
-                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
-                                                <FormField
-                                                    control={variantForm.control}
-                                                    name="stockVariant"
-                                                    render={({ field }) => (
-                                                        <FormItem className="flex flex-col mt-2">
-                                                            <FormLabel>Stock Item</FormLabel>
-                                                            <FormControl>
-                                                                <Select
-                                                                    value={field.value || ''}
-                                                                    onValueChange={field.onChange}
-                                                                    disabled={isPending}
-                                                                >
-                                                                    <SelectTrigger>
-                                                                        <SelectValue placeholder="Select stock item" />
-                                                                    </SelectTrigger>
-
-                                                                    <SelectContent className="flex-grow overflow-y-auto">
-                                                                        {combinedStockOptions.map((option) => (
-                                                                            <SelectItem key={option.id} value={option.id}>
-                                                                                {option.displayName}
-                                                                            </SelectItem>
-                                                                        ))}
-                                                                    </SelectContent>
-                                                                </Select>
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-                                            ) : (
-                                                <div className="flex flex-col mt-2 gap-2">
-                                                    <p className="text-sm text-red-500 font-bold">No stock available</p>
-                                                    <Button onClick={(e) => {
-                                                        e.preventDefault();
-                                                        openStockModal();
-                                                    }}>Add Stock</Button>
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-
-                                    {recipeSelected && (
-                                        <>
-                                            {combinedStockOptions && combinedStockOptions.length > 0 ? (
-                                                // Check if there are recipes available
-                                                recipes && recipes.length > 0 ? (
-                                                    <FormField
-                                                        control={variantForm.control}
-                                                        name="recipe"
-                                                        render={({ field }) => (
-                                                            <FormItem className="flex flex-col mt-2">
-                                                                <FormLabel>Recipe</FormLabel>
-                                                                <FormControl>
-                                                                    <Select
-                                                                        value={field.value || ''}
-                                                                        onValueChange={field.onChange}
-                                                                        disabled={isPending}
-                                                                    >
-                                                                        <SelectTrigger>
-                                                                            <SelectValue placeholder="Select stock item" />
-                                                                        </SelectTrigger>
-
-                                                                        <SelectContent className="flex-grow overflow-y-auto">
-                                                                            {recipes.map((option) => (
-                                                                                <SelectItem key={option.id} value={option.id}>
-                                                                                    {option.name}
-                                                                                </SelectItem>
-                                                                            ))}
-                                                                        </SelectContent>
-                                                                    </Select>
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                ) : (
-                                                    // No recipes available
-                                                    <NoItemsMessage
-                                                        message="No recipe available"
-                                                        onClick={openRecipeModal}
-                                                    />
-                                                )
-                                            ) : (
-                                                // No stock options available
-                                                <NoItemsMessage
-                                                    message="No stock available"
-                                                    onClick={openStockModal}
-                                                />
-                                            )}
-                                        </>
-                                    )}
-
-
-
-
-
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="unit"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col mt-2">
-                                                <FormLabel>Unit</FormLabel>
-                                                <FormControl>
-                                                    <div className="relative flex flex-col w-full max-w-sm">
-
-                                                        <div className="flex items-center gap-2 border-r-1 border-t-1 border-b-1 rounded-sm border-gray-300">
-                                                            <Input
-                                                                type="search"
-                                                                placeholder="Search e.g Kilogram"
-                                                                className=" "
-                                                                value={searchTerm || ""}
-                                                                disabled={isPending}
-                                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                                            />
-                                                            <Eye className="h-6 w-6" onClick={openUnitModal} />
-                                                        </div>
-
-                                                        {searchTerm && filteredUnits.length > 0 && (
-                                                            <div className="absolute mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-gray-300 bg-white shadow-md z-10">
-                                                                {filteredUnits.map((unit) => (
-                                                                    <div
-                                                                        key={unit.id}
-                                                                        className="cursor-pointer px-4 py-2"
-                                                                        onClick={() => {
-                                                                            field.onChange(unit.id);
-                                                                            setSearchTerm(unit.name);
-                                                                            setFilteredUnits([]);
-                                                                        }}
-                                                                    >
-                                                                        {unit.name}
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    <FormField
-                                        control={variantForm.control}
-                                        name="description"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-col mt-2">
-                                                <FormLabel>Description</FormLabel>
-                                                <FormControl>
-                                                    <Input
-                                                        placeholder="Enter variant description"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        value={field.value || ""}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </CardContent>
-
-                                <div className="flex ml-6 mb-6">
-
-                                    <SubmitButton
-                                        isPending={isPending}
-                                        label={selectedVariant ? 'Update Variant' : 'Save Variant'}
-                                        onClick={
-                                            item
-                                                ? (selectedVariant
-                                                    ? variantForm.handleSubmit(handleUpdateVariant, onInvalid)
-                                                    : variantForm.handleSubmit(handleSaveVariant, onInvalid))
-                                                : variantForm.handleSubmit(saveVariantItem, onInvalid)
-                                        }
-                                    />
-                                </div>
-                            </Card>
-                        </form>
-                    </Form>
-                </div>
+             
             </div>
         </div>
 
