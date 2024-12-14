@@ -55,14 +55,6 @@ export default function RecipeModal({
                           </div>
                           <div className="flex items-center border-b border-gray-300 p-2">
                             <span className="w-1/3 font-normal border-r border-gray-300 pr-2 text-sm">
-                              Product Variant
-                            </span>
-                            <span className="w-2/3 pl-2 text-sm">
-                              {data.variantName}
-                            </span>
-                          </div>
-                          <div className="flex items-center border-b border-gray-300 p-2">
-                            <span className="w-1/3 font-normal border-r border-gray-300 pr-2 text-sm">
                               Status
                             </span>
                             <span className="w-2/3 pl-2 text-sm">

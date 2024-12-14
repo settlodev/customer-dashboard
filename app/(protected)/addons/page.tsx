@@ -24,6 +24,7 @@ const breadCrumbItems = [{title:"Addons",link:"/addons"}];
      const pageLimit = Number(searchParams.limit);
 
      const responseData = await searchAddon(q,page,pageLimit);
+     console.log("Addon responseData:", responseData);
 
      const data:Addon[]=responseData.content;
      const total =responseData.totalElements;
@@ -53,7 +54,7 @@ const breadCrumbItems = [{title:"Addons",link:"/addons"}];
                         <CardContent>
                             <DataTable columns={columns}
                                        data={data}
-                                       searchKey="firstName"
+                                       searchKey="title"
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}

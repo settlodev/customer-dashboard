@@ -13,7 +13,7 @@ export const ModifierSchema = object({
   variant: string().uuid("Please select a valid product variant"),
   isMandatory: boolean().optional(),
   isMaximum: boolean().optional(),
-  maximumSelection: number().optional(),
+  maximumSelection: number().nullish().optional(),
   status: boolean().optional(),
 });
 

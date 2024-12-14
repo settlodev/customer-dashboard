@@ -36,8 +36,9 @@ export const columns: ColumnDef<Department>[] = [
     enableHiding: false,
     cell: ({ row }) => {
         const image = row.original.image;
+        const color = row.original.color;
         return ( image ? <Image src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" width={50} height={50} loading="lazy" /> : 
-            <div className="w-10 h-10 rounded-lg bg-emerald-500"></div>
+            <div className="w-10 h-10 rounded-lg" style={{ backgroundColor: color }}></div>
         );
     }
 },
