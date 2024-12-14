@@ -4,7 +4,6 @@ import axios, {AxiosInstance, AxiosRequestConfig} from "axios";
 import https from 'https';
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
 import {getAuthToken} from "@/lib/auth-utils";
-import {ErrorMessageType} from "@/types/types";
 
 class ApiClient {
     private instance: AxiosInstance;
@@ -47,7 +46,7 @@ class ApiClient {
             const response = await this.instance.get<T>(url, config);
             return response.data;
         } catch (error) {
-            throw await handleSettloApiError(error as ErrorMessageType);
+            throw await handleSettloApiError(error);
         }
     }
 
@@ -61,7 +60,8 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            throw await handleSettloApiError(error as ErrorMessageType);
+            console.error("Error in post:", error);
+            throw await handleSettloApiError(error);
         }
     }
 
@@ -75,7 +75,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            throw await handleSettloApiError(error as ErrorMessageType);
+            throw await handleSettloApiError(error);
         }
     }
 
@@ -85,7 +85,7 @@ class ApiClient {
 
             return response.data;
         } catch (error) {
-            throw await handleSettloApiError(error as ErrorMessageType);
+            throw await handleSettloApiError(error);
         }
     }
 }

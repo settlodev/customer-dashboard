@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import React, {useCallback, useState} from "react";
+import {useForm, useFieldArray, FieldErrors} from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Trash2, Plus } from "lucide-react";
@@ -31,14 +31,6 @@ import { StockSchema } from "@/types/stock/schema";
 import { useTransition } from "react";
 import { FormResponse } from "@/types/types";
 
-const UpdatedStockSchema = StockSchema.refine(
-    (data) => data.stockVariants.length > 0,
-    {
-        message: "At least one stock variant is required",
-        path: ["stockVariants"],
-    }
-);
-
 type StockFormProps = {
     item: Stock | null | undefined;
 };
@@ -46,10 +38,9 @@ type StockFormProps = {
 export default function StockForm({ item }: StockFormProps) {
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
-    const { toast } = useToast();
 
-    const form = useForm<z.infer<typeof UpdatedStockSchema>>({
-        resolver: zodResolver(UpdatedStockSchema),
+    const form = useForm<z.infer<typeof StockSchema>>({
+        resolver: zodResolver(StockSchema),
         defaultValues: {
             name: item?.name || "",
             description: item?.description || "",
@@ -75,38 +66,61 @@ export default function StockForm({ item }: StockFormProps) {
         name: "stockVariants"
     });
 
-    const submitData = (values: z.infer<typeof UpdatedStockSchema>) => {
+    const {toast} = useToast();
+
+    const onInvalid = useCallback(
+        (errors: FieldErrors) => {
+            console.log("errors", errors);
+        },
+        [toast]
+    );
+
+    const submitData = (values: z.infer<typeof StockSchema>) => {
+        console.log('Starting submitData with values:', values);
+        setResponse(undefined);
+
         startTransition(() => {
-            const action = item ? updateStock(item.id, values) : createStock(values);
-            action.then((data) => {
-                if (data) {
-                    setResponse(data);
-                    if (data.responseType === "success") {
-                        toast({
-                            title: "Success",
-                            description: data.message,
-                        });
-                    }
-                }
-            }).catch(err => {
-                console.error("Error processing stock:", err);
-                toast({
-                    variant: "destructive",
-                    title: "Error",
-                    description: "Failed to process stock. Please try again.",
-                });
-            });
+            console.log('Inside startTransition, item:', item);
+
+            if (item) {
+                console.log('Updating existing stock with ID:', item.id);
+                updateStock(item.id, values)
+                    .then((data) => {
+                        console.log('Update stock response:', data);
+                        if (data) setResponse(data);
+                    })
+                    .catch((error) => {
+                        console.error('Error updating stock:', error);
+                    });
+            } else {
+                console.log('Creating new stock');
+                createStock(values)
+                    .then((data) => {
+                        console.log('Create stock response:', data);
+                        if (data) setResponse(data);
+                    })
+                    .catch((error) => {
+                        console.error('Error creating stock:', error);
+                    });
+            }
         });
+
+        console.log('Completed startTransition');
+    };
+
+    const isFieldReadOnly = (index: number): boolean => {
+        return Boolean(item && index < (item.stockVariants?.length || 0));
     };
 
     return (
         <Form {...form}>
             <FormError message={response?.message} />
-            <form onSubmit={form.handleSubmit(submitData)}>
+            <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
                 <div className="grid xl:grid-cols-3 md:grid-cols-2 gap-6">
                     {/* Left Column - Basic Information */}
                     <Card className="order-1 xl:order-none md:col-span-1">
                         <CardContent className="pt-6 space-y-6">
+                            {/* Basic Information section remains unchanged */}
                             <div>
                                 <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
                                 <div className="space-y-6">
@@ -253,15 +267,15 @@ export default function StockForm({ item }: StockFormProps) {
                                                         <FormLabel>Initial Quantity</FormLabel>
                                                         <FormControl>
                                                             <NumericFormat
-                                                                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
+                                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
                                                                 value={field.value}
                                                                 onValueChange={(values) => {
                                                                     field.onChange(Number(values.value));
                                                                 }}
                                                                 thousandSeparator={true}
                                                                 placeholder="Enter quantity"
-                                                                disabled={true}
-                                                                readOnly
+                                                                disabled={isPending || isFieldReadOnly(index)}
+                                                                readOnly={isFieldReadOnly(index)}
                                                             />
                                                         </FormControl>
                                                         <FormMessage/>
@@ -277,16 +291,15 @@ export default function StockForm({ item }: StockFormProps) {
                                                         <FormLabel>Starting Value</FormLabel>
                                                         <FormControl>
                                                             <NumericFormat
-                                                                className="flex h-10 w-full rounded-md border border-input bg-muted px-3 py-2 text-sm"
+                                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
                                                                 value={field.value}
                                                                 onValueChange={(values) => {
                                                                     field.onChange(Number(values.value));
                                                                 }}
                                                                 thousandSeparator={true}
                                                                 placeholder="Enter value"
-                                                                prefix="$"
-                                                                disabled={true}
-                                                                readOnly
+                                                                disabled={isPending || isFieldReadOnly(index)}
+                                                                readOnly={isFieldReadOnly(index)}
                                                             />
                                                         </FormControl>
                                                         <FormMessage/>

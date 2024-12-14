@@ -6,4 +6,10 @@ export const StockSchema = object({
     description: string().optional(),
     status: boolean().optional(),
     stockVariants: array(StockVariantSchema)
-});
+}).refine(
+    (data) => data.stockVariants.length > 0,
+    {
+        message: "At least one stock variant is required",
+        path: ["stockVariants"],
+    }
+);

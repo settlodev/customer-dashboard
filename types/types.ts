@@ -125,16 +125,19 @@ export declare interface uploadCallBackType{
     data: string;
 }
 
-export declare interface ServerResponseError{
-    message: ErrorMessageType;
-    error: object;
-}
-
-export declare interface ErrorMessageType{
+export declare interface ErrorResponseType {
     status: number;
     code: string;
     message: string;
-    error: Error
+    details?: unknown;
+    timestamp: string;
+    path?: string;
+    correlationId?: string;
+    serverError?: {
+        name?: string;
+        stack?: string;
+        details?: unknown;
+    };
 }
 
 export declare interface PrivilegeItem{

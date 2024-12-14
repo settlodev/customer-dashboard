@@ -18,10 +18,11 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
         // If cookie exists, try to parse it
         if (businessCookie) {
             try {
-                return JSON.parse(businessCookie.value) as Business;
+                const parsedBusiness = JSON.parse(businessCookie.value) as Business;
+                console.log('Successfully parsed business from cookie');
+                return parsedBusiness;
             } catch (error) {
                 console.error('Failed to parse business cookie:', error);
-                // Remove invalid cookie
                 cookies().delete("currentBusiness");
             }
         }
@@ -30,19 +31,26 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
         console.log('Fetching fresh business data...');
         const currentLocation = await getCurrentLocation();
 
-        if (!currentLocation?.business) {
+        if (!currentLocation) {
+            console.warn('getCurrentLocation returned undefined');
+            return undefined;
+        }
+
+        if (!currentLocation.business) {
             console.warn('No business ID found in current location');
             return undefined;
         }
 
+        console.log('Attempting to get business with ID:', currentLocation.business);
         const currentBusiness = await getBusiness(currentLocation.business);
+        console.log('getBusiness returned data');
 
         if (!currentBusiness) {
             console.warn('No business found for ID:', currentLocation.business);
             return undefined;
         }
 
-        // Set new cookie with business data
+        // TODO: move the cookie setting externally
         try {
             cookies().set("currentBusiness", JSON.stringify(currentBusiness), {
                 path: "/",
@@ -51,6 +59,7 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
                 sameSite: 'lax',
                 maxAge: 7 * 24 * 60 * 60, // 7 days
             });
+            console.log('Successfully set business cookie');
         } catch (error) {
             console.error('Failed to set business cookie:', error);
             // Continue without setting cookie
