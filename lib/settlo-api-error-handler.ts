@@ -1,104 +1,189 @@
-import { ErrorMessageType } from "@/types/types";
-import axios, { AxiosError } from "axios";
+import { AxiosError } from "axios";
+import {ErrorResponseType} from "@/types/types";
 
-export const  handleSettloApiError =  async (error: unknown): Promise<ErrorMessageType> => {
-    if (axios.isAxiosError(error)) {
-        const axiosError = error as AxiosError;
+export const ErrorCodes = {
+    UNAUTHORIZED: 'UNAUTHORIZED',
+    FORBIDDEN: 'FORBIDDEN',
+    NOT_FOUND: 'NOT_FOUND',
+    CONFLICT: 'CONFLICT',
+    SERVER_ERROR: 'SERVER_ERROR',
+    NETWORK_ERROR: 'NETWORK_ERROR',
+    VALIDATION_ERROR: 'VALIDATION_ERROR',
+    BUSINESS_ERROR: 'BUSINESS_ERROR',
+    EMAIL_EXISTS: 'EMAIL_EXISTS',
+    PHONE_EXISTS: 'PHONE_EXISTS',
+    WRONG_CREDENTIALS: 'WRONG_CREDENTIALS',
+    EMAIL_VERIFIED: 'EMAIL_VERIFIED',
+} as const;
 
-        if (axiosError.response) {
+export const handleSettloApiError = async (error: unknown): Promise<ErrorResponseType> => {
+    const getErrorDetails = (axiosError: AxiosError): unknown => {
+        const responseData = axiosError.response?.data as Record<string, unknown>;
+        return responseData?.details || responseData?.error || responseData;
+    };
 
-            switch (axiosError.response.status) {
-                case 401:
-                    return {
-                        status: 401,
-                        code : "UNAUTHORIZED",
-                        error: error,
-                        message: "Unauthorized, you are not allowed to perform this action.",
-                    };
-                case 403:
-
-                    return {
-                        status: 403,
-                        code : "FORBIDDEN",
-                        error: error,
-                        message: "You do not have sufficient permissions to perform this action.",
-                    };
-                case 404:
-                    return {
-                        status: 404,
-                        code : "NOT_FOUND",
-                        error: error,
-                        message: "Sorry, we could not find a valid resource with your request, please try again.",
-                    };
-                case 409:
-                    return {
-                    status: 409,
-                    code : "CONFLICT",
-                    error: error,
-                    message:"Delete first the stock variant, then delete the stock",
-                }
-                case 601:
-                    return {
-                        status: 601,
-                        code : "EMAIL EXIST",
-                        error: error,
-                        message: "Email already registered",
-                    };
-                case 602:
-                    return {
-                        status: 602,
-                        code : "PHONE EXIST",
-                        error: error,
-                        message: "Phone number already registered",
-                    };
-                case 603:
-                    return {
-                        status: 603,
-                        code : "WRONG CREDENTIALS",
-                        error: error,
-                        message: "Login failed, wrong credentials",
-                    };
-                case 604:
-                    return {
-                    status: 604,
-                    code : "EMAIL VERIFIED",
-                    error: error,
-                    message:"Email already verified",
-                }
-                case 500:
-                    return {
-                        status: 500,
-                        code : "SERVER_ERROR",
-                        error: error,
-                        message: "There is error with the system, please try again later",
-                    };
-                default:
-                    return {
-                        status: 500,
-                        code : "SERVER_ERROR",
-                        error: error,
-                        message:
-                            "Something went wrong while processing your request, please try again.",
-                    };
-            }
-        } else {
-            return {
-                status: 500,
-                code : "SERVER_ERROR",
-                error: error,
-                message: "Something went wrong while processing your request, please try again.",
-            };
-        }
-    } else {
-        return {
-            status: 500,
-            code : "SERVER_ERROR",
-            error: new Error("Unhandled error."),
-            message: "Something went wrong while processing your request, please try again.",
+    // Helper function to create error response
+    const createErrorResponse = (
+        status: number,
+        code: string,
+        message: string,
+        details?: unknown,
+        serverError?: ErrorResponseType['serverError']
+    ): ErrorResponseType => {
+        const baseResponse: ErrorResponseType = {
+            status,
+            code,
+            message,
+            details,
+            timestamp: new Date().toISOString(),
+            path: (error as AxiosError)?.config?.url,
+            correlationId: crypto.randomUUID(),
         };
+
+        if (serverError) {
+            baseResponse.serverError = serverError;
+        }
+
+        return baseResponse;
+    };
+
+    if (error instanceof AxiosError) {
+        const errorDetails = getErrorDetails(error);
+
+        if (error.code === 'ECONNABORTED' || error.code === 'NETWORK_ERROR') {
+            return createErrorResponse(
+                0,
+                ErrorCodes.NETWORK_ERROR,
+                'Network error occurred. Please check your connection.',
+                { timeout: error.config?.timeout }
+            );
+        }
+
+        if (error.response) {
+            const { status } = error.response;
+            const serverMessage = (error.response.data as { message?: string })?.message;
+
+            switch (status) {
+                case 400:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.VALIDATION_ERROR,
+                        serverMessage || 'Invalid request parameters.',
+                        errorDetails
+                    );
+
+                case 401:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.UNAUTHORIZED,
+                        serverMessage || 'Unauthorized, please log in again.',
+                        errorDetails
+                    );
+
+                case 403:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.FORBIDDEN,
+                        serverMessage || 'You do not have sufficient permissions to access this resource.',
+                        errorDetails
+                    );
+
+                case 404:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.NOT_FOUND,
+                        serverMessage || 'Resource not found.',
+                        errorDetails
+                    );
+
+                case 409:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.CONFLICT,
+                        serverMessage || 'Resource conflict occurred.',
+                        errorDetails
+                    );
+
+                case 422:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.VALIDATION_ERROR,
+                        serverMessage || 'Validation error occurred.',
+                        errorDetails
+                    );
+
+                case 601:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.EMAIL_EXISTS,
+                        'Email already registered, please use a different email address.',
+                        errorDetails
+                    );
+
+                case 602:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.PHONE_EXISTS,
+                        'Phone number already registered, please use a different phone number.',
+                        errorDetails
+                    );
+
+                case 603:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.WRONG_CREDENTIALS,
+                        'Login failed, wrong credentials.',
+                        errorDetails
+                    );
+
+                case 604:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.EMAIL_VERIFIED,
+                        'Email already verified, please login to your account.',
+                        errorDetails
+                    );
+
+                case 500:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.SERVER_ERROR,
+                        serverMessage || 'Internal server error occurred.',
+                        errorDetails,
+                        {
+                            name: error.name,
+                            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+                            details: error.response.data
+                        }
+                    );
+
+                default:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.SERVER_ERROR,
+                        serverMessage || 'An unexpected error occurred.',
+                        errorDetails
+                    );
+            }
+        }
+
+        return createErrorResponse(
+            500,
+            ErrorCodes.NETWORK_ERROR,
+            error.message || 'Failed to connect to the server.',
+            { code: error.code, config: error.config }
+        );
     }
+
+    const unknownError = error as Error;
+    return createErrorResponse(
+        500,
+        ErrorCodes.SERVER_ERROR,
+        'An unexpected error occurred.',
+        {
+            name: unknownError.name,
+            message: unknownError.message,
+            stack: process.env.NODE_ENV === 'development' ? unknownError.stack : undefined
+        }
+    );
 };
-
-
-
-

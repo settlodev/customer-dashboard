@@ -38,7 +38,9 @@ export default function UpdateProfileForm() {
             bio: session.data?.user?.bio,
         }
     });
+
     const {toast} = useToast();
+
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
             console.log("errors", errors);

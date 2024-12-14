@@ -72,25 +72,40 @@ export const searchStock = async (
     }
 
 }
-export const  createStock= async (
+
+export const createStock = async (
     stock: z.infer<typeof StockSchema>
 ): Promise<FormResponse | void> => {
+    console.log('Starting createStock with data:', stock);
 
     let formResponse: FormResponse | null = null;
 
-    const validData= StockSchema.safeParse(stock)
-
-    if (!validData.success){
-        formResponse = {
-            responseType:"error",
-            message:"Please fill all the required fields",
-            error:new Error(validData.error.message)
-      }
-      return parseStringify(formResponse)
+    const validData = StockSchema.safeParse(stock);
+    if (!validData.success) {
+        console.warn('Stock validation failed:', validData.error);
+        return parseStringify({
+            responseType: "error",
+            message: "Please fill all the required fields",
+            error: new Error(validData.error.message)
+        });
     }
 
     const location = await getCurrentLocation();
     const business = await getCurrentBusiness();
+
+    console.log('Retrieved location and business:', {
+        locationId: location?.id,
+        businessId: business?.id
+    });
+
+    if (!location || !business) {
+        console.error('Missing required data:', { location, business });
+        return parseStringify({
+            responseType: "error",
+            message: "Could not retrieve required business data",
+            error: new Error("Missing location or business data")
+        });
+    }
 
     const payload = {
         ...validData.data,
@@ -114,13 +129,16 @@ export const  createStock= async (
     catch (error: any){
         const formattedError = await error;
         formResponse = {
-            responseType: formattedError.message,
-            message: "Something went wrong while processing your request, please try again",
+            responseType: "error",
+            message: formattedError.message,
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
+
+    if (formResponse?.responseType === "error") return parseStringify(formResponse);
+
     revalidatePath("/stocks")
-    return parseStringify(formResponse);
+    redirect("/stocks");
 }
 
 export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
