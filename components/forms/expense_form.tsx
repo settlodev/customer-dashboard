@@ -28,7 +28,8 @@ import { ExpenseCategory } from "@/types/expenseCategories/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import DateTimePicker from "../widgets/datetimepicker";
 import { useRouter } from "next/navigation";
-
+import StaffSelectorWidget from "@/components/widgets/staff_selector_widget";
+import {CalendarDays, Receipt, Tags, User2} from "lucide-react";
 
 function ExpenseForm({ item }: { item: Expense | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -43,7 +44,6 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
 );
   const { toast } = useToast();
   const router = useRouter();
-
 
   useEffect(() => {
     const getExpenseCategories = async () => {
@@ -84,7 +84,7 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
                 title: "Success",
                 description: data.message,
               });
-              router.push("/expenses"); 
+              router.push("/expenses");
             }
           }
         });
@@ -98,7 +98,7 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
                   title: "Success",
                   description: data.message,
                 });
-                router.push("/expenses"); 
+                router.push("/expenses");
               }
             }
           })
@@ -112,139 +112,161 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
     if (!date) return;
-  
-    const newDate = new Date(date); 
-  
+
+    const newDate = new Date(date);
+
     if (type === "hour") {
       newDate.setHours(Number(value));
     } else if (type === "minutes") {
       newDate.setMinutes(Number(value));
     }
-  
-    setDate(newDate); 
+
+    setDate(newDate);
   };
-  
+
 
   const handleDateSelect = (date: Date) => {
     setDate(date);
   };
 
-  return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className={`gap-1`}
-      >
-        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-          <>
-            <>
-            <FormError message={error}/>
-            <FormSuccess message={success}/>
-              <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Expense Name</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter expense name"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
+                <FormError message={error}/>
+                <FormSuccess message={success}/>
 
-                <FormField
-                  control={form.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Amount</FormLabel>
-                      <FormControl>
-                      <Input
-                        placeholder="Enter expense amount"
-                        {...field}
-                        disabled={isPending}
-                        value={field.value}
-                      />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <FormField
+                        control={form.control}
+                        name="name"
+                        render={({field}) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel className="flex items-center gap-2">
+                                    <Receipt className="h-4 w-4"/>
+                                    Expense Name
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        placeholder="Enter expense name"
+                                        disabled={isPending}
+                                        className="w-full bg-white"
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
 
-               <FormField
-                  control={form.control}
-                  name="expenseCategory"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Expense Category</FormLabel>
-                      <FormControl>
-                        <Select
-                          disabled={isPending || expenseCategories.length === 0}
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select expense category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {expenseCategories.length > 0
-                              ? expenseCategories.map((expCat: ExpenseCategory, index: number) => (
-                                  <SelectItem key={index} value={expCat.id}>
-                                    {expCat.name}{" "}
-                                  </SelectItem>
-                                ))
-                              : null}
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                        control={form.control}
+                        name="amount"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                    <span className="text-sm">$</span>Amount
+                                </FormLabel>
+                                <FormControl>
+                                    <Input
+                                        {...field}
+                                        placeholder="0.00"
+                                        disabled={isPending}
+                                        type="number"
+                                        step="0.01"
+                                        className="w-full bg-white"
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
 
-              <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Expense Date</FormLabel>
-                      <DateTimePicker
-                        field={field}
-                        date={date}
-                        setDate={setDate}
-                        handleTimeChange={handleTimeChange}
-                        onDateSelect={handleDateSelect}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-         
+                    <FormField
+                        control={form.control}
+                        name="staff"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                    <User2 className="h-4 w-4"/>
+                                    Processed by
+                                </FormLabel>
+                                <FormControl>
+                                    <StaffSelectorWidget
+                                        {...field}
+                                        isRequired
+                                        isDisabled={isPending}
+                                        placeholder="Select staff member"
+                                        label="Select staff member"
+                                    />
+                                </FormControl>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
 
-              </div>
-            </>
-          </>
-          <div className="flex h-5 items-center space-x-4 mt-4">
-            <CancelButton />
-            <Separator orientation="vertical" />
-            <SubmitButton
-              isPending={isPending}
-              label={item ? "Update expense details" : "Add expense"}
-            />
-          </div>
-        </div>
+                    <FormField
+                        control={form.control}
+                        name="expenseCategory"
+                        render={({field}) => (
+                            <FormItem>
+                                <FormLabel className="flex items-center gap-2">
+                                    <Tags className="h-4 w-4"/>
+                                    Category
+                                </FormLabel>
+                                <Select
+                                    disabled={isPending || expenseCategories.length === 0}
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                >
+                                    <FormControl>
+                                        <SelectTrigger className="w-full bg-white">
+                                            <SelectValue placeholder="Select category"/>
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {expenseCategories.map((category, index) => (
+                                            <SelectItem key={index} value={category.id}>
+                                                {category.name}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
 
-        {/* </div> */}
-      </form>
-    </Form>
-  );
-}
+                    <FormField
+                        control={form.control}
+                        name="date"
+                        render={({field}) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel className="flex items-center gap-2">
+                                    <CalendarDays className="h-4 w-4"/>
+                                    Expense Date
+                                </FormLabel>
+                                <DateTimePicker
+                                    field={field}
+                                    date={date}
+                                    setDate={setDate}
+                                    handleTimeChange={handleTimeChange}
+                                    onDateSelect={handleDateSelect}
+                                    maxDate={new Date()}
+                                />
+                                <FormMessage/>
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
+                <div className="flex h-5 items-center space-x-4">
+                    <CancelButton/>
+                    <Separator orientation="vertical"/>
+                    <SubmitButton label={item ? "Update Expense" : "Record Expense"} isPending={isPending}/>
+                </div>
+            </form>
+        </Form>
+    );
+};
 
 export default ExpenseForm;

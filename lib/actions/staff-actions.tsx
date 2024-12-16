@@ -46,7 +46,7 @@ export const searchStaff = async (
         const query = {
             filters: [
                 {
-                    key: "name",
+                    key: "firstName",
                     operator: "LIKE",
                     field_type: "STRING",
                     value: q,
@@ -54,7 +54,7 @@ export const searchStaff = async (
             ],
             sorts: [
                 {
-                    key: "name",
+                    key: "firstName",
                     direction: "ASC",
                 },
             ],

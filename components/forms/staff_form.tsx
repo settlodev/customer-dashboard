@@ -98,7 +98,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                         <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                             <FormField
                                 control={form.control}
-                                name="name"
+                                name="firstName"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Full Name</FormLabel>
@@ -106,7 +106,25 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                             <Input
                                                 {...field}
                                                 disabled={isSubmitting}
-                                                placeholder="Enter full name"
+                                                placeholder="Enter first name"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
+                            <FormField
+                                control={form.control}
+                                name="lastName"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Last name</FormLabel>
+                                        <FormControl>
+                                            <Input
+                                                {...field}
+                                                disabled={isSubmitting}
+                                                placeholder="Enter last name"
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -310,6 +328,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                                     {...field}
                                                     disabled={isSubmitting}
                                                     type="email"
+                                                    value={field.value ?? ''}
                                                     placeholder="Enter email address"
                                                 />
                                             </FormControl>

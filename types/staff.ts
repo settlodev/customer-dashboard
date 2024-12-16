@@ -11,11 +11,11 @@ import {
 import { isValidPhoneNumber } from "libphonenumber-js";
 
 export const StaffSchema = object({
-  firstname: string({ required_error: "Staff first name is required" }).min(
+  firstName: string({ required_error: "Staff first name is required" }).min(
     1,
     "Please enter a valid first name"
   ),
-  lastname: string({ required_error: "Staff last name is required" }).min(
+  lastName: string({ required_error: "Staff last name is required" }).min(
       1,
       "Please enter a valid last name"
   ),
@@ -23,7 +23,8 @@ export const StaffSchema = object({
   email: string()
     .min(1, "Please enter a valid email address")
     .email("Please enter a valid email address")
-    .optional(),
+    .optional()
+    .nullish(),
   phone: string({ required_error: "Phone number is required" }).refine(
     isValidPhoneNumber,
     {
