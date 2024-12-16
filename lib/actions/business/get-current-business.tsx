@@ -11,6 +11,7 @@ import {Location} from "@/types/location/type";
 import {getBusiness} from "@/lib/actions/business/get";
 
 import {redirect} from "next/navigation";
+import {signOut} from "@/auth";
 
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {
     try {
@@ -87,6 +88,7 @@ export const getBusinessDropDown = async (): Promise<Business[]> => {
         return parseStringify(data);
     } catch (error) {
         console.error("Failed to get business list:", error);
+        await signOut({redirect: false});
         redirect("/login")
     }
 };

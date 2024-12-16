@@ -190,7 +190,7 @@ function RegisterForm({ step }: { step: string }) {
                     if (data.responseType === "error") {
                         setError(data.message);
                     } else {
-                        window.location.reload();
+                        //window.location.reload();
                     }
                 })
                 .catch((error) => {
@@ -495,8 +495,9 @@ function RegisterForm({ step }: { step: string }) {
                                     <CardTitle>Verify email</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <CardDescription className="text-[18px] font-normal">
-                                        We have sent link with activation instruction to {session.data?.user?.email}
+                                    <CardDescription className="font-normal">
+                                        We have sent a link with activation instruction to your email address.
+                                        Please check your email and click on the link to verify your email address.
                                     </CardDescription>
                                     {emailSent ?
                                         <CardDescription className="text-green-500 py-4 flex">

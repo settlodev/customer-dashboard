@@ -17,6 +17,7 @@ import {deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
+import {redirect} from "next/navigation";
 
 export async function logout() {
     try {
@@ -223,15 +224,19 @@ export const register = async (
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
         if(regData){
             const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
+
             if(response) {
                 await sendVerificationEmail(regData.name, response as string, regData.email);
             }
 
-            await signIn("credentials", {
-                email: credentials.email,
-                password: credentials.password,
-                redirect: false,
-            });
+            //Disable login until email is verified
+            // await signIn("credentials", {
+            //     email: credentials.email,
+            //     password: credentials.password,
+            //     redirect: false,
+            // });
+
+            redirect("user-verification");
         }
 
         return parseStringify({
@@ -239,15 +244,20 @@ export const register = async (
             message: "Registration successful, redirecting to login...",
         });
     } catch (error : any) {
-        console.log("Error is: ", error)
+        // Ignore redirect error
+        if (isRedirectError(error)) throw error;
+
         const formattedError = await error;
 
         return parseStringify({
-        responseType: "error",
-        message:  formattedError.error,
-        error: error instanceof Error ? error : new Error(String(error)),
-    });
+            responseType: "error",
+            message:  formattedError.error,
+            error: error instanceof Error ? error : new Error(String(error)),
+        });
     }
+
+
+
 }
 
 export const updateUser = async (
