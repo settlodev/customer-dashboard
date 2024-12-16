@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
@@ -20,22 +20,13 @@ import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { Switch } from "@/components/ui/switch";
-import { fetchStock } from "@/lib/actions/stock-actions";
-import { Stock } from "@/types/stock/type";
 import { StockIntake } from "@/types/stock-intake/type";
-import { fetchSuppliers } from "@/lib/actions/supplier-actions";
-import { Supplier } from "@/types/supplier/type";
 import { StockIntakeSchema } from "@/types/stock-intake/schema";
 import { createStockIntake, updateStockIntake } from "@/lib/actions/stock-intake-actions";
 import SupplierSelector from "../widgets/supplier-selector";
 import DateTimePicker from "../widgets/datetimepicker";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
-import { fetchAllStaff } from "@/lib/actions/staff-actions";
-import { Staff } from "@/types/staff";
-import StockSelector from "../widgets/stock-selector";
-import { StockVariant } from "@/types/stockVariant/type";
 import StockVariantSelector from "../widgets/stock-variant-selector";
-import { fetchStockVariants } from "@/lib/actions/stock-variant-actions";
 import { NumericFormat } from "react-number-format";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
@@ -44,11 +35,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     const [error] = useState<string | undefined>("");
     const [success,] = useState<string | undefined>("");
-    const [stocks, setStocks] = useState<Stock[]>([]);
-    const [stockVariants, setStockVariants] = useState<StockVariant[]>([]);
-    const [selectedStock, setSelectedStock] = useState<string | null>(null);
-    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-    const [staffs, setStaffs] = useState<Staff[]>([]);
+   
     const [orderDate, setOrderDate] = useState<Date | undefined>(
         item?.orderDate ? new Date(item.orderDate) : undefined
     );
@@ -62,35 +49,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const { toast } = useToast();
     const router = useRouter();
 
-
-
-    useEffect(() => {
-        const getData = async () => {
-            try {
-                const [stockResponse, supplierResponse, staffResponse] = await Promise.all([
-                    fetchStock(),
-                    fetchSuppliers(),
-                    fetchAllStaff(),
-                ])
-                setStocks(stockResponse);
-                setSuppliers(supplierResponse);
-                setStaffs(staffResponse);
-            } catch (error) {
-                throw error;
-            }
-        }
-        getData();
-    }, []);
-
-    useEffect(() => {
-        if (selectedStock) {
-            fetchStockVariants(selectedStock).then(setStockVariants).catch(console.error);
-        }
-    }, [selectedStock]);
-
-    const handleStockChange = (stockId: string) => {
-        setSelectedStock(stockId);
-    };
 
 
     const form = useForm<z.infer<typeof StockIntakeSchema>>({
@@ -187,7 +145,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                 <FormSuccess message={success} />
 
                                 <div className="lg:grid grid-cols-2  gap-4 mt-2">
-                                    <div className="mt-4 flex">
+                                    {/* <div className="mt-4 flex">
                                         <div className="flex-1">
                                             <FormField
                                                 control={form.control}
@@ -215,7 +173,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                                 )}
                                             />
                                         </div>
-                                    </div>
+                                    </div> */}
                                     <div className="mt-4 flex">
                                         <div className="flex-1">
                                             <FormField
@@ -223,17 +181,16 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                                 name="stockVariant"
                                                 render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Stock Variant</FormLabel>
+                                                        <FormLabel>Stock Item</FormLabel>
                                                         <FormControl>
                                                             <StockVariantSelector
                                                                 value={field.value}
                                                                 onChange={field.onChange}
-                                                                onBlur={field.onBlur}
                                                                 isRequired
                                                                 isDisabled={isPending}
-                                                                label="Stock Variant"
-                                                                placeholder="Select stock variant"
-                                                                stockVariants={stockVariants}
+                                                                label="Stock item"
+                                                                placeholder="Select stock Item"
+                                                                // disabledValues={disabledValues}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />
@@ -411,9 +368,8 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                                         onBlur={field.onBlur}
                                                         isRequired
                                                         isDisabled={isPending}
-                                                        label="Department"
+                                                        label="staff"
                                                         placeholder="Select staff"
-                                                        staffs={staffs}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -433,9 +389,8 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                                         onBlur={field.onBlur}
                                                         isRequired
                                                         isDisabled={isPending}
-                                                        label="Department"
+                                                        label="Supplier"
                                                         placeholder="Select supplier"
-                                                        suppliers={suppliers}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />

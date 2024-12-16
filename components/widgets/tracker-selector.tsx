@@ -1,6 +1,5 @@
-import React, { useState, useTransition } from "react";
+import React, { useState} from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adjust to match your UI library
-import StockForm from "../forms/stock_form";
 import StockVariantSelector from "./stock-variant-selector";
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
 import RecipeSelector from "./recipe-selector";
@@ -16,12 +15,12 @@ interface TrackingOptionsProps {
 const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) => {
   const [trackingType, setTrackingType] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [quantity, setQuantity] = useState<number>(1);
-  const [isPending] = useTransition();
+  const [quantity] = useState<number>(1);
+  // const [isPending] = useTransition();
 
   const handleTrackingTypeChange = (type: string | null) => {
     setTrackingType(type);
-    setSelectedItemId(null); // Reset item ID on type change
+    setSelectedItemId(null);
     onSelectionChange({ itemType: type!, quantity, itemId: null });
   };
 
@@ -30,11 +29,11 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) 
     onSelectionChange({ itemType: trackingType!, quantity, itemId });
   };
 
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = Math.max(1, Number(e.target.value)); // Ensure positive integer
-    setQuantity(value);
-    onSelectionChange({ itemType: trackingType!, quantity: value, itemId: selectedItemId });
-  };
+  // const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   const value = Math.max(1, Number(e.target.value)); // Ensure positive integer
+  //   setQuantity(value);
+  //   onSelectionChange({ itemType: trackingType!, quantity: value, itemId: selectedItemId });
+  // };
 
   return (
     <div className="space-y-4">

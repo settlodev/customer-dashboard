@@ -37,20 +37,7 @@ function RecipeSelector({
         loadRecipes();
     }, []);
     return (
-        // <Select value={value} onValueChange={onChange} disabled={isDisabled}>
-        //     <SelectTrigger>
-        //         <SelectValue placeholder={placeholder || "Select stock"}/>
-        //     </SelectTrigger>
-        //     <SelectContent>
-        //         {recipes && recipes.length > 0 ?
-        //             recipes.map((item, index) => {
-        //                 return <SelectItem key={index} value={item.id}>
-        //                     {item.name}
-        //                 </SelectItem>
-        //             })
-        //             : <></>}
-        //     </SelectContent>
-        // </Select>
+        
         <div className="space-y-2">
         <Select
             defaultValue={value}

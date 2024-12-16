@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback,useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
@@ -26,7 +26,7 @@ import { Addon } from "@/types/addon/type";
 import { Switch } from "../ui/switch";
 import { useRouter } from "next/navigation";
 import { NumericFormat } from "react-number-format";
-import TrackingOptions from "../widgets/traker-option";
+import TrackingOptions from "../widgets/tracker-selector";
 
 function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [isPending, startTransition] = useTransition();

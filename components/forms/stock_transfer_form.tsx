@@ -20,7 +20,6 @@ import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { fetchStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
-import { fetchAllStaff } from "@/lib/actions/staff-actions";
 import { NumericFormat } from "react-number-format";
 import { Textarea } from "../ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -28,7 +27,6 @@ import { StockTransfer } from "@/types/stock-transfer/type";
 import { StockTransferSchema } from "@/types/stock-transfer/schema";
 import { createStockTransfer } from "@/lib/actions/stock-transfer-actions";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
-import { Staff } from "@/types/staff";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { Location } from "@/types/location/type";
 import LocationSelector from "../widgets/location-selector";
@@ -41,7 +39,6 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     const [error] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
     const [stocks, setStocks] = useState<Stock[]>([]);
-    const [staffs, setStaffs] = useState<Staff[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
@@ -52,13 +49,11 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     useEffect(() => {
         const getData = async () => {
             try {
-                const [stockResponse, staffResponse, locationResponse] = await Promise.all([
+                const [stockResponse, locationResponse] = await Promise.all([
                     fetchStock(),
-                    fetchAllStaff(),
                     fetchAllLocations(),
                 ]);
                 setStocks(stockResponse);
-                setStaffs(staffResponse);
                 setLocations(locationResponse || []);
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -271,7 +266,6 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                                         isDisabled={isPending}
                                                         label="staff"
                                                         placeholder="Select staff"
-                                                        staffs={staffs}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />

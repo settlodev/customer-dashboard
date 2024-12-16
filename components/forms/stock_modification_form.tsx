@@ -30,7 +30,6 @@ import { Textarea } from "../ui/textarea";
 import { reasonForStockModification } from "@/types/enums";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Staff } from "@/types/staff";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
@@ -40,7 +39,6 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
     const [error] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
     const [stocks, setStocks] = useState<Stock[]>([]);
-    const [staffs, setStaffs] = useState<Staff[]>([]);
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
@@ -58,12 +56,11 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
     useEffect(() => {
         const getData = async () => {
             try {
-                const [stockResponse,staffResponse] = await Promise.all([
+                const [stockResponse] = await Promise.all([
                     fetchStock(),
                     fetchAllStaff(),
                 ]);
                 setStocks(stockResponse);
-                setStaffs(staffResponse);
             } catch (error) {
                 console.error("Error fetching stocks:", error);
             }
@@ -276,7 +273,6 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                                         isDisabled={isPending}
                                                         label="staff"
                                                         placeholder="Select staff"
-                                                        staffs={staffs}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />

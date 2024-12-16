@@ -1,10 +1,11 @@
+import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Staff } from "@/types/staff";
+import { fetchAllStaff } from "@/lib/actions/staff-actions";
 
 interface StaffProps {
     label: string;
     placeholder: string;
-    staffs: Staff[];
     isRequired?: boolean;
     value?: string;
     isDisabled?: boolean;
@@ -17,10 +18,27 @@ function StaffSelectorWidget({
     value,
     isDisabled,
     onChange,
-    staffs
 }: StaffProps) {
+    const [staffs, setStaffs] = useState<Staff[]>([]);
+
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    useEffect(() => {
+        async function loadStaffs() {
+            try {
+                setIsLoading(true);
+                const fetchedStaffs = await fetchAllStaff();
+                setStaffs(fetchedStaffs);
+            } catch (error: any) {
+                console.log("Error fetching  staff:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        loadStaffs();
+    }, []);
     return (
-        <Select value={value} onValueChange={onChange} disabled={isDisabled}>
+        <Select value={value} onValueChange={onChange} disabled={isDisabled || isLoading}>
             <SelectTrigger>
                 <SelectValue placeholder={placeholder || "Select staff"}/>
             </SelectTrigger>

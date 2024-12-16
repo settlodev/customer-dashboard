@@ -1,10 +1,11 @@
 import { Supplier } from "@/types/supplier/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { useEffect, useState } from "react";
+import { fetchSuppliers } from "@/lib/actions/supplier-actions";
 
 interface SupplierProps {
     label: string;
     placeholder: string;
-    suppliers: Supplier[];
     isRequired?: boolean;
     value?: string;
     isDisabled?: boolean;
@@ -17,10 +18,27 @@ function SupplierSelector({
     value,
     isDisabled,
     onChange,
-    suppliers
 }: SupplierProps) {
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    useEffect(() => {
+        async function loadSuppliers() {
+            try {
+                setIsLoading(true);
+                const fetchedSuppliers = await fetchSuppliers();
+                setSuppliers(fetchedSuppliers);
+            } catch (error: any) {
+                console.log("Error fetching  suppliers:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+        loadSuppliers();
+    }, []);
     return (
-        <Select value={value} onValueChange={onChange} disabled={isDisabled}>
+        <Select value={value} onValueChange={onChange} disabled={isDisabled || isLoading}>
             <SelectTrigger>
                 <SelectValue placeholder={placeholder || "Select supplier"}/>
             </SelectTrigger>
