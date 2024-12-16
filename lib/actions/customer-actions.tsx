@@ -120,7 +120,8 @@ export const  createCustomer= async (
     if ( formResponse?.responseType === "error" ) return parseStringify(formResponse)
 
     revalidatePath("/customers");
-    redirect("/customers");
+    return parseStringify(formResponse)
+
 }
 
 export const getCustomer= async (id:UUID) : Promise<ApiResponse<Customer>> => {
@@ -197,7 +198,7 @@ export const updateCustomer = async (
     if ( formResponse?.responseType === "error" ) return parseStringify(formResponse)
 
     revalidatePath("/customers");
-    redirect("/customers");
+    return parseStringify(formResponse)
 };
 
 export const deleteCustomer = async (id: UUID): Promise<void> => {

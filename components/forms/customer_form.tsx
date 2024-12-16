@@ -26,21 +26,23 @@ import { Switch } from "../ui/switch";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { PhoneInput } from "../ui/phone-input";
+import { useRouter } from "next/navigation";
 
 function CustomerForm({ item }: { item: Customer | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error, ] = useState<string | undefined>("");
-  const [success, ] = useState<string | undefined>("");
+  const [error,] = useState<string | undefined>("");
+  const [success,] = useState<string | undefined>("");
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<z.infer<typeof CustomerSchema>>({
     resolver: zodResolver(CustomerSchema),
     defaultValues: {
-                ...item,
-                allowNotifications: true,
-                status: true
-                },
+      ...item,
+      allowNotifications: true,
+      status: true
+    },
   });
 
   const onInvalid = useCallback(
@@ -49,7 +51,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
-        description:typeof errors.message === 'string' && errors.message
+        description: typeof errors.message === 'string' && errors.message
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
@@ -67,6 +69,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
               title: "Success",
               description: data.message,
             });
+            router.push("/customers");
           }
         });
       } else {
@@ -78,6 +81,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                 title: "Success",
                 description: data.message,
               });
+              router.push("/customers");
             }
           })
           .catch((err) => {
@@ -96,8 +100,8 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
         <div>
           <>
             <>
-            <FormError message={error}/>
-            <FormSuccess message={success}/>
+              <FormError message={error} />
+              <FormSuccess message={success} />
               <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -166,9 +170,9 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                       <FormLabel>Email Address</FormLabel>
                       <FormControl>
                         <Input
-                            {...field}
-                            value={field.value ?? ''}
-                            placeholder="Enter customer email address"
+                          {...field}
+                          value={field.value ?? ''}
+                          placeholder="Enter customer email address"
                         />
                       </FormControl>
                       <FormMessage />
@@ -193,7 +197,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                     </FormItem>
                   )}
                 />
-                 <FormField
+                <FormField
                   control={form.control}
                   name="allowNotifications"
                   render={({ field }) => (
@@ -211,7 +215,7 @@ function CustomerForm({ item }: { item: Customer | null | undefined }) {
                     </FormItem>
                   )}
                 />
-                 {item && (
+                {item && (
                   <div className="grid gap-2">
                     <FormField
                       control={form.control}
