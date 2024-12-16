@@ -67,7 +67,6 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
     form.setValue("modifierItems", updatedList);
   };
 
-
   const form = useForm<z.infer<typeof ModifierSchema>>({
     resolver: zodResolver(ModifierSchema),
     defaultValues: {

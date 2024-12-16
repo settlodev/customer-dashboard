@@ -1,6 +1,5 @@
 import NextAuth from "next-auth";
 import { cookies } from "next/headers";
-
 import authConfig from "@/auth.config";
 import {
   DEFAULT_LOGIN_REDIRECT_URL,
@@ -10,7 +9,8 @@ import {
   COMPLETE_ACCOUNT_REGISTRATION_URL,
   COMPLETE_BUSINESS_LOCATION_SETUP_URL,
   UPDATE_PASSWORD_URL,
-  VERIFICATION_REDIRECT_URL, VERIFICATION_PAGE
+  VERIFICATION_REDIRECT_URL,
+  VERIFICATION_PAGE
 } from "@/routes";
 import { AuthToken } from "@/types/types";
 
@@ -19,67 +19,74 @@ const { auth } = NextAuth(authConfig);
 export default auth((req) => {
   const { nextUrl } = req;
   const isLoggedIn = !!req.auth;
-  let authToken = null;
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
-
-  // Allow access to the reset-password route
   const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL);
 
+  // Allow access to API routes, public routes, and password update routes
   if (isApiAuthRoute || isPublicRoute || isUpdatePasswordRoute) {
     return;
   }
 
   // Get auth token
-  const tokens = cookies().get("authToken")?.value;
-
-  if (tokens) {
-    authToken = JSON.parse(tokens) as AuthToken;
+  let authToken: AuthToken | null = null;
+  try {
+    const tokens = cookies().get("authToken")?.value;
+    if (tokens) {
+      authToken = JSON.parse(tokens);
+    }
+  } catch (error) {
+    console.error("Error parsing auth token:", error);
+    // If token is invalid or expired, redirect to login
+    return Response.redirect(new URL("/login", nextUrl));
   }
+
+  // Handle unauthenticated users
+  if (!isLoggedIn || !authToken) {
+    // Allow access to auth routes
+    if (isAuthRoute) {
+      return;
+    }
+    // Redirect to login for protected routes
+    return Response.redirect(new URL("/login", nextUrl));
+  }
+
+  // Handle authenticated users
   if (isLoggedIn) {
-    // If logged in and trying to access an auth route (like /login),
-    // redirect to the default page or account completion page
-    if (authToken?.emailVerified === null) {
-      if(nextUrl.pathname === VERIFICATION_PAGE) {
+    // Check email verification
+    if (authToken.emailVerified === null) {
+      if (nextUrl.pathname === VERIFICATION_PAGE) {
         return;
-      }else if(nextUrl.pathname !== VERIFICATION_REDIRECT_URL) {
+      }
+      if (nextUrl.pathname !== VERIFICATION_REDIRECT_URL) {
         return Response.redirect(new URL(VERIFICATION_REDIRECT_URL, nextUrl));
       }
       return;
-    }else {
-
-      if (isAuthRoute) {
-        if (authToken?.businessComplete !== true) {
-          return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
-        }
-        return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
-      }
-      // For non-auth routes, check if business registration is complete
-      if (authToken?.businessComplete === true) {
-        // Check if the business has set up allocation
-        if (!authToken?.locationComplete && nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
-          return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl));
-        }else{
-          /*if(nextUrl.pathname !== SELECT_BUSINESS_URL) {
-            return Response.redirect(new URL(SELECT_BUSINESS_URL, nextUrl));
-          }*/
-        }
-      } else {
-        if (!authToken?.businessComplete && nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
-          return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
-        }
-      }
-    }
-  } else {
-    // If not logged in, allow access to auth routes and public routes
-    if (isAuthRoute || isPublicRoute) {
-      return;
     }
 
-    // For all other routes, redirect to log in
-    return Response.redirect(new URL("/login", nextUrl));
+    // Prevent authenticated users from accessing auth routes
+    if (isAuthRoute) {
+      // Only redirect to business registration if they haven't completed it
+      if (!authToken.businessComplete) {
+        return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
+      }
+      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
+    }
+
+    // Handle business registration flow
+    if (!authToken.businessComplete &&
+        nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
+      return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
+    }
+
+    // Handle location setup flow
+    if (authToken.businessComplete &&
+        !authToken.locationComplete &&
+        nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
+      return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl));
+    }
   }
 
   // Allow access to the requested page if none of the above conditions are met
@@ -88,9 +95,7 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
     "/user-verification",
     "/email-verification"

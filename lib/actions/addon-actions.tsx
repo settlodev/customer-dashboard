@@ -10,6 +10,7 @@ import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { Addon } from "@/types/addon/type";
 import { AddonSchema } from "@/types/addon/schema";
+import {redirect} from "next/navigation";
 
 export const fectchAdons = async () : Promise<Addon[]> => {
     await  getAuthenticatedUser();
@@ -65,7 +66,7 @@ export const searchAddon = async (
             query
         );
 
-        
+
         return parseStringify(addonData);
     }
     catch (error){
@@ -100,7 +101,7 @@ export const  createAddon= async (
 
     try {
         const apiClient = new ApiClient();
-      
+
 
         await apiClient.post(
             `/api/addons/${location?.id}/create`,
@@ -111,18 +112,18 @@ export const  createAddon= async (
             message: "Addon created successfully",
         };
     }
-    catch (error){
-        console.error("Error while creating addons",error)
+    catch (error: any){
         formResponse = {
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message: error.message ? error.message : "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
 
+    if ( formResponse.responseType === "error" ) return parseStringify(formResponse)
+
     revalidatePath("/addons");
-    return parseStringify(formResponse)
+    redirect("/addons");
 }
 
 export const getAddon= async (id:UUID) : Promise<ApiResponse<Addon>> => {
@@ -145,7 +146,7 @@ export const getAddon= async (id:UUID) : Promise<ApiResponse<Addon>> => {
         `/api/addons/${location?.id}`,
         query,
     );
-    
+
     return parseStringify(addon)
 }
 
@@ -177,7 +178,7 @@ export const updateAddon = async (
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/addons/${location?.id}/${id}`, 
+            `/api/addons/${location?.id}/${id}`,
             payload
         );
 
@@ -208,12 +209,12 @@ export const deleteAddon = async (id: UUID): Promise<void> => {
     const apiClient = new ApiClient();
 
     const location = await getCurrentLocation();
-   
+
     await apiClient.delete(
         `/api/addons/${location?.id}/${id}`,
     );
     revalidatePath("/addons");
-    
+
    }
    catch (error){
        throw error
