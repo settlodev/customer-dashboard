@@ -1,5 +1,5 @@
 import React from "react";
-import { discountUsage, Gender } from "@/types/enums";
+import { discountUsage} from "@/types/enums";
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from "@/components/ui/select";
 
 interface DiscountUsageSelectorProps {

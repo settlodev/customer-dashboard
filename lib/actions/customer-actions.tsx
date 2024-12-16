@@ -10,7 +10,7 @@ import {revalidatePath} from "next/cache";
 import {Customer} from "@/types/customer/type";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
-import {redirect} from "next/navigation";
+// import {redirect} from "next/navigation";
 
 export const fetchAllCustomers = async () : Promise<Customer[]> => {
     await  getAuthenticatedUser();

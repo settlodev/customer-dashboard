@@ -9,7 +9,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import {UUID} from "node:crypto";
 import {Location} from "@/types/location/type";
 import {getBusiness} from "@/lib/actions/business/get";
-import {signOut} from "@/auth";
+
 import {redirect} from "next/navigation";
 
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {

@@ -1,6 +1,5 @@
 import React, { useState} from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adjust to match your UI library
-import StockVariantSelector from "./stock-variant-selector";
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
 import RecipeSelector from "./recipe-selector";
 import CustomerSelector from "./customer-selector";

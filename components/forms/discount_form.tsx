@@ -31,8 +31,8 @@ import DateTimePicker from "../widgets/datetimepicker";
 import { NumericFormat } from "react-number-format";
 import { useRouter } from "next/navigation";
 import DiscountUsageSelector from "../widgets/discount-usage-selector";
-import TrackingOptions from "../widgets/tracker-selector";
-import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
+// import TrackingOptions from "../widgets/tracker-selector";
+// import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
 
 
 
@@ -124,9 +124,9 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
     });
   };
 
-  const handleSelectionChange = (value: boolean) => {
-    form.setValue("status", value);
-  };
+  // const handleSelectionChange = (value: boolean) => {
+  //   form.setValue("status", value);
+  // };
 
   return (
     <Form {...form}>
@@ -272,7 +272,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                 />
 
               
-                <DiscountApplyOptionsWidget onSelectionChange={handleSelectionChange} /> 
+                {/* <DiscountApplyOptionsWidget onSelectionChange={handleSelectionChange} />  */}
 
                 <FormField
                   control={form.control}
