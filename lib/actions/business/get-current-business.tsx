@@ -86,7 +86,8 @@ export const getBusinessDropDown = async (): Promise<Business[]> => {
         const data = await apiClient.get(myEndpoints.business.list.endpoint);
         return parseStringify(data);
     } catch (error) {
-        throw error;
+        console.error("Failed to get business list:", error);
+        redirect("/login")
     }
 };
 
