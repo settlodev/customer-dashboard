@@ -22,7 +22,6 @@ export const fetchAllStaff = async (): Promise<Staff[]> => {
 
         const location = await getCurrentLocation();
 
-
         const staffData = await apiClient.get(
             `/api/staff/${location?.id}`,
         );

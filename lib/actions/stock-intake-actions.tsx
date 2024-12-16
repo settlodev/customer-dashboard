@@ -101,7 +101,7 @@ export const createStockIntake = async (
         );
         formResponse = {
             responseType: "success",
-            message: "Stock Intake created successfully",
+            message: "Stock Intake recorded successfully",
         }
     } catch (error) {
         console.error("Error creating product", error);
@@ -228,11 +228,11 @@ export const uploadCSV = async ({ fileData, fileName }: { fileData: string; file
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
     }
 
-    console.log("CSV content to be sent:", fileData); 
+    console.log("CSV content to be sent:", fileData);
 
-    const formattedCSVData = fileData.replace(/\r\n/g, '\n'); 
+    const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
-    console.log("Formatted CSV data:", formattedCSVData); 
+    console.log("Formatted CSV data:", formattedCSVData);
 
     try {
         const apiClient = new ApiClient();
@@ -247,7 +247,7 @@ export const uploadCSV = async ({ fileData, fileName }: { fileData: string; file
                 transformRequest: [(data) => data],
             }
         );
-        
+
         console.log("CSV upload response", response);
 
         // Revalidate or redirect after successful upload

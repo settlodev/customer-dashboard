@@ -48,7 +48,7 @@ const breadCrumbItems = [{title: "Stock Intake", link: "/stock-intakes"}];
                         <CardContent>
                             <DataTable columns={columns}
                                        data={data}
-                                       searchKey="name"
+                                       searchKey="stockVariantName"
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}

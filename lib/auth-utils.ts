@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { User } from "next-auth";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import {auth, signOut} from "@/auth";
 import { activeBusiness, AuthToken, ExtendedUser, FormResponse } from "@/types/types";
 import {logout} from "@/lib/actions/auth-actions";
 
@@ -123,6 +123,7 @@ export const deleteAuthCookie = async () => {
     } catch(e) {
         // Do not throw error
         console.log("Error deleting auth cookie", e);
+        await signOut({ redirect: false });
     }
 };
 
