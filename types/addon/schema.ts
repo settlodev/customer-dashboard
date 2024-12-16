@@ -15,8 +15,6 @@ export const AddonSchema = object({
     ),
     isTracked:boolean().optional(),
     stockVariant:string().uuid("Please select a valid stock variant").optional(),
-    stock:string().optional(),
-    product:string().optional(),
-    variants:array(string()).optional(),
+    recipe: string().uuid("Please select a valid product variant").optional(), 
     status: boolean().optional(),
 });

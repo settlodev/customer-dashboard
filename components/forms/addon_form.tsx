@@ -24,31 +24,17 @@ import { AddonSchema } from "@/types/addon/schema";
 import { createAddon, updateAddon } from "@/lib/actions/addon-actions";
 import { Addon } from "@/types/addon/type";
 import { Switch } from "../ui/switch";
-import { Stock } from "@/types/stock/type";
-import { fetchStock } from "@/lib/actions/stock-actions";
-import { Product } from "@/types/product/type";
-import { fectchAllProducts } from "@/lib/actions/product-actions";
-import StockSelector from "../widgets/stock-selector";
-import StockVariantSelector from "../widgets/stock-variant-selector";
-import { StockVariant } from "@/types/stockVariant/type";
-import { Variant } from "@/types/variant/type";
-import { MultiSelect } from "../ui/multi-select";
-import ProductSelector from "../widgets/product-selector";
 import { useRouter } from "next/navigation";
 import { NumericFormat } from "react-number-format";
+import TrackingOptions from "../widgets/traker-option";
 
 function AddonForm({ item }: { item: Addon | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error,] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [, setSelectedStock] = useState<Stock | null>(null);
-  const [stockVariants, setStockVariants] = useState<StockVariant[]>([]);
   const [addonTracking, setAddonTracking] = useState<boolean>(false);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [, setSelectedProduct] = useState<Product | null>(null);
-  const [productVariants, setProductVariants] = useState<Variant[]>([]);
+
   const { toast } = useToast();
   const router = useRouter();
 
@@ -57,80 +43,11 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
     defaultValues: { status: true },
   });
 
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        const [stockResponse, productResponse] = await Promise.all([
-          fetchStock(),
-          fectchAllProducts(),
-        ]);
-        setStocks(stockResponse);
-        setProducts(productResponse);
-
-        if (item) {
-          setAddonTracking(item.isTracked);
-
-
-
-          const stock = stockResponse.find((stk) => stk.id === item.stockVariant?.stock) || null;
-          setSelectedStock(stock);
-          setStockVariants(stock ? stock.stockVariants : []);
-
-          const productId = Array.isArray(item.variants)
-            ? item.variants.length > 0
-              ? item.variants[0]?.product
-              : undefined
-            : item.variants?.product;
-          const product = productResponse.find((prd) => prd.id === productId) || null;
-
-          setSelectedProduct(product);
-          setProductVariants(product ? product.variants : []);
-
-          form.reset({
-            ...item,
-            stock: item.stockVariant?.stock,
-            stockVariant: item.stockVariant?.id,
-            product: productId,
-            variants: Array.isArray(item.variants)
-              ? item.variants.map((variant) => variant.id)
-              : item.variants && typeof item.variants.id === 'string'
-                ? [item.variants.id]
-                : [],
-          });
-        }
-      } catch (error) {
-        // Handle error appropriately
-        throw error;
-      }
-    };
-    getData();
-  }, [item, form, setStocks, setProducts]);
-
 
   const handleAddonTrackingChange = (value: boolean) => {
     setAddonTracking(value);
-    console.log("Addon tracking enabled:", value);
-    toast({
-      title: "Addon Tracking",
-      description: value
-        ? "You will need to select stock and product variant(s) to track this addon."
-        : "You won't be able to track the stock and product variant for this addon.",
-      variant: value ? "default" : "destructive",
-      duration: 3000,
-    })
   };
 
-  const handleStockChange = (stockId: string) => {
-    const stock = stocks.find((stk) => stk.id === stockId) || null;
-    setSelectedStock(stock);
-    setStockVariants(stock ? stock.stockVariants : []);
-  };
-
-  const handleProductChange = (productId: string) => {
-    const product = products.find((prd) => prd.id === productId) || null;
-    setSelectedProduct(product);
-    setProductVariants(product ? product.variants : []);
-  };
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -252,115 +169,16 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
                   )}
                 />
                 {addonTracking && (
-                  <>
-                    <FormField
-                      control={form.control}
-                      name="stock"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Stock </FormLabel>
-                          <FormControl>
-                            <StockSelector
-                              value={field.value}
-                              onChange={(value) => {
-                                field.onChange(value);
-                                handleStockChange(value);
-                              }}
-                              onBlur={field.onBlur}
-                              isRequired
-                              isDisabled={isPending}
-                              label="Stock"
-                              placeholder="Select stock"
-                              stocks={stocks}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="stockVariant"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Stock Variant</FormLabel>
-                          <FormControl>
-                            <StockVariantSelector
-                              value={field.value}
-                              onChange={field.onChange}
-                              onBlur={field.onBlur}
-                              isRequired
-                              isDisabled={isPending}
-                              label="Stock Variant"
-                              placeholder="Select stock variant"
-                              stockVariants={stockVariants}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="product"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product </FormLabel>
-                          <FormControl>
-                            <ProductSelector
-                              value={field.value}
-                              onChange={(value) => {
-                                field.onChange(value);
-                                handleProductChange(value);
-                              }}
-                              onBlur={field.onBlur}
-                              isRequired
-                              isDisabled={isPending}
-                              label="Product"
-                              placeholder="Select Product"
-                              products={products}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="variants"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Product Variant </FormLabel>
-                          <FormControl>
-                            <MultiSelect
-                              options={
-                                [
-                                  ...productVariants.map(
-                                    (variant) => ({
-                                      label: variant.name,
-                                      value: variant.id,
-                                    })
-                                  )
-                                ]
-                              }
-                              onValueChange={(field as any).onChange}
-                              defaultValue={(field as any).value}
-                              placeholder="Select variant"
-                              variant="inverted"
-                              animation={2}
-                              maxCount={3}
-                              {...field}
-                            />
-
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </>
-                )}
-
+            <div className="mt-4">
+              <TrackingOptions
+                onSelectionChange={(selection) => {
+                  console.log("Selected Tracking Option:", selection);
+                  // Update form state or handle tracking option as needed
+                }}
+              />
+            </div>
+)}
+                
                 {item && (
                   <div className="grid gap-2">
                     <FormField
