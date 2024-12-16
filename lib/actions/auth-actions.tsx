@@ -366,15 +366,26 @@ export const verifyEmailToken = async (token: string): Promise<boolean> => {
 
     try {
         const response = await apiClient.get<any>(`/api/auth/verify-token/${token}`);
-        console.log("Verify response:", response );
+        console.log("Verify response:", response ); 
+        const mySession = await auth();
 
-        return !!response;
+        if (mySession?.user) {
+            const cookie = cookies().get("authToken")?.value;
+
+            if (cookie) {
+                const session = JSON.parse(cookie as string);
+                const myUser = await getUserById(session.id);
+                return myUser.emailVerified != null;
+            }}
+        return false; 
+        // Verification failed
     } catch (error: any) {
         const formattedError = await error
         console.error("Error during email verification:", formattedError);
         return false;
     }
 };
+
 
 
 export const autoLoginUser = async (): Promise<string> => {

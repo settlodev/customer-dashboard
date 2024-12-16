@@ -87,8 +87,13 @@ function AddonForm({ item }: { item: Addon | null | undefined }) {
               router.push("/addons");
             }
           })
-          .catch((err) => {
-            console.log(err);
+          .catch((error) => {
+            console.log(error);
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: error
+            });
           });
       }
     });

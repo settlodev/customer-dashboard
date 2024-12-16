@@ -7,6 +7,7 @@ import { verifyEmailToken, autoLoginUser } from "@/lib/actions/auth-actions";
 const VerificationPage = () => {
     const [isValidating, setIsValidating] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [redirecting, setRedirecting] = useState<boolean>(false); 
     const params = useSearchParams();
 
     useEffect(() => {
@@ -38,8 +39,10 @@ const VerificationPage = () => {
     }, [params]);
 
     const handleError = (message: string) => {
+       if(!redirecting) {
         setError(message);
         setIsValidating(false);
+       }
     };
 
     const handleAutoLogin = async () => {
