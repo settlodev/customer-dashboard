@@ -46,7 +46,7 @@ function StaffSelectorWidget({
                 {staffs && staffs.length > 0 ?
                     staffs.map((item, index) => {
                         return <SelectItem key={index} value={item.id}>
-                            {item.name}
+                            {item.firstName} {item.lastName}
                         </SelectItem>
                     })
                     : <></>}

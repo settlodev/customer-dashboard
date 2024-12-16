@@ -23,12 +23,12 @@ export const menuItems=(args?: MenuItemArgType) => {
             icon: 'inventory',
             items:
                 [
-                    
+
                     {title: "Categories", link: "/categories", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Departments", link: "/departments", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Suppliers", link: "/suppliers", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Brands", "link": "/brands", "current": args?.isCurrentItem, "icon": "cart"},
-                    {title: "Units", link: "/units", current: args?.isCurrentItem, icon: "cart"},
+                    {title: "Brands", "link": "/brands", "current": args?.isCurrentItem, icon: "cart"},
+                    // {title: "Units", link: "/units", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Products", link: "/products", current: args?.isCurrentItem, icon: "cart"},
                 ]
         },
@@ -40,7 +40,7 @@ export const menuItems=(args?: MenuItemArgType) => {
             icon: 'stock',
             items:
                 [
-                  
+
                     {title: "Manage Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Stock Intake", link: "/stock-intakes", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Stock Modification", link: "/stock-modifications", current: args?.isCurrentItem, icon: "cart"},
@@ -48,7 +48,7 @@ export const menuItems=(args?: MenuItemArgType) => {
                     {title: "Addons", "link": "/addons", "current": args?.isCurrentItem, "icon": "cart"},
                     {title: "Recipes", "link": "/recipes", "current": args?.isCurrentItem, "icon": "cart"},
                     {title: "Modifiers", link: "/modifiers", current: args?.isCurrentItem, icon: "cart"},
-                    
+
                 ]
         },
         {
@@ -116,7 +116,7 @@ export const menuItems=(args?: MenuItemArgType) => {
             icon: 'general',
             items:
                 [
-                    
+
                     {title: "Businesses", link: "/business", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Expenses", link: "/expenses", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Tables & Spaces", link: "/spaces", current: args?.isCurrentItem, icon: "cart"},
