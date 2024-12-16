@@ -112,13 +112,18 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 };
 
 export const deleteAuthCookie = async () => {
-    cookies().delete("authToken");
-    cookies().delete("next-auth.session-token");
-    cookies().delete("next-auth.csrf-token");
-    cookies().delete("activeBusiness");
-    cookies().delete("currentBusiness");
-    cookies().delete("currentLocation");
-    await logout();
+    try{
+        console.log("Deleting auth cookie");
+        cookies().delete("authToken");
+        cookies().delete("next-auth.session-token");
+        cookies().delete("next-auth.csrf-token");
+        cookies().delete("activeBusiness");
+        cookies().delete("currentBusiness");
+        cookies().delete("currentLocation");
+    } catch(e) {
+        // Do not throw error
+        console.log("Error deleting auth cookie", e);
+    }
 };
 
 export const deleteActiveBusinessCookie = async () => {

@@ -11,9 +11,13 @@ import {
 import { isValidPhoneNumber } from "libphonenumber-js";
 
 export const StaffSchema = object({
-  name: string({ required_error: "Staff full name is required" }).min(
+  firstname: string({ required_error: "Staff first name is required" }).min(
     1,
     "Please enter a valid first name"
+  ),
+  lastname: string({ required_error: "Staff last name is required" }).min(
+      1,
+      "Please enter a valid last name"
   ),
   color: preprocess((val) => (val === null ? "" : val), string().optional()),
   email: string()
@@ -70,7 +74,8 @@ export const StaffSchema = object({
 
 export declare interface Staff {
   id: UUID;
-  name: string;
+  firstName: string;
+  lastName: string;
   email?: string;
   phone?: string;
   image?: string;
@@ -94,10 +99,7 @@ export declare interface Staff {
   canDelete: boolean;
   isArchived: boolean;
   status: boolean;
-
   dateOfBirth?: Date;
   nationality?: string;
   joiningDate: Date;
-
-
 }

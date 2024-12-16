@@ -3,7 +3,6 @@
 import * as z from "zod";
 import { isRedirectError } from "next/dist/client/components/redirect";
 import { AuthError } from "next-auth";
-
 import {
     LoginSchema,
     RegisterSchema,
@@ -21,8 +20,10 @@ import {cookies} from "next/headers";
 
 export async function logout() {
     try {
+        //Make sure token does not exist
+        await deleteAuthCookie();
+
         await signOut();
-        //await router.replace('/login');
     } catch (error) {
         if (error instanceof AuthError) {
             throw error;
@@ -54,8 +55,6 @@ export const login = async (
             password: validatedData.data.password,
             redirect: false,
         });
-
-        console.log("result is now:", result)
 
         if (result?.error) {
             return parseStringify({
@@ -125,8 +124,6 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
         const tokenResponse = await apiClient.get(
             `/api/auth/verify-token/${token}`,
         );
-
-        console.log("tokenResponse from Peter", tokenResponse);
 
         if (tokenResponse == token) {
             return parseStringify({
@@ -205,6 +202,9 @@ export const register = async (
     try {
         const apiClient = new ApiClient();
 
+        //Make sure token does not exist
+        await deleteAuthCookie();
+
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
         if(regData){
             const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
@@ -229,11 +229,12 @@ export const register = async (
 
         return parseStringify({
         responseType: "error",
-        message:  formattedError.error, 
+        message:  formattedError.error,
         error: error instanceof Error ? error : new Error(String(error)),
     });
     }
 }
+
 export const updateUser = async (
     credentials: z.infer<typeof UpdateUserSchema>,
 ): Promise<FormResponse> => {
@@ -252,8 +253,6 @@ export const updateUser = async (
 
         const apiClient = new ApiClient();
         await apiClient.put(`/api/users/${user?.id}`, validatedData.data);
-
-        //await createAuthToken(user!);
 
         return parseStringify({
             responseType: "success",
@@ -305,7 +304,7 @@ export const updatePassword = async (
 ): Promise<FormResponse> => {
     const validatePassword = UpdatePasswordSchema.safeParse(passwordData);
 
-   
+
 
     if (!validatePassword.success) {
         return parseStringify({
@@ -318,7 +317,7 @@ export const updatePassword = async (
         ...validatePassword.data,
         token: passwordData.token
     }
-    
+
     const apiClient = new ApiClient();
     try {
 
@@ -369,10 +368,7 @@ export const verifyEmailToken = async (token: string): Promise<boolean> => {
         const response = await apiClient.get<any>(`/api/auth/verify-token/${token}`);
         console.log("Verify response:", response );
 
-        if (response) {
-            return true;
-        }
-        return false; // Verification failed
+        return !!response;
     } catch (error: any) {
         const formattedError = await error
         console.error("Error during email verification:", formattedError);

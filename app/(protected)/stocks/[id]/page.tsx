@@ -49,7 +49,7 @@ const StockCard =({isNewItem, item}:{
                {isNewItem ? "Add Stock" : "Edit Stock"}
            </CardTitle>
            <CardDescription>
-               {isNewItem ? "Add Stock to your business location": "Edit Stock details"}
+               {isNewItem ? "Add stock items to your business location": "Edit stock details"}
            </CardDescription>
        </CardHeader>
         <CardContent>

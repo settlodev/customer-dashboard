@@ -9,6 +9,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import {UUID} from "node:crypto";
 import {Location} from "@/types/location/type";
 import {getBusiness} from "@/lib/actions/business/get";
+import {signOut} from "@/auth";
 
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {
     try {
@@ -50,25 +51,10 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
             return undefined;
         }
 
-        // TODO: move the cookie setting externally
-        try {
-            cookies().set("currentBusiness", JSON.stringify(currentBusiness), {
-                path: "/",
-                httpOnly: true,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 7 * 24 * 60 * 60, // 7 days
-            });
-            console.log('Successfully set business cookie');
-        } catch (error) {
-            console.error('Failed to set business cookie:', error);
-            // Continue without setting cookie
-        }
-
         return parseStringify(currentBusiness);
     } catch (error) {
-        console.error('Error in getCurrentBusiness:', error);
-        return undefined;
+        console.error('Error in getting current business - logging out :', error);
+        await signOut();
     }
 };
 
