@@ -30,6 +30,9 @@ import { Switch } from "../ui/switch";
 import DateTimePicker from "../widgets/datetimepicker";
 import { NumericFormat } from "react-number-format";
 import { useRouter } from "next/navigation";
+import DiscountUsageSelector from "../widgets/discount-usage-selector";
+import TrackingOptions from "../widgets/tracker-selector";
+import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
 
 
 
@@ -119,6 +122,10 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
           });
       }
     });
+  };
+
+  const handleSelectionChange = (value: boolean) => {
+    form.setValue("status", value);
   };
 
   return (
@@ -222,29 +229,25 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
 
                 <FormField
                   control={form.control}
-                  name="usageLimit"
+                  name="discountType"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col lg:mt-4">
-                      <FormLabel>Usage Limit</FormLabel>
+                    <FormItem>
+                      <FormLabel>Discount Usage</FormLabel>
                       <FormControl>
-
-                        <Input
-                          placeholder="Enter usage limit for discount"
-                          {...field}
-                          disabled={isPending}
-                          value={field.value ? formatNumber(field.value) : ''}
-                          onChange={(e) => {
-                            const value = e.target.value.replace(/,/g, '');
-                            field.onChange(value ? parseFloat(value) : undefined);
-                          }}
+                        <DiscountUsageSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          isRequired
+                          isDisabled={isPending}
+                          label="usage limit"
+                          placeholder="Select discount usage once or multiple times"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-
-
 
                 <FormField
                   control={form.control}
@@ -267,6 +270,9 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                     </FormItem>
                   )}
                 />
+
+              
+                <DiscountApplyOptionsWidget onSelectionChange={handleSelectionChange} /> 
 
                 <FormField
                   control={form.control}

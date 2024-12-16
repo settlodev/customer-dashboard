@@ -22,6 +22,10 @@ export enum discountType {
     FIXED = "FIXED",
     PERCENTAGE = "PERCENTAGE",
 }
+export enum discountUsage{
+    ONCE = "ONCE",
+    MULTIPLE = "MULTIPLE",
+}
 
 export enum broadcastType {
     SMS = "SMS",
@@ -57,3 +61,4 @@ export enum orderType {
     DIRECT = "DIRECT SALE",
     CREDIT = "CREDIT SALE",
 }
+

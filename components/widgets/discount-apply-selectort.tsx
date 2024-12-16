@@ -3,52 +3,52 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import StockVariantSelector from "./stock-variant-selector";
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
 import RecipeSelector from "./recipe-selector";
+import CustomerSelector from "./customer-selector";
 
-interface TrackingOptionsProps {
+interface OptionsProps {
   onSelectionChange: (selection: {
     itemType: string;
-    quantity: number;
     itemId: string | null;
   }) => void;
 }
 
-const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) => {
-  const [trackingType, setTrackingType] = useState<string | null>(null);
+const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange }) => {
+  const [applyOption, setApplyOption] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [quantity] = useState<number>(1);
-  // const [isPending] = useTransition();
 
   const handleTrackingTypeChange = (type: string | null) => {
-    setTrackingType(type);
+    setApplyOption(type);
     setSelectedItemId(null);
-    onSelectionChange({ itemType: type!, quantity, itemId: null });
+    onSelectionChange({ itemType: type!, itemId: null });
   };
 
   const handleItemChange = (itemId: string) => {
     setSelectedItemId(itemId);
-    onSelectionChange({ itemType: trackingType!, quantity, itemId });
+    onSelectionChange({ itemType: applyOption!, itemId });
   };
 
 
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Select Tracking Type</label>
+        <label className="block text-sm font-medium text-gray-700">Apply discount on (optional)</label>
         <Select onValueChange={handleTrackingTypeChange}>
           <SelectTrigger className="w-full">
-            <SelectValue placeholder="Choose tracking type" />
+            <SelectValue placeholder="Select discount apply option" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="recipe">Recipe</SelectItem>
-            <SelectItem value="stock">Stock</SelectItem>
+            <SelectItem value="variant">Product Item</SelectItem>
+            <SelectItem value="customer">Customer</SelectItem>
+            <SelectItem value="category">Category</SelectItem>
+            <SelectItem value="department">Department</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {trackingType === "recipe" && (
+      {applyOption === "variant" && (
         <div>
           <FormField
-            name="recipe"
+            name="variant"
             render={({ field }) => (
               <FormItem>
                 <FormControl>
@@ -68,20 +68,20 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) 
         </div>
       )}
 
-{trackingType === "stock" && (
+{applyOption === "customer" && (
         <div>
           <FormField
             name="stock"
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <StockVariantSelector
+                  <CustomerSelector
                     value={field.value || selectedItemId}
                     onChange={(id) => {
                       field.onChange(id);
                       handleItemChange(id);
                     }}
-                    placeholder="Select stock variant"
+                    placeholder="Select customer"
                   />
                 </FormControl>
                 <FormMessage />
@@ -90,21 +90,8 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) 
           />
         </div>
       )}
-
-{/* {(trackingType === "recipe" || trackingType === "stock") && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Quantity</label>
-          <input
-            type="number"
-            className="w-full border border-gray-300 rounded-md py-2 px-3"
-            value={quantity}
-            onChange={handleQuantityChange}
-            min={1}
-          />
-        </div>
-      )} */}
     </div>
   );
 };
 
-export default TrackingOptions;
+export default DiscountApplyOptionsWidget;
