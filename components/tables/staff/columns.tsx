@@ -8,16 +8,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
 import { Staff } from "@/types/staff";
-// import { useState } from "react";
-// const PassCodeCell = ({ passCode }: { passCode: number }) => {
-//   const [isVisible, setIsVisible] = useState(false); 
-
-//   return (
-//     <span onClick={() => setIsVisible(!isVisible)} className="cursor-pointer">
-//       {isVisible ? String(passCode) : "*****"} 
-//     </span>
-//   );
-// }
 
 export const columns: ColumnDef<Staff>[] = [
   {
@@ -40,7 +30,7 @@ export const columns: ColumnDef<Staff>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "name",
+    accessorKey: "firstName",
     enableHiding: false,
     header: ({ column }) => {
       return (
@@ -49,9 +39,25 @@ export const columns: ColumnDef<Staff>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Name
+          First name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
+      );
+    },
+  },
+  {
+    accessorKey: "lastName",
+    enableHiding: false,
+    header: ({ column }) => {
+      return (
+          <Button
+              className="text-left p-0"
+              variant="ghost"
+              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+          >
+            Last name
+            <ArrowUpDown className="ml-2 h-4 w-4" />
+          </Button>
       );
     },
   },
@@ -70,15 +76,6 @@ export const columns: ColumnDef<Staff>[] = [
     enableHiding: true,
     header: "Phone Number",
   },
-  // {
-  //   accessorKey: "passCode",
-  //   enableHiding: true,
-  //   header: "Passcode",
-  //   cell: ({ row }) => {
-  //     const passCode = row.getValue("passCode") as number;
-  //     return <PassCodeCell passCode={passCode} />; 
-  //   },
-  // },
   {
     accessorKey: "posAccess",
     enableHiding: true,

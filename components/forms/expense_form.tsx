@@ -44,7 +44,7 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
 );
   const { toast } = useToast();
   const router = useRouter();
-  
+
   useEffect(() => {
     const getExpenseCategories = async () => {
       try {
