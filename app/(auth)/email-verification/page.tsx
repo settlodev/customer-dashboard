@@ -1,77 +1,106 @@
 "use client";
-import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { Loader2Icon } from "lucide-react";
-import { verifyEmailToken, autoLoginUser } from "@/lib/actions/auth-actions";
+
+import { Spinner } from "@nextui-org/spinner";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useState, useRef } from "react";
+import { verifyToken } from "@/lib/actions/auth-actions";
+import { FormResponse } from "@/types/types";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { FormError } from "@/components/widgets/form-error";
+import { FormSuccess } from "@/components/widgets/form-success";
+import { Spacer } from "@nextui-org/spacer";
+import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
 
 const VerificationPage = () => {
-    const [isValidating, setIsValidating] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [redirecting] = useState<boolean>(false); 
-    const params = useSearchParams();
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const token = searchParams.get("token");
+    const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
+    const [message, setMessage] = useState<string>("");
+    const verificationAttempted = useRef(false);
+    const isMounted = useRef(false);
 
     useEffect(() => {
-        const verifyToken = async () => {
-            setError(null); 
-            const token = params.get("token");
+        if (isMounted.current) {
+            return;
+        }
+        isMounted.current = true;
 
-            if (!token) {
-                handleError("Token is missing or invalid.");
+        const verifyTokenAsync = async () => {
+            if (verificationAttempted.current || !token) {
+                setStatus('error');
+                setMessage(!token ? "Invalid token" : "Verification already attempted");
                 return;
             }
 
-            try {
-                console.log("Token is present:", token);
-                const verificationSuccess = await verifyEmailToken(token);
+            verificationAttempted.current = true;
 
-                if (verificationSuccess) {
-                    await handleAutoLogin();
-                } else {
-                    handleError("Verification failed. Please try again.");
+            try {
+                const data: FormResponse = await verifyToken(token);
+
+                // Only proceed if the component is still mounted
+                if (isMounted.current) {
+                    if (data?.responseType === "error") {
+                        setStatus('error');
+                        setMessage(data?.message || "Verification failed");
+                    } else {
+                        setStatus('success');
+                        setMessage(data?.message || "Email verified successfully");
+
+                        const authToken = await getAuthToken();
+
+                        if (authToken !== null) {
+                            authToken.emailVerified = new Date();
+                            await updateAuthToken(authToken);
+                        }
+
+                        new Promise(resolve =>
+                            setTimeout(resolve, 1500)
+                        ).then(() => {
+                            if (isMounted.current) {
+                                router.push("/login");
+                            }
+                        });
+                    }
                 }
             } catch (err) {
-                console.error("Verification error:", err);
-                handleError("An error occurred during verification. Please try again.");
+                console.error(err);
+                if (isMounted.current) {
+                    setStatus('error');
+                    setMessage("An error occurred while verifying the token");
+                }
             }
         };
 
-        verifyToken();
-    }, [params]);
+        verifyTokenAsync();
 
-    const handleError = (message: string) => {
-       if(!redirecting) {
-        setError(message);
-        setIsValidating(false);
-       }
-    };
+        return () => {
+            isMounted.current = false;
+        };
+    }, [token, router]);
 
-    const handleAutoLogin = async () => {
-        console.log("Email verified, attempting auto-login...");
-        const autoLoginMessage = await autoLoginUser();
-        console.log("Auto-login message:", autoLoginMessage);
-
-        window.location.href = autoLoginMessage === "Successful activated token" ? "/dashboard" : "/login";
-        setIsValidating(false);
-    };
-
-    if (isValidating) {
-        return (
-            <div className="py-10 flex items-center justify-center">
-                <Loader2Icon className="animate-spin" />
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="py-10 flex flex-col items-center justify-center text-center">
-                <h2 className="text-xl font-bold text-red-600">Verification Error</h2>
-                <p className="mt-2 text-gray-700">{error}</p>
-            </div>
-        );
-    }
-
-    return null; 
+    return (
+        <Card className="w-full mx-auto max-w-lg mt-10 lg:mt-0 md:mt-0">
+            <CardHeader className="text-center pb-2">
+                <CardTitle>Email verification</CardTitle>
+                <CardDescription>
+                    {status === 'loading' && "Verifying your token..."}
+                    {status === 'success' && "Redirecting to login..."}
+                    {status === 'error' && "Verification failed"}
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="pb-4 px-8">
+                {status === 'loading' && (
+                    <div className="flex items-center w-full justify-center min-h-[50px]">
+                        <Spinner size="md" />
+                    </div>
+                )}
+                <Spacer y={4} />
+                {status === 'error' && <FormError message={message} />}
+                {status === 'success' && <FormSuccess message={message} />}
+            </CardContent>
+        </Card>
+    );
 };
 
 export default VerificationPage;

@@ -43,7 +43,7 @@ export const createBusiness = async (
         `/api/businesses/${userId}/create`,
         payload
       );
-      
+
       if (response) {
         const token = cookies().get("authToken")?.value;
         if (token) {

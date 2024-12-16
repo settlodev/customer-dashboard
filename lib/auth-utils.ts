@@ -30,12 +30,6 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
     return parsedTokens.authToken ? parsedTokens : null;
 };
 
-// export const deleteAuthToken = async () => {
-//     cookies().delete("authToken");
-//     cookies().delete("next-auth.session-token");
-//     cookies().delete("next-auth.csrf-token");
-// };
-
 export const updateAuthToken = async (token: AuthToken) => {
     const cookieStore = cookies();
 
