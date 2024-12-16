@@ -22,19 +22,24 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useCallback, useState, useTransition } from "react";
+import {useCallback, useEffect, useState, useTransition} from "react";
 import { FormResponse } from "@/types/types";
 import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormError } from "@/components/widgets/form-error";
 import { FormSuccess } from "@/components/widgets/form-success";
 import Link from "next/link";
 import {EyeOffIcon, EyeIcon} from "lucide-react";
+import {deleteAuthCookie} from "@/lib/auth-utils";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string>("");
     const [success,] = useState<string>("");
     const [showPassword, setShowPassword] = useState<boolean>(false);
+
+    useEffect(() => {
+        deleteAuthCookie();
+    }, []);
 
     const form = useForm<z.infer<typeof LoginSchema>>({
         resolver: zodResolver(LoginSchema),

@@ -32,20 +32,18 @@ export const createBusiness = async (
       const apiClient = new ApiClient();
       const AuthenticatedUser = (await getAuthenticatedUser()) as User;
       const userId = AuthenticatedUser.id;
-      const user = userId;
+      const owner = userId;
 
       const payload = {
         ...businessValidData.data,
-        user,
+        owner,
       };
 
       const response = await apiClient.post(
         `/api/businesses/${userId}/create`,
         payload
       );
-
-      // console.log("Response from API after creating business ", response);
-
+      
       if (response) {
         const token = cookies().get("authToken")?.value;
         if (token) {
