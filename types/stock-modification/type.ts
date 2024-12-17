@@ -4,6 +4,7 @@ import { reasonForStockModification } from "../enums"
 export declare interface StockModification {
     id: UUID,
     reason:reasonForStockModification
+    value:number
     quantity:number,
     comment:string,
     stock:UUID
