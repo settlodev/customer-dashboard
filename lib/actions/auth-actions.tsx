@@ -247,16 +247,13 @@ export const register = async (
         // Ignore redirect error
         if (isRedirectError(error)) throw error;
 
-        const formattedError = await error;
-
+        console.error("Registration is: ", error);
         return parseStringify({
             responseType: "error",
-            message:  formattedError.error,
-            error: error instanceof Error ? error : new Error(String(error)),
+            message: error.message ? error.message : "An unexpected error occurred. Please try again.",
+            error: error instanceof Error ? error : new Error(String(error.message ? error.message : error)),
         });
     }
-
-
 
 }
 

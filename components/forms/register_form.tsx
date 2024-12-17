@@ -120,7 +120,6 @@ function RegisterForm({ step }: { step: string }) {
 
     const session = useSession();
 
-    /*TODO: Business form information*/
     const { toast } = useToast();
 
     const form = useForm<z.infer<typeof RegisterSchema>>({
@@ -190,8 +189,6 @@ function RegisterForm({ step }: { step: string }) {
                     }
                     if (data.responseType === "error") {
                         setError(data.message);
-                    } else {
-                        //window.location.reload();
                     }
                 })
                 .catch((error) => {
@@ -228,27 +225,33 @@ function RegisterForm({ step }: { step: string }) {
     }, [imageUrl, currentStep, setMyCurrentStep]);
 
     const submitLocationData = useCallback(
-        (values: z.infer<typeof LocationSchema>) => {
-            if (locationImageUrl) {
-                values.image = locationImageUrl;
-            }
-            startTransition(() => {
-                createBusinessLocation(values).then((data) => {
-                    if (data) {
-                        if (data.responseType === "success") {
-                            redirect("/dashboard");
-                        } else if (data.responseType === "error") {
-                            toast({
-                                variant: "destructive",
-                                title: "Uh oh! Something went wrong.",
-                                description: data.message,
-                            });
-                        }
+        async (values: z.infer<typeof LocationSchema>) => {
+            try {
+                startTransition(async () => {
+                    const formData = locationImageUrl
+                        ? { ...values, image: locationImageUrl }
+                        : values;
+
+                    const response = await createBusinessLocation(formData);
+
+                    if (!response) {
+                        throw new Error('No response received from server');
+                    }
+
+                    if (response.responseType === 'error') {
+                        setError(response.message);
+
+                        console.error("Error occurred on response", response);
                     }
                 });
-            });
+            } catch (error: any) {
+                console.error("error caught", error);
+                const errorMessage = error.message || 'An unexpected error occurred';
+                setError(errorMessage);
+                console.error('Location submission error:', error);
+            }
         },
-        []
+        [locationImageUrl, setError]
     );
 
     const submitEmailVerificationData = useCallback(
@@ -685,14 +688,14 @@ function RegisterForm({ step }: { step: string }) {
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent>
-
+                                    <FormError message={error} />
+                                    <FormSuccess message={success} />
                                     <Form {...locationForm}>
                                         <form onSubmit={locationForm.handleSubmit(submitLocationData, onInvalid)}>
 
                                             <div
                                                 className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Location Information</h3>
-                                                <span className="flex-end"><ChevronDownIcon /></span>
                                             </div>
                                             <div className="mt-4 flex">
                                                 <UploadImageWidget imagePath={'business'} displayStyle={'default'} displayImage={true} setImage={setLocationImageUrl} />
@@ -760,7 +763,6 @@ function RegisterForm({ step }: { step: string }) {
                                             <div
                                                 className="pl-0 pr-3 pt-8 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Business address</h3>
-                                                <span className="flex-end"><ChevronDownIcon /></span>
                                             </div>
                                             <div className="lg:grid grid-cols-2  gap-4 mt-2">
                                                 <div className="grid gap-2">
@@ -807,7 +809,6 @@ function RegisterForm({ step }: { step: string }) {
                                             <div
                                                 className="pl-0 pr-3 pt-8 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Operating times</h3>
-                                                <span className="flex-end"><ChevronDownIcon /></span>
                                             </div>
                                             <div className="lg:grid grid-cols-2 gap-4 mt-2">
                                                 <div className="grid gap-2">
