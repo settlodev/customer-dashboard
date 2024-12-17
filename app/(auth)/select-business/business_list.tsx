@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react";
+import React, {useCallback, useState} from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     ArrowLeft,
@@ -31,19 +31,40 @@ const BusinessSelector = ({ businesses }: { businesses: Business[] }) => {
     const [isLoading, setIsLoading] = useState(false);
     const [pendingIndex, setPendingIndex] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [isRefreshing] = useState(false);
+    const {toast} = useToast();
 
-    const setCurrentBusiness = async (selectedBusiness: Business, index: number) => {
+    const setCurrentBusiness = useCallback(async (selectedBusiness: Business, index: number) => {
+        if (isLoading) return;
         setPendingIndex(index);
         setIsLoading(true);
+
         try {
-            await refreshBusiness(selectedBusiness);
+            // Set business state immediately to show the transition
             setBusiness(selectedBusiness);
+            await refreshBusiness(selectedBusiness);
+
         } catch (error) {
             console.error("Error setting business:", error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "Failed to load business details. Please try again.",
+            });
+            // Only reset business state if refresh failed
+            setBusiness(null);
+        } finally {
+            setIsLoading(false);
+            setPendingIndex(null);
         }
-        setIsLoading(false);
+    }, [isLoading, toast]);
+
+    const handleBackButton = useCallback(() => {
+        setBusiness(null);
+        setSearchTerm("");
         setPendingIndex(null);
-    };
+        setIsLoading(false);
+    }, []);
 
     const filteredBusinesses = businesses.filter(bus =>
         bus.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -67,7 +88,7 @@ const BusinessSelector = ({ businesses }: { businesses: Business[] }) => {
                             <motion.button
                                 initial={{opacity: 0, x: -20}}
                                 animate={{opacity: 1, x: 0}}
-                                onClick={() => setBusiness(null)}
+                                onClick={handleBackButton}
                                 className="p-2 rounded-full hover:bg-gray-100 transition-colors"
                             >
                                 <ArrowLeft className="w-5 h-5 text-gray-600"/>
@@ -142,7 +163,7 @@ const BusinessSelector = ({ businesses }: { businesses: Business[] }) => {
 
                                                 <button
                                                     onClick={() => setCurrentBusiness(bus, index)}
-                                                    disabled={isLoading}
+                                                    disabled={isLoading || isRefreshing}
                                                     className={cn(
                                                         "px-4 py-2 rounded-sm",
                                                         "text-sm font-medium",
