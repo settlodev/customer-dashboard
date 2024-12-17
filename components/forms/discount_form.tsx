@@ -82,7 +82,6 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log("The errors are: ", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
@@ -95,7 +94,6 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof DiscountSchema>) => {
-    console.log("Submitting data:", values);
     startTransition(() => {
       if (item) {
         updateDiscount(item.id, values).then((data: FormResponse | void) => {
