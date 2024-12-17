@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
-import React, {useCallback, useState, useTransition} from "react";
+import React, {useCallback, useEffect, useState, useTransition} from "react";
 import {useToast} from "@/hooks/use-toast";
 import {FormResponse} from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
@@ -27,6 +27,8 @@ import TrackingOptions from "../widgets/tracker-selector";
 import {DollarSign, PlusCircle, Power, ToggleLeft} from "lucide-react";
 
 function AddonForm({item}: { item: Addon | null | undefined }) {
+
+
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
     const [addonTracking, setAddonTracking] = useState<boolean>(false);
@@ -39,8 +41,22 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
 
     const form = useForm<z.infer<typeof AddonSchema>>({
         resolver: zodResolver(AddonSchema),
-        defaultValues: {status: true},
+        defaultValues: {
+            ...item,
+            status: true
+        },
     });
+
+    useEffect(() => {
+        if (item && item.isTracked === true) {
+            setAddonTracking(true);
+            setSelectedTracking({
+                itemType: item.stockVariant ? "stock" : "recipe",
+                itemId: item.stockVariant ? item.stockVariant : item.recipe
+            })
+            
+        }
+    }, [item,]);
 
 
     const handleAddonTrackingChange = (value: boolean) => {
@@ -227,6 +243,7 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
                                     // form.setValue("itemType", selection.itemType);
                                     // form.setValue("itemId", selection.itemId);
                                     setSelectedTracking(selection);
+                                   
                                       
                                 }}
                             />

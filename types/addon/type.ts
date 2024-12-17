@@ -1,6 +1,6 @@
 import { UUID } from "crypto";
 import { StockVariant } from "../stockVariant/type";
-import { Variant } from "../variant/type";
+import { Recipe } from "../recipe/type";
 
 export declare interface Addon {
     id:UUID;
@@ -8,8 +8,8 @@ export declare interface Addon {
     location:string;
     price:number;
     isTracked:boolean;
-    stockVariant:StockVariant;
-    variants:Variant[] | Variant ;
+    stockVariant:string;
+    recipe:string
     status:boolean;
     canDelete:boolean;
     isArchived:boolean
