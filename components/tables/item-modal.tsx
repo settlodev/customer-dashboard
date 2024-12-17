@@ -21,15 +21,9 @@ export default function ItemModal({
   onOpenChange,
   data
 }: ItemModalProps) {
-  const formatQuantity = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2,
-  }).format;
+  const formatQuantity = new Intl.NumberFormat().format;
 
-  const formatValue = new Intl.NumberFormat("en", {
-    style: "currency",
-    currency: "TZS",
-  }).format;
+  const formatValue = new Intl.NumberFormat().format;
 
   const formatDate = (dateString: string) =>
     new Intl.DateTimeFormat("en-US", {
@@ -102,7 +96,9 @@ export default function ItemModal({
                             <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
                               Batch Expiry Date
                             </span>
-                            <span className="w-2/3 pl-2">{formatDate(data.batchExpiryDate)}</span>
+                            <span className="w-2/3 pl-2">
+                                  {data.batchExpiryDate ? formatDate(data.batchExpiryDate) : "-"}
+                            </span>                          
                           </div>
                           <div className="flex items-center border-b border-gray-300 p-2">
                             <span className="w-1/3 font-normal border-r border-gray-300 pr-2">

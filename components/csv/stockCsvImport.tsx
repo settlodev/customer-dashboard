@@ -166,7 +166,7 @@ export function CSVStockDialog() {
           onClick={() => setIsOpen(true)}
         >
           <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap md:hidden">Import Stock</span>
+          <span className="hidden lg:block sr-only sm:not-sr-only sm:whitespace-nowrap">Import Stock</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">

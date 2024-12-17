@@ -45,31 +45,33 @@ export const taxClasses=
     ];
 
 export const businessTimes=
-    [
-        {"name": "06:00", "label": "06:00 AM"},
-        {"name": "07:00", "label": "07:00 AM"},
-        {"name": "08:00", "label": "08:00 AM"},
-        {"name": "09:00", "label": "09:00 AM"},
-        {"name": "10:00", "label": "10:00 AM"},
-        {"name": "11:00", "label": "11:00 AM"},
-        {"name": "12:00", "label": "12:00 PM"},
-        {"name": "13:00", "label": "01:00 PM"},
-        {"name": "14:00", "label": "02:00 PM"},
-        {"name": "15:00", "label": "03:00 PM"},
-        {"name": "16:00", "label": "04:00 PM"},
-        {"name": "17:00", "label": "05:00 PM"},
-        {"name": "18:00", "label": "06:00 PM"},
-        {"name": "19:00", "label": "07:00 PM"},
-        {"name": "20:00", "label": "08:00 PM"},
-        {"name": "21:00", "label": "09:00 PM"},
-        {"name": "22:00", "label": "10:00 PM"},
-        {"name": "23:00", "label": "11:00 PM"},
-        {"name": "01:00", "label": "01:00 AM"},
-        {"name": "02:00", "label": "02:00 AM"},
-        {"name": "03:00", "label": "03:00 AM"},
-        {"name": "04:00", "label": "04:00 AM"},
-        {"name": "05:00", "label": "05:00 AM"}
-    ];
+[
+    {"name": "00:00", "label": "12:00 AM"},
+    {"name": "01:00", "label": "01:00 AM"},
+    {"name": "02:00", "label": "02:00 AM"},
+    {"name": "03:00", "label": "03:00 AM"},
+    {"name": "04:00", "label": "04:00 AM"},
+    {"name": "05:00", "label": "05:00 AM"},
+    {"name": "06:00", "label": "06:00 AM"},
+    {"name": "07:00", "label": "07:00 AM"},
+    {"name": "08:00", "label": "08:00 AM"},
+    {"name": "09:00", "label": "09:00 AM"},
+    {"name": "10:00", "label": "10:00 AM"},
+    {"name": "11:00", "label": "11:00 AM"},
+    {"name": "12:00", "label": "12:00 PM"},
+    {"name": "13:00", "label": "01:00 PM"},
+    {"name": "14:00", "label": "02:00 PM"},
+    {"name": "15:00", "label": "03:00 PM"},
+    {"name": "16:00", "label": "04:00 PM"},
+    {"name": "17:00", "label": "05:00 PM"},
+    {"name": "18:00", "label": "06:00 PM"},
+    {"name": "19:00", "label": "07:00 PM"},
+    {"name": "20:00", "label": "08:00 PM"},
+    {"name": "21:00", "label": "09:00 PM"},
+    {"name": "22:00", "label": "10:00 PM"},
+    {"name": "23:00", "label": "11:00 PM"}
+  ];
+  
 
 export const DefaultCountry = "02981a7e-f714-40d5-b132-5762c066e12c"; 
 export const ItemStatuses = [

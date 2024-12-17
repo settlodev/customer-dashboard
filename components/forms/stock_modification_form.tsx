@@ -193,71 +193,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
 
                                     <div className="mt-4 flex">
                                         <div className="flex-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="value"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Value / Amount</FormLabel>
-                                                        <FormControl>
-
-                                                        <NumericFormat
-                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                value={field.value}
-                                                                disabled={isPending}
-                                                                placeholder="Enter stock value"
-                                                                thousandSeparator={true}
-                                                                allowNegative={false}
-                                                                onValueChange={(values) => {
-                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                    field.onChange(rawValue);
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 grid lg:grid-cols-2 gap-4">
-                                    {/* Reason for Modification */}
-                                    <FormField
-                                        control={form.control}
-                                        name="reason"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-base">Reason</FormLabel>
-                                                <FormDescription>
-                                                    Select the reason for stock modification
-                                                </FormDescription>
-                                                <FormControl>
-                                                    <RadioGroup
-                                                        value={field.value || ""}
-                                                        onValueChange={field.onChange}
-                                                        className="grid grid-cols-2 space-y-2 items-center justify-center"
-                                                    >
-                                                        {reasons.map((item: any) => (
-                                                            <FormItem
-                                                                key={item.id}
-                                                                className="flex items-center space-x-2"
-                                                            >
-                                                                <FormControl>
-                                                                    <RadioGroupItem value={item.id} />
-                                                                </FormControl>
-                                                                <FormLabel>{item.label}</FormLabel>
-                                                            </FormItem>
-                                                        ))}
-                                                    </RadioGroup>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {/* staff */}
+                                              {/* staff */}
                                     <FormField
                                         control={form.control}
                                         name="staff"
@@ -279,6 +215,46 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                             </FormItem>
                                         )}
                                     />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-4 grid lg:grid-cols-2 gap-4">
+                                    {/* Reason for Modification */}
+                                    <FormField
+                                        control={form.control}
+                                        name="reason"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="text-base">Reason</FormLabel>
+                                                <FormDescription>
+                                                    Check reason for stock modification
+                                                </FormDescription>
+                                                <FormControl>
+                                                    <RadioGroup
+                                                        value={field.value || ""}
+                                                        onValueChange={field.onChange}
+                                                        className="grid grid-cols-2 lg:grid-cols-3 space-y-2 items-center justify-center"
+                                                    >
+                                                        {reasons.map((item: any) => (
+                                                            <FormItem
+                                                                key={item.id}
+                                                                className="flex items-center space-x-2"
+                                                            >
+                                                                <FormControl>
+                                                                    <RadioGroupItem value={item.id} />
+                                                                </FormControl>
+                                                                <FormLabel>{item.label}</FormLabel>
+                                                            </FormItem>
+                                                        ))}
+                                                    </RadioGroup>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                  
 
                                     {/* Comment */}
                                     <FormField
