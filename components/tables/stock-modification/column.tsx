@@ -70,6 +70,18 @@ export const columns: ColumnDef<StockModification>[] = [
         }
        
     },
+    {
+        
+        accessorKey: "value",
+        header: "Value / Amount",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const value = row.original.value;
+            const formatted = new Intl.NumberFormat().format(value);
+            return <div className="w-[100px]">{formatted}</div>;
+        }
+       
+    },
  
     {
         
