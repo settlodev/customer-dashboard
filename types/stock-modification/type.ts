@@ -5,7 +5,6 @@ export declare interface StockModification {
     id: UUID,
     reason:reasonForStockModification
     quantity:number,
-    value:number,
     comment:string,
     stock:UUID
     stockVariant:UUID,
