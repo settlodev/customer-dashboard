@@ -40,7 +40,7 @@ export default function StockModal({
               {() => (
                 <>
                   <ModalHeader className="flex flex-col gap-1 mt-2"></ModalHeader>
-                  <ModalBody>
+                  <ModalBody className="max-h-[70vh] overflow-y-auto">
                     <Card>
                       <CardHeader>
                         <h3 className="text-lg font-semibold">Stock Details</h3>
@@ -67,11 +67,11 @@ export default function StockModal({
                               )}
                             </span>
                           </div>
-                          <div className="flex items-center border-b border-gray-300 p-2">
-                            <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
+                          <div className="flex items-center border-b border-gray-300 p-2 gap-3">
+                            <span className="w-1/3 font-normal border-r border-gray-300">
                               Description
                             </span>
-                            <span className="w-2/3 pl-2 text-sm">
+                            <span className="w-2/3 pl-2 text-sm line-clamp-3 overflow-hidden text-ellipsis">
                               {data.description}
                             </span>
                           </div>
@@ -104,7 +104,7 @@ export default function StockModal({
                                     Starting Quantity
                                   </span>
                                   <span className="w-2/3 pl-2 text-sm">
-                                    {variant.startingQuantity}
+                                    {Intl.NumberFormat().format(variant.startingQuantity)}
                                   </span>
                                 </div>
                                 <div className="flex items-center p-2 border-b border-gray-300">
@@ -112,7 +112,7 @@ export default function StockModal({
                                     Starting Value
                                   </span>
                                   <span className="w-2/3 pl-2 text-sm">
-                                    {variant.startingValue}
+                                    {Intl.NumberFormat().format(variant.startingValue)}
                                   </span>
                                 </div>
                                 <div className="flex items-center p-2 border-b border-gray-300">
@@ -120,7 +120,7 @@ export default function StockModal({
                                     Alert Level
                                   </span>
                                   <span className="w-2/3 pl-2 text-sm">
-                                    {variant.alertLevel}
+                                    {Intl.NumberFormat().format(variant.alertLevel)}
                                   </span>
                                 </div>
                               </div>
@@ -130,6 +130,7 @@ export default function StockModal({
                       </Card>
                     )}
                   </ModalBody>
+
                 </>
               )}
             </ModalContent>

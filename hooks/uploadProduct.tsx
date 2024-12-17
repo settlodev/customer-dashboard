@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { uploadProductWithStockCSV } from "@/lib/actions/stock-actions";
 import { uploadProductCSV } from "@/lib/actions/product-actions";
 
 interface CSVUploadOptions {

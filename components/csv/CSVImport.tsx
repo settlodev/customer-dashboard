@@ -98,15 +98,15 @@ export function ProductCSVDialog() {
 
     if (selectedFile) {
 
-      // console.log("File selected:", selectedFile.name);
+      console.log("File selected:", selectedFile.name);
 
       const fileText = await selectedFile.text();
 
-      // console.log("File content read successfully.");
+      console.log("File content read successfully.");
 
       const result = validateCSV(fileText, expectedHeaders);
 
-      // console.log("Validation result:", result);
+      console.log("Validation result:", result);
 
       setValidationResult(result);
       setFile(selectedFile);
