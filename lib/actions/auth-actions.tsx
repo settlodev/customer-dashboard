@@ -124,6 +124,8 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
             `/api/auth/verify-token/${token}`,
         );
 
+        console.log("tokenResponse is: ", tokenResponse)
+
         if (tokenResponse == token) {
             revalidatePath("/user-verification");
             revalidatePath("/business-registration");
@@ -143,6 +145,7 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
             });
         }
     } catch (error: any) {
+
         if ( error.status === 604 ) {
             revalidatePath("/business-registration");
             revalidatePath("/user-verification");
@@ -156,7 +159,7 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
 
         return parseStringify({
             responseType: "error",
-            message: "Something went wrong when verifying your token, please try again.",
+            message: error.message ?? "Something went wrong when verifying your token, please try again.",
             error: error instanceof Error ? error : new Error(String(error)),
         });
     }
@@ -247,7 +250,6 @@ export const register = async (
         // Ignore redirect error
         if (isRedirectError(error)) throw error;
 
-        console.error("Registration is: ", error);
         return parseStringify({
             responseType: "error",
             message: error.message ? error.message : "An unexpected error occurred. Please try again.",

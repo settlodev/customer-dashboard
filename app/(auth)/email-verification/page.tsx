@@ -2,7 +2,7 @@
 
 import { Spinner } from "@nextui-org/spinner";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { verifyToken } from "@/lib/actions/auth-actions";
 import { FormResponse } from "@/types/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,89 +15,95 @@ const VerificationPage = () => {
     const router = useRouter();
     const searchParams = useSearchParams();
     const token = searchParams.get("token");
-    const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-    const [message, setMessage] = useState<string>("");
-    const verificationAttempted = useRef(false);
-    const isMounted = useRef(false);
+    const [verificationState, setVerificationState] = useState<{
+        status: 'loading' | 'success' | 'error';
+        message: string;
+        attempted: boolean;
+    }>({
+        status: 'loading',
+        message: '',
+        attempted: false
+    });
 
     useEffect(() => {
-        if (isMounted.current) {
+        // If verification was already attempted, don't run again
+        if (verificationState.attempted) {
             return;
         }
-        isMounted.current = true;
+
+        // If no token, set error immediately
+        if (!token) {
+            setVerificationState({
+                status: 'error',
+                message: "Invalid token",
+                attempted: true
+            });
+            return;
+        }
 
         const verifyTokenAsync = async () => {
-            if (verificationAttempted.current || !token) {
-                setStatus('error');
-                setMessage(!token ? "Invalid token" : "Verification already attempted");
-                return;
-            }
-
-            verificationAttempted.current = true;
-
             try {
                 const data: FormResponse = await verifyToken(token);
 
-                // Only proceed if the component is still mounted
-                if (isMounted.current) {
-                    if (data?.responseType === "error") {
-                        setStatus('error');
-                        setMessage(data?.message || "Verification failed");
-                    } else {
-                        setStatus('success');
-                        setMessage(data?.message || "Email verified successfully");
+                console.log("verification data", data);
 
-                        const authToken = await getAuthToken();
+                if (data?.responseType === "error") {
+                    setVerificationState({
+                        status: 'error',
+                        message: data?.message || "Verification failed",
+                        attempted: true
+                    });
+                } else {
+                    const authToken = await getAuthToken();
 
-                        if (authToken !== null) {
-                            authToken.emailVerified = new Date();
-                            await updateAuthToken(authToken);
-                        }
-
-                        new Promise(resolve =>
-                            setTimeout(resolve, 1500)
-                        ).then(() => {
-                            if (isMounted.current) {
-                                router.push("/login");
-                            }
-                        });
+                    if (authToken !== null) {
+                        authToken.emailVerified = new Date();
+                        await updateAuthToken(authToken);
                     }
+
+                    setVerificationState({
+                        status: 'success',
+                        message: data?.message || "Email verified successfully",
+                        attempted: true
+                    });
+
+                    // Redirect after a short delay
+                    setTimeout(() => {
+                        router.push("/login");
+                    }, 1500);
                 }
             } catch (err) {
                 console.error(err);
-                if (isMounted.current) {
-                    setStatus('error');
-                    setMessage("An error occurred while verifying the token");
-                }
+                setVerificationState({
+                    status: 'error',
+                    message: "An error occurred while verifying the token",
+                    attempted: true
+                });
             }
         };
 
         verifyTokenAsync();
-
-        return () => {
-            isMounted.current = false;
-        };
-    }, [token, router]);
+    }, [token, router, verificationState.attempted]);
 
     return (
         <Card className="w-full mx-auto max-w-lg mt-10 lg:mt-0 md:mt-0">
             <CardHeader className="text-center pb-2">
                 <CardTitle>Email verification</CardTitle>
                 <CardDescription>
-                    {status === 'loading' && "Verifying your token..."}
-                    {status === 'success' && "Redirecting to login..."}
-                    {status === 'error' && "Verification failed"}
+                    {verificationState.status === 'loading' && "Verifying your token..."}
+                    {verificationState.status === 'success' && "Redirecting to login..."}
+                    {verificationState.status === 'error' && "Verification failed"}
                 </CardDescription>
             </CardHeader>
             <CardContent className="pb-4 px-8">
-                {status === 'loading' && (
+                {verificationState.status === 'loading' && (
                     <div className="flex items-center w-full justify-center min-h-[50px]">
                         <Spinner size="md" />
                     </div>
                 )}
                 <Spacer y={4} />
-                {status === 'error' && <FormError message={message} />}
-                {status === 'success' && <FormSuccess message={message} />}
+                {verificationState.status === 'error' && <FormError message={verificationState.message} />}
+                {verificationState.status === 'success' && <FormSuccess message={verificationState.message} />}
             </CardContent>
         </Card>
     );
