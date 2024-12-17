@@ -10,7 +10,7 @@ export declare interface Discount {
     discountCode: string
     minimumSpend: number
     discountType: discountType
-    usageLimit: number
+    usageLimit: string
     activations: number
     department: string
     location: string

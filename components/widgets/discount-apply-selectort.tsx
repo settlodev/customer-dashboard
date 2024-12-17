@@ -1,8 +1,10 @@
-import React, { useState} from "react";
+import React, { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adjust to match your UI library
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
 import RecipeSelector from "./recipe-selector";
 import CustomerSelector from "./customer-selector";
+import DepartmentSelector from "./department-selector";
+import CategorySelector from "./category-selector";
 
 interface OptionsProps {
   onSelectionChange: (selection: {
@@ -11,7 +13,7 @@ interface OptionsProps {
   }) => void;
 }
 
-const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange }) => {
+const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange}) => {
   const [applyOption, setApplyOption] = useState<string | null>(null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
 
@@ -67,7 +69,7 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange 
         </div>
       )}
 
-{applyOption === "customer" && (
+      {applyOption === "customer" && (
         <div>
           <FormField
             name="stock"
@@ -81,6 +83,52 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange 
                       handleItemChange(id);
                     }}
                     placeholder="Select customer"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
+      {applyOption === "category" && (
+        <div>
+          <FormField
+            name="stock"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <CategorySelector
+                    value={field.value || selectedItemId}
+                    onChange={(id) => {
+                      field.onChange(id);
+                      handleItemChange(id);
+                    }}
+                    placeholder="Select category"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+      )}
+
+
+      {applyOption === "department" && (
+        <div>
+          <FormField
+            name="stock"
+            render={({ field }) => (
+              <FormItem>
+                <FormControl>
+                  <DepartmentSelector
+                    value={field.value || selectedItemId}
+                    onChange={(id) => {
+                      field.onChange(id);
+                      handleItemChange(id);
+                    }}
+                    placeholder="Select department"
                   />
                 </FormControl>
                 <FormMessage />

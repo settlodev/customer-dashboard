@@ -184,6 +184,8 @@ const EmailForm = ({
                         // { label: "Staff", value: "group-staff"},
                         ...staffs.map((staff) => ({ 
                           label: staff.firstName + " " + staff.lastName, 
+
+                          
                           value: staff.id, 
                         })),
                       ]

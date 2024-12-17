@@ -65,6 +65,7 @@ export const searchDiscount = async (
             `/api/discounts/${location?.id}`,
             query
         );
+        console.log("The discount data is: ", discountData)
         return parseStringify(discountData);
     }
     catch (error){
@@ -97,6 +98,7 @@ export const  createDiscount= async (
         location: location?.id,
         business: business?.id
     }
+    console.log('Payload:', payload);
     try {
         const apiClient = new ApiClient();
       

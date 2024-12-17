@@ -32,12 +32,14 @@ import { NumericFormat } from "react-number-format";
 import { useRouter } from "next/navigation";
 import DiscountUsageSelector from "../widgets/discount-usage-selector";
 // import TrackingOptions from "../widgets/tracker-selector";
-// import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
+import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
 
 
 
 
 function DiscountForm({ item }: { item: Discount | null | undefined }) {
+
+  console.log("Item is: ", item);
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error,] = useState<string | undefined>("");
@@ -93,6 +95,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof DiscountSchema>) => {
+    console.log("Submitting data:", values);
     startTransition(() => {
       if (item) {
         updateDiscount(item.id, values).then((data: FormResponse | void) => {
@@ -124,9 +127,14 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
     });
   };
 
-  // const handleSelectionChange = (value: boolean) => {
-  //   form.setValue("status", value);
-  // };
+  const handleSelectionChange = (selection: { itemType: string; itemId: string | null }) => {
+    const { itemType, itemId } = selection;
+  
+    if (itemType && itemId) {
+      form.setValue(itemType as keyof z.infer<typeof DiscountSchema>, itemId, { shouldValidate: true });
+    }
+  };
+  
 
   return (
     <Form {...form}>
@@ -229,7 +237,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
 
                 <FormField
                   control={form.control}
-                  name="discountType"
+                  name="usageLimit"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Discount Usage</FormLabel>
@@ -272,7 +280,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                 />
 
               
-                {/* <DiscountApplyOptionsWidget onSelectionChange={handleSelectionChange} />  */}
+                <DiscountApplyOptionsWidget onSelectionChange={handleSelectionChange} /> 
 
                 <FormField
                   control={form.control}
