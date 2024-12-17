@@ -70,7 +70,7 @@ const VerificationPage = () => {
                     // Redirect after a short delay
                     setTimeout(() => {
                         router.push("/login");
-                    }, 1500);
+                    }, 4000);
                 }
             } catch (err) {
                 console.error(err);

@@ -117,6 +117,9 @@ export const getUserById = async (userId: string|undefined): Promise<ExtendedUse
 export const verifyToken = async (token: string): Promise<FormResponse> => {
     if (!token) throw new Error("Authentication token is required");
 
+    // first logout without redirecting
+    await signOut({redirect: false});
+
     const apiClient = new ApiClient();
 
     try {
