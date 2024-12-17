@@ -32,7 +32,7 @@ export declare interface FormVariantItem {
     description?: string|null,
     image?: string|undefined|null,
     color?: string|undefined|null,
-    unit?: string|undefined,
+    unit?: string|undefined|null,
     trackInventory?: boolean
     stockVariant?:string|null
 }

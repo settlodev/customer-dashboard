@@ -156,6 +156,7 @@ export const updateProduct = async (
     let formResponse: FormResponse | null = null;
     const validData = ProductSchema.safeParse(product);
 
+
     if (!validData.success) {
         formResponse = {
             responseType: "error",

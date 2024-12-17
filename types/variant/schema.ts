@@ -13,7 +13,7 @@ export const VariantSchema = object({
     ),
     sku: string().optional(),
     barcode: string().nullable().optional(),
-    unit: string().optional(),
+    unit: string().nullable().optional(),
     description: string().nullable().optional(),
     image: string().nullable().optional(),
     color: string().nullable().optional(), 

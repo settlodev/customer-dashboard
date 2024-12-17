@@ -83,6 +83,7 @@ const inventoryType = [
 
 const ProductForm = ({ item }: { item: Product | null | undefined }) => {
 
+   
     // const router = useRouter();
 
     const [isPending, startTransition] = useTransition();
@@ -208,7 +209,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
             sku: '',
             description: '',
             image: '',
-            unit: '',
+            unit: null,
             stockVariant: '',
             recipe: ''
         },
@@ -1005,7 +1006,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                             <span>{index + 1}</span></p>
                                                         <div className="flex-1 flex-col gap-2 pt-1 pb-1">
                                                             <p className="text-md font-medium">{variant.name}</p>
-                                                            <p className="text-xs font-medium">PRICE: {variant.price}</p>
+                                                            <p className="text-xs font-medium">PRICE: {Intl.NumberFormat().format(variant.price)}</p>
                                                         </div>
                                                         <Pencil onClick={() => handleEditVariant(variant)} size={14} className="h-12 w-12 flex items-center pl-4 pr-4 bg-emerald-50  border-l-1 border-l-emerald-200 cursor-pointer " />
                                                         {item ? (
@@ -1259,7 +1260,7 @@ const ProductForm = ({ item }: { item: Product | null | undefined }) => {
                                                                 type="search"
                                                                 placeholder="Search e.g Kilogram"
                                                                 className=" "
-                                                                value={searchTerm || ""}
+                                                                value={searchTerm || field.value || ''}
                                                                 disabled={isPending}
                                                                 onChange={(e) => setSearchTerm(e.target.value)}
                                                             />
