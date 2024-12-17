@@ -18,15 +18,13 @@ export const switchBusiness = async (data: Business): Promise<void> => {
 
 export const refreshBusiness = async (data: Business): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
+
     cookies().set({
         name: "currentBusiness",
         value: JSON.stringify(data)
     });
-    try {
-        revalidatePath("/dashboard");
-    } catch (error) {
-        throw error;
-    }
+
+    revalidatePath("/dashboard");
 };
 
 export const refreshLocation = async (data: Location): Promise<void> => {
