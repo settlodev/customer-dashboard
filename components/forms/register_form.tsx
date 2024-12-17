@@ -59,7 +59,6 @@ import { getCurrentBusiness } from "@/lib/actions/business/get-current-business"
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import GenderSelector from "../widgets/gender-selector";
 import CountrySelector from "@/components/widgets/country-selector";
-import {redirect} from "next/navigation";
 
 interface SignUpStepItemType {
     id: string;
