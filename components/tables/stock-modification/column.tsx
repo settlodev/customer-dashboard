@@ -65,24 +65,12 @@ export const columns: ColumnDef<StockModification>[] = [
         enableHiding: true,
         cell: ({ row }) => {
             const quantity = row.original.quantity;
-            const formatted = new Intl.NumberFormat("en-US").format(quantity);
+            const formatted = new Intl.NumberFormat().format(quantity);
             return <div className="w-[100px]">{formatted}</div>;
         }
        
     },
-    {
-        
-        accessorKey: "value",
-        header: "Value / Amount",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const value = row.original.value;
-            const formatted = new Intl.NumberFormat("en-US").format(value);
-            return <div className="w-[100px]">{formatted}</div>;
-        }
-       
-    },
-   
+ 
     {
         
         accessorKey: "staffName",
@@ -102,7 +90,7 @@ export const columns: ColumnDef<StockModification>[] = [
         enableHiding: true,
         cell: ({ row }) => {
             const modificationDate = row.original.dateCreated;
-            const formatted = new Intl.DateTimeFormat("en-US").format(new Date(modificationDate));
+            const formatted = new Intl.DateTimeFormat().format(new Date(modificationDate));
             return <div className="w-[100px]">{formatted}</div>;
         }
        
