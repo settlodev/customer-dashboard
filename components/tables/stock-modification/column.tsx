@@ -71,7 +71,6 @@ export const columns: ColumnDef<StockModification>[] = [
        
     },
     {
-        
         accessorKey: "value",
         header: "Value / Amount",
         enableHiding: true,

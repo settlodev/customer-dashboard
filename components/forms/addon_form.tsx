@@ -1,7 +1,7 @@
 "use client";
 
 import {Input} from "@/components/ui/input";
-import {useForm} from "react-hook-form";
+import {FieldErrors, useForm} from "react-hook-form";
 import {
     Form,
     FormControl,
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/form";
 import {zodResolver} from "@hookform/resolvers/zod";
 import {z} from "zod";
-import React, {useState, useTransition} from "react";
+import React, {useCallback, useState, useTransition} from "react";
 import {useToast} from "@/hooks/use-toast";
 import {FormResponse} from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
@@ -30,6 +30,10 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
     const [addonTracking, setAddonTracking] = useState<boolean>(false);
+    const [selectedTracking, setSelectedTracking] = useState<{
+        itemType: string;
+        itemId: string | null;
+      } | null>(null);
 
     const {toast} = useToast();
 
@@ -43,10 +47,32 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
         setAddonTracking(value);
     };
 
+    const onInvalid = useCallback(
+        (errors: FieldErrors) => {
+            console.log("Errors during form submission:", errors);
+          toast({
+            variant: "destructive",
+            title: "Uh oh! something went wrong",
+            description:typeof errors.message === 'string' && errors.message
+              ? errors.message
+              : "There was an issue submitting your form, please try later",
+          });
+        },
+        [toast]
+      );
+    
+
     const submitData = (values: z.infer<typeof AddonSchema>) => {
+
+        const payload = {
+            ...values,
+            stockVariant: selectedTracking?.itemType === "stock" ? selectedTracking.itemId : null,
+            recipe: selectedTracking?.itemType === "recipe" ? selectedTracking.itemId :null,
+        };
+
         startTransition(() => {
             if (item) {
-                updateAddon(item.id, values).then((data) => {
+                updateAddon(item.id, payload).then((data) => {
                     if (data) setResponse(data);
                     if (data && data.responseType === "error") {
                         toast({
@@ -57,7 +83,7 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
                     }
                 });
             } else {
-                createAddon(values).then((data) => {
+                createAddon(payload).then((data) => {
                     if (data) setResponse(data);
                     if (data && data.responseType === "error") {
                         toast({
@@ -73,7 +99,7 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
 
     return (
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(submitData)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
                 <div className="grid gap-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
@@ -198,6 +224,10 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
                             <TrackingOptions
                                 onSelectionChange={(selection) => {
                                     console.log("Selected Tracking Option:", selection);
+                                    // form.setValue("itemType", selection.itemType);
+                                    // form.setValue("itemId", selection.itemId);
+                                    setSelectedTracking(selection);
+                                      
                                 }}
                             />
                         </div>

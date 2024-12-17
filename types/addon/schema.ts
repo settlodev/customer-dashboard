@@ -14,7 +14,7 @@ export const AddonSchema = object({
           .nonnegative({ message: "Please addon price should be positive number" })
     ),
     isTracked:boolean().optional(),
-    stockVariant:string().uuid("Please select a valid stock variant").optional(),
-    recipe: string().uuid("Please select a valid product variant").optional(), 
+    stockVariant:string().uuid("Please select a valid stock variant").nullable().optional(),
+    recipe: string().uuid("Please select a valid product variant").nullable().optional(), 
     status: boolean().optional(),
-});
+})
