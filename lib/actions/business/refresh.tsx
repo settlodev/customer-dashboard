@@ -36,6 +36,11 @@ export const refreshLocation = async (data: Location): Promise<void> => {
         value: JSON.stringify(data)
     });
 
+    cookies().set({
+        name: "activeLocation",
+        value: JSON.stringify(data)
+    });
+
     revalidatePath("/dashboard");
     redirect("/dashboard");
 };

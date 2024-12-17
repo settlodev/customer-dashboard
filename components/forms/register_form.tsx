@@ -59,6 +59,7 @@ import { getCurrentBusiness } from "@/lib/actions/business/get-current-business"
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import GenderSelector from "../widgets/gender-selector";
 import CountrySelector from "@/components/widgets/country-selector";
+import {redirect} from "next/navigation";
 
 interface SignUpStepItemType {
     id: string;
@@ -235,7 +236,7 @@ function RegisterForm({ step }: { step: string }) {
                 createBusinessLocation(values).then((data) => {
                     if (data) {
                         if (data.responseType === "success") {
-                            window.location.href = "/dashboard";
+                            redirect("/dashboard");
                         } else if (data.responseType === "error") {
                             toast({
                                 variant: "destructive",
