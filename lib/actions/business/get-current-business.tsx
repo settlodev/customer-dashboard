@@ -93,6 +93,8 @@ export const getBusinessDropDown = async (): Promise<Business[]> => {
     }
 };
 
+
+
 export const getBusinessWithLocations = async (): Promise<BusinessWithLocationType[]> => {
     const authToken = await getAuthToken();
 
