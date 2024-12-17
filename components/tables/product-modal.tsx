@@ -44,7 +44,7 @@ export default function ProductModal({
               <ModalHeader className="flex flex-col gap-1 mt-2">
 
               </ModalHeader>
-              <ModalBody>
+              <ModalBody className="max-h-[70vh] overflow-y-auto">
                 <Card>
                   <CardHeader>
                     <h2 className="text-lg font-normal">Product Details</h2>
