@@ -38,7 +38,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isActive, setIsActive] = useState(item ? item.status : true);
     const [privileges, setPrivileges] = useState<string[]>([]);
     const [sections, setSections] = useState<PrivilegeItem[]>([]);
-    const [role] = useState<Role | null>(item ? item : null);
+    // const [role] = useState<Role | null>(item ? item : null);
     const { toast } = useToast();
     const router = useRouter();
 
