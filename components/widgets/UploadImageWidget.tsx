@@ -1,26 +1,36 @@
-import {ImageIcon} from "lucide-react";
-import React, {useState} from "react";
-import {uploadImage} from "@/lib/utils";
-import {toast} from "@/hooks/use-toast";
+import { ImageIcon } from "lucide-react";
+import React, { useState } from "react";
+import { uploadImage } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 import Image from "next/image";
+
 interface ImageUploadProps {
     setImage: (value: string) => void;
-    displayImage?: boolean | true;
-    imagePath: string | 'products',
-    displayStyle?: string | 'default',
-    label?: string | 'Image',
-    showLabel?: boolean|true,
-    image?: string|null
+    displayImage?: boolean;
+    imagePath: string;
+    displayStyle?: 'default' | 'custom';
+    label?: string;
+    showLabel?: boolean;
+    image?: string | null;
+    className?: string;
 }
 
-function UploadImageWidget({setImage, displayImage, displayStyle, imagePath, label, showLabel, image=null}: ImageUploadProps) {
+function UploadImageWidget({
+                               setImage,
+                               displayImage = true,
+                               displayStyle = 'default',
+                               imagePath = 'products',
+                               label = 'Upload image',
+                               showLabel = true,
+                               image = null,
+                               className = ''
+                           }: ImageUploadProps) {
     const [uploading, setUploading] = useState<boolean>(false);
-    const [imageUrl, setImageUrl] = useState<string>(image?image:'');
+    const [imageUrl, setImageUrl] = useState<string>(image || '');
 
     const uploadMyImage = async (mFile: File) => {
         setUploading(true);
         await uploadImage(mFile, imagePath, function (response) {
-            console.log("response.data:", response.data);
             if (response.success) {
                 setImageUrl(response.data);
                 setImage(response.data);
@@ -37,37 +47,73 @@ function UploadImageWidget({setImage, displayImage, displayStyle, imagePath, lab
         });
     }
 
-    return (<label
-        className={displayStyle === 'default' ? 'cursor-pointer w-20 h-20 border-1 rounded-l bg-gray-100 mr-5 flex items-center justify-center flex-col' : ''}>
-        {uploading && <div className="spin-in w-[30px] h-[30px] border-2 border-emerald-300 rounded-full"></div>}
-        {(imageUrl && displayImage) ?
-            !uploading ?
-                <Image alt="" width={150} height={150} src={imageUrl} className="object-cover w-[100%] h-[100%]"/>
-                :<></>
-            : <>
-                {displayStyle === 'default' ?
-                    !uploading && (<>
-                        <span><ImageIcon size={36} /></span>
-                        {showLabel && <span className="text-xs font-bold">{label}</span>}
-                    </>)
-                    : <></>
-                }
-            </>
-        }
-        <input
-            className={displayStyle === 'default' ? "hidden" : 'flex'}
-            type="file"
-            name="file"
-            disabled={uploading}
-            onChange={async (e) => {
-                const files = e.target.files
-                if (files) {
-                    await uploadMyImage(files[0])
-                }
-            }}
-            accept="image/*"
-        />
-    </label>)
+    const defaultStyles = `
+        relative
+        cursor-pointer
+        w-full
+        aspect-square
+        rounded-lg
+        bg-muted
+        hover:bg-muted/80
+        transition-colors
+        duration-200
+        flex
+        items-center
+        justify-center
+        flex-col
+        overflow-hidden
+        ${className}
+    `;
+
+    return (
+        <label className={displayStyle === 'default' ? defaultStyles : className}>
+            {uploading && (
+                <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center">
+                    <div className="w-8 h-8 border-2 border-primary rounded-full animate-spin border-t-transparent" />
+                </div>
+            )}
+
+            {(imageUrl && displayImage) ? (
+                !uploading ? (
+                    <div className="w-full h-full relative">
+                        <Image
+                            alt={label}
+                            src={imageUrl}
+                            fill
+                            className="object-cover"
+                        />
+                    </div>
+                ) : null
+            ) : (
+                <>
+                    {displayStyle === 'default' && !uploading && (
+                        <div className="flex flex-col items-center gap-2 p-4">
+                            <ImageIcon className="w-8 h-8 text-muted-foreground" />
+                            {showLabel && (
+                                <span className="text-sm font-medium text-muted-foreground">
+                                    {label}
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </>
+            )}
+
+            <input
+                className="hidden"
+                type="file"
+                name="file"
+                disabled={uploading}
+                onChange={async (e) => {
+                    const files = e.target.files;
+                    if (files) {
+                        await uploadMyImage(files[0]);
+                    }
+                }}
+                accept="image/*"
+            />
+        </label>
+    );
 }
 
 export default UploadImageWidget;

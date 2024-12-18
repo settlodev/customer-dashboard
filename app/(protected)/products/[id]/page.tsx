@@ -20,8 +20,6 @@ export default async function ProductPage({params}:{params:{id:string}}){
         }
         catch (error){
             if(isNotFoundError(error)) throw error;
-
-            //throw new Error("Failed to load product details");
         }
     }
 

@@ -1,4 +1,4 @@
-import {object, string, number, preprocess, boolean} from "zod";
+import {object, string, number, preprocess} from "zod";
 
 export const VariantSchema = object({
     name: string({ required_error: "Variant name is required" }),
@@ -9,16 +9,18 @@ export const VariantSchema = object({
             }
             return val
         },
-        number({message:"Price is required"}).nonnegative({message:"price can not be negative"}).gt(0,{message:"Price can not be zero"})
+        number({message:"Price is required"}).nonnegative({message:"Price can not be negative"}).gt(0,{message:"Price can not be zero"})
     ),
     sku: string().optional(),
     barcode: string().nullable().optional(),
     unit: string().nullable().optional(),
     description: string().nullable().optional(),
     image: string().nullable().optional(),
-    color: string().nullable().optional(), 
+    color: string().nullable().optional(),
+
     stockVariant: string().nullable().optional(),
     recipe:string().nullable().optional(),
+
 });
 
 

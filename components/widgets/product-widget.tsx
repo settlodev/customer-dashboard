@@ -9,7 +9,7 @@
 // import { SubmitButton } from "./submit-button";
 // import UploadImageWidget from "./UploadImageWidget";
 // import ProductCategorySelector from "./product-category-selector";
-// import ProductBrandSelector from "./product-brand-selector";
+// import BrandSelector from "./product-brand-selector";
 // import { Switch } from "../ui/switch";
 // import ProductTaxSelector from "./product-tax-selector";
 // import { FormVariantItem, Variant } from "@/types/variant/type";
@@ -149,7 +149,7 @@
 //                             <FormItem>
 //                                 <FormLabel>Brand</FormLabel>
 //                                 <FormControl>
-//                                     <ProductBrandSelector
+//                                     <BrandSelector
 //                                         value={field.value || ""}
 //                                         onChange={field.onChange}
 //                                         onBlur={field.onBlur}
@@ -445,7 +445,7 @@
 // //         )}
 // //       />
 // //     );
-  
+
 // //     const renderVariants = () => (
 // //       <div className="mt-4">
 // //         <div className="bg-gray-200 pl-3 pr-3 pt-2 pb-2 flex">
@@ -454,7 +454,7 @@
 // //             <ChevronDownIcon />
 // //           </span>
 // //         </div>
-  
+
 // //         {variants.length > 0 ? (
 // //           <div className="border-t-1 border-t-gray-100 p-5">
 // //             <h3 className="font-bold pb-2">Variants</h3>
@@ -493,7 +493,7 @@
 // //         )}
 // //       </div>
 // //     );
-  
+
 // //     return (
 // //       <Form {...form}>
 // //         <form
@@ -507,7 +507,7 @@
 // //               <ChevronDownIcon />
 // //             </span>
 // //           </div>
-  
+
 // //           <div className="mt-4 flex">
 // //             <UploadImageWidget
 // //               imagePath="products"
@@ -521,7 +521,7 @@
 // //               })}
 // //             </div>
 // //           </div>
-  
+
 // //           {/* Categories, Departments, and Brand Selectors */}
 // //           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 // //             {renderField("category", "Category", ProductCategorySelector, {
@@ -534,12 +534,12 @@
 // //               departments,
 // //               onClickCreate: onClickDepartment,
 // //             })}
-// //             {renderField("brand", "Brand", ProductBrandSelector, {
+// //             {renderField("brand", "Brand", BrandSelector, {
 // //               placeholder: "Select brand",
 // //               brands,
 // //             })}
 // //           </div>
-  
+
 // //           {/* Inventory Tracking and Toggles */}
 // //           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 // //             {renderField("trackInventory", "Track Inventory", Switch, {
@@ -548,7 +548,7 @@
 // //             {renderField("sellOnline", "Sell Online", Switch)}
 // //             {renderField("taxIncluded", "Tax Included", Switch)}
 // //           </div>
-  
+
 // //           {/* Tax Class and SKU */}
 // //           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 // //             {renderField("taxClass", "Tax Class", ProductTaxSelector, {
@@ -557,16 +557,16 @@
 // //             })}
 // //             {renderField("sku", "SKU", Input, { placeholder: "Enter SKU" })}
 // //           </div>
-  
+
 // //           {/* Description */}
 // //           {renderField("description", "Description", Textarea, {
 // //             placeholder: "Enter product description",
 // //             className: "resize-none bg-gray-50",
 // //           })}
-  
+
 // //           {/* Variants */}
 // //           {renderVariants()}
-  
+
 // //           {/* Action Buttons */}
 // //           <div className="flex items-center space-x-4 border-t-1 border-t-gray-200 pt-5">
 // //             <CancelButton />
@@ -580,6 +580,5 @@
 // //       </Form>
 // //     );
 // //   };
-  
+
 // //   export { ProductFormSection };
-  

@@ -47,10 +47,11 @@ export type ApiSortResponse = {
     sorted: boolean;
 };
 
-export interface FormResponse {
+export interface FormResponse<T = unknown> {
     responseType: "success" | "error";
     message: string;
     error?: Error | null;
+    data?: T;
 }
 
 export declare interface AuthToken {

@@ -30,8 +30,6 @@ import { Tag } from "lucide-react";
 import UploadImageWidget from "../widgets/UploadImageWidget";
 
 function DepartmentForm({ item }: { item: Department | null | undefined }) {
-
-
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error,] = useState<string | undefined>("");
@@ -200,7 +198,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
                 }
                 </div>
                             </div>
-            </div>                
+            </div>
             </CardContent>
           </Card>
 
