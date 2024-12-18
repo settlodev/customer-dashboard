@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, {useCallback, useEffect, useRef, useState, useTransition} from "react";
+import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -20,15 +20,15 @@ import {
 import { createRole, updateRole } from "@/lib/actions/role-actions";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
-import {FormResponse, PrivilegeActionItem, PrivilegeItem} from "@/types/types";
-import {RoleSchema} from "@/types/roles/schema";
-import {FormError} from "@/components/widgets/form-error";
-import {Role} from "@/types/roles/type";
+import { FormResponse, PrivilegeActionItem, PrivilegeItem } from "@/types/types";
+import { RoleSchema } from "@/types/roles/schema";
+import { FormError } from "@/components/widgets/form-error";
+import { Role } from "@/types/roles/type";
 import { Input } from "../ui/input";
-import {fetchAllSections} from "@/lib/actions/privileges-actions";
+import { fetchAllSections } from "@/lib/actions/privileges-actions";
 import _ from "lodash";
-import {UUID} from "node:crypto";
-import {useToast} from "@/hooks/use-toast";
+import { UUID } from "node:crypto";
+import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
 const RoleForm = ({ item }: { item: Role | null | undefined }) => {
@@ -37,14 +37,14 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isActive, setIsActive] = useState(item ? item.status : true);
     const [privileges, setPrivileges] = useState<string[]>([]);
     const [sections, setSections] = useState<PrivilegeItem[]>([]);
-    const [role] = useState<Role|null>(item?item: null);
+    const [role] = useState<Role | null>(item ? item : null);
     const { toast } = useToast();
     const router = useRouter();
 
     useEffect(() => {
-        if(item){
+        if (item) {
             const myPrivs: string[] = [];
-            item.privilegeActions.map(priv=>{
+            item.privilegeActions.map(priv => {
                 myPrivs.push(priv.id);
             });
             setPrivileges(myPrivs);
@@ -59,7 +59,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const submitData = (values: z.infer<typeof RoleSchema>) => {
         setResponse(undefined);
 
-        if(privileges.length > 0) {
+        if (privileges.length > 0) {
             values.privilegeActionsIds = _.compact(privileges);
             console.log("values:", values);
 
@@ -93,9 +93,9 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
 
     const initialized = useRef(false);
 
-    useEffect(()=>{
+    useEffect(() => {
 
-        async function getData(){
+        async function getData() {
             if (!initialized.current) {
                 initialized.current = true
                 const data = await fetchAllSections();
@@ -104,11 +104,11 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
         }
         getData();
 
-    },[]);
+    }, []);
 
     const onInvalid = useCallback(
         (errors: any) => {
-           
+
             toast({
                 variant: "destructive",
                 title: "Uh oh! something went wrong",
@@ -120,12 +120,15 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
         [toast]
     );
 
-    const selectAction= (action_id: UUID)=>{
-
-        if (!_.find(privileges, action_id)) {
-            const privs = [...privileges, action_id];
-            setPrivileges(privs);
-        }
+    const selectAction = (action_id: UUID) => {
+        setPrivileges(prevPrivileges => {
+            // If the action is already in privileges, remove it
+            if (prevPrivileges.includes(action_id)) {
+                return prevPrivileges.filter(id => id !== action_id);
+            } 
+            // If the action is not in privileges, add it
+            return [...prevPrivileges, action_id];
+        });
     }
 
     return (
@@ -137,7 +140,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                     <FormField
                         control={form.control}
                         name="name"
-                        render={({field}) => (
+                        render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Role Name</FormLabel>
                                 <FormControl>
@@ -146,7 +149,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                         placeholder="Enter role name"
                                     />
                                 </FormControl>
-                                <FormMessage/>
+                                <FormMessage />
                             </FormItem>
                         )}
                     />
@@ -154,7 +157,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                     <FormField
                         control={form.control}
                         name="status"
-                        render={({field}) => (
+                        render={({ field }) => (
                             <FormItem>
                                 <FormControl>
                                     <Switch
@@ -189,71 +192,66 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                                         </div>
                                     </Switch>
                                 </FormControl>
-                                <FormMessage/>
+                                <FormMessage />
                             </FormItem>
                         )}
                     />
                 </div>
 
-                         {/*<FormField
-                    control={form.control}
-                    name="description"
-                    render={({field}) => (
-                        <FormItem>
-                            <FormControl>
-                                <Textarea
-                                    {...field}
-                                    // isDisabled={isPending}
-                                    // label="Role description"
-                                    placeholder="Enter a short description of the role"
-                                    // radius="sm"
-                                />
-                            </FormControl>
-                            <FormMessage/>
-                        </FormItem>
-                    )}
-                />*/}
-               
                 <div className='popup-content'>
-                    <>
-                        <div className='input-row input-row-multiple'>
-                            <h4 style={{paddingBottom: 10}}>Select Privileges</h4>
-                            <div>
-                                {sections?.map((priv, index) => {
-                                        return (<div key={index} style={{paddingBottom: 10}}>
-                                                <p className="font-bold text-medium mb-2" key={index}>
-                                                    {priv.name}
-                                                </p>
-                                                <div className="flex gap-2 border-b-1 pb-2">
-                                                {priv.privilegeActions && priv.privilegeActions.map((action: PrivilegeActionItem, i) => {
-                                                        const selected: boolean = _.includes(privileges, action.id);
-                                                        return action.action ? (
-                                                            <label onClick={() => selectAction(action.id)} key={i}>
-                                                                {role ? (
-                                                                    <input checked={selected} type={"checkbox"} value={action.id}/>
-                                                                ) : (
-                                                                    <input type={"checkbox"} value={action.id}/>
-                                                                )}
-                                                                <span className="font-medium text-xs">{" "}{action.action}</span>
-                                                            </label>
-                                                        ) : (<></>
-                                                        );
-                                                    }
-                                                )}
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                )}
+    <h4 className="text-lg font-semibold mb-4">Select Privileges</h4>
+    <div className="grid gap-4">
+        {sections?.map((priv, index) => (
+            <div 
+                key={index} 
+                className="bg-white border rounded-lg shadow-sm p-4"
+            >
+                <h5 className="text-md font-bold text-gray-700 mb-3 border-b pb-2">
+                    {priv.name}
+                </h5>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {priv.privilegeActions && priv.privilegeActions.map((action: PrivilegeActionItem, i) => {
+                        const selected: boolean = privileges.includes(action.id);
+                        return action.action ? (
+                            <div 
+                                key={i}
+                                className={`
+                                    flex items-center gap-2 p-2 rounded-md cursor-pointer transition-all duration-200
+                                    ${selected 
+                                        ? 'bg-emerald-50 border-emerald-200 border' 
+                                        : 'hover:bg-gray-50 border border-transparent'}
+                                `}
+                                onClick={() => selectAction(action.id)}
+                            >
+                                <input 
+                                    type="checkbox" 
+                                    checked={selected} 
+                                    onChange={() => {}} 
+                                    className="form-checkbox h-4 w-4 text-emerald-600 rounded 
+                                        border-gray-300 
+                                        focus:ring-emerald-500 focus:border-emerald-500
+                                        checked:bg-emerald-600 
+                                        checked:border-emerald-600"
+                                />
+                                <span className={`
+                                    text-xs font-medium 
+                                    ${selected ? 'text-emerald-700' : 'text-gray-700'}
+                                `}>
+                                    {action.action}
+                                </span>
                             </div>
-                        </div>
-                    </>
+                        ) : null;
+                    })}
+                </div>
+            </div>
+        ))}
+    </div>
                 </div>
 
                 <div className="flex h-5 items-center space-x-4">
                     <CancelButton />
                     <Separator orientation="vertical" />
-                    <SubmitButton label={item ? "Update role details" : "Create role"}  isPending={isPending}/>
+                    <SubmitButton label={item ? "Update role details" : "Create role"} isPending={isPending} />
                 </div>
             </form>
         </Form>
