@@ -1,129 +1,109 @@
 import {MenuItemArgType} from "@/types/menu-item-type";
 
-export const menuItems=(args?: MenuItemArgType) => {
+export const menuItems = (args?: MenuItemArgType) => {
     return [
+        // Analytics & Reporting
         {
-            label: "Dashboard",
+            label: "Analytics",
             showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
             icon: 'dashboard',
-            items:
-                [
-                    {title: "Summary", link: "/", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Staff report", link: "/staff-report", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Top selling items", link: "/top-selling", current: args?.isCurrentItem, icon: "cart"},
-                ]
+            items: [
+                { title: "Dashboard", link: "/", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Staff Report", link: "/staff-report", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Top Selling Items", link: "/top-selling", current: args?.isCurrentItem, icon: "cart" },
+            ]
         },
+        
+        // Inventory Management
         {
-            label: "Inventory",
+            label: "Inventory Management",
             showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
             icon: 'inventory',
-            items:
-                [
-
-                    {title: "Categories", link: "/categories", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Departments", link: "/departments", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Suppliers", link: "/suppliers", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Brands", "link": "/brands", "current": args?.isCurrentItem, icon: "cart"},
-                    // {title: "Units", link: "/units", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Products", link: "/products", current: args?.isCurrentItem, icon: "cart"},
-                ]
+            items: [
+                { title: "Products", link: "/products", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Categories", link: "/categories", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Departments", link: "/departments", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Brands", link: "/brands", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Suppliers", link: "/suppliers", current: args?.isCurrentItem, icon: "cart" },
+            ]
         },
+        
+        // Stock Management
         {
-            label: "Stock",
+            label: "Stock Management",
             showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
             icon: 'stock',
-            items:
-                [
-
-                    {title: "Manage Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Stock Intake", link: "/stock-intakes", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Stock Modification", link: "/stock-modifications", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Stock Transfer", "link": "/stock-transfers", "current": args?.isCurrentItem, "icon": "cart"},
-                    {title: "Addons", "link": "/addons", "current": args?.isCurrentItem, "icon": "cart"},
-                    {title: "Recipes", "link": "/recipes", "current": args?.isCurrentItem, "icon": "cart"},
-                    {title: "Modifiers", link: "/modifiers", current: args?.isCurrentItem, icon: "cart"},
-
-                ]
+            items: [
+                { title: "Manage Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Stock Intake", link: "/stock-intakes", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Stock Modification", link: "/stock-modifications", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Stock Transfer", link: "/stock-transfers", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Recipes", link: "/recipes", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Modifiers", link: "/modifiers", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Addons", link: "/addons", current: args?.isCurrentItem, icon: "cart" },
+            ]
         },
+        
+        // Sales & Orders
         {
-            label: "Orders",
-            showSeparator: false,
+            label: "Sales",
+            showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
             icon: 'sales',
-            items:
-                [
-                    {title: "Orders", link: "/orders", current: args?.isCurrentItem, icon: "cart"},
-                    // {title: "Tickets", link: "/tickets", current: args?.isCurrentItem, icon: "cart"},
-                    // {title: "Transactions", link: "/transactions", current: args?.isCurrentItem, icon: "cart"}
-                ]
+            items: [
+                { title: "Orders", link: "/orders", current: args?.isCurrentItem, icon: "cart" },
+            ]
         },
+        
+        // Customer Management
         {
-            label: "Customers",
-            showSeparator: false,
+            label: "Customer Management",
+            showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
             icon: 'customers',
-            items:
-                [
-                    {title: "Customers", link: "/customers", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Discounts", link: "/discounts", current: args?.isCurrentItem, icon: "cart"},
-
-                ]
+            items: [
+                { title: "Customers", link: "/customers", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Discounts", link: "/discounts", current: args?.isCurrentItem, icon: "cart" },
+            ]
         },
-        // {
-        //     label: "Communication",
-        //     showSeparator: false,
-        //     collapsible: false,
-        //     current: args?.isCurrentItem,
-        //     icon: 'customers',
-        //     items:
-        //         [
-
-        //             {title: "Communication Templates", link: "/communication-templates", current: args?.isCurrentItem, icon: "cart"},
-        //             {title: "SMS Campaign", link: "/campaigns", current: args?.isCurrentItem, icon: "cart"},
-        //             {title: "Broadcast Email", link: "/email-marketing", current: args?.isCurrentItem, icon: "cart"}
-
-        //         ]
-        // },
+        
+        // Staff & Roles Management
         {
-            label: "Staff &  Roles",
-            showSeparator: false,
+            label: "Staff Management",
+            showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
             icon: 'users',
-            items:
-                [
-                    /*{title: "Users", link: "/users", current: args?.isCurrentItem, icon: "cart"},*/
-                    {title: "Staff", link: "/staff", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Shifts", link: "/shifts", current: args?.isCurrentItem, icon: "cart"},
-                    // {title: "Salaries", link: "/salaries", current: args?.isCurrentItem, icon: "cart"},
-                    // {title: "Payslips", link: "/payslips", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Roles", link: "/roles", current: args?.isCurrentItem, icon: "cart"},
-                ]
+            items: [
+                { title: "Staff", link: "/staff", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Shifts", link: "/shifts", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Roles", link: "/roles", current: args?.isCurrentItem, icon: "cart" },
+            ]
         },
+        
+        // Business Operations
         {
-            label: "General",
+            label: "Business Operations",
             showSeparator: false,
             collapsible: false,
             current: args?.isCurrentItem,
             icon: 'general',
-            items:
-                [
-
-                    {title: "Businesses", link: "/business", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Expenses", link: "/expenses", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Tables & Spaces", link: "/spaces", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Reservations", link: "/reservations", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "KDS", link: "/kds", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart"}
-                ]
+            items: [
+                { title: "Businesses", link: "/business", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Expenses", link: "/expenses", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Tables & Spaces", link: "/spaces", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Reservations", link: "/reservations", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Kitchen Display System (KDS)", link: "/kds", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart" },
+            ]
         }
-    ]
-}
+    ];
+};
