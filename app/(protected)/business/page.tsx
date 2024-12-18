@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import {columns} from "@/app/(protected)/business/columns";
-import {listBusinesses} from "@/lib/actions/business/list";
+import { columns } from "@/components/tables/business/columns";
+import { searchBusiness } from "@/lib/actions/business-actions";
 
 const breadcrumbItems = [{ title: "Businesses", link: "/businesses" }];
 
@@ -27,8 +27,7 @@ export default async function Page({ searchParams }: ParamsProps) {
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await listBusinesses(q, page, pageLimit);
-    //console.log("Business responseData:", responseData);
+    const responseData = await searchBusiness(q, page, pageLimit);
 
     const data = responseData.content;
     const total = responseData.totalElements;
@@ -43,7 +42,7 @@ export default async function Page({ searchParams }: ParamsProps) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/business/create`}>Add Business</Link>
+                        <Link key="add-space" href={`/business/new`}>Add Business</Link>
                     </Button>
                 </div>
             </div>

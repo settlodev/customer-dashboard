@@ -1,79 +1,70 @@
-// import Link from "next/link";
+import { UUID } from "node:crypto";
 
-// import { Button } from "@/components/ui/button";
-// import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-// import {ApiResponse} from "@/types/types";
-// import {UUID} from "node:crypto";
-// import {notFound} from "next/navigation";
-// import {isNotFoundError} from "next/dist/client/components/not-found";
-// // import {getBusiness} from "@/lib/actions/business/get";
-// import {Business} from "@/types/business/type";
+import { notFound } from "next/navigation";
+import { isNotFoundError } from "next/dist/client/components/not-found";
 
-// export default async function BusinessPage(
-//     { params }: { params: { id: string }}
-// ) {
+import {
+    Card,
+    CardContent,
+    CardDescription,
+    CardHeader,
+    CardTitle,
+} from "@/components/ui/card";
+import {ApiResponse} from "@/types/types";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 
-//     const isNewItem = params.id === "new";
-//     let item: ApiResponse<Business> | null = null;
+import {Business} from "@/types/business/type";
+import {getBusiness} from "@/lib/actions/business-actions";
+import BusinessForm from "@/components/forms/business_form";
 
-//     if (!isNewItem) {
-//         try {
-//             item = await getBusiness(params.id as UUID);
-//             if (item.totalElements == 0) notFound();
-//         } catch (error) {
-//             // Ignore redirect error
-//             if (isNotFoundError(error)) throw error;
+export default async function Page({params}: { params: { id: string }; }) {
+    const isNewItem = params.id === "new";
+    let item: ApiResponse<Business> | null = null;
 
-//             throw new Error("Failed to load data");
-//         }
-//     }
-//     console.log("item is now: ", item);
+    if (!isNewItem) {
+        try {
+            item = await getBusiness(params.id as UUID);
+            if (!item || Object.keys(item).length == 0) notFound();
+        } catch (error) {
+            if (isNotFoundError(error)) throw error;
 
-//     const breadcrumbItems = [
-//         { title: "Business", link: "/business" },
-//         {
-//             title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
-//             link: "",
-//         },
-//     ];
+            throw new Error("Failed to load business data");
+        }
+    }
 
-//     return (
-//         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-//             <div className="flex items-center justify-between mb-2">
-//                 <div className="relative flex-1 md:max-w-md">
-//                     <BreadcrumbsNav items={breadcrumbItems} />
-//                 </div>
+    const breadcrumbItems = [
+        { title: "Business", link: "/business" },
+        {
+            title: isNewItem ? "New" : item?.name || "Edit",
+            link: "",
+        },
+    ];
 
-//                 <div className="flex items-center space-x-2">
-//                     <Button>
-//                         <Link key="add-space" href={`/business/create`}>Add Location</Link>
-//                     </Button>
-//                 </div>
-//             </div>
+    return (
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <div className="flex items-center justify-between mb-2">
+                <div className="relative flex-1 md:max-w-md">
+                    <BreadcrumbsNav items={breadcrumbItems} />
+                </div>
+            </div>
 
-//             {/*{total > 0 || q != "" ? (
-//                 <Card x-chunk="data-table">
-//                     <CardHeader>
-//                         <CardTitle>Business</CardTitle>
-//                         <CardDescription>Manage your businesses</CardDescription>
-//                     </CardHeader>
-//                     <CardContent>
-//                         <DataTable
-//                             columns={columns}
-//                             data={data}
-//                             pageCount={pageCount}
-//                             pageNo={page}
-//                             searchKey="name"
-//                             total={total}
-//                         />
-//                     </CardContent>
-//                 </Card>
-//             ) : (
-//                 <NoItems itemName={`businesses`} newItemUrl={`/businesses/create`} />
-//             )}*/}
-//         </div>
-//     );
-// }
-export default async function Page() {
-    return <></>;
+            <BusinessCard isNewItem={isNewItem} item={item} />
+        </div>
+    );
 }
+
+const BusinessCard = ({isNewItem, item}: { isNewItem: boolean; item: Business | null | undefined; }) => (
+    <Card>
+        <CardHeader>
+            <CardTitle>{isNewItem ? "Create business" : "Edit business"}</CardTitle>
+            <CardDescription>
+                {isNewItem
+                    ? "Add a new business to your account"
+                    : "Edit business details"}
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <BusinessForm item={item} />
+        </CardContent>
+    </Card>
+);

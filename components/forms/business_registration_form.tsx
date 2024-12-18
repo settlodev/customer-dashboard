@@ -46,7 +46,8 @@ import { FormSuccess } from "../widgets/form-success";
 import { fetchCountries } from "@/lib/actions/countries-actions";
 import { createBusiness } from "@/lib/actions/auth/business";
 import { Business } from "@/types/business/type";
-const BusinessRegistrationForm = () => {
+const BusinessRegistrationForm = ({ item }: { item: Business | null | undefined;}) => {
+  // console.log("The business item is: ", item);
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
@@ -70,7 +71,10 @@ const BusinessRegistrationForm = () => {
 
   const form = useForm<z.infer<typeof BusinessSchema>>({
     resolver: zodResolver(BusinessSchema),
-    defaultValues: {},
+    defaultValues: {
+      ...item,
+      // status: true
+    },
   });
 
   const onInvalid = useCallback(

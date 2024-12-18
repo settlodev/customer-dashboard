@@ -34,15 +34,17 @@ export const fetchAllBusinesses = async (): Promise<Business[] | null> => {
     }
 };
 
-export const searchCategories = async (
+export const searchBusiness = async (
     q: string,
     page: number,
     pageLimit: number,
-): Promise<ApiResponse<Category>> => {
-    await getAuthenticatedUser();
+): Promise<ApiResponse<Business>> => {
+    
+    const authToken = await getAuthToken();
+    
+    const userId = authToken?.id;
 
     try {
-        const location = await getCurrentLocation();
         const apiClient = new ApiClient();
 
         const query = {
@@ -66,7 +68,7 @@ export const searchCategories = async (
 
 
         const data = await apiClient.post(
-            `/api/categories/${location?.id}`,
+            `/api/businesses/${userId}`,
             query,
         );
 
@@ -78,17 +80,17 @@ export const searchCategories = async (
 };
 
 export const createBusiness = async (
-    category: z.infer<typeof CategorySchema>,
+    business: z.infer<typeof BusinessSchema>,
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const authenticatedUser = await getAuthenticatedUser();
+
+    // const authenticatedUser = await getAuthenticatedUser();
+
     const authToken = await getAuthToken();
     const userId = authToken?.id;
 
-    if ("responseType" in authenticatedUser)
-        return parseStringify(authenticatedUser);
 
-    const validatedData = CategorySchema.safeParse(category);
+    const validatedData = BusinessSchema.safeParse(business);
 
     if (!validatedData.success) {
         formResponse = {
@@ -100,12 +102,17 @@ export const createBusiness = async (
         return parseStringify(formResponse);
     }
 
+        const payload = {
+            ...validatedData.data,
+            owner: userId
+        }
+
     try {
         const apiClient = new ApiClient();
 
         await apiClient.post(
             `/api/businesses/${userId}/create`,
-            validatedData.data,
+            payload,
         );
     } catch (error: unknown) {
         formResponse = {
@@ -116,12 +123,11 @@ export const createBusiness = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
+   
+    if ( formResponse && formResponse.responseType === "error" ) return parseStringify(formResponse)
 
-    revalidatePath("/categories");
-    redirect("/categories");
+    revalidatePath("/business");
+    redirect("/business");
 };
 
 export const updateBusiness = async (
@@ -129,14 +135,13 @@ export const updateBusiness = async (
     business: z.infer<typeof BusinessSchema>,
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const authenticatedUser = await getAuthenticatedUser();
     const authToken = await getAuthToken();
     const userId = authToken?.id;
 
-    if ("responseType" in authenticatedUser)
-        return parseStringify(authenticatedUser);
+    
+    const validatedData = BusinessSchema.safeParse(business);
 
-    const validatedData = CategorySchema.safeParse(business);
+    console.log("validatedData", validatedData)
 
     if (!validatedData.success) {
         formResponse = {
@@ -148,13 +153,19 @@ export const updateBusiness = async (
         return parseStringify(formResponse);
     }
 
+    const payload = {
+        ...validatedData.data,
+        owner: userId
+    }
+
     try {
         const apiClient = new ApiClient();
 
-        await apiClient.put(
+       const dataSent = await apiClient.put(
             `/api/businesses/${userId}/${id}`,
-            validatedData.data
+            payload,
         );
+      console.log("dataSent", dataSent)  
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -168,33 +179,38 @@ export const updateBusiness = async (
         return parseStringify(formResponse);
     }
 
-    revalidatePath("/categories");
-    redirect("/categories");
+    revalidatePath("/business");
+    redirect("/business");
 };
 
 export const getBusiness = async (id: UUID): Promise<ApiResponse<Business>> => {
+
     const apiClient = new ApiClient();
 
-    const query = {
-        filters: [
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            },
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
-    };
+    const authToken = await getAuthToken();
 
-    const data = await apiClient.post(
-        `/api/businesses/${id}`,
-        query,
+    const userId = authToken?.id;
+
+    // const query = {
+    //     filters: [
+    //         {
+    //             key: "id",
+    //             operator: "EQUAL",
+    //             field_type: "UUID_STRING",
+    //             value: id,
+    //         },
+    //     ],
+    //     sorts: [],
+    //     page: 0,
+    //     size: 1,
+    // };
+
+    const data = await apiClient.get(
+        `/api/businesses/${userId}/${id}`,
+        // query,
     );
 
-    console.log("My Business", data)
+    // console.log("My Business", data)
     return parseStringify(data);
 };
 
