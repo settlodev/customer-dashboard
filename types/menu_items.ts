@@ -52,16 +52,16 @@ export const menuItems=(args?: MenuItemArgType) => {
                 ]
         },
         {
-            label: "Sales & Tickets",
+            label: "Orders",
             showSeparator: false,
             collapsible: false,
             current: args?.isCurrentItem,
             icon: 'sales',
             items:
                 [
-                    {title: "Completed sales", link: "/orders", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Tickets", link: "/tickets", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Transactions", link: "/transactions", current: args?.isCurrentItem, icon: "cart"}
+                    {title: "Orders", link: "/orders", current: args?.isCurrentItem, icon: "cart"},
+                    // {title: "Tickets", link: "/tickets", current: args?.isCurrentItem, icon: "cart"},
+                    // {title: "Transactions", link: "/transactions", current: args?.isCurrentItem, icon: "cart"}
                 ]
         },
         {
@@ -77,21 +77,21 @@ export const menuItems=(args?: MenuItemArgType) => {
 
                 ]
         },
-        {
-            label: "Communication",
-            showSeparator: false,
-            collapsible: false,
-            current: args?.isCurrentItem,
-            icon: 'customers',
-            items:
-                [
+        // {
+        //     label: "Communication",
+        //     showSeparator: false,
+        //     collapsible: false,
+        //     current: args?.isCurrentItem,
+        //     icon: 'customers',
+        //     items:
+        //         [
 
-                    {title: "Communication Templates", link: "/communication-templates", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "SMS Campaign", link: "/campaigns", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Broadcast Email", link: "/email-marketing", current: args?.isCurrentItem, icon: "cart"}
+        //             {title: "Communication Templates", link: "/communication-templates", current: args?.isCurrentItem, icon: "cart"},
+        //             {title: "SMS Campaign", link: "/campaigns", current: args?.isCurrentItem, icon: "cart"},
+        //             {title: "Broadcast Email", link: "/email-marketing", current: args?.isCurrentItem, icon: "cart"}
 
-                ]
-        },
+        //         ]
+        // },
         {
             label: "Staff &  Roles",
             showSeparator: false,
@@ -103,8 +103,8 @@ export const menuItems=(args?: MenuItemArgType) => {
                     /*{title: "Users", link: "/users", current: args?.isCurrentItem, icon: "cart"},*/
                     {title: "Staff", link: "/staff", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Shifts", link: "/shifts", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Salaries", link: "/salaries", current: args?.isCurrentItem, icon: "cart"},
-                    {title: "Payslips", link: "/payslips", current: args?.isCurrentItem, icon: "cart"},
+                    // {title: "Salaries", link: "/salaries", current: args?.isCurrentItem, icon: "cart"},
+                    // {title: "Payslips", link: "/payslips", current: args?.isCurrentItem, icon: "cart"},
                     {title: "Roles", link: "/roles", current: args?.isCurrentItem, icon: "cart"},
                 ]
         },
