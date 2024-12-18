@@ -30,6 +30,7 @@ import _ from "lodash";
 import { UUID } from "node:crypto";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { Textarea } from "../ui/textarea";
 
 const RoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
@@ -122,11 +123,9 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
 
     const selectAction = (action_id: UUID) => {
         setPrivileges(prevPrivileges => {
-            // If the action is already in privileges, remove it
             if (prevPrivileges.includes(action_id)) {
                 return prevPrivileges.filter(id => id !== action_id);
             } 
-            // If the action is not in privileges, add it
             return [...prevPrivileges, action_id];
         });
     }
@@ -197,19 +196,38 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                         )}
                     />
                 </div>
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({field}) => (
+                        <FormItem>
+                            <FormLabel>Role Description</FormLabel>
+                            <FormControl>
+                                <Textarea
+                                    {...field}
+                                    disabled={isPending}
+                                    value={field.value}
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                    placeholder="Describe the role"
+                                />
+                            </FormControl>
+                            <FormMessage/>
+                        </FormItem>
+                    )}
+                />
 
                 <div className='popup-content'>
     <h4 className="text-lg font-semibold mb-4">Select Privileges</h4>
-    <div className="grid gap-4">
+    <div className="grid gap-2 ">
         {sections?.map((priv, index) => (
             <div 
                 key={index} 
-                className="bg-white border rounded-lg shadow-sm p-4"
+                className="bg-white border rounded-lg shadow-lg p-4"
             >
                 <h5 className="text-md font-bold text-gray-700 mb-3 border-b pb-2">
                     {priv.name}
                 </h5>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-1">
                     {priv.privilegeActions && priv.privilegeActions.map((action: PrivilegeActionItem, i) => {
                         const selected: boolean = privileges.includes(action.id);
                         return action.action ? (
