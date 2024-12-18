@@ -1,6 +1,6 @@
 "use client";
 import {ColumnDef} from "@tanstack/react-table";
-import {ArrowUpDown} from "lucide-react";
+import {ArrowUpDown, ShoppingCartIcon} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {StateColumn} from "@/components/tables/state-column";
@@ -8,10 +8,9 @@ import {CellAction} from "@/components/tables/product/cell-action";
 import {Product} from "@/types/product/type";
 import Image from "next/image";
 
-
 export const columns: ColumnDef<Product>[] = [
     {
-        
+
         id: "select",
         header: ({ table }) => (
             <Checkbox
@@ -36,8 +35,27 @@ export const columns: ColumnDef<Product>[] = [
         enableHiding: false,
         cell: ({ row }) => {
             const image = row.original.image;
-            return ( image ? <Image src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" width={50} height={50} loading="lazy" /> : 
-                <div className="w-10 h-10 rounded-lg bg-emerald-500"></div>
+
+            // Check if image is a valid URL or path
+            const isValidImageUrl = image &&
+                (image.startsWith('http://') ||
+                    image.startsWith('https://') ||
+                    image.startsWith('/'));
+
+            return isValidImageUrl ? (
+                <Image
+                    src={image}
+                    alt={row.original.name}
+                    className="w-10 h-10 rounded-lg"
+                    width={50}
+                    height={50}
+                    loading="lazy"
+                />
+            ) : (
+                // Fallback for invalid and missing images
+                <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center">
+                    <ShoppingCartIcon />
+                </div>
             );
         }
     },
@@ -56,7 +74,7 @@ export const columns: ColumnDef<Product>[] = [
             );
         },
     },
- 
+
     {
         accessorKey: "categoryName",
         enableHiding: true,
@@ -76,11 +94,11 @@ export const columns: ColumnDef<Product>[] = [
         }
     },
     {
-        accessorKey: "variants", 
+        accessorKey: "variants",
         enableHiding: true,
         header: 'No. of Variants',
         cell: ({ row }) => {
-            const variants = row.original.variants; 
+            const variants = row.original.variants;
             return <span>{variants.length}</span>;
         },
     },
@@ -90,11 +108,11 @@ export const columns: ColumnDef<Product>[] = [
         header: "SKU",
         enableHiding: true,
         cell: ({ row }) => {
-            const sku = row.original.sku; 
+            const sku = row.original.sku;
             return <span>{sku ? sku : "None"}</span>;
         }
     },
-   
+
     {
         id: "status",
         accessorKey: "status",
@@ -112,7 +130,7 @@ export const columns: ColumnDef<Product>[] = [
             );
         },
         cell: ({ row }) => <StateColumn state={row.original.status} />,
-        
+
     },
     {
         id: "actions",
