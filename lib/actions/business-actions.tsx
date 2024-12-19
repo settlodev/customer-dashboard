@@ -183,7 +183,7 @@ export const updateBusiness = async (
     redirect("/business");
 };
 
-export const getBusiness = async (id: UUID): Promise<ApiResponse<Business>> => {
+export const getSingleBusiness = async (id: UUID): Promise<Business> => {
 
     const apiClient = new ApiClient();
 

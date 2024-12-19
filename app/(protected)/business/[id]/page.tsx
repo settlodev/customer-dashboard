@@ -1,8 +1,6 @@
 import { UUID } from "node:crypto";
-
 import { notFound } from "next/navigation";
 import { isNotFoundError } from "next/dist/client/components/not-found";
-
 import {
     Card,
     CardContent,
@@ -10,25 +8,21 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import {ApiResponse} from "@/types/types";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-
-import {Business} from "@/types/business/type";
-import {getBusiness} from "@/lib/actions/business-actions";
+import { Business } from "@/types/business/type";
 import BusinessForm from "@/components/forms/business_form";
+import { getSingleBusiness } from "@/lib/actions/business-actions";
 
 export default async function Page({params}: { params: { id: string }; }) {
     const isNewItem = params.id === "new";
-    let item: ApiResponse<Business> | null = null;
-    console.log("item", item)
+    let item: Business | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getBusiness(params.id as UUID);
-            if (!item || Object.keys(item).length == 0) notFound();
+            item = await getSingleBusiness(params.id as UUID);
+            if (!item) notFound();
         } catch (error) {
             if (isNotFoundError(error)) throw error;
-
             throw new Error("Failed to load business data");
         }
     }
