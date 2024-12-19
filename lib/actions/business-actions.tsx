@@ -10,8 +10,6 @@ import {getAuthenticatedUser, getAuthToken} from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {ApiResponse, FormResponse} from "@/types/types";
-import {Category} from "@/types/category/type";
-import {CategorySchema} from "@/types/category/schema";
 import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {Business} from "@/types/business/type";
 import { BusinessSchema } from "@/types/business/schema";

@@ -20,7 +20,8 @@ export declare interface Variant {
     isArchived: boolean
     unit: string
     unitName:string
-    stockVariant:string
+    stockVariant:string,
+    recipe:string
 }
 
 export declare interface FormVariantItem {

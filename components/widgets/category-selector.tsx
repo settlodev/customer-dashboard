@@ -24,18 +24,18 @@ interface CategorySelectorProps {
 }
 
 const CategorySelector = ({
-                              placeholder,
-                              value,
-                              isDisabled,
-                              onChange,
-                              onBlur
-                          }: CategorySelectorProps) => {
+    placeholder,
+    value,
+    isDisabled,
+    onChange,
+    onBlur
+}: CategorySelectorProps) => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState("");
     const [parentCategory, setParentCategory] = useState("");
-    const [status, setStatus] = useState("true");
+    const [, setStatus] = useState("true");
     const [imageUrl, setImageUrl] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | undefined>("");
@@ -188,7 +188,7 @@ const CategorySelector = ({
                                             <div className="space-y-2">
                                                 <Label>Parent Category</Label>
                                                 <ProductCategorySelector
-                                                    onBlur={() => {}}
+                                                    onBlur={() => { }}
                                                     onChange={setParentCategory}
                                                     isDisabled={isSubmitting}
                                                     label="Category"

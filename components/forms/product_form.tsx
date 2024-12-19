@@ -321,7 +321,12 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                 </div>
                                             </div>
                                             <FormControl>
-                                                <Switch {...field} />
+                                                <Switch 
+                                                // {...field}
+                                                    checked={field.value ?? false}
+                                                    onCheckedChange={field.onChange}
+                                                    disabled={field.value}
+                                                 />
                                             </FormControl>
                                         </FormItem>
                                     )}
@@ -340,8 +345,10 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             </div>
                                             <FormControl>
                                                 <Switch
-                                                    {...field}
-                                                    value={field.value ?? false}
+                                                    // {...field}
+                                                    checked={field.value ?? false}
+                                                    onCheckedChange={field.onChange}
+                                                    disabled={field.value}
                                                 />
                                             </FormControl>
                                         </FormItem>

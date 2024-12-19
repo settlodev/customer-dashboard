@@ -24,7 +24,8 @@ export declare interface Product {
     taxIncluded:boolean
     isArchived: boolean,
     variants: Variant[],
-    trackInventory: boolean
+    trackInventory: boolean,
+    trackingType: string
     
 }
 
