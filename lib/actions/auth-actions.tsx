@@ -72,6 +72,7 @@ export const login = async (
     } catch (error) {
         console.error(error);
         if (error instanceof AuthError) {
+            console.error("Login error:", error);
             switch (error.type) {
                 case "CredentialsSignin":
                     return parseStringify({
@@ -81,8 +82,7 @@ export const login = async (
                 default:
                     return parseStringify({
                         responseType: "error",
-                        message:
-                            "Something about your credentials is not right, please try again.",
+                        message: error.message ?? "Something about your credentials is not right, please try again.",
                         error: error,
                     });
             }
