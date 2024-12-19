@@ -4,6 +4,7 @@ import { getAllBusinessLocationsByBusinessID } from "@/lib/actions/auth/location
 import { useSearchParams } from "next/navigation";
 import { Location } from "@/types/location/type";
 import RegisterForm from "@/components/forms/register_form";
+import Loading from "../loading";
 
 async function fetchLocationData(businessId: string) {
     return await getAllBusinessLocationsByBusinessID(businessId);
@@ -30,7 +31,11 @@ function LocationPage() {
     }, [businessId]);
 
     if (loading) {
-        return <p>Loading...</p>
+        return <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">
+            <Loading />
+        </div>
+      </div>
     }
 
     return <RegisterForm step="step4" />

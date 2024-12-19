@@ -15,7 +15,7 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
     const setLocation = async (location: Location, index: number) => {
         setPendingIndex(index);
 
-        if (location.subscriptionStatus === "EXPIRED") {
+        if (location.subscriptionStatus === "EXPIRED" || location.subscriptionStatus === null) {
             toast({
                 variant: "destructive",
                 title: "Subscription Expired",

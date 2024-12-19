@@ -20,8 +20,7 @@ export const Pricing = () => {
                 const data = await fetchSubscriptions()
                 setSubscription(data)
             } catch (error) {
-                console.log(error)
-            }
+                console.log(error)}
         }
         getSubscription()
     }, [])
