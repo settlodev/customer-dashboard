@@ -63,13 +63,13 @@ export default function ProductForm({ item }: ProductFormProps) {
             department: item?.department || "",
             brand: item?.brand || "",
             sku: item?.sku || "",
-            trackInventory: item?.trackInventory || false,
             sellOnline: item?.sellOnline || false,
             taxIncluded: item?.taxIncluded || false,
             taxClass: item?.taxClass || "",
             status: item?.status ?? true,
-            trackingType: item?.trackingType || null,
             image: item?.image || "",
+            trackInventory: item?.trackInventory || false,
+            trackingType: item?.trackingType || null,
             variants: item?.variants.map(variant => ({
                 name: variant.name,
                 price: variant.price,
@@ -77,8 +77,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                 barcode: variant.barcode || "",
                 description: variant.description || "",
                 unit: variant.unit,
-                stockVariant: variant.stockVariant || "",
-                recipe: variant.recipe || "",
+                trackingType: variant?.trackingType || null,
+                trackItem: variant.trackItem || null,
                 image: variant.image || ""
             })) || [{
                 name: "",
@@ -321,12 +321,10 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                 </div>
                                             </div>
                                             <FormControl>
-                                                <Switch 
-                                                // {...field}
-                                                    checked={field.value ?? false}
-                                                    onCheckedChange={field.onChange}
-                                                    disabled={field.value}
-                                                 />
+                                                <Switch
+                                                    {...field}
+                                                    value={field.value ?? false}
+                                                />
                                             </FormControl>
                                         </FormItem>
                                     )}
@@ -345,10 +343,8 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             </div>
                                             <FormControl>
                                                 <Switch
-                                                    // {...field}
-                                                    checked={field.value ?? false}
-                                                    onCheckedChange={field.onChange}
-                                                    disabled={field.value}
+                                                    {...field}
+                                                    value={field.value ?? false}
                                                 />
                                             </FormControl>
                                         </FormItem>

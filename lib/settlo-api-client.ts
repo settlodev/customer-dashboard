@@ -15,10 +15,9 @@ class ApiClient {
         this.baseURL = process.env.SERVICE_URL || "";
         this.isPlain = false;
 
-        // Remove this when we have our own certificate
         this.instance = axios.create({
             httpsAgent: new https.Agent({
-                rejectUnauthorized: false
+                rejectUnauthorized: true
             })
         });
 
@@ -28,7 +27,6 @@ class ApiClient {
             }
 
             const token = await getAuthToken();
-            //console.log("API Client token:", token?.authToken);
             if (token?.authToken) {
                 if(!this.isPlain) {
                     config.headers["Authorization"] = `Bearer ${token?.authToken}`;

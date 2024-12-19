@@ -1,5 +1,4 @@
 import { UUID } from 'crypto';
-import {Product} from "@/types/product/type";
 
 export declare interface Variant {
     id: UUID,
@@ -15,25 +14,11 @@ export declare interface Variant {
     taxIncluded: boolean,
     taxAmount: number,
     taxClass: string,
-    product: string,
+    product: UUID,
     tag: UUID,
-    isArchived: boolean
-    unit: string
-    unitName:string
-    stockVariant:string,
-    recipe:string
-}
-
-export declare interface FormVariantItem {
-    id?: UUID,
-    name: string,
-    price: number,
-    sku?: string|undefined,
-    barcode?: string|undefined|null,
-    description?: string|null,
-    image?: string|undefined|null,
-    color?: string|undefined|null,
-    unit?: string|undefined|null,
-    trackInventory?: boolean
-    stockVariant?:string|null
+    isArchived: boolean,
+    unit: string,
+    unitName:string,
+    trackingType: string | null,
+    trackItem: UUID | null,
 }

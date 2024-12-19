@@ -143,7 +143,7 @@ export const SidebarWrapper = ({ data }: { data: BusinessPropsType }) => {
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:block left-0 top-0 h-screen w-64 bg-gray-800">
+            <aside className="hidden lg:block left-0 top-0 h-screen w-75 bg-gray-800">
                 <SidebarContent data={data} />
             </aside>
 
