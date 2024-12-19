@@ -77,7 +77,7 @@ export const  createProduct= async (
     let formResponse: FormResponse | null = null;
 
     const validData= ProductSchema.safeParse(product)
-    
+
 
     if (!validData.success){
         formResponse = {
@@ -96,7 +96,6 @@ export const  createProduct= async (
         location: location?.id,
         business: business?.id
     }
-    console.log("payload:", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -110,18 +109,20 @@ export const  createProduct= async (
             message: "Product created successfully",
         };
     }
-    catch (error){
+    catch (error: any){
         const formattedError = await error;
         console.error("Error creating product", formattedError) ;
         formResponse = {
             responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
+            message: error.message ?? "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
 
+    if ( formResponse.responseType == "error" ) return parseStringify(formResponse);
+
     revalidatePath("/products")
-    return parseStringify(formResponse);
+    redirect("/products");
 }
 
 export const getProduct= async (id:UUID) : Promise<ApiResponse<Product>> => {
@@ -234,7 +235,7 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
     }
 
 
-    const formattedCSVData = fileData.replace(/\r\n/g, '\n'); 
+    const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
 
     try {
@@ -242,7 +243,7 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
         const location = await getCurrentLocation();
         await apiClient.post(
             `/api/products/${location?.id}/upload-csv`,
-            formattedCSVData, 
+            formattedCSVData,
             {
                 headers: {
                     "Content-Type": "text/csv",
@@ -250,7 +251,7 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
                 transformRequest: [(data) => data],
             }
         );
-        
+
         revalidatePath("/products");
         redirect("/products");
 

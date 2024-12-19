@@ -11,13 +11,12 @@ import SolidItemsCard from "@/components/dashboard/Chat/ChatCard";
 import TableOne from "./Tables/TableOne";
 import { fetchOrders } from "@/lib/actions/order-actions";
 import { Orders } from "@/types/orders/type";
-// import ChartTwo from "./Charts/ChartTwo";
 
 const PaymentMethod = dynamic(() => import("@/components/dashboard/Charts/ChartThree"), {
   ssr: false,
-}); 
+});
 const Dashboard: React.FC = () => {
-  const [summaries, setSummaries] = useState<SummaryResponse | null>(null); 
+  const [summaries, setSummaries] = useState<SummaryResponse | null>(null);
   const [orders, setOrders] = useState<Orders[]>([]);
 
   useEffect(() => {
@@ -38,19 +37,18 @@ const Dashboard: React.FC = () => {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex justify-between items-center">
-        
+
         <div>
-         
+
         </div>
-        {/* <SingleInputDateRangeWithTimePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>} setOrders={setOrders}/> */}
         <SingleInputDateRangeWithTimePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>}/>
 
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
-      <CardDataStats 
-          title="Total Revenue" 
-          total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.totalRevenue ) : "0.00"}`} 
-          
+      <CardDataStats
+          title="Total Revenue"
+          total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.totalRevenue ) : "0.00"}`}
+
         >
        <DollarSign />
         </CardDataStats>
@@ -63,10 +61,10 @@ const Dashboard: React.FC = () => {
         <CardDataStats title="Discount" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.discounts) : "0.00"}`}>
         <BadgePercent/>
         </CardDataStats>
-       
+
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
-     
+
         <CardDataStats title="Expenses" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.expense) : "0.00"}`}>
         <CreditCard />
         </CardDataStats>
@@ -81,7 +79,7 @@ const Dashboard: React.FC = () => {
         </CardDataStats>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
-     
+
      <CardDataStats title="Gross Profit" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.grossProfit) : "0.00"}`}>
      <ChartNoAxesCombined />
      </CardDataStats>
