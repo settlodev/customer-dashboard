@@ -204,9 +204,10 @@ const LocationList = ({locations}: { locations: Location[] }) => {
     const { toast } = useToast();
 
     const handleLocationSelect = async (location: Location, index: number) => {
+        // console.log("Selecting location:", location);
         setPendingIndex(index);
 
-        if (location.subscriptionStatus === "EXPIRED") {
+        if (location.subscriptionStatus === "EXPIRED" ) {
             toast({
                 variant: "destructive",
                 title: "Subscription Expired",
@@ -259,12 +260,17 @@ const LocationList = ({locations}: { locations: Location[] }) => {
                         <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
                             <MapPin className="w-6 h-6 text-emerald-600" />
                         </div>
-                        <div>
+                        <div className="flex items-center gap-2">
                             <h3 className="font-medium text-gray-900">{location.name}</h3>
                             <div className="flex items-center text-sm text-gray-500">
-                                <MapPin className="w-4 h-4 mr-1" />
-                                <span>{location.city}</span>
+                                {location.city ? (
+                                    <>
+                                        <MapPin className="w-4 h-4 mr-1" />
+                                        <span>{location.city}</span>
+                                    </>
+                                ) : null}
                             </div>
+
                         </div>
                     </div>
 
