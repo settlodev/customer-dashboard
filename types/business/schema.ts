@@ -15,7 +15,7 @@ export const BusinessSchema= object({
     businessType: string(),
     receiptPrefix: string().nullable().optional(),
     receiptSuffix: string().nullable().optional(),
-    // image: string().nullable().optional(),
+    image: string().nullable().optional(),
     receiptImage: string().nullable().optional(),
     logo: string().nullable().optional(),
     notificationPhone: string().nullable().optional(),
@@ -26,5 +26,9 @@ export const BusinessSchema= object({
     twitter: string().nullish().optional(),
     youtube: string().nullish().optional(),
     country: string(),
+    phoneNumber: string().optional(),
+    email: string().optional(),
+    address: string().optional(),
     status: boolean().optional(),
+
 })

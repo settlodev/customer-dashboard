@@ -38,8 +38,6 @@ import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
 
 
 function DiscountForm({ item }: { item: Discount | null | undefined }) {
-
-  console.log("Item is: ", item);
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error,] = useState<string | undefined>("");
@@ -127,7 +125,15 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
 
   const handleSelectionChange = (selection: { itemType: string; itemId: string | null }) => {
     const { itemType, itemId } = selection;
+
+    console.log("Selected item type:", itemType);
+    console.log("Selected item ID:", itemId);
   
+    // form.setValue('variant', null);
+  // form.setValue('customer', null);
+  // form.setValue('category', null);  
+  // form.setValue('department', null);
+
     if (itemType && itemId) {
       form.setValue(itemType as keyof z.infer<typeof DiscountSchema>, itemId, { shouldValidate: true });
     }
@@ -278,7 +284,19 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                 />
 
               
-                <DiscountApplyOptionsWidget onSelectionChange={handleSelectionChange} /> 
+                <DiscountApplyOptionsWidget 
+                onSelectionChange={handleSelectionChange} 
+                initialItemType={
+                  // item?.stockVariant ? "variant" : 
+                  item?.customer ? "customer" : 
+                  item?.category ? "category" : 
+                  item?.department ? "department" : 
+                  null
+                }
+                initialItemId={
+                  item?.customer || item?.category || item?.department || null
+                }
+                /> 
 
                 <FormField
                   control={form.control}

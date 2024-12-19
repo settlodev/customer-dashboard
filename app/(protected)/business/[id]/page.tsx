@@ -20,6 +20,7 @@ import BusinessForm from "@/components/forms/business_form";
 export default async function Page({params}: { params: { id: string }; }) {
     const isNewItem = params.id === "new";
     let item: ApiResponse<Business> | null = null;
+    console.log("item", item)
 
     if (!isNewItem) {
         try {

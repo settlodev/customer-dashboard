@@ -191,31 +191,15 @@ export const getBusiness = async (id: UUID): Promise<ApiResponse<Business>> => {
 
     const userId = authToken?.id;
 
-    // const query = {
-    //     filters: [
-    //         {
-    //             key: "id",
-    //             operator: "EQUAL",
-    //             field_type: "UUID_STRING",
-    //             value: id,
-    //         },
-    //     ],
-    //     sorts: [],
-    //     page: 0,
-    //     size: 1,
-    // };
-
+   
     const data = await apiClient.get(
         `/api/businesses/${userId}/${id}`,
-        // query,
     );
-
-    // console.log("My Business", data)
     return parseStringify(data);
 };
 
 export const deleteBusiness = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Category ID is required to perform this request");
+    if (!id) throw new Error("Business ID is required to perform this request");
     await getAuthenticatedUser();
     const authToken = await getAuthToken();
     const userId = authToken?.id;
@@ -223,7 +207,8 @@ export const deleteBusiness = async (id: UUID): Promise<void> => {
         const apiClient = new ApiClient();
 
         await apiClient.delete(`/api/businesses/${userId}/${id}`);
-        revalidatePath("/categories");
+        
+        revalidatePath("/business");
     } catch (error) {
         throw error;
     }

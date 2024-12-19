@@ -569,73 +569,85 @@ function RegisterForm({ step }: { step: string }) {
                                         onSubmit={businessForm.handleSubmit(submitBusinessData, onInvalid)}
                                     >
 
-                                        <div className="mt-4 flex">
+                                        <div className="mt-4 flex flex-col lg:flex-row gap-6">
 
-                                            <UploadImageWidget imagePath={'business'} displayStyle={'default'} displayImage={true} setImage={setImageUrl} />
+                                            <div>
+                                                <UploadImageWidget 
+                                                    imagePath={'business'} 
+                                                    displayStyle={'default'} 
+                                                    displayImage={true} 
+                                                    setImage={setImageUrl} 
+                                                    label={'Upload business logo'}
+                                                />
+
+                                            </div>
 
                                             <div className="flex-1">
-                                                <FormField
-                                                    control={businessForm.control}
-                                                    name="name"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Business Name</FormLabel>
-                                                            <FormControl>
-                                                                <Input
-                                                                    placeholder="Enter business name"
-                                                                    {...field}
-                                                                    disabled={isPending}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                                <div className="grid grid-cols-1 gap-4">
+                                                    <FormField
+                                                        control={businessForm.control}
+                                                        name="name"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Business Name</FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        placeholder="Enter business name"
+                                                                        {...field}
+                                                                        disabled={isPending}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                                                    <FormField
+                                                        control={businessForm.control}
+                                                        name="businessType"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Type of business</FormLabel>
+                                                                <FormControl>
+                                                                    <BusinessTypeSelector
+                                                                        value={field.value}
+                                                                        onChange={field.onChange}
+                                                                        onBlur={field.onBlur}
+                                                                        isRequired
+                                                                        isDisabled={isPending}
+                                                                        label="Business Type"
+                                                                        placeholder="Select business type"
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+
+                                                    <FormField
+                                                        control={businessForm.control}
+                                                        name="country"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Country of registration</FormLabel>
+                                                                <FormControl>
+                                                                    <CountrySelector
+                                                                        {...field}
+                                                                        isDisabled={isPending}
+                                                                        placeholder="Select country of registration"
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
-                                        <div className="grid lg:grid-cols-2 md:grid-cols-2 grid-rows-1 gap-4">
-
-                                            <FormField
-                                                control={businessForm.control}
-                                                name="businessType"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Type of business</FormLabel>
-                                                        <FormControl>
-                                                            <BusinessTypeSelector
-                                                                value={field.value}
-                                                                onChange={field.onChange}
-                                                                onBlur={field.onBlur}
-                                                                isRequired
-                                                                isDisabled={isPending}
-                                                                label="Business Type"
-                                                                placeholder="Select business type"
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-
-                                            <FormField
-                                                control={businessForm.control}
-                                                name="country"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Country of registration</FormLabel>
-                                                        <FormControl>
-                                                            <CountrySelector
-                                                                {...field}
-                                                                isDisabled={isPending}
-                                                                placeholder="Select country of registration"
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
+                                        
                                         <div className="grid grid-cols-1 grid-rows-1 gap-4">
                                             <FormField
                                                 control={businessForm.control}

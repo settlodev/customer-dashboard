@@ -34,7 +34,7 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) 
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700">Select Tracking Type</label>
+        <label className="block text-sm font-medium text-gray-700 mt-2">Select Tracking Type</label>
         <Select onValueChange={handleTrackingTypeChange}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Choose tracking type" />
@@ -92,18 +92,6 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) 
         </div>
       )}
 
-{/* {(trackingType === "recipe" || trackingType === "stock") && (
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Quantity</label>
-          <input
-            type="number"
-            className="w-full border border-gray-300 rounded-md py-2 px-3"
-            value={quantity}
-            onChange={handleQuantityChange}
-            min={1}
-          />
-        </div>
-      )} */}
     </div>
   );
 };

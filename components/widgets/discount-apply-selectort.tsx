@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adjust to match your UI library
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
 import RecipeSelector from "./recipe-selector";
@@ -11,12 +11,28 @@ interface OptionsProps {
     itemType: string;
     itemId: string | null;
   }) => void;
+  initialItemType?: string | null;
+  initialItemId?: string | null;
 }
 
-const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange}) => {
-  const [applyOption, setApplyOption] = useState<string | null>(null);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange,initialItemType, 
+  initialItemId }) => {
+    console.log("Initial item type:", initialItemType);
+    console.log("Initial item ID:", initialItemId);
+  const [applyOption, setApplyOption] = useState<string | null>(initialItemType || null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(initialItemId || null);
 
+  useEffect(() => {
+    if (initialItemType && initialItemId) {
+      setApplyOption(initialItemType);
+      setSelectedItemId(initialItemId);
+      onSelectionChange({ 
+        itemType: initialItemType, 
+        itemId: initialItemId 
+      });
+    }
+  }, [initialItemType, initialItemId, onSelectionChange]);
+  
   const handleTrackingTypeChange = (type: string | null) => {
     setApplyOption(type);
     setSelectedItemId(null);
@@ -33,7 +49,7 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange}
     <div className="space-y-4">
       <div>
         <label className="block text-sm font-medium text-gray-700">Apply discount on (optional)</label>
-        <Select onValueChange={handleTrackingTypeChange}>
+        <Select onValueChange={handleTrackingTypeChange} value={applyOption || undefined}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Select discount apply option" />
           </SelectTrigger>
@@ -59,7 +75,7 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange}
                       field.onChange(id);
                       handleItemChange(id);
                     }}
-                    placeholder="Select recipe"
+                    placeholder="Select variant"
                   />
                 </FormControl>
                 <FormMessage />
@@ -72,7 +88,7 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange}
       {applyOption === "customer" && (
         <div>
           <FormField
-            name="stock"
+            name="customer"
             render={({ field }) => (
               <FormItem>
                 <FormControl>
@@ -94,7 +110,7 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange}
       {applyOption === "category" && (
         <div>
           <FormField
-            name="stock"
+            name="category"
             render={({ field }) => (
               <FormItem>
                 <FormControl>
@@ -118,7 +134,7 @@ const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange}
       {applyOption === "department" && (
         <div>
           <FormField
-            name="stock"
+            name="department"
             render={({ field }) => (
               <FormItem>
                 <FormControl>
