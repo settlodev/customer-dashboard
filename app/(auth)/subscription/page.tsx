@@ -128,8 +128,8 @@ const SubscriptionPage = () => {
             <h3 className="font-semibold mt-4">For Payments via M-PESA Menu:</h3>
             <ol className="list-decimal list-inside space-y-2 text-gray-700">
               <li>Dial: *150*00#</li>
-              <li>Select: 4 for "Lipa kwa M-PESA"</li>
-              <li>Choose: 1 for "Lipa Kwa SIMU"</li>
+              <li>Select: 4 for &quot;Lipa kwa M-PESA&quot;</li>
+              <li>Choose: 1 for  &quot;Lipa Kwa SIMU &quot;</li>
               <li>Enter Lipa Number: *******</li>
               <li>Input Amount: Enter the amount of subscription required to pay.</li>
               <li>Enter PIN: Input your M-PESA PIN to confirm the transaction.</li>

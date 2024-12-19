@@ -10,7 +10,7 @@ import { Business } from "@/types/business/type";
 export default function BusinessRegistrationPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
