@@ -19,6 +19,7 @@ export declare interface Variant {
     isArchived: boolean,
     unit: string,
     unitName:string,
+    trackInventory: boolean,
     trackingType: string | null,
     trackItem: UUID | null,
 }
