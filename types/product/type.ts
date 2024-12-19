@@ -25,17 +25,6 @@ export declare interface Product {
     isArchived: boolean,
     variants: Variant[],
     trackInventory: boolean,
-    trackingType: string
-    
-}
-
-
-export declare interface ProductBrand {
-    id: UUID,
-    name: string,
-    status: boolean,
-    canDelete: boolean,
-    location: UUID,
-    isArchived: boolean
+    trackingType: "recipe" | "stock" | null,
 }
 
