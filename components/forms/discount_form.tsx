@@ -31,11 +31,7 @@ import DateTimePicker from "../widgets/datetimepicker";
 import { NumericFormat } from "react-number-format";
 import { useRouter } from "next/navigation";
 import DiscountUsageSelector from "../widgets/discount-usage-selector";
-// import TrackingOptions from "../widgets/tracker-selector";
 import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
-
-
-
 
 function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -138,7 +134,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
       form.setValue(itemType as keyof z.infer<typeof DiscountSchema>, itemId, { shouldValidate: true });
     }
   };
-  
+
 
   return (
     <Form {...form}>
@@ -151,7 +147,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
             <>
               <FormError message={error} />
               <FormSuccess message={success} />
-              <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-4 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
