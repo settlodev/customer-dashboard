@@ -1,6 +1,7 @@
 import {object, string, number, preprocess, boolean} from "zod";
 
 export const VariantSchema = object({
+    id: string().uuid().optional().nullish(),
     name: string({ required_error: "Variant name is required" }).min(2, "Variant name is required"),
     price: preprocess(
         (val) => {

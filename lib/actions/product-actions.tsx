@@ -11,6 +11,7 @@ import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import {Product} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
+import {Variant} from "@/types/variant/type";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
     await  getAuthenticatedUser();
@@ -148,134 +149,205 @@ export const getProduct= async (id:UUID) : Promise<ApiResponse<Product>> => {
 
     return parseStringify(response)
 }
-//
-// export const updateProduct = async (
-//     productId: string,
-//     product: z.infer<typeof ProductSchema>
-// ): Promise<FormResponse | void> => {
-//     let formResponse: FormResponse | null = null;
-//
-//     // Validate the incoming data
-//     const validData = ProductSchema.safeParse(product);
-//
-//     if (!validData.success) {
-//         formResponse = {
-//             responseType: "error",
-//             message: "Please fill all the required fields",
-//             error: new Error(validData.error.message)
-//         };
-//         return parseStringify(formResponse);
-//     }
-//
-//     // Get current location and business context
-//     const location = await getCurrentLocation();
-//     const business = await getCurrentBusiness();
-//
-//     // Prepare the update payload
-//     const payload = {
-//         ...validData.data,
-//         location: location?.id,
-//         business: business?.id
-//     };
-//
-//     try {
-//         const apiClient = new ApiClient();
-//
-//         // First, fetch the existing product to compare variants
-//         const existingProduct = await apiClient.get(`/api/products/${location?.id}/${productId}`);
-//
-//         // Find variants to be removed (present in existing but not in update)
-//         const variantsToRemove = existingProduct.variants
-//             .filter(existingVariant =>
-//                 !payload.variants.some(newVariant =>
-//                     newVariant.id === existingVariant.id
-//                 )
-//             )
-//             .map(variant => variant.id);
-//
-//         // If there are variants to remove, delete them first
-//         if (variantsToRemove.length > 0) {
-//             await apiClient.delete(
-//                 `/api/products/${location?.id}/${productId}/variants/delete`,
-//                 { variantIds: variantsToRemove }
-//             );
-//         }
-//
-//         // Update the product with new data
-//         await apiClient.put(
-//             `/api/products/${location?.id}/${productId}/update`,
-//             payload
-//         );
-//
-//         formResponse = {
-//             responseType: "success",
-//             message: "Product updated successfully",
-//         };
-//     } catch (error: any) {
-//         const formattedError = await error;
-//         console.error("Error updating product", formattedError);
-//         formResponse = {
-//             responseType: "error",
-//             message: error.message ?? "Something went wrong while processing your request, please try again",
-//             error: error instanceof Error ? error : new Error(String(error)),
-//         };
-//     }
-//
-//     if (formResponse.responseType === "error") return parseStringify(formResponse);
-//
-//     revalidatePath("/products");
-//     redirect("/products");
-// };
 
 export const updateProduct = async (
-    id: UUID,
+    productId: string,
     product: z.infer<typeof ProductSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const validData = ProductSchema.safeParse(product);
 
+    // Validate the incoming data
+    const validData = ProductSchema.safeParse(product);
 
     if (!validData.success) {
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
-            error: new Error(validData.error.message),
+            error: new Error(validData.error.message)
         };
         return parseStringify(formResponse);
     }
 
+    // Get current location and business context
     const location = await getCurrentLocation();
     const business = await getCurrentBusiness();
+
+    // Prepare the update payload
     const payload = {
         ...validData.data,
         location: location?.id,
         business: business?.id
     };
-    // console.log("The payload to update product", payload);
 
     try {
         const apiClient = new ApiClient();
 
-        await apiClient.put(
-            `/api/products/${location?.id}/${id}`,
-            payload
-        );
-        formResponse = {
-            responseType: "success",
-            message: "Product updated successfully",
+        // First, fetch the existing product to compare variants
+        const existingProduct = await getProduct(productId as UUID);
+
+        if (existingProduct.totalElements == 0) {
+            formResponse = {
+                responseType: "error",
+                message: "Error occurred while updating this product",
+            };
+            return parseStringify(formResponse);
+        }
+
+        const existingVariants = existingProduct.content[0].variants;
+
+        // Variants data
+        const variantsPayload: any[] = [];
+
+        // Create a map of existing variants based on original form positions
+        const existingVariantMap = new Map();
+        existingVariants.forEach(variant => {
+            existingVariantMap.set(variant.id, variant);
+        });
+
+        // Process new/updated variants
+        payload.variants.forEach((newVariant) => {
+            if (newVariant.id && existingVariantMap.has(newVariant.id)) {
+                variantsPayload.push({
+                    ...newVariant,
+                    id: newVariant.id
+                });
+                existingVariantMap.delete(newVariant.id);
+            } else {
+                variantsPayload.push(newVariant);
+            }
+        });
+
+        // Any variants still in the map should be deleted
+        const variantsToRemove = Array.from(existingVariantMap.keys());
+
+        // Handle variant deletions with error tracking
+        const deletionErrors: string[] = [];
+        for (const variantId of variantsToRemove) {
+            try {
+                await deleteVariant(productId as UUID, variantId as UUID);
+            } catch (error: any) {
+                console.error(`Failed to delete variant ${variantId}:`, error);
+                deletionErrors.push(variantId);
+
+                const failedVariant = existingVariantMap.get(variantId);
+                if (failedVariant) {
+                    variantsPayload.push({
+                        ...failedVariant,
+                        id: variantId
+                    });
+                }
+            }
+        }
+
+        // Prepare final payload with properly categorized variants
+        const finalPayload = {
+            ...payload,
+            variants: variantsPayload
         };
 
-    } catch (error) {
+        console.log(finalPayload);
+
+        // Update the product with new data
+        await apiClient.put(
+            `/api/products/${location?.id}/${productId}`,
+            finalPayload
+        );
+
+        formResponse = {
+            responseType: "success",
+            message: deletionErrors.length > 0
+                ? "Product updated successfully with some variants retained due to deletion failures"
+                : "Product updated successfully",
+        };
+    }catch (error: any) {
+        const formattedError = await error;
+        console.error("Error updating product - Full Details:", {
+            ...formattedError,
+            details: {
+                ...formattedError.details,
+                fieldErrors: JSON.stringify(formattedError.details?.fieldErrors, null, 2)
+            }
+        });
+        // Or just log the field errors directly:
+        console.error("Field Errors Detail:", JSON.stringify(formattedError.details?.fieldErrors, null, 2));
+
         formResponse = {
             responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
+            message: error.message ?? "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
 
-    revalidatePath("/products")
-    return parseStringify(formResponse);
+    if (formResponse.responseType === "error") return parseStringify(formResponse);
+
+    revalidatePath("/products");
+    redirect("/products");
 };
+
+// export const updateProduct = async (
+//     id: UUID,
+//     product: z.infer<typeof ProductSchema>
+// ): Promise<FormResponse | void> => {
+//     let formResponse: FormResponse | null = null;
+//     const validData = ProductSchema.safeParse(product);
+//
+//
+//     if (!validData.success) {
+//         formResponse = {
+//             responseType: "error",
+//             message: "Please fill all the required fields",
+//             error: new Error(validData.error.message),
+//         };
+//         return parseStringify(formResponse);
+//     }
+//
+//     const location = await getCurrentLocation();
+//     const business = await getCurrentBusiness();
+//     const payload = {
+//         ...validData.data,
+//         location: location?.id,
+//         business: business?.id
+//     };
+//     // console.log("The payload to update product", payload);
+//
+//     try {
+//         const apiClient = new ApiClient();
+//
+//         await apiClient.put(
+//             `/api/products/${location?.id}/${id}`,
+//             payload
+//         );
+//         formResponse = {
+//             responseType: "success",
+//             message: "Product updated successfully",
+//         };
+//
+//     } catch (error) {
+//         formResponse = {
+//             responseType: "error",
+//             message: "Something went wrong while processing your request, please try again",
+//             error: error instanceof Error ? error : new Error(String(error)),
+//         };
+//     }
+//
+//     revalidatePath("/products")
+//     return parseStringify(formResponse);
+// };
+
+export const deleteVariant = async (productId: UUID, variantId: UUID): Promise<void> => {
+    if (!productId) throw new Error("Product ID is required to perform this request");
+    if (!variantId) throw new Error("Variant ID is required to perform this request");
+
+    await getAuthenticatedUser();
+
+    try{
+        const apiClient = new ApiClient();
+        await apiClient.delete(`/api/variants/${productId}/${variantId}`);
+    }
+    catch (error){
+        throw error
+    }
+}
 
 export const deleteProduct = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Product ID is required to perform this request");
@@ -290,6 +362,7 @@ export const deleteProduct = async (id: UUID): Promise<void> => {
     await apiClient.delete(
         `/api/products/${location?.id}/${id}`,
     );
+
     revalidatePath("/products");
 
    }

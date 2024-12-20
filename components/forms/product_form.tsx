@@ -55,8 +55,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     const [imageUrl, setImageUrl] = useState(item?.image || '');
     const { toast } = useToast();
 
-    console.log(item);
-
     const form = useForm<z.infer<typeof ProductSchema>>({
         resolver: zodResolver(ProductSchema),
         defaultValues: {
@@ -368,10 +366,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                     render={({field}) => (
                                         <FormItem className="flex items-center justify-between p-3 rounded-lg border">
                                             <div className="space-y-0.5">
-                                                <FormLabel>Tax</FormLabel>
-                                                <div className="text-sm text-muted-foreground">
-                                                    Tax class that product falls in
-                                                </div>
+                                                <FormLabel>Tax class</FormLabel>
                                             </div>
                                             <FormControl>
                                                 <TaxClassSelector
