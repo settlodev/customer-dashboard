@@ -12,10 +12,9 @@ export const menuItems = (args?: MenuItemArgType) => {
             items: [
                 { title: "Dashboard", link: "/dashboard", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Staff Report", link: "/staff-report", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Top Selling Items", link: "/top-selling", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
-        
+
         // Inventory Management
         {
             label: "Inventory Management",
@@ -31,7 +30,7 @@ export const menuItems = (args?: MenuItemArgType) => {
                 { title: "Suppliers", link: "/suppliers", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
-        
+
         // Stock Management
         {
             label: "Stock Management",
@@ -49,7 +48,7 @@ export const menuItems = (args?: MenuItemArgType) => {
                 { title: "Addons", link: "/addons", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
-        
+
         // Sales & Orders
         {
             label: "Sales",
@@ -61,7 +60,7 @@ export const menuItems = (args?: MenuItemArgType) => {
                 { title: "Orders", link: "/orders", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
-        
+
         // Customer Management
         {
             label: "Customer Management",
@@ -74,7 +73,7 @@ export const menuItems = (args?: MenuItemArgType) => {
                 { title: "Discounts", link: "/discounts", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
-        
+
         // Staff & Roles Management
         {
             label: "Staff Management",
@@ -88,7 +87,7 @@ export const menuItems = (args?: MenuItemArgType) => {
                 { title: "Roles", link: "/roles", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
-        
+
         // Business Operations
         {
             label: "Business Operations",

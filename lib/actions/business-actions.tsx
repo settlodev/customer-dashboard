@@ -37,9 +37,9 @@ export const searchBusiness = async (
     page: number,
     pageLimit: number,
 ): Promise<ApiResponse<Business>> => {
-    
+
     const authToken = await getAuthToken();
-    
+
     const userId = authToken?.id;
 
     try {
@@ -121,7 +121,7 @@ export const createBusiness = async (
         };
     }
 
-   
+
     if ( formResponse && formResponse.responseType === "error" ) return parseStringify(formResponse)
 
     revalidatePath("/business");
@@ -135,11 +135,9 @@ export const updateBusiness = async (
     let formResponse: FormResponse | null = null;
     const authToken = await getAuthToken();
     const userId = authToken?.id;
+    const apiClient = new ApiClient();
 
-    
     const validatedData = BusinessSchema.safeParse(business);
-
-    console.log("validatedData", validatedData)
 
     if (!validatedData.success) {
         formResponse = {
@@ -156,30 +154,36 @@ export const updateBusiness = async (
         owner: userId
     }
 
+    console.log("validatedData", validatedData)
+
     try {
-        const apiClient = new ApiClient();
 
        const dataSent = await apiClient.put(
             `/api/businesses/${userId}/${id}`,
             payload,
         );
-      console.log("dataSent", dataSent)  
-    } catch (error: unknown) {
-        console.log("error", error)
+      console.log("dataSent", dataSent)
+    }catch (error: any) {
+        const formattedError = await error;
+        console.error("Error updating product - Full Details:", {
+            ...formattedError,
+            details: {
+                ...formattedError.details,
+                fieldErrors: JSON.stringify(formattedError.details?.fieldErrors, null, 2)
+            }
+        });
+        // Or just log the field errors directly:
+        console.error("Field Errors Detail:", JSON.stringify(formattedError.details?.fieldErrors, null, 2));
+
         formResponse = {
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message: error.message ?? "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
     revalidatePath("/business");
-    redirect("/business");
+    return parseStringify(formResponse);
 };
 
 export const getSingleBusiness = async (id: UUID): Promise<Business> => {
@@ -190,7 +194,7 @@ export const getSingleBusiness = async (id: UUID): Promise<Business> => {
 
     const userId = authToken?.id;
 
-   
+
     const data = await apiClient.get(
         `/api/businesses/${userId}/${id}`,
     );
@@ -206,7 +210,7 @@ export const deleteBusiness = async (id: UUID): Promise<void> => {
         const apiClient = new ApiClient();
 
         await apiClient.delete(`/api/businesses/${userId}/${id}`);
-        
+
         revalidatePath("/business");
     } catch (error) {
         throw error;

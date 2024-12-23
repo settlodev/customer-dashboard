@@ -8,7 +8,7 @@ export const BusinessSchema= object({
     businessIdentificationDocument: string().nullable().optional(),
     businessLicense: string().nullable().optional(),
     memarts: string().nullable().optional(),
-    description: string().min(2, 'Description must be less than 20 characters').max(120, 'Description can not be more than 20 characters').optional(),
+    description: string().max(200, 'Description can not be more than 20 characters').optional().nullish(),
     vrn: string().nullable().optional(),
     serial: string().nullable().optional(),
     uin: string().nullable().optional(),
