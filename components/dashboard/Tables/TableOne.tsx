@@ -58,7 +58,7 @@ const TableOne = ({orders}: OrderProps) => {
 
     
             <div className="hidden lg:flex items-center justify-center p-2 xl:p-3">
-              <p className="text-sm text-black dark:text-white">{Intl.DateTimeFormat().format(new Date(order.closedDate))}</p>
+              <p className="text-sm text-black dark:text-white">{order.closedDate !== null ? Intl.DateTimeFormat().format(new Date(order.closedDate)) : "-"}</p>
             </div>
 
             <div className="flex items-center justify-center p-2 xl:p-3">
@@ -70,8 +70,20 @@ const TableOne = ({orders}: OrderProps) => {
             </div>
 
             <div className="flex items-center justify-center p-2 sm:flex xl:p-3">
-              <p className="text-sm text-white bg-meta-3 px-2 py-1 rounded">{order.orderPaymentStatus}</p>
-            </div>
+    <p className={`text-sm text-white px-2 py-1 rounded ${
+        order.orderPaymentStatus === "PAID" ? "bg-emerald-500" :
+        order.orderPaymentStatus === "PARTIAL_PAID" ? "bg-amber-50" :
+        order.orderPaymentStatus === "NOT_PAID" ? "bg-red-300" : 
+        "bg-gray-300" // Fallback for unknown status
+    }`}>
+        {order.orderPaymentStatus === "PAID" ? "PAID" :
+         order.orderPaymentStatus === "PARTIAL_PAID" ? "PARTIAL PAID" :
+         order.orderPaymentStatus === "NOT_PAID" ? "NOT PAID" : 
+         "Unknown Status"}
+    </p>
+</div>
+
+
           </div>
         ))}
       </div>

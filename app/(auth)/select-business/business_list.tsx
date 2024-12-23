@@ -205,7 +205,6 @@ const LocationList = ({locations}: { locations: Location[] }) => {
 
     const handleLocationSelect = async (location: Location, index: number) => {
         setPendingIndex(index);
-        
         if (location.subscriptionStatus === "EXPIRED" || location.subscriptionStatus === null) {
           toast({
             variant: "destructive",

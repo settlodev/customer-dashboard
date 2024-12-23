@@ -10,6 +10,7 @@ export default interface SummaryResponse {
   topSellingItems: TopSellingItems[];
   paymentStatusSummary: PaymentStatusSummary;
   paymentMethodTotals: PaymentMethods[];
+  periodicSales:salesStats;
   averageSale: number;
   closingBalance: number;
   complimentary: number;
@@ -36,6 +37,15 @@ export interface PaymentStatusSummary {
 export interface PaymentMethods {
   paymentMethodName: string;
   amount: number;
+}
+
+export interface salesStats{
+  salesPeriod: string;
+  periodicSalesValues: periodicSalesValues[];
+}
+export interface periodicSalesValues {
+  time: string;
+  totalPaidAmount: number;
 }
 
 export interface SoldItems {

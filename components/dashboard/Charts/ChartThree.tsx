@@ -70,8 +70,8 @@ const PaymentMethod: React.FC<PaymentChannelState> = ({ paymentChannels }) => {
             <ReactApexChart options={updatedOptions} series={series} type="donut" />
           ) : (
             <div className="flex items-center justify-center">
-              <span className="mr-2 animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></span>
-              <span>Loading...</span>
+              {/* <span className="mr-2 animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></span> */}
+              <span className="text-gray-500">No data available</span>
             </div>
           )}
         </div>

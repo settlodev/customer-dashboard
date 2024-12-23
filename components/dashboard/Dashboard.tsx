@@ -1,9 +1,9 @@
 "use client";
 import dynamic from "next/dynamic";
 import React, { useEffect, useState } from "react";
-// import ChartOne from "@/components/dashboard/Charts/ChartOne";
+import ChartOne from "@/components/dashboard/Charts/ChartOne";
 import CardDataStats from "./CardDataStats";
-import { SingleInputDateRangeWithTimePicker } from "../ui/date-picker-with-range";
+import { DateRangePicker} from "../ui/date-picker-with-range";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
 import { BadgeDollarSign, BadgePercent, ChartLine, ChartNoAxesCombined, ChartPie, CreditCard, DollarSign, Scale, ShoppingCart } from "lucide-react";
@@ -36,10 +36,10 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between  p-3">
         <div>
         </div>
-        <SingleInputDateRangeWithTimePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>} />
+        <DateRangePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>} />
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
         <CardDataStats
@@ -90,8 +90,8 @@ const Dashboard: React.FC = () => {
       </div>
 
       <div className="mt-4 grid grid-cols-12 gap-4 md:mt-6 md:gap-6 2xl:mt-7.5 2xl:gap-7.5">
-        {/* <ChartOne /> */}
-        {/* <ChartTwo /> */}
+      <ChartOne salesStats={summaries?.periodicSales || { salesPeriod: '', periodicSalesValues: [] }}/>
+      {/* <ChartTwo /> */}
         <PaymentMethod paymentChannels={summaries ? summaries.paymentMethodTotals : []} />
         {/*<MapOne />*/}
         <div className="col-span-12 xl:col-span-8">

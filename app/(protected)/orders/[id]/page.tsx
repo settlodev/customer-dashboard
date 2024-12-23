@@ -22,7 +22,7 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                 return 'bg-blue-500';
             case 'PAID':
                 return 'bg-green-500';
-            case 'not_PAID':
+            case 'NOT_PAID':
                 return 'bg-red-500';
             default:
                 return 'bg-gray-500';

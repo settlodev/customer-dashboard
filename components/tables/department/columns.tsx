@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown } from "lucide-react";
+import { ArrowUpDown, Component } from "lucide-react";
 
 import { CellAction } from "@/components/tables/department/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,9 +36,27 @@ export const columns: ColumnDef<Department>[] = [
     enableHiding: false,
     cell: ({ row }) => {
         const image = row.original.image;
-        const color = row.original.color;
-        return ( image ? <Image src={image} alt={row.original.name} className="w-10 h-10 rounded-lg" width={50} height={50} loading="lazy" /> : 
-            <div className="w-10 h-10 rounded-lg" style={{ backgroundColor: color }}></div>
+
+        // Check if image is a valid URL or path
+        const isValidImageUrl = image &&
+            (image.startsWith('http://') ||
+                image.startsWith('https://') ||
+                image.startsWith('/'));
+
+        return isValidImageUrl ? (
+            <Image
+                src={image}
+                alt={row.original.name}
+                className="w-10 h-10 rounded-lg"
+                width={50}
+                height={50}
+                loading="lazy"
+            />
+        ) : (
+            // Fallback for invalid and missing images
+            <div className="w-10 h-10 rounded-lg bg-emerald-500 flex items-center justify-center">
+                <Component className="w-6 h-6 text-white" />
+            </div>
         );
     }
 },

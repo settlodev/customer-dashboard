@@ -10,7 +10,7 @@ export const menuItems = (args?: MenuItemArgType) => {
             current: args?.isCurrentItem,
             icon: 'dashboard',
             items: [
-                { title: "Dashboard", link: "/", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Dashboard", link: "/dashboard", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Staff Report", link: "/staff-report", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Top Selling Items", link: "/top-selling", current: args?.isCurrentItem, icon: "cart" },
             ]
