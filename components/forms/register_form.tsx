@@ -662,6 +662,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                 disabled={isPending}
                                                                 className="resize-none bg-gray-50"
                                                                 maxLength={200}
+                                                                value={field.value || ""}
                                                             />
                                                         </FormControl>
                                                         <FormMessage />

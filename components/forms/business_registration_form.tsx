@@ -217,6 +217,7 @@ const BusinessRegistrationForm = ({ item }: { item: Business | null | undefined;
                             {...field}
                             disabled={isPending}
                             placeholder="Describe your business"
+                            value={field.value || ''}
                           />
                         </FormControl>
                         <FormMessage />

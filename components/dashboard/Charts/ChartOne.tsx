@@ -13,17 +13,45 @@ const ReactApexChart = dynamic(() => import("react-apexcharts"), {
   ssr: false,
 });
 
+const generateHourlySlots = () => {
+  const slots = [];
+  const start = new Date();
+  start.setHours(0, 0, 0, 0); // Start at 12:00 AM
+  for (let i = 0; i < 24; i++) {
+    const slot = new Date(start);
+    slot.setHours(i);
+    slots.push(slot);
+  }
+  return slots;
+};
+
+const mergeSalesDataWithSlots = (sales: periodicSalesValues[]) => {
+  const slots = generateHourlySlots();
+  const salesMap = new Map(
+    sales.map((sale) => [new Date(sale.time).getHours(), sale])
+  );
+
+  return slots.map((slot) => {
+    const hour = slot.getHours();
+    return (
+      salesMap.get(hour) || {
+        time: slot.toISOString(),
+        totalPaidAmount: 0,  // Fill with 0 if no sales data
+      }
+    );
+  });
+};
+
 const formatTime = (time: string) => {
   const date = new Date(time);
-  return `${date.getHours()}:${date.getMinutes()}`;
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
 };
 
 const ChartOne: React.FC<salesProp> = ({ salesStats }) => {
-  console.log("salesStats", salesStats );
-  const periodicSalesValues: periodicSalesValues[] = salesStats.periodicSalesValues || [];
+  const mergedSales = mergeSalesDataWithSlots(salesStats.periodicSalesValues || []);
 
-  const categories = periodicSalesValues.map((sale) => formatTime(sale.time));
-  const data = periodicSalesValues.map((sale) => sale.totalPaidAmount);
+  const categories = mergedSales.map((sale) => formatTime(sale.time));
+  const data = mergedSales.map((sale) => sale.totalPaidAmount);
 
   const options: ApexOptions = {
     legend: {
@@ -31,7 +59,7 @@ const ChartOne: React.FC<salesProp> = ({ salesStats }) => {
       position: "top",
       horizontalAlign: "left",
     },
-    colors: ["#3C50E0"],
+    colors: ["#10B981"],
     chart: {
       fontFamily: "Satoshi, sans-serif",
       height: 335,
@@ -50,7 +78,7 @@ const ChartOne: React.FC<salesProp> = ({ salesStats }) => {
     },
     xaxis: {
       title: {
-        text: "Time",
+        text: "Time in 24-hour format",
       },
       categories: categories,
       type: "category",
@@ -87,11 +115,9 @@ const ChartOne: React.FC<salesProp> = ({ salesStats }) => {
       <div className="flex flex-wrap items-start justify-between gap-3 sm:flex-nowrap">
         <div className="flex w-full flex-wrap gap-3 sm:gap-5">
           <div className="flex min-w-47.5">
-            <span className="mr-2 mt-1 flex h-4 w-full max-w-4 items-center justify-center rounded-full border border-primary">
-              <span className="block h-2.5 w-full max-w-2.5 rounded-full bg-primary"></span>
-            </span>
-            <div className="w-full">
+            <div className="w-full flex flex-col">
               <p className="text-lg font-medium">Periodic Sales</p>
+              <p className="text-sm font-normal">Hourly Sales Performance</p>
             </div>
           </div>
         </div>
@@ -103,7 +129,7 @@ const ChartOne: React.FC<salesProp> = ({ salesStats }) => {
             options={options}
             series={amount}
             type="line"
-            height={350}
+            height={370}
             width={"100%"}
           />
         </div>
