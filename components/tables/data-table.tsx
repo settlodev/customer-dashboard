@@ -13,16 +13,12 @@ import {
 } from "@tanstack/react-table";
 import React from "react";
 import { motion } from "framer-motion";
-
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
-  // ListFilter,
   Search,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-// import { Icon } from "@iconify/react";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -42,14 +38,6 @@ import {
 } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { DataTableViewOptions } from "@/components/tables/column-toggle";
-// import {
-//   DropdownMenu,
-//   DropdownMenuCheckboxItem,
-//   DropdownMenuContent,
-//   DropdownMenuLabel,
-//   DropdownMenuSeparator,
-//   DropdownMenuTrigger,
-// } from "@/components/ui/dropdown-menu";
 import { DoubleArrowLeftIcon, DoubleArrowRightIcon } from "@radix-ui/react-icons";
 import { ProductCSVDialog} from "../csv/CSVImport";
 import { CSVStockDialog } from "../csv/stockCsvImport";
@@ -69,113 +57,99 @@ interface DataTableProps<TData, TValue> {
 }
 
 export function DataTable<TData, TValue>({
-  columns,
-  data,
-  searchKey,
-  pageCount,
-  pageSizeOptions = [10, 20, 30, 40, 50],
-}: DataTableProps<TData, TValue>) {
+   columns,
+   data,
+   searchKey,
+   pageCount,
+   pageSizeOptions = [10, 20, 30, 40, 50],
+ }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+
   // Search params
   const page = searchParams?.get("page") ?? "1";
   const pageAsNumber = Number(page);
-  const fallbackPage =
-    isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
+  const fallbackPage = isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
   const per_page = searchParams?.get("limit") ?? "10";
   const perPageAsNumber = Number(per_page);
   const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
   const [sorting, setSorting] = React.useState<SortingState>([]);
 
   const createQueryString = React.useCallback(
-    (params: Record<string, string | number | null>) => {
-      const newSearchParams = new URLSearchParams(searchParams?.toString());
-  
-      for (const [key, value] of Object.entries(params)) {
-        if (value === null) {
-          newSearchParams.delete(key);
-        } else {
-          newSearchParams.set(key, String(value));
+      (params: Record<string, string | number | null>) => {
+        const newSearchParams = new URLSearchParams(searchParams?.toString());
+
+        for (const [key, value] of Object.entries(params)) {
+          if (value === null) {
+            newSearchParams.delete(key);
+          } else {
+            newSearchParams.set(key, String(value));
+          }
         }
-      }
-  
-      return newSearchParams.toString();
-    },
-    [searchParams], 
+
+        return newSearchParams.toString();
+      },
+      [searchParams],
   );
 
-  // Handle server-side pagination
-  const [{ pageIndex, pageSize }, setPagination] =
-    React.useState<PaginationState>({
-      pageIndex: fallbackPage - 1,
-      pageSize: fallbackPerPage,
+    // Handle server-side pagination
+    const [{ pageIndex, pageSize }, setPagination] = React.useState<PaginationState>({
+        pageIndex: fallbackPage - 1,
+        pageSize: fallbackPerPage,
     });
 
+    // Update URL when pagination changes
+    React.useEffect(() => {
+        const newPage = pageIndex + 1;
+        const queryString = createQueryString({
+            page: newPage,
+            limit: pageSize,
+        });
 
-  React.useEffect(() => {
-    router.push(
-      `${pathname}?${createQueryString({
-        page: pageIndex + 1,
-        limit: pageSize,
-      })}`,
-      {
-        scroll: false,
-      },
-    );
-  }, [pageIndex, pageSize, createQueryString, pathname, router]);
+        // Use replace instead of push to avoid adding to history
+        router.replace(`${pathname}?${queryString}`, { scroll: false });
+    }, [pageIndex, pageSize]);
 
-
-
-  const table = useReactTable({
-    data,
-    columns,
-    pageCount: pageCount ?? -1,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    state: {
-      sorting,
-      pagination: { pageIndex, pageSize },
-    },
-    onPaginationChange: setPagination,
-    getPaginationRowModel: getPaginationRowModel(),
-    manualPagination: true,
-    manualFiltering: true,
-    enableRowSelection: true,
-    onSortingChange: setSorting,
-    getSortedRowModel: getSortedRowModel(),
-  });
-
-  const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
-
-  React.useEffect(() => {
-    if (searchValue?.length > 0) {
-      router.push(
-        `${pathname}?${createQueryString({
-          page: null,
-          limit: null,
-          search: searchValue,
-        })}`,
-        {
-          scroll: false,
+    const table = useReactTable({
+        data,
+        columns,
+        pageCount: pageCount ?? -1,
+        getCoreRowModel: getCoreRowModel(),
+        getFilteredRowModel: getFilteredRowModel(),
+        state: {
+            sorting,
+            pagination: { pageIndex, pageSize },
         },
-      );
-    }
-    if (searchValue?.length === 0 || searchValue === undefined) {
-      router.push(
-        `${pathname}?${createQueryString({
-          page: null,
-          limit: null,
-          search: null,
-        })}`,
-        {
-          scroll: false,
-        },
-      );
-    }
+        onPaginationChange: setPagination,
+        getPaginationRowModel: getPaginationRowModel(),
+        manualPagination: true,
+        manualFiltering: true,
+        enableRowSelection: true,
+        onSortingChange: setSorting,
+        getSortedRowModel: getSortedRowModel(),
+    });
 
-    setPagination((prev) => ({ ...prev, pageIndex: 0 }));
-  }, [searchValue, createQueryString, router, pathname]);
+    // Handle search
+    const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
+
+    React.useEffect(() => {
+        if (searchValue?.length > 0) {
+            const queryString = createQueryString({
+                page: 1, // Reset to first page on search
+                limit: pageSize,
+                search: searchValue,
+            });
+            router.replace(`${pathname}?${queryString}`, { scroll: false });
+        } else if (searchValue?.length === 0 || searchValue === undefined) {
+            const queryString = createQueryString({
+                page: 1,
+                limit: pageSize,
+                search: null,
+            });
+            router.replace(`${pathname}?${queryString}`, { scroll: false });
+        }
+    }, [searchValue]);
 
   return (
     <motion.div>
@@ -194,49 +168,15 @@ export function DataTable<TData, TValue>({
             }
           />
         </div>
-     
+
 
         <div className="flex items-center space-x-2">
           <DataTableViewOptions table={table} />
-
-          {/* <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                className="h-8 gap-1"
-                disabled={true}
-                size="sm"
-                variant="outline"
-              >
-                <ListFilter className="h-3.5 w-3.5" />
-                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-                  Filter
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Filter by</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuCheckboxItem checked>All</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Active</DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem>Disabled</DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu> */}
 
          {pathname === "/products" ?  <ProductCSVDialog /> : null}
          {pathname === "/stocks" ?  <CSVStockDialog /> : null}
          {pathname === "/stocks" ?  <ProductWithStockCSVDialog /> : null}
 
-          {/* <Button
-            className="h-8 gap-1"
-            disabled={true}
-            size="sm"
-            variant="outline"
-          >
-            <Icon className="h-3.5 w-3.5" icon="mdi:file-outline" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
-              Export
-            </span>
-          </Button> */}
         </div>
       </div>
 
