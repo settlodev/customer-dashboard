@@ -708,8 +708,16 @@ function RegisterForm({ step }: { step: string }) {
                                                 className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                                 <h3 className="font-bold flex-1">Location Information</h3>
                                             </div>
-                                            <div className="mt-4 flex">
-                                                <UploadImageWidget imagePath={'business'} displayStyle={'default'} displayImage={true} setImage={setLocationImageUrl} />
+                                            <div className="mt-4 flex flex-col lg:flex-row gap-6">
+                                                <div>
+                                                <UploadImageWidget 
+                                                imagePath={'location'} 
+                                                displayStyle={'default'} 
+                                                displayImage={true} 
+                                                setImage={setLocationImageUrl} 
+                                                />
+                                                </div>
+                                                
                                                 <div className="flex-1">
                                                     <FormField
                                                         control={locationForm.control}
