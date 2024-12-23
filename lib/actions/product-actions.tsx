@@ -11,7 +11,7 @@ import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import {Product} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
-import {Variant} from "@/types/variant/type";
+// import {Variant} from "@/types/variant/type";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
     await  getAuthenticatedUser();

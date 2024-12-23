@@ -19,11 +19,15 @@ function BusinessTypeSelector({
     onChange,
 }: BusinessTypeSelectorProps) {
 
+    const isValidValue = [BusinessType.RETAIL, BusinessType.HOSPITALITY].includes(value as BusinessType);
+
     return (
-        <Select value={value} onValueChange={onChange} disabled={isDisabled}>
-              <SelectTrigger>
-                    <SelectValue placeholder={placeholder ||"Select business type"} />
-                </SelectTrigger>
+        <Select value={isValidValue ? value : ""} onValueChange={onChange} disabled={isDisabled}>
+            <SelectTrigger>
+                <SelectValue placeholder={placeholder || "Select business type"}>
+                    {value ? (value === BusinessType.RETAIL ? "Retail" : "Hospitality") : placeholder}
+                </SelectValue>
+            </SelectTrigger>
             <SelectContent>
                 <SelectItem key={BusinessType.RETAIL} value={BusinessType.RETAIL}>
                     Retail
@@ -31,9 +35,9 @@ function BusinessTypeSelector({
                 <SelectItem key={BusinessType.HOSPITALITY} value={BusinessType.HOSPITALITY}>
                     Hospitality
                 </SelectItem>
-
             </SelectContent>
         </Select>
     )
 }
+
 export default BusinessTypeSelector

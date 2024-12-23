@@ -165,6 +165,7 @@ export const updateBusiness = async (
         );
       console.log("dataSent", dataSent)  
     } catch (error: unknown) {
+        console.log("error", error)
         formResponse = {
             responseType: "error",
             message:

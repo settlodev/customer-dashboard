@@ -30,8 +30,10 @@ import { BusinessSchema } from "@/types/business/schema";
 import { createBusiness, updateBusiness } from "@/lib/actions/business-actions";
 import BusinessTypeSelector from "../widgets/business-type-selector";
 import CountrySelector from "../widgets/country-selector";
+import { BusinessType } from "@/types/enums";
 
 const BusinessForm = ({ item }: { item: Business | null | undefined }) => {
+    console.log("The item is", item);
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
 
@@ -40,6 +42,7 @@ const BusinessForm = ({ item }: { item: Business | null | undefined }) => {
         defaultValues: {
             ...item,
             status: item ? item.status : true,
+            businessType: item ? item.businessType : BusinessType.RETAIL,
             // image: item ? item.image : '',
             logo: item ? item.logo : null,
             notificationPhone: item ? item.notificationPhone : null,
@@ -55,6 +58,7 @@ const BusinessForm = ({ item }: { item: Business | null | undefined }) => {
             receiptSuffix: item ? item.receiptSuffix : null,
             receiptImage: item ? item.receiptImage : null,
             website: item ? item.website : null,
+            vfdRegistrationState: item ? item.vfdRegistrationState : false
         },
     });
 

@@ -29,6 +29,7 @@ export const BusinessSchema= object({
     phoneNumber: string().optional(),
     email: string().optional(),
     address: string().optional(),
+    vfdRegistrationState: boolean().optional(),
     status: boolean().optional(),
 
 })
