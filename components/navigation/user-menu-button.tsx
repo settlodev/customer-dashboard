@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Settings, User, Briefcase, LogOut, ChevronDown } from "lucide-react";
+import {Settings, User, LogOut, ChevronDown, LayoutDashboard} from "lucide-react";
 import UserAvatar from "@/components/widgets/user-avatar";
 import { ExtendedUser } from "@/types/types";
 
@@ -46,16 +46,16 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
 
             <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem asChild>
-                    <a href="/profile" className="flex items-center cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
-                        <span>My Profile</span>
+                    <a href="/dashboard" className="flex items-center cursor-pointer">
+                        <LayoutDashboard className="mr-2 h-4 w-4" />
+                        <span>Dashboard</span>
                     </a>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem asChild>
-                    <a href="/business" className="flex items-center cursor-pointer">
-                        <Briefcase className="mr-2 h-4 w-4" />
-                        <span>My Businesses</span>
+                    <a href="/profile" className="flex items-center cursor-pointer">
+                        <User className="mr-2 h-4 w-4" />
+                        <span>My Profile</span>
                     </a>
                 </DropdownMenuItem>
 
