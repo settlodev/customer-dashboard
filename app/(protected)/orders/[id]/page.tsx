@@ -29,6 +29,9 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
         }
     };
 
+    const total = orderData.amount - (orderData.discountAmount || 0);
+    const amountDue = total;
+
     return (
         <div className="min-h-screen bg-gray-50 p-4 md:p-8">
             <div className="max-w-7xl mx-auto space-y-6">
@@ -155,6 +158,7 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                     Payment Summary
                                 </h2>
                             </CardHeader>
+                            
                             <CardContent className="pt-4">
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
@@ -167,11 +171,11 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                     </div>
                                     <div className="flex justify-between text-lg font-bold pt-3 border-t">
                                         <span>Total</span>
-                                        <span>{Intl.NumberFormat("en-US").format(orderData.total || 0)}</span>
+                                        <span>{Intl.NumberFormat("en-US").format(total || 0)}</span>
                                     </div>
                                     <div className="flex justify-between text-lg text-red-600 font-bold">
                                         <span>Amount Due</span>
-                                        <span>{Intl.NumberFormat("en-US").format(orderData.amountDue || 0)}</span>
+                                        <span>{Intl.NumberFormat("en-US").format(amountDue || 0)}</span>
                                     </div>
                                 </div>
                             </CardContent>
