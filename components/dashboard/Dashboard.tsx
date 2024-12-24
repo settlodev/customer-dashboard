@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
     const getSummaries = async () => {
       try {
         const [summary, orders] = await Promise.all([fetchSummaries(), fetchOrders()]);
-        console.log(summary );
+        // console.log(summary );
         setSummaries(summary as SummaryResponse);
         setOrders(orders);
       } catch (error) {
@@ -69,7 +69,7 @@ const Dashboard: React.FC = () => {
         <CardDataStats title="Completed Orders" total={`${summaries ? Intl.NumberFormat().format(summaries.completedOrders) : "0.00"}`}>
           <ShoppingCart />
         </CardDataStats>
-        <CardDataStats title="Pending Orders" total={`${summaries ? Intl.NumberFormat().format(summaries.pendingOrders) : "0.00"}`}>
+        <CardDataStats title="Ongoing Orders" total={`${summaries ? Intl.NumberFormat().format(summaries.pendingOrders) : "0.00"}`}>
           <ShoppingCart />
         </CardDataStats>
       </div>

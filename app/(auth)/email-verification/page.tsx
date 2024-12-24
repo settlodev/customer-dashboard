@@ -3,7 +3,7 @@
 import { Spinner } from "@nextui-org/spinner";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { verifyToken } from "@/lib/actions/auth-actions";
+import { logout, verifyToken } from "@/lib/actions/auth-actions";
 import { FormResponse } from "@/types/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { FormError } from "@/components/widgets/form-error";
@@ -26,6 +26,8 @@ const VerificationPage = () => {
     });
 
     useEffect(() => {
+
+        logout();
         // If verification was already attempted, don't run again
         if (verificationState.attempted) {
             return;

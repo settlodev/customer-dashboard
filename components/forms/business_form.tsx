@@ -19,7 +19,7 @@ import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
-import { Building2, Facebook, Instagram, Loader2Icon, MapPin, X, Youtube } from "lucide-react";
+import { Building2, Facebook, Instagram, Loader2Icon, MapPin, X, Youtube} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "../ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -31,10 +31,12 @@ import { updateBusiness } from "@/lib/actions/business-actions";
 import BusinessTypeSelector from "../widgets/business-type-selector";
 import CountrySelector from "../widgets/country-selector";
 import { BusinessType } from "@/types/enums";
+// import UploadImageWidget from "../widgets/UploadImageWidget";
 const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: { item: Business | null | undefined; onSubmit: (values: z.infer<typeof BusinessSchema>) => void; submitButtonText?: string }) => {
     console.log("The item is", item);
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
+    const [businessLicense,setBusinessLicense,] = useState<string | undefined>(item ? item.businessLicense : '');
 
     const form = useForm<z.infer<typeof BusinessSchema>>({
         resolver: zodResolver(BusinessSchema),
@@ -79,7 +81,7 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
 
         startTransition(() => {
             if (item) {
-                console.log("Updating existing business with ID:", item);
+                // console.log("Updating existing business with ID:", item);
                 updateBusiness(item.id, values).then((data) => {
                     if (data) setResponse(data);
                 });
@@ -192,6 +194,98 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
                         </div>
                     </CardContent>
                 </Card>
+
+                {/* <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <File  className="w-5 h-5"/>
+                             Document
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="grid gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                                <FormLabel className="block mt-2 mb-2">Business License</FormLabel>
+                                <div className="bg-gray-50 rounded-lg p-4 content-center">
+                                    <UploadImageWidget
+                                        imagePath={'departments'}
+                                        displayStyle={'default'}
+                                        displayImage={true}
+                                        showLabel={false}
+                                        label="Image"
+                                        setImage={setBusinessLicense}
+                                    />
+                                </div>
+                            </div>
+                            <FormField
+                                control={form.control}
+                                name="twitter"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Twitter</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <X className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    disabled={isPending}
+                                                    value={field.value || ''}
+                                                // onChange={}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="facebook"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Facebook</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Facebook className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    disabled={isPending}
+                                                    value={field.value || ''}
+                                                // onChange={}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="youtube"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Youtube</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Youtube className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    disabled={isPending}
+                                                    value={field.value || ''}
+                                                // onChange={}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    </CardContent>
+                </Card> */}
 
                 <Card>
                     <CardHeader>
@@ -316,8 +410,6 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
                         )}
                     />
                 )}
-
-
 
                 <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
                     <CancelButton />
