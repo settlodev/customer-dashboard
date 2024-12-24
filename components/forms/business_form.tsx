@@ -27,12 +27,11 @@ import CancelButton from "../widgets/cancel-button";
 import { Separator } from "../ui/separator";
 import { Business } from "@/types/business/type";
 import { BusinessSchema } from "@/types/business/schema";
-import { createBusiness, updateBusiness } from "@/lib/actions/business-actions";
+import { updateBusiness } from "@/lib/actions/business-actions";
 import BusinessTypeSelector from "../widgets/business-type-selector";
 import CountrySelector from "../widgets/country-selector";
 import { BusinessType } from "@/types/enums";
-
-const BusinessForm = ({ item }: { item: Business | null | undefined }) => {
+const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: { item: Business | null | undefined; onSubmit: (values: z.infer<typeof BusinessSchema>) => void; submitButtonText?: string }) => {
     console.log("The item is", item);
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
@@ -85,11 +84,12 @@ const BusinessForm = ({ item }: { item: Business | null | undefined }) => {
                     if (data) setResponse(data);
                 });
             } else {
-                createBusiness(values)
-                    .then((data) => {
+                // createBusiness(values)
+                //     .then((data) => {
 
-                        if (data) setResponse(data);
-                    });
+                //         if (data) setResponse(data);
+                //     });
+                onSubmit(values)
             }
         });
     };
@@ -332,7 +332,7 @@ const BusinessForm = ({ item }: { item: Business | null | undefined }) => {
                                 Processing
                             </div>
                         ) : (
-                            item ? 'Update business' : 'Setup business'
+                            item ? 'Update business' : submitButtonText
                         )}
                     </Button>
                 </div>

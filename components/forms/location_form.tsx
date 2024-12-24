@@ -22,7 +22,7 @@ import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
 import {Building2, Clock, Loader2Icon, Mail, MapPin} from "lucide-react";
 import { Location } from "@/types/location/type";
-import { createLocation, updateLocation } from "@/lib/actions/location-actions";
+import {createLocation, updateLocation } from "@/lib/actions/location-actions";
 import { toast } from "@/hooks/use-toast";
 import { PhoneInput } from "../ui/phone-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -32,7 +32,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import CancelButton from "../widgets/cancel-button";
 import { Separator } from "../ui/separator";
 
-const LocationForm = ({ item }: { item: Location | null | undefined }) => {
+const LocationForm = ({ item, onSubmit ,multipleStep }: { item: Location | null | undefined, onSubmit: (values: z.infer<typeof LocationSchema>) => void, multipleStep?: boolean }) => {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
 
@@ -64,7 +64,11 @@ const LocationForm = ({ item }: { item: Location | null | undefined }) => {
           if (data) setResponse(data);
         });
       } else {
-        createLocation(values)
+        if(multipleStep){
+          onSubmit(values)
+        }
+
+          createLocation(values)
           .then((data) => {
 
             if (data) setResponse(data);

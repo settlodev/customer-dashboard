@@ -89,6 +89,7 @@ export const createBusiness = async (
 
 
     const validatedData = BusinessSchema.safeParse(business);
+    console.log("validatedData: ", validatedData);
 
     if (!validatedData.success) {
         formResponse = {
@@ -108,11 +109,15 @@ export const createBusiness = async (
     try {
         const apiClient = new ApiClient();
 
-        await apiClient.post(
+        const business =await apiClient.post(
             `/api/businesses/${userId}/create`,
             payload,
         );
+        console.log("business", business);
+        return parseStringify(business);
+        
     } catch (error: unknown) {
+        console.error("Error creating business:", error);
         formResponse = {
             responseType: "error",
             message:

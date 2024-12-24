@@ -82,8 +82,11 @@ export const searchLocations = async (
 
 export const createLocation = async (
     location: z.infer<typeof LocationSchema>,
+    multiStep?: boolean
 ): Promise<FormResponse> => {
     let formResponse: FormResponse | null = null;
+
+    console.log('Starting createLocation with data:', location );
 
     try {
         // Authentication check
@@ -105,11 +108,14 @@ export const createLocation = async (
                 error: new Error(validatedData.error.message),
             });
         }
+        console.log("validatedData: ", validatedData);
 
         // Get current business
-        const business = await getCurrentBusiness();
-        if (!business?.id) {
-            console.error('Business ID not found', {
+        const currentBusiness = await getCurrentBusiness();
+        const business = multiStep ? location.business : currentBusiness?.id;
+
+        if (!business) {
+            console.error('Business not found', {
                 authenticatedUser,
                 location
             });
@@ -120,19 +126,28 @@ export const createLocation = async (
             });
         }
 
-        // Prepare payload
-        const payload = {
-            ...validatedData.data,
-            business: business.id,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-        };
+        // if multiStep is true use the data from the form else use the data from the validatedData
+        // if multiStep is true use the data from the form else use the data from the validatedData
+                const payload = multiStep 
+                ? location 
+                : {
+                    ...validatedData.data,
+                    business: business,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                };
+            console.log("payload: ", payload);
+
+       
+
 
         const apiClient = new ApiClient();
         const response = await apiClient.post(
-            `/api/locations/${business.id}/create`,
+            `/api/locations/${business}/create`,
             payload,
         );
+
+        console.log("response: ", response);
 
         formResponse = parseStringify({
             responseType: "success",
@@ -156,8 +171,12 @@ export const createLocation = async (
 
     if (formResponse) {
         if (formResponse.responseType === "success") {
-            revalidatePath("/locations");
-            redirect("/locations");
+            if (multiStep) {
+                redirect("/business"); 
+            } else {
+                revalidatePath("/locations");
+                redirect("/locations");
+            }
         }
         return formResponse;
     }

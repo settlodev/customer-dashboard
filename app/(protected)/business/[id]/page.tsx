@@ -10,8 +10,8 @@ import {
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Business } from "@/types/business/type";
-import BusinessForm from "@/components/forms/business_form";
 import { getSingleBusiness } from "@/lib/actions/business-actions";
+import MultiStepBusinessForm from "@/components/forms/multistep_form";
 
 export default async function Page({params}: { params: { id: string }; }) {
     const isNewItem = params.id === "new";
@@ -59,7 +59,7 @@ const BusinessCard = ({isNewItem, item}: { isNewItem: boolean; item: Business | 
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <BusinessForm item={item} />
+            <MultiStepBusinessForm item={item}/>
         </CardContent>
     </Card>
 );

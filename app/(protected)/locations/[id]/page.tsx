@@ -75,7 +75,7 @@ const LocationCard = ({
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <LocationForm item={item} />
+            <LocationForm item={item} multipleStep onSubmit={() => {}} />
         </CardContent>
     </Card>
 );
