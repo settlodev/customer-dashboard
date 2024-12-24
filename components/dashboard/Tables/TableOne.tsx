@@ -4,7 +4,35 @@ interface OrderProps {
   orders: Orders[]
 }
 
+
+
 const TableOne = ({ orders }: OrderProps) => {
+  console.log(orders);
+
+  const renderPaymentStatus = (status: string) => {
+    const statusStyles = {
+        PAID: 'bg-emerald-500',
+        NOT_PAID: 'bg-red-300',
+        PARTIAL_PAID: 'bg-amber-50',
+    };
+  
+    const statusText = {
+        PAID: 'PAID',
+        NOT_PAID: 'NOT PAID',
+        PARTIAL: 'PARTIAL PAID',
+    };
+  
+    return (
+        <div className="flex items-center justify-center p-2 sm:flex xl:p-3">
+            {status in statusStyles && (
+                <p className={`text-sm text-white px-2 py-1 rounded ${statusStyles[status as keyof typeof statusStyles]}`}>
+                    {statusText[status as keyof typeof statusText]}
+                </p>
+            )}
+        </div>
+    );
+  };
+
   return (
     <div className="rounded-sm border border-stroke bg-white px-5 pb-2.5 pt-6 shadow-default dark:border-strokedark dark:bg-boxdark sm:px-7.5 xl:pb-1">
       <h4 className="mb-6 text-xl font-semibold text-black dark:text-white">
@@ -67,31 +95,9 @@ const TableOne = ({ orders }: OrderProps) => {
             <div className="flex items-center justify-center p-2 sm:flex xl:p-3">
               <p className="text-sm text-black dark:text-white">{order.items.length}</p>
             </div>
-            <div className="flex items-center justify-center p-2 sm:flex xl:p-3">
-              {order.orderPaymentStatus === "PAID" &&
-                (
-                  <p className='text-sm text-white px-2 py-1 rounded bg-emerald-500'>
-                    PAID
-                  </p>
-                )}
-            </div>
-            <div className="flex items-center justify-center p-2 sm:flex xl:p-3">
-              {order.orderPaymentStatus === "NOT_PAID" &&
-                (
-                  <p className='text-sm text-white px-2 py-1 rounded bg-red-300'>
-                    PAID
-                  </p>
-                )}
-            </div>
 
-            <div className="flex items-center justify-center p-2 sm:flex xl:p-3">
-              {order.orderPaymentStatus === "PARTIAL_PAID" &&
-                (
-                  <p className='text-sm text-white px-2 py-1 rounded bg-amber-50'>
-                    PAID
-                  </p>
-                )}
-            </div>
+            {renderPaymentStatus(order.orderPaymentStatus)}
+            
 
           </div>
         ))}
