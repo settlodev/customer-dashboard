@@ -36,7 +36,7 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
     console.log("The item is", item);
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
-    const [businessLicense,setBusinessLicense,] = useState<string | undefined>(item ? item.businessLicense : '');
+    // const [businessLicense,setBusinessLicense,] = useState<string | undefined>(item ? item.businessLicense : '');
 
     const form = useForm<z.infer<typeof BusinessSchema>>({
         resolver: zodResolver(BusinessSchema),
