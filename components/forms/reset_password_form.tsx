@@ -93,7 +93,7 @@ function ResetPasswordForm() {
         <div className="mt-4 text-start text-sm">
           Already have an account?{" "}
           <Link href="/login" className="underline">
-            Sign in
+            Login in
           </Link>
         </div>
            </CardContent>

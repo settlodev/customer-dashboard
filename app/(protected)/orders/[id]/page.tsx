@@ -7,6 +7,7 @@ import { getOrder } from "@/lib/actions/order-actions";
 import { Orders } from "@/types/orders/type";
 import { UUID } from "crypto";
 import Image from "next/image";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
     const order = await getOrder(params.id as UUID);
@@ -30,7 +31,7 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
     };
 
     const total = orderData.amount - (orderData.discountAmount || 0);
-    const amountDue = total;
+    // const amountDue = total;
 
     return (
         <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -173,51 +174,59 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                         <span>Total</span>
                                         <span>{Intl.NumberFormat("en-US").format(total || 0)}</span>
                                     </div>
-                                    <div className="flex justify-between text-lg text-red-600 font-bold">
+                                    {/* <div className="flex justify-between text-lg text-red-600 font-bold">
                                         <span>Amount Due</span>
                                         <span>{Intl.NumberFormat("en-US").format(amountDue || 0)}</span>
-                                    </div>
+                                    </div> */}
                                 </div>
                             </CardContent>
                         </Card>
-
-                        {/* Transaction Details */}
-                        {orderData.transactions && (
-                            <Card>
-                                <CardHeader className="border-b">
-                                    <h2 className="text-xl font-semibold flex items-center gap-2">
-                                        <CreditCard className="text-gray-600" />
-                                        Transaction Details
-                                    </h2>
-                                </CardHeader>
-                                <CardContent className="pt-4">
-                                    {orderData.transactions.map(transaction => (
-                                        <div key={transaction.id} className="space-y-3">
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Payment Type</span>
-                                                <span className="font-medium">{orderData.paymentType?.replace('_', ' ')}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Payment Method</span>
-                                                <span className="font-medium">{transaction.paymentMethodName}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Payment Status</span>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(orderData.orderPaymentStatus)}`}>
-                                                    {orderData.orderPaymentStatus}
-                                                </span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-gray-600">Sold By</span>
-                                                <span className="font-medium">{orderData.finishedByName}</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        )}
                     </div>
+                   
                 </div>
+                 {/* Transaction Details */}
+                 <Card className="w-full">
+      <CardHeader className="border-b">
+        <h2 className="text-xl font-semibold flex items-center gap-2">
+          <CreditCard className="text-gray-600" />
+          Transaction Details
+        </h2>
+      </CardHeader>
+      <CardContent className="">
+        {orderData.transactions && (
+          <Table>
+            <TableHeader>
+              <TableRow>
+                 <TableHead></TableHead>
+                <TableHead>Payment Method</TableHead>
+                <TableHead>Payment Status</TableHead>
+                <TableHead>Sold By</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {orderData.transactions.map((transaction,index) => (
+                <TableRow key={transaction.id}>
+                  <TableCell className="font-medium">
+                    {index+1}
+                  </TableCell>
+                  <TableCell>{transaction.paymentMethodName}</TableCell>
+                  <TableCell>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(
+                        orderData.orderPaymentStatus
+                      )}`}
+                    >
+                      {orderData.orderPaymentStatus}
+                    </span>
+                  </TableCell>
+                  <TableCell>{orderData.finishedByName}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
             </div>
         </div>
     );

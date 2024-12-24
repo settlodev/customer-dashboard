@@ -62,6 +62,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
     );
 
     const submitData = (values: z.infer<typeof StaffSchema>) => {
+        console.log("Submitting data:", values);
         setResponse(undefined);
 
         startTransition(() => {

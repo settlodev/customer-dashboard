@@ -27,7 +27,7 @@ const Dashboard: React.FC = () => {
         setSummaries(summary as SummaryResponse);
         setOrders(orders);
       } catch (error) {
-        console.error("Error fetching summaries:", error);
+        console.error("Error fetching summaries:", error );
       }
     };
 

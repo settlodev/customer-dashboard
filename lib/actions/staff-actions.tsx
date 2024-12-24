@@ -12,6 +12,12 @@ import { parseStringify } from "@/lib/utils";
 import { StaffSchema } from "@/types/staff";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import {redirect} from "next/navigation";
+import { inviteStaffToBusiness} from "./emails/send";
+
+type invitedStaff = {
+    passwordResetToken: string;
+    staffEmail: string;
+}
 
 export const fetchAllStaff = async (): Promise<Staff[]> => {
     await getAuthenticatedUser();
@@ -104,10 +110,25 @@ export const createStaff = async (
             business: business?.id
         }
 
-        await apiClient.post(
+       const staff = await apiClient.post(
             `/api/staff/${location?.id}/create`,
             payload,
-        );
+        ) as Staff;
+
+        console.log("The staff created is", staff);
+
+        if (staff && staff.dashboardAccess === true) {
+            const staffId = staff.id;
+            const businessId = business?.id;
+
+            if (staffId && businessId) {
+                console.log("Inviting staff");
+                await inviteStaff(staffId, businessId);
+            } else {
+                throw new Error("Invalid staff or business id");
+            }
+        }
+
         formResponse = {
             responseType: "success",
             message: "Staff created successfully",
@@ -207,6 +228,7 @@ export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
 };
 
 export const deleteStaff = async (id: UUID): Promise<void> => {
+    console.log("The staff id to delete is: ", id)
     if (!id) throw new Error("Staff ID is required to perform this request");
     await getAuthenticatedUser();
 
@@ -216,6 +238,33 @@ export const deleteStaff = async (id: UUID): Promise<void> => {
         const location = await getCurrentLocation();
 
         await apiClient.delete(`/api/staff/${location?.id}/${id}`);
+        revalidatePath("/staff");
+    } catch (error) {
+        console.error("Error deleting staff:", error);
+        throw error;
+    }
+};
+
+const inviteStaff = async (staffId: UUID,businessId:UUID): Promise<void> => {
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();  
+
+        const location = await getCurrentLocation();
+
+        const payload = {
+            staff: staffId,
+            business: businessId
+        }
+
+       const invitedStaff: invitedStaff = await apiClient.put(`/api/staff/${location?.id}/invite-to-business`, payload);
+       console.log("The invited staff is", invitedStaff);
+       const token = invitedStaff.passwordResetToken;
+       const email = invitedStaff.staffEmail;
+       if(token && email) {
+        await inviteStaffToBusiness(token,email);
+    }
         revalidatePath("/staff");
     } catch (error) {
         throw error;

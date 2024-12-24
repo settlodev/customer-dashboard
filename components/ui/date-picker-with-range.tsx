@@ -125,7 +125,7 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
     defaultValues: {
       from: (() => {
         const now = new Date();
-        now.setHours(12, 0, 0, 0); 
+        now.setHours(0, 0, 0, 0); 
         return now;
       })(),
       to: new Date(),
@@ -133,7 +133,7 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
   });
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
-    // console.log("Submitting data:", data);
+    console.log("Submitting data:", data);
     startTransition(() => {
       fetchSummaries(data.from.toISOString(), data.to.toISOString())
         .then((response) => {
