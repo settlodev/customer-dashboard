@@ -64,7 +64,7 @@ export const searchStockIntakes = async (
             `/api/stock-intakes/${location?.id}/all`,
             query
         );
-        console.log("The list of Stock Intakes in this location: ", data)
+        // console.log("The list of Stock Intakes in this location: ", data)
         return parseStringify(data);
     }
     catch (error){
@@ -92,7 +92,6 @@ export const createStockIntake = async (
     const payload = {
         ...validData.data,
     };
-
     try {
         const apiClient = new ApiClient();
        await apiClient.post(

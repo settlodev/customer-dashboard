@@ -33,7 +33,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         toast({
           variant: "default",
           title: "Success",
-          description: "Space / Section deleted successfully!",
+          description: "KDS deleted successfully!",
         });
       } else {
         toast({

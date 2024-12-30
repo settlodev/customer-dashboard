@@ -28,14 +28,11 @@ import {DollarSign, PlusCircle, Power, ToggleLeft} from "lucide-react";
 
 function AddonForm({item}: { item: Addon | null | undefined }) {
 
-
+console.log("The item is: ", item);
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
     const [addonTracking, setAddonTracking] = useState<boolean>(false);
-    const [selectedTracking, setSelectedTracking] = useState<{
-        itemType: string;
-        itemId: string | null;
-      } | null>(null);
+    
 
     const {toast} = useToast();
 
@@ -43,20 +40,20 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
         resolver: zodResolver(AddonSchema),
         defaultValues: {
             ...item,
+            stockVariant: item?.stockVariant ? item.stockVariant.id : null,
+            recipe: item?.recipe ? item.recipe.id : null,
             status: true
         },
     });
 
     useEffect(() => {
-        if (item && item.isTracked === true) {
+        if (item && item.isTracked === true && !addonTracking) {
             setAddonTracking(true);
-            setSelectedTracking({
-                itemType: item.stockVariant ? "stock" : "recipe",
-                itemId: item.stockVariant ? item.stockVariant : item.recipe
-            })
-            
+        } else if (item && item.isTracked === false && addonTracking) {
+            setAddonTracking(false);
         }
-    }, [item,]);
+    }, [item, addonTracking]);
+    
 
 
     const handleAddonTrackingChange = (value: boolean) => {
@@ -77,14 +74,30 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
         [toast]
       );
     
+      const handleTrackingSelectionChange = (selection: { itemType: string; itemId: string | null }) => {
+        const { itemType, itemId } = selection;
+    
+        console.log("Selected item type:", itemType);
+        console.log("Selected item ID:", itemId);
+    
+        if (itemType && itemId) {
+            form.setValue(itemType as keyof z.infer<typeof AddonSchema>, itemId, { shouldValidate: true });
+            console.log("Updated form value for", itemType, "to", itemId);
+        }
+    
+        // Log the entire form state to verify values
+        console.log("Current form values:", form.getValues());
+    };
 
     const submitData = (values: z.infer<typeof AddonSchema>) => {
-
+        const {stockVariant, recipe} = form.getValues();
         const payload = {
             ...values,
-            stockVariant: selectedTracking?.itemType === "stock" ? selectedTracking.itemId : null,
-            recipe: selectedTracking?.itemType === "recipe" ? selectedTracking.itemId :null,
+            stockVariant: stockVariant,
+            recipe: recipe
         };
+
+        console.log("Submitting data:", payload);
 
         startTransition(() => {
             if (item) {
@@ -112,6 +125,8 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
             }
         });
     };
+
+   
 
     return (
         <Form {...form}>
@@ -233,19 +248,14 @@ function AddonForm({item}: { item: Addon | null | undefined }) {
                     </div>
 
                     {addonTracking && (
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="p-4 rounded-lg border border-blue-100">
                             <h3 className="text-sm font-medium">
                                 Tracking Options
                             </h3>
                             <TrackingOptions
-                                onSelectionChange={(selection) => {
-                                    console.log("Selected Tracking Option:", selection);
-                                    // form.setValue("itemType", selection.itemType);
-                                    // form.setValue("itemId", selection.itemId);
-                                    setSelectedTracking(selection);
-                                   
-                                      
-                                }}
+                                onSelectionChange={handleTrackingSelectionChange}
+                                initialItemType={item?.stockVariant ? "stock" : "recipe"}
+                                initialItemId={item?.stockVariant ? item?.stockVariant.id : item?.recipe?.id || null}
                             />
                         </div>
                     )}

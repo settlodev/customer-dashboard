@@ -7,6 +7,7 @@ interface Props {
 }
 
 const SolidItemsCard: React.FC<Props> = ({ SoldItems }) => {
+  console.log("SoldItems", SoldItems);
   const isValidImageUrl = (image: string) => {
     return (
       image &&

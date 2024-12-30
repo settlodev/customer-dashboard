@@ -76,27 +76,27 @@ export default function StockForm({ item }: StockFormProps) {
     );
 
     const submitData = (values: z.infer<typeof StockSchema>) => {
-        console.log('Starting submitData with values:', values);
+        // console.log('Starting submitData with values:', values);
         setResponse(undefined);
 
         startTransition(() => {
-            console.log('Inside startTransition, item:', item);
+         
 
             if (item) {
-                console.log('Updating existing stock with ID:', item.id);
+                // console.log('Updating existing stock with ID:', item.id);
                 updateStock(item.id, values)
                     .then((data) => {
-                        console.log('Update stock response:', data);
+                        // console.log('Update stock response:', data);
                         if (data) setResponse(data);
                     })
                     .catch((error) => {
                         console.error('Error updating stock:', error);
                     });
             } else {
-                console.log('Creating new stock');
+                // console.log('Creating new stock');
                 createStock(values)
                     .then((data) => {
-                        console.log('Create stock response:', data);
+                        // console.log('Create stock response:', data);
                         if (data) setResponse(data);
                     })
                     .catch((error) => {
@@ -105,7 +105,7 @@ export default function StockForm({ item }: StockFormProps) {
             }
         });
 
-        console.log('Completed startTransition');
+        // console.log('Completed startTransition');
     };
 
     const isFieldReadOnly = (index: number): boolean => {

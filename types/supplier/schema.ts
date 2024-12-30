@@ -23,10 +23,10 @@ export const SupplierSchema = object({
     }),
     contactPersonTitle: string({
         required_error: "Contact person title of supplier is required",
-    }).min(3, "Contact person title of supplier should be at least 3 characters").max(50, "Contact person title of supplier can not be more than 50 characters").optional(),
+    }).max(50, "Contact person title of supplier can not be more than 50 characters").optional(),
     contactPersonEmail: string({
         required_error: "Email of supplier is required",
-    }).email("Not a valid email").optional(),
+    }).nullish().optional(),
     physicalAddress: string({
         required_error: "Physical address of supplier is required",
     }).min(3, "Physical address of supplier should be at least 3 characters").max(50, "Physical address of supplier can not be more than 50 characters").optional(),

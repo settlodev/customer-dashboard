@@ -39,7 +39,7 @@ export const columns: ColumnDef<Expense>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Expense Title
+          Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
@@ -47,17 +47,14 @@ export const columns: ColumnDef<Expense>[] = [
   },
   {
     accessorKey: "expenseCategoryName",
-    header: "Expense Category",
+    header: "Category",
   },
   {
     id: "amount",
     accessorKey: "amount",
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"));
-      const formattedAmount = amount.toLocaleString("en", {
-        style: "currency",
-        currency: "TZS",
-      });
+      const formattedAmount = Intl.NumberFormat().format(amount);
       return <div>{formattedAmount}</div>;
     },
     enableHiding: false,
@@ -65,6 +62,7 @@ export const columns: ColumnDef<Expense>[] = [
    {
     id:'date',
     accessorKey:"date",
+    enableHiding: false,
     cell: ({row})=>{
       const date = row.original.date;
       const format = new Intl.DateTimeFormat("en").format(new Date(date))
@@ -74,18 +72,7 @@ export const columns: ColumnDef<Expense>[] = [
   {
     id: "status",
     accessorKey: "status",
-    header: ({ column }) => {
-        return (
-            <Button
-                className="text-left p-0"
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-            >
-                Status
-                <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-        );
-    },
+    header: "Status",
     cell: ({ row }) => <StateColumn state={row.original.status} />,
     enableHiding: false,
 },

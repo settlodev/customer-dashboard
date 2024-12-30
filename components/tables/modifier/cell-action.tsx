@@ -18,7 +18,7 @@ interface CellActionProps {
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const router = useRouter();
     const [isDeleteModalOpen, setDeleteModalOpen] = useState<boolean>(false);
-    const [isRecipeModalOpen, setRecipeModalOpen] = useState<boolean>(false);
+    const [isModifierModalOpen, setModifierModalOpen] = useState<boolean>(false);
   
 
     const handleDelete = async () => {
@@ -63,7 +63,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                 }}>
                    <a
                         style={{ flex: 1 }}
-                        onClick={() => setRecipeModalOpen(true)}
+                        onClick={() => setModifierModalOpen(true)}
                         className="cursor-pointer"
                     >
                         <EyeIcon color={'#384B70'} />
@@ -99,8 +99,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
             {/* Recipe Modal */}
             <ModifierModal
-                isOpen={isRecipeModalOpen}
-                onOpenChange={() => setRecipeModalOpen(false)}
+                isOpen={isModifierModalOpen}
+                onOpenChange={() => setModifierModalOpen(false)}
                 data={data}
             />
         </>
