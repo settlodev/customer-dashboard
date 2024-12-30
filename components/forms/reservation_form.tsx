@@ -31,7 +31,6 @@ import { useToast } from "@/hooks/use-toast";
 import { Switch } from "../ui/switch";
 import { useRouter } from "next/navigation";
 import CustomerSelector from "../widgets/customer-selector";
-import StockVariantSelector from "../widgets/stock-variant-selector";
 import CancelButton from "../widgets/cancel-button";
 import SubmitButton from "../widgets/submit-button";
 import { Separator } from "../ui/separator";
