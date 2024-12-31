@@ -177,7 +177,6 @@ const BusinessSelector = ({ businesses }: { businesses: Business[] }) => {
                                                     {pendingIndex === index ? (
                                                         <>
                                                             <Loader2Icon className="w-4 h-4 animate-spin"/>
-                                                            <span>Loading...</span>
                                                         </>
                                                     ) : (
                                                         <>
@@ -206,24 +205,24 @@ const LocationList = ({locations}: { locations: Location[] }) => {
     const handleLocationSelect = async (location: Location, index: number) => {
         setPendingIndex(index);
         if (location.subscriptionStatus === "EXPIRED" || location.subscriptionStatus === null) {
-          toast({
-            variant: "destructive",
-            title: "Subscription Expired",
-            description: "Please renew your subscription to continue.",
-          });
-          
-          setTimeout(() => {
-            window.location.href = `/subscription?location=${location.id}`;
-          }, 3000); 
-          
+            toast({
+                variant: "destructive",
+                title: "Subscription Expired",
+                description: "Please renew your subscription to continue.",
+            });
+
+            setTimeout(() => {
+                window.location.href = `/subscription?location=${location.id}`;
+            }, 3000);
+
         } else {
-          await refreshLocation(location);
-          window.location.href = "/dashboard";
+            await refreshLocation(location);
+            window.location.href = "/dashboard";
         }
-        
+
         setPendingIndex(null);
-      };
-      
+    };
+
 
     if (locations.length === 0) {
         return (
@@ -296,7 +295,6 @@ const LocationList = ({locations}: { locations: Location[] }) => {
                             {pendingIndex === index ? (
                                 <>
                                     <Loader2Icon className="w-4 h-4 animate-spin" />
-                                    <span>Loading...</span>
                                 </>
                             ) : (
                                 <>
