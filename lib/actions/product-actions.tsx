@@ -99,6 +99,8 @@ export const  createProduct= async (
         business: business?.id
     }
 
+    console.log("The payload to create product", payload);
+
     try {
         const apiClient = new ApiClient();
         await apiClient.post(
