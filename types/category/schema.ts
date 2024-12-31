@@ -7,5 +7,5 @@ export const CategorySchema = object({
       parentCategory: string().nullable().optional(),
     status: boolean().optional(),
     image: string().optional(),
-    description: string().nullable().optional()
+    description: string().optional()
 })
