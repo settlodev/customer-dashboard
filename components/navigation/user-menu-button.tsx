@@ -30,6 +30,7 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
     useEffect(() => {
         const fetchCurrentLocation = async () => {
             const location = await getCurrentLocation();
+            console.log('Current location:', location);
             setCurrentLocation(location as Location | undefined);
 
         };

@@ -11,7 +11,7 @@ export const menuItems = (args?: MenuItemArgType) => {
             icon: 'dashboard',
             items: [
                 { title: "Dashboard", link: "/dashboard", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Staff Report", link: "/staff-report", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Stock Report", link: "/report/stock", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
 

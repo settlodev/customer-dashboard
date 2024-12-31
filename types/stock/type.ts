@@ -12,3 +12,21 @@ export declare interface Stock {
     isArchived: boolean,
     stockVariants: StockVariant[]
 }
+
+export declare interface StockHistory {
+    totalStockIntakes: number,
+    totalStockRemaining: number,
+    lowStockItems: lowStockItems[],
+    outOfStockItems: outOfStockItems[]
+}
+
+interface lowStockItems  {
+    stockName: string,
+    stockVariantName: string,
+    remainingAmount: number
+}
+
+interface outOfStockItems{
+    stockName: string,
+    stockVariantName: string
+}

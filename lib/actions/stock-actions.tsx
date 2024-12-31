@@ -9,7 +9,7 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import { Stock } from "@/types/stock/type";
+import { Stock, StockHistory } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { console } from "node:inspector";
 
@@ -339,4 +339,21 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
         throw error;
     }
 
+};
+
+export const stockHistory = async (): Promise<StockHistory | null> => {
+
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        console.log("Location ID:", location?.id );
+        const history=await apiClient.get(`/api/reports/${location?.id}/stock/summary`);
+
+        return parseStringify(history);
+    } catch (error) {
+        console.error("Error fetching stock history:", error);
+        throw error;
+    }
 };
