@@ -20,7 +20,7 @@ interface UserDropdownProps {
     user: ExtendedUser;
 }
 
-export async function UserDropdown  ({ user }: UserDropdownProps) {
+export const UserDropdown = ({ user }: UserDropdownProps) =>  {
     const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
     const initials = fullName.split(' ').map(n => n[0]).join('');
     const router = useRouter();
