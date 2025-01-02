@@ -21,7 +21,6 @@ const StockHistoryDashboard = () => {
         const fetchStockHistory = async () => {
             try {
                 const response = await stockHistory();
-                console.log("Stock history response:", response);
                 setHistory(response);
             } catch (error) {
                 console.error("Error fetching stock history:", error);

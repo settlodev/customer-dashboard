@@ -1,3 +1,4 @@
+'use client';
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";

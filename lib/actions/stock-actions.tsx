@@ -348,7 +348,6 @@ export const stockHistory = async (): Promise<StockHistory | null> => {
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        console.log("Location ID:", location?.id );
         const history=await apiClient.get(`/api/reports/${location?.id}/stock/summary`);
 
         return parseStringify(history);
