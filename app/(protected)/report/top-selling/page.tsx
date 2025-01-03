@@ -19,6 +19,12 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { SoldItem, TopSellingProduct } from '@/types/product/type';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
+import {
+    Tabs,
+    TabsContent,
+    TabsList,
+    TabsTrigger,
+} from "@/components/ui/tabs"
 
 interface DatePickerProps {
     value: Date;
@@ -41,11 +47,12 @@ const SalesDashboard = () => {
     });
     const [endDate] = useState(new Date());
     const [sampleData, setSampleData] = useState<TopSellingProduct | null>(null);
+    const limit = 5
 
     useEffect(() => {
         const fetchingTopSellingProducts = async () => {
             try {
-                const response = await topSellingProduct();
+                const response = await topSellingProduct(startDate, endDate, limit);
                 setSampleData(response);
             } catch (error) {
                 console.error("Error fetching stock history:", error);
@@ -64,23 +71,23 @@ const SalesDashboard = () => {
                 return now;
             })(),
             endDate: new Date(),
-            limit: 5,
+            limit: limit,
         },
     });
-    
+
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
             console.log("Errors during form submission:", errors);
-          toast({
-            variant: "destructive",
-            title: "Uh oh! something went wrong",
-            description:typeof errors.message === 'string' && errors.message
-              ? errors.message
-              : "There was an issue submitting your form, please try later",
-          });
+            toast({
+                variant: "destructive",
+                title: "Uh oh! something went wrong",
+                description: typeof errors.message === 'string' && errors.message
+                    ? errors.message
+                    : "There was an issue submitting your form, please try later",
+            });
         },
         [toast]
-      );
+    );
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {
         console.log("Form values:", values);
@@ -194,7 +201,7 @@ const SalesDashboard = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit,onInvalid)}>
+                            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
                                 <FormField
                                     control={form.control}
                                     name="startDate"
@@ -235,7 +242,7 @@ const SalesDashboard = () => {
                                                         placeholder="Limit"
                                                         value={field.value}
                                                         onChange={(e) => field.onChange(Number(e.target.value))}
-                                                         />
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                                 <FormDescription>
@@ -246,7 +253,7 @@ const SalesDashboard = () => {
                                             </FormItem>
                                         )}
                                     />
-                                    <SubmitButton isPending={form.formState.isSubmitting} label='Filter'/>
+                                    <SubmitButton isPending={form.formState.isSubmitting} label='Filter' />
                                 </div>
                             </form>
                         </Form>
@@ -275,150 +282,143 @@ const SalesDashboard = () => {
                 </Card>
             </div>
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle>Top selling Items</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="h-96">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                                data={sampleData?.topItems}
-                                margin={{
-                                    top: 20,
-                                    right: 30,
-                                    left: 20,
-                                    bottom: 5,
-                                }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="productName" />
-                                <YAxis />
-                                <Tooltip
-                                    formatter={(value, name) => {
-                                        if (name === 'revenue') return formatCurrency(Number(value));
-                                        if (name === 'quantity') return `${Number(value)} units`;
-                                        return value;
-                                    }}
-                                />
-                                <Legend />
-                                <Bar dataKey="revenue" fill="#A3FFD6" name="Revenue" />
-                                <Bar dataKey="quantity" fill="#1E2A37" name="Quantity" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </CardContent>
-            </Card>
+            <Tabs defaultValue="topSelling" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="topSelling">Top Selling Items</TabsTrigger>
+                    <TabsTrigger value="soldItems">List of Sold Items</TabsTrigger>
+                </TabsList>
+                <TabsContent value="topSelling">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle>Top selling Items</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-96">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={sampleData?.topItems}
+                                        margin={{
+                                            top: 20,
+                                            right: 30,
+                                            left: 20,
+                                            bottom: 5,
+                                        }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="productName" />
+                                        <YAxis />
+                                        <Tooltip
+                                            formatter={(value, name) => {
+                                                if (name === 'revenue') return formatCurrency(Number(value));
+                                                if (name === 'quantity') return `${Number(value)} units`;
+                                                return value;
+                                            }}
+                                        />
+                                        <Legend />
+                                        <Bar dataKey="revenue" fill="#A3FFD6" name="Revenue" />
+                                        <Bar dataKey="quantity" fill="#1E2A37" name="Quantity" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+                <TabsContent value="soldItems" className='space-y-4'>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle>Bar Graph of Sold Items</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="h-96">
+                                <ResponsiveContainer width="100%" height="100%">
+                                    <BarChart
+                                        data={sampleData?.soldItemsReport.items}
+                                        margin={{
+                                            top: 20,
+                                            right: 30,
+                                            left: 20,
+                                            bottom: 5,
+                                        }}
+                                    >
+                                        <CartesianGrid strokeDasharray="3 3" />
+                                        <XAxis dataKey="productName" />
+                                        <YAxis />
+                                        <Tooltip
+                                            formatter={(value, name) => {
+                                                if (name === 'profit') return formatCurrency(Number(value));
+                                                if (name === 'quantity') return `${Number(value)} units`;
+                                                return value;
+                                            }}
+                                        />
+                                        <Legend />
+                                        <Bar dataKey="profit" fill="#EB7118" name="Profit" />
+                                        <Bar dataKey="quantity" fill="#1E2A37" name="Quantity" />
+                                    </BarChart>
+                                </ResponsiveContainer>
+                            </div>
+                        </CardContent>
+                    </Card>
 
-            {/* <div className="hidden lg:grid lg:grid-cols-3 gap-6">
-        {sampleData?.topItems.map((item, index) => (
-          <Card key={index}>
-            <CardHeader>
-              <CardTitle className="text-lg">{item.productName}</CardTitle>
-              <p className="text-sm text-muted-foreground">{item.variantName}</p>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Revenue</span>
-                  <span className="font-medium">{formatCurrency(item.revenue)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Quantity</span>
-                  <span className="font-medium">{item.quantity} units</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">% of Total</span>
-                  <span className="font-medium">{item.percentageOfTotal.toFixed(2)}%</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div> */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg">List of Sold Items</CardTitle>
+                        </CardHeader>
+                        <CardContent>
 
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle>Bar Graph of Sold Items</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="h-96">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart
-                                data={sampleData?.soldItemsReport.items}
-                                margin={{
-                                    top: 20,
-                                    right: 30,
-                                    left: 20,
-                                    bottom: 5,
-                                }}
-                            >
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="productName" />
-                                <YAxis />
-                                <Tooltip
-                                    formatter={(value, name) => {
-                                        if (name === 'profit') return formatCurrency(Number(value));
-                                        if (name === 'quantity') return `${Number(value)} units`;
-                                        return value;
-                                    }}
-                                />
-                                <Legend />
-                                <Bar dataKey="profit" fill="#EB7118" name="Profit" />
-                                <Bar dataKey="quantity" fill="#1E2A37" name="Quantity" />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </CardContent>
-            </Card>
+                            <Table>
+                                <TableCaption>A list of sold items.</TableCaption>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="font-bold">#</TableHead>
+                                        <TableHead className="font-bold">Product</TableHead>
+                                        <TableHead className="font-bold">Variant</TableHead>
+                                        <TableHead className="font-bold">Category</TableHead>
+                                        <TableHead className="font-bold">Quantity</TableHead>
+                                        <TableHead className="font-bold">Price</TableHead>
+                                        <TableHead className="font-bold">Cost</TableHead>
+                                        <TableHead className="font-bold">Profit</TableHead>
+                                        <TableHead className="font-bold">Margin</TableHead>
+                                        <TableHead className="font-bold">Staff</TableHead>
+                                        <TableHead className="font-bold">Date</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {sampleData?.soldItemsReport.items.map((item: SoldItem, index: number) => (
+                                        <TableRow key={index}>
+                                            <TableCell className="font-medium">
+                                                {index + 1}
+                                            </TableCell>
+                                            <TableCell className="font-medium">{item.productName}</TableCell>
+                                            <TableCell className='font-medium'>{item.variantName}</TableCell>
+                                            <TableCell className='font-medium'>{item.categoryName}</TableCell>
+                                            <TableCell className='font-medium'>{Intl.NumberFormat().format(item.quantity)}</TableCell>
+                                            <TableCell className='font-medium'>{formatCurrency(item.price)}</TableCell>
+                                            <TableCell className='font-medium'>{formatCurrency(item.cost)}</TableCell>
+                                            <TableCell className='font-medium'>{formatCurrency(item.profit)}</TableCell>
+                                            <TableCell className='font-medium'>{item.margin}%</TableCell>
+                                            <TableCell className='font-medium'>{item.staffName}</TableCell>
+                                            <TableCell className='font-medium'>{Intl.DateTimeFormat().format(new Date(item.soldDate))}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
 
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">List of Sold Items</CardTitle>
-                </CardHeader>
-                <CardContent>
 
-                    <Table>
-                        <TableCaption>A list of sold items.</TableCaption>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="font-bold">#</TableHead>
-                                <TableHead className="font-bold">Product</TableHead>
-                                <TableHead className="font-bold">Variant</TableHead>
-                                <TableHead className="font-bold">Category</TableHead>
-                                <TableHead className="font-bold">Quantity</TableHead>
-                                <TableHead className="font-bold">Price</TableHead>
-                                <TableHead className="font-bold">Cost</TableHead>
-                                <TableHead className="font-bold">Profit</TableHead>
-                                <TableHead className="font-bold">Margin</TableHead>
-                                <TableHead className="font-bold">Staff</TableHead>
-                                <TableHead className="font-bold">Date</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {sampleData?.soldItemsReport.items.map((item: SoldItem, index: number) => (
-                                <TableRow key={index}>
-                                    <TableCell className="font-medium">
-                                        {index + 1}
-                                    </TableCell>
-                                    <TableCell className="font-medium">{item.productName}</TableCell>
-                                    <TableCell className='font-medium'>{item.variantName}</TableCell>
-                                    <TableCell className='font-medium'>{item.categoryName}</TableCell>
-                                    <TableCell className='font-medium'>{Intl.NumberFormat().format(item.quantity)}</TableCell>
-                                    <TableCell className='font-medium'>{formatCurrency(item.price)}</TableCell>
-                                    <TableCell className='font-medium'>{formatCurrency(item.cost)}</TableCell>
-                                    <TableCell className='font-medium'>{formatCurrency(item.profit)}</TableCell>
-                                    <TableCell className='font-medium'>{item.margin}%</TableCell>
-                                    <TableCell className='font-medium'>{item.staffName}</TableCell>
-                                    <TableCell className='font-medium'>{Intl.DateTimeFormat().format(new Date(item.soldDate))}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+
+         
+
+
         </div>
     );
 };
 
 export default SalesDashboard;
+
+
+
+
+
