@@ -49,8 +49,8 @@ export interface periodicSalesValues {
 }
 
 export interface SoldItems {
-    name:string;
-    image:string;
+    productName:string;
+    imageUrl:string;
     quantity:number;
     price:number;
     soldDate:string;

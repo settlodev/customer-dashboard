@@ -369,13 +369,10 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
 
 export const topSellingProduct = async (startDate?: Date, endDate?: Date,limit?:number): Promise<TopSellingProduct | null> => {
 
-    console.log("startDate:", startDate);
-    console.log("endDate:", endDate);
     await getAuthenticatedUser();
     try{
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        // const limit=2;
         const params = {
             startDate,
             endDate,

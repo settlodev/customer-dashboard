@@ -41,7 +41,7 @@ const Dashboard: React.FC = () => {
         </div>
         <DateRangePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>} />
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5">
         <CardDataStats
           title="Total Revenue"
           total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.totalRevenue) : "0.00"}`}>
@@ -58,7 +58,7 @@ const Dashboard: React.FC = () => {
         </CardDataStats>
 
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5">
 
         <CardDataStats title="Expenses" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.expense) : "0.00"}`}>
           <CreditCard />
@@ -73,7 +73,7 @@ const Dashboard: React.FC = () => {
           <ShoppingCart />
         </CardDataStats>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5">
 
         <CardDataStats title="Gross Profit" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.grossProfit) : "0.00"}`}>
           <ChartNoAxesCombined />

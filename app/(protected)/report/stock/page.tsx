@@ -13,9 +13,12 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
+import Loading from '../../loading';
+
 
 const StockHistoryDashboard = () => {
     const [history, setHistory] = useState<StockHistory | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const fetchStockHistory = async () => {
@@ -25,10 +28,24 @@ const StockHistoryDashboard = () => {
             } catch (error) {
                 console.error("Error fetching stock history:", error);
             }
+        finally {
+            setIsLoading(false);
+          }
         };
 
         fetchStockHistory();
     }, []);
+
+    if (isLoading) {
+        return (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-lg">
+                <Loading />
+            </div>
+          </div>
+        );
+      }
+    
 
 
     return (

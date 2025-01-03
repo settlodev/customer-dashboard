@@ -25,6 +25,7 @@ import {
     TabsList,
     TabsTrigger,
 } from "@/components/ui/tabs"
+import Loading from '../../loading';
 
 interface DatePickerProps {
     value: Date;
@@ -47,6 +48,7 @@ const SalesDashboard = () => {
     });
     const [endDate] = useState(new Date());
     const [sampleData, setSampleData] = useState<TopSellingProduct | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const limit = 5
 
     useEffect(() => {
@@ -57,6 +59,9 @@ const SalesDashboard = () => {
             } catch (error) {
                 console.error("Error fetching stock history:", error);
             }
+            finally {
+                setIsLoading(false);
+              }
         };
 
         fetchingTopSellingProducts();
@@ -90,13 +95,15 @@ const SalesDashboard = () => {
     );
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {
-        console.log("Form values:", values);
         try {
             const response = await topSellingProduct(values.startDate, values.endDate, values.limit);
             setSampleData(response);
         } catch (error) {
             console.error("Error fetching stock history:", error);
         }
+        finally {
+            setIsLoading(false);
+          }
     };
 
 
@@ -191,6 +198,16 @@ const SalesDashboard = () => {
             </div>
         );
     };
+
+    if (isLoading) {
+        return (
+          <div className="flex items-center justify-center min-h-screen">
+            <div className="text-lg">
+                <Loading />
+            </div>
+          </div>
+        );
+      }
 
     return (
         <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
