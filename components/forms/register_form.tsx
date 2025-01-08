@@ -150,7 +150,9 @@ function RegisterForm({ step }: { step: string }) {
     });
 
     const onInvalid = useCallback(
+
         (errors: FieldErrors) => {
+            console.log("The Errors during onInvalid: ", errors);
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",
@@ -201,6 +203,7 @@ function RegisterForm({ step }: { step: string }) {
         if (imageUrl) {
             values.image = imageUrl;
         }
+        console.log('Starting submitBusinessData with values:', values);
         startTransition(() => {
             createBusiness(values)
                 .then(async (data) => {

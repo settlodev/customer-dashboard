@@ -23,7 +23,6 @@ const Dashboard: React.FC = () => {
     const getSummaries = async () => {
       try {
         const [summary, orders] = await Promise.all([fetchSummaries(), fetchOrders()]);
-        // console.log(summary );
         setSummaries(summary as SummaryResponse);
         setOrders(orders);
       } catch (error) {

@@ -1,7 +1,15 @@
-// import { Select, SelectTrigger, SelectValue } from "@radix-ui/react-select";
+import { UUID } from "crypto";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { BusinessType } from "@/types/enums";
+import { useEffect, useState } from "react";
+import { fetchBusinessType } from "@/lib/actions/business-actions";
 
+interface BusinessType{
+    id: UUID
+    name: string
+    status: boolean
+    canDelete: boolean
+    isArchived: boolean
+}
 interface BusinessTypeSelectorProps {
     label: string;
     placeholder: string;
@@ -19,25 +27,50 @@ function BusinessTypeSelector({
     onChange,
 }: BusinessTypeSelectorProps) {
 
-    const isValidValue = [BusinessType.RETAIL, BusinessType.HOSPITALITY].includes(value as BusinessType);
+const [businessType, setBusinessType] = useState<BusinessType[]>([]);
+const [isLoading, setIsLoading] = useState<boolean>(true);
 
-    return (
-        <Select value={isValidValue ? value : ""} onValueChange={onChange} disabled={isDisabled}>
-            <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select business type"}>
-                    {value ? (value === BusinessType.RETAIL ? "Retail" : "Hospitality") : placeholder}
-                </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem key={BusinessType.RETAIL} value={BusinessType.RETAIL}>
-                    Retail
+useEffect(() => {
+    async function loadBusinessType() {
+        try {
+            setIsLoading(true);
+            const fetchedBusinessType = await fetchBusinessType();
+            setBusinessType(fetchedBusinessType);
+        } catch (error: any) {
+            console.log("Error fetching customers:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }
+    loadBusinessType();
+}, []);
+return (
+    
+    <div className="space-y-2">
+    <Select
+        defaultValue={value}
+        disabled={isDisabled || isLoading}
+        value={value}
+        onValueChange={onChange}
+    >
+        <SelectTrigger className="w-full">
+            <SelectValue
+                placeholder={placeholder || "Select customer"}
+            />
+        </SelectTrigger>
+        <SelectContent>
+            {businessType.map((type) => (
+                <SelectItem
+                    key={type.id}
+                    value={type.id}
+                >
+                    {type.name}
                 </SelectItem>
-                <SelectItem key={BusinessType.HOSPITALITY} value={BusinessType.HOSPITALITY}>
-                    Hospitality
-                </SelectItem>
-            </SelectContent>
-        </Select>
-    )
+            ))}
+        </SelectContent>
+    </Select>
+    
+</div>
+)
 }
-
 export default BusinessTypeSelector

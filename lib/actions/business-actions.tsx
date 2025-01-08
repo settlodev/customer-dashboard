@@ -14,6 +14,19 @@ import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {Business} from "@/types/business/type";
 import { BusinessSchema } from "@/types/business/schema";
 
+export const fetchBusinessType = async () => {
+    try {
+        const apiClient = new ApiClient();
+        apiClient.isPlain = true;
+
+        const response = await apiClient.get("/api/business-type");
+
+        return parseStringify(response);
+    } catch (error) {
+        throw error;
+    }
+}
+
 export const fetchAllBusinesses = async (): Promise<Business[] | null> => {
     await getAuthenticatedUser();
 
