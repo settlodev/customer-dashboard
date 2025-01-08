@@ -247,9 +247,10 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                           isRequired
                           isDisabled={isPending}
                           label="usage limit"
-                          placeholder="Select discount usage once or multiple times"
+                          placeholder="Select discount usage"
                         />
                       </FormControl>
+                      <FormDescription>Discount Usage can either be once or repeated</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

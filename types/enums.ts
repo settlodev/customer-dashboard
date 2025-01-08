@@ -24,7 +24,7 @@ export enum discountType {
 }
 export enum discountUsage{
     ONCE = "ONCE",
-    MULTIPLE = "MULTIPLE",
+    REPEATED = "REPEATED",
 }
 
 export enum broadcastType {

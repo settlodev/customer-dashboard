@@ -3,16 +3,15 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, DollarSign, Package, Search, ShoppingCart, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { Form, FormField, FormItem} from '@/components/ui/form';
+import { Form, FormField, FormItem } from '@/components/ui/form';
 import { z } from 'zod';
 import { FieldErrors, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
 import Loading from '../../loading';
@@ -40,20 +39,20 @@ const StaffReportDashboard = () => {
     });
     const [endDate] = useState(new Date());
     const [staffData, setStaffData] = useState<StaffSummaryReport | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         const fetchingStaffReport = async () => {
             try {
                 const response = await staffReport(startDate, endDate);
-                console.log("The staff report with no filter is: ", response);
                 setStaffData(response);
             } catch (error) {
                 console.error("Error fetching staff summary report:", error);
             }
             finally {
                 setIsLoading(false);
-              }
+            }
         };
 
         fetchingStaffReport();
@@ -95,7 +94,7 @@ const StaffReportDashboard = () => {
         }
         finally {
             setIsLoading(false);
-          }
+        }
     };
 
 
@@ -193,115 +192,227 @@ const StaffReportDashboard = () => {
 
     if (isLoading) {
         return (
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-lg">
-                <Loading />
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-lg">
+                    <Loading />
+                </div>
             </div>
-          </div>
         );
-      }
+    }
+
+    const totals = staffData?.staffReports.reduce((acc, staff) => ({
+        orders: acc.orders + staff.totalOrdersCompleted,
+        items: acc.items + staff.totalItemsSold,
+        intakes: acc.intakes + staff.totalStockIntakePerformed,
+        gross: acc.gross + staff.totalGrossAmount,
+        net: acc.net + staff.totalNetAmount,
+        profit: acc.profit + staff.totalGrossProfit
+    }), { orders: 0, items: 0, intakes: 0, gross: 0, net: 0, profit: 0 });
+
+    const filteredStaff = staffData?.staffReports.filter(staff =>
+        staff.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (staff.totalOrdersCompleted?.toString().includes(searchQuery) || false) ||
+        (staff.totalItemsSold?.toString().includes(searchQuery) || false) ||
+        (staff.totalStockIntakePerformed?.toString().includes(searchQuery) || false) ||
+        (staff.totalGrossAmount?.toString().includes(searchQuery) || false)
+    );
 
     return (
         <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div></div>
-                <Card>
-                    <CardHeader>
-                        {/* <CardTitle>Date Range Selection</CardTitle> */}
-                    </CardHeader>
-                    <CardContent className="space-y-1">
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
-                                <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
-                                <FormField
-                                    control={form.control}
-                                    name="startDate"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <DateTimePicker
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                label="Start Date"
-                                            />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="endDate"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <DateTimePicker
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                label="End Date"
-                                            />
-                                        </FormItem>
-                                    )}
-                                />
-                                </div>
-                                <div className='grid grid-cols-1 w-full gap-4 mt-4'>
-                                    <SubmitButton isPending={form.formState.isSubmitting} label='Filter Report' />
-                                </div>
-                            </form>
-                        </Form>
-                    </CardContent>
-                </Card>
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold">Staff Performance Report </h1>
             </div>
+            <div className="flex flex-col-reverse  lg:flex-row gap-8">
+               
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-2 bg-blue-100 rounded-full">
+                                        <ShoppingCart className="h-6 w-6 text-blue-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Total Orders</p>
+                                        <h3 className="text-2xl font-bold">{totals?.orders}</h3>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
 
-           
-                    <Card>
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-2 bg-green-100 rounded-full">
+                                        <Package className="h-6 w-6 text-green-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Items Sold</p>
+                                        <h3 className="text-2xl font-bold">{totals?.items}</h3>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-2 bg-purple-100 rounded-full">
+                                        <Users className="h-6 w-6 text-purple-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Stock Intakes</p>
+                                        <h3 className="text-2xl font-bold">{totals?.intakes ? totals?.intakes : 0}</h3>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-2 bg-yellow-100 rounded-full">
+                                        <DollarSign className="h-6 w-6 text-yellow-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Gross Amount</p>
+                                        <h3 className="text-xl font-bold">{formatCurrency(totals?.gross ?? 0)}/=</h3>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-2 bg-yellow-100 rounded-full">
+                                        <DollarSign className="h-6 w-6 text-yellow-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Net Amount</p>
+                                        <h3 className="text-xl font-bold">{formatCurrency(totals?.net ?? 0)}/=</h3>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardContent className="p-6">
+                                <div className="flex items-center space-x-4">
+                                    <div className="p-2 bg-yellow-100 rounded-full">
+                                        <DollarSign className="h-6 w-6 text-yellow-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-sm font-medium text-gray-500">Gross Profit</p>
+                                        <h3 className="text-xl font-bold">{formatCurrency(totals?.profit ?? 0)}/=</h3>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+            
+                <div className=''>
+                    <Card >
                         <CardHeader>
-                            <CardTitle className="text-lg">List of staff</CardTitle>
+                            <CardTitle className='text-[14px] font-medium'>Filter Report by Date & Time</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent >
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
+                                    <div className='grid grid-cols-1 lg:grid-cols-2 gap-4'>
+                                        <FormField
+                                            control={form.control}
+                                            name="startDate"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-col">
+                                                    <DateTimePicker
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        label="Start Date"
+                                                    />
+                                                </FormItem>
+                                            )}
+                                        />
 
-                            <Table>
-                                <TableCaption>A list of staffs with their report.</TableCaption>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="font-bold">#</TableHead>
-                                        <TableHead className="font-bold">Image</TableHead>
-                                        <TableHead className="font-bold">Name</TableHead>
-                                        <TableHead className="font-bold">Order Completed</TableHead>
-                                        <TableHead className="font-bold">Item Sold</TableHead>
-                                        <TableHead className="font-bold">Stock Intake Performed</TableHead>
-                                        <TableHead className="font-bold">Gross Amount</TableHead>
-                                        <TableHead className="font-bold">Net Amount</TableHead>
-                                        <TableHead className="font-bold">Gross Profit</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                {staffData?.staffReport?.map((item, index) => (
-                                        <TableRow key={item.id}>
-                                            <TableCell className="font-medium">
-                                                {index + 1}
-                                            </TableCell>
-                                            <TableCell className="font-medium">
-                                                {item.image ? <img src={item.image} alt={item.name} /> : 'No Image'}
-                                            </TableCell>
-                                            <TableCell className='font-medium'>{item.name}</TableCell>
-                                            <TableCell className='font-medium'>{item.totalOrdersCompleted}</TableCell>
-                                            <TableCell className='font-medium'>{item.totalItemsSold}</TableCell>
-                                            <TableCell className='font-medium'>{item.totalStockIntakePerformed}</TableCell>
-                                            <TableCell className='font-medium'>{formatCurrency(item.totalGrossAmount)}</TableCell>
-                                            <TableCell className='font-medium'>{formatCurrency(item.totalNetAmount)}</TableCell>
-                                            <TableCell className='font-medium'>{formatCurrency(item.totalGrossProfit)}</TableCell>
-                                        </TableRow>
-                                    ))}
-
-                                  
-                                </TableBody>
-                            </Table>
+                                        <FormField
+                                            control={form.control}
+                                            name="endDate"
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-col">
+                                                    <DateTimePicker
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        label="End Date"
+                                                    />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                    <div className='grid grid-cols-1 w-full gap-4 mt-4'>
+                                        <SubmitButton isPending={form.formState.isSubmitting} label='Filter Report' />
+                                    </div>
+                                </form>
+                            </Form>
                         </CardContent>
                     </Card>
+                </div>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className='text-lg font-medium'>Staff Performance Details</CardTitle>
+                    <div className="relative mt-4">
+                        <input
+                            type="text"
+                            placeholder="Search staff..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full p-2 pl-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-900"
+                        />
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="border-b">
+                                    <th className="p-4 text-left">Name</th>
+                                    <th className="p-4 text-right">Orders</th>
+                                    <th className="p-4 text-right">Items Sold</th>
+                                    <th className="p-4 text-right">Stock Intakes</th>
+                                    <th className="p-4 text-right">Gross Amount</th>
+                                    <th className="p-4 text-right">Net Amount</th>
+                                    <th className="p-4 text-right">Gross Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filteredStaff && filteredStaff.length > 0 ? (
+                                    filteredStaff.map((staff) => (
+                                        <tr key={staff.id} className="border-b hover:bg-gray-50">
+                                            <td className="p-4">{staff.name}</td>
+                                            <td className="p-4 text-right">{staff.totalOrdersCompleted}</td>
+                                            <td className="p-4 text-right">{staff.totalItemsSold}</td>
+                                            <td className="p-4 text-right">{staff.totalStockIntakePerformed ? staff.totalStockIntakePerformed : 0}</td>
+                                            <td className="p-4 text-right">{formatCurrency(staff.totalGrossAmount)}</td>
+                                            <td className="p-4 text-right">{formatCurrency(staff.totalNetAmount)}</td>
+                                            <td className="p-4 text-right">{formatCurrency(staff.totalGrossProfit)}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="p-4 text-center text-gray-500">
+                                            No staff members found matching your search criteria
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </CardContent>
+            </Card>
         </div>
     );
 };
 
 export default StaffReportDashboard;
-
 
 
 

@@ -11,6 +11,7 @@ import SolidItemsCard from "@/components/dashboard/Chat/ChatCard";
 import TableOne from "./Tables/TableOne";
 import { fetchOrders } from "@/lib/actions/order-actions";
 import { Orders } from "@/types/orders/type";
+import Loading from "@/app/loading";
 
 const PaymentMethod = dynamic(() => import("@/components/dashboard/Charts/ChartThree"), {
   ssr: false,
@@ -18,6 +19,8 @@ const PaymentMethod = dynamic(() => import("@/components/dashboard/Charts/ChartT
 const Dashboard: React.FC = () => {
   const [summaries, setSummaries] = useState<SummaryResponse | null>(null);
   const [orders, setOrders] = useState<Orders[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
 
   useEffect(() => {
     const getSummaries = async () => {
@@ -28,10 +31,24 @@ const Dashboard: React.FC = () => {
       } catch (error) {
         console.error("Error fetching summaries:", error );
       }
+      finally {
+        setIsLoading(false);
+      }
     };
 
     getSummaries();
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">
+            <Loading />
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex flex-col gap-6">

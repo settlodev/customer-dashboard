@@ -55,6 +55,7 @@ export default function ProductForm({ item }: ProductFormProps) {
     const [showTrackingModal, setShowTrackingModal] = useState(false);
     const [imageUrl, setImageUrl] = useState(item?.image || '');
     const { toast } = useToast();
+    
 
     const form = useForm<z.infer<typeof ProductSchema>>({
         resolver: zodResolver(ProductSchema),
@@ -132,7 +133,7 @@ export default function ProductForm({ item }: ProductFormProps) {
     const handleAppendVariant = () => {
         const currentTrackInventory = form.getValues('trackInventory');
         const currentTrackingType = form.getValues('trackingType');
-
+       
         append({
             name: "",
             price: 0,
@@ -590,6 +591,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                     <SubmitButton
                         isPending={isPending}
                         label={item ? "Update product" : "Create product"}
+                        
                     />
                 </div>
         </form>

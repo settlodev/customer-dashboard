@@ -106,7 +106,7 @@ export declare interface Staff {
 }
 
 export declare interface StaffSummaryReport{
-  staffReport:staffReports[]
+  staffReports:staffReports[]
 } 
 
 export declare interface staffReports {
