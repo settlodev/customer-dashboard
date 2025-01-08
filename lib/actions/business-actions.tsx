@@ -19,7 +19,7 @@ export const fetchBusinessType = async () => {
         const apiClient = new ApiClient();
         apiClient.isPlain = true;
 
-        const response = await apiClient.get("/api/business-type");
+        const response = await apiClient.get("/api/business-types");
 
         return parseStringify(response);
     } catch (error) {
