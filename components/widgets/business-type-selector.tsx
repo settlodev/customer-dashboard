@@ -55,7 +55,7 @@ return (
     >
         <SelectTrigger className="w-full">
             <SelectValue
-                placeholder={placeholder || "Select customer"}
+                placeholder={placeholder || "Select business type"}
             />
         </SelectTrigger>
         <SelectContent>
