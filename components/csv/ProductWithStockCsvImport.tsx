@@ -156,7 +156,7 @@ export function ProductWithStockCSVDialog() {
     fetch("/csv/stock-template.csv")
       .then((res) => {
         if (res.ok) {
-          window.open("/csv/stock-template.csv", "_blank");
+          window.open("/csv/ProductWithStock.csv", "_blank");
         } else {
           alert("Template not found");
         }
