@@ -207,6 +207,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             showLabel={true}
                                             label="Upload product image"
                                             setImage={setImageUrl}
+                                            image={imageUrl}
                                         />
                                     </div>
                                 </div>
