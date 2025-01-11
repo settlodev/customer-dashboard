@@ -49,6 +49,12 @@ const breadCrumbItems = [{title:"Orders",link:"/orders"}];
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
+                                       filterKey="orderStatus"
+                                       filterOptions={[
+                                           { label: "All", value: "" },
+                                           { label: "Closed", value: "CLOSED" },
+                                           { label: "Open", value: "OPEN" },
+                                       ]}
                             />
                         </CardContent>
                     </Card>

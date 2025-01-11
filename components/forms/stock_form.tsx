@@ -83,7 +83,7 @@ export default function StockForm({ item }: StockFormProps) {
          
 
             if (item) {
-                // console.log('Updating existing stock with ID:', item.id);
+                // console.log('Updating existing stock with ID:', item);
                 updateStock(item.id, values)
                     .then((data) => {
                         // console.log('Update stock response:', data);
@@ -134,6 +134,7 @@ export default function StockForm({ item }: StockFormProps) {
                                                     <Input
                                                         placeholder="Enter stock name"
                                                         {...field}
+                                                        // required
                                                         disabled={isPending}
                                                     />
                                                 </FormControl>
@@ -251,6 +252,7 @@ export default function StockForm({ item }: StockFormProps) {
                                                             <Input
                                                                 placeholder="Enter variant name"
                                                                 {...field}
+                                                                required
                                                                 disabled={isPending}
                                                             />
                                                         </FormControl>

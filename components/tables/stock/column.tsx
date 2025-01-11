@@ -9,6 +9,8 @@ import { StateColumn } from "../state-column";
 
 
 export const columns: ColumnDef<Stock>[] = [
+
+    
     {
         id: "select",
         header: ({ table }) => (

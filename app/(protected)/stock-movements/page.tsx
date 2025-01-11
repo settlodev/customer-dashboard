@@ -1,15 +1,14 @@
-import {Button} from "@/components/ui/button";
-import Link from "next/link";
+
+
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import NoItems from "@/components/layouts/no-items";
 import {DataTable} from "@/components/tables/data-table";
-import {columns} from '@/components/tables/product/column'
-import { Product } from "@/types/product/type";
-import {searchProducts} from "@/lib/actions/product-actions";
-import { ProductCSVDialog } from "@/components/csv/CSVImport";
+import {columns} from '@/components/tables/stock-movement/column'
+import { searchStockMovement } from "@/lib/actions/stock-movement-actions";
+import { StockMovement } from "@/types/stock-movement/type";
 
-const breadCrumbItems = [{title: "Products", link: "/products"}];
+
+const breadCrumbItems = [{title:"Stock Movement",link:"/stock-movements"}];
  type ParamsProps ={
      searchParams:{
          [key:string]:string | undefined
@@ -21,9 +20,10 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
      const page = Number(searchParams.page) || 0;
      const pageLimit = Number(searchParams.limit);
 
-     const responseData = await searchProducts(q,page,pageLimit);
+     const responseData = await searchStockMovement(q,page,pageLimit);
+     console.log("Order responseData:", responseData);
 
-     const data:Product[]=responseData.content;
+     const data:StockMovement[]=responseData.content;
      const total =responseData.totalElements;
      const pageCount = responseData.totalPages
 
@@ -33,28 +33,19 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
                 <div className={`relative flex-1 md:max-w-md`}>
                     <BreadcrumbsNav items={breadCrumbItems} />
                 </div>
-                <div className={`flex items-center space-x-2`}>
-                    <Button>
-                        <Link href={`/products/new`}>Add Product</Link>
-                    </Button>
-                 {total === 0 && 
-                 <div className="rounded">
-                    <ProductCSVDialog />
-                 </div>
-                 }
-                </div>
+              
             </div>
             {
                 total > 0 || q != "" ? (
                     <Card x-chunk="data-table">
                         <CardHeader>
-                            <CardTitle>Product</CardTitle>
-                            <CardDescription>Manage products in your business location</CardDescription>
+                            <CardTitle>Stock Movements</CardTitle>
+                            <CardDescription>A list of all stock movements</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <DataTable columns={columns}
                                        data={data}
-                                       searchKey="name"
+                                       searchKey="stockName"
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
@@ -63,7 +54,12 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
                     </Card>
                 ):
                     (
-                        <NoItems newItemUrl={`/products/new`} itemName={`products`}/>
+                        <div className="h-[calc(100vh-240px)] border border-dashed">
+                            <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
+                                <h1 className="text-[1.5rem] font-bold leading-tight">No stock movement data found</h1>
+                                <p className="text-sm text-center text-muted-foreground">There are no stock movement records found at the moment.</p>
+                            </div>
+                        </div>
                     )
             }
         </div>

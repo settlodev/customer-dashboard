@@ -149,13 +149,13 @@ export function ProductCSVDialog() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          className="h-8 gap-1"
+          className="h-10 gap-1 bg-black-2 dark:bg-white dark:text-black-2"
           size="sm"
-          variant="outline"
+          variant="default"
           onClick={() => setIsOpen(true)}
         >
           <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">Import Product CSV</span>
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-white dark:bg-white dark:text-black-2">Import CSV</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">

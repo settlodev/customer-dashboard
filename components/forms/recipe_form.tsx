@@ -29,6 +29,7 @@ import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import CancelButton from "@/components/widgets/cancel-button";
 import {Separator} from "@/components/ui/separator";
 import {SubmitButton} from "@/components/widgets/submit-button";
+import UnitSelector from '../widgets/unit-selector';
 
 type RecipeFormProps = {
   item: Recipe | null | undefined;
@@ -115,7 +116,7 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => append({id: "", quantity: 0})}
+                      onClick={() => append({id: "", unit: "", quantity: 0})}
                       disabled={isPending}
                   >
                     <Plus className="w-4 h-4 mr-2"/>
@@ -129,7 +130,7 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                         className="flex gap-4 items-center p-4 rounded-lg border bg-card"
                     >
                       <div className="flex-1 grid grid-cols-12 gap-4 items-start">
-                        <div className="col-span-8">
+                        <div className="col-span-4">
                           <FormField
                               control={form.control}
                               name={`stockVariants.${index}.id`}
@@ -143,6 +144,26 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                                           isDisabled={isPending}
                                           disabledValues={selectedStockVariants.filter(id => id !== field.value)}
                                       />
+                                    </FormControl>
+                                    <FormMessage/>
+                                  </FormItem>
+                              )}
+                          />
+                        </div>
+
+                        <div className="col-span-4">
+                          <FormField
+                              control={form.control}
+                              name={`stockVariants.${index}.unit`}
+                              render={({field}) => (
+                                  <FormItem>
+                                    <FormControl>
+                                     <UnitSelector
+                                         value={field.value}
+                                         onChange={field.onChange}
+                                         placeholder="Select unit"
+                                        //  disabled={isPending}
+                                     />
                                     </FormControl>
                                     <FormMessage/>
                                   </FormItem>

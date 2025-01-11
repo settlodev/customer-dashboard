@@ -160,13 +160,13 @@ export function CSVStockDialog() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          className="h-8 gap-1"
+          className="h-10 gap-1  dark:bg-white dark:text-black-2"
           size="sm"
           variant="outline"
           onClick={() => setIsOpen(true)}
         >
           <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-          <span className="hidden lg:block sr-only sm:not-sr-only sm:whitespace-nowrap">Import Stock</span>
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-black-2 dark:bg-white">Import Stock</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">

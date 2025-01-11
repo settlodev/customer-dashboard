@@ -3,6 +3,7 @@ import { array, boolean, number, object, string } from "zod";
 const stockVariantsSchema = object({
   id: string().uuid("Please select a valid stock variant"),
   quantity: number().nonnegative("Quantity must be a positive number"),
+  unit: string().uuid("Please select a valid unit"),
 });
 
 export const RecipeSchema = object({
