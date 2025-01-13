@@ -1,32 +1,27 @@
-import {Button} from "@/components/ui/button";
-import Link from "next/link";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import NoItems from "@/components/layouts/no-items";
 import {DataTable} from "@/components/tables/data-table";
-import {columns} from '@/components/tables/stock/column'
-import { searchStock } from "@/lib/actions/stock-actions";
-import { Stock } from "@/types/stock/type";
-import { CSVStockDialog } from "@/components/csv/stockCsvImport";
-import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
+import {columns} from '@/components/tables/stock-variants/column'
+import { searchStockVariants } from "@/lib/actions/stock-variant-actions";
+import { StockVariant } from "@/types/stockVariant/type";
 
-const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
+const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
  type ParamsProps ={
      searchParams:{
          [key:string]:string | undefined
      }
  };
- async function StockPage({searchParams}:ParamsProps) {
+ async function StockVariantPage({searchParams}:ParamsProps) {
 
      const q = searchParams.search || "";
      const page = Number(searchParams.page) || 0;
      const pageLimit = Number(searchParams.limit);
 
-     const responseData = await searchStock(q,page,pageLimit);
+     const responseData = await searchStockVariants(q,page,pageLimit);
 
-     console.log("The stock present is: ", responseData );
+    //  console.log("The stock present is: ", responseData );
 
-     const data:Stock[]=responseData.content;
+     const data:StockVariant[]=responseData.content;
      const total =responseData.totalElements;
      const pageCount = responseData.totalPages
 
@@ -36,22 +31,13 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
                 <div className={`relative flex-1 md:max-w-md`}>
                     <BreadcrumbsNav items={breadCrumbItems} />
                 </div>
-                <div className={`flex items-center space-x-2`}>
-                    <Button>
-                        <Link href={`/stocks/new`}>Add Stock</Link>
-                    </Button>
-                    <div>
-                    {total === 0 ?  <CSVStockDialog /> : null}
-                    {total === 0 ?  <ProductWithStockCSVDialog /> : null}
-                    </div>
-                </div>
             </div>
             {
                 total > 0 || q != "" ? (
                     <Card x-chunk="data-table">
                         <CardHeader>
-                            <CardTitle>Stock</CardTitle>
-                            <CardDescription>Manage Stock in your business location</CardDescription>
+                            <CardTitle>Stock Items</CardTitle>
+                            <CardDescription>A list of all stock items</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <DataTable columns={columns}
@@ -64,12 +50,17 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
                         </CardContent>
                     </Card>
                 ):
-                    (
-                        <NoItems newItemUrl={`/stocks/new`} itemName={`Stock`}/>
-                    )
+                (
+                    <div className="h-[calc(100vh-240px)] border border-dashed">
+                        <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
+                            <h1 className="text-[1.5rem] font-bold leading-tight">No stock variant data found</h1>
+                            <p className="text-sm text-center text-muted-foreground">There are no stock variant records found at the moment.</p>
+                        </div>
+                    </div>
+                )
             }
         </div>
     );
 }
 
-export default StockPage
+export default StockVariantPage
