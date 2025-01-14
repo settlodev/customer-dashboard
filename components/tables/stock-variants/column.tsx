@@ -46,26 +46,6 @@ export const columns: ColumnDef<StockVariant>[] = [
     },
  
     {
-        accessorKey: "startingQuantity",
-        header: "Starting Quantity",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const quantity = row.original.startingQuantity; 
-            const formattedQuantity = Intl.NumberFormat("en-US").format(quantity); 
-            return <span>{formattedQuantity}</span>;
-        }
-    },
-    {
-        accessorKey: "startingValue",
-        header: "Starting Value",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const value = row.original.startingValue; 
-            const formattedValue = Intl.NumberFormat("en-US").format(value); 
-            return <span>{formattedValue}/=</span>;
-        }
-    },
-    {
         accessorKey: "currentAvailable",
         header: "Current Quantity",
         enableHiding: true,
@@ -85,25 +65,35 @@ export const columns: ColumnDef<StockVariant>[] = [
             return <span>{formattedAverageValue}/=</span>;
         }
     },
-     
-    // {
-    //     id: "status",
-    //     accessorKey: "status",
-    //     header: ({ column }) => {
-    //         return (
-    //             <Button
-    //                 className="text-left p-0"
-    //                 variant="ghost"
-    //                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-    //             >
-    //                 Status
-    //                 <ArrowUpDown className="ml-2 h-4 w-4" />
-    //             </Button>
-    //         );
-    //     },
-    //     cell: ({ row }) => <StateColumn state={row.original.status} />,
-    //     enableHiding: false,
-    // },
+    {
+        accessorKey: "lastStockIntakeQuantity",
+        header: "Last Stock Intake",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const quantity = row.original.lastStockIntakeQuantity; 
+            const formattedValue = Intl.NumberFormat().format(quantity); 
+            return <span>{formattedValue}</span>;
+        }
+    },
+
+      {
+        accessorKey: "lastStockIntakeTime",
+        header: "Last intake at",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const time = row.original.lastStockIntakeTime
+            const formattedValue = Intl.DateTimeFormat(undefined, {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+              }).format(new Date(time))
+            return <span>{formattedValue}</span>;
+        }
+    },
     {
         id: "actions",
         // header: "Actions",

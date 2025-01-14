@@ -39,6 +39,8 @@ const StockVariantSelector: React.FC<Props> = ({
         return `${stock.name} - ${variant.name}`;
     };
 
+    
+
     useEffect(() => {
         async function loadStocks() {
             try {

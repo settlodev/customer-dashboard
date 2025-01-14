@@ -16,7 +16,7 @@ interface CellActionProps {
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
-    console.log(data);
+    console.log(data );
     const router = useRouter();
     const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
     const [isStockModalOpen, setStockModalOpen] = useState(false);

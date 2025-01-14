@@ -17,6 +17,8 @@ export declare interface StockVariant {
     stock: string,
     stockName: string,
     stockAndStockVariantName: string,
+    lastStockIntakeQuantity: number,
+    lastStockIntakeTime: Date,
     isArchived: boolean
     stockMovement: StockMovement[]
 }
@@ -35,7 +37,7 @@ export declare interface StockMovement {
   stockVariantName: string;
   stockIntakeBatchNumber: string | null;
   dateCreated: Date
-  
+
 }
 
 export declare interface StockFormVariant {

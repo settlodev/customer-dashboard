@@ -56,6 +56,7 @@ export const searchStockVariants = async (
             `/api/stock-variants/${location?.id}/all`,
             query
         );
+
         return parseStringify(data);
     }
     catch (error){
@@ -72,7 +73,6 @@ export const getStockVariantMovement= async (id:UUID) : Promise<StockMovement[]>
         const data: StockMovement[] = await apiClient.get<StockMovement[]>(
             `/api/stock-movements/${id}`,
         );
-
         return parseStringify(data);
     }
     catch (error){

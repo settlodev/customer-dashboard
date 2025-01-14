@@ -9,7 +9,7 @@ import { StockMovement } from '@/types/stockVariant/type';
 
 const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) => {
 
-  console.log("movements", movements)
+  // console.log("movements", movements)
   const latestMovement = movements[movements.length - 1];
 
   const chartData = movements.map(movement => ({
