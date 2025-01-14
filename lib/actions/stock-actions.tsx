@@ -118,7 +118,7 @@ export const createStock = async (
     try {
         const apiClient = new ApiClient();
         await apiClient.post(
-            `/api/stock/${location?.id}/createx`,
+            `/api/stock/${location?.id}/create`,
             payload
         );
 
