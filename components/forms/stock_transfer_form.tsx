@@ -158,7 +158,7 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                     <div className=" flex flex-col mt-2 border border-emerald-300 animate-bounce rounded-md py-2 px-3 cursor-pointer hover:animate-none">
                                         <p className="text-sm"><span className=" uppercase font-bold text-emerald-500 mr-2">note:</span>The transfer can not exceed the current available quantity</p>
                                         <p className="text-sm">Current Available Quantity: {Intl.NumberFormat().format(selectedVariant.currentAvailable)}</p>
-                                        <p className="text-sm">Current Average Value: {Intl.NumberFormat().format(selectedVariant.currentAverageValue)}</p>
+                                        <p className="text-sm">Current Average Value: {Intl.NumberFormat().format(selectedVariant.currentTotalValue)}</p>
                                     </div>
                                 )}
                                 </div>

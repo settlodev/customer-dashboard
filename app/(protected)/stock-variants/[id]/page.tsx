@@ -17,7 +17,6 @@ export default  function StockVariantDetails({params}: {params: {id: string}}) {
       const fetchStockVariantDetail = async () => {
         try {
           const data= await getStockVariantMovement(params.id as UUID);
-          
           setVariant(data);
         } catch (error) {
           console.error("Error fetching stock movement history:", error );

@@ -64,14 +64,15 @@ export const searchStockVariants = async (
 
 }
 
-export const getStockVariantMovement= async (id:UUID) : Promise<ApiResponse<StockMovement>> => {
+export const getStockVariantMovement= async (id:UUID) : Promise<StockMovement[]>=> {
     await getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
-        const data = await  apiClient.get(
+        const data: StockMovement[] = await apiClient.get<StockMovement[]>(
             `/api/stock-movements/${id}`,
         );
+
         return parseStringify(data);
     }
     catch (error){
