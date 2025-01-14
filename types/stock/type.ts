@@ -5,6 +5,7 @@ export declare interface Stock {
     id: UUID,
     name: string,
     description: string,
+    unit: string,
     status: boolean,
     canDelete: boolean,
     business: UUID,

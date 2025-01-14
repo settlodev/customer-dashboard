@@ -81,8 +81,9 @@ export const createStock = async (
     let formResponse: FormResponse | null = null;
 
     const validData = StockSchema.safeParse(stock);
+    // console.log('Validating stock:', validData);
     if (!validData.success) {
-        console.warn('Stock validation failed:', validData.error);
+        // console.warn('Stock validation failed:', validData.error);
         return parseStringify({
             responseType: "error",
             message: "Please fill all the required fields",
@@ -117,7 +118,7 @@ export const createStock = async (
     try {
         const apiClient = new ApiClient();
         await apiClient.post(
-            `/api/stock/${location?.id}/create`,
+            `/api/stock/${location?.id}/createx`,
             payload
         );
 

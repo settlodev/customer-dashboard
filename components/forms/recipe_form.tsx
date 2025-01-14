@@ -29,7 +29,6 @@ import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import CancelButton from "@/components/widgets/cancel-button";
 import {Separator} from "@/components/ui/separator";
 import {SubmitButton} from "@/components/widgets/submit-button";
-import UnitSelector from '../widgets/unit-selector';
 
 type RecipeFormProps = {
   item: Recipe | null | undefined;
@@ -116,7 +115,7 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => append({id: "", unit: "", quantity: 0})}
+                      onClick={() => append({id: "", quantity: 0})}
                       disabled={isPending}
                   >
                     <Plus className="w-4 h-4 mr-2"/>
@@ -151,25 +150,6 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                           />
                         </div>
 
-                        <div className="col-span-4">
-                          <FormField
-                              control={form.control}
-                              name={`stockVariants.${index}.unit`}
-                              render={({field}) => (
-                                  <FormItem>
-                                    <FormControl>
-                                     <UnitSelector
-                                         value={field.value}
-                                         onChange={field.onChange}
-                                         placeholder="Select unit"
-                                        //  disabled={isPending}
-                                     />
-                                    </FormControl>
-                                    <FormMessage/>
-                                  </FormItem>
-                              )}
-                          />
-                        </div>
 
                         <div className="col-span-4">
                           <FormField
