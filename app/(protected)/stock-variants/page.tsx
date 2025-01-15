@@ -4,6 +4,10 @@ import {DataTable} from "@/components/tables/data-table";
 import {columns} from '@/components/tables/stock-variants/column'
 import { searchStockVariants } from "@/lib/actions/stock-variant-actions";
 import { StockVariant } from "@/types/stockVariant/type";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { CSVStockDialog } from "@/components/csv/stockCsvImport";
+import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
 
 const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
  type ParamsProps ={
@@ -30,6 +34,15 @@ const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
             <div className={`flex items-center justify-between mb-2`}>
                 <div className={`relative flex-1 md:max-w-md`}>
                     <BreadcrumbsNav items={breadCrumbItems} />
+                </div>
+                <div className={`flex items-center space-x-2`}>
+                    <Button>
+                        <Link href={`/stocks/new`}>Add Stock</Link>
+                    </Button>
+                    <div>
+                    {total === 0 ?  <CSVStockDialog /> : null}
+                    {total === 0 ?  <ProductWithStockCSVDialog /> : null}
+                    </div>
                 </div>
             </div>
             {

@@ -42,7 +42,7 @@ export const menuItems = (args?: MenuItemArgType) => {
             current: args?.isCurrentItem,
             icon: 'stock',
             items: [
-                { title: "Manage Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart" },
+                // { title: "Manage Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Stock items", link: "/stock-variants", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Stock Intake", link: "/stock-intakes", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Stock Modification", link: "/stock-modifications", current: args?.isCurrentItem, icon: "cart" },

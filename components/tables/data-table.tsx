@@ -226,8 +226,8 @@ export function DataTable<TData, TValue>({
                     )}
 
          {pathname === "/products" ?  <ProductCSVDialog /> : null}
-         {pathname === "/stocks" ?  <CSVStockDialog /> : null}
-         {pathname === "/stocks" ?  <ProductWithStockCSVDialog /> : null}
+         {pathname === "/stock-variants" ?  <CSVStockDialog /> : null}
+         {pathname === "/stock-variants" ?  <ProductWithStockCSVDialog /> : null}
 
         </div>
       </div>

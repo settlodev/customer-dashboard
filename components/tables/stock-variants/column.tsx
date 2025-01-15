@@ -65,17 +65,7 @@ export const columns: ColumnDef<StockVariant>[] = [
             return <span>{formattedAverageValue}/=</span>;
         }
     },
-    {
-        accessorKey: "lastStockIntakeQuantity",
-        header: "Last Stock Intake",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const quantity = row.original.lastStockIntakeQuantity; 
-            const formattedValue = Intl.NumberFormat().format(quantity); 
-            return <span>{formattedValue}</span>;
-        }
-    },
-
+    
       {
         accessorKey: "lastStockIntakeTime",
         header: "Last intake at",
