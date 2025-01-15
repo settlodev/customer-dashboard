@@ -40,7 +40,6 @@ export enum audienceType{
 }
 
 export enum reasonForStockModification {
-    NEWSTOCK="NEW STOCK",
     INVENTORYRECOUNT = "INVENTORY RECOUNT",
     DAMAGE = 'DAMAGE',
     THEFT = ' THEFT',

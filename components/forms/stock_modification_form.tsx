@@ -45,7 +45,6 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
 
 
     const reasons: { id: string; label: string }[] = [
-        { id: reasonForStockModification.NEWSTOCK, label: "New Stock" },
         { id: reasonForStockModification.DAMAGE, label: "Damage" },
         { id: reasonForStockModification.INTERNALUSE, label: "Internal Use" },
         { id: reasonForStockModification.INVENTORYRECOUNT, label: "Inventory Recount" },
@@ -75,7 +74,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
         defaultValues: {
             ...item,
             status: true,
-            reason: item?.reason || reasonForStockModification.NEWSTOCK,
+            reason: item?.reason || reasonForStockModification.DAMAGE,
         },
     });
 

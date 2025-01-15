@@ -63,13 +63,13 @@ const validateCSV = (
       }
     }
 
-    const quantityIndex = headers.indexOf("Quantity");
-    if (quantityIndex !== -1) {
-      const quantity = parseInt(row[quantityIndex], 10);
-      if (isNaN(quantity) || quantity <= 0) {
-        rowErrors.push(`Row ${currentRowIndex}: "Quantity" must be greater than zero.`);
-      }
-    }
+    // const quantityIndex = headers.indexOf("Quantity");
+    // if (quantityIndex !== -1) {
+    //   const quantity = parseInt(row[quantityIndex], 10);
+    //   if (isNaN(quantity) || quantity <= 0) {
+    //     rowErrors.push(`Row ${currentRowIndex}: "Quantity" must be greater than zero.`);
+    //   }
+    // }
 
     const startingQuantityIndex = headers.indexOf("Starting Quantity");
     if (startingQuantityIndex !== -1) {
@@ -109,7 +109,6 @@ export function ProductWithStockCSVDialog() {
     "Category Name",
     "Variant Name",
     "Price",
-    "Quantity",
     "SKU",
     "Barcode",
     "Department",

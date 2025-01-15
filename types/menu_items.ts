@@ -62,6 +62,7 @@ export const menuItems = (args?: MenuItemArgType) => {
             icon: 'sales',
             items: [
                 { title: "Orders", link: "/orders", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Refunds", link: "/refunds", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
 

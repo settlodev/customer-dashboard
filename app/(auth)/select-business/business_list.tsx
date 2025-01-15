@@ -261,7 +261,7 @@ const LocationList = ({locations}: { locations: Location[] }) => {
                         <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
                             <MapPin className="w-6 h-6 text-emerald-600" />
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-col justify-start gap-2">
                             <h3 className="font-medium text-gray-900">{location.name}</h3>
                             <div className="flex items-center text-sm text-gray-500">
                                 {location.city ? (
