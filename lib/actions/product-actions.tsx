@@ -181,6 +181,8 @@ export const updateProduct = async (
         business: business?.id
     };
 
+    console.log("The payload to update product", payload);
+
     try {
         const apiClient = new ApiClient();
 
