@@ -7,6 +7,8 @@ import {DataTable} from "@/components/tables/data-table";
 import {columns} from '@/components/tables/stock/column'
 import { searchStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
+import { CSVStockDialog } from "@/components/csv/stockCsvImport";
+import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
 
 const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
  type ParamsProps ={
@@ -22,6 +24,8 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
 
      const responseData = await searchStock(q,page,pageLimit);
 
+     console.log("The stock present is: ", responseData );
+
      const data:Stock[]=responseData.content;
      const total =responseData.totalElements;
      const pageCount = responseData.totalPages
@@ -36,6 +40,10 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
                     <Button>
                         <Link href={`/stocks/new`}>Add Stock</Link>
                     </Button>
+                    <div>
+                    {total === 0 ?  <CSVStockDialog /> : null}
+                    {total === 0 ?  <ProductWithStockCSVDialog /> : null}
+                    </div>
                 </div>
             </div>
             {

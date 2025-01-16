@@ -22,14 +22,14 @@ export default function DiscountUsageSelector({
   return (
       <Select value={value} onValueChange={onChange} disabled={isDisabled}>
             <SelectTrigger>
-                <SelectValue placeholder={placeholder || "Select discount usage once or multiple times"} />
+                <SelectValue placeholder={placeholder || "Select discount usage once or repeated"} />
             </SelectTrigger>
             <SelectContent>
               <SelectItem key={discountUsage.ONCE} value={discountUsage.ONCE}>
                 Once
               </SelectItem>
-              <SelectItem key={discountUsage.MULTIPLE} value={discountUsage.MULTIPLE}>
-                Multiple
+              <SelectItem key={discountUsage.REPEATED} value={discountUsage.REPEATED}>
+                Repeated
               </SelectItem>
             </SelectContent>
       </Select>

@@ -268,6 +268,7 @@ return (
                                                 {...field}
                                                 disabled={isPending}
                                                 placeholder="contact@example.com"
+                                                value={field.value || ""}
                                             />
                                         </div>
                                     </FormControl>

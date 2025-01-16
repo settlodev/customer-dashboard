@@ -9,7 +9,7 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import { Stock } from "@/types/stock/type";
+import { Stock, StockHistory } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { console } from "node:inspector";
 
@@ -76,13 +76,14 @@ export const searchStock = async (
 export const createStock = async (
     stock: z.infer<typeof StockSchema>
 ): Promise<FormResponse | void> => {
-    console.log('Starting createStock with data:', stock);
+    // console.log('Starting createStock with data:', stock);
 
     let formResponse: FormResponse | null = null;
 
     const validData = StockSchema.safeParse(stock);
+    // console.log('Validating stock:', validData);
     if (!validData.success) {
-        console.warn('Stock validation failed:', validData.error);
+        // console.warn('Stock validation failed:', validData.error);
         return parseStringify({
             responseType: "error",
             message: "Please fill all the required fields",
@@ -93,10 +94,10 @@ export const createStock = async (
     const location = await getCurrentLocation();
     const business = await getCurrentBusiness();
 
-    console.log('Retrieved location and business:', {
-        locationId: location?.id,
-        businessId: business?.id
-    });
+    // console.log('Retrieved location and business:', {
+    //     locationId: location?.id,
+    //     businessId: business?.id
+    // });
 
     if (!location || !business) {
         console.error('Missing required data:', { location, business });
@@ -112,7 +113,7 @@ export const createStock = async (
         location: location?.id,
         business: business?.id
     }
-    console.log("The payload is ",payload)
+    // console.log("The payload is ",payload)
 
     try {
         const apiClient = new ApiClient();
@@ -212,8 +213,10 @@ export const updateStock = async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
+    if (formResponse?.responseType === "error") return parseStringify(formResponse);
+
     revalidatePath("/stocks")
-    return parseStringify(formResponse);
+    redirect("/stocks");
 };
 
 export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
@@ -235,10 +238,10 @@ export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
    }
    catch (error: any){
         const formattedError = await error;
-        console.error("Error deleting stock", formattedError.message );
+        console.error("Error deleting stock", formattedError );
 
-        throw formattedError.message;
-   }
+        throw new Error(formattedError.message);
+    }
 }
 
 export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
@@ -337,4 +340,20 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
         throw error;
     }
 
+};
+
+export const stockHistory = async (): Promise<StockHistory | null> => {
+
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        const history=await apiClient.get(`/api/reports/${location?.id}/stock/summary`);
+
+        return parseStringify(history);
+    } catch (error) {
+        console.error("Error fetching stock history:", error);
+        throw error;
+    }
 };

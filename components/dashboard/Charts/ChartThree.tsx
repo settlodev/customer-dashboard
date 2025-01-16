@@ -3,7 +3,7 @@ import { ApexOptions } from "apexcharts";
 import React from "react";
 import ReactApexChart from "react-apexcharts";
 
-type PaymentChannelState ={
+type PaymentChannelState = {
   paymentChannels: PaymentMethods[];
 }
 
@@ -12,7 +12,7 @@ const options: ApexOptions = {
     fontFamily: "Satoshi, sans-serif",
     type: "donut",
   },
-  colors: ["#3C50E0", "#6577F3", "#8FD0EF", "#0FADCF"],
+  colors: ['#50BE97', '#F2B988', '#D7D3C9', '#B28DBF'],
   labels: [],
   legend: {
     show: false,
@@ -77,9 +77,9 @@ const PaymentMethod: React.FC<PaymentChannelState> = ({ paymentChannels }) => {
         </div>
       </div>
 
-      <div className="-mx-8 flex flex-wrap items-center justify-center gap-y-3">
+      <div className="flex flex-col items-start justify-start gap-y-3">
         {paymentChannels.map((item, index) => (
-          <div className="w-full px-8 sm:w-1/2" key={index}>
+          <div className="max-w-full sm:w-1/2" key={index}>
             <div className="flex w-full items-center">
               <span
                 className="mr-2 block h-3 w-full max-w-3 rounded-full"
@@ -88,8 +88,8 @@ const PaymentMethod: React.FC<PaymentChannelState> = ({ paymentChannels }) => {
                 }}
               ></span>
               <p className="flex w-full justify-between text-sm font-medium text-black dark:text-white gap-3">
-                <span>{item.paymentMethodName}</span>{" "}
-                <span>{Intl.NumberFormat("en").format(item.amount)}/=</span>
+                <span>{item.paymentMethodName}</span>:
+                <span>{Intl.NumberFormat().format(item.amount)}/=</span>
               </p>
             </div>
           </div>

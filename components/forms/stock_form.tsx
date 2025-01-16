@@ -30,6 +30,7 @@ import { Stock } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { useTransition } from "react";
 import { FormResponse } from "@/types/types";
+import UnitSelector from "../widgets/unit-selector";
 
 type StockFormProps = {
     item: Stock | null | undefined;
@@ -45,6 +46,7 @@ export default function StockForm({ item }: StockFormProps) {
             name: item?.name || "",
             description: item?.description || "",
             status: item?.status ?? true,
+            unit: item?.unit || "",
             stockVariants: item?.stockVariants.map(variant => ({
                 name: variant.name,
                 startingQuantity: variant.startingQuantity,
@@ -76,27 +78,37 @@ export default function StockForm({ item }: StockFormProps) {
     );
 
     const submitData = (values: z.infer<typeof StockSchema>) => {
-        console.log('Starting submitData with values:', values);
+        
         setResponse(undefined);
 
+        const updatedValues = {
+            ...values,
+            stockVariants: values.stockVariants.map(variant => ({
+                ...variant,
+                unit: values.unit, 
+            })),
+        };
+
+        // console.log('Starting submitData with values:', updatedValues);
+
         startTransition(() => {
-            console.log('Inside startTransition, item:', item);
+         
 
             if (item) {
-                console.log('Updating existing stock with ID:', item.id);
-                updateStock(item.id, values)
+                // console.log('Updating existing stock with ID:', item);
+                updateStock(item.id, updatedValues)
                     .then((data) => {
-                        console.log('Update stock response:', data);
+                        // console.log('Update stock response:', data);
                         if (data) setResponse(data);
                     })
                     .catch((error) => {
                         console.error('Error updating stock:', error);
                     });
             } else {
-                console.log('Creating new stock');
-                createStock(values)
+                // console.log('Creating new stock');
+                createStock(updatedValues)
                     .then((data) => {
-                        console.log('Create stock response:', data);
+                        // console.log('Create stock response:', data);
                         if (data) setResponse(data);
                     })
                     .catch((error) => {
@@ -105,7 +117,6 @@ export default function StockForm({ item }: StockFormProps) {
             }
         });
 
-        console.log('Completed startTransition');
     };
 
     const isFieldReadOnly = (index: number): boolean => {
@@ -144,6 +155,26 @@ export default function StockForm({ item }: StockFormProps) {
                                             </FormItem>
                                         )}
                                     />
+                                    <div className="col-span-4">
+                          <FormField
+                              control={form.control}
+                              name="unit"
+                              render={({field}) => (
+                                  <FormItem>
+                                <FormLabel>Stock Unit (Optional)</FormLabel>
+                                    <FormControl>
+                                     <UnitSelector
+                                         value={field.value}
+                                         onChange={field.onChange}
+                                         placeholder="Select unit"
+                                        //  disabled={isPending}
+                                     />
+                                    </FormControl>
+                                    <FormMessage/>
+                                  </FormItem>
+                              )}
+                          />
+                        </div>
 
                                     <FormField
                                         control={form.control}
@@ -251,6 +282,7 @@ export default function StockForm({ item }: StockFormProps) {
                                                             <Input
                                                                 placeholder="Enter variant name"
                                                                 {...field}
+                                                                required
                                                                 disabled={isPending}
                                                             />
                                                         </FormControl>
@@ -259,29 +291,35 @@ export default function StockForm({ item }: StockFormProps) {
                                                 )}
                                             />
 
-                                            <FormField
-                                                control={form.control}
-                                                name={`stockVariants.${index}.startingQuantity`}
-                                                render={({field}) => (
-                                                    <FormItem>
-                                                        <FormLabel>Initial Quantity</FormLabel>
-                                                        <FormControl>
-                                                            <NumericFormat
-                                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
-                                                                value={field.value}
-                                                                onValueChange={(values) => {
-                                                                    field.onChange(Number(values.value));
-                                                                }}
-                                                                thousandSeparator={true}
-                                                                placeholder="Enter quantity"
-                                                                disabled={isPending || isFieldReadOnly(index)}
-                                                                readOnly={isFieldReadOnly(index)}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage/>
-                                                    </FormItem>
-                                                )}
-                                            />
+<FormField
+    control={form.control}
+    name={`stockVariants.${index}.startingQuantity`}
+    render={({ field }) => (
+        <FormItem>
+            <FormLabel>Initial Quantity</FormLabel>
+            <div className="flex items-center gap-2">
+                <FormControl>
+                    <NumericFormat
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
+                        value={field.value}
+                        onValueChange={(values) => {
+                            field.onChange(Number(values.value));
+                        }}
+                        thousandSeparator={true}
+                        placeholder="Enter quantity"
+                        disabled={isPending || isFieldReadOnly(index)}
+                        readOnly={isFieldReadOnly(index)}
+                    />
+                </FormControl>
+                {/* <span className="text-sm text-muted-foreground">
+                    {form.getValues("unit") || "unit"}
+                </span> */}
+            </div>
+            <FormMessage />
+        </FormItem>
+    )}
+/>
+
 
                                             <FormField
                                                 control={form.control}

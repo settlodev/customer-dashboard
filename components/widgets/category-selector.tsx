@@ -71,7 +71,7 @@ const CategorySelector = ({
     };
 
     const handleAddCategory = async (e: React.FormEvent) => {
-        e.preventDefault();
+       e.preventDefault();
         if (!newCategoryName.trim()) return;
         setError("");
 

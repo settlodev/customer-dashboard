@@ -36,11 +36,16 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
 
   const form = useForm<z.infer<typeof BrandSchema>>({
     resolver: zodResolver(BrandSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues: { 
+          ...item,
+          name: item ? item.name : "",
+          status: item ? item.status : true
+    }
   });
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
+      console.log(errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
@@ -53,6 +58,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof BrandSchema>) => {
+    console.log("Submitting data:", values);
     startTransition(() => {
       if (item) {
         updateBrand(item.id, values).then((data) => {

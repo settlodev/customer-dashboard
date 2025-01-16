@@ -17,8 +17,7 @@ interface OptionsProps {
 
 const DiscountApplyOptionsWidget: React.FC<OptionsProps> = ({ onSelectionChange,initialItemType, 
   initialItemId }) => {
-    console.log("Initial item type:", initialItemType);
-    console.log("Initial item ID:", initialItemId);
+   
   const [applyOption, setApplyOption] = useState<string | null>(initialItemType || null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(initialItemId || null);
 

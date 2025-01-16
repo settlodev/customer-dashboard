@@ -14,7 +14,7 @@ export const fetchSummaries = async (startDate?: string, endDate?: string) => {
           endDate,
         },
       });  
-      console.log("Summaries are as follow:", data);
+      // console.log("Summaries are as follow:", data);
       return data;
     } catch (error) {
       console.error("Error fetching summaries:", error );

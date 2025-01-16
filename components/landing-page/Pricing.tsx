@@ -2,6 +2,7 @@
 import { fetchSubscriptions } from "@/lib/actions/subscriptions"
 import { Subscription, SubscriptionFeature } from "@/types/subscription/type"
 import { CheckIcon } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 interface PricingCardProps {
@@ -51,6 +52,8 @@ const PricingCard = ({ packageName, amount,subscriptionFeatures }: PricingCardPr
     const formattedAmount = amount.toLocaleString('en-US', { style: 'currency', currency: 'TZS' });
     const [showAll, setShowAll] = useState(false);
     const featuresToShow = showAll ? subscriptionFeatures : subscriptionFeatures.slice(0, 10);
+    const navigate = useRouter(); // Initialize useNavigate
+
 
     return (
         <div className="flex flex-col items-start justify-center bg-white w-[340px] border-2 rounded-md pl-5 pr-5 pt-3 pb-3 shadow-lg lg:w-[400px] lg:min-h-[500px] lg:p-6 gap-4">
@@ -67,12 +70,19 @@ const PricingCard = ({ packageName, amount,subscriptionFeatures }: PricingCardPr
                 ))}
             </div>
             <div className="flex flex-row gap-2 items-center justify-center">
-                <button
-                    onClick={() => setShowAll(!showAll)}
-                    className="text-[16px] font-semibold text-white bg-emerald-500 hover:bg-gray-700 py-3 px-6 rounded-full"
-                >
-                    {showAll ? "Get Started" : "Show more"}
-                </button>
+            <button
+                onClick={() => {
+                    if (showAll) {
+                        navigate.push("/register");
+                    } else {
+                        setShowAll(!showAll);
+                    }
+                }}
+                className="text-[16px] font-semibold text-white bg-emerald-500 hover:bg-gray-700 py-3 px-6 rounded-full"
+            >
+                {showAll ? "Get Started" : "Show more"}
+            </button>    
+            
             </div>
         </div>
     );

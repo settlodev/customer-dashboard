@@ -14,6 +14,7 @@ export const ErrorCodes = {
     PHONE_EXISTS: 'PHONE_EXISTS',
     WRONG_CREDENTIALS: 'WRONG_CREDENTIALS',
     EMAIL_VERIFIED: 'EMAIL_VERIFIED',
+    STOCK_VARIANT: 'STOCK_VARIANT',
 } as const;
 
 export const handleSettloApiError = async (error: unknown): Promise<ErrorResponseType> => {

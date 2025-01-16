@@ -3,8 +3,8 @@
 import React, { useCallback, useState, useTransition } from "react";
 import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import {z} from "zod";
-import {Trash2, Plus, ListPlus, Settings, Building2, Info} from "lucide-react";
+import { z } from "zod";
+import { Trash2, Plus, ListPlus, Settings, Building2, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,7 +32,7 @@ import {
     DialogTitle,
     DialogDescription,
 } from "@/components/ui/dialog";
-import {Product} from "@/types/product/type";
+import { Product } from "@/types/product/type";
 import { FormResponse } from "@/types/types";
 import { ProductSchema } from "@/types/product/schema";
 import BrandSelector from "@/components/widgets/brand-selector";
@@ -49,11 +49,13 @@ type ProductFormProps = {
 };
 
 export default function ProductForm({ item }: ProductFormProps) {
+    console.log("ProductForm item:", item);
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     const [showTrackingModal, setShowTrackingModal] = useState(false);
     const [imageUrl, setImageUrl] = useState(item?.image || '');
     const { toast } = useToast();
+
 
     const form = useForm<z.infer<typeof ProductSchema>>({
         resolver: zodResolver(ProductSchema),
@@ -70,11 +72,12 @@ export default function ProductForm({ item }: ProductFormProps) {
             status: item?.status ?? true,
             image: item?.image || "",
             trackInventory: item?.trackInventory || false,
-            trackingType: item?.trackingType || null,
+            trackingType: item?.variants?.[0]?.trackingType || null,
             variants: item?.variants.map(variant => ({
                 ...variant,
-                trackInventory: item?.trackInventory || false,
-                trackingType: item?.trackingType || null,
+                trackingType: variant.trackingType || null,
+                trackItem: variant.trackItem || null,
+                unit: variant.unit || null,
             })) || [{}]
         },
     });
@@ -109,7 +112,6 @@ export default function ProductForm({ item }: ProductFormProps) {
             form.setValue(`variants.${index}.trackItem`, null); // Reset trackItem when changing type
         });
 
-        setShowTrackingModal(false);
     };
 
     const handleTrackingDisable = () => {
@@ -123,6 +125,9 @@ export default function ProductForm({ item }: ProductFormProps) {
             form.setValue(`variants.${index}.trackingType`, null);
             form.setValue(`variants.${index}.trackItem`, null);
         });
+
+        // setShowTrackingModal(false);
+
     };
 
     const handleAppendVariant = () => {
@@ -140,6 +145,7 @@ export default function ProductForm({ item }: ProductFormProps) {
             trackInventory: currentTrackInventory || false,
             trackingType: currentTrackingType || null,
             trackItem: null,
+            purchasingPrice: 0
         });
     };
 
@@ -150,6 +156,8 @@ export default function ProductForm({ item }: ProductFormProps) {
             ...values,
             image: imageUrl
         };
+
+        console.log("Submitting data:", productData);
 
         startTransition(() => {
             if (item) {
@@ -188,7 +196,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                     <Card className="lg:col-span-2">
                         <CardContent className="pt-6">
                             <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                                <Info className="w-5 h-5"/>
+                                <Info className="w-5 h-5" />
                                 Basic Information
                             </h2>
 
@@ -202,6 +210,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             showLabel={true}
                                             label="Upload product image"
                                             setImage={setImageUrl}
+                                            image={imageUrl}
                                         />
                                     </div>
                                 </div>
@@ -210,7 +219,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                     <FormField
                                         control={form.control}
                                         name="name"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Product Name</FormLabel>
                                                 <FormControl>
@@ -220,7 +229,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                         disabled={isPending}
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -228,7 +237,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                     <FormField
                                         control={form.control}
                                         name="description"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Description</FormLabel>
                                                 <FormControl>
@@ -240,32 +249,32 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                         className="resize-none h-32"
                                                     />
                                                 </FormControl>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
                                 </div>
                             </div>
 
-                            <Separator className="my-6"/>
+                            <Separator className="my-6" />
 
                             <div>
                                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                                    <Building2 className="w-4 h-4"/>
+                                    <Building2 className="w-4 h-4" />
                                     Classification
                                 </h3>
                                 <div className="grid md:grid-cols-3 gap-4">
                                     <FormField
                                         control={form.control}
                                         name="category"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Category</FormLabel>
                                                 <CategorySelector
                                                     {...field}
                                                     placeholder="Select category"
                                                 />
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -273,14 +282,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                                     <FormField
                                         control={form.control}
                                         name="department"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Department</FormLabel>
                                                 <DepartmentSelector
                                                     {...field}
                                                     value={field.value ?? ""}
                                                 />
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -288,14 +297,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                                     <FormField
                                         control={form.control}
                                         name="brand"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Brand</FormLabel>
                                                 <BrandSelector
                                                     {...field}
                                                     value={field.value ?? ""}
                                                 />
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -308,14 +317,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                     <Card>
                         <CardContent className="pt-6">
                             <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                                <Settings className="w-5 h-5"/>
+                                <Settings className="w-5 h-5" />
                                 Settings
                             </h2>
                             <div className="space-y-4">
                                 <FormField
                                     control={form.control}
                                     name="trackInventory"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem className="flex items-center justify-between p-3 rounded-lg border">
                                             <div className="space-y-0.5">
                                                 <FormLabel>Track Inventory</FormLabel>
@@ -342,7 +351,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                 <FormField
                                     control={form.control}
                                     name="sellOnline"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem className="flex items-center justify-between p-3 rounded-lg border">
                                             <div className="space-y-0.5">
                                                 <FormLabel>Sell Online</FormLabel>
@@ -363,7 +372,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                 <FormField
                                     control={form.control}
                                     name="taxClass"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem className="flex items-center justify-between p-3 rounded-lg border">
                                             <div className="space-y-0.5">
                                                 <FormLabel>Tax class</FormLabel>
@@ -384,7 +393,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                 <FormField
                                     control={form.control}
                                     name="taxIncluded"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem className="flex items-center justify-between p-3 rounded-lg border">
                                             <div className="space-y-0.5">
                                                 <FormLabel>Tax Included</FormLabel>
@@ -426,7 +435,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                 onClick={handleAppendVariant}
                                 disabled={isPending}
                             >
-                                <Plus className="w-4 h-4 mr-2"/>
+                                <Plus className="w-4 h-4 mr-2" />
                                 Add Variant
                             </Button>
                         </div>
@@ -445,7 +454,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                 disabled={fields.length === 1 || isPending}
                                                 className="text-red-500 hover:text-red-600"
                                             >
-                                                <Trash2 className="w-4 h-4 mr-2"/>
+                                                <Trash2 className="w-4 h-4 mr-2" />
                                                 Delete
                                             </Button>
                                         </div>
@@ -454,7 +463,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             <FormField
                                                 control={form.control}
                                                 name={`variants.${index}.name`}
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Variant Name</FormLabel>
                                                         <FormControl>
@@ -464,17 +473,43 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                 disabled={isPending}
                                                             />
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
 
+
+                                            {!form.watch('trackInventory') && (
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`variants.${index}.purchasingPrice`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Purchasing Price</FormLabel>
+                                                            <FormControl>
+                                                                <NumericFormat
+                                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                                                                    value={field.value}
+                                                                    onValueChange={(values) => {
+                                                                        field.onChange(Number(values.value));
+                                                                    }}
+                                                                    thousandSeparator={true}
+                                                                    placeholder="Enter purchase price"
+                                                                    disabled={isPending}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            )}
+
                                             <FormField
                                                 control={form.control}
                                                 name={`variants.${index}.price`}
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
-                                                        <FormLabel>Price</FormLabel>
+                                                        <FormLabel>Selling Price</FormLabel>
                                                         <FormControl>
                                                             <NumericFormat
                                                                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
@@ -483,19 +518,18 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                     field.onChange(Number(values.value));
                                                                 }}
                                                                 thousandSeparator={true}
-                                                                placeholder="Enter price"
+                                                                placeholder="Enter selling price"
                                                                 disabled={isPending}
                                                             />
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
-
                                             <FormField
                                                 control={form.control}
                                                 name={`variants.${index}.sku`}
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>SKU</FormLabel>
                                                         <FormControl>
@@ -506,15 +540,16 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                 value={field.value ?? ""}
                                                             />
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
 
+
                                             <FormField
                                                 control={form.control}
                                                 name={`variants.${index}.unit`}
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Unit</FormLabel>
                                                         <FormControl>
@@ -525,17 +560,17 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                 isDisabled={isPending}
                                                             />
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
 
                                             {/* Conditional fields based on tracking type */}
-                                            {form.watch('trackingType') === 'stock' && (
+                                            {form.watch('trackingType') === 'STOCK' && (
                                                 <FormField
                                                     control={form.control}
                                                     name={`variants.${index}.trackItem`}
-                                                    render={({field}) => (
+                                                    render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel>Stock Item</FormLabel>
                                                             <FormControl>
@@ -545,17 +580,17 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                     isDisabled={isPending}
                                                                 />
                                                             </FormControl>
-                                                            <FormMessage/>
+                                                            <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
                                             )}
 
-                                            {form.watch('trackingType') === 'recipe' && (
+                                            {form.watch('trackingType') === 'RECIPE' && (
                                                 <FormField
                                                     control={form.control}
                                                     name={`variants.${index}.trackItem`}
-                                                    render={({field}) => (
+                                                    render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel>Recipe</FormLabel>
                                                             <FormControl>
@@ -566,7 +601,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                     isDisabled={isPending}
                                                                 />
                                                             </FormControl>
-                                                            <FormMessage/>
+                                                            <FormMessage />
                                                         </FormItem>
                                                     )}
                                                 />
@@ -581,42 +616,43 @@ export default function ProductForm({ item }: ProductFormProps) {
 
                 {/* Action Buttons */}
                 <div className="flex items-center justify-end space-x-4">
-                    <CancelButton/>
-                    <Separator orientation="vertical" className="h-4"/>
+                    <CancelButton />
+                    <Separator orientation="vertical" className="h-4" />
                     <SubmitButton
                         isPending={isPending}
                         label={item ? "Update product" : "Create product"}
+
                     />
                 </div>
-        </form>
+            </form>
 
-        {/* Tracking Modal */}
-        <Dialog open={showTrackingModal} onOpenChange={setShowTrackingModal}>
-            <DialogContent>
-                <DialogHeader>
-                    <DialogTitle>Select Tracking Type</DialogTitle>
-                    <DialogDescription>
-                        Choose how you want to track this item in inventory
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="flex flex-col gap-4 mt-4">
-                    <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => handleTrackingTypeSelect('recipe')}
-                    >
-                        Track as Recipe
-                    </Button>
-                    <Button
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => handleTrackingTypeSelect('stock')}
-                    >
-                        Track as Stock Item
-                    </Button>
-                </div>
-            </DialogContent>
-        </Dialog>
-    </Form>
+            {/* Tracking Modal */}
+            <Dialog open={showTrackingModal} onOpenChange={setShowTrackingModal}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Select Tracking Type</DialogTitle>
+                        <DialogDescription>
+                            Choose how you want to track this item in inventory
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col gap-4 mt-4">
+                        <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => { handleTrackingTypeSelect('RECIPE'); setShowTrackingModal(false) }}
+                        >
+                            Track as Recipe
+                        </Button>
+                        <Button
+                            variant="outline"
+                            className="w-full"
+                            onClick={() => { handleTrackingTypeSelect('STOCK'); setShowTrackingModal(false) }}
+                        >
+                            Track as Stock Item
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </Form>
     );
 }

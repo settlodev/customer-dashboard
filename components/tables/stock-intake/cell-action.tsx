@@ -13,18 +13,9 @@ interface CellActionProps {
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
-    // const router = useRouter();
+    console.log(data);
     const {isOpen, onOpen, onOpenChange} = useDisclosure();
   
-    // const handleEditClick = () => {
-    //     console.log("Data object on Edit click:", data.stockVariant); 
-    //     if (data.stockVariant && data.id) {
-    //         router.push(`/stock-intakes/${data.stockVariant}/${data.id}`);
-    //     } else {
-    //         console.error("Missing stockVariantId or id in data:", data);
-    //     }
-    // };
-
     return (
         <>
             <div style={{alignItems: 'flex-end'}}>

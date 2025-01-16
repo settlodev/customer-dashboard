@@ -183,7 +183,6 @@ export const updateBrand = async (
         };
 
     } catch (error) {
-        console.error("Error while updating brand", error); 
         formResponse = {
             responseType: "error",
             message:
@@ -192,8 +191,11 @@ export const updateBrand = async (
         };
     }
 
+    if ( formResponse?.responseType === "error") return formResponse;
+
     revalidatePath("/brands");
     return parseStringify(formResponse);
+
 };
 
 export const deleteBrand = async (id: UUID): Promise<void> => {

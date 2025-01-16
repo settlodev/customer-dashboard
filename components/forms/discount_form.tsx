@@ -25,7 +25,7 @@ import { Discount } from "@/types/discount/type";
 import { DiscountSchema } from "@/types/discount/schema";
 import { createDiscount, updateDiscount } from "@/lib/actions/discount-actions";
 import DiscountTypeSelector from "../widgets/discount-type-selector";
-import { formatNumber} from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 import { Switch } from "../ui/switch";
 import DateTimePicker from "../widgets/datetimepicker";
 import { NumericFormat } from "react-number-format";
@@ -70,8 +70,9 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
     resolver: zodResolver(DiscountSchema),
     defaultValues: {
       ...item,
-      discountValue:typeof item?.discountValue === 'string' ? Number(item.discountValue) : item?.discountValue,
-       status: true },
+      discountValue: typeof item?.discountValue === 'string' ? Number(item.discountValue) : item?.discountValue,
+      status: true
+    },
   });
 
   const onInvalid = useCallback(
@@ -124,11 +125,8 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
 
     console.log("Selected item type:", itemType);
     console.log("Selected item ID:", itemId);
-  
-    // form.setValue('variant', null);
-  // form.setValue('customer', null);
-  // form.setValue('category', null);  
-  // form.setValue('department', null);
+
+
 
     if (itemType && itemId) {
       form.setValue(itemType as keyof z.infer<typeof DiscountSchema>, itemId, { shouldValidate: true });
@@ -249,9 +247,10 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                           isRequired
                           isDisabled={isPending}
                           label="usage limit"
-                          placeholder="Select discount usage once or multiple times"
+                          placeholder="Select discount usage"
                         />
                       </FormControl>
+                      <FormDescription>Discount Usage can either be once or repeated</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -279,21 +278,6 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                   )}
                 />
 
-              
-                <DiscountApplyOptionsWidget 
-                onSelectionChange={handleSelectionChange} 
-                initialItemType={
-                  // item?.stockVariant ? "variant" : 
-                  item?.customer ? "customer" : 
-                  item?.category ? "category" : 
-                  item?.department ? "department" : 
-                  null
-                }
-                initialItemId={
-                  item?.customer || item?.category || item?.department || null
-                }
-                /> 
-
                 <FormField
                   control={form.control}
                   name="validTo"
@@ -314,6 +298,20 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+
+                <DiscountApplyOptionsWidget
+                  onSelectionChange={handleSelectionChange}
+                  initialItemType={
+                    // item?.stockVariant ? "variant" : 
+                    item?.customer ? "customer" :
+                      item?.category ? "category" :
+                        item?.department ? "department" :
+                          null
+                  }
+                  initialItemId={
+                    item?.customer || item?.category || item?.department || null
+                  }
                 />
 
                 {item && (

@@ -104,3 +104,19 @@ export declare interface Staff {
   nationality?: string;
   joiningDate: Date;
 }
+
+export declare interface StaffSummaryReport{
+  staffReports:staffReports[]
+} 
+
+export declare interface staffReports {
+  id: UUID;
+  name: string;
+  image: string;
+  totalOrdersCompleted: number;
+  totalItemsSold: number;
+  totalStockIntakePerformed: number;
+  totalGrossAmount: number;
+  totalNetAmount: number;
+  totalGrossProfit: number;
+}

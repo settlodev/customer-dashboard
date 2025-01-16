@@ -150,6 +150,7 @@ function RegisterForm({ step }: { step: string }) {
     });
 
     const onInvalid = useCallback(
+
         (errors: FieldErrors) => {
             toast({
                 variant: "destructive",

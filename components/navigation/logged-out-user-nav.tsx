@@ -25,6 +25,8 @@ interface LoggedOutNavbarProps {
 
 export async function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
     const session = await auth();
+    
+
 
     const MobileNav = () => (
         <SheetContent side="left" className="w-72">
@@ -132,6 +134,12 @@ export async function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
                                 </Link>
                             </Button>
                         }
+
+                        {/* { session && currentLocation !== undefined &&  (
+                            <div>
+                                <Link href="/dashboard" className="hidden md:flex items-center text-muted-foreground hover:text-foreground transition-colors group">My Dashboard</Link>
+                            </div>
+                        ) } */}
 
                         { session &&  <UserDropdown user={session.user}/> }
                     </div>

@@ -16,6 +16,7 @@ import { motion } from "framer-motion";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  ListFilter,
   Search,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -42,6 +43,7 @@ import { DoubleArrowLeftIcon, DoubleArrowRightIcon } from "@radix-ui/react-icons
 import { ProductCSVDialog} from "../csv/CSVImport";
 import { CSVStockDialog } from "../csv/stockCsvImport";
 import { ProductWithStockCSVDialog } from "../csv/ProductWithStockCsvImport";
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -54,6 +56,8 @@ interface DataTableProps<TData, TValue> {
   searchParams?: {
     [key: string]: string | string[] | undefined;
   };
+  filterKey?: string; // Optional: Key to filter by (e.g., "orderStatus")
+    filterOptions?: { label: string; value: string }[]; // Optional: Filter options (e.g., "CLOSED", "OPEN")
 }
 
 export function DataTable<TData, TValue>({
@@ -62,7 +66,9 @@ export function DataTable<TData, TValue>({
    searchKey,
    pageCount,
    pageSizeOptions = [10, 20, 30, 40, 50],
- }: DataTableProps<TData, TValue>) {
+   filterKey,
+   filterOptions
+ }: DataTableProps<TData , TValue>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -75,6 +81,18 @@ export function DataTable<TData, TValue>({
   const perPageAsNumber = Number(per_page);
   const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [statusFilter, setStatusFilter] = React.useState<string>("");
+  
+  
+  // Handle status filter change
+  const handleStatusFilterChange = (newStatus: string) => {
+    setStatusFilter(newStatus); // Update the status filter state
+};
+   // Filter data based on status (if filterKey is provided)
+   const filteredData = React.useMemo(() => {
+    if (!filterKey || !statusFilter) return data; // If no filter is selected, return all data
+    return data.filter((item) => (item as any)[filterKey] === statusFilter); // Use filterKey to filter data
+}, [data, statusFilter, filterKey])
 
   const createQueryString = React.useCallback(
       (params: Record<string, string | number | null>) => {
@@ -112,7 +130,7 @@ export function DataTable<TData, TValue>({
     }, [pageIndex, pageSize]);
 
     const table = useReactTable({
-        data,
+        data: filteredData,
         columns,
         pageCount: pageCount ?? -1,
         getCoreRowModel: getCoreRowModel(),
@@ -151,6 +169,8 @@ export function DataTable<TData, TValue>({
         }
     }, [searchValue]);
 
+     
+
   return (
     <motion.div>
       <div className="flex items-center justify-between mb-2">
@@ -173,9 +193,41 @@ export function DataTable<TData, TValue>({
         <div className="flex items-center space-x-2">
           <DataTableViewOptions table={table} />
 
+          {filterKey && filterOptions && (
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button
+                                    className="h-8 gap-1"
+                                    disabled={false}
+                                    size="sm"
+                                    variant="outline"
+                                >
+                                    <ListFilter className="h-3.5 w-3.5" />
+                                    <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                                        Filter
+                                    </span>
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                              
+                                {filterOptions.map((option) => (
+                                    <DropdownMenuCheckboxItem
+                                        key={option.value}
+                                        checked={statusFilter === option.value}
+                                        onSelect={() => handleStatusFilterChange(option.value)}
+                                    >
+                                        {option.label}
+                                    </DropdownMenuCheckboxItem>
+                                ))}
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    )}
+
          {pathname === "/products" ?  <ProductCSVDialog /> : null}
-         {pathname === "/stocks" ?  <CSVStockDialog /> : null}
-         {pathname === "/stocks" ?  <ProductWithStockCSVDialog /> : null}
+         {pathname === "/stock-variants" ?  <CSVStockDialog /> : null}
+         {pathname === "/stock-variants" ?  <ProductWithStockCSVDialog /> : null}
 
         </div>
       </div>

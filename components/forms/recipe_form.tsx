@@ -129,7 +129,7 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                         className="flex gap-4 items-center p-4 rounded-lg border bg-card"
                     >
                       <div className="flex-1 grid grid-cols-12 gap-4 items-start">
-                        <div className="col-span-8">
+                        <div className="col-span-6">
                           <FormField
                               control={form.control}
                               name={`stockVariants.${index}.id`}
@@ -150,7 +150,8 @@ export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
                           />
                         </div>
 
-                        <div className="col-span-4">
+
+                        <div className="col-span-6">
                           <FormField
                               control={form.control}
                               name={`stockVariants.${index}.quantity`}

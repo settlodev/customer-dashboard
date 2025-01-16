@@ -5,11 +5,11 @@ import { Recipe } from "../recipe/type";
 export declare interface Addon {
     id:UUID;
     title:string;
-    location:string;
+    location:UUID;
     price:number;
     isTracked:boolean;
-    stockVariant:string;
-    recipe:string
+    stockVariant:StockVariant;
+    recipe:Recipe;
     status:boolean;
     canDelete:boolean;
     isArchived:boolean

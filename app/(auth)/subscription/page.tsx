@@ -130,7 +130,7 @@ const SubscriptionPage = () => {
               <li>Dial: *150*00#</li>
               <li>Select: 4 for &quot;Lipa kwa M-PESA&quot;</li>
               <li>Choose: 1 for  &quot;Lipa Kwa SIMU &quot;</li>
-              <li>Enter Lipa Number: *******</li>
+              <li>Enter Lipa Number: <span className="font-extrabold text-black">54224615.</span></li>
               <li>Input Amount: Enter the amount of subscription required to pay.</li>
               <li>Enter PIN: Input your M-PESA PIN to confirm the transaction.</li>
               <li>Business Name: Confirm that the business name is <span className="font-bold text-black">SETTLO TECHNOLOGIES LIMITED</span>.</li>
@@ -143,7 +143,7 @@ const SubscriptionPage = () => {
               <li>Select: Tuma Pesa.</li>
               <li>Choose: Kwenda Mitandao Mingine.</li>
               <li>Select: MPESA.</li>
-              <li>Enter Lipa Number: ******.</li>
+              <li>Enter Lipa Number: <span className="font-extrabold text-black">54224615.</span></li>
               <li>Input Amount: Enter the amount of subscription required to pay.</li>
               <li>Enter PIN: Input your M-PESA PIN to confirm the transaction.</li>
               <li>Business Name: Confirm that the business name is <span className="font-bold text-black">SETTLO TECHNOLOGIES LIMITED</span>.</li>
@@ -152,7 +152,7 @@ const SubscriptionPage = () => {
             {/* Confirmation Message */}
             <p className="mt-4 text-gray-700">
               After completing your payment, please send a confirmation message via WhatsApp to our number: 
-              <span className="font-semibold"> +255 *******</span>.
+              <span className="font-semibold"> (+255) 0759229777</span>.
             </p>
           </div>
         

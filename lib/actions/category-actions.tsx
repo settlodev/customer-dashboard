@@ -212,7 +212,10 @@ export const deleteCategory = async (id: UUID): Promise<void> => {
 
         await apiClient.delete(`/api/categories/${location?.id}/${id}`);
         revalidatePath("/categories");
-    } catch (error) {
-        throw error;
+    } catch (error: any) {
+        const formattedError = await error;
+        console.error("Error deleting stock", formattedError );
+
+        throw new Error(formattedError.message);
     }
 };

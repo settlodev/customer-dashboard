@@ -14,10 +14,10 @@ export default function NoItems({ newItemUrl, itemName}: NoItemsProps) {
     return (
         <div className="h-[calc(100vh-240px)] border border-dashed">
             <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
-                <h1 className="text-[1.5rem] font-bold leading-tight">
+                <h1 className="text-[1.5rem] font-bold leading-tight dark:text-black-2">
                     No {itemName} data found
                 </h1>
-                <p className="text-sm text-center text-muted-foreground">
+                <p className="text-sm text-center text-muted-foreground dark:text-black-2">
                     There are no {itemName} records found at the moment, add new{" "}
                     {itemName} record to start viewing data.
                 </p>
@@ -29,6 +29,7 @@ export default function NoItems({ newItemUrl, itemName}: NoItemsProps) {
                     >
                         <Plus className="mr-2 h-4 w-4" /> Add {itemName}
                     </Link>
+                   
                 </div>
             </div>
         </div>

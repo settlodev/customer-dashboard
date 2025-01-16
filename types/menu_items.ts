@@ -11,7 +11,10 @@ export const menuItems = (args?: MenuItemArgType) => {
             icon: 'dashboard',
             items: [
                 { title: "Dashboard", link: "/dashboard", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Staff Report", link: "/staff-report", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Top Selling Report", link: "/report/top-selling", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Stock Report", link: "/report/stock", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Staff Report", link: "/report/staff", current: args?.isCurrentItem, icon: "cart" },
+
             ]
         },
 
@@ -39,7 +42,8 @@ export const menuItems = (args?: MenuItemArgType) => {
             current: args?.isCurrentItem,
             icon: 'stock',
             items: [
-                { title: "Manage Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart" },
+                // { title: "Manage Stock", link: "/stocks", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Stock items", link: "/stock-variants", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Stock Intake", link: "/stock-intakes", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Stock Modification", link: "/stock-modifications", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Stock Transfer", link: "/stock-transfers", current: args?.isCurrentItem, icon: "cart" },
@@ -58,6 +62,7 @@ export const menuItems = (args?: MenuItemArgType) => {
             icon: 'sales',
             items: [
                 { title: "Orders", link: "/orders", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Refunds", link: "/refunds", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
 

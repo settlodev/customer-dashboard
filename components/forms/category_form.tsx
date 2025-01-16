@@ -28,16 +28,19 @@ import {ItemStatuses} from "@/types/constants";
 import {useToast } from "@/hooks/use-toast";
 import {Tag} from "lucide-react";
 import {Card, CardContent, CardHeader, CardTitle} from "../ui/card";
+import { useRouter } from "next/navigation";
 
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
-    console.log("The item is",item)
 
     const [isPending, startTransition] = useTransition();
-    const [response, setResponse] = useState<FormResponse | undefined>();
+    const [,setResponse] = useState<FormResponse | undefined>();
     const [imageUrl, setImageUrl] = useState<string>(item && item.image?item.image: "");
     const [categories, setCategories] = useState<Category[] | null>([]);
+    const [error,] = useState<string | undefined>("");
+
     const [status, setStatus] = useState<boolean>(item?item.status: ItemStatuses[0].value);
     const { toast } = useToast();
+    const router = useRouter();
 
     useEffect(() => {
         const getData = async () => {
@@ -107,6 +110,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                             description: "Category has been created successfully",
                             duration:5000
                         });
+                        router.push("/categories");
                     }
                 });
             }
@@ -116,7 +120,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-                <FormError message={response?.message} />
+                <FormError message={error} />
 
                 <Card>
                     <CardHeader>

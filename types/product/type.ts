@@ -28,3 +28,44 @@ export declare interface Product {
     trackingType: "recipe" | "stock" | null,
 }
 
+export declare interface TopSellingProduct{
+    startDate: Date,
+    endDate: Date,
+    locationName: string,
+    topItems: topItems[]
+    totalRevenue: number,
+    totalQuantitySold: number,
+    soldItemsReport: SoldItemsReport
+}
+
+interface topItems{
+    productName: string,
+    variantName: string,
+    categoryName: string,
+    quantity: number,
+    revenue: number
+    percentageOfTotal: number
+    averagePrice: number
+}
+export interface SoldItemsReport {
+    items: SoldItem[]; // Changed to an array of SoldItem
+    totalQuantity: number;
+    totalRevenue: number;
+    totalCost: number | null; // Assuming cost can be null
+    totalProfit: number;
+    averageMargin: number;
+}
+export interface SoldItem{
+    productName: string,
+    variantName: string,
+    categoryName: string,
+    staffName: string,
+    imageUrl: string
+    quantity: number,
+    price: number,
+    cost: number,
+    profit: number,
+    margin: number,
+    soldDate: string
+}
+

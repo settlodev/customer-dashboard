@@ -9,7 +9,7 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import {Product} from "@/types/product/type";
+import {Product, TopSellingProduct} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
 // import {Variant} from "@/types/variant/type";
 
@@ -99,6 +99,8 @@ export const  createProduct= async (
         business: business?.id
     }
 
+    console.log("The payload to create product", payload);
+
     try {
         const apiClient = new ApiClient();
         await apiClient.post(
@@ -178,6 +180,8 @@ export const updateProduct = async (
         location: location?.id,
         business: business?.id
     };
+
+    console.log("The payload to update product", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -284,55 +288,7 @@ export const updateProduct = async (
     redirect("/products");
 };
 
-// export const updateProduct = async (
-//     id: UUID,
-//     product: z.infer<typeof ProductSchema>
-// ): Promise<FormResponse | void> => {
-//     let formResponse: FormResponse | null = null;
-//     const validData = ProductSchema.safeParse(product);
-//
-//
-//     if (!validData.success) {
-//         formResponse = {
-//             responseType: "error",
-//             message: "Please fill all the required fields",
-//             error: new Error(validData.error.message),
-//         };
-//         return parseStringify(formResponse);
-//     }
-//
-//     const location = await getCurrentLocation();
-//     const business = await getCurrentBusiness();
-//     const payload = {
-//         ...validData.data,
-//         location: location?.id,
-//         business: business?.id
-//     };
-//     // console.log("The payload to update product", payload);
-//
-//     try {
-//         const apiClient = new ApiClient();
-//
-//         await apiClient.put(
-//             `/api/products/${location?.id}/${id}`,
-//             payload
-//         );
-//         formResponse = {
-//             responseType: "success",
-//             message: "Product updated successfully",
-//         };
-//
-//     } catch (error) {
-//         formResponse = {
-//             responseType: "error",
-//             message: "Something went wrong while processing your request, please try again",
-//             error: error instanceof Error ? error : new Error(String(error)),
-//         };
-//     }
-//
-//     revalidatePath("/products")
-//     return parseStringify(formResponse);
-// };
+
 
 export const deleteVariant = async (productId: UUID, variantId: UUID): Promise<void> => {
     if (!productId) throw new Error("Product ID is required to perform this request");
@@ -412,3 +368,26 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
         // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
 };
+
+export const topSellingProduct = async (startDate?: Date, endDate?: Date,limit?:number): Promise<TopSellingProduct | null> => {
+
+    await getAuthenticatedUser();
+    try{
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        const params = {
+            startDate,
+            endDate,
+            limit
+        }
+        const topSelling = await apiClient.get(`/api/reports/${location?.id}/products/top-selling`, {
+            params
+        });
+
+        return parseStringify(topSelling);
+    }
+    catch (error){
+        console.error("Error fetching top selling products report:", error);
+        throw error
+    }
+}

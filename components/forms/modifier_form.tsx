@@ -35,6 +35,7 @@ import { Button } from "../ui/button";
 
 
 function ModifierForm({ item }: { item: Modifier | null | undefined }) {
+  console.log("ModifierForm item:", item);
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error,] = useState<string | undefined>("");
@@ -73,7 +74,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
       ...item,
       status: true,
       variant: item ? item.variant.toString() : "",
-      isMaximum: item ? item.isMaximum : false,
+      // isMaximum: item ? item.isMaximum : false,
       isMandatory: item ? item.isMandatory : false,
       maximumSelection: item ? item.maximumSelection : 0,
       modifierItems: item ? item.modifierItems : [],
@@ -103,12 +104,17 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
           setItemList(transformedItems);
           // setItemName(transformedItems.length > 0 ? transformedItems[0].name : "");
           // setItemPrice(transformedItems.length > 0 ? transformedItems[0].price : 0);
+
+          if(item?.maximumSelection > 0){
+            setIsMultiple(true);
+          }
         }
         else{
           setItemList([]);
         setItemName("");
         setItemPrice(0);
         }
+        
 
 
       } catch (error) {
@@ -352,7 +358,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 md:grid-cols-2 gap-4 mt-3">
 
-            {isMultiple && (
+            {isMultiple && isMultiple === true && (
               <div className="grid gap-2">
                 <FormField
                   control={form.control}

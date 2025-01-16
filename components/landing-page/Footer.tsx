@@ -69,7 +69,7 @@ const LegalLinks = [
   },
   {
     name: 'Terms of Service',
-    href: '/'
+    href: '/terms'
   },
   {
     name: 'FAQ',
@@ -158,7 +158,7 @@ const Footer = () => {
               LegalLinks.map((item, key) => (
                 <Link key={key} href={item.href}>
                   <div className='flex flex-row items-center justify-start gap-2'>
-                    <span className='text-[14px] font-normal text-white cursor-pointer'>{item.name}</span>
+                    <span className='text-[14px] font-normal text-white cursor-pointer hover:text-emerald-500'>{item.name}</span>
                   </div>
                 </Link>
               ))}

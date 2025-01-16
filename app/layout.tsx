@@ -4,6 +4,7 @@ import {SessionProvider} from "next-auth/react";
 import {Providers} from "./providers";
 import {auth} from "@/auth";
 import React from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 export const metadata: Metadata = {
     applicationName: "Settlo",
@@ -23,6 +24,7 @@ export default async function RootLayout({children,}: Readonly<{ children: React
           <SessionProvider session={session}>
               <Providers>{children}</Providers>
           </SessionProvider>
+          <Analytics />
         </body>
       </html>
   );

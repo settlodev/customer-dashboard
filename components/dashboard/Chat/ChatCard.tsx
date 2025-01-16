@@ -7,6 +7,7 @@ interface Props {
 }
 
 const SolidItemsCard: React.FC<Props> = ({ SoldItems }) => {
+  // console.log("SoldItems", SoldItems);
   const isValidImageUrl = (image: string) => {
     return (
       image &&
@@ -30,11 +31,11 @@ const SolidItemsCard: React.FC<Props> = ({ SoldItems }) => {
               key={key}
             >
               <div className="relative h-14 w-14 rounded-full">
-                {isValidImageUrl(item.image) ? (
+                {isValidImageUrl(item.imageUrl) ? (
                   <Image
                     width={56}
                     height={56}
-                    src={item.image}
+                    src={item.imageUrl}
                     alt="Item"
                     className="rounded-lg object-cover"
                   />
@@ -48,7 +49,7 @@ const SolidItemsCard: React.FC<Props> = ({ SoldItems }) => {
               <div className="flex flex-1 items-center justify-between">
                 <div>
                   <h5 className="text-sm font-bold text-black capitalize dark:text-white">
-                    {item.name}
+                    {item.productName}
                   </h5>
                   <p className="flex items-center gap-2">
                     <span className="text-sm font-medium text-black dark:text-white">

@@ -4,6 +4,7 @@ export declare interface Variant {
     id: UUID,
     name: string,
     price: number,
+    purchasingPrice: number,
     sku: string,
     barcode: string,
     description: string,

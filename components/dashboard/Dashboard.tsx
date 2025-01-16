@@ -11,6 +11,7 @@ import SolidItemsCard from "@/components/dashboard/Chat/ChatCard";
 import TableOne from "./Tables/TableOne";
 import { fetchOrders } from "@/lib/actions/order-actions";
 import { Orders } from "@/types/orders/type";
+import Loading from "@/app/loading";
 
 const PaymentMethod = dynamic(() => import("@/components/dashboard/Charts/ChartThree"), {
   ssr: false,
@@ -18,21 +19,36 @@ const PaymentMethod = dynamic(() => import("@/components/dashboard/Charts/ChartT
 const Dashboard: React.FC = () => {
   const [summaries, setSummaries] = useState<SummaryResponse | null>(null);
   const [orders, setOrders] = useState<Orders[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
 
   useEffect(() => {
     const getSummaries = async () => {
       try {
         const [summary, orders] = await Promise.all([fetchSummaries(), fetchOrders()]);
-        // console.log(summary );
         setSummaries(summary as SummaryResponse);
         setOrders(orders);
       } catch (error) {
         console.error("Error fetching summaries:", error );
       }
+      finally {
+        setIsLoading(false);
+      }
     };
 
     getSummaries();
   }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">
+            <Loading />
+        </div>
+      </div>
+    );
+  }
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -41,7 +57,7 @@ const Dashboard: React.FC = () => {
         </div>
         <DateRangePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>} />
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5">
         <CardDataStats
           title="Total Revenue"
           total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.totalRevenue) : "0.00"}`}>
@@ -58,7 +74,7 @@ const Dashboard: React.FC = () => {
         </CardDataStats>
 
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5">
 
         <CardDataStats title="Expenses" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.expense) : "0.00"}`}>
           <CreditCard />
@@ -73,7 +89,7 @@ const Dashboard: React.FC = () => {
           <ShoppingCart />
         </CardDataStats>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5 bg-white p-3 rounded-lg shadow-default">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6  xl:grid-cols-4 2xl:gap-7.5">
 
         <CardDataStats title="Gross Profit" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.grossProfit) : "0.00"}`}>
           <ChartNoAxesCombined />

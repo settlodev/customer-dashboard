@@ -4,7 +4,7 @@ import { UUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
-import { Staff } from "@/types/staff";
+import { Staff,StaffSummaryReport } from "@/types/staff";
 import { ApiResponse, FormResponse } from "@/types/types";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
@@ -270,3 +270,25 @@ const inviteStaff = async (staffId: UUID,businessId:UUID): Promise<void> => {
         throw error;
     }
 };
+
+export const staffReport = async (startDate?: Date, endDate?: Date): Promise<StaffSummaryReport | null> => {
+
+    await getAuthenticatedUser();
+    try{
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        const params = {
+            startDate,
+            endDate,
+        }
+        const report = await apiClient.get(`/api/reports/${location?.id}/staff/summary`, {
+            params
+        });
+
+        return parseStringify(report);
+    }
+    catch (error){
+        console.error("Error fetching staff summary report:", error);
+        throw error
+    }
+}

@@ -1,4 +1,4 @@
-import React, { useState} from "react";
+import React, { useEffect, useState} from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adjust to match your UI library
 import StockVariantSelector from "./stock-variant-selector";
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
@@ -10,14 +10,28 @@ interface TrackingOptionsProps {
     quantity: number;
     itemId: string | null;
   }) => void;
+  initialItemType?: string | null;
+  initialItemId?: string | null;
   
 }
 
-const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) => {
-  const [trackingType, setTrackingType] = useState<string | null>(null);
-  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange,initialItemType, 
+  initialItemId }) => {
+  const [trackingType, setTrackingType] = useState<string | null>(initialItemType || null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(initialItemId || null);
   const [quantity] = useState<number>(1);
-  // const [isPending] = useTransition();
+
+  useEffect(() => {
+    if (initialItemType && initialItemId) {
+      setTrackingType(initialItemType);
+      setSelectedItemId(initialItemId);
+      onSelectionChange({ 
+        itemType: initialItemType, 
+        itemId: initialItemId ,
+        quantity
+      });
+    }
+  }, [initialItemType, initialItemId]);
 
   const handleTrackingTypeChange = (type: string | null) => {
     setTrackingType(type);
@@ -34,8 +48,8 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange }) 
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mt-2">Select Tracking Type</label>
-        <Select onValueChange={handleTrackingTypeChange}>
+        <label className="block text-sm font-medium text-gray-700 mt-2 mb-2">Select Tracking Type</label>
+        <Select onValueChange={handleTrackingTypeChange} value={trackingType || ""}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Choose tracking type" />
           </SelectTrigger>

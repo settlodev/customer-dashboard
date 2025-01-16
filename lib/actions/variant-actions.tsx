@@ -15,9 +15,7 @@ export const fetchVariants = async () : Promise<Variant[]> => {
 
     try {
         const apiClient = new ApiClient();
-
-        const product = "5b6ba5c1-106a-43a3-b3be-e91ce4279add"
-
+        const product = await getCurrentLocation();
         const data = await  apiClient.get(
             `/api/variants/${product}`,
         );

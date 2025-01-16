@@ -12,15 +12,39 @@ import { Button } from "@/components/ui/button";
 import {Settings, User, LogOut, ChevronDown, LayoutDashboard} from "lucide-react";
 import UserAvatar from "@/components/widgets/user-avatar";
 import { ExtendedUser } from "@/types/types";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface UserDropdownProps {
     user: ExtendedUser;
 }
 
-export const UserDropdown = ({ user }: UserDropdownProps) => {
+export const UserDropdown = ({ user }: UserDropdownProps) =>  {
     const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
     const initials = fullName.split(' ').map(n => n[0]).join('');
+    const router = useRouter();
 
+    const [currentLocation, setCurrentLocation] = useState<Location | undefined>(undefined);
+
+    useEffect(() => {
+        const fetchCurrentLocation = async () => {
+            const location = await getCurrentLocation();
+            console.log('Current location:', location);
+            setCurrentLocation(location as Location | undefined);
+
+        };
+
+        fetchCurrentLocation();
+    }, []); 
+
+    const checkCurrentLocation = () => {
+        if (currentLocation) {
+            router.push('/dashboard');
+        } else {
+            router.push('/select-business');
+        }
+    };
     return (
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -45,12 +69,14 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem asChild>
-                    <a href="/dashboard" className="flex items-center cursor-pointer">
-                        <LayoutDashboard className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
-                    </a>
-                </DropdownMenuItem>
+               
+                        <DropdownMenuItem asChild>
+                            <a onClick={checkCurrentLocation} className="flex items-center cursor-pointer">
+                                <LayoutDashboard className="mr-2 h-4 w-4" />
+                                <span>Dashboard</span>
+                            </a>
+                        </DropdownMenuItem>
+                
 
                 <DropdownMenuItem asChild>
                     <a href="/profile" className="flex items-center cursor-pointer">

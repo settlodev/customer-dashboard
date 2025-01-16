@@ -20,6 +20,7 @@ export default function ProductModal({
 
   isOpen, onOpenChange, data }: ProductModalProps) {
 
+
   return (
     <>
     {isOpen && (
@@ -111,7 +112,11 @@ export default function ProductModal({
                               <span className="w-2/3 pl-2 text-sm">{variant.name}</span>
                             </div>
                             <div className="flex items-center p-2 border-b border-gray-300">
-                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Price</span>
+                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">PurchasingPrice</span>
+                              <span className="w-2/3 pl-2 text-sm">{Intl.NumberFormat().format(variant.purchasingPrice)}</span>
+                            </div>
+                            <div className="flex items-center p-2 border-b border-gray-300">
+                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">SellingPrice</span>
                               <span className="w-2/3 pl-2 text-sm">{Intl.NumberFormat().format(variant.price)}</span>
                             </div>
                             <div className="flex items-center p-2 border-b border-gray-300">

@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
@@ -41,14 +40,14 @@ export const searchStockIntakes = async (
     try {
         const apiClient = new ApiClient();
         const query ={
-            // filters: [
-            //     {
-            //         key:"name",
-            //         operator:"LIKE",
-            //         field_type:"STRING",
-            //         value:q
-            //     }
-            // ],
+            filters: [
+                {
+                    key:"stockVariantName",
+                    operator:"LIKE",
+                    field_type:"STRING",
+                    value:q
+                }
+            ],
             sorts:[
                 {
                     key:"orderDate",
@@ -64,7 +63,7 @@ export const searchStockIntakes = async (
             `/api/stock-intakes/${location?.id}/all`,
             query
         );
-        console.log("The list of Stock Intakes in this location: ", data)
+        // console.log("The list of Stock Intakes in this location: ", data)
         return parseStringify(data);
     }
     catch (error){
@@ -92,7 +91,6 @@ export const createStockIntake = async (
     const payload = {
         ...validData.data,
     };
-
     try {
         const apiClient = new ApiClient();
        await apiClient.post(
@@ -193,70 +191,70 @@ export const updateStockIntake = async (
    return parseStringify(formResponse);
 };
 
-export const deleteStockIntake = async (id: UUID, stockVariant:UUID): Promise<void> => {
-    if (!id && !stockVariant) throw new Error("Stock Intake ID & stockVariant is required to perform this request");
+// export const deleteStockIntake = async (id: UUID, stockVariant:UUID): Promise<void> => {
+//     if (!id && !stockVariant) throw new Error("Stock Intake ID & stockVariant is required to perform this request");
 
-    await getAuthenticatedUser();
+//     await getAuthenticatedUser();
 
-    console.log("Deleting stock intake with ID:", id, stockVariant);
+//     console.log("Deleting stock intake with ID:", id, stockVariant);
 
-   try{
-    const apiClient = new ApiClient();
+//    try{
+//     const apiClient = new ApiClient();
 
-    await apiClient.delete(
-        `/api/stock-intakes/${stockVariant}/${id}`,
-    );
-    revalidatePath("/stock-intakes");
+//     await apiClient.delete(
+//         `/api/stock-intakes/${stockVariant}/${id}`,
+//     );
+//     revalidatePath("/stock-intakes");
 
-   }
-   catch (error){
-       throw error
-   }
-}
+//    }
+//    catch (error){
+//        throw error
+//    }
+// }
 
-export const uploadCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
-    console.log("Starting CSV upload");
+// export const uploadCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
+//     console.log("Starting CSV upload");
 
-    if (!fileName.endsWith(".csv")) {
-        throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
-    }
+//     if (!fileName.endsWith(".csv")) {
+//         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
+//     }
 
-    const lines = fileData.split("\n");
-    const isCSVContent = lines.every(line => line.split(",").length > 1);
+//     const lines = fileData.split("\n");
+//     const isCSVContent = lines.every(line => line.split(",").length > 1);
 
-    if (!isCSVContent) {
-        throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
-    }
+//     if (!isCSVContent) {
+//         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
+//     }
 
-    console.log("CSV content to be sent:", fileData);
+//     console.log("CSV content to be sent:", fileData);
 
-    const formattedCSVData = fileData.replace(/\r\n/g, '\n');
+//     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
-    console.log("Formatted CSV data:", formattedCSVData);
+//     console.log("Formatted CSV data:", formattedCSVData);
 
-    try {
-        const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
-        const response = await apiClient.post(
-            `/api/products/${location?.id}/upload-csvx`,
-            formattedCSVData, // Send as plain text
-            {
-                headers: {
-                    "Content-Type": "text/csv",
-                },
-                transformRequest: [(data) => data],
-            }
-        );
+//     try {
+//         const apiClient = new ApiClient();
+//         const location = await getCurrentLocation();
+//         const response = await apiClient.post(
+//             `/api/products/${location?.id}/upload-csvx`,
+//             formattedCSVData, // Send as plain text
+//             {
+//                 headers: {
+//                     "Content-Type": "text/csv",
+//                 },
+//                 transformRequest: [(data) => data],
+//             }
+//         );
 
-        console.log("CSV upload response", response);
+//         console.log("CSV upload response", response);
 
-        // Revalidate or redirect after successful upload
-        revalidatePath("/products");
-        redirect("/products");
-    } catch (error) {
-        console.error("Error uploading CSV file:", error);
+//         // Revalidate or redirect after successful upload
+//         revalidatePath("/products");
+//         redirect("/products");
+//     } catch (error) {
+//         console.error("Error uploading CSV file:", error);
 
-        return ;
-        // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
-    }
-};
+//         return ;
+//         // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
+//     }
+// };

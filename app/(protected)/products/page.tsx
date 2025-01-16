@@ -7,6 +7,7 @@ import {DataTable} from "@/components/tables/data-table";
 import {columns} from '@/components/tables/product/column'
 import { Product } from "@/types/product/type";
 import {searchProducts} from "@/lib/actions/product-actions";
+import { ProductCSVDialog } from "@/components/csv/CSVImport";
 
 const breadCrumbItems = [{title: "Products", link: "/products"}];
  type ParamsProps ={
@@ -36,6 +37,11 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
                     <Button>
                         <Link href={`/products/new`}>Add Product</Link>
                     </Button>
+                 {total === 0 && 
+                 <div className="rounded">
+                    <ProductCSVDialog />
+                 </div>
+                 }
                 </div>
             </div>
             {

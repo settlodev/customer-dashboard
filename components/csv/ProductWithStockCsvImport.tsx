@@ -63,13 +63,13 @@ const validateCSV = (
       }
     }
 
-    const quantityIndex = headers.indexOf("Quantity");
-    if (quantityIndex !== -1) {
-      const quantity = parseInt(row[quantityIndex], 10);
-      if (isNaN(quantity) || quantity <= 0) {
-        rowErrors.push(`Row ${currentRowIndex}: "Quantity" must be greater than zero.`);
-      }
-    }
+    // const quantityIndex = headers.indexOf("Quantity");
+    // if (quantityIndex !== -1) {
+    //   const quantity = parseInt(row[quantityIndex], 10);
+    //   if (isNaN(quantity) || quantity <= 0) {
+    //     rowErrors.push(`Row ${currentRowIndex}: "Quantity" must be greater than zero.`);
+    //   }
+    // }
 
     const startingQuantityIndex = headers.indexOf("Starting Quantity");
     if (startingQuantityIndex !== -1) {
@@ -109,7 +109,6 @@ export function ProductWithStockCSVDialog() {
     "Category Name",
     "Variant Name",
     "Price",
-    "Quantity",
     "SKU",
     "Barcode",
     "Department",
@@ -156,7 +155,7 @@ export function ProductWithStockCSVDialog() {
     fetch("/csv/stock-template.csv")
       .then((res) => {
         if (res.ok) {
-          window.open("/csv/stock-template.csv", "_blank");
+          window.open("/csv/ProductWithStock.csv", "_blank");
         } else {
           alert("Template not found");
         }
@@ -188,13 +187,13 @@ export function ProductWithStockCSVDialog() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          className="h-8 gap-1"
+          className="h-10 gap-1 dark:bg-white dark:text-black-2"
           size="sm"
           variant="outline"
           onClick={() => setIsOpen(true)}
         >
           <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-          <span className="hidden lg:block sr-only sm:not-sr-only sm:whitespace-nowrap">Import Stock With Product</span>
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-black-2 dark:bg-white dark:text-black-2">Import CSV (Stock & Product)</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">
