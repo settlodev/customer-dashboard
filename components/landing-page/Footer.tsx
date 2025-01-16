@@ -5,23 +5,23 @@ import { Instagram, Linkedin, Mail, MapPin, PhoneIcon, Twitter, Youtube } from '
 const socialMedia = [
   {
     name: 'Instagram',
-    href: 'https://twitter.com/settlo',
+    href: 'https://www.instagram.com/settlo__?igsh=dmpzdXZudDJiNTFt&utm_source=qr',
     icon: <Instagram />
   },
   {
     name: 'Twitter',
-    href: 'https://github.com/settlo',
+    href: 'https://x.com/settloapp?s=21',
     icon: <Twitter />
   },
   {
     name: 'LinkedIn',
-    href: 'https://instagram.com/settlo',
+    href: 'https://www.linkedin.com/company/settlo/',
     icon: <Linkedin />
   },
 
   {
     name: 'Youtube',
-    href: 'https://instagram.com/settlo',
+    href: 'https://youtube.com/@settloapp?si=RC0bk86QjDGaFrvK',
     icon: <Youtube />
   },
 
@@ -171,7 +171,7 @@ const Footer = () => {
         <div className='flex flex-row items-center justify-center gap-10'>
           {
             socialMedia.map((item, key) => (
-              <Link key={key} href={item.href}>
+              <Link key={key} href={item.href} target="_blank" rel="noopener noreferrer">
                 <div className='flex flex-row items-center justify-start gap-2'>
                   <span className='text-xl font-bold text-white cursor-pointer'>{item.icon}</span>
                   {/* <span className='text-xl font-bold text-black'>{item.name}</span> */}
@@ -190,33 +190,6 @@ const Footer = () => {
     </section>
   )
 }
-// <Background color="bg-gray-50">
-//   <Section yPadding="py-16">
-//     <CenteredFooter
-//       logo={<Logo />}
-//       iconList={
-//         <>
 
-//         </>
-//       }>
-//       <li className="pl-3 pr-3 text-sm font-medium">
-//         <Link href="/">Home</Link>
-//       </li>
-//       <li className="pl-3 pr-3 text-sm font-medium">
-//         <Link href="/">Support</Link>
-//       </li>
-//       <li className="pl-3 pr-3 text-sm font-medium">
-//         <Link href="/">Contact</Link>
-//       </li>
-//       <li className="pl-3 pr-3 text-sm font-medium">
-//         <Link href="/">
-//           Feedback
-//         </Link>
-//       </li>
-//     </CenteredFooter>
-//   </Section>
-// </Background>
-
-// );÷
 
 export { Footer };
