@@ -11,7 +11,7 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const router = useRouter();
-
+console.log(data)
     const handleRedirect = (id: string) => {
         router.push(`/stock-variants/${id}`);
     };

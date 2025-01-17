@@ -2,15 +2,16 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Package2, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowUp, BadgeCent, BadgePlus, Package2, Pen, PencilLine, Redo, Trash, TrendingDown, TrendingUp } from 'lucide-react';
 import { StockMovement } from '@/types/stockVariant/type';
 
 
 
 const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) => {
 
-  // console.log("movements", movements)
+  console.log("movements", movements)
   const latestMovement = movements[movements.length - 1];
+  console.log("latestMovement", latestMovement)
 
   const chartData = movements.map(movement => ({
     id: movement.stockName,
@@ -18,6 +19,27 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
     averageValue: movement.newAverageValue,
     type: movement.stockMovementType
   }));
+
+  const getMovementLabel = (type: string) => {
+    switch (type) {
+      case 'STOCK_INTAKE':
+        return 'Intake';
+      case 'ORDER_ITEM_SALE':
+        return 'Sale';
+      case 'ORDER_ITEM_DELETE':
+        return 'Delete';
+      case 'ORDER_ITEM_REFUND':
+        return 'Refund';
+      case 'ORDER_ITEM_AMOUNT_CHANGE':
+        return 'Amount Change';
+      case 'ADDON_SALE':
+        return 'Addon Sale';
+      case 'STOCK_MODIFICATION':
+        return 'Modification';
+      default:
+        return 'Unknown';
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -28,7 +50,7 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Current Stock Level</p>
-                <h3 className="text-2xl font-bold">{latestMovement?.newTotalQuantity}</h3>
+                <h3 className="text-2xl font-bold">{latestMovement?.newTotalQuantity || 0}</h3>
               </div>
               <Package2 className="h-8 w-8 text-blue-500" />
             </div>
@@ -40,7 +62,7 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Value</p>
-                <h3 className="text-2xl font-bold">{Intl.NumberFormat().format(latestMovement?.newAverageValue)}/=</h3>
+                <h3 className="text-2xl font-bold">{Intl.NumberFormat().format(latestMovement?.newAverageValue) || 0}/=</h3>
               </div>
               <TrendingUp className="h-8 w-8 text-green-500" />
             </div>
@@ -130,11 +152,9 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
                   <th className='p-2'>#</th>
                   <th className="text-left p-2">Type</th>
                   <th>Prev Qty</th>
-                  <th className="text-left p-2">Quantity</th>
-                  <th className="text-left p-2">New Total Qty</th>
+                  <th className="text-left p-2">New Qty</th>
                   <th className="text-left p-2">Value</th>
                   <th className="text-left p-2">Staff</th>
-                  <th className="text-left p-2">Batch Number</th>
                   <th className='text-left p-2'>Date</th>
                 </tr>
               </thead>
@@ -144,18 +164,28 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
                     <td className="p-2">{index + 1}</td>
                     <td className="p-2">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${movement.stockMovementType === 'STOCK_INTAKE'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
+                        ? 'bg-green-100 text-green-800'
+                        : movement.stockMovementType === 'ORDER_ITEM_SALE'
+                          ? 'bg-blue-100 text-blue-800'
+                          : movement.stockMovementType === 'ORDER_ITEM_DELETE'
+                            ? 'bg-gray-100 text-gray-800'
+                            : movement.stockMovementType === 'ORDER_ITEM_REFUND'
+                              ? 'bg-yellow-100 text-yellow-800'
+                              : movement.stockMovementType === 'ORDER_ITEM_AMOUNT_CHANGE'
+                                ? 'bg-purple-100 text-purple-800'
+                                : movement.stockMovementType === 'ADDON_SALE'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : movement.stockMovementType === 'STOCK_MODIFICATION'
+                                    ? 'bg-teal-100 text-teal-800'
+                                    : 'bg-red-100 text-red-800' 
                         }`}>
-                        {movement.stockMovementType === 'STOCK_INTAKE' ? 'Intake' : 'Sale'}
+                        {getMovementLabel(movement.stockMovementType)}
                       </span>
                     </td>
                     <td>{Intl.NumberFormat().format(movement.previousTotalQuantity)}</td>
-                    <td className="p-2">{Intl.NumberFormat().format(movement.quantity)}</td>
                     <td>{Intl.NumberFormat().format(movement.newTotalQuantity)}</td>
                     <td className="p-2">{Intl.NumberFormat().format(movement.value)}/=</td>
                     <td className="p-2">{movement.staffName}</td>
-                    <td className="p-2">{movement.stockIntakeBatchNumber || '-'}</td>
                     <td className="p-2">{Intl.DateTimeFormat(undefined, {
                       year: 'numeric',
                       month: '2-digit',
@@ -165,6 +195,23 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
                       second: '2-digit',
                       hour12: false
                     }).format(new Date(movement.dateCreated))}</td>
+                    <td className="p-2">
+                      {movement.stockMovementType === 'ORDER_ITEM_SALE' 
+                      ? (<BadgeCent className="h-5 w-5 text-blue-500" />) 
+                      : movement.stockMovementType === 'STOCK_INTAKE' 
+                      ? (<ArrowUp className="h-5 w-5 text-green-500" />)
+                      : movement.stockMovementType === 'ORDER_ITEM_DELETE' 
+                      ? (<Trash className="h-5 w-5 text-gray-500" />)
+                      : movement.stockMovementType === 'ORDER_ITEM_REFUND' 
+                      ? (<Redo className="h-5 w-5 text-yellow-500" />)
+                      : movement.stockMovementType === 'ORDER_ITEM_AMOUNT_CHANGE' 
+                      ? (<Pen className="h-5 w-5 text-purple-500" />)
+                      : movement.stockMovementType === 'ADDON_SALE' 
+                      ? (<BadgePlus className="h-5 w-5 text-orange-500" />)
+                      : movement.stockMovementType === 'STOCK_MODIFICATION' 
+                      ? (<PencilLine className="h-5 w-5 text-teal-500" />)
+                      : (<span className="text-gray-500">-</span>)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
