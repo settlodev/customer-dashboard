@@ -23,7 +23,7 @@ export const Hero = () => {
                             </h1>
 
                             <p className="text-xl text-gray-600 leading-relaxed">
-                                Streamline operations, boost sales, and gain powerful insights with Settlo's
+                                Streamline operations, boost sales, and gain powerful insights with Settlo&lsquo;s
                                 intuitive point-of-sale system designed for modern businesses.
                             </p>
 
