@@ -1,108 +1,155 @@
 'use client'
+
 import { useState } from 'react';
-import { VerticalFeatureRow } from './VerticalFeatureRow';
-import { Activity, BadgeDollarSign, ChartSpline, Store, Users, Workflow } from 'lucide-react';
+import {Activity, ArrowRight, BadgeDollarSign, ChartSpline, LucideIcon, Store, Users, Workflow} from 'lucide-react';
+import Image from "next/image";
 
+interface FeatureCardProps {
+  title: string;
+  description: string;
+  icon?: LucideIcon;
+  image?: string;
+  imageAlt?: string;
+}
 
-const features = [
-  {
-    title: "Inventory Management",
-    description: "Stay on top of your stock! Effortlessly track inventory levels in real-time, receive alerts for low stock, and manage multiple locations—all from one intuitive dashboard.",
-    image: '/images/features/dashboard.png',
-    imageAlternative: "Inventory Management",
-    icon:<ChartSpline />
-    
-  },
-  {
-    title: "Sales Monitoring and Reporting",
-    description: "Unlock valuable insights! Our robust reporting tools let you analyze sales trends and performance metrics, helping you make data-driven decisions to boost your business.",
-    image: '/images/features/dashboard2.png',
-    imageAlternative: "Sales Monitoring",
-    icon:<Activity />
-  },
-  {
-    title: "Payment Processing",
-    description: "Simplify transactions! Accept all major payment methods—cash, cards, and mobile payments—ensuring a fast and flexible checkout experience for your customers.",
-    image: '',
-    imageAlternative: "Payment",
-    icon: <BadgeDollarSign />,
-  },
-  {
-    title: "Customer Relation Management",
-    description: "Build lasting relationships! Capture customer data to create personalized experiences, send timely updates, and foster loyalty with tailored rewards programs.",
-    image: "/images/features/dashboard.png",
-    imageAlternative: 'Customer',
-    icon:<Users />
-  },
-  {
-    title: "Employee Management",
-    description: "Empower your team! Track employee performance, manage schedules, and streamline payroll processes—all integrated within your POS system for maximum efficiency.",
-    image: "/images/features/employees.jpg",
-    imageAlternative: 'Employee',
-    icon:<Users />
-  },
-  {
-    title: "Omnichannel Integration",
-    description: "Sell anywhere! Seamlessly connect your in-store and online sales channels, ensuring real-time inventory updates and a unified customer experience across platforms.",
-    image: '',
-    imageAlternative: 'Omnichannel',
-    icon:<Workflow />
-  },
-  {
-    title: "Multi-Store Management",
-    description: "Manage all your stores from a single dashboard, simplifying operations and providing real-time visibility into sales, inventory, and customer data across locations.",
-    image: '',
-    imageAlternative: 'Multi Store',
-    icon:<Store />
-  },
-  {
-    title: "Mobile POS",
-    description: "Go mobile! Process sales anywhere with our mobile POS capabilities, enhancing customer interactions and reducing wait times on the shop floor.",
-    image: "/images/features/devices.png",
-    imageAlternative: 'Devices',
-  },
-];
+interface Feature extends FeatureCardProps {
+  icon: LucideIcon;
+}
 
-const VerticalFeatures = () => {
-  const [showAll, setShowAll] = useState(false);
-
-  // Determine the features to display
-  const featuresToShow = showAll ? features : features.slice(0, 6);
-
-  return (
-    <section className="py-12 px-4 flex flex-col items-center justify-center bg-white w-full lg:flex-row">
-      <div className='flex flex-col justify-center items-center '>
-        <div className='flex flex-col items-center justify-center gap-1 mb-3 lg:w-[44%]'>
-          <h2 className="text-[30px] font-medium text-gray-900 text-center lg:font-bold lg:text-3xl">On this platform, we offer various benefits for your use.</h2>
-          <p className='hidden text-[18px] font-normal text-center text-gray-900 mt-3 lg:block lg:text-[22px]'>Experience features designed to simplify your workflow: from customer insights to sales tracking.</p>
+const FeatureCard: React.FC<FeatureCardProps> = ({
+                                                   title,
+                                                   description,
+                                                   icon: Icon,
+                                                   image,
+                                                   imageAlt
+                                                 }) => (
+    <div className="group relative bg-white rounded-2xl p-6 transition-all duration-300 hover:shadow-xl border border-gray-100 hover:border-emerald-100">
+      <div className="relative z-10">
+        {/* Icon with gradient background */}
+        <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 text-emerald-500 mb-4 group-hover:scale-110 transition-transform duration-300">
+          {Icon && <Icon className="w-6 h-6" />}
         </div>
 
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 w-full mt-2">  
-      {featuresToShow.map((feature, key) => (
-        <VerticalFeatureRow
-          key={key}
-          title={feature.title}
-          description={feature.description}
-          icon={feature.icon}
-          image={feature.image}
-          imageAlt={feature.imageAlternative}
-          reverse={key % 2 !== 0}
-        />
-      ))}
+        <h3 className="text-xl font-semibold text-gray-900 mb-3">{title}</h3>
+        <p className="text-gray-600 leading-relaxed mb-4">{description}</p>
+
+        {image && (
+            <div className="relative mt-6 rounded-xl overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <Image
+                  src={image}
+                  alt={imageAlt || title}
+                  width={400}
+                  height={300}
+                  className="w-full h-48 object-cover rounded-xl"
+              />
+            </div>
+        )}
       </div>
-      
-      
-      <div className="text-center mt-6">
-        <button
-          onClick={() => setShowAll(!showAll)}
-          className="px-4 py-2 bg-emerald-500 text-white rounded-full font-medium"
-        >
-          {showAll ? 'Show Less' : 'View All Features'}
-        </button>
-      </div>
-      </div>
-    </section>
+
+      {/* Hover effect background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 to-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl -z-10" />
+    </div>
+);
+
+export const VerticalFeatures: React.FC = () => {
+  const [showAll, setShowAll] = useState<boolean>(false);
+
+  const features: Feature[] = [
+    {
+      title: "Inventory Management",
+      description: "Stay on top of your stock with real-time tracking, low stock alerts, and multi-location management—all from one intuitive dashboard.",
+      image: '/images/features/dashboard.png',
+      imageAlt: "Inventory Management",
+      icon: ChartSpline
+    },
+    {
+      title: "Sales Monitoring & Reporting",
+      description: "Transform data into insights with robust analytics tools that help you track performance and make informed business decisions.",
+      image: '/images/features/dashboard2.png',
+      imageAlt: "Sales Monitoring",
+      icon: Activity
+    },
+    {
+      title: "Payment Processing",
+      description: "Accept all payment methods seamlessly—from cash to cards to mobile payments—for a frictionless checkout experience.",
+      icon: BadgeDollarSign
+    },
+    {
+      title: "Customer Relationship Management",
+      description: "Build stronger connections with customer profiles, personalized experiences, and data-driven loyalty programs.",
+      image: "/images/features/dashboard.png",
+      imageAlt: 'Customer Management',
+      icon: Users
+    },
+    {
+      title: "Employee Management",
+      description: "Streamline team operations with integrated performance tracking, scheduling, and payroll management tools.",
+      image: "/images/features/employees.jpg",
+      imageAlt: 'Employee Management',
+      icon: Users
+    },
+    {
+      title: "Omnichannel Integration",
+      description: "Unite your physical and digital presence with seamless integration across all sales channels and platforms.",
+      icon: Workflow
+    },
+    {
+      title: "Multi-Store Management",
+      description: "Control your entire retail empire from a single dashboard with real-time visibility across all locations.",
+      icon: Store
+    },
+    {
+      title: "Mobile POS",
+      description: "Take your business anywhere with powerful mobile point-of-sale capabilities that enhance customer service.",
+      image: "/images/features/devices.png",
+      imageAlt: 'Mobile Devices',
+      icon: Store
+    }
+  ];
+
+  const displayedFeatures = showAll ? features : features.slice(0, 6);
+
+  return (
+      <section className="relative w-full overflow-hidden py-24">
+        {/* Gradient Background */}
+        <div className="absolute inset-0 bg-gradient-to-tl from-white via-emerald-50/30 to-white">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.1),transparent_50%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_60%,rgba(16,185,129,0.15),transparent_50%)]" />
+        </div>
+
+        <div className="relative container mx-auto px-4">
+          {/* Header Section */}
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6">
+              Powerful Features for Modern Business
+            </h2>
+            <p className="text-xl text-gray-600">
+              Experience a comprehensive suite of tools designed to streamline your operations,
+              enhance customer experiences, and drive business growth.
+            </p>
+          </div>
+
+          {/* Features Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+            {displayedFeatures.map((feature, index) => (
+                <FeatureCard key={index} {...feature} />
+            ))}
+          </div>
+
+          {/* View More Button */}
+          {features.length > 6 && (
+              <div className="text-center">
+                <button
+                    onClick={() => setShowAll(!showAll)}
+                    className="inline-flex items-center px-8 py-3 bg-emerald-500 text-white rounded-full font-medium hover:bg-emerald-600 transition-all duration-200 transform hover:scale-105"
+                >
+                  {showAll ? 'Show Less' : 'View All Features'}
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </button>
+              </div>
+          )}
+        </div>
+      </section>
   );
 };
-
-export { VerticalFeatures };

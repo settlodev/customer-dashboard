@@ -1,11 +1,21 @@
 import Image from "next/image";
+import { Quote } from 'lucide-react';
+import React from "react";
 
-const testimonials = [
+interface Testimonial {
+    id: number;
+    name: string;
+    title: string;
+    text: string;
+    image: string;
+}
+
+const testimonials: Testimonial[] = [
     {
         id: 1,
         name: 'Jenny Willson',
         title: 'Small Business Owner',
-        text:'Settlo POS has transformed the way I run my retail store! The user-friendly interface makes transactions a breeze, and the real-time inventory management keeps me organized. I cant imagine going back to my old system.',
+        text: 'Settlo POS has transformed the way I run my retail store! The user-friendly interface makes transactions a breeze, and the real-time inventory management keeps me organized. I cant imagine going back to my old system.',
         image: 'https://images.unsplash.com/photo-1499714608240-22fc6ad53fb2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=76&q=80',
     },
     {
@@ -19,40 +29,75 @@ const testimonials = [
         id: 3,
         name: 'Jane Doe',
         title: 'Co-Founder, Company',
-        text: 'The loyalty program feature has helped me build a loyal customer base! My clients love earning rewards, and it’s boosted my sales tremendously. Settlo is an essential part of my business.',
+        text: 'The loyalty program feature has helped me build a loyal customer base! My clients love earning rewards, and its boosted my sales tremendously. Settlo is an essential part of my business.',
         image: 'https://images.unsplash.com/photo-1499714608240-22fc6ad53fb2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=76&q=80',
     }
-]
-export const Testimonial = () => {
+];
+
+const TestimonialCard: React.FC<{ testimonial: Testimonial }> = ({ testimonial }) => {
     return (
-        <section className="py-12 px-4 flex flex-col items-center justify-center bg-gradient-to-bl from-[#F5F5F5] via-[#FFFFFF] to-[#87d5c7]">
-            <div className=" flex flex-col items-center justify-center lg:h-[380px] ">
-                <p className="text-[30px] text-gray-900 text-center font-medium  lg:text-[36px] lg:w-1/2 lg:font-bold ">Our beloved clients share their Settlo experience</p>
-                <div className="flex flex-col gap-2 items-center justify-center mt-6 lg:grid lg:grid-cols-3">
-                    {testimonials.map((item, key) => (
-                        <div key={key} className="flex flex-col items-start h-50 w-[340px] justify-center border-2 border-white rounded-md pl-5 pr-5 pt-3 pb-3 shadow-lg bg-white lg:h-full lg:w-full lg:justify-start lg:items-start">
-                            <p className="text-[14px] font-medium text-start text-gray-900 lg:text-start lg:text-[18px] lg:font-normal">{item.text}</p>
+        <div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all duration-300">
+            {/* Quote Icon */}
+            <div className="absolute -top-4 -right-4 bg-emerald-500 rounded-full p-3 shadow-lg transform rotate-12 group-hover:rotate-0 transition-transform duration-300">
+                <Quote className="w-5 h-5 text-white" />
+            </div>
 
-                            <p className="h-0.5 w-full bg-gray-500 m-3 "/>
+            {/* Testimonial Text */}
+            <div className="mb-8">
+                <p className="text-gray-700 leading-relaxed">
+                    {testimonial.text}
+                </p>
+            </div>
 
-                            <div className="flex flex-row gap-2 items-center justify-center mb-3">
-                                <Image
-                                    src={item.image}
-                                    alt={item.name}
-                                    className="w-14 h-14 rounded-full object-cover"
-                                    width={60}
-                                    height={60}
-                                />
-                                <div className='flex flex-col items-center justify-center '>
-                                    <h3 className="text-[16px] text-gray-900 text-start font-bold">{item.name}</h3>
-                                    <p className="text-[14px] font-medium text-center text-gray-900">{item.title}</p>
-                                </div>
-                            </div>
+            {/* Author Info */}
+            <div className="flex items-center gap-4">
+                <div className="relative w-12 h-12 rounded-full overflow-hidden ring-2 ring-emerald-100">
+                    <Image
+                        src={testimonial.image}
+                        alt={testimonial.name}
+                        fill
+                        className="object-cover"
+                    />
+                </div>
+                <div>
+                    <h3 className="font-semibold text-gray-900">{testimonial.name}</h3>
+                    <p className="text-sm text-gray-600">{testimonial.title}</p>
+                </div>
+            </div>
+        </div>
+    );
+};
 
-                        </div>
+export const Testimonials: React.FC = () => {
+    return (
+        <section id="testimonials" className="bg-white py-24 w-full">
+            <div className="max-w-7xl mx-auto px-4">
+                <div className="text-center mb-16">
+                    <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-6">
+                        What Our Clients Say
+                    </h2>
+                    <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+                        Discover how Settlo is transforming businesses across Tanzania through the
+                        experiences of our valued clients.
+                    </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+                    {testimonials.map((testimonial) => (
+                        <TestimonialCard key={testimonial.id} testimonial={testimonial} />
                     ))}
+                </div>
+
+                {/* Call to Action */}
+                <div className="text-center mt-16">
+                    <p className="text-gray-600 mb-6">
+                        Join thousands of satisfied businesses using Settlo
+                    </p>
+                    <button className="inline-flex items-center px-6 py-3 bg-emerald-500 text-white rounded-full font-medium hover:bg-emerald-600 transition-all duration-200 transform hover:scale-105">
+                        Start Your Free Trial
+                    </button>
                 </div>
             </div>
         </section>
-    )
-}
+    );
+};

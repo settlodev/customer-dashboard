@@ -1,64 +1,62 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import {ArrowRight} from "lucide-react";
 
-const buttons = [
-    {
-        label: 'Start Free Trial!',
-        href: '/register',
-    },
-    {
-        label: 'Talk to Sales',
-        href: '/contact',
-    }
-]
-const Hero = () => {
-    // const doLogout = async () => {
-    //     await deleteAuthCookie();
-    //     window.location.reload();
-    // }
+export const Hero = () => {
     return (
-        <section className="py-12 px-4 flex flex-col items-center justify-center bg-gradient-to-tr from-[#F5F5F5] via-[#FFFFFF] to-[#87d5c7] text-transparent w-full">
-        <div className="container  w-full lg:max-w-[1280px]  lg:mt-14 lg:h-[380px]">
-        <header className="flex flex-col items-center justify-center gap-4 lg:flex-row">
-            <div className='flex flex-col items-center justify-center lg:items-start  gap-6'> 
-                <h1 className="text-[30px] text-start w-full tracking-[-5%] font-bold text-gray-900 lg:text-4xl lg:text-start ">
-                    {'Transform your business with Settlo,'}
-                    <br />
-                    <span className="text-emerald-400 font-bold mt-4">the ultimate POS solution.</span>
-                </h1>
-                <p className="text-[18px] text-start tracking-[-5%] font-normal text-gray-900 lg:text-2xl lg:text-start lg:font-medium">
-                    Streamline operations, boot sales, and gain insights effortlessly
-                    <span>with Settlo&apos;s intuitive POS system.</span>   
-                </p>
-               
-                <div className='flex flex-row gap-4 items-center justify-center '>
-                {
-                    buttons.map((item, index) => (
-                        <Link key={index} className="flex flex-row gap-4" href={item.href}>
-                            
-                        <button className={buttons.length -1 === index ? "bg-white text-black border-1 rounded-full pl-5 pr-5 pt-3 pb-3 border-emerald-700 hover:bg-emerald-500 hover:text-white text-[14px] font-medium lg:text-[16px]" :"border-1 rounded-full pl-5 pr-5 pt-3 pb-3 bg-emerald-500 text-white text-[14px] font-medium lg:text-[16px]"  }>{item.label}</button>
-                            
-                        </Link>
-                    ))
-                }
+        <section className="relative w-full overflow-hidden">
+            {/* Background gradient with animation */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white via-emerald-50 to-emerald-100 opacity-70">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(16,185,129,0.1),transparent_50%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(16,185,129,0.15),transparent_50%)]" />
+            </div>
+
+            <div className="relative pt-32 pb-16 px-4">
+                <div className="container mx-auto max-w-7xl">
+                    <div className="grid lg:grid-cols-2 gap-12 items-center">
+                        <div className="space-y-8">
+                            <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
+                                Transform your business with{' '}
+                                <span className="bg-gradient-to-r from-emerald-600 to-emerald-400 bg-clip-text text-transparent">
+                  the ultimate POS solution
+                </span>
+                            </h1>
+
+                            <p className="text-xl text-gray-600 leading-relaxed">
+                                Streamline operations, boost sales, and gain powerful insights with Settlo's
+                                intuitive point-of-sale system designed for modern businesses.
+                            </p>
+
+                            <div className="flex flex-wrap gap-4">
+                                <Link href="/register">
+                                    <button className="px-8 py-3 bg-emerald-500 text-white rounded-full font-medium hover:bg-emerald-600 transition-all duration-200 transform hover:scale-105 flex items-center">
+                                        Start Free Trial
+                                        <ArrowRight className="ml-2 h-5 w-5" />
+                                    </button>
+                                </Link>
+                                <Link href="/contact">
+                                    <button className="px-8 py-3 bg-white text-gray-800 rounded-full font-medium border-2 border-emerald-500 hover:bg-emerald-50 transition-all duration-200">
+                                        Talk to Sales
+                                    </button>
+                                </Link>
+                            </div>
+                        </div>
+
+                        <div className="relative">
+                            <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 to-emerald-300/10 rounded-2xl blur-xl" />
+                            <Image
+                                className="relative rounded-2xl shadow-xl"
+                                src="/images/user/hero3.jpg"
+                                alt="Settlo POS Interface"
+                                width={600}
+                                height={400}
+                                priority
+                            />
+                        </div>
+                    </div>
                 </div>
             </div>
-
-            <div className='mt-4 justify-center items-center lg:mr-6'>
-                <Image
-                    className="rounded-lg mb-4 object-cover w-full"
-                    src="/images/user/hero3.jpg"
-                    alt="Hero Image"
-                    loading='lazy'
-                    width={600}
-                    height={100}
-                />
-            </div>
-        </header>
-    </div>
         </section>
-    
     );
-}
+};
 
-export { Hero };
