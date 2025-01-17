@@ -24,7 +24,7 @@ const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
 
      const responseData = await searchStock(q,page,pageLimit);
 
-     console.log("The stock present is: ", responseData );
+    //  console.log("The stock present is: ", responseData );
 
      const data:Stock[]=responseData.content;
      const total =responseData.totalElements;

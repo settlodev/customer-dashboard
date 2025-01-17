@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     images: {
-        domains: ['fhuvexerkaysoazmmlal.supabase.co','images.unsplash.com','app.tallity.co.tz'],
+        domains: ['fhuvexerkaysoazmmlal.supabase.co','lporvjkotuidemnfvuzt.supabase.co','images.unsplash.com','app.tallity.co.tz'],
         remotePatterns: [
             {
                 protocol: 'https',

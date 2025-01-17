@@ -44,6 +44,8 @@ import { ProductCSVDialog} from "../csv/CSVImport";
 import { CSVStockDialog } from "../csv/stockCsvImport";
 import { ProductWithStockCSVDialog } from "../csv/ProductWithStockCsvImport";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import TableExport from "../widgets/export";
+import { StockIntake } from "@/types/stock-intake/type";
 
 interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[];
@@ -228,6 +230,7 @@ export function DataTable<TData, TValue>({
          {pathname === "/products" ?  <ProductCSVDialog /> : null}
          {pathname === "/stock-variants" ?  <CSVStockDialog /> : null}
          {pathname === "/stock-variants" ?  <ProductWithStockCSVDialog /> : null}
+         {/* {pathname === "/stock-intakes" ?  <TableExport data={data as StockIntake[]}/>: null} */}
 
         </div>
       </div>

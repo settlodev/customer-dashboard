@@ -30,7 +30,11 @@ const validateCSV = (
   if (rows.length === 0) {
     return { isValid: false, errors: ["The file is empty."], rows: [] };
   }
-
+ // Simpler emoji detection using range of common emoji Unicode ranges
+ const emojiRegex = /[\u{1F300}-\u{1F9FF}|\u{2700}-\u{27BF}|\u{2600}-\u{26FF}|\u{2300}-\u{23FF}|\u{2000}-\u{206F}|\u{FE00}-\u{FE0F}]/gu;
+  
+ // Fields to check for emojis
+ const textFields = ["Product Name", "Category Name", "Stock Name", "Stock Variant Name", "Variant Name"];
   // Validate headers
   const headers = rows[0];
   const missingHeaders = expectedHeaders.filter((header) => !headers.includes(header));
@@ -42,6 +46,16 @@ const validateCSV = (
   rows.slice(1).forEach((row, rowIndex) => {
     const rowErrors: string[] = [];
     const currentRowIndex = rowIndex + 2; // Adjusting for 1-based index with headers
+
+    // Check for emojis in text fields
+    textFields.forEach((field) => {
+      const fieldIndex = headers.indexOf(field);
+      if (fieldIndex !== -1 && row[fieldIndex]) {
+        if (emojiRegex.test(row[fieldIndex])) {
+          rowErrors.push(`Row ${currentRowIndex}: "${field}" contains emojis which are not allowed.`);
+        }
+      }
+    });
 
     // Required Field Validation
     const requiredFields = ["Product Name", "Category Name", "Variant Name", "Price", "Quantity", "Stock Name", "Stock Variant Name", "starting Quantity", "starting Value", "Alert Level"];
