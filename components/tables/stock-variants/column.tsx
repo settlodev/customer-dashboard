@@ -44,6 +44,11 @@ export const columns: ColumnDef<StockVariant>[] = [
             );
         },
     },
+    // {
+    //     accessorKey: "name",
+    //     enableHiding: false,
+    //     header: "Item"
+    // },
  
     {
         accessorKey: "currentAvailable",

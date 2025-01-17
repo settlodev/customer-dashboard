@@ -48,8 +48,8 @@ export const searchOrder = async (
             ],
             sorts:[
                 {
-                    key:"orderNumber",
-                    direction:"ASC"
+                    key:"dateCreated",
+                    direction:"DESC"
                 }
             ],
             page:page ? page - 1:0,
