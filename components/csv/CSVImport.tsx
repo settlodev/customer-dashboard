@@ -22,8 +22,17 @@ const validateCSV = (
   fileContent: string,
   expectedHeaders: string[]
 ): { isValid: boolean; errors: string[]; rows: string[][] } => {
-  const lines = fileContent.split("\n").map((line) => line.trim()).filter(Boolean);
-  const rows: string[][] = lines.map((line) => line.split(",").map((col) => col.trim()));
+  // Split into lines and remove empty lines
+  const lines = fileContent.split("\n").filter(Boolean);
+  
+  // Initial parsing and trimming of all cells
+  const rows: string[][] = lines.map(line => 
+    line.split(",").map(cell => {
+      // Remove leading/trailing spaces and normalize multiple spaces to single space
+      return cell.trim().replace(/\s+/g, ' ');
+    })
+  );
+
   const errors: string[] = [];
 
   if (rows.length === 0) {
@@ -34,40 +43,54 @@ const validateCSV = (
   const headers = rows[0];
   const missingHeaders = expectedHeaders.filter((header) => !headers.includes(header));
   if (missingHeaders.length > 0) {
-    return { isValid: false, errors: [`Missing required headers: ${missingHeaders.join(", ")}`], rows: [] };
+    return { 
+      isValid: false, 
+      errors: [`Missing required headers: ${missingHeaders.join(", ")}`], 
+      rows: [] 
+    };
   }
+
+  // Get column indexes for validation
+  // const productNameIndex = headers.indexOf("Product Name");
+  // const categoryNameIndex = headers.indexOf("Category Name");
+  // const variantNameIndex = headers.indexOf("Variant Name");
+  const priceIndex = headers.indexOf("Price");
 
   // Validate rows
   rows.slice(1).forEach((row, rowIndex) => {
-    const rowErrors: string[] = [];
-    const currentRowIndex = rowIndex + 2; // Adjusting for 1-based index with headers
+    const currentRowIndex = rowIndex + 2; // Adjusting for 1-based index and header row
 
     // Required Field Validation
-    const requiredFields = ["Product Name", "Category Name", "Variant Name", "Price",];
+    const requiredFields = ["Product Name", "Category Name", "Variant Name", "Price"];
     requiredFields.forEach((field) => {
-      
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && (!row[fieldIndex] || row[fieldIndex].trim() === "")) {
-        rowErrors.push(`Row ${currentRowIndex}: "${field}" cannot be empty.`);
+        errors.push(`Row ${currentRowIndex}: "${field}" cannot be empty`);
       }
     });
 
-    // Specific Field Validation
-    const priceIndex = headers.indexOf("Price");
+    // Price Validation
     if (priceIndex !== -1) {
-      const price = parseFloat(row[priceIndex]);
-      if (isNaN(price) || price <= 0) {
-        rowErrors.push(`Row ${currentRowIndex}: "Price" must be a positive number.`);
+      const price = row[priceIndex]?.trim();
+      if (price) {
+        if (!/^\d+$/.test(price)) {
+          errors.push(
+            `Row ${currentRowIndex}: Price "${price}" must be a whole number without decimals or special characters`
+          );
+        } else if (parseInt(price) <= 0) {
+          errors.push(
+            `Row ${currentRowIndex}: Price must be greater than 0`
+          );
+        }
       }
-    }
-
-    
-    if (rowErrors.length > 0) {
-      errors.push(...rowErrors);
     }
   });
 
-  return { isValid: errors.length === 0, errors, rows };
+  return { 
+    isValid: errors.length === 0, 
+    errors, 
+    rows 
+  };
 };
 
 export function ProductCSVDialog() {
@@ -97,23 +120,49 @@ export function ProductCSVDialog() {
     const selectedFile = event.target.files?.[0];
 
     if (selectedFile) {
+      try {
+        const fileText = await selectedFile.text();
+        const result = validateCSV(fileText, expectedHeaders);
 
-      console.log("File selected:", selectedFile.name);
+        // If validation passes, convert cleaned rows back to CSV format
+        if (result.isValid) {
+          const cleanedCSV = result.rows
+            .map(row => row.join(','))
+            .join('\n');
 
-      const fileText = await selectedFile.text();
-
-      console.log("File content read successfully.");
-
-      const result = validateCSV(fileText, expectedHeaders);
-
-      console.log("Validation result:", result);
-
-      setValidationResult(result);
-      setFile(selectedFile);
-      setFileContent(fileText);
+          setValidationResult(result);
+          setFile(selectedFile);
+          setFileContent(cleanedCSV); // Store the cleaned CSV content
+        } else {
+          setValidationResult(result);
+          setFile(selectedFile);
+          setFileContent(null);
+        }
+      } catch (error) {
+        console.error("Error processing file:", error);
+        setValidationResult({
+          isValid: false,
+          errors: ["Failed to process the file. Please check the file format."],
+          rows: []
+        });
+      }
     }
   };
 
+  const handleUpload = async () => {
+    if (file && fileContent && validationResult?.isValid) {
+      try {
+        await uploadCSV({ 
+          fileData: fileContent, // This now contains the cleaned CSV data
+          fileName: file.name 
+        });
+        resetForm();
+        setIsOpen(false);
+      } catch (error) {
+        console.error("Error uploading file:", error);
+      }
+    }
+  };
   const handleTemplateDownload = () => {
     fetch("/csv/product-csv-template.csv")
       .then((res) => {
@@ -126,17 +175,17 @@ export function ProductCSVDialog() {
       .catch(() => alert("Failed to download template"));
   };
 
-  const handleUpload = async () => {
-    if (file && fileContent && validationResult?.isValid) {
-      try {
-        await uploadCSV({ fileData: fileContent, fileName: file.name });
-        resetForm();
-        setIsOpen(false);
-      } catch (error) {
-        console.error("Error uploading file:", error);
-      }
-    }
-  };
+  // const handleUpload = async () => {
+  //   if (file && fileContent && validationResult?.isValid) {
+  //     try {
+  //       await uploadCSV({ fileData: fileContent, fileName: file.name });
+  //       resetForm();
+  //       setIsOpen(false);
+  //     } catch (error) {
+  //       console.error("Error uploading file:", error);
+  //     }
+  //   }
+  // };
 
   const resetForm = () => {
     setFile(null);

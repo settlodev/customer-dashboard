@@ -188,6 +188,7 @@ export const updateProduct = async (
 
         // First, fetch the existing product to compare variants
         const existingProduct = await getProduct(productId as UUID);
+        console.log("Existing product:", existingProduct);
 
         if (existingProduct.totalElements == 0) {
             formResponse = {
@@ -335,6 +336,7 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
 
     const lines = fileData.split("\n");
     const isCSVContent = lines.every(line => line.split(",").length > 1);
+
 
     if (!isCSVContent) {
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");

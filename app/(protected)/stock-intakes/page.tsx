@@ -34,7 +34,7 @@ const breadCrumbItems = [{title: "Stock Intake", link: "/stock-intakes"}];
                 </div>
                 <div className={`flex items-center space-x-2`}>
                     <Button>
-                        <Link href={`/stock-intakes/new`}>Add Stock Intake</Link>
+                        <Link href={`/stock-intakes/new`}>Record Stock Intake</Link>
                     </Button>
                 </div>
             </div>
@@ -43,7 +43,7 @@ const breadCrumbItems = [{title: "Stock Intake", link: "/stock-intakes"}];
                     <Card x-chunk="data-table">
                         <CardHeader>
                             <CardTitle>Stock Intake</CardTitle>
-                            <CardDescription>Manage stock intake in your location</CardDescription>
+                            <CardDescription>Record stock intake in your location</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <DataTable columns={columns}
