@@ -210,3 +210,26 @@ export const deleteRole = async (id: UUID): Promise<void> => {
         throw error;
     }
 };
+
+// export const getUserRolesByLocation = async ()=> {
+//     const authenticatedUser = await getAuthenticatedUser(); 
+//     try {
+//         const apiClient = new ApiClient();
+
+//         const location = await getCurrentLocation();
+
+//         const roleData = await apiClient.get(
+//             `/api/roles/${location?.id}/users/${authenticatedUser?.id}`,
+//         );
+
+//         console.log("roleData: ", roleData);
+
+//         return parseStringify(roleData);
+
+//     } catch (error) {
+//         throw error;
+//     }   
+// }
+   
+
+    
