@@ -183,17 +183,14 @@ function RegisterForm({ step }: { step: string }) {
         startTransition(() => {
             register(values)
                 .then((data: FormResponse) => {
-                    if (!data) {
-                        setError("An unexpected error occurred. Please try again.");
-                        return;
-                    }
+                  
                     if (data.responseType === "error") {
                         setError(data.message);
                     }
                 })
                 .catch((error) => {
                     setError(error.data?.message);
-                    console.error(error);
+                    // console.error(error);
                 });
         });
     }

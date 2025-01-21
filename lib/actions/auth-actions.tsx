@@ -228,6 +228,7 @@ export const register = async (
         await deleteAuthCookie();
 
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
+        console.log("regData is: ", regData)
         if(regData){
             const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
 
