@@ -370,20 +370,20 @@ export const updatePassword = async (
 export const resendVerificationEmail = async (name: any, email: any): Promise<FormResponse> => {
     const apiClient = new ApiClient();
 
-    const response = await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
-    console.log("my response is:", response)
-    if(response) {
-        await sendVerificationEmail(name, response as string, email);
+    try {
+        const response = await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
+        if(response) {
+            await sendVerificationEmail(name, response as string, email);
+        }
         return parseStringify({
             responseType: "success",
-            message: "Email sent",
-            error: "",
-        })
-    }else{
+            message: "Verification email sent successfully",
+        });
+    } catch (error: any) {
         return parseStringify({
             responseType: "error",
-            message: "Error sending email",
-            error: "Error sending email",
-        })
+            message: error.message ?? "An unexpected error occurred. Please try again.",
+            error: error instanceof Error ? error : new Error(String(error)),
+        });
     }
 }

@@ -59,6 +59,7 @@ import { getCurrentBusiness } from "@/lib/actions/business/get-current-business"
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import GenderSelector from "../widgets/gender-selector";
 import CountrySelector from "@/components/widgets/country-selector";
+import { useRouter } from "next/navigation";
 
 interface SignUpStepItemType {
     id: string;
@@ -107,6 +108,8 @@ function RegisterForm({ step }: { step: string }) {
     const [emailSent, setEmailSent] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string>("");
     const [locationImageUrl, setLocationImageUrl] = useState<string>("");
+    const router = useRouter(); // Initialize the router
+
 
     useEffect(() => {
         async function getBusiness() {
@@ -256,11 +259,12 @@ function RegisterForm({ step }: { step: string }) {
             startTransition(() => {
                 resendVerificationEmail(values.name, values.email).then((resp) => {
                     if (resp.responseType === 'error') {
-                        toast({
-                            variant: "destructive",
-                            title: "Uh oh! Something went wrong.",
-                            description: resp.message
-                        });
+                        setError(resp.message);
+                        setEmailSent(false);
+                        setTimeout(() => {
+                            setError('');
+                            router.push('/login')
+                        },3000)
                     } else {
                         setEmailSent(true);
                     }
@@ -487,7 +491,7 @@ function RegisterForm({ step }: { step: string }) {
                     </CardContent>
                 </Card>
                 : (currentStep.id === "step2" || step === "step2") ? <>
-                    <FormError message={error} />
+                    {/* <FormError message={error} /> */}
                     <FormSuccess message={success} />
                     <Form {...emailVerificationForm}>
                         <form onSubmit={emailVerificationForm.handleSubmit(submitEmailVerificationData)}>
@@ -496,6 +500,7 @@ function RegisterForm({ step }: { step: string }) {
                                     <CardTitle>Verify email</CardTitle>
                                 </CardHeader>
                                 <CardContent>
+                                <FormError message={error ? `${error}. Please log in to resend the email for verification.` : ""} />
                                     <CardDescription className="font-normal">
                                         We have sent a link with activation instruction to your email address.
                                         Please check your email and click on the link to verify your email address.
