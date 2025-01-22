@@ -56,8 +56,9 @@ export const searchOrder = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
-        const orderData = await  apiClient.post(
-            `/api/orders/${location?.id}`,
+        
+        const orderData = await apiClient.post(
+            `/api/orders/${location?.id}?dashboard=true`,
             query
         );
         return parseStringify(orderData);
