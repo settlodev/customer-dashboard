@@ -160,6 +160,9 @@ export const updateRecipe = async (
     id: UUID,
     recipe: z.infer<typeof RecipeSchema>
 ): Promise<FormResponse | void> => {
+
+    console.log("Updating recipe with ID:", id);
+
     let formResponse: FormResponse | null = null;
     const validRecipeData = RecipeSchema.safeParse(recipe);
 
@@ -183,14 +186,60 @@ export const updateRecipe = async (
         })) ?? []
     };
 
+
     delete payload.stockVariants;
 
     try {
         const apiClient = new ApiClient();
 
+        const existingRecipe = await getRecipe(id as UUID);
+
+        // console.log("Existing recipe", existingRecipe);
+
+        if(existingRecipe.totalElements == 0) {
+            formResponse = {
+                responseType: "error",
+                message: "Error occurred while updating this recipe",
+            }
+        }
+
+        const existingVariants = existingRecipe.content[0].recipeStockVariants;
+        // console.log("Existing variants", existingVariants);
+
+        const variantsPayload:any[]=[];
+
+        // create a map of existing variants
+        const existingVariantsMap = new Map();
+
+        existingVariants.forEach(variant => {
+            existingVariantsMap.set(variant.stockVariant, variant);
+        });
+
+        payload.recipeStockVariants.forEach(newVariant => {
+            if (newVariant.stockVariant && existingVariantsMap.has(newVariant.stockVariant)) {
+                variantsPayload.push({
+                    stockVariant: newVariant.stockVariant,
+                    quantity: newVariant.quantity
+                });
+                existingVariantsMap.delete(newVariant.stockVariant);
+            } else {
+                variantsPayload.push(newVariant);
+            }
+        });
+
+       // prepare finale payload
+        const finalPayload = {
+            ...payload,
+            location: location?.id,
+            id: id,
+            recipeStockVariants: variantsPayload
+        };
+
+        // console.log("The payload to update recipe", finalPayload);
+        
         await apiClient.put(
             `/api/recipes/${location?.id}/${id}`,
-            payload
+            finalPayload
         );
 
         formResponse = {

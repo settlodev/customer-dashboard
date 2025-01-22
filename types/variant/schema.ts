@@ -17,7 +17,7 @@ export const VariantSchema = object({
             if (typeof val === "string" && val.trim() !== "") {
                 return parseInt(val)
             }
-            return val
+            return undefined
         },
         number({ message: "Price is required" }).nonnegative({ message: "Price can not be negative" }).gt(0, { message: "Price can not be zero" }).optional()
     ),

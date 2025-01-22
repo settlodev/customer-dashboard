@@ -84,6 +84,12 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
                         <span>My Profile</span>
                     </a>
                 </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                    {/* <a href="/renew-subscription" className="flex items-center cursor-pointer">
+                        <CreditCard className="mr-2 h-4 w-4" />
+                        <span>Renew Subscription</span>
+                    </a> */}
+                </DropdownMenuItem>
 
                 <DropdownMenuItem asChild>
                     <a href="/settings" className="flex items-center cursor-pointer">

@@ -22,8 +22,19 @@ const validateCSV = (
   fileContent: string,
   expectedHeaders: string[]
 ): { isValid: boolean; errors: string[]; rows: string[][] } => {
-  const lines = fileContent.split("\n").map((line) => line.trim()).filter(Boolean);
-  const rows: string[][] = lines.map((line) => line.split(",").map((col) => col.trim()));
+
+  // Split into lines and remove empty lines
+  const lines = fileContent.split("\n").filter(Boolean);
+  
+  // Initial parsing and trimming of all cells
+  const rows: string[][] = lines.map(line => 
+    line.split(",").map(cell => {
+      // Remove leading/trailing spaces and normalize multiple spaces to single space
+      return cell.trim().replace(/\s+/g, ' ');
+    })
+  );
+
+
   const errors: string[] = [];
 
   if (rows.length === 0) {
@@ -107,21 +118,48 @@ export function CSVStockDialog() {
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
+
     if (selectedFile) {
+      try {
+        const fileText = await selectedFile.text();
+        const result = validateCSV(fileText, expectedHeaders);
 
-      console.log("File selected:", selectedFile.name);
+        if (result.isValid) {
+          const cleanedCSV = result.rows
+            .map(row => row.join(','))
+            .join('\n');
 
-      const fileText = await selectedFile.text();
+          setValidationResult(result);
+          setFile(selectedFile);
+          setFileContent(cleanedCSV); 
+        } else {
+          setValidationResult(result);
+          setFile(selectedFile);
+          setFileContent(null);
+        }
+      } catch (error) {
+        console.error("Error processing file:", error);
+        setValidationResult({
+          isValid: false,
+          errors: ["Failed to process the file. Please check the file format."],
+          rows: []
+        });
+      }
+    }
+  };
 
-      console.log("File content read successfully.");
-
-      const result = validateCSV(fileText, expectedHeaders);
-
-      console.log("Validation result:", result);
-
-      setValidationResult(result);
-      setFile(selectedFile);
-      setFileContent(fileText);
+  const handleUpload = async () => {
+    if (file && fileContent && validationResult?.isValid) {
+      try {
+        await uploadCSV({ 
+          fileData: fileContent, 
+          fileName: file.name 
+        });
+        resetForm();
+        setIsOpen(false);
+      } catch (error) {
+        console.error("Error uploading file:", error);
+      }
     }
   };
 
@@ -137,17 +175,6 @@ export function CSVStockDialog() {
       .catch(() => alert("Failed to download template"));
   };
 
-  const handleUpload = async () => {
-    if (file && fileContent && validationResult?.isValid) {
-      try {
-        await uploadCSV({ fileData: fileContent, fileName: file.name });
-        resetForm();
-        setIsOpen(false);
-      } catch (error) {
-        console.error("Error uploading file:", error);
-      }
-    }
-  };
 
   const resetForm = () => {
     setFile(null);
