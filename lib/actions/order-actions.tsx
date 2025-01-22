@@ -84,10 +84,10 @@ export const getOrder= async (id:UUID) : Promise<ApiResponse<Orders>> => {
         size: 1,
     }
     const location = await getCurrentLocation();
-    const unit= await apiClient.post(
-        `/api/orders/${location?.id}`,
+    const order= await apiClient.post(
+        `/api/orders/${location?.id}?dashboard=true`,
         query,
     );
     
-    return parseStringify(unit)
+    return parseStringify(order)
 }
