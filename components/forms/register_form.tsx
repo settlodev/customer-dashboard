@@ -144,13 +144,20 @@ function RegisterForm({ step }: { step: string }) {
     const locationForm = useForm<z.infer<typeof LocationSchema>>({
         resolver: zodResolver(LocationSchema),
         defaultValues: {
-            phone: session?.data?.user.phoneNumber,
+            // phone: session?.data?.user.phoneNumber,
             email: session?.data?.user.email,
             name: currentBusiness?.name,
             openingTime: "07:00",
             closingTime: "23:00",
         },
     });
+
+    // Set the initial phone number value when the component mounts
+    useEffect(() => {
+        if (session?.data?.user.phoneNumber) {
+            locationForm.setValue("phone", session.data.user.phoneNumber);
+        }
+    }, [session?.data?.user.phoneNumber]);
 
     const onInvalid = useCallback(
 
@@ -419,6 +426,28 @@ function RegisterForm({ step }: { step: string }) {
                                                 );
                                             }}
                                         />
+
+
+                                                    <FormField
+                                                        control={locationForm.control}
+                                                        name="referredByCode"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Referral Code</FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        {...field}
+                                                                        disabled={isPending}
+                                                                        
+                                                                        value={field.value || ""}
+                                                                        placeholder="Enter your referral code"
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                
 
                                     </div>
 
@@ -753,7 +782,13 @@ function RegisterForm({ step }: { step: string }) {
                                                                 <FormControl className="w-full border-1 rounded-sm">
                                                                     <PhoneInput
                                                                         placeholder="Enter phone number"
-                                                                        {...field} disabled={isPending}
+                                                                        {...field}
+                                                                         disabled={isPending}
+                                                                         value={field.value || ""}
+                                                                         onChange={(value) => {
+                                                                            console.log("Phone number:", value);
+                                                                            field.onChange(value);
+                                                                        }}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />

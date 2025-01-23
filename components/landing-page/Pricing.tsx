@@ -1,7 +1,7 @@
 'use client'
 import { fetchSubscriptions } from "@/lib/actions/subscriptions"
 import { Subscription, SubscriptionFeature } from "@/types/subscription/type"
-import {ArrowRight, CheckIcon, Sparkles} from "lucide-react"
+import { ArrowRight, CheckIcon, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -15,11 +15,11 @@ interface PricingCardProps {
 }
 
 const PricingCard: React.FC<PricingCardProps> = ({
-                                                     packageName,
-                                                     amount,
-                                                     subscriptionFeatures,
-                                                     isPopular = false,
-                                                 }) => {
+    packageName,
+    amount,
+    subscriptionFeatures,
+    isPopular = false,
+}) => {
     const router = useRouter();
     const [showAll, setShowAll] = useState(false);
     const shouldShowMoreButton = subscriptionFeatures.length > 10;
@@ -76,9 +76,9 @@ const PricingCard: React.FC<PricingCardProps> = ({
                         onClick={() => router.push('/register')}
                         className={`w-full px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2
               ${isPopular
-                            ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                            : 'bg-gray-900 text-white hover:bg-gray-800'
-                        }`}
+                                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                : 'bg-gray-900 text-white hover:bg-gray-800'
+                            }`}
                     >
                         Get Started
                         <ArrowRight className="w-4 h-4" />

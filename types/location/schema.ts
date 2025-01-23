@@ -16,5 +16,6 @@ export const LocationSchema = object({
     closingTime: string(),
     status: boolean().optional().nullish(),
     business: string().optional().nullish(),
-    image: string().optional().nullish()
+    image: string().optional().nullish(),
+    referredByCode: string().optional().nullish()
 })

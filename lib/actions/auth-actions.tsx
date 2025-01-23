@@ -251,6 +251,7 @@ export const register = async (
             message: "Registration successful, redirecting to login...",
         });
     } catch (error : any) {
+
         // Ignore redirect error
         if (isRedirectError(error)) throw error;
 
@@ -322,8 +323,16 @@ export const resetPassword = async (
             message: "Password reset link sent to your email address",
             data: result
         });
-    } catch (error) {
-        throw error;
+    } catch (error: any) {
+
+        // Ignore redirect error
+        if (isRedirectError(error)) throw error;
+
+        return parseStringify({
+            responseType: "error",
+            message: error.message ? error.message : "An unexpected error occurred. Please try again.",
+            error: error instanceof Error ? error : new Error(String(error.message ? error.message : error)),
+        });
     }
 }
 

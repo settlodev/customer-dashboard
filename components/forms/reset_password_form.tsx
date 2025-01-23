@@ -36,9 +36,13 @@ function ResetPasswordForm() {
                     }
                     if (data.responseType === "error") {
                         setError(data.message);
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 5000);
                     } else {
                         setSuccess(data.message);
                         reset()
+                        
                     }
                 })
                 .catch((err: Error) => {
@@ -93,7 +97,7 @@ function ResetPasswordForm() {
         <div className="mt-4 text-start text-sm">
           Already have an account?{" "}
           <Link href="/login" className="underline">
-            Login in
+            Log in
           </Link>
         </div>
            </CardContent>

@@ -9,7 +9,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {Settings, User, LogOut, ChevronDown, LayoutDashboard} from "lucide-react";
+import {Settings, User, LogOut, ChevronDown, LayoutDashboard, CreditCard} from "lucide-react";
 import UserAvatar from "@/components/widgets/user-avatar";
 import { ExtendedUser } from "@/types/types";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
@@ -85,10 +85,10 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
                     </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
-                    {/* <a href="/renew-subscription" className="flex items-center cursor-pointer">
+                    <a href="/renew-subscription" className="flex items-center cursor-pointer">
                         <CreditCard className="mr-2 h-4 w-4" />
                         <span>Renew Subscription</span>
-                    </a> */}
+                    </a>
                 </DropdownMenuItem>
 
                 <DropdownMenuItem asChild>

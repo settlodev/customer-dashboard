@@ -18,6 +18,7 @@ export interface Location {
     setting: string;
     business: UUID;
     endDate: string;
+    referredByCode: string;
     subscriptionStatus: subscriptionStatus;
     isArchived: boolean;
 }
