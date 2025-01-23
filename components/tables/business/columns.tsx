@@ -68,7 +68,7 @@ export const columns: ColumnDef<Business>[] = [
       </div>
   },
   {
-    accessorKey: "businessType",
+    accessorKey: "businessTypeName",
     header: "Business Type",
     enableHiding: false,
   },

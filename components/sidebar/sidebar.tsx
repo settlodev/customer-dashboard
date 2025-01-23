@@ -14,7 +14,8 @@ import {
     ReceiptText,
     Settings,
     ChevronDown,
-    X
+    X,
+    CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -117,6 +118,18 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
             </div>
 
             <div className="border-t border-gray-700 p-4">
+
+            <Link
+                    href="/renew-subscription"
+                    className={cn(
+                        "flex items-center rounded-lg px-2 py-1.5",
+                        "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
+                        "transition-colors duration-200"
+                    )}
+                >
+                    <CreditCard className="mr-2 h-4 w-4"/>
+                    <span>Renew Subscription</span>
+                </Link>
                 <Link
                     href="/settings"
                     className={cn(
