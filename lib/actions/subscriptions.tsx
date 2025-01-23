@@ -29,7 +29,7 @@ export const getActiveSubscription = async (): Promise<ActiveSubscription> => {
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/location-subscriptions/${location?.id}/active`);
-        console.log("The response from the API for subscriptions is:", response);
+        // console.log("The response from the API for subscriptions is:", response);
         return parseStringify(response);
     } catch (error) {
         throw error;
@@ -58,7 +58,7 @@ export const paySubscription = async (subscription:z.infer<typeof RenewSubscript
         provider:provider,
     }
 
-    console.log("payload", payload);
+    // console.log("payload", payload);
 
     const location = await getCurrentLocation();
 

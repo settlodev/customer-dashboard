@@ -59,7 +59,7 @@ import { getCurrentBusiness } from "@/lib/actions/business/get-current-business"
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import GenderSelector from "../widgets/gender-selector";
 import CountrySelector from "@/components/widgets/country-selector";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface SignUpStepItemType {
     id: string;
@@ -108,8 +108,17 @@ function RegisterForm({ step }: { step: string }) {
     const [emailSent, setEmailSent] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string>("");
     const [locationImageUrl, setLocationImageUrl] = useState<string>("");
-    const router = useRouter(); // Initialize the router
+    const router = useRouter();
+    const session = useSession(); 
+    const searchParams = useSearchParams();
+    const subscription = searchParams.get('package');
 
+    useEffect(() => {
+        if (subscription) {
+            localStorage.removeItem('subscription');
+            localStorage.setItem('subscription', subscription);
+        }
+    }, [subscription]);
 
     useEffect(() => {
         async function getBusiness() {
@@ -119,8 +128,6 @@ function RegisterForm({ step }: { step: string }) {
 
         getBusiness();
     }, []);
-
-    const session = useSession();
 
     const { toast } = useToast();
 
@@ -141,6 +148,8 @@ function RegisterForm({ step }: { step: string }) {
         }
     });
 
+    const storedSubscription = localStorage.getItem('subscription');
+
     const locationForm = useForm<z.infer<typeof LocationSchema>>({
         resolver: zodResolver(LocationSchema),
         defaultValues: {
@@ -149,6 +158,7 @@ function RegisterForm({ step }: { step: string }) {
             name: currentBusiness?.name,
             openingTime: "07:00",
             closingTime: "23:00",
+            subscription: storedSubscription
         },
     });
 
@@ -233,6 +243,7 @@ function RegisterForm({ step }: { step: string }) {
 
     const submitLocationData = useCallback(
         async (values: z.infer<typeof LocationSchema>) => {
+            console.log("The location data are:", values);
             try {
                 startTransition(async () => {
                     const formData = locationImageUrl
@@ -429,7 +440,7 @@ function RegisterForm({ step }: { step: string }) {
 
 
                                                     <FormField
-                                                        control={locationForm.control}
+                                                        control={form.control}
                                                         name="referredByCode"
                                                         render={({ field }) => (
                                                             <FormItem>

@@ -10,12 +10,16 @@ import { Location } from "@/types/location/type";
 import { refreshLocation } from "../business/refresh";
 import {signOut} from "@/auth";
 import {isRedirectError} from "next/dist/client/components/redirect";
+import { console } from "inspector";
 
 export const createBusinessLocation = async (
     businessLocation: z.infer<typeof LocationSchema>
 ): Promise<FormResponse> => {
     // Validate input data
     const validationResult = LocationSchema.safeParse(businessLocation);
+
+    console.log('Validation result:', validationResult);
+
     if (!validationResult.success) {
         return parseStringify({
             responseType: 'error',
@@ -39,6 +43,7 @@ export const createBusinessLocation = async (
             ...validationResult.data,
             business: businessId,
         };
+
 
         // Make API request
         const apiClient = new ApiClient();

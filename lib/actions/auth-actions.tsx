@@ -127,7 +127,7 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
             `/api/auth/verify-token/${token}`,
         );
 
-        console.log("tokenResponse is: ", tokenResponse)
+        // console.log("tokenResponse is: ", tokenResponse)
 
         if (tokenResponse == token) {
             revalidatePath("/user-verification");
@@ -228,7 +228,7 @@ export const register = async (
         await deleteAuthCookie();
 
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
-        console.log("regData is: ", regData)
+        // console.log("regData is: ", regData)
         if(regData){
             const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
 

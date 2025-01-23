@@ -39,7 +39,8 @@ export const RegisterSchema = object({
         "Please enter a valid password",
     ),
     country:string({required_error:"Country is required"}).uuid("Please select a valid country"),
-    gender:nativeEnum(Gender)
+    gender:nativeEnum(Gender),
+    referredByCode: string().optional().nullish(),
 });
 
 export const UpdateUserSchema = object({
