@@ -42,6 +42,7 @@ export declare interface ExtraFeature {
 
 export declare interface ActiveSubscription{
     id: UUID
+    amount: number
     startDate: Date
     endDate: Date
     subscriptionStatus: string

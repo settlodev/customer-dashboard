@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { FieldErrors, useForm } from "react-hook-form";
+import { FieldErrors, useForm, useWatch } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -25,23 +25,36 @@ import React, { useCallback, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
-import { Calendar, Mail, Phone,Tag } from "lucide-react";
+import { Calendar,Mail, Phone,Tag } from "lucide-react";
 import {paySubscription } from "@/lib/actions/subscriptions";
 import { Button } from "../ui/button";
 import { PhoneInput } from "../ui/phone-input";
+import { ActiveSubscription } from "@/types/subscription/type";
 
-function RenewSubscriptionForm({planId}: { planId: string }) {
+const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: ActiveSubscription }) => {
+ 
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
+  const [showTotalAmount, setShowTotalAmount] = useState(false);
   const { toast } = useToast();
- 
-
+  
+  
   const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
     resolver: zodResolver(RenewSubscriptionSchema),
     defaultValues: {
-      planId:planId
+      planId: activeSubscription?.subscription.id ?? '',
+      // quantity: 1,
     },
   });
+
+  // Watch the quantity field
+  const quantity = useWatch({
+    control: form.control,
+    name: "quantity", 
+    defaultValue: 1, 
+  });
+
+
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -57,7 +70,7 @@ function RenewSubscriptionForm({planId}: { planId: string }) {
 
   const submitData = (values: z.infer<typeof RenewSubscriptionSchema>) => {
     console.log("Submitting data:", values);
-
+    setShowTotalAmount(true);
     startTransition(() => {
       paySubscription(values)
         .then((data: any) => {
@@ -67,6 +80,11 @@ function RenewSubscriptionForm({planId}: { planId: string }) {
               message: data.message,
             };
             setResponse(formResponse);
+            toast({
+              title: "Payment Confirmation",
+              description: `You will be paying $${totalAmount} for ${quantity} month subscription`,
+              variant: "default"
+            });
           }
         })
         .catch((err) => {
@@ -75,6 +93,16 @@ function RenewSubscriptionForm({planId}: { planId: string }) {
     })
 
   };
+
+  if (!activeSubscription) {
+    return null;
+  }
+
+  const { subscription } = activeSubscription;
+  const totalAmount = subscription.amount * quantity;
+
+
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="w-full max-w-5xl mx-auto">
@@ -197,6 +225,16 @@ function RenewSubscriptionForm({planId}: { planId: string }) {
                 </FormItem>
               )}
             />
+            {showTotalAmount && (
+              <div className="bg-gray-100 p-4 rounded-md">
+                <h4 className="text-lg font-semibold text-gray-800">
+                  Total Amount: {Intl.NumberFormat().format(totalAmount)}
+                </h4>
+                <p className="text-sm text-gray-600 mt-1">
+                  {quantity} month{quantity !== 1 ? 's' : ''} subscription
+                </p>
+              </div>
+            )}
           </CardContent>
 
           <CardFooter className="flex justify-end space-x-4 pt-6">
@@ -219,7 +257,7 @@ function RenewSubscriptionForm({planId}: { planId: string }) {
                   <span>Processing</span>
                 </div>
               ) : (
-                "Renew"
+                "Pay Now"
               )}
             </Button>
           </CardFooter>

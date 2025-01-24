@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Tag } from 'lucide-react';
+import { Calendar, DollarSign, Tag } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import RenewSubscriptionForm from '@/components/forms/renew_subscription_form';
 import { ActiveSubscription } from '@/types/subscription/type';
@@ -15,7 +15,6 @@ const SubscriptionRenewal = () => {
   useEffect(() => {
     const fetchActiveSubscription = async () => {
       const activeSubs = await getActiveSubscription();
-      console.log("The response from the API for subscriptions is:", activeSubs);
       setActiveSubscription(activeSubs);
       setLoading(false);
     }
@@ -57,6 +56,11 @@ const SubscriptionRenewal = () => {
                 <Tag className="text-emerald-500" />
                 <span>Plan: {activeSubscription?.subscription?.packageName || 'N/A'}</span>
               </div>
+            
+              <div className="flex items-center gap-2 text-lg">
+                <DollarSign className="text-emerald-500" />
+                <span>Price: {Intl.NumberFormat().format(activeSubscription?.subscription?.amount || 0)}</span>
+              </div>
 
               <div className="flex items-center gap-2">
                 <Calendar className="text-emerald-500" />
@@ -83,7 +87,7 @@ const SubscriptionRenewal = () => {
         </div>
 
         <div className=''>
-        <RenewSubscriptionForm planId={activeSubscription?.subscription?.id || ''} />
+        <RenewSubscriptionForm activeSubscription={activeSubscription ?? undefined} />
         </div>
       </div>
     </div>

@@ -148,7 +148,7 @@ function RegisterForm({ step }: { step: string }) {
         }
     });
 
-    const storedSubscription = localStorage.getItem('subscription');
+    const storedSubscription = typeof window !== 'undefined' ? localStorage.getItem('subscription') : null;
 
     const locationForm = useForm<z.infer<typeof LocationSchema>>({
         resolver: zodResolver(LocationSchema),
