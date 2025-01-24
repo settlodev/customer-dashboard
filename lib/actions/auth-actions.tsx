@@ -18,6 +18,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
+import {DEFAULT_LOGIN_REDIRECT_URL} from "@/routes";
 
 export async function logout() {
     try {
@@ -42,7 +43,7 @@ export const login = async (
         return parseStringify({
             responseType: "error",
             message: "Please fill in all the fields marked with * before proceeding",
-            error: new Error(validatedData.error.message),
+            error: new Error("Incomplete credentials"),
         });
     }
 
@@ -61,29 +62,24 @@ export const login = async (
             return parseStringify({
                 responseType: "error",
                 message: "Wrong credentials! Invalid email address and/or password",
+                error: new Error("Wrong credentials"),
             });
         }
 
-        // If login is successful, return a success message
-        return parseStringify({
-            responseType: "success",
-            message: "Login successful, redirecting...",
-        });
     } catch (error) {
-        console.error(error);
         if (error instanceof AuthError) {
-            console.error("Login error:", error);
             switch (error.type) {
                 case "CredentialsSignin":
                     return parseStringify({
                         responseType: "error",
                         message: "Wrong credentials! Invalid email address and/or password",
+                        error: new Error("Wrong credentials"),
                     });
                 default:
                     return parseStringify({
                         responseType: "error",
                         message: error.message ?? "Something about your credentials is not right, please try again.",
-                        error: error,
+                        error: new Error("Unexpected"),
                     });
             }
         }
@@ -91,9 +87,12 @@ export const login = async (
         return parseStringify({
             responseType: "error",
             message: "An unexpected error occurred. Please try again.",
-            error: error instanceof Error ? error : new Error(String(error)),
+            error: new Error("Unexpected"),
         });
     }
+
+    revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
+    redirect(DEFAULT_LOGIN_REDIRECT_URL);
 };
 
 export const getUserById = async (userId: string|undefined): Promise<ExtendedUser> => {

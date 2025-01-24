@@ -10,9 +10,10 @@ import {
   COMPLETE_BUSINESS_LOCATION_SETUP_URL,
   UPDATE_PASSWORD_URL,
   VERIFICATION_REDIRECT_URL,
-  VERIFICATION_PAGE
+  VERIFICATION_PAGE, SELECT_BUSINESS_URL
 } from "@/routes";
 import { AuthToken } from "@/types/types";
+import {Business} from "@/types/business/type";
 
 const { auth } = NextAuth(authConfig);
 
@@ -32,11 +33,21 @@ export default auth((req) => {
 
   // Get auth token
   let authToken: AuthToken | null = null;
+  let currentBusiness: Business | null = null;
+
   try {
     const tokens = cookies().get("authToken")?.value;
     if (tokens) {
       authToken = JSON.parse(tokens);
+
+      const currentBusinessToken = cookies().get("currentBusiness")?.value;
+      if (currentBusinessToken != null) {
+        currentBusiness = JSON.parse(currentBusinessToken);
+      }
     }
+
+    console.log("currentBusiness", currentBusiness);
+    console.log("authToken", authToken);
   } catch (error) {
     console.error("Error parsing auth token:", error);
     // If token is invalid or expired, redirect to login
@@ -49,13 +60,13 @@ export default auth((req) => {
     if (isAuthRoute) {
       return;
     }
-    // Redirect to login for protected routes
+    // Redirect to log in for protected routes
     return Response.redirect(new URL("/login", nextUrl));
   }
 
   // Handle authenticated users
   if (isLoggedIn) {
-    // Check email verification
+    // First check email verification
     if (authToken.emailVerified === null) {
       if (nextUrl.pathname === VERIFICATION_PAGE) {
         return;
@@ -68,24 +79,44 @@ export default auth((req) => {
 
     // Prevent authenticated users from accessing auth routes
     if (isAuthRoute) {
-      // Only redirect to business registration if they haven't completed it
-      if (!authToken.businessComplete) {
-        return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
-      }
       return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
     }
 
-    // Handle business registration flow
-    if (!authToken.businessComplete &&
-        nextUrl.pathname !== COMPLETE_ACCOUNT_REGISTRATION_URL) {
+    // Then check business registration
+    if (!authToken.businessComplete) {
+      // Allow access to the registration page
+      if (nextUrl.pathname === COMPLETE_ACCOUNT_REGISTRATION_URL) {
+        return;
+      }
+      // Redirect to registration for all other pages
       return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
     }
 
-    // Handle location setup flow
+    // Only check for business selection after business registration is complete
+    if (authToken.businessComplete && !currentBusiness) {
+      // Allow access to the selection page
+      if (nextUrl.pathname === SELECT_BUSINESS_URL) {
+        return;
+      }
+      // Redirect to selection for all other pages
+      return Response.redirect(new URL(SELECT_BUSINESS_URL, nextUrl));
+    }
+
+    // Finally check location setup
     if (authToken.businessComplete &&
-        !authToken.locationComplete &&
-        nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
-      return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL+"?business="+authToken.businessId, nextUrl));
+        currentBusiness &&
+        !authToken.locationComplete) {
+      // Allow access to the location setup page
+      if (nextUrl.pathname === COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
+        return;
+      }
+      // Redirect to location setup for all other pages
+      return Response.redirect(
+          new URL(
+              `${COMPLETE_BUSINESS_LOCATION_SETUP_URL}`,
+              nextUrl
+          )
+      );
     }
   }
 

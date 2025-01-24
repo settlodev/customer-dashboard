@@ -7,18 +7,24 @@ import { AuthToken, FormResponse } from "@/types/types";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { Location } from "@/types/location/type";
-import { refreshLocation } from "../business/refresh";
+import {switchLocation} from "../business/refresh";
 import {signOut} from "@/auth";
 import {isRedirectError} from "next/dist/client/components/redirect";
 import { console } from "inspector";
+import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 
 export const createBusinessLocation = async (
     businessLocation: z.infer<typeof LocationSchema>
 ): Promise<FormResponse> => {
+    // Handle authentication
+    const token = cookies().get('authToken')?.value;
+    if (!token) {
+        await signOut();
+        throw new Error('Authentication token not found');
+    }
+
     // Validate input data
     const validationResult = LocationSchema.safeParse(businessLocation);
-
-    console.log('Validation result:', validationResult);
 
     if (!validationResult.success) {
         return parseStringify({
@@ -30,37 +36,26 @@ export const createBusinessLocation = async (
 
     try {
         // Get business ID from cookies
-        const activeBusiness = cookies().get('activeBusiness')?.value;
-        if (!activeBusiness) {
+        const currentBusiness = await getCurrentBusiness();
+        if (!currentBusiness) {
             throw new Error('No active business found');
         }
-
-        const business = JSON.parse(activeBusiness);
-        const businessId = business.Business.id;
 
         // Prepare payload
         const payload = {
             ...validationResult.data,
-            business: businessId,
+            business: currentBusiness.id,
         };
-
 
         // Make API request
         const apiClient = new ApiClient();
         const response = await apiClient.post(
-            `/api/locations/${businessId}/create`,
+            `/api/locations/${currentBusiness.id}/create`,
             payload
         );
 
         if (!response) {
             throw new Error('No response received from server');
-        }
-
-        // Handle authentication
-        const token = cookies().get('authToken')?.value;
-        if (!token) {
-            await signOut();
-            throw new Error('Authentication token not found');
         }
 
         // Update auth token and refresh location
@@ -71,7 +66,7 @@ export const createBusinessLocation = async (
             httpOnly: true
         });
 
-        await refreshLocation(response as Location);
+        await switchLocation(response as Location);
 
         return parseStringify({
             responseType: 'success',
@@ -90,24 +85,3 @@ export const createBusinessLocation = async (
         });
     }
 };
-
-export const getAllBusinessLocationsByBusinessID = async (
-    businessId: string
-): Promise<Location[]> => {
-    const apiClient = new ApiClient();
-    try {
-        const response = await apiClient.get(
-            `/api/locations/${businessId}`
-        );
-        console.log("The response from the API for locations is:", response);
-        return parseStringify(response);
-
-    } catch (error) {
-        return parseStringify({
-            responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error)),
-        });
-    }
-}
-

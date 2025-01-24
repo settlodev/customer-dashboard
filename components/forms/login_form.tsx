@@ -22,52 +22,55 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import {useCallback, useEffect, useState, useTransition} from "react";
+import {useCallback, useState, useTransition} from "react";
 import { FormResponse } from "@/types/types";
-import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormError } from "@/components/widgets/form-error";
-import { FormSuccess } from "@/components/widgets/form-success";
 import Link from "next/link";
 import {EyeOffIcon, EyeIcon} from "lucide-react";
-import {deleteAuthCookie} from "@/lib/auth-utils";
+import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie} from "@/lib/auth-utils";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string>("");
-    const [success,] = useState<string>("");
     const [showPassword, setShowPassword] = useState<boolean>(false);
-
-    useEffect(() => {
-        deleteAuthCookie();
-    }, []);
 
     const form = useForm<z.infer<typeof LoginSchema>>({
         resolver: zodResolver(LoginSchema),
         defaultValues: {},
     });
 
+    const clearUserData = () => {
+        deleteAuthCookie();
+        deleteActiveBusinessCookie();
+        deleteActiveLocationCookie();
+    }
+
     const submitData = useCallback((values: z.infer<typeof LoginSchema>) => {
         startTransition(() => {
             login(values)
                 .then((data: FormResponse) => {
-                    if (!data) {
-                        setError("An unexpected error occurred. Please try again.");
+                    if (data) {
+                        if (data.error === Error("Unexpected")) {
+                            console.log("Error 1", data.error);
+                            setError("Something went wrong while processing your credentials. Try again.");
+                            clearUserData();
 
-                        return;
-                    }
-                    if (data.responseType === "error") {
+                            return;
+                        }
+
+                        console.log("Error 2 Data", data.error);
+                        console.log("Error 2 Message", data.message);
                         setError(data.message);
-                        
-                    } 
+                    }
                 })
-                .catch((err) => {
-                    setError(
-                        "An unexpected error occurred. Please try again." +
-                        (err instanceof Error ? " " + err.message : "")
-                    );
-                    setTimeout(() => {
-                        window.location.reload(); 
-                    }, 2000);
+                .catch((err: any) => {
+                    //Sentry.captureException(err);
+                    console.log("Error 3", err.message);
+
+                    setError("2 Something went wrong while processing your credentials. Try again.");
+                    clearUserData();
+
+                    return;
                 });
         });
     }, []);
@@ -83,7 +86,6 @@ function LoginForm() {
                 </CardHeader>
             <CardContent className="pb-4 px-8">
                 <FormError message={error}/>
-                <FormSuccess message={success}/>
 
                 <Form {...form}>
                     <form className="space-y-6" onSubmit={form.handleSubmit(submitData)}>
