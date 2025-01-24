@@ -57,12 +57,8 @@ function LoginForm() {
                     }
                     if (data.responseType === "error") {
                         setError(data.message);
-                        setTimeout(() => {
-                            window.location.reload(); 
-                        }, 2000);
-                    } else {
-                        window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
-                    }
+                        
+                    } 
                 })
                 .catch((err) => {
                     setError(
