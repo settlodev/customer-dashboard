@@ -85,7 +85,7 @@ export default auth((req) => {
     if (authToken.businessComplete &&
         !authToken.locationComplete &&
         nextUrl.pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
-      return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl));
+      return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL+"?business="+authToken.businessId, nextUrl));
     }
   }
 
