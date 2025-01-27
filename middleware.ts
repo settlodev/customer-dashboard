@@ -36,24 +36,25 @@ export default auth((req) => {
   let currentBusiness: Business | null = null;
 
   try {
-    const cookieList = cookies().getAll();
-    console.log("Available cookies:", cookieList.map(c => c.name));
+    // const cookieList = cookies().getAll();
+    // console.log("Available cookies:", cookieList.map(c => c.name));
 
     const tokens = cookies().get("authToken")?.value;
     if (tokens) {
       authToken = JSON.parse(tokens);
 
       const currentBusinessToken = cookies().get("currentBusiness");
-      console.log("Business cookie details:", {
-        exists: !!currentBusinessToken,
-        name: currentBusinessToken?.name,
-        value: currentBusinessToken?.value
-      });
+
+      // console.log("Business cookie details:", {
+      //   exists: !!currentBusinessToken,
+      //   name: currentBusinessToken?.name,
+      //   value: currentBusinessToken?.value
+      // });
 
       if (currentBusinessToken?.value) {
         try {
           currentBusiness = JSON.parse(currentBusinessToken.value);
-          console.log("Parsed currentBusiness:", currentBusiness);
+          // console.log("Parsed currentBusiness:", currentBusiness);
         } catch (parseError) {
           console.error("Error parsing currentBusiness:", parseError);
         }
