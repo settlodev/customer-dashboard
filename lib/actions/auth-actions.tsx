@@ -18,6 +18,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
+import {DEFAULT_LOGIN_REDIRECT_URL} from "@/routes";
 
 export async function logout() {
     try {
@@ -42,7 +43,7 @@ export const login = async (
         return parseStringify({
             responseType: "error",
             message: "Please fill in all the fields marked with * before proceeding",
-            error: new Error(validatedData.error.message),
+            error: new Error("Incomplete credentials"),
         });
     }
 
@@ -61,29 +62,24 @@ export const login = async (
             return parseStringify({
                 responseType: "error",
                 message: "Wrong credentials! Invalid email address and/or password",
+                error: new Error("Wrong credentials"),
             });
         }
 
-        // If login is successful, return a success message
-        return parseStringify({
-            responseType: "success",
-            message: "Login successful, redirecting...",
-        });
     } catch (error) {
-        console.error(error);
         if (error instanceof AuthError) {
-            console.error("Login error:", error);
             switch (error.type) {
                 case "CredentialsSignin":
                     return parseStringify({
                         responseType: "error",
                         message: "Wrong credentials! Invalid email address and/or password",
+                        error: new Error("Wrong credentials"),
                     });
                 default:
                     return parseStringify({
                         responseType: "error",
                         message: error.message ?? "Something about your credentials is not right, please try again.",
-                        error: error,
+                        error: new Error("Unexpected"),
                     });
             }
         }
@@ -91,9 +87,12 @@ export const login = async (
         return parseStringify({
             responseType: "error",
             message: "An unexpected error occurred. Please try again.",
-            error: error instanceof Error ? error : new Error(String(error)),
+            error: new Error("Unexpected"),
         });
     }
+
+    revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
+    redirect(DEFAULT_LOGIN_REDIRECT_URL);
 };
 
 export const getUserById = async (userId: string|undefined): Promise<ExtendedUser> => {
@@ -127,7 +126,7 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
             `/api/auth/verify-token/${token}`,
         );
 
-        console.log("tokenResponse is: ", tokenResponse)
+        // console.log("tokenResponse is: ", tokenResponse)
 
         if (tokenResponse == token) {
             revalidatePath("/user-verification");
@@ -228,7 +227,7 @@ export const register = async (
         await deleteAuthCookie();
 
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
-        console.log("regData is: ", regData)
+        // console.log("regData is: ", regData)
         if(regData){
             const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
 
@@ -251,6 +250,7 @@ export const register = async (
             message: "Registration successful, redirecting to login...",
         });
     } catch (error : any) {
+
         // Ignore redirect error
         if (isRedirectError(error)) throw error;
 
@@ -322,8 +322,16 @@ export const resetPassword = async (
             message: "Password reset link sent to your email address",
             data: result
         });
-    } catch (error) {
-        throw error;
+    } catch (error: any) {
+
+        // Ignore redirect error
+        if (isRedirectError(error)) throw error;
+
+        return parseStringify({
+            responseType: "error",
+            message: error.message ? error.message : "An unexpected error occurred. Please try again.",
+            error: error instanceof Error ? error : new Error(String(error.message ? error.message : error)),
+        });
     }
 }
 

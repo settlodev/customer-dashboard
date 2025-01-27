@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {useToast} from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
 
 const BusinessSelector = ({ businesses }: { businesses: Business[] }) => {
     const [business, setBusiness] = useState<Business | null>(null);
@@ -232,6 +233,7 @@ const LocationList = ({locations}: { locations: Location[] }) => {
                 </div>
                 <p className="text-gray-600 text-center">No locations found</p>
                 <p className="text-sm text-gray-500">Try adjusting your search terms</p>
+                <Button className="mt-4" onClick={() => window.location.href = "/business-location"}>Complete Setup</Button>
             </div>
         );
     }

@@ -19,5 +19,6 @@ export interface Location {
     business: UUID;
     endDate: string;
     subscriptionStatus: subscriptionStatus;
+    subscription:UUID;
     isArchived: boolean;
 }

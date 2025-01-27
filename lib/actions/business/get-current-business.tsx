@@ -2,7 +2,7 @@
 
 import {parseStringify} from "@/lib/utils";
 import {cookies} from "next/headers";
-import {Business, BusinessWithLocationType} from "@/types/business/type";
+import {Business} from "@/types/business/type";
 import {getAuthToken} from "@/lib/auth-utils";
 import {endpoints} from "@/types/endpoints";
 import ApiClient from "@/lib/settlo-api-client";
@@ -71,10 +71,6 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
         return undefined;
     }
 };
-export const setCurrentLocation = async (location: Location): Promise<Location> => {
-    cookies().set({name: "currentLocation", value: JSON.stringify(location)});
-    return location;
-};
 
 export const getBusinessDropDown = async (): Promise<Business[]> => {
     const authToken = await getAuthToken();
@@ -92,28 +88,3 @@ export const getBusinessDropDown = async (): Promise<Business[]> => {
         redirect("/login")
     }
 };
-
-
-
-export const getBusinessWithLocations = async (): Promise<BusinessWithLocationType[]> => {
-    const authToken = await getAuthToken();
-
-    const userId = authToken?.id as UUID;
-    const myEndpoints = endpoints({userId: userId});
-    try {
-        const apiClient = new ApiClient();
-
-        const data = await apiClient.get(myEndpoints.business.list.endpoint);
-        return parseStringify(data);
-
-    } catch (error) {
-        throw error;
-    }
-};
-
-export const getLocations = async (businessId: UUID): Promise<Location[]> => {
-    const myEndpoints = endpoints({businessId: businessId});
-    const apiClient = new ApiClient();
-    const data = await apiClient.get(myEndpoints.locations.list.endpoint);
-    return parseStringify(data);
-}

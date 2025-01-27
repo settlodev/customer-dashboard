@@ -1,11 +1,12 @@
 'use client'
 import { fetchSubscriptions } from "@/lib/actions/subscriptions"
 import { Subscription, SubscriptionFeature } from "@/types/subscription/type"
-import {ArrowRight, CheckIcon, Sparkles} from "lucide-react"
+import { ArrowRight, CheckIcon, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 interface PricingCardProps {
+    sub: Subscription;
     packageName: string;
     amount: number;
     discount: number;
@@ -15,11 +16,12 @@ interface PricingCardProps {
 }
 
 const PricingCard: React.FC<PricingCardProps> = ({
-                                                     packageName,
-                                                     amount,
-                                                     subscriptionFeatures,
-                                                     isPopular = false,
-                                                 }) => {
+    sub,
+    packageName,
+    amount,
+    subscriptionFeatures,
+    isPopular = false,
+}) => {
     const router = useRouter();
     const [showAll, setShowAll] = useState(false);
     const shouldShowMoreButton = subscriptionFeatures.length > 10;
@@ -30,7 +32,10 @@ const PricingCard: React.FC<PricingCardProps> = ({
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     });
-
+    const handleGetStarted = () => {
+        console.log("Selected package ID:", sub.id);
+        router.push(`/register?package=${sub.id}`);
+      };
     return (
         <div className={`relative flex flex-col bg-white rounded-2xl p-6 transition-all duration-300 hover:shadow-xl border 
       ${isPopular ? 'border-emerald-200 shadow-lg scale-105' : 'border-gray-100'}`}>
@@ -73,12 +78,12 @@ const PricingCard: React.FC<PricingCardProps> = ({
                     </button>
                 ) : (
                     <button
-                        onClick={() => router.push('/register')}
+                        onClick={handleGetStarted}
                         className={`w-full px-6 py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2
               ${isPopular
-                            ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                            : 'bg-gray-900 text-white hover:bg-gray-800'
-                        }`}
+                                ? 'bg-emerald-500 text-white hover:bg-emerald-600'
+                                : 'bg-gray-900 text-white hover:bg-gray-800'
+                            }`}
                     >
                         Get Started
                         <ArrowRight className="w-4 h-4" />
@@ -130,6 +135,7 @@ export const Pricing: React.FC = () => {
                         {subscriptions.map((sub, index) => (
                             <PricingCard
                                 key={sub.id}
+                                sub={sub}
                                 packageName={sub.packageName}
                                 amount={sub.amount}
                                 discount={sub.discount}

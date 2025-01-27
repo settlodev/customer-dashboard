@@ -15,6 +15,7 @@ import { ExtendedUser } from "@/types/types";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Location } from "@/types/location/type";
 
 interface UserDropdownProps {
     user: ExtendedUser;
@@ -30,7 +31,7 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
     useEffect(() => {
         const fetchCurrentLocation = async () => {
             const location = await getCurrentLocation();
-            console.log('Current location:', location);
+            console.log('Current location:', location?.name);
             setCurrentLocation(location as Location | undefined);
 
         };
@@ -78,25 +79,23 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
                         </DropdownMenuItem>
                 
 
-                <DropdownMenuItem asChild>
-                    <a href="/profile" className="flex items-center cursor-pointer">
-                        <User className="mr-2 h-4 w-4" />
-                        <span>My Profile</span>
-                    </a>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                    {/* <a href="/renew-subscription" className="flex items-center cursor-pointer">
-                        <CreditCard className="mr-2 h-4 w-4" />
-                        <span>Renew Subscription</span>
-                    </a> */}
-                </DropdownMenuItem>
-
-                <DropdownMenuItem asChild>
-                    <a href="/settings" className="flex items-center cursor-pointer">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Account Settings</span>
-                    </a>
-                </DropdownMenuItem>
+                {currentLocation && currentLocation.subscriptionStatus && currentLocation.subscriptionStatus !== 'EXPIRED' && (
+                    <>
+                        <DropdownMenuItem asChild>
+                            <a href="/profile" className="flex items-center cursor-pointer">
+                                <User className="mr-2 h-4 w-4" />
+                                <span>My Profile</span>
+                            </a>
+                        </DropdownMenuItem>
+                        
+                        <DropdownMenuItem asChild>
+                            <a href="/settings" className="flex items-center cursor-pointer">
+                                <Settings className="mr-2 h-4 w-4" />
+                                <span>Account Settings</span>
+                            </a>
+                        </DropdownMenuItem>
+                    </>
+                )}
 
                 <DropdownMenuSeparator />
 

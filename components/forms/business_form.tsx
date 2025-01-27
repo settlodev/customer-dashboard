@@ -19,7 +19,7 @@ import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
-import { Building2, Facebook, Instagram, Loader2Icon, MapPin, X, Youtube} from "lucide-react";
+import { Building2, Facebook, Instagram, Loader2Icon, Mail, MapPin, X, Youtube} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Switch } from "../ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
@@ -45,12 +45,13 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
             status: item ? item.status : true,
             businessType: item ? item.businessType : BusinessType.RETAIL,
             // image: item ? item.image : '',
-            logo: item ? item.logo : null,
-            notificationPhone: item ? item.notificationPhone : null,
-            vrn: item ? item.vrn : null,
-            uin: item ? item.uin : null,
-            serial: item ? item.serial : null,
-            memarts: item ? item.memarts : null,
+            logo: item ? item.logo : undefined,
+            notificationPhone: item ? item.notificationPhone : undefined,
+            notificationEmailAddress: item ? item.notificationEmailAddress : undefined,
+            vrn: item ? item.vrn : undefined,
+            uin: item ? item.uin : undefined,
+            serial: item ? item.serial : undefined,
+            memarts: item ? item.memarts : undefined,
             businessLicense: item ? item.businessLicense : '',
             certificateOfIncorporation: item ? item.certificateOfIncorporation : null,
             identificationNumber: item ? item.identificationNumber : '',
@@ -171,6 +172,29 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
                                 )}
                             />
 
+<FormField
+                                control={form.control}
+                                name="notificationEmailAddress"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Notification Email</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                <Input
+                                                    className="pl-10"
+                                                    {...field}
+                                                    disabled={isPending}
+                                                    value={field.value || ''}
+                                                // onChange={}
+                                                />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
 
                             <FormField
                                 control={form.control}
@@ -195,97 +219,7 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
                     </CardContent>
                 </Card>
 
-                {/* <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <File  className="w-5 h-5"/>
-                             Document
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="grid gap-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                                <FormLabel className="block mt-2 mb-2">Business License</FormLabel>
-                                <div className="bg-gray-50 rounded-lg p-4 content-center">
-                                    <UploadImageWidget
-                                        imagePath={'departments'}
-                                        displayStyle={'default'}
-                                        displayImage={true}
-                                        showLabel={false}
-                                        label="Image"
-                                        setImage={setBusinessLicense}
-                                    />
-                                </div>
-                            </div>
-                            <FormField
-                                control={form.control}
-                                name="twitter"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Twitter</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                                <X className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                                                <Input
-                                                    className="pl-10"
-                                                    {...field}
-                                                    disabled={isPending}
-                                                    value={field.value || ''}
-                                                // onChange={}
-                                                />
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="facebook"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Facebook</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                                <Facebook className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                                                <Input
-                                                    className="pl-10"
-                                                    {...field}
-                                                    disabled={isPending}
-                                                    value={field.value || ''}
-                                                // onChange={}
-                                                />
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name="youtube"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Youtube</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                                <Youtube className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                                                <Input
-                                                    className="pl-10"
-                                                    {...field}
-                                                    disabled={isPending}
-                                                    value={field.value || ''}
-                                                // onChange={}
-                                                />
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </CardContent>
-                </Card> */}
+               
 
                 <Card>
                     <CardHeader>

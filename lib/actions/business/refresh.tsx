@@ -27,6 +27,17 @@ export const refreshBusiness = async (data: Business): Promise<void> => {
     revalidatePath("/dashboard");
 };
 
+export const switchLocation = async (data: Location): Promise<void> => {
+    if (!data) throw new Error("Business ID is required to perform this request");
+    cookies().set({
+        name: "currentLocation",
+        value: JSON.stringify(data)
+    });
+
+    revalidatePath("/dashboard");
+    redirect("/dashboard");
+};
+
 export const refreshLocation = async (data: Location): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
     cookies().set({
@@ -34,11 +45,5 @@ export const refreshLocation = async (data: Location): Promise<void> => {
         value: JSON.stringify(data)
     });
 
-    cookies().set({
-        name: "activeLocation",
-        value: JSON.stringify(data)
-    });
-
     revalidatePath("/dashboard");
-    redirect("/dashboard");
 };

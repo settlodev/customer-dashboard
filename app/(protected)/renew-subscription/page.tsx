@@ -1,123 +1,86 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Calendar, Phone, Tag } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Calendar, DollarSign, Tag } from 'lucide-react';
+import RenewSubscriptionForm from '@/components/forms/renew_subscription_form';
+import { ActiveSubscription } from '@/types/subscription/type';
+import { getActiveSubscription } from '@/lib/actions/subscriptions';
+import Loading from '../loading';
 
 const SubscriptionRenewal = () => {
-  // Sample subscription data - replace with actual data from your backend
-  const currentSubscription = {
-    plan: "Premium Plan",
-    endDate: "2025-02-21",
-    previousDiscount: "EARLY2024",
-    price: 19.99
-  };
+  const [activeSubscription, setActiveSubscription] = useState<ActiveSubscription>();
+  const [isLoading, setLoading] = useState(true);
 
-  const [phone, setPhone] = useState("");
-  const [amount, setAmount] = useState("");
-  const [discountCode, setDiscountCode] = useState("");
+  useEffect(() => {
+    const fetchActiveSubscription = async () => {
+      const activeSubs = await getActiveSubscription();
+      setActiveSubscription(activeSubs);
+      setLoading(false);
+    }
 
-  const handleRenewal = () => {
-    // Implement your renewal logic here
-    console.log("Renewing subscription with:", { phone, amount, discountCode });
-  };
+    fetchActiveSubscription();
+  }, []);
 
   // Calculate days until expiration
   const daysUntilExpiration = () => {
-    const end = new Date(currentSubscription.endDate);
+    if (!activeSubscription?.endDate) return 0;
+    const end = new Date(activeSubscription.endDate);
     const today = new Date();
     const diffTime = end.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays;
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-lg">
+            <Loading />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-5xl mx-auto p-4 space-y-6">
-      {/* Current Subscription Info */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Current Subscription</CardTitle>
-          <CardDescription>Your subscription details</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2 text-lg">
-            <Tag className="text-emarald-500" />
-            <span>Plan: {currentSubscription.plan}</span>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <Calendar className="text-emerald-500" />
-            <span>Expires: {currentSubscription.endDate}</span>
-            <span className="ml-2 text-sm text-orange-500">
-              ({daysUntilExpiration()} days remaining)
-            </span>
-          </div>
+    <div className="max-w-6xl mx-auto p-4 space-y-6">
+      <div className='flex flex-col gap-4 lg:flex-row '>
+        <div className='w-full lg:w-1/2'>
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Subscription</CardTitle>
+              <CardDescription>Your subscription details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-2 text-lg">
+                <Tag className="text-emerald-500" />
+                <span>Plan: {activeSubscription?.subscription?.packageName || 'N/A'}</span>
+              </div>
+            
+              <div className="flex items-center gap-2 text-lg">
+                <DollarSign className="text-emerald-500" />
+                <span>Price: {Intl.NumberFormat().format(activeSubscription?.subscription?.amount || 0)}</span>
+              </div>
 
-          {currentSubscription.previousDiscount && (
-            <Alert>
-              <AlertDescription>
-                Previous discount used: {currentSubscription.previousDiscount}
-              </AlertDescription>
-            </Alert>
-          )}
-        </CardContent>
-      </Card>
+              <div className="flex items-center gap-2">
+                <Calendar className="text-emerald-500" />
+                <span>Expires: {activeSubscription?.endDate ? new Date(activeSubscription.endDate).toLocaleDateString() : 'N/A'}</span>
+                <span className="ml-2 text-sm text-orange-500">
+                  ({daysUntilExpiration()} days remaining)
+                </span>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <div className="text-sm text-gray-500">
+                Subscription Status: {activeSubscription?.subscriptionStatus}
+              </div>
+            </CardFooter>
+          </Card>
+        </div>
 
-      {/* Renewal Form */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Renew Subscription</CardTitle>
-          <CardDescription>Enter your details to renew</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Phone Number</label>
-            <div className="flex items-center gap-2">
-              <Phone className="text-gray-500" />
-              <Input
-                type="tel"
-                placeholder="Enter your phone number"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Amount</label>
-            <div className="relative">
-              <Input
-                type="number"
-                placeholder="Enter amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="pl-8"
-              />
-              <span className="absolute left-3 top-2.5 text-gray-500">$</span>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Discount Code (Optional)</label>
-            <Input
-              placeholder="Enter discount code"
-              value={discountCode}
-              onChange={(e) => setDiscountCode(e.target.value)}
-            />
-          </div>
-        </CardContent>
-        <CardFooter>
-          <Button 
-            className="w-full" 
-            onClick={handleRenewal}
-            disabled={!phone || !amount}
-          >
-            Renew Subscription
-          </Button>
-        </CardFooter>
-      </Card>
+        <div className=''>
+        <RenewSubscriptionForm activeSubscription={activeSubscription ?? undefined} />
+        </div>
+      </div>
     </div>
   );
 };

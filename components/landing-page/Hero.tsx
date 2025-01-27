@@ -34,7 +34,7 @@ export const Hero = () => {
                                         <ArrowRight className="ml-2 h-5 w-5" />
                                     </button>
                                 </Link>
-                                <Link href="/contact">
+                                <Link href="/register">
                                     <button className="px-8 py-3 bg-white text-gray-800 rounded-full font-medium border-2 border-emerald-500 hover:bg-emerald-50 transition-all duration-200">
                                         Talk to Sales
                                     </button>

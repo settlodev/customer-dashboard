@@ -90,7 +90,7 @@ export const FAQS: React.FC = () => {
 
                         <div className="flex flex-col space-y-4">
                             <Link
-                                href="/contact"
+                                href="/register"
                                 className="inline-flex items-center px-6 py-3 bg-emerald-500 text-white rounded-full font-medium hover:bg-emerald-600 transition-all duration-200 transform hover:scale-105 w-fit"
                             >
                                 <MessageCircle className="w-5 h-5 mr-2" />

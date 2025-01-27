@@ -59,7 +59,7 @@ import { getCurrentBusiness } from "@/lib/actions/business/get-current-business"
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import GenderSelector from "../widgets/gender-selector";
 import CountrySelector from "@/components/widgets/country-selector";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface SignUpStepItemType {
     id: string;
@@ -108,8 +108,17 @@ function RegisterForm({ step }: { step: string }) {
     const [emailSent, setEmailSent] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string>("");
     const [locationImageUrl, setLocationImageUrl] = useState<string>("");
-    const router = useRouter(); // Initialize the router
+    const router = useRouter();
+    const session = useSession(); 
+    const searchParams = useSearchParams();
+    const subscription = searchParams.get('package');
 
+    useEffect(() => {
+        if (subscription) {
+            localStorage.removeItem('subscription');
+            localStorage.setItem('subscription', subscription);
+        }
+    }, [subscription]);
 
     useEffect(() => {
         async function getBusiness() {
@@ -119,8 +128,6 @@ function RegisterForm({ step }: { step: string }) {
 
         getBusiness();
     }, []);
-
-    const session = useSession();
 
     const { toast } = useToast();
 
@@ -141,16 +148,26 @@ function RegisterForm({ step }: { step: string }) {
         }
     });
 
+    const storedSubscription = typeof window !== 'undefined' ? localStorage.getItem('subscription') : null;
+
     const locationForm = useForm<z.infer<typeof LocationSchema>>({
         resolver: zodResolver(LocationSchema),
         defaultValues: {
-            phone: session?.data?.user.phoneNumber,
+            // phone: session?.data?.user.phoneNumber,
             email: session?.data?.user.email,
             name: currentBusiness?.name,
             openingTime: "07:00",
             closingTime: "23:00",
+            subscription: storedSubscription
         },
     });
+
+    // Set the initial phone number value when the component mounts
+    useEffect(() => {
+        if (session?.data?.user.phoneNumber) {
+            locationForm.setValue("phone", session.data.user.phoneNumber);
+        }
+    }, [session?.data?.user.phoneNumber]);
 
     const onInvalid = useCallback(
 
@@ -226,6 +243,7 @@ function RegisterForm({ step }: { step: string }) {
 
     const submitLocationData = useCallback(
         async (values: z.infer<typeof LocationSchema>) => {
+            console.log("The location data are:", values);
             try {
                 startTransition(async () => {
                     const formData = locationImageUrl
@@ -419,6 +437,28 @@ function RegisterForm({ step }: { step: string }) {
                                                 );
                                             }}
                                         />
+
+
+                                                    <FormField
+                                                        control={form.control}
+                                                        name="referredByCode"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Referral Code</FormLabel>
+                                                                <FormControl>
+                                                                    <Input
+                                                                        {...field}
+                                                                        disabled={isPending}
+                                                                        
+                                                                        value={field.value || ""}
+                                                                        placeholder="Enter your referral code"
+                                                                    />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                
 
                                     </div>
 
@@ -753,7 +793,13 @@ function RegisterForm({ step }: { step: string }) {
                                                                 <FormControl className="w-full border-1 rounded-sm">
                                                                     <PhoneInput
                                                                         placeholder="Enter phone number"
-                                                                        {...field} disabled={isPending}
+                                                                        {...field}
+                                                                         disabled={isPending}
+                                                                         value={field.value || ""}
+                                                                         onChange={(value) => {
+                                                                            console.log("Phone number:", value);
+                                                                            field.onChange(value);
+                                                                        }}
                                                                     />
                                                                 </FormControl>
                                                                 <FormMessage />

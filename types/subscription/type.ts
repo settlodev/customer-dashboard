@@ -39,3 +39,17 @@ export declare interface ExtraFeature {
     canDelete: boolean
     isArchived: boolean
 }
+
+export declare interface ActiveSubscription{
+    id: UUID
+    amount: number
+    startDate: Date
+    endDate: Date
+    subscriptionStatus: string
+    active:boolean
+    location: UUID
+    subscription: Subscription
+    status: boolean
+    canDelete: boolean
+    isArchived: boolean
+}

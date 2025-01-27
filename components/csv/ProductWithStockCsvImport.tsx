@@ -161,7 +161,10 @@ export function ProductWithStockCSVDialog() {
     if (selectedFile) {
       try {
         const fileText = await selectedFile.text();
+        // console.log(fileText);
+
         const result = validateCSV(fileText, expectedHeaders);
+        // console.log(result);
 
         if (result.isValid) {
           const cleanedCSV = result.rows
