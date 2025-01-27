@@ -37,6 +37,7 @@ export default auth((req) => {
 
   try {
     const tokens = cookies().get("authToken")?.value;
+    console.log("tokens", tokens);
     if (tokens) {
       authToken = JSON.parse(tokens);
 
