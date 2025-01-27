@@ -36,19 +36,35 @@ export default auth((req) => {
   let currentBusiness: Business | null = null;
 
   try {
+    // const cookieList = cookies().getAll();
+    // console.log("Available cookies:", cookieList.map(c => c.name));
+
     const tokens = cookies().get("authToken")?.value;
     if (tokens) {
       authToken = JSON.parse(tokens);
 
-      const currentBusinessToken = cookies().get("currentBusiness")?.value;
-      if (currentBusinessToken != null) {
-        currentBusiness = JSON.parse(currentBusinessToken);
+      const currentBusinessToken = cookies().get("currentBusiness");
+
+      // console.log("Business cookie details:", {
+      //   exists: !!currentBusinessToken,
+      //   name: currentBusinessToken?.name,
+      //   value: currentBusinessToken?.value
+      // });
+
+      if (currentBusinessToken?.value) {
+        try {
+          currentBusiness = JSON.parse(currentBusinessToken.value);
+          // console.log("Parsed currentBusiness:", currentBusiness);
+        } catch (parseError) {
+          console.error("Error parsing currentBusiness:", parseError);
+        }
+      } else {
+        console.log("No current business cookie found");
       }
     }
-
   } catch (error) {
-    console.error("Error parsing auth token:", error);
-    // If token is invalid or expired, redirect to login
+    console.error("Error in middleware:", error);
+    // If token is invalid or expired, redirect to log in
     return Response.redirect(new URL("/login", nextUrl));
   }
 

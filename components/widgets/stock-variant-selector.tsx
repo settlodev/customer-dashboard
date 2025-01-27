@@ -32,7 +32,7 @@ interface Props {
 }
 
 const StockVariantSelector: React.FC<Props> = ({
-  placeholder = "Select stock variant",
+  placeholder = "Select stock item",
 //   isRequired,
   value,
   isDisabled,
@@ -85,7 +85,7 @@ const StockVariantSelector: React.FC<Props> = ({
             disabled={isDisabled || isLoading}
           >
             {isLoading 
-              ? "Loading stock variants..." 
+              ? "Loading stock items..." 
               : selectedOption 
                 ? selectedOption.displayName 
                 : placeholder
@@ -102,7 +102,7 @@ const StockVariantSelector: React.FC<Props> = ({
           }}>
             <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} />
             <CommandList>
-              <CommandEmpty>No stock variant found.</CommandEmpty>
+              <CommandEmpty>No stock item found.</CommandEmpty>
               <CommandGroup>
                 {variantOptions.map((option) => (
                   <CommandItem
