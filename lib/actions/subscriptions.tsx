@@ -34,6 +34,22 @@ export const getActiveSubscription = async (): Promise<ActiveSubscription> => {
     }
 }
 
+export const  validateDiscountCode= async (discountCode: string): Promise<any> => {
+    // let formResponse: FormResponse | null = null;
+    const location = await getCurrentLocation();
+    const payload = {
+        discountCode: discountCode
+    }
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.post(`/api/subscription-payments/${location?.id}/validate-discount-code`, { data: payload });
+        console.log("response", response);
+        return parseStringify(response);
+    } catch (error) {
+        throw error;
+    }
+}
+
 export const paySubscription = async (subscription:z.infer<typeof RenewSubscriptionSchema>): Promise<RenewSubscription> => {
     let formResponse: FormResponse | null = null;
 

@@ -19,12 +19,13 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
-import { Calendar, Mail, Phone, Tag } from "lucide-react";
+import { Calendar, Mail, Phone, Tag, Check, X, Loader2 } from "lucide-react";
 import { paySubscription } from "@/lib/actions/subscriptions";
+import { validateDiscountCode } from "@/lib/actions/subscriptions";
 import { Button } from "../ui/button";
 import { PhoneInput } from "../ui/phone-input";
 import { ActiveSubscription } from "@/types/subscription/type";
@@ -32,6 +33,8 @@ import { ActiveSubscription } from "@/types/subscription/type";
 const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: ActiveSubscription }) => {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
+  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
+  const [discountValid, setDiscountValid] = useState<boolean | null>(null);
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
@@ -42,12 +45,54 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
     },
   });
 
-  // Watch the quantity field
   const quantity = useWatch({
     control: form.control,
     name: "quantity",
     defaultValue: 1,
   });
+
+  const discountCode = useWatch({
+    control: form.control,
+    name: "discount",
+  });
+
+  // Determine if pay button should be disabled
+  const isPayButtonDisabled = isPending || 
+    (discountCode && (isValidatingDiscount || discountValid === false));
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (discountCode && discountCode.length > 0) {
+        validateDiscount(discountCode);
+      } else {
+        setDiscountValid(null);
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
+  }, [discountCode]);
+
+  const validateDiscount = async (code: string) => {
+    setIsValidatingDiscount(true);
+    try {
+      const response = await validateDiscountCode(code);
+      setDiscountValid(true);
+      toast({
+        title: "Discount Code Valid",
+        description: "The discount code has been applied successfully",
+        variant: "default"
+      });
+    } catch (error) {
+      setDiscountValid(false);
+      // toast({
+      //   title: "Invalid Discount Code",
+      //   description: "Please check your discount code and try again",
+      //   variant: "destructive"
+      // });
+    } finally {
+      setIsValidatingDiscount(false);
+    }
+  };
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -174,7 +219,6 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
                       <Input
                         {...field}
                         className="pl-10"
-                        type="number"
                         placeholder="Number of months"
                         onChange={(e) => {
                           const value = e.target.value;
@@ -191,7 +235,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
               )}
             />
 
-            {/* Discount Code Field */}
+            {/* Discount Code Field with Enhanced Validation Status */}
             <FormField
               control={form.control}
               name="discount"
@@ -205,19 +249,42 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
                       <Tag size={18} />
                     </div>
                     <FormControl>
-                      <Input
-                        {...field}
-                        className="pl-10"
-                        placeholder="Enter discount code"
-                      />
+                      <div className="relative">
+                        <Input
+                          {...field}
+                          className={`pr-10 ${isValidatingDiscount ? 'bg-gray-50' : ''}`}
+                          placeholder="Enter discount code"
+                          disabled={isValidatingDiscount}
+                        />
+                        {field.value && (
+                          <div className="absolute right-3 top-2">
+                            {isValidatingDiscount ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                            ) : discountValid === true ? (
+                              <Check className="h-5 w-5 text-green-500" />
+                            ) : discountValid === false ? (
+                              <X className="h-5 w-5 text-red-500" onClick={
+                                () => {
+                                  field.onChange('');
+                                }
+                              } />
+                            ) : null}
+                          </div>
+                        )}
+                      </div>
                     </FormControl>
+                    {discountValid === false && (
+                      <p className="text-sm text-red-500 mt-1">
+                        Invalid discount code.
+                      </p>
+                    )}
                     <FormMessage className="text-sm" />
                   </div>
                 </FormItem>
               )}
             />
 
-            {/* Total Amount Display - Now always visible */}
+            {/* Total Amount Display */}
             <div className="bg-gray-100 p-4 rounded-md">
               <h4 className="text-lg font-semibold text-gray-800">
                 Total Amount: {Intl.NumberFormat().format(totalAmount)}
@@ -240,7 +307,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
               variant="default"
               type="submit"
               className="w-28"
-              disabled={isPending}
+              // disabled={!!isPayButtonDisabled}
             >
               {isPending ? (
                 <div className="flex items-center space-x-2">
