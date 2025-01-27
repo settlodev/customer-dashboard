@@ -57,8 +57,8 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
   });
 
   // Determine if pay button should be disabled
-  const isPayButtonDisabled = isPending || 
-    (discountCode && (isValidatingDiscount || discountValid === false));
+  // const isPayButtonDisabled = isPending || 
+  //   (discountCode && (isValidatingDiscount || discountValid === false));
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -75,7 +75,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
   const validateDiscount = async (code: string) => {
     setIsValidatingDiscount(true);
     try {
-      const response = await validateDiscountCode(code);
+      await validateDiscountCode(code);
       setDiscountValid(true);
       toast({
         title: "Discount Code Valid",
@@ -84,6 +84,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
       });
     } catch (error) {
       setDiscountValid(false);
+      console.log("Error validating discount code:", error);
       // toast({
       //   title: "Invalid Discount Code",
       //   description: "Please check your discount code and try again",
