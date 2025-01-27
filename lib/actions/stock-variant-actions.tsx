@@ -44,8 +44,8 @@ export const searchStockVariants = async (
             ],
             sorts:[
                 {
-                    key:"name",
-                    direction:"ASC"
+                    key:"dateCreated",
+                    direction:"DESC"
                 }
             ],
             page:page ? page - 1:0,

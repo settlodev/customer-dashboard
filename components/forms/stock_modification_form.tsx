@@ -29,16 +29,16 @@ import { createStockModification } from "@/lib/actions/stock-modification-action
 import { Textarea } from "../ui/textarea";
 import { reasonForStockModification } from "@/types/enums";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
+import StockVariantSelector from "../widgets/stock-variant-selector";
 
 function StockModificationForm({ item }: { item: StockModification | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     const [error] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
-    const [stocks, setStocks] = useState<Stock[]>([]);
+    const [, setStocks] = useState<Stock[]>([]);
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
@@ -134,23 +134,11 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                         <FormItem>
                                             <FormLabel>Stock Item</FormLabel>
                                             <FormControl>
-                                                <Select
-                                                    onValueChange={field.onChange}
-                                                    value={field.value}
-                                                >
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select stock item" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {stocks.map((stock) =>
-                                                            stock.stockVariants.map((variant) => (
-                                                                <SelectItem key={variant.id} value={variant.id}>
-                                                                    {`${stock.name} - ${variant.name}`}
-                                                                </SelectItem>
-                                                            ))
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
+                                            <StockVariantSelector
+                                                {...field}
+                                                value={field.value ?? ""}
+                                                isDisabled={isPending}
+                                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>

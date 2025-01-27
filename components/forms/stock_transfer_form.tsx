@@ -22,7 +22,6 @@ import { fetchStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { NumericFormat } from "react-number-format";
 import { Textarea } from "../ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { StockTransfer } from "@/types/stock-transfer/type";
 import { StockTransferSchema } from "@/types/stock-transfer/schema";
 import { createStockTransfer } from "@/lib/actions/stock-transfer-actions";
@@ -33,17 +32,18 @@ import LocationSelector from "../widgets/location-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
 import { StockVariant } from "@/types/stockVariant/type";
+import StockVariantSelector from "../widgets/stock-variant-selector";
 
 function StockTransferForm({ item }: { item: StockTransfer | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     const [error] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
-    const [stocks, setStocks] = useState<Stock[]>([]);
+    const [, setStocks] = useState<Stock[]>([]);
     const [locations, setLocations] = useState<Location[]>([]);
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
-    const [selectedVariant, setSelectedVariant] = useState<StockVariant>();
+    const [selectedVariant,] = useState<StockVariant>();
 
 
     useEffect(() => {
@@ -107,14 +107,6 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
         });
     };
 
-    const handleVariantChange = (variantId: string) => {
-        const variant = stocks.flatMap(stock => stock.stockVariants).find(v => v.id === variantId);
-        if (variant) {
-            setSelectedVariant(variant);
-          
-        }
-    };
-
     return (
         <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
             <div className="flex gap-10">
@@ -135,20 +127,11 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                         <FormItem>
                                             <FormLabel>Stock Item</FormLabel>
                                             <FormControl>
-                                                <Select onValueChange={(value) => { handleVariantChange(value); field.onChange(value); }} value={field.value}>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder="Select Stock Item" />
-                                                    </SelectTrigger>
-                                                    <SelectContent>
-                                                        {stocks.map(stock =>
-                                                            stock.stockVariants.map(variant => (
-                                                                <SelectItem key={variant.id} value={variant.id}>
-                                                                    {`${stock.name} - ${variant.name}`}
-                                                                </SelectItem>
-                                                            ))
-                                                        )}
-                                                    </SelectContent>
-                                                </Select>
+                                            <StockVariantSelector
+                                                {...field}
+                                                value={field.value ?? ""}
+                                                isDisabled={isPending}
+                                                                />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
