@@ -42,6 +42,19 @@ export declare interface Business {
     allLocations: Location[]|[]
 }
 
+export declare interface MinimalBusiness {
+    id: UUID;
+    name: string;
+    prefix: string;
+    businessType: string;
+    status: boolean,
+    user: UUID,
+    country: UUID,
+    countryName: string,
+    isArchived: boolean,
+    totalLocations: number,
+}
+
 export declare interface BusinessWithLocationType {
     business: Business,
     locations: Location[]|[]
