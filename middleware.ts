@@ -37,7 +37,6 @@ export default auth((req) => {
 
   try {
     const tokens = cookies().get("authToken")?.value;
-    console.log("tokens", tokens);
     if (tokens) {
       authToken = JSON.parse(tokens);
 
@@ -47,8 +46,6 @@ export default auth((req) => {
       }
     }
 
-    console.log("currentBusiness", currentBusiness);
-    console.log("authToken", authToken);
   } catch (error) {
     console.error("Error parsing auth token:", error);
     // If token is invalid or expired, redirect to login

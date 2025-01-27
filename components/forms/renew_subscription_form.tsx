@@ -1,5 +1,3 @@
-"use client";
-
 import {
   Card,
   CardContent,
@@ -25,36 +23,31 @@ import React, { useCallback, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
-import { Calendar,Mail, Phone,Tag } from "lucide-react";
-import {paySubscription } from "@/lib/actions/subscriptions";
+import { Calendar, Mail, Phone, Tag } from "lucide-react";
+import { paySubscription } from "@/lib/actions/subscriptions";
 import { Button } from "../ui/button";
 import { PhoneInput } from "../ui/phone-input";
 import { ActiveSubscription } from "@/types/subscription/type";
 
 const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: ActiveSubscription }) => {
- 
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [showTotalAmount, setShowTotalAmount] = useState(false);
   const { toast } = useToast();
-  
-  
+
   const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
     resolver: zodResolver(RenewSubscriptionSchema),
     defaultValues: {
       planId: activeSubscription?.subscription.id ?? '',
-      // quantity: 1,
+      quantity: 1,
     },
   });
 
   // Watch the quantity field
   const quantity = useWatch({
     control: form.control,
-    name: "quantity", 
-    defaultValue: 1, 
+    name: "quantity",
+    defaultValue: 1,
   });
-
-
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -70,7 +63,6 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
 
   const submitData = (values: z.infer<typeof RenewSubscriptionSchema>) => {
     console.log("Submitting data:", values);
-    setShowTotalAmount(true);
     startTransition(() => {
       paySubscription(values)
         .then((data: any) => {
@@ -90,8 +82,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
         .catch((err) => {
           console.log(err);
         });
-    })
-
+    });
   };
 
   if (!activeSubscription) {
@@ -100,8 +91,6 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
 
   const { subscription } = activeSubscription;
   const totalAmount = subscription.amount * quantity;
-
-
 
   return (
     <Form {...form}>
@@ -131,7 +120,8 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
                     <FormControl className="w-full border-1 rounded-sm">
                       <PhoneInput
                         placeholder="Enter phone number"
-                        {...field} disabled={isPending}
+                        {...field}
+                        disabled={isPending}
                       />
                     </FormControl>
                     <FormMessage className="text-sm" />
@@ -184,6 +174,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
                       <Input
                         {...field}
                         className="pl-10"
+                        type="number"
                         placeholder="Number of months"
                         onChange={(e) => {
                           const value = e.target.value;
@@ -225,16 +216,16 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
                 </FormItem>
               )}
             />
-            {showTotalAmount && (
-              <div className="bg-gray-100 p-4 rounded-md">
-                <h4 className="text-lg font-semibold text-gray-800">
-                  Total Amount: {Intl.NumberFormat().format(totalAmount)}
-                </h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  {quantity} month{quantity !== 1 ? 's' : ''} subscription
-                </p>
-              </div>
-            )}
+
+            {/* Total Amount Display - Now always visible */}
+            <div className="bg-gray-100 p-4 rounded-md">
+              <h4 className="text-lg font-semibold text-gray-800">
+                Total Amount: {Intl.NumberFormat().format(totalAmount)}
+              </h4>
+              <p className="text-sm text-gray-600 mt-1">
+                {quantity} month{quantity !== 1 ? 's' : ''} subscription
+              </p>
+            </div>
           </CardContent>
 
           <CardFooter className="flex justify-end space-x-4 pt-6">
@@ -268,5 +259,3 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
 }
 
 export default RenewSubscriptionForm;
-
-

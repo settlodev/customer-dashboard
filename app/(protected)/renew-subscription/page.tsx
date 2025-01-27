@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, DollarSign, Tag } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import RenewSubscriptionForm from '@/components/forms/renew_subscription_form';
 import { ActiveSubscription } from '@/types/subscription/type';
 import { getActiveSubscription } from '@/lib/actions/subscriptions';
@@ -69,14 +68,6 @@ const SubscriptionRenewal = () => {
                   ({daysUntilExpiration()} days remaining)
                 </span>
               </div>
-
-              {activeSubscription?.subscriptionStatus === 'TRIAL' && (
-                <Alert>
-                  <AlertDescription>
-                    Current Subscription: Trial Period
-                  </AlertDescription>
-                </Alert>
-              )}
             </CardContent>
             <CardFooter>
               <div className="text-sm text-gray-500">
