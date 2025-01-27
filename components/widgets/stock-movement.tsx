@@ -9,9 +9,10 @@ import { StockMovement } from '@/types/stockVariant/type';
 
 const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) => {
 
-  console.log("movements", movements)
-  const latestMovement = movements[movements.length - 1];
-  console.log("latestMovement", latestMovement)
+  // console.log("movements", movements)
+  const latestMovement = movements[0];
+  const totalValue = latestMovement?.newTotalQuantity * latestMovement?.newAverageValue;
+  // console.log("latestMovement", latestMovement)
 
   const chartData = movements.map(movement => ({
     id: movement.stockName,
@@ -36,6 +37,10 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
         return 'Addon Sale';
       case 'STOCK_MODIFICATION':
         return 'Modification';
+      case 'TRANSFER_OUT':
+        return 'Transfer Out';
+      case 'TRANSFER_IN':
+        return 'Transfer In';
       default:
         return 'Unknown';
     }
@@ -62,7 +67,7 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Value</p>
-                <h3 className="text-2xl font-bold">{Intl.NumberFormat().format(latestMovement?.newAverageValue) || 0}/=</h3>
+                <h3 className="text-2xl font-bold">{Intl.NumberFormat().format(totalValue) || 0}/=</h3>
               </div>
               <TrendingUp className="h-8 w-8 text-green-500" />
             </div>
@@ -176,6 +181,10 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
                                 : movement.stockMovementType === 'ADDON_SALE'
                                   ? 'bg-orange-100 text-orange-800'
                                   : movement.stockMovementType === 'STOCK_MODIFICATION'
+                                    ? 'bg-pink-100 text-pink-800'
+                                    : movement.stockMovementType === 'TRANSFER_OUT'
+                                      ? 'bg-indigo-100 text-indigo-800'
+                                      : movement.stockMovementType === 'TRANSFER_IN'
                                     ? 'bg-teal-100 text-teal-800'
                                     : 'bg-red-100 text-red-800' 
                         }`}>
@@ -210,6 +219,12 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
                       ? (<BadgePlus className="h-5 w-5 text-orange-500" />)
                       : movement.stockMovementType === 'STOCK_MODIFICATION' 
                       ? (<PencilLine className="h-5 w-5 text-teal-500" />)
+                      : movement.stockMovementType === 'TRANSFER_OUT' 
+                      ? (<TrendingDown className="h-5 w-5 text-indigo-500" />)
+                      : movement.stockMovementType === 'TRANSFER_IN' 
+                      ? (<TrendingUp className="h-5 w-5 text-teal-500" />)
+                      : movement.stockMovementType === 'ORDER_ITEM_AMOUNT_CHANGE' 
+                      ? (<Pen className="h-5 w-5 text-purple-500" />)
                       : (<span className="text-gray-500">-</span>)}
                     </td>
                   </tr>
