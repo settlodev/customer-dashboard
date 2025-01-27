@@ -61,10 +61,6 @@ export default auth((req) => {
         console.log("No current business cookie found");
       }
     }
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
   } catch (error) {
     console.error("Error in middleware:", error);
     // If token is invalid or expired, redirect to log in
