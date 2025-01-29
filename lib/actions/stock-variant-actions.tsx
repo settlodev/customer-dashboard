@@ -36,7 +36,7 @@ export const searchStockVariants = async (
         const query ={
             filters: [
                 {
-                    key:"name",
+                    key:"stockAndStockVariantName",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
