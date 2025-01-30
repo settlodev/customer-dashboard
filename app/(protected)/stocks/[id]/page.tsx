@@ -24,7 +24,7 @@ export default async function StockItemPage({params}:{params:{id:string}}){
         }
     }
 
-    const breadCrumbItems=[{title:"Stocks",link:"/stocks"},
+    const breadCrumbItems=[{title:"Stocks",link:"/stock-variants"},
         {title: isNewItem ? "New":item?.content[0].name || "Edit",link:""}]
 
     return(
