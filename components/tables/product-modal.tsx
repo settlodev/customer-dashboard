@@ -4,11 +4,21 @@ import {
   ModalContent,
   ModalHeader,
   ModalBody,
-
 } from "@nextui-org/modal";
-
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Package, 
+  Tag, 
+  Building2, 
+  Barcode, 
+  Globe, 
+  ClipboardCheck,
+  DollarSign,
+  Info,
+  Box
+} from "lucide-react";
 import { Product } from "@/types/product/type";
-import { Card, CardContent, CardHeader } from "../ui/card";
 
 interface ProductModalProps {
   isOpen: boolean;
@@ -16,143 +26,183 @@ interface ProductModalProps {
   data: Product;
 }
 
-export default function ProductModal({
-
-  isOpen, onOpenChange, data }: ProductModalProps) {
-
+export default function ProductModal({ isOpen, onOpenChange, data }: ProductModalProps) {
+  const formatCurrency = (amount: string | number | bigint) => {
+    if (typeof amount === 'string') {
+      return new Intl.NumberFormat().format(Number(amount));
+    }
+    return new Intl.NumberFormat().format(amount);
+  };
 
   return (
     <>
-    {isOpen && (
+      {isOpen && (
         <div className="fixed inset-0 bg-gray-900 bg-opacity-50 z-40">
-      <Modal
-        backdrop="blur"
-        className="fixed right-0 top-20 h-full w-full lg:w-[28%] md:w-[58%]"
-        isDismissable={false}
-        isKeyboardDismissDisabled={true}
-        isOpen={isOpen}
-        placement="center"
-        radius="sm"
-        size="xl"
-
-        onOpenChange={onOpenChange}
-        style={{ background: '#FAFAFA' }}
-      >
-        <ModalContent>
-
-          {() => (
-            <>
-              <ModalHeader className="flex flex-col gap-1 mt-2">
-
-              </ModalHeader>
-              <ModalBody className="max-h-[70vh] overflow-y-auto">
-                <Card>
-                  <CardHeader>
-                    <h2 className="text-lg font-normal">Product Details</h2>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="border border-gray-300 rounded-md">
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Product</span>
-                        <span className="w-2/3 pl-2">{data.name}</span>
-                      </div>
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Category</span>
-                        <span className="w-2/3 pl-2 text-sm">{data.categoryName}</span>
-                      </div>
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Department</span>
-                        <span className="w-2/3 pl-2">{data.departmentName}</span>
-                      </div>
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Brand</span>
-                        <span className="w-2/3 pl-2">{data.brandName ? data.brandName : <span className="text-sm">None</span>}</span>
-                      </div>
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">SKU</span>
-                        <span className="w-2/3 pl-2 text-sm">{data.sku ? data.sku : <span className="text-sm">None</span>}</span>
-                      </div>
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Track Inventory</span>
-                        <span className="w-2/3 pl-2 text-sm">{data.trackInventory === true ? <span className="bg-emerald-500 text-sm text-white rounded-sm p-1">Yes</span> : <span className="text-sm">No</span>}</span>
-                      </div>
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Sell Online</span>
-                        <span className="w-2/3 pl-2">{data.sellOnline === true ? <span className="bg-emerald-500 text-sm text-white rounded-sm p-2">Yes</span> : <span className="text-sm">No</span>}</span>
-                      </div>
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Sell Online</span>
-                        <span className="w-2/3 pl-2">{data.taxIncluded === true ? <span className="bg-emerald-500 text-sm text-white rounded-sm p-2">Yes</span> : <span className="text-sm">No</span>}</span>
-                      </div>
-                      <div className="flex items-center border-b border-gray-300 p-2">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Tax Class</span>
-                        <span className="w-2/3 pl-2 text-sm">{data.taxClass}</span>
-                      </div>
-                      <div className="flex items-center p-2 border-b border-gray-300">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Description</span>
-                        <span className="w-2/3 pl-2 text-sm">{data.description}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-
-                {data.variants && (
-                  <Card className="mt-4">
-                    <CardHeader>
-                      <h3 className="text-md font-semibold">Variants</h3>
-                    </CardHeader>
-                    <CardContent>
-                      
-                        {data.variants.map((variant, index) => (
-                          <div key={index} className="border border-gray-300 rounded-md mb-4">
-                          <div  className="border-b border-gray-300 ">
-                            <div className="flex items-center p-2 border-b border-gray-300">
-                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Name</span>
-                              <span className="w-2/3 pl-2 text-sm">{variant.name}</span>
-                            </div>
-                            <div className="flex items-center p-2 border-b border-gray-300">
-                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">PurchasingPrice</span>
-                              <span className="w-2/3 pl-2 text-sm">{Intl.NumberFormat().format(variant.purchasingPrice)}</span>
-                            </div>
-                            <div className="flex items-center p-2 border-b border-gray-300">
-                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">SellingPrice</span>
-                              <span className="w-2/3 pl-2 text-sm">{Intl.NumberFormat().format(variant.price)}</span>
-                            </div>
-                            <div className="flex items-center p-2 border-b border-gray-300">
-                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">SKU</span>
-                              <span className="w-2/3 pl-2 text-sm">{variant.sku}</span>
-                            </div>
-                            <div className="flex items-center p-2 border-b border-gray-300">
-                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Barcode</span>
-                              <span className="w-2/3 pl-2 text-sm">{variant.barcode}</span>
-                            </div>
-                            <div className="flex items-center p-2 border-b border-gray-300">
-                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Unit</span>
-                              <span className="w-2/3 pl-2 text-sm">{variant.unitName}</span>
-                            </div>
-                            <div className="flex items-center p-2 border-b border-gray-300">
-                              <span className="w-1/3 font-normal border-r border-gray-300 pr-2">Description</span>
-                              <span className="w-2/3 pl-2 text-sm">{variant.description}</span>
-                            </div>
-
-                          </div>
-                          </div>
-                        ))}
+          <Modal
+            backdrop="blur"
+            className="fixed right-0 top-20 h-full w-full lg:w-[28%] md:w-[58%]"
+            isDismissable={false}
+            isKeyboardDismissDisabled={true}
+            isOpen={isOpen}
+            placement="center"
+            radius="lg"
+            size="xl"
+            onOpenChange={onOpenChange}
+            style={{ background: '#FAFAFA' }}
+          >
+            <ModalContent>
+              {() => (
+                <>
+                  <ModalHeader className="flex flex-col gap-1 border-b">
+                    <div className="flex items-center justify-between">
+                      <h1 className="text-xl font-semibold">{data.name}</h1>
                      
-                    </CardContent>
-                  </Card>
-                )}
+                    </div>
+                  </ModalHeader>
 
+                  <ModalBody className="max-h-[70vh] overflow-y-auto">
+                    {/* Product Details Card */}
+                    <Card className="shadow-sm">
+                      <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                        <Package className="h-5 w-5 text-gray-500" />
+                        <h2 className="text-lg font-medium">Product Details</h2>
+                      </CardHeader>
+                      <CardContent className="grid gap-3 pt-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                              <Tag className="h-4 w-4" />
+                              Category
+                            </div>
+                            <p className="font-medium">{data.categoryName}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                              <Building2 className="h-4 w-4" />
+                              Department
+                            </div>
+                            <p className="font-medium">{data.departmentName}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                              <Box className="h-4 w-4" />
+                              Brand
+                            </div>
+                            <p className="font-medium">{data.brandName || "None"}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                              <Barcode className="h-4 w-4" />
+                              SKU
+                            </div>
+                            <p className="font-medium">{data.sku || "None"}</p>
+                          </div>
+                        </div>
 
-              </ModalBody>
+                        <div className="flex flex-wrap gap-2 mt-4">
+                          <Badge 
+                            variant={data.trackInventory ? "default" : "secondary"}
+                            className="flex items-center gap-1"
+                          >
+                            <ClipboardCheck className="h-3 w-3" />
+                            {data.trackInventory ? "Inventory Tracked" : "Not Tracked"}
+                          </Badge>
+                          <Badge 
+                            variant={data.sellOnline ? "default" : "secondary"}
+                            className="flex items-center gap-1"
+                          >
+                            <Globe className="h-3 w-3" />
+                            {data.sellOnline ? "Sells Online" : "In-Store Only"}
+                          </Badge>
+                          <Badge 
+                            variant={data.taxIncluded ? "default" : "secondary"}
+                            className="flex items-center gap-1"
+                          >
+                            <DollarSign className="h-3 w-3" />
+                            {data.taxIncluded ? "Tax Included" : "Tax Excluded"}
+                          </Badge>
+                        </div>
 
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-      </div>
-    )}
+                        {data.description && (
+                          <div className="mt-4">
+                            <div className="flex items-center gap-1 text-sm text-gray-500 mb-1">
+                              <Info className="h-4 w-4" />
+                              Description
+                            </div>
+                            <p className="text-sm">{data.description}</p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Variants Card */}
+                    {data.variants && (
+                      <Card className="mt-4 shadow-sm">
+                        <CardHeader className="flex flex-row items-center gap-2 pb-2">
+                          <Box className="h-5 w-5 text-gray-500" />
+                          <h2 className="text-lg font-medium">Variants ({data.variants.length})</h2>
+                        </CardHeader>
+                        <CardContent className="grid gap-4 pt-4">
+                          {data.variants.map((variant, index) => (
+                            <div 
+                              key={index}
+                              className="rounded-lg border bg-card text-card-foreground shadow-sm"
+                            >
+                              <div className="p-4 space-y-4">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-medium">{variant.name}</h3>
+                                  <Badge variant="outline" className="text-sm">
+                                    Stock: {variant.availableStock}
+                                  </Badge>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-1">
+                                    <p className="text-sm text-gray-500">Selling Price</p>
+                                    <p className="font-semibold text-green-600">
+                                      {formatCurrency(variant.price)}
+                                    </p>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <p className="text-sm text-gray-500">Purchase Price</p>
+                                    <p className="font-medium">
+                                      {variant.purchasingPrice 
+                                        ? formatCurrency(variant.purchasingPrice)
+                                        : "Not set"}
+                                    </p>
+                                  </div>
+                                  {variant.sku && (
+                                    <div className="space-y-1">
+                                      <p className="text-sm text-gray-500">SKU</p>
+                                      <p className="font-medium">{variant.sku}</p>
+                                    </div>
+                                  )}
+                                  {variant.barcode && (
+                                    <div className="space-y-1">
+                                      <p className="text-sm text-gray-500">Barcode</p>
+                                      <p className="font-medium">{variant.barcode}</p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {variant.description && (
+                                  <div className="pt-2 border-t">
+                                    <p className="text-sm text-gray-500">{variant.description}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </ModalBody>
+                </>
+              )}
+            </ModalContent>
+          </Modal>
+        </div>
+      )}
     </>
   );
 }

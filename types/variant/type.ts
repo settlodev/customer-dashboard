@@ -23,4 +23,5 @@ export declare interface Variant {
     trackInventory: boolean,
     trackingType: string | null,
     trackItem: UUID | null,
+    availableStock: number,
 }
