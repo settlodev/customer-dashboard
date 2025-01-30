@@ -7,6 +7,21 @@ export interface Orders {
     comment: string
     amount: number
     discountAmount:number
+    discountValue: number
+    totalDiscountIncludingItems: number
+    grossProfit: number
+    grossAmount: number
+    netAmount: number
+    totalCost: number
+    totalDiscount: number
+    unpaidAmount: number
+    paidAmount: number
+    platformType: string
+    isBooked: boolean
+    efdPrinted: boolean
+    isTransferred: boolean
+    reservation: string
+    table: string
     orderStatus: string
     startedBy: string
     startedByName: string
@@ -15,7 +30,9 @@ export interface Orders {
     customer: string
     customerName: string
     discount: string
+    discountName: string
     items: OrderItems[]
+    orderItemRefunds:OrderItemRefunds[]
     orderType: string
     paymentType: string
     orderPaymentStatus: string
@@ -31,22 +48,34 @@ export interface Orders {
 }
 
 export interface OrderItems {
-    id: UUID
-    order: string
-    comment: string
-    quantity: number
-    image: string
-    name: string
-    price: number
-    variant: string
-    discountAmount: number
-    preparationStatus: boolean
-    discountId: string
-    addonId: string
-    staffId: string
-    status: boolean
-    canDelete: boolean
-    isArchived: boolean
+    id:UUID
+    name:string
+    quantity:number
+    image:string
+    hasBeenRefunded:boolean
+    price:number
+    itemPrice:number
+    cost:number
+    discountValue:number
+    discountAmount:number
+    netAmount:number
+    grossProfit:number
+    comment:string
+    preparationStatus:boolean
+    canDelete:boolean
+    isArchived:boolean
+    status:boolean
+    staffId:UUID
+    staffName:string
+    departmentName:string
+    variant:UUID
+    discountId:UUID
+    stockIntake:string
+    stockIntakeBatchNumber:string
+    modifier:string
+    modifierPrice:string
+    addons:string
+    addonTotalPrice:string
 }
 
 export interface transactions {
@@ -55,6 +84,22 @@ export interface transactions {
     amount: number
     paymentMethod: string
     paymentMethodName: string
+    isArchived: boolean
+}
+
+export interface OrderItemRefunds{
+    id: UUID,
+    reason: string,
+    dateOfReturn:Date,
+    stockReturned:boolean,
+    orderItemName:string,
+    status: boolean,
+    canDelete: boolean,
+    staff:string,
+    staffName:string,
+    approvedBy:string,
+    approvedByName:string,
+    location: string,
     isArchived: boolean
 }
 
