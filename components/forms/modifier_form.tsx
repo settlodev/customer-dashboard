@@ -22,27 +22,25 @@ import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 import { Switch } from "../ui/switch";
 import { Stock } from "@/types/stock/type";
-import { Product } from "@/types/product/type";
-import { fectchAllProducts } from "@/lib/actions/product-actions";
 import { Modifier, ModifierItems } from "@/types/modifiers/type";
 import { ModifierSchema } from "@/types/modifiers/schema";
 import { createModifier, updateModifier } from "@/lib/actions/modifier-actions";
 import { NumericFormat } from "react-number-format";
 import {Plus, Trash } from "lucide-react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useRouter } from "next/navigation";
 import { Button } from "../ui/button";
+import ProductVariantSelector from "../widgets/product-variant-selector";
 
 
 function ModifierForm({ item }: { item: Modifier | null | undefined }) {
-  console.log("ModifierForm item:", item);
+  // console.log("ModifierForm item:", item);
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error,] = useState<string | undefined>("");
   const [success,] = useState<string | undefined>("");
   const [, setStocks] = useState<Stock[]>([]);
-  const [products, setProducts] = useState<Product[]>([]);
-  const [, setCombinedProductOptions] = useState<{ id: string; displayName: string }[]>([]);
+  // const [products, setProducts] = useState<Product[]>([]);
+  // const [, setCombinedProductOptions] = useState<{ id: string; displayName: string }[]>([]);
   const [itemList, setItemList] = useState<ModifierItems[]>([]);
   const [itemName, setItemName] = useState<string>("");
   const [itemPrice, setItemPrice] = useState<number>(0);
@@ -73,7 +71,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
     defaultValues: {
       ...item,
       status: true,
-      variant: item ? item.variant.toString() : "",
+      variant: item ? item.variant: "",
       // isMaximum: item ? item.isMaximum : false,
       isMandatory: item ? item.isMandatory : false,
       maximumSelection: item ? item.maximumSelection : 0,
@@ -86,13 +84,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
   useEffect(() => {
     const getData = async () => {
       try {
-        const [productResponse] = await Promise.all([
-          fectchAllProducts(),
-        ]);
-        setProducts(productResponse);
-
-        const combinedProductVariant = productResponse.flatMap(product => product.variants.map(variant => ({ id: variant.id, displayName: `${product.name} - ${variant.name}` })));
-        setCombinedProductOptions(combinedProductVariant);
+        
 
         if (item) {
           const transformedItems = item.modifierItems.map((modifierItem) => ({
@@ -122,7 +114,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
       }
     };
     getData();
-  }, [item, form, setStocks, setProducts]);
+  }, [item, form, setStocks]);
 
 
   const onInvalid = useCallback(
@@ -207,23 +199,12 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
                 <FormItem>
                   <FormLabel>Product Variant</FormLabel>
                   <FormControl>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product Variant" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((product) =>
-                          product.variants.map((variant) => (
-                            <SelectItem key={variant.id} value={variant.id}>
-                              {`${product.name} - ${variant.name}`}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                    <ProductVariantSelector
+                     value={field.value}
+                     onChange={field.onChange}
+                     placeholder="Select room to reserve"
+                     isDisabled={isPending}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -412,7 +393,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
             <Separator orientation="vertical" />
             <SubmitButton
               isPending={isPending}
-              label={item ? "Update modifier details" : "Add modifier"}
+              label={item ? "Update modifier" : "Add modifier"}
             />
           </div>
         </div>

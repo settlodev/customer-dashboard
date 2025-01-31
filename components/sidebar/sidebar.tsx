@@ -24,6 +24,7 @@ import {
     SheetContent,
     SheetTrigger
 } from "@/components/ui/sheet";
+import VersionDisplay from "../widgets/versioning";
 
 interface SidebarProps {
     data: BusinessPropsType;
@@ -141,6 +142,8 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
                     <Settings className="mr-2 h-4 w-4"/>
                     <span>Settings</span>
                 </Link>
+
+                <VersionDisplay version="1.2.3" />
 
                 <p className="mt-4 text-xs text-gray-500">
                     &copy; {new Date().getFullYear()} Settlo Technologies Ltd

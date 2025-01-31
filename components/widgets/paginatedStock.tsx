@@ -57,8 +57,9 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
                 <th className="p-2">#</th>
                 <th className="text-left p-2">Type</th>
                 <th>Prev Qty</th>
+                <th>Qty Moved</th>
                 <th className="text-left p-2">New Qty</th>
-                <th className="text-left p-2">Value</th>
+                <th className="text-left p-2">Value Moved</th>
                 <th className="text-left p-2">Staff</th>
                 <th className="text-left p-2">Date</th>
               </tr>
@@ -93,6 +94,7 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
                     </span>
                   </td>
                   <td>{Intl.NumberFormat().format(movement.previousTotalQuantity)}</td>
+                  <td>{Intl.NumberFormat().format(movement.quantity)}</td>
                   <td>{Intl.NumberFormat().format(movement.newTotalQuantity)}</td>
                   <td className="p-2">{Intl.NumberFormat().format(movement.value)}/=</td>
                   <td className="p-2">{movement.staffName}</td>

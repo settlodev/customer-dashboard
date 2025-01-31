@@ -201,7 +201,7 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Subtotal</span>
-                                        <span className="font-medium">{Intl.NumberFormat("en-US").format(orderData.grossAmount)}</span>
+                                        <span className="font-medium">{Intl.NumberFormat().format(orderData.grossAmount)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Discount</span>
