@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { ArrowDown, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import {
-  BadgeCent,
   ArrowUp,
   Trash,
   Redo,
@@ -15,14 +14,23 @@ import {
 } from 'lucide-react';
 import { StockMovement } from '@/types/stockVariant/type';
 
+
+
 const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: StockMovement[]; itemsPerPage?: number }) => {
   const [currentPage, setCurrentPage] = useState(1);
   
+  // Sort movements by date in descending order (newest first)
+  const sortedMovements = useMemo(() => {
+    return [...movements].sort((a, b) => 
+      new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
+    );
+  }, [movements]);
+
   // Calculate pagination values
-  const totalPages = Math.ceil(movements.length / itemsPerPage);
+  const totalPages = Math.ceil(sortedMovements.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentItems = movements.slice(startIndex, endIndex);
+  const currentItems = sortedMovements.slice(startIndex, endIndex);
 
   // Navigation functions
   const goToPage = (page: number) => {
@@ -32,12 +40,12 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
   const getMovementLabel = (type: string) => {
     const labels = {
       'STOCK_INTAKE': 'Stock Intake',
-      'ORDER_ITEM_SALE': 'Sale',
-      'ORDER_ITEM_DELETE': 'Deleted',
-      'ORDER_ITEM_REFUND': 'Refund',
+      'ORDER_ITEM_SALE': 'Sale of Item',
+      'ORDER_ITEM_DELETE': 'Deleted Order Item',
+      'ORDER_ITEM_REFUND': 'Refund of Order Item',
       'ORDER_ITEM_AMOUNT_CHANGE': 'Amount Change',
       'ADDON_SALE': 'Addon Sale',
-      'STOCK_MODIFICATION': 'Modified',
+      'STOCK_MODIFICATION': 'Modified Stock',
       'TRANSFER_OUT': 'Transfer Out',
       'TRANSFER_IN': 'Transfer In'
     };
@@ -56,10 +64,9 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
               <tr className="border-b">
                 <th className="p-2">#</th>
                 <th className="text-left p-2">Type</th>
-                <th>Prev Qty</th>
-                <th>Qty Moved</th>
-                <th className="text-left p-2">New Qty</th>
-                <th className="text-left p-2">Value Moved</th>
+                <th className="text-left p-2">Quantity</th>
+                <th className="text-left p-2">Running Total</th>
+                {/* <th className="text-left p-2">Value Moved</th> */}
                 <th className="text-left p-2">Staff</th>
                 <th className="text-left p-2">Date</th>
               </tr>
@@ -93,10 +100,34 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
                       {getMovementLabel(movement.stockMovementType)}
                     </span>
                   </td>
-                  <td>{Intl.NumberFormat().format(movement.previousTotalQuantity)}</td>
-                  <td>{Intl.NumberFormat().format(movement.quantity)}</td>
+                  <td>
+                    <div className="flex items-center gap-2">
+                      <p>
+                      {movement.stockMovementType === 'ORDER_ITEM_SALE' 
+                      ? <ArrowUp className="h-5 w-5 text-red-500" />
+                      : movement.stockMovementType === 'STOCK_INTAKE'
+                      ? <ArrowDown className="h-5 w-5 text-green-500" />
+                      : movement.stockMovementType === 'ORDER_ITEM_DELETE'
+                      ? <Trash className="h-5 w-5 text-gray-500" />
+                      : movement.stockMovementType === 'ORDER_ITEM_REFUND'
+                      ? <Redo className="h-5 w-5 text-yellow-500" />
+                      : movement.stockMovementType === 'ORDER_ITEM_AMOUNT_CHANGE'
+                      ? <Pen className="h-5 w-5 text-purple-500" />
+                      : movement.stockMovementType === 'ADDON_SALE'
+                      ? <BadgePlus className="h-5 w-5 text-orange-500" />
+                      : movement.stockMovementType === 'STOCK_MODIFICATION'
+                      ? <PencilLine className="h-5 w-5 text-pink-800" />
+                      : movement.stockMovementType === 'TRANSFER_OUT'
+                      ? <TrendingDown className="h-5 w-5 text-indigo-500" />
+                      : movement.stockMovementType === 'TRANSFER_IN'
+                      ? <TrendingUp className="h-5 w-5 text-teal-500" />
+                      : <span className="text-gray-500">-</span>}
+                      </p>
+                      {Intl.NumberFormat().format(movement.quantity)}
+                    </div>
+                  </td>
                   <td>{Intl.NumberFormat().format(movement.newTotalQuantity)}</td>
-                  <td className="p-2">{Intl.NumberFormat().format(movement.value)}/=</td>
+                  {/* <td className="p-2">{Intl.NumberFormat().format(movement.value)}/=</td> */}
                   <td className="p-2">{movement.staffName}</td>
                   <td className="p-2">
                     {Intl.DateTimeFormat(undefined, {
@@ -109,27 +140,6 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
                       hour12: false
                     }).format(new Date(movement.dateCreated))}
                   </td>
-                  <td className="p-2">
-                    {movement.stockMovementType === 'ORDER_ITEM_SALE' 
-                      ? <BadgeCent className="h-5 w-5 text-blue-500" />
-                      : movement.stockMovementType === 'STOCK_INTAKE'
-                      ? <ArrowUp className="h-5 w-5 text-green-500" />
-                      : movement.stockMovementType === 'ORDER_ITEM_DELETE'
-                      ? <Trash className="h-5 w-5 text-gray-500" />
-                      : movement.stockMovementType === 'ORDER_ITEM_REFUND'
-                      ? <Redo className="h-5 w-5 text-yellow-500" />
-                      : movement.stockMovementType === 'ORDER_ITEM_AMOUNT_CHANGE'
-                      ? <Pen className="h-5 w-5 text-purple-500" />
-                      : movement.stockMovementType === 'ADDON_SALE'
-                      ? <BadgePlus className="h-5 w-5 text-orange-500" />
-                      : movement.stockMovementType === 'STOCK_MODIFICATION'
-                      ? <PencilLine className="h-5 w-5 text-teal-500" />
-                      : movement.stockMovementType === 'TRANSFER_OUT'
-                      ? <TrendingDown className="h-5 w-5 text-indigo-500" />
-                      : movement.stockMovementType === 'TRANSFER_IN'
-                      ? <TrendingUp className="h-5 w-5 text-teal-500" />
-                      : <span className="text-gray-500">-</span>}
-                  </td>
                 </tr>
               ))}
             </tbody>
@@ -139,7 +149,7 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
         {/* Pagination Controls */}
         <div className="flex items-center justify-between mt-4">
           <div className="text-sm text-gray-500">
-            Showing {startIndex + 1} to {Math.min(endIndex, movements.length)} of {movements.length} entries
+            Showing {startIndex + 1} to {Math.min(endIndex, sortedMovements.length)} of {sortedMovements.length} entries
           </div>
           <div className="flex gap-2">
             <Button

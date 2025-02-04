@@ -10,10 +10,16 @@ import PaginatedStockTable from './paginatedStock';
 
 const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) => {
 
-  // console.log("movements", movements)
-  const latestMovement = movements[0];
+  console.log("movements", movements)
+  // Sort movements by date (newest first)
+  const sortedMovements = [...movements].sort((a, b) => 
+    new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
+  );
+
+  
+  const latestMovement = sortedMovements[0];
   const totalValue = latestMovement?.newTotalQuantity * latestMovement?.newAverageValue;
-  // console.log("latestMovement", latestMovement)
+  
 
   const chartData = movements.map(movement => ({
     id: movement.stockName,

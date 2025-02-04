@@ -24,10 +24,10 @@ import {Addon} from "@/types/addon/type";
 import {Switch} from "../ui/switch";
 import {NumericFormat} from "react-number-format";
 import TrackingOptions from "../widgets/tracker-selector";
-import {DollarSign, PlusCircle, Power, Tags, ToggleLeft} from "lucide-react";
-import MultipleSelector from "../widgets/multiple-product-selector";
-import { Product } from "@/types/product/type";
-import { fectchAllProducts } from "@/lib/actions/product-actions";
+import {DollarSign, PlusCircle, Power,ToggleLeft} from "lucide-react";
+// import MultipleSelector from "../widgets/multiple-product-selector";
+// import { Product } from "@/types/product/type";
+// import { fectchAllProducts } from "@/lib/actions/product-actions";
 
 
 function AddonForm({item}: { item: Addon | null | undefined }) {
@@ -36,20 +36,20 @@ console.log("The item is: ", item);
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
     const [addonTracking, setAddonTracking] = useState<boolean>(false);
-    const [products, setProducts] = useState<Product[]>([])
-    const [,setLoading] = useState(true);
+    // const [products, setProducts] = useState<Product[]>([])
+    // const [,setLoading] = useState(true);
     
-    useEffect(() => {
-        const loadProducts = async () => {
-          setLoading(true);
-          const fetchedProducts = await fectchAllProducts();
-          console.log("Fetched products:", fetchedProducts);
-          setProducts(fetchedProducts);
-          setLoading(false);
-        };
+    // useEffect(() => {
+    //     const loadProducts = async () => {
+    //       setLoading(true);
+    //       const fetchedProducts = await fectchAllProducts();
+    //       console.log("Fetched products:", fetchedProducts);
+    //       setProducts(fetchedProducts);
+    //       setLoading(false);
+    //     };
     
-        loadProducts();
-      }, []);
+    //     loadProducts();
+    //   }, []);
     const {toast} = useToast();
 
     const form = useForm<z.infer<typeof AddonSchema>>({
@@ -232,7 +232,7 @@ console.log("The item is: ", item);
                             )}
                         />
 
-                        <FormField
+                        {/* <FormField
                         control={form.control}
                         name="productIds"
                         render={({ field }) => (
@@ -256,7 +256,7 @@ console.log("The item is: ", item);
                             <FormMessage />
                             </FormItem>
                         )}
-                        />
+                        /> */}
 
                         {item && (
                             <FormField
