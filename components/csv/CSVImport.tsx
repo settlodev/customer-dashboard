@@ -198,13 +198,13 @@ export function ProductCSVDialog() {
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button
-          className="h-10 gap-1 bg-black-2 dark:bg-white dark:text-black-2"
+          className="h-10 gap-1 bg-white dark:bg-black dark:text-white border border-black dark:border-gray-600"
           size="sm"
           variant="default"
           onClick={() => setIsOpen(true)}
         >
           <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-white dark:bg-white dark:text-black-2">Import CSV</span>
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-black dark:bg-black dark:text-white">Import CSV</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">

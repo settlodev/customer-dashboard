@@ -68,7 +68,7 @@ export function DataTable<TData, TValue>({
    data,
    searchKey,
    pageCount,
-   pageSizeOptions = [10, 20, 30, 40, 50],
+   pageSizeOptions = [10, 20, 30, 40, 50,100],
    filterKey,
    filterOptions
  }: DataTableProps<TData , TValue>) {
@@ -91,7 +91,8 @@ export function DataTable<TData, TValue>({
 
   // Handle status filter change
   const handleStatusFilterChange = (newStatus: string) => {
-    setStatusFilter(newStatus); // Update the status filter state
+    console.log("Selected Status:", newStatus);
+    setStatusFilter(newStatus); 
   };
 
   // Filter data based on status (if filterKey is provided)
@@ -100,6 +101,9 @@ export function DataTable<TData, TValue>({
     return data.filter((item) => (item as any)[filterKey] === statusFilter); // Use filterKey to filter data
   }, [data, statusFilter, filterKey]);
 
+  console.log("Filtered Data:", filteredData);
+
+  // Create query string
   const createQueryString = React.useCallback(
       (params: Record<string, string | number | null>) => {
         const newSearchParams = new URLSearchParams(searchParams?.toString());

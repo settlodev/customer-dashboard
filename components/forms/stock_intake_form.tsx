@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
@@ -28,7 +28,7 @@ import StockVariantSelector from "../widgets/stock-variant-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
 import { Calendar, Clock } from "lucide-react";
-
+import { useSearchParams } from 'next/navigation'
 function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
@@ -44,11 +44,23 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
+    const searchParams = useSearchParams()
+    const stockVariantId = searchParams.get('stockItem')
 
     const form = useForm<z.infer<typeof StockIntakeSchema>>({
         resolver: zodResolver(StockIntakeSchema),
-        defaultValues: item ? item : { status: true },
+        defaultValues: item ? item : { 
+            status: true,
+            // If stockVariantId exists, set it as the default stock variant
+            ...(stockVariantId ? { stockVariant: stockVariantId } : {})
+        },
     });
+
+    useEffect(() => {
+        if (stockVariantId) {
+            form.setValue('stockVariant', stockVariantId);
+        }
+    }, [stockVariantId, form]);
 
 
     const onInvalid = useCallback(
@@ -138,10 +150,16 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     };
 
     const handleDeliveryDateSelect = (date: Date) => {
-        if (validateDates(date)) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set time to midnight for accurate comparison
+
+        if (validateDates(date) && date <= today) {
             setDeliveryDate(date);
         } else {
-            setDeliveryDate(orderDate);
+            if (date > today) {
+                setError("Delivery date cannot exceed today's date.");
+                return false;
+            }
         }
     };
 
@@ -162,7 +180,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                         <StockVariantSelector
                                             {...field}
                                             isRequired
-                                            isDisabled={isPending}
+                                            isDisabled={isPending || false}
                                             placeholder="Select stock item"
                                         />
                                     </FormControl>
@@ -288,6 +306,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                         handleTimeChange={handleTimeChange}
                                         onDateSelect={handleDeliveryDateSelect}
                                         minDate={orderDate}
+                                        maxDate={new Date()}
                                     />
                                     <FormMessage />
                                 </FormItem>

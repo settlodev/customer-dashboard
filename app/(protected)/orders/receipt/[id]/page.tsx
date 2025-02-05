@@ -9,7 +9,7 @@ const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
   const order = await getOrder(params.id as UUID);
   const orderData: Orders | null = order?.content[0];
 
-  console.log("orderData:", orderData);
+  // console.log("orderData:", orderData);
 
   // const isValidImageUrl = (image: string) => {
   //     return image && (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('/'));

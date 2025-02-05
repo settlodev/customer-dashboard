@@ -290,7 +290,7 @@ const LocationList = ({locations}: { locations: Location[] }) => {
                                     ? "bg-gray-100 text-gray-400"
                                     : "bg-emerald-500 text-white hover:bg-emerald-600",
                                 location.subscriptionStatus === subscriptionStatus.EXPIRED
-                                    ? "bg-red-100 text-red-800"
+                                    ? "bg-red-100 text-red-800 hover:bg-red-200"
                                     : ""
                             )}
                         >

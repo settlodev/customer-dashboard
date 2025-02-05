@@ -87,21 +87,22 @@ const DateTimePicker = ({
   return (
       <Popover>
         <PopoverTrigger asChild>
-          <Button
-              variant={"outline"}
-              className={cn(
-                  "w-full pl-3 text-left font-normal",
-                  !field.value && "text-muted-foreground"
-              )}
-          >
-            {field.value ? (
-                format(new Date(field.value), "MM/dd/yyyy HH:mm")
-            ) : (
-                <span>MM/DD/YYYY HH:mm</span>
-            )}
-            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-          </Button>
-        </PopoverTrigger>
+  <Button
+    variant={"outline"}
+    className={cn(
+      "w-full pl-3 text-left font-normal",
+      !field.value && "text-muted-foreground"
+    )}
+  >
+    {field.value ? (
+      format(new Date(field.value), "MM/dd/yyyy HH:mm")
+    ) : (
+      format(new Date(), "MM/dd/yyyy HH:mm") 
+    )}
+    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+  </Button>
+</PopoverTrigger>
+
         <PopoverContent className="w-auto p-0">
           <div className="sm:flex">
             <Calendar
