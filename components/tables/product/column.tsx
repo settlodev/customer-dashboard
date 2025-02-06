@@ -85,6 +85,15 @@ export const columns: ColumnDef<Product>[] = [
         }
     },
     {
+        accessorKey: "departmentName",
+        header: "Department",
+        enableHiding: true,
+        cell: ({ row }) => {
+            const department = row.original.departmentName;
+            return <span>{department ? department : "None"}</span>;
+        }
+    },
+    {
         accessorKey: "brandName",
         header: "Brand",
         enableHiding: true,

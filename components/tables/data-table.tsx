@@ -101,7 +101,7 @@ export function DataTable<TData, TValue>({
     return data.filter((item) => (item as any)[filterKey] === statusFilter); // Use filterKey to filter data
   }, [data, statusFilter, filterKey]);
 
-  console.log("Filtered Data:", filteredData);
+  // console.log("Filtered Data:", filteredData);
 
   // Create query string
   const createQueryString = React.useCallback(

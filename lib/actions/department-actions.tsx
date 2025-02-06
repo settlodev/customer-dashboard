@@ -9,7 +9,7 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import { Department } from "@/types/department/type";
+import { Department,Report } from "@/types/department/type";
 import { DepartmentSchema } from "@/types/department/schema";
 import { isRedirectError } from "next/dist/client/components/redirect";
 
@@ -234,4 +234,31 @@ export const deleteDepartment = async (id: UUID): Promise<void> => {
    catch (error){
        throw error
    }
+}
+
+export const DepartmentReport = async (
+    id: UUID,
+    startDate?: string,
+    endDate?: string
+): Promise<Report> => {
+    if (!id) throw new Error("Department ID is required to perform this request");
+
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+        const queryParams = new URLSearchParams();
+        
+        if (startDate) queryParams.append('startDate', startDate);
+        if (endDate) queryParams.append('endDate', endDate);
+
+        const queryString = queryParams.toString();
+        const url = `/api/reports/${id}/department/summary${queryString ? `?${queryString}` : ''}`;
+
+        const report = await apiClient.get(url);
+        console.log("The report is: ", report);
+        return parseStringify(report);
+    } catch (error) {
+        throw error;
+    }
 }

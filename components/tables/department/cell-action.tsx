@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash } from "lucide-react";
+import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 import { useDisclosure } from "@nextui-org/react";
@@ -68,6 +68,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() => router.push(`/departments/reports/${data.id}`)}
+            >
+              <Eye className="mr-2 h-4 w-4" /> View Report
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => router.push(`/departments/${data.id}`)}
             >

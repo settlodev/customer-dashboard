@@ -59,13 +59,13 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
-                                       filterKey="trackingInventory"
-                                       filterOptions={[
-                                        { label: "All", value: "" },
-                                   { label: "Out of Stock", value: "true" },
-                                   { label: "Low Stock", value: "false" },
-                                   {label: "Best selling", value: "false"}
-                                       ]}
+                                //        filterKey="trackingInventory"
+                                //        filterOptions={[
+                                //         { label: "All", value: "" },
+                                //    { label: "Out of Stock", value: "true" },
+                                //    { label: "Low Stock", value: "false" },
+                                //    {label: "Best selling", value: "false"}
+                                //        ]}
                             />
                         </CardContent>
                     </Card>
