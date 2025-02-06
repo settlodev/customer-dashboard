@@ -1,6 +1,6 @@
 import Loading from "@/app/(protected)/loading";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader} from "@/components/ui/card";
 import DepartmentReportPage from "@/components/widgets/department-report";
 import { DepartmentReport } from "@/lib/actions/department-actions";
 import { UUID } from "crypto";
