@@ -193,7 +193,7 @@ const StockHistoryDashboard = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Total Stock Intakes */}
-                <Card className="bg-white">
+                {/* <Card className="bg-white">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                             Available stock
@@ -206,8 +206,8 @@ const StockHistoryDashboard = () => {
                             Total number of stock items
                         </p>
                     </CardContent>
-                </Card>
-                <Card className="bg-white">
+                </Card> */}
+                {/* <Card className="bg-white">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                             Stock value
@@ -220,8 +220,8 @@ const StockHistoryDashboard = () => {
                             Total stock value
                         </p>
                     </CardContent>
-                </Card>
-                <Card className="bg-white">
+                </Card> */}
+                {/* <Card className="bg-white">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
                             Estimated profit
@@ -234,7 +234,7 @@ const StockHistoryDashboard = () => {
                             Total estimated profit of the stock
                         </p>
                     </CardContent>
-                </Card>
+                </Card> */}
                 <Card className="bg-white">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
