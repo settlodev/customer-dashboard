@@ -1,14 +1,12 @@
 import React from 'react';
-import { Camera } from 'lucide-react';
 import { UUID } from 'crypto';
-import { getOrder } from '@/lib/actions/order-actions';
-import { Orders } from '@/types/orders/type';
+import { getOrderReceipt } from '@/lib/actions/order-actions';
+import { OrderItems} from '@/types/orders/type';
 
 const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
 
-  const order = await getOrder(params.id as UUID);
-  const orderData: Orders | null = order?.content[0];
-
+  const orderData = await getOrderReceipt(params.id as UUID);
+  
   // console.log("orderData:", orderData);
 
   // const isValidImageUrl = (image: string) => {
@@ -43,12 +41,12 @@ const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
           <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white p-6">
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-4">
-                <div className="bg-white p-2 rounded-full">
+                {/* <div className="bg-white p-2 rounded-full">
                   <Camera className="h-8 w-8 text-emerald-600" />
-                </div>
+                </div> */}
                 <div>
-                  <h1 className="text-2xl font-bold">Auto Parts Store</h1>
-                  <p className="text-blue-100">Premium Car Parts & Accessories</p>
+                  <h1 className="text-2xl font-bold">{orderData.businessName}</h1>
+                  <p className="text-blue-100">{orderData?.locationName}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -81,20 +79,20 @@ const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr className="text-xs text-gray-500 uppercase">
-                    <th className="px-4 py-3 text-left">Item</th>
-                    <th className="px-4 py-3 text-center">Qty</th>
-                    <th className="px-4 py-3 text-right">Price</th>
-                    <th className="px-4 py-3 text-right">Total</th>
+                    <th className="px-3 py-2 text-left">Item</th>
+                    <th className="px-3 py-2 text-center">Qty</th>
+                    <th className="px-3 py-2 text-right">Price</th>
+                    <th className="px-3 py-2 text-right">Total</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {
-                    orderData.items.map((item, index) => (
+                    orderData.items.map((item: OrderItems, index: number) => (
                       <tr key={index} className="text-sm">
-                        <td className="px-4 py-3">{item.name}</td>
-                        <td className="px-4 py-3 text-center">{item.quantity}</td>
-                        <td className="px-4 py-3 text-right">{formatCurrency(item.price)}</td>
-                        <td className="px-4 py-3 text-right">{formatCurrency(item.price * item.quantity)}</td>
+                        <td className="px-3 py-2">{item.name.split(' - ').pop()}</td>
+                        <td className="px-3 py-2 text-center">{item.quantity}</td>
+                        <td className="px-3 py-2 text-right">{formatCurrency(item.price)}</td>
+                        <td className="px-3 py-2 text-right">{formatCurrency(item.price * item.quantity)}</td>
                       </tr>
                     ))
                   }
@@ -137,9 +135,13 @@ const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
               </div>
             </div>
             <div className="text-xs text-gray-400">
-              <p>Auto Parts Store</p>
-              <p>123 Auto Plaza, Downtown</p>
-              <p>Tel: +255 123 456 789</p>
+              <p>{orderData.businessName}</p>
+              <p>{orderData.locationAddress ? (
+    `${orderData.locationAddress}, ${orderData.locationCity}`
+  ) : (
+    orderData.locationCity
+  )}</p>
+              <p>Tel: {orderData.locationPhone}</p>
             </div>
           </div>
         </div>

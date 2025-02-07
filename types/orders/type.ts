@@ -42,6 +42,8 @@ export interface Orders {
     total: number
     amountDue: number
     location: string
+    businessName: string
+    locationName: string
     status: boolean
     canDelete: boolean
     isArchived: boolean

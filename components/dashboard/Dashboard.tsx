@@ -75,7 +75,7 @@ const Dashboard: React.FC = () => {
         <CardDataStats title="Total Sales" total={` ${summaries ? Intl.NumberFormat().format(summaries.salesCount) : "0.00"}`}>
           <BadgeDollarSign />
         </CardDataStats>
-        <CardDataStats title="Average Sale" total={`TZS ${summaries ? Intl.NumberFormat().format(summaries.averageSale) : "0.00"}`}>
+        <CardDataStats title="Average Sale" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.averageSale) : "0.00"}`}>
           <BadgeDollarSign />
         </CardDataStats>
         <CardDataStats title="Discount" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.discounts) : "0.00"}`}>
@@ -114,13 +114,13 @@ const Dashboard: React.FC = () => {
 
           </div>
         </CardDataStats>
-        <CardDataStats title="Gross Sale" total={`${summaries ? Intl.NumberFormat().format(summaries.grossSales) : "0.00"}`}>
+        <CardDataStats title="Gross Sale" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.grossSales) : "0.00"}`}>
           <ChartLine />
         </CardDataStats>
 
         <CardDataStats
           title={isNegative ? "Gross Loss Margin" : "Gross Profit Margin"}
-          total={`TSH ${formattedMargin}`}
+          total={`${formattedMargin}%`}
           className={`${isNeg ? 'text-red-600' : 'text-green-600'}`}
         >
           <div className="flex items-center gap-1">
@@ -132,7 +132,7 @@ const Dashboard: React.FC = () => {
 
           </div>
         </CardDataStats>
-        <CardDataStats title="Closing Balance" total={`${summaries ? Intl.NumberFormat().format(summaries.closingBalance) : "0.00"}`}>
+        <CardDataStats title="Closing Balance" total={`TSH ${summaries ? Intl.NumberFormat().format(summaries.closingBalance) : "0.00"}`}>
           <Scale />
         </CardDataStats>
       </div>
