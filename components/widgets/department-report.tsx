@@ -10,6 +10,7 @@ import { DateRangeSelect } from './date-range-select';
 import { Button } from '../ui/button';
 
 const DepartmentReportPage: React.FC<{ report: Report }> = ({ report }) => {
+  console.log(report);
   const router = useRouter();
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: parseISO(report.startDate),

@@ -78,6 +78,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                 trackingType: variant.trackingType || null,
                 trackItem: variant.trackItem || null,
                 unit: variant.unit || null,
+                purchasingPrice: variant.purchasingPrice || 0,
             })) || [{}]
         },
     });
