@@ -1,17 +1,12 @@
+
 import React from 'react';
 import { UUID } from 'crypto';
 import { getOrderReceipt } from '@/lib/actions/order-actions';
-import { OrderItems} from '@/types/orders/type';
+import { OrderItems } from '@/types/orders/type';
+import DownloadButton from '@/components/widgets/download-button';
 
-const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
-
+const OrderReceipt = async ({ params }: { params: { id: string } }) => {
   const orderData = await getOrderReceipt(params.id as UUID);
-  
-  // console.log("orderData:", orderData);
-
-  // const isValidImageUrl = (image: string) => {
-  //     return image && (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('/'));
-  // };
 
   const formatDate = (dateStr: string | number | Date) => {
     const date = new Date(dateStr);
@@ -34,16 +29,25 @@ const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+    <div className="min-h-screen bg-gray-100 mt-2 px-4 sm:px-0"> {/* Added px-4 sm:px-0 */}
+  <div className="max-w-2xl mx-auto">
+    <div className="flex justify-end mb-4">
+      <DownloadButton orderNumber={orderData.orderNumber} />
+    </div>
+
+    <div 
+      id="receipt-content" 
+      className="bg-white shadow-lg print:shadow-none relative w-full"
+      style={{
+        pageBreakInside: 'avoid',
+        pageBreakBefore: 'auto',
+        pageBreakAfter: 'auto'
+      }}
+    >
           {/* Decorative Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white p-6">
             <div className="flex justify-between items-center">
               <div className="flex items-center space-x-4">
-                {/* <div className="bg-white p-2 rounded-full">
-                  <Camera className="h-8 w-8 text-emerald-600" />
-                </div> */}
                 <div>
                   <h1 className="text-2xl font-bold">{orderData.businessName}</h1>
                   <p className="text-blue-100">{orderData?.locationName}</p>
@@ -59,8 +63,8 @@ const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
           {/* Main Content */}
           <div className="p-6">
             {/* Order Info */}
-            <div className="grid grid-cols-2 gap-6 mb-6">
-              <div className="border-r border-gray-200">
+            <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 mb-6">
+              <div className="lg:border-r lg:border-gray-200">
                 <h2 className="text-sm font-semibold text-gray-600 mb-2">Order Details</h2>
                 <p className="text-sm">Order #: <span className='font-semibold'>{orderData.orderNumber}</span></p>
                 <p className="text-sm">Open Date: <span className='font-semibold'>{formatDate(orderData.openedDate)}</span></p>
@@ -96,7 +100,6 @@ const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
                       </tr>
                     ))
                   }
-                 
                 </tbody>
               </table>
             </div>
@@ -137,11 +140,20 @@ const OrderReceipt =async ({ params }: { params: { id: string } }) =>{
             <div className="text-xs text-gray-400">
               <p>{orderData.businessName}</p>
               <p>{orderData.locationAddress ? (
-    `${orderData.locationAddress}, ${orderData.locationCity}`
-  ) : (
-    orderData.locationCity
-  )}</p>
+                `${orderData.locationAddress}, ${orderData.locationCity}`
+              ) : (
+                orderData.locationCity
+              )}</p>
               <p>Tel: {orderData.locationPhone}</p>
+            </div>
+            
+            {/* Powered by Settlo Image */}
+            <div className="mt-4">
+              <img 
+                src="https://lporvjkotuidemnfvuzt.supabase.co/storage/v1/object/public/Images/others/powered-by-settlo.png"
+                alt="Powered by Settlo"
+                className="mx-auto h-8 object-contain"
+              />
             </div>
           </div>
         </div>
