@@ -24,12 +24,7 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
   };
 
   const formatCurrency = (amount: string | number | bigint) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'TZS',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(Number(amount));
+    return new Intl.NumberFormat().format(Number(amount));
   };
 
   return (
@@ -231,7 +226,7 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
                 <table className="w-full">
                   <thead className="bg-gray-50">
                     <tr className="text-xs text-gray-500 uppercase">
-                      <th className="px-3 py-2 text-left">Item</th>
+                      <th className="px-2 py-1 text-left">Item</th>
                       <th className="px-3 py-2 text-center">Qty</th>
                       <th className="px-3 py-2 text-right">Price</th>
                       <th className="px-3 py-2 text-right">Total</th>
@@ -240,7 +235,7 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
                   <tbody className="divide-y divide-gray-200">
                     {orderData.items.map((item: OrderItems, index: number) => (
                       <tr key={index} className="text-sm">
-                        <td className="px-3 py-2">{item.name.split(' - ').pop()}</td>
+                        <td className="px-2 py-1">{item.name.split(' - ').pop()}</td>
                         <td className="px-3 py-2 text-center">{item.quantity}</td>
                         <td className="px-3 py-2 text-right">{formatCurrency(item.price)}</td>
                         <td className="px-3 py-2 text-right">{formatCurrency(item.price * item.quantity)}</td>
@@ -295,7 +290,7 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
             </div>
           </div>
         )}
-        <div className="grid  lg:flex lg:justify-center lg:items-center mt-4 mb-4 space-x-3">
+        <div className="grid  lg:flex lg:justify-center items-center mt-4 mb-4 gap-1 ">
               <DownloadButton orderNumber={orderData.orderNumber} />
 
               <ShareButton url={orderUrl} />

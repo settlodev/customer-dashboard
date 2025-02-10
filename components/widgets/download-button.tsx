@@ -76,7 +76,7 @@ const DownloadButton = ({ orderNumber }: DownloadButtonProps) => {
 
     <button
       onClick={handleDownload}
-      className="flex justify-center items-center gap-1 px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors "
+      className="flex justify-center items-center gap-1 lg:w-[50%] w-full px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors "
     >
       <Download size={16} />
       Download
