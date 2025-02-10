@@ -1,6 +1,6 @@
 'use client'
 import React from "react";
-import { Share2, Copy, Mail, MessageCircle } from "lucide-react";
+import { Share2} from "lucide-react";
 
 const ShareButton = ({ url }: { url: string }) => {
   const handleCopy = () => {
