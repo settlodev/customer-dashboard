@@ -99,7 +99,7 @@ export const  createProduct= async (
         business: business?.id
     }
 
-    console.log("The payload to create product", payload);
+    // console.log("The payload to create product", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -181,14 +181,11 @@ export const updateProduct = async (
         business: business?.id
     };
 
-    console.log("The payload to update product", payload);
-
     try {
         const apiClient = new ApiClient();
 
         // First, fetch the existing product to compare variants
         const existingProduct = await getProduct(productId as UUID);
-        console.log("Existing product:", existingProduct);
 
         if (existingProduct.totalElements == 0) {
             formResponse = {
@@ -250,8 +247,6 @@ export const updateProduct = async (
             variants: variantsPayload
         };
 
-        console.log(finalPayload);
-
         // Update the product with new data
         await apiClient.put(
             `/api/products/${location?.id}/${productId}`,
@@ -264,7 +259,7 @@ export const updateProduct = async (
                 ? "Product updated successfully with some variants retained due to deletion failures"
                 : "Product updated successfully",
         };
-    }catch (error: any) {
+    } catch (error: any) {
         const formattedError = await error;
         console.error("Error updating product - Full Details:", {
             ...formattedError,
@@ -273,7 +268,6 @@ export const updateProduct = async (
                 fieldErrors: JSON.stringify(formattedError.details?.fieldErrors, null, 2)
             }
         });
-        // Or just log the field errors directly:
         console.error("Field Errors Detail:", JSON.stringify(formattedError.details?.fieldErrors, null, 2));
 
         formResponse = {
@@ -288,7 +282,6 @@ export const updateProduct = async (
     revalidatePath("/products");
     redirect("/products");
 };
-
 
 
 export const deleteVariant = async (productId: UUID, variantId: UUID): Promise<void> => {
