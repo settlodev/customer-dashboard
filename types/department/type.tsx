@@ -12,3 +12,14 @@ export declare interface Department {
     status: boolean;
     canDelete: boolean;
 }
+
+export declare interface Report {
+    startDate: string;
+    endDate: string;
+    name: string;
+    image: string | null;
+    totalItemsSold: number;
+    totalGrossAmount: number;
+    totalNetAmount: number;
+    totalGrossProfit: number;
+};

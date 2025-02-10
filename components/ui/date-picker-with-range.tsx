@@ -27,6 +27,7 @@ function DateTimePicker({ value, onChange }: { value?: Date; onChange: (date: Da
   const [date, setDate] = useState<Date | undefined>(value);
   const [isOpen, setIsOpen] =useState(false);
 
+
   useEffect(() => {
     if (value) {
       setDate(value);
@@ -119,6 +120,8 @@ function DateTimePicker({ value, onChange }: { value?: Date; onChange: (date: Da
 
 export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
   const [, startTransition] = useTransition();
+  const [loading, setLoading] = useState(false);
+
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -133,6 +136,7 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
   });
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
+    setLoading(true);
     console.log("Submitting data:", data);
     startTransition(() => {
       fetchSummaries(data.from.toISOString(), data.to.toISOString())
@@ -141,7 +145,10 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
         })
         .catch((error) => {
           console.error("Error fetching summaries:", error);
-        });
+        })
+        .finally(() => {
+          setLoading(false);
+        })
     });
   }
 
@@ -175,7 +182,13 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
             </FormItem>
           )}
         />
-        <Button type="submit" className="text-sm">Filter</Button>
+         <Button type="submit" className="text-sm">
+                {loading ? (
+                    <div className="border-t-transparent border-4 border-green-500 w-[20px] h-[20px] rounded-full animate-spin"></div> // Replace with your loading spinner component
+                ) : (
+                    'Filter'
+                )}
+            </Button>
       </form>
     </Form>
     </div>

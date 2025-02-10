@@ -49,7 +49,7 @@ type ProductFormProps = {
 };
 
 export default function ProductForm({ item }: ProductFormProps) {
-    console.log("ProductForm item:", item);
+    console.log("ProductForm item:", item );
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     const [showTrackingModal, setShowTrackingModal] = useState(false);
@@ -78,6 +78,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                 trackingType: variant.trackingType || null,
                 trackItem: variant.trackItem || null,
                 unit: variant.unit || null,
+                purchasingPrice: variant.purchasingPrice || 0,
             })) || [{}]
         },
     });

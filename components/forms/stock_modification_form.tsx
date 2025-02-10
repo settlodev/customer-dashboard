@@ -31,7 +31,7 @@ import { reasonForStockModification } from "@/types/enums";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import { FormResponse } from "@/types/types";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 
 function StockModificationForm({ item }: { item: StockModification | null | undefined }) {
@@ -42,6 +42,9 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
+
+    const searchParams = useSearchParams()
+    const stockVariantId = searchParams.get('stockItem')
 
 
     const reasons: { id: string; label: string }[] = [
@@ -75,6 +78,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
             ...item,
             status: true,
             reason: item?.reason || reasonForStockModification.DAMAGE,
+            ...(stockVariantId ? { stockVariant: stockVariantId } : {})
         },
     });
 
@@ -137,7 +141,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                             <StockVariantSelector
                                                 {...field}
                                                 value={field.value ?? ""}
-                                                isDisabled={isPending}
+                                                isDisabled={isPending || false}
                                                                 />
                                             </FormControl>
                                             <FormMessage />

@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Package2, Clock, User, Receipt, CreditCard, ShoppingCart, ClockAlert } from 'lucide-react';
+import { Package2, Clock, User, Receipt, CreditCard, ShoppingCart, ClockAlert, RefreshCw } from 'lucide-react';
 import { getOrder } from "@/lib/actions/order-actions";
 import { Orders } from "@/types/orders/type";
 import { UUID } from "crypto";
@@ -12,6 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
     const order = await getOrder(params.id as UUID);
     const orderData: Orders | null = order?.content[0];
+
+    // console.log("orderData:", orderData);
 
     const isValidImageUrl = (image: string) => {
         return image && (image.startsWith('http://') || image.startsWith('https://') || image.startsWith('/'));
@@ -30,8 +31,9 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
         }
     };
 
-    const total = orderData.amount - (orderData.discountAmount || 0);
-    // const amountDue = total;
+    const total = orderData.grossAmount - (orderData.discountAmount || 0);
+
+    const hasRefundedItems = orderData.orderItemRefunds && orderData.orderItemRefunds.length > 0;
 
     return (
         <div className="min-h-screen bg-gray-50 p-4 md:p-8">
@@ -56,31 +58,21 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                             <ClockAlert size={16} />
                             <p className='text-sm'>Opened Date</p>
                             </div>
-                            <span>{Intl.DateTimeFormat("en-US", { 
-                                dateStyle: "full", 
-                                timeStyle: "short", 
-                                hour12: true 
-                            }).format(new Date(orderData.openedDate))}</span>
+                            <span>{new Date(orderData.openedDate).toLocaleString()}</span>
                         </div>
                         <div className="flex items-center gap-2 text-gray-600">
                             <div className='flex items-center gap-2 bg-emerald-50 rounded-md p-2'>
                             <Clock size={16} />
                             <p className='text-sm'>Closed Date</p>
                             </div>
-                            <span>{
-                                orderData.closedDate !== null ? Intl.DateTimeFormat("en-US", { 
-                                    dateStyle: "full", 
-                                    timeStyle: "short", 
-                                    hour12: true 
-                                }).format(new Date(orderData.closedDate)) : "Not Closed"
-                                }</span>
+                            <span>{orderData.closedDate ? new Date(orderData.closedDate).toLocaleString() : "Not Closed"}</span>
                         </div>
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                     {/* Order Items */}
-                    <div className="lg:col-span-2">
+                    <div className="lg:col-span-2 space-y-6">
                         <Card>
                             <CardHeader className="border-b">
                                 <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -105,21 +97,67 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                             </div>
                                         )}
                                         <div className="flex-1">
-                                            <h3 className="font-medium text-lg">{item.name}</h3>
+                                            <div className="flex items-center gap-2">
+                                                <h3 className="font-medium text-lg">{item.name}</h3>
+                                                {item.hasBeenRefunded && (
+                                                    <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                                                        Refunded
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="grid grid-cols-2 gap-4 mt-2 text-sm text-gray-600">
                                                 <div>Quantity: {item.quantity}</div>
-                                                <div className="text-right font-medium">
-                                                    Price: {Intl.NumberFormat("en-US").format(item.price)}
+                                                <div className=" flex flex-col gap-2 text-right font-medium">
+                                                    <p>Price: {Intl.NumberFormat().format(item.price)}</p>
+                                                    <p>Cost: {Intl.NumberFormat("en-US").format(item.cost)}</p>
+                                                    <p>Gross Profit: {Intl.NumberFormat("en-US").format(item.grossProfit)}</p>
                                                 </div>
+                                               
                                             </div>
                                         </div>
                                     </div>
                                 ))}
                             </CardContent>
                         </Card>
+
+                        {/* Refunded Items Section */}
+                        {hasRefundedItems && (
+                            <Card>
+                                <CardHeader className="border-b">
+                                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                                        <RefreshCw className="text-orange-600" />
+                                        Refunded Items
+                                    </h2>
+                                </CardHeader>
+                                <CardContent>
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Item Name</TableHead>
+                                                <TableHead>Reason</TableHead>
+                                                <TableHead>Date</TableHead>
+                                                <TableHead>Processed By</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {orderData.orderItemRefunds.map((refund) => (
+                                                <TableRow key={refund.id}>
+                                                    <TableCell>{refund.orderItemName}</TableCell>
+                                                    <TableCell>{refund.reason}</TableCell>
+                                                    <TableCell>
+                                                        {new Date(refund.dateOfReturn).toLocaleString()}
+                                                    </TableCell>
+                                                    <TableCell>{refund.staffName}</TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
 
-                    {/* Order Summary */}
+                    {/* Right side panels */}
                     <div className="space-y-6">
                         {/* Customer Info */}
                         <Card>
@@ -159,74 +197,81 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                     Payment Summary
                                 </h2>
                             </CardHeader>
-                            
                             <CardContent className="pt-4">
                                 <div className="space-y-3">
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Subtotal</span>
-                                        <span className="font-medium">{Intl.NumberFormat("en-US").format(orderData.amount)}</span>
+                                        <span className="font-medium">{Intl.NumberFormat().format(orderData.grossAmount)}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span className="text-gray-600">Discount</span>
                                         <span className="font-medium">-{Intl.NumberFormat("en-US").format(orderData.discountAmount || 0)}</span>
                                     </div>
+
+                                    {orderData.orderPaymentStatus === "PARTIAL" && (
+                                     <>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">Paid Amount</span>
+                                            <span className="font-medium">{Intl.NumberFormat("en-US").format(orderData.paidAmount || 0)}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span className="text-gray-600">UnPaid Amount</span>
+                                            <span className="font-medium">{Intl.NumberFormat("en-US").format(orderData.unpaidAmount || 0)}</span>
+                                        </div>
+                                     </>
+                                   )}
+
                                     <div className="flex justify-between text-lg font-bold pt-3 border-t">
                                         <span>Total</span>
-                                        <span>{Intl.NumberFormat("en-US").format(total || 0)}</span>
+                                        <span>{Intl.NumberFormat("en-US").format(total)}</span>
                                     </div>
-                                    {/* <div className="flex justify-between text-lg text-red-600 font-bold">
-                                        <span>Amount Due</span>
-                                        <span>{Intl.NumberFormat("en-US").format(amountDue || 0)}</span>
-                                    </div> */}
                                 </div>
                             </CardContent>
                         </Card>
                     </div>
-                   
                 </div>
-                 {/* Transaction Details */}
-                 <Card className="w-full">
-      <CardHeader className="border-b">
-        <h2 className="text-xl font-semibold flex items-center gap-2">
-          <CreditCard className="text-gray-600" />
-          Transaction Details
-        </h2>
-      </CardHeader>
-      <CardContent className="">
-        {orderData.transactions && (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                 <TableHead></TableHead>
-                <TableHead>Payment Method</TableHead>
-                <TableHead>Payment Status</TableHead>
-                <TableHead>Sold By</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {orderData.transactions.map((transaction,index) => (
-                <TableRow key={transaction.id}>
-                  <TableCell className="font-medium">
-                    {index+1}
-                  </TableCell>
-                  <TableCell>{transaction.paymentMethodName}</TableCell>
-                  <TableCell>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(
-                        orderData.orderPaymentStatus
-                      )}`}
-                    >
-                      {orderData.orderPaymentStatus}
-                    </span>
-                  </TableCell>
-                  <TableCell>{orderData.finishedByName}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+
+                {/* Transaction Details */}
+                <Card className="w-full">
+                    <CardHeader className="border-b">
+                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                            <CreditCard className="text-gray-600" />
+                            Transaction Details
+                        </h2>
+                    </CardHeader>
+                    <CardContent>
+                        {orderData.transactions && (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>#</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Payment Method</TableHead>
+                                        <TableHead>Payment Status</TableHead>
+                                        <TableHead>Sold By</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {orderData.transactions.map((transaction, index) => (
+                                        <TableRow key={transaction.id}>
+                                            <TableCell className="font-medium">
+                                                {index + 1}
+                                            </TableCell>
+                                            <TableCell>{Intl.NumberFormat("en-US").format(transaction.amount)}</TableCell>
+                                            <TableCell>{transaction.paymentMethodName}</TableCell>
+                                            <TableCell>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getStatusColor(orderData.orderPaymentStatus)}`}>
+                                                    {orderData.orderPaymentStatus}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell>{orderData.finishedByName}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        )}
+                    </CardContent>
+                </Card>
             </div>
         </div>
     );

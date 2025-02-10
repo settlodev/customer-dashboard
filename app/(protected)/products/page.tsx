@@ -22,6 +22,7 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
      const pageLimit = Number(searchParams.limit);
 
      const responseData = await searchProducts(q,page,pageLimit);
+    //  console.log("The response data ", responseData)
 
      const data:Product[]=responseData.content;
      const total =responseData.totalElements;
@@ -58,6 +59,13 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
+                                //        filterKey="trackingInventory"
+                                //        filterOptions={[
+                                //         { label: "All", value: "" },
+                                //    { label: "Out of Stock", value: "true" },
+                                //    { label: "Low Stock", value: "false" },
+                                //    {label: "Best selling", value: "false"}
+                                //        ]}
                             />
                         </CardContent>
                     </Card>

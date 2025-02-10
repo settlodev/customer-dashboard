@@ -22,7 +22,12 @@ export default auth((req) => {
   const isLoggedIn = !!req.auth;
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-  const isPublicRoute = publicRoutes.includes(nextUrl.pathname);
+  const isPublicRoute = publicRoutes.some(route => {
+    // Convert Next.js route pattern to regex pattern
+    const pattern = route.replace(/\[.*?\]/g, '[\\w-]+');
+    const regex = new RegExp(`^${pattern}$`);
+    return regex.test(nextUrl.pathname);
+  });
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
   const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL);
 

@@ -24,7 +24,11 @@ import {Addon} from "@/types/addon/type";
 import {Switch} from "../ui/switch";
 import {NumericFormat} from "react-number-format";
 import TrackingOptions from "../widgets/tracker-selector";
-import {DollarSign, PlusCircle, Power, ToggleLeft} from "lucide-react";
+import {DollarSign, PlusCircle, Power,ToggleLeft} from "lucide-react";
+// import MultipleSelector from "../widgets/multiple-product-selector";
+// import { Product } from "@/types/product/type";
+// import { fectchAllProducts } from "@/lib/actions/product-actions";
+
 
 function AddonForm({item}: { item: Addon | null | undefined }) {
 
@@ -32,8 +36,20 @@ console.log("The item is: ", item);
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
     const [addonTracking, setAddonTracking] = useState<boolean>(false);
+    // const [products, setProducts] = useState<Product[]>([])
+    // const [,setLoading] = useState(true);
     
-
+    // useEffect(() => {
+    //     const loadProducts = async () => {
+    //       setLoading(true);
+    //       const fetchedProducts = await fectchAllProducts();
+    //       console.log("Fetched products:", fetchedProducts);
+    //       setProducts(fetchedProducts);
+    //       setLoading(false);
+    //     };
+    
+    //     loadProducts();
+    //   }, []);
     const {toast} = useToast();
 
     const form = useForm<z.infer<typeof AddonSchema>>({
@@ -215,6 +231,32 @@ console.log("The item is: ", item);
                                 </FormItem>
                             )}
                         />
+
+                        {/* <FormField
+                        control={form.control}
+                        name="productIds"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel className="flex items-center gap-2 text-gray-700">
+                                <Tags className="h-4 w-4" />
+                                Applicable Products
+                            </FormLabel>
+                            <FormControl>
+                            <MultipleSelector
+                            defaultOptions={products.map(product => ({ value: product.id, label: product.name }))}
+                            placeholder="Select product items..."
+                            emptyIndicator={
+                            <p className="text-center text-lg leading-10 text-gray-600 dark:text-gray-400">
+                                no results found.
+                            </p>
+                            }
+                            {...field}
+                        />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        /> */}
 
                         {item && (
                             <FormField

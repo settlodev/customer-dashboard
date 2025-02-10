@@ -59,6 +59,13 @@ const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
                                pageNo={page}
                                total={total}
                                pageCount={pageCount}
+                            //    filterKey="status"
+                            //    filterOptions={[
+                            //        { label: "All", value: "" },
+                            //        { label: "Out of Stock", value: "true" },
+                            //        { label: "Low Stock", value: "false" },
+                            //        {label: "Best selling", value: "false"}
+                            //    ]}
                             />
                         </CardContent>
                     </Card>

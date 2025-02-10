@@ -1,10 +1,10 @@
 import { UUID } from "crypto";
-import { Variant } from "../variant/type";
+
 
 export declare interface Modifier {
     id:UUID;
     name:string;
-    variant:Variant;
+    variant:string;
     variantName:string;
     modifierItems: ModifierItems[];
     isMandatory:boolean;

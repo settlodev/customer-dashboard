@@ -30,7 +30,7 @@ import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { Location } from "@/types/location/type";
 import LocationSelector from "../widgets/location-selector";
 import { FormResponse } from "@/types/types";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { StockVariant } from "@/types/stockVariant/type";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 
@@ -44,6 +44,9 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
     const { toast } = useToast();
     const router = useRouter();
     const [selectedVariant,] = useState<StockVariant>();
+
+    const searchParams = useSearchParams()
+    const stockVariantId = searchParams.get('stockItem')
 
 
     useEffect(() => {
@@ -68,7 +71,7 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
         defaultValues: {
             ...item,
             status: true,
-
+            ...(stockVariantId ? { stockVariant: stockVariantId } : {})
         },
     });
 
@@ -130,7 +133,7 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
                                             <StockVariantSelector
                                                 {...field}
                                                 value={field.value ?? ""}
-                                                isDisabled={isPending}
+                                                isDisabled={isPending || false}
                                                                 />
                                             </FormControl>
                                             <FormMessage />

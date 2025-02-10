@@ -19,7 +19,7 @@ export const VariantSchema = object({
             }
             return undefined
         },
-        number({ message: "Price is required" }).nonnegative({ message: "Price can not be negative" }).gt(0, { message: "Price can not be zero" }).optional()
+        number({ message: "Purchasing price is required" }).nonnegative({ message: "Purchasing price can not be negative" }).gt(0, { message: "Purchasing price can not be zero" }).optional()
     ),
     sku: string().optional().nullish(),
     barcode: string().nullable().optional(),

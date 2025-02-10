@@ -28,7 +28,7 @@ export default async function Page({ searchParams }: ParamsProps) {
     const pageLimit = Number(searchParams.limit);
 
     const responseData = await searchExpenses(q, page, pageLimit);
-    console.log("Category responseData:", responseData);
+    // console.log("Category responseData:", responseData);
 
     const data = responseData.content;
     const total = responseData.totalElements;

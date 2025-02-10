@@ -91,3 +91,19 @@ export const getOrder= async (id:UUID) : Promise<ApiResponse<Orders>> => {
     
     return parseStringify(order)
 }
+
+export const getOrderReceipt= async (id:UUID)=> {
+    const apiClient = new ApiClient();
+    
+    try {
+        const order= await apiClient.get(
+            `/api/order-receipts/${id}`
+        );
+        
+        return parseStringify(order)
+
+    } catch (error) {
+        throw error
+    }
+   
+}

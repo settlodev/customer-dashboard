@@ -24,7 +24,7 @@ const breadCrumbItems = [{title:"Addons",link:"/addons"}];
      const pageLimit = Number(searchParams.limit);
 
      const responseData = await searchAddon(q,page,pageLimit);
-     console.log("Addon responseData:", responseData);
+    //  console.log("Addon responseData:", responseData);
 
      const data:Addon[]=responseData.content;
      const total =responseData.totalElements;

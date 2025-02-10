@@ -21,18 +21,21 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useState, useTransition, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { FormResponse } from "@/types/types";
+// import { FormResponse } from "@/types/types";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
-import { Calendar, Mail, Phone, Tag, Check, X, Loader2 } from "lucide-react";
+import { Calendar, Mail, Phone, Tag, Check, X, Loader2, AlertCircle } from "lucide-react";
 import { paySubscription } from "@/lib/actions/subscriptions";
 import { validateDiscountCode } from "@/lib/actions/subscriptions";
 import { Button } from "../ui/button";
 import { PhoneInput } from "../ui/phone-input";
 import { ActiveSubscription } from "@/types/subscription/type";
+import { Alert, AlertDescription } from "../ui/alert";
+import { NumericFormat } from "react-number-format";
 
 const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: ActiveSubscription }) => {
   const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
+  // const [, setResponse] = useState<FormResponse | undefined>();
+  const [error, setError] = useState<string | null>(null);
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
   const [discountValid, setDiscountValid] = useState<boolean | null>(null);
   const { toast } = useToast();
@@ -107,26 +110,42 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
     [toast]
   );
 
-  const submitData = (values: z.infer<typeof RenewSubscriptionSchema>) => {
-    console.log("Submitting data:", values);
+ 
+
+  const submitData = async (values: z.infer<typeof RenewSubscriptionSchema>) => {
+    setError(null);
+    // console.log("Submitting data:", values);
+    
     startTransition(() => {
       paySubscription(values)
-        .then((data: any) => {
-          if (data) {
-            const formResponse: FormResponse = {
-              responseType: data.responseType,
-              message: data.message,
-            };
-            setResponse(formResponse);
+        .then((response) => {
+          if (response.responseType === "error" || response.status === "FAILED") {
+            const errorMessage = response.errorDescription || response.message || "Payment failed. Please try again.";
+            setError(errorMessage);
             toast({
-              title: "Payment Confirmation",
-              description: `You will be paying $${totalAmount} for ${quantity} month subscription`,
-              variant: "default"
+              title: "Payment Failed",
+              description: errorMessage,
+              variant: "destructive"
             });
+            return;
           }
+
+          // Handle success
+          toast({
+            title: "Payment Successful",
+            description: `You have successfully paid ${totalAmount} for ${quantity} month subscription`,
+            variant: "default"
+          });
         })
         .catch((err) => {
-          console.log(err);
+          console.error("Payment error:", err);
+          const errorMessage = err.message || "An unexpected error occurred. Please try again.";
+          setError(errorMessage);
+          toast({
+            title: "Error",
+            description: errorMessage,
+            variant: "destructive"
+          });
         });
     });
   };
@@ -148,6 +167,15 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
               Enter your details below to renew your subscription
             </CardDescription>
           </CardHeader>
+
+          {error && (
+            <div className="px-6">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </div>
+          )}
 
           <CardContent className="space-y-6">
             {/* Phone Field */}
@@ -212,20 +240,23 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
                   <FormLabel className="text-gray-700 font-medium">
                     Renewal Duration
                   </FormLabel>
-                  <div className="relative">
-                    <div className="absolute left-3 top-3 text-gray-400">
+                  <div className="relative ">
+                    <div className="absolute left-3 top-2 text-gray-400">
                       <Calendar size={18} />
                     </div>
                     <FormControl>
-                      <Input
-                        {...field}
-                        className="pl-10"
-                        placeholder="Number of months"
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          field.onChange(Number(value));
-                        }}
-                      />
+                      <NumericFormat
+                          className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2 pl-10"
+                          value={field.value}
+                          disabled={isPending}
+                          placeholder="Number of months"
+                          thousandSeparator={true}
+                          allowNegative={false}
+                          onValueChange={(values) => {
+                            const rawValue = Number(values.value.replace(/,/g, ""));
+                            field.onChange(rawValue);
+                          }}
+                        />
                     </FormControl>
                     <FormDescription className="text-sm text-gray-500 mt-1">
                       Specify how many months you&lsquo;d like to renew for
