@@ -39,6 +39,7 @@ const StockHistoryDashboard = () => {
         const fetchStockHistory = async () => {
             try {
                 const response = await stockHistory();
+                console.log("The stock history is: ", response)
                 setHistory(response);
             } catch (error) {
                 console.error("Error fetching stock history:", error);
@@ -191,50 +192,43 @@ const StockHistoryDashboard = () => {
         <div className="space-y-6 p-10">
             <h2 className="text-2xl font-semibold">Stock History</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* Total Stock Intakes */}
-                {/* <Card className="bg-white">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
+                 {/* Total Available Stock */}
+                 <Card className="bg-white">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Available stock
+                            Total Available Stock
                         </CardTitle>
-                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <Package2 className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{Intl.NumberFormat().format(history?.totalStockIntakes || 0)} </div>
+                        <div className="text-2xl font-bold">
+
+                            {Intl.NumberFormat().format(history?.totalStockRemaining || 0)}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Total number of stock items
+                            Total items currently in stock
                         </p>
                     </CardContent>
-                </Card> */}
-                {/* <Card className="bg-white">
+                </Card>
+                {/* Total Stock Value */}
+                <Card className="bg-white">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Stock value
-                        </CardTitle>
-                        <Package className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{Intl.NumberFormat().format(history?.totalStockIntakes || 0)} </div>
-                        <p className="text-xs text-muted-foreground mt-1">
                             Total stock value
-                        </p>
-                    </CardContent>
-                </Card> */}
-                {/* <Card className="bg-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Estimated profit
                         </CardTitle>
                         <Package className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{Intl.NumberFormat().format(history?.totalStockIntakes || 0)} </div>
+                        <div className="text-2xl font-bold">{Intl.NumberFormat().format(history?.totalStockValue || 0)} </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            Total estimated profit of the stock
+                            Total value of stock items
                         </p>
                     </CardContent>
-                </Card> */}
+                </Card>
+               
+            
                 <Card className="bg-white">
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                         <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -250,24 +244,7 @@ const StockHistoryDashboard = () => {
                     </CardContent>
                 </Card>
 
-                {/* Total Stock Remaining */}
-                <Card className="bg-white">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <CardTitle className="text-sm font-medium text-muted-foreground">
-                            Current Stock Level
-                        </CardTitle>
-                        <Package2 className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-
-                            {Intl.NumberFormat().format(history?.totalStockRemaining || 0)}
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-1">
-                            Total units currently in stock
-                        </p>
-                    </CardContent>
-                </Card>
+               
 
                 {/* Low Stock Items */}
                 <Card className="bg-white">
