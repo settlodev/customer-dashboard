@@ -3,10 +3,6 @@ import React from "react";
 import { Share2} from "lucide-react";
 
 const ShareButton = ({ url }: { url: string }) => {
-  const handleCopy = () => {
-    navigator.clipboard.writeText(url);
-    alert("Link copied to clipboard!");
-  };
 
   const handleShare = async () => {
     if (navigator.share) {
