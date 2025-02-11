@@ -154,7 +154,8 @@ export const getProduct= async (id:UUID) : Promise<ApiResponse<Product>> => {
 
 export const updateProduct = async (
     productId: string,
-    product: z.infer<typeof ProductSchema>
+    product: z.infer<typeof ProductSchema>,
+    paginationState?: { pageIndex: number; pageSize: number } | null
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
 
@@ -279,8 +280,21 @@ export const updateProduct = async (
 
     if (formResponse.responseType === "error") return parseStringify(formResponse);
 
+    console.log('🔄 Preparing redirect with pagination state:', paginationState);
     revalidatePath("/products");
-    redirect("/products");
+
+    if (paginationState && 
+        typeof paginationState.pageIndex === 'number' && 
+        typeof paginationState.pageSize === 'number') {
+        
+        const page = paginationState.pageIndex + 1;
+        const limit = paginationState.pageSize;
+        console.log('↪️ Redirecting to:', `/products?page=${page}&limit=${limit}`);
+        redirect(`/products?page=${page}&limit=${limit}`);
+    } else {
+        console.log('↪️ Redirecting to default products page');
+        redirect("/products");
+    }
 };
 
 

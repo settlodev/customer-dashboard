@@ -153,17 +153,22 @@ export default function ProductForm({ item }: ProductFormProps) {
 
 
     const submitData = (values: z.infer<typeof ProductSchema>) => {
+
+        const stored = localStorage.getItem('pagination-products');
+        const paginationState = stored ? JSON.parse(stored) : null;
+        console.log('Pagination state:', paginationState);
+        
         setResponse(undefined);
         const productData = {
             ...values,
             image: imageUrl
         };
 
-        console.log("Submitting data:", productData);
+        // console.log("Submitting data:", productData);
 
         startTransition(() => {
             if (item) {
-                updateProduct(item.id, productData)
+                updateProduct(item.id, productData,paginationState)
                     .then((data) => {
                         if (data) setResponse(data);
                         if (data?.responseType === "success") {
