@@ -77,31 +77,7 @@ export function DataTable<TData, TValue>({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  React.useEffect(() => {
-    // Check if we need to restore pagination state
-    const shouldRestore = searchParams?.get("restore") === "true";
-    if (shouldRestore) {
-      const page = searchParams?.get("page");
-      const limit = searchParams?.get("limit");
-      
-      if (page && limit) {
-        // Remove the restore parameter but keep the pagination
-        const newParams = new URLSearchParams(searchParams.toString());
-        newParams.delete("restore");
-        router.replace(`${pathname}?${newParams.toString()}`, { scroll: false });
-        
-        // Save the state in localStorage
-        if (typeof window !== 'undefined') {
-          const paginationState = {
-            pageIndex: Number(page) - 1,
-            pageSize: Number(limit),
-            timestamp: Date.now(),
-          };
-          localStorage.setItem('pagination-products', JSON.stringify(paginationState));
-        }
-      }
-    }
-  }, []);
+  
 
   const { initializePaginationState, savePaginationState } = usePaginationState({
     key: pathname.replace('/', '') // Use the route as the key, e.g., 'products'
@@ -109,10 +85,12 @@ export function DataTable<TData, TValue>({
 
   // Initialize state on component mount
   React.useEffect(() => {
-    // console.log('DataTable mounted, initializing pagination state');
-
-    initializePaginationState();
-  }, []);
+    const timer = setTimeout(() => {
+      initializePaginationState();
+    }, 0);
+    
+    return () => clearTimeout(timer);
+  }, [searchParams]);
 
   // Search params
   const page = searchParams?.get("page") ?? "1";
@@ -144,7 +122,9 @@ export function DataTable<TData, TValue>({
   }, [fallbackPage, fallbackPerPage]);
 
   React.useEffect(() => {
-    savePaginationState(String(fallbackPage), String(fallbackPerPage));
+    if (!searchParams?.has("_rsc")) {
+      savePaginationState(String(fallbackPage), String(fallbackPerPage));
+    }
   }, [fallbackPage, fallbackPerPage]);
   
   // Loading state
