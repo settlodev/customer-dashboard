@@ -342,9 +342,6 @@ function RegisterForm({ step }: { step: string }) {
                             <form onSubmit={form.handleSubmit(submitData)}>
                                 <div className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                     <h3 className="font-bold flex-1">Basic Information</h3>
-                                    <span className="flex-end">
-                                        <ChevronDownIcon />
-                                    </span>
                                 </div>
                                 <div className="grid gap-4">
                                     <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
@@ -472,7 +469,6 @@ function RegisterForm({ step }: { step: string }) {
                                     <div
                                         className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                         <h3 className="font-bold flex-1">Login Information</h3>
-                                        <span className="flex-end"><ChevronDownIcon /></span>
                                     </div>
 
                                     <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
@@ -512,7 +508,6 @@ function RegisterForm({ step }: { step: string }) {
                                                                     <EyeIcon size={20} />}</span>
                                                         </div>
                                                     </FormControl>
-                                                    <FormDescription>{/* Enter user name */}</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -520,18 +515,13 @@ function RegisterForm({ step }: { step: string }) {
                                     </div>
                                 </div>
 
-                                <div className="">
-                                    <div className="w-full sm:w-auto">
-                                        <Button
-                                            type="submit"
-                                            disabled={isPending || emailVerified}
-                                            className="w-full sm:w-auto mt-4 p-7 hover:bg-emerald-500">
-                                            {(isPending) ?
-                                                <Loader2Icon className="w-6 h-6 animate-spin" /> :
-                                                <>Next: Business info <ChevronRight /></>
-                                            }
-                                        </Button>
-                                    </div>
+                                <div className="w-full sm:w-auto mt-5">
+                                    <Button type="submit" disabled={isPending || emailVerified} className="hover:bg-emerald-500">
+                                        {(isPending) ?
+                                            <Loader2Icon className="w-6 h-6 animate-spin" /> :
+                                            <>Next: Business info <ChevronRight /></>
+                                        }
+                                    </Button>
                                 </div>
                             </form>
                         </Form>
@@ -963,6 +953,7 @@ function RegisterForm({ step }: { step: string }) {
                                                     <Button
                                                         type="submit"
                                                         disabled={isPending}
+                                                        size="sm"
                                                         className={`w-full sm:w-auto mt-3 p-7`}>
                                                         {isPending ?
                                                             <Loader2Icon className="w-6 h-6 animate-spin" /> :

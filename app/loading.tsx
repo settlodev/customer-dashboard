@@ -1,12 +1,11 @@
 import React from 'react';
+import { Loader2Icon } from "lucide-react";
 
 const Loading = () => {
     return (
-        <div className="fixed inset-0 flex items-center justify-center">
-            <div className={`relative w-8 h-8`}>
-                <div className="absolute w-full h-full border-4 border-green-200 rounded-full" />
-                <div className="absolute w-full h-full border-4 border-green-500 rounded-full animate-spin border-t-transparent" />
-            </div>
+        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center flex-col gap-4">
+            <Loader2Icon className="w-8 h-8 text-emerald-600 animate-spin" />
+            <p className="text-emerald-600 font-medium">Loading...</p>
         </div>
     );
 };
