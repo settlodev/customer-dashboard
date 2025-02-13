@@ -10,10 +10,11 @@ import {
   COMPLETE_BUSINESS_LOCATION_SETUP_URL,
   UPDATE_PASSWORD_URL,
   VERIFICATION_REDIRECT_URL,
-  VERIFICATION_PAGE, SELECT_BUSINESS_URL
+  VERIFICATION_PAGE,
+  SELECT_BUSINESS_URL
 } from "@/routes";
 import { AuthToken } from "@/types/types";
-import {Business} from "@/types/business/type";
+import { Business } from "@/types/business/type";
 
 const { auth } = NextAuth(authConfig);
 
@@ -23,69 +24,61 @@ export default auth((req) => {
 
   const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.some(route => {
-    // Convert Next.js route pattern to regex pattern
     const pattern = route.replace(/\[.*?\]/g, '[\\w-]+');
     const regex = new RegExp(`^${pattern}$`);
     return regex.test(nextUrl.pathname);
   });
   const isAuthRoute = authRoutes.includes(nextUrl.pathname);
   const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL);
+  const isLoginPage = nextUrl.pathname === "/login";
 
   // Allow access to API routes, public routes, and password update routes
   if (isApiAuthRoute || isPublicRoute || isUpdatePasswordRoute) {
     return;
   }
 
-  // Get auth token
+  // Handle login page separately to prevent redirect loops
+  if (isLoginPage) {
+    if (isLoggedIn) {
+      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
+    }
+    return;
+  }
+
   let authToken: AuthToken | null = null;
   let currentBusiness: Business | null = null;
 
   try {
-    // const cookieList = cookies().getAll();
-    // console.log("Available cookies:", cookieList.map(c => c.name));
-
     const tokens = cookies().get("authToken")?.value;
     if (tokens) {
       authToken = JSON.parse(tokens);
-
       const currentBusinessToken = cookies().get("currentBusiness");
 
-      // console.log("Business cookie details:", {
-      //   exists: !!currentBusinessToken,
-      //   name: currentBusinessToken?.name,
-      //   value: currentBusinessToken?.value
-      // });
-
       if (currentBusinessToken?.value) {
-        try {
-          currentBusiness = JSON.parse(currentBusinessToken.value);
-          // console.log("Parsed currentBusiness:", currentBusiness);
-        } catch (parseError) {
-          console.error("Error parsing currentBusiness:", parseError);
-        }
-      } else {
-        console.log("No current business cookie found");
+        currentBusiness = JSON.parse(currentBusinessToken.value);
       }
     }
   } catch (error) {
-    console.error("Error in middleware:", error);
-    // If token is invalid or expired, redirect to log in
+    console.error("Error parsing tokens:", error);
     return Response.redirect(new URL("/login", nextUrl));
   }
 
   // Handle unauthenticated users
   if (!isLoggedIn || !authToken) {
-    // Allow access to auth routes
     if (isAuthRoute) {
       return;
     }
-    // Redirect to log in for protected routes
     return Response.redirect(new URL("/login", nextUrl));
   }
 
   // Handle authenticated users
   if (isLoggedIn) {
-    // First check email verification
+    // Prevent authenticated users from accessing auth routes
+    if (isAuthRoute) {
+      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
+    }
+
+    // Email verification check
     if (authToken.emailVerified === null) {
       if (nextUrl.pathname === VERIFICATION_PAGE) {
         return;
@@ -96,58 +89,36 @@ export default auth((req) => {
       return;
     }
 
-    // Prevent authenticated users from accessing auth routes
-    if (isAuthRoute) {
-      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
-    }
-
-    // Then check business registration
+    // Business registration check
     if (!authToken.businessComplete) {
-      // Allow access to the registration page
       if (nextUrl.pathname === COMPLETE_ACCOUNT_REGISTRATION_URL) {
         return;
       }
-      // Redirect to registration for all other pages
       return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
     }
 
-    // Only check for business selection after business registration is complete
+    // Business selection check
     if (authToken.businessComplete && !currentBusiness) {
-      // Allow access to the selection page
       if (nextUrl.pathname === SELECT_BUSINESS_URL) {
         return;
       }
-      // Redirect to selection for all other pages
       return Response.redirect(new URL(SELECT_BUSINESS_URL, nextUrl));
     }
 
-    // Finally check location setup
-    if (authToken.businessComplete &&
-        currentBusiness &&
-        !authToken.locationComplete) {
-      // Allow access to the location setup page
+    // Location setup check
+    if (authToken.businessComplete && currentBusiness && !authToken.locationComplete) {
       if (nextUrl.pathname === COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
         return;
       }
-      // Redirect to location setup for all other pages
-      return Response.redirect(
-          new URL(
-              `${COMPLETE_BUSINESS_LOCATION_SETUP_URL}`,
-              nextUrl
-          )
-      );
+      return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl));
     }
   }
 
-  // Allow access to the requested page if none of the above conditions are met
   return;
 });
 
 export const config = {
   matcher: [
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
-    "/user-verification",
-    "/email-verification"
-  ],
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ]
 };

@@ -11,7 +11,7 @@ import {Location} from "@/types/location/type";
 import {getBusiness} from "@/lib/actions/business/get";
 
 import {redirect} from "next/navigation";
-import {signOut} from "@/auth";
+import { signOut } from "next-auth/react";
 
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {
     try {
@@ -56,6 +56,9 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
         return parseStringify(currentBusiness);
     } catch (error) {
         console.error('Error in getting current business - logging out :', error);
+
+        await signOut();
+
         redirect("/login")
     }
 };
@@ -72,19 +75,32 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
     }
 };
 
-export const getBusinessDropDown = async (): Promise<Business[]> => {
-    const authToken = await getAuthToken();
-
-    const userId = authToken?.id as UUID;
-    const myEndpoints = endpoints({userId: userId});
+export const getBusinessDropDown = async (): Promise<Business[] | null> => {
     try {
+        const authToken = await getAuthToken();
+
+        const userId = authToken?.id as UUID;
+        const myEndpoints = endpoints({userId: userId});
+
         const apiClient = new ApiClient();
 
-        const data = await apiClient.get(myEndpoints.business.list.endpoint);
-        return parseStringify(data);
+        try {
+            const data = await apiClient.get(myEndpoints.business.list.endpoint);
+            return parseStringify(data);
+        } catch (apiError: any) {
+            // Check for specific API errors
+            if (apiError.status === 403 && apiError.code === 'FORBIDDEN') {
+                console.error("API authentication failed:", apiError.message);
+                return null;
+            }
+
+            console.error("API request failed:", apiError);
+            throw apiError;
+        }
     } catch (error) {
         console.error("Failed to get business list:", error);
-        await signOut({redirect: false});
-        redirect("/login")
+
+        await signOut();
+        return null;
     }
-};
+}

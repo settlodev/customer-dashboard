@@ -74,23 +74,12 @@ export async function uploadImage(file: File, path: string, callback: (response:
 }
 
 
-// export const formatDateTime = (date: Date | string | undefined): { dateTime: string; dateDay: string; timeOnly: string; dateOnly: string } => {
-//   if (!date) return { dateTime: "", dateDay: "", timeOnly: "", dateOnly: "" };
-
-//   const dateValue = typeof date === "string" ? new Date(date) : date;
-
-//   if (isNaN(dateValue.getTime())) {
-//     return { dateTime: "Invalid date", dateDay: "Invalid date", timeOnly: "Invalid date", dateOnly: "Invalid date" };
-//   }
-
-//   const formattedDate = format(dateValue, "yyyy-MM-dd");
-//   const formattedTime = format(dateValue, "HH:mm:ss");
-//   const formattedDateOnly = format(dateValue, "yyyy-MM-dd");
-
-//   return {
-//     dateTime: `${formattedDate} ${formattedTime}`,
-//     dateDay: formattedDate,
-//     timeOnly: formattedTime,
-//     dateOnly: formattedDateOnly,
-//   };
-// }
+export const getBuildInfo = () => {
+  return {
+    buildId: process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA || 'development',
+    buildNumber: process.env.NEXT_PUBLIC_VERCEL_ENV === 'production'
+        ? process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF
+        : 'local',
+    environment: process.env.NEXT_PUBLIC_VERCEL_ENV || 'development'
+  };
+};
