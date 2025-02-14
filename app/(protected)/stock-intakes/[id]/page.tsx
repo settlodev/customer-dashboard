@@ -15,8 +15,8 @@ export default async function StockIntakePage({params}:{params:{stockVariant:str
 
     if(!isNewItem){
         try{
-            item = await  getStockIntake(id as UUID,stockVariant as UUID);
-            if(item.totalElements == 0) notFound();
+            item = await getStockIntake(id as UUID, stockVariant as UUID);
+            if(item && item.totalElements === 0) notFound();
         }
         catch (error){
             if(isNotFoundError(error)) throw error;

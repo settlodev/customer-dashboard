@@ -115,24 +115,20 @@ export const createStockIntake = async (
 
 
 export const getStockIntake= async (id:UUID, stockVariant:UUID)  => {
-
-    let formResponse: FormResponse | null = null;
+    // const formResponse: FormResponse | null = null;
+  
     try {
     const apiClient = new ApiClient();
     const response = await apiClient.get(
         `/api/stock-intakes/${stockVariant}/${id}`,
        
     )
-    console.log("The response to get stock intake: ", response)
+   
     return parseStringify(response)
 
     } catch (error) {
         console.error("Error fetching stock intake:", error);
-        formResponse = {
-            responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error)),
-        };
+        throw error
     }
 }
 

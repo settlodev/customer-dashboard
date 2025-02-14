@@ -1,16 +1,15 @@
 'use client'
-import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { StockIntake } from "@/types/stock-intake/type";
 import { getStockIntake } from "@/lib/actions/stock-intake-actions";
 import StockIntakeDetails from "@/components/widgets/stock-intake-details";
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Loading from "@/app/(protected)/loading";
 
 
-export default async function StockIntakePage({params}:{params:{id:string}}) {
+export default function StockIntakePage({params}:{params:{id:string}}) {
     const [item, setItem] = useState<StockIntake >({} as StockIntake);
     const [loading, setLoading] = useState<boolean>(true);
     const {id} = params;
@@ -22,7 +21,7 @@ export default async function StockIntakePage({params}:{params:{id:string}}) {
             setLoading(true);
             try {
                 const fetchedItem = await getStockIntake(id as UUID, stockVariant as UUID);
-                setItem(fetchedItem); // Assuming fetchedItem is an ApiResponse object with a 'data' property
+                setItem(fetchedItem); 
             } catch (error) {
                 console.error("Error fetching stock intake:", error);
             } finally {

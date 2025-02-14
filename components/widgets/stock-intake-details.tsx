@@ -1,11 +1,10 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Package, User, Truck, Hash, Archive, AlertTriangle } from 'lucide-react';
+import { Calendar, Package, User, Truck, Hash, AlertTriangle } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 
 
 export default function StockIntakeDetails({ item}: { item: any }) {
-    console.log("The item to display is: ", item)
   return (
     <div className="space-y-6">
       {/* Header Card */}
