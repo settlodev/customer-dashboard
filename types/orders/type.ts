@@ -91,6 +91,7 @@ export interface transactions {
 
 export interface OrderItemRefunds{
     id: UUID,
+    quantity: number,
     reason: string,
     dateOfReturn:Date,
     stockReturned:boolean,

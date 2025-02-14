@@ -134,6 +134,7 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                         <TableHeader>
                                             <TableRow>
                                                 <TableHead>Item Name</TableHead>
+                                                <TableHead>Quantity</TableHead>
                                                 <TableHead>Reason</TableHead>
                                                 <TableHead>Date</TableHead>
                                                 <TableHead>Processed By</TableHead>
@@ -143,6 +144,7 @@ const OrderDetailsPage = async ({ params }: { params: { id: string } }) => {
                                             {orderData.orderItemRefunds.map((refund) => (
                                                 <TableRow key={refund.id}>
                                                     <TableCell>{refund.orderItemName}</TableCell>
+                                                    <TableCell>{refund.quantity}</TableCell>
                                                     <TableCell>{refund.reason}</TableCell>
                                                     <TableCell>
                                                         {new Date(refund.dateOfReturn).toLocaleString()}

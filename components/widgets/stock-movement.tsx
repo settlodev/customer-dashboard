@@ -6,33 +6,25 @@ import { Package2, TrendingDown, TrendingUp } from 'lucide-react';
 import { StockMovement } from '@/types/stockVariant/type';
 import PaginatedStockTable from './paginatedStock';
 
-
-
 const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) => {
-
-  console.log("movements", movements)
   // Sort movements by date (newest first)
   const sortedMovements = [...movements].sort((a, b) => 
     new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
   );
 
-  
   const latestMovement = sortedMovements[0];
   const totalValue = latestMovement?.newTotalQuantity * latestMovement?.newAverageValue;
-  
 
   const chartData = movements.map(movement => ({
     id: movement.stockName,
+    date: new Date(movement.dateCreated).toLocaleDateString(),
     quantity: movement.newTotalQuantity,
     averageValue: movement.newAverageValue,
     type: movement.stockMovementType
   }));
 
-
-
   return (
     <div className="space-y-4">
-      {/* Header Section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="pt-6">
@@ -51,7 +43,7 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">Total Value</p>
-                <h3 className="text-2xl font-bold">{Intl.NumberFormat().format(totalValue) || 0}/=</h3>
+                <h3 className="text-2xl font-bold">{Intl.NumberFormat().format(totalValue || 0)}/=</h3>
               </div>
               <TrendingUp className="h-8 w-8 text-green-500" />
             </div>
@@ -74,7 +66,6 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
         </Card>
       </div>
 
-      {/* Charts Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
@@ -84,7 +75,7 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="id" hide />
+                <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip
                   formatter={(value: number) => [`${value} units`, 'Quantity']}
@@ -110,7 +101,7 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="id" hide />
+                <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip
                   formatter={(value: number) => [`${value.toFixed(2)}`, 'Average Value']}
@@ -130,9 +121,9 @@ const StockMovementDashboard = ({ movements }: { movements: StockMovement[] }) =
       </div>
 
       <PaginatedStockTable 
-  movements={movements}
-  itemsPerPage={10} // Optional, defaults to 10
-/>
+        movements={movements}
+        itemsPerPage={10}
+      />
     </div>
   );
 };

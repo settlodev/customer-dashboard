@@ -13,11 +13,15 @@ import {
   TrendingUp
 } from 'lucide-react';
 import { StockMovement } from '@/types/stockVariant/type';
+import { useRouter } from 'next/navigation';
 
 
 
 const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: StockMovement[]; itemsPerPage?: number }) => {
+  console.log("movement",movements)
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
+
   
   // Sort movements by date in descending order (newest first)
   const sortedMovements = useMemo(() => {
@@ -52,6 +56,36 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
     return labels[type as keyof typeof labels] || type;
   };
 
+  const handleRedirect = (movement: StockMovement) => {
+    console.log('Redirecting to:', movement.stockMovementType);
+    switch (movement.stockMovementType) {
+      case 'STOCK_INTAKE':
+        if (movement.stockIntake) {
+          router.push(`/stock-intakes/intake-detail/${movement.stockIntake}?stockVariant=${movement.stockVariant}`);
+        }
+        break;
+      case 'ORDER_ITEM_SALE':
+        if (movement.order) {
+          router.push(`/orders/${movement.order}`);
+        }
+        break;
+      case 'ORDER_ITEM_DELETE':
+      case 'ORDER_ITEM_REFUND':
+        if (movement.order) {
+          router.push(`/orders/${movement.order}`);
+        }
+        break;
+      
+      case 'STOCK_MODIFICATION':
+        if (movement.stockModification) {
+          router.push(`/stock-modification/${movement.stockModification}`);
+        }
+        break;
+      default:
+        console.log('No redirect configured for this movement type');
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -66,14 +100,16 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
                 <th className="text-left p-2">Type</th>
                 <th className="text-left p-2">Quantity</th>
                 <th className="text-left p-2">Running Total</th>
-                {/* <th className="text-left p-2">Value Moved</th> */}
                 <th className="text-left p-2">Staff</th>
                 <th className="text-left p-2">Date</th>
               </tr>
             </thead>
             <tbody>
               {currentItems.map((movement, index) => (
-                <tr key={movement.id} className="border-b hover:bg-gray-50">
+                <tr key={movement.id} 
+                className="border-b hover:bg-gray-50"
+                onClick={() => handleRedirect(movement)}
+                >
                   <td className="p-2">{startIndex + index + 1}</td>
                   <td className="p-2">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
@@ -108,7 +144,7 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
                       : movement.stockMovementType === 'STOCK_INTAKE'
                       ? <ArrowDown className="h-5 w-5 text-green-500" />
                       : movement.stockMovementType === 'ORDER_ITEM_DELETE'
-                      ? <Trash className="h-5 w-5 text-gray-500" />
+                      ? <Trash className="h-5 w-5 text-red-500" />
                       : movement.stockMovementType === 'ORDER_ITEM_REFUND'
                       ? <Redo className="h-5 w-5 text-yellow-500" />
                       : movement.stockMovementType === 'ORDER_ITEM_AMOUNT_CHANGE'

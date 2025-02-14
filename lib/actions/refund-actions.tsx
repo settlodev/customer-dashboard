@@ -60,6 +60,7 @@ export const searchOrderItemRefunds = async (
             `/api/order-item-refunds/${location?.id}`,
             query
         );
+        // console.log("The list of refunds in this location: ", refunds)
         return parseStringify(refunds);
     }
     catch (error){

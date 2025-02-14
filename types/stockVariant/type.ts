@@ -34,8 +34,14 @@ export declare interface StockMovement {
   newTotalQuantity: number;
   staffName: string;
   stockName: string;
+  stockVariant: string;
   stockVariantName: string;
   stockIntakeBatchNumber: string | null;
+  stockIntake: string | null;
+  order: string | null;
+  orderItemRefund: string | null;
+  orderItem: string | null;
+  stockModification: string | null;
   dateCreated: Date
 
 }
