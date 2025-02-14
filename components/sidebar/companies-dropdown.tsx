@@ -1,3 +1,5 @@
+import * as Sentry from "@sentry/nextjs";
+
 import { ChevronDown, Plus, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -27,13 +29,12 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         try {
             setLoadingLocationId(location.id);
             await refreshLocation(location).then(res => {
-                console.log('Location refreshed successfully:', res);
-
+                Sentry.captureMessage("Location switched: " + res);
                 setIsOpen(false);
                 setLoadingLocationId(null);
             });
         } catch (error) {
-            console.error('Failed to switch location:', error);
+            Sentry.captureException(error);
             setIsOpen(false);
             setLoadingLocationId(null);
         }

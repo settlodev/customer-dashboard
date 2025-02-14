@@ -31,13 +31,12 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
     useEffect(() => {
         const fetchCurrentLocation = async () => {
             const location = await getCurrentLocation();
-            console.log('Current location:', location?.name);
             setCurrentLocation(location as Location | undefined);
 
         };
 
         fetchCurrentLocation();
-    }, []); 
+    }, []);
 
     const checkCurrentLocation = () => {
         if (currentLocation) {
@@ -70,14 +69,14 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
             </DropdownMenuTrigger>
 
             <DropdownMenuContent align="end" className="w-56">
-               
+
                         <DropdownMenuItem asChild>
                             <a onClick={checkCurrentLocation} className="flex items-center cursor-pointer">
                                 <LayoutDashboard className="mr-2 h-4 w-4" />
                                 <span>Dashboard</span>
                             </a>
                         </DropdownMenuItem>
-                
+
 
                 {currentLocation && currentLocation.subscriptionStatus && currentLocation.subscriptionStatus !== 'EXPIRED' && (
                     <>
@@ -87,7 +86,7 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
                                 <span>My Profile</span>
                             </a>
                         </DropdownMenuItem>
-                        
+
                         <DropdownMenuItem asChild>
                             <a href="/settings" className="flex items-center cursor-pointer">
                                 <Settings className="mr-2 h-4 w-4" />

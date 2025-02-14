@@ -8,6 +8,13 @@ import { Analytics } from "@vercel/analytics/react";
 import { Viewport } from "next";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://www.settlo.co.tz"),
+  alternates: {
+    canonical: "/",
+    languages: {
+      "sw-TZ": "/sw",
+    },
+  },
   applicationName: "Settlo",
   title: {
     default: "Settlo - Daftari la kidigitali",
@@ -48,7 +55,7 @@ export const metadata: Metadata = {
     siteName: "Settlo",
     images: [
       {
-        url: "/og-image.png",
+        url: "/public/images/logo.png",
         width: 1200,
         height: 630,
         alt: "Settlo - Daftari la kidigitali",
