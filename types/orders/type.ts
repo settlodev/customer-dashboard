@@ -47,6 +47,7 @@ export interface Orders {
     status: boolean
     canDelete: boolean
     isArchived: boolean
+    [key: string]: any
 }
 
 export interface OrderItems {
@@ -78,6 +79,26 @@ export interface OrderItems {
     modifierPrice:string
     addons:string
     addonTotalPrice:string
+    [key: string]: any
+}
+
+export interface OrderMetrics {
+    total: number;
+    profitMargin: number;
+    totalItems: number;
+    averageItemPrice: number;
+    processingTime: number;
+    processingMinutes: number;
+}
+
+export interface DepartmentMetric {
+    name: string;
+    value: number;
+    profit: number;
+    count: number;
+    revenueShare?: string;
+    profitMargin?: string;
+    avgItemValue?: string;
 }
 
 export interface transactions {
@@ -87,6 +108,7 @@ export interface transactions {
     paymentMethod: string
     paymentMethodName: string
     isArchived: boolean
+    dateCreated: string
 }
 
 export interface OrderItemRefunds{
@@ -96,6 +118,7 @@ export interface OrderItemRefunds{
     dateOfReturn:Date,
     stockReturned:boolean,
     orderItemName:string,
+    orderItemId:UUID,
     status: boolean,
     canDelete: boolean,
     staff:string,
@@ -103,6 +126,7 @@ export interface OrderItemRefunds{
     approvedBy:string,
     approvedByName:string,
     location: string,
-    isArchived: boolean
+    isArchived: boolean,
+    comment: string,
 }
 
