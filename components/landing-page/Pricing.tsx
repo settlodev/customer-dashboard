@@ -111,7 +111,7 @@ export const Pricing: React.FC = () => {
     }, []);
 
     return (
-        <section className="relative w-full overflow-hidden py-24">
+        <section id="pricing" className="relative w-full overflow-hidden py-24">
             {/* Background with gradients */}
             <div className="absolute inset-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-white" />

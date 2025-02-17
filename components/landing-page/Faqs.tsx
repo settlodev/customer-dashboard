@@ -69,7 +69,7 @@ export const FAQS: React.FC = () => {
     const [openIndex, setOpenIndex] = useState<number | null>(null);
 
     return (
-        <section className="relative w-full overflow-hidden py-24">
+        <section id="faqs" className="relative w-full overflow-hidden py-24">
             <div className="absolute inset-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-white" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.1),transparent_50%)]" />

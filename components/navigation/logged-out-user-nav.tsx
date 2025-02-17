@@ -12,11 +12,11 @@ import DarkModeSwitcher from "./dark-mode-switcher";
 import {auth} from "@/auth";
 
 const navigationLinks = [
-    {title: "Solutions", href: "/#solutions"},
+    {title: "Features", href: "/#features"},
     {title: "Pricing", href: "/#pricing"},
-    {title: "Shops", href: "/#shops"},
-    {title: "Resources", href: "/#resources"},
-    {title: "Contact", href: "/#contact"},
+    {title: "Testimonials", href: "/#testimonials"},
+    {title: "FAQS", href: "/#faqs"},
+    {title: "Contact us", href: "/#contacts"},
 ];
 
 interface LoggedOutNavbarProps {
@@ -132,12 +132,6 @@ export async function LoggedOutNavbar({hideLogin}: LoggedOutNavbarProps) {
                                 </Link>
                             </Button>
                         }
-
-                        {/* { session && currentLocation !== undefined &&  (
-                            <div>
-                                <Link href="/dashboard" className="hidden md:flex items-center text-muted-foreground hover:text-foreground transition-colors group">My Dashboard</Link>
-                            </div>
-                        ) } */}
 
                         { session &&  <UserDropdown user={session.user}/> }
                     </div>

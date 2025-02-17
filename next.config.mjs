@@ -2,16 +2,31 @@ import { withSentryConfig } from "@sentry/nextjs";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
-    domains: [
-      "fhuvexerkaysoazmmlal.supabase.co",
-      "lporvjkotuidemnfvuzt.supabase.co",
-      "images.unsplash.com",
-      "app.tallity.co.tz",
-    ],
+    // remotePatterns: [
+    //   "fhuvexerkaysoazmmlal.supabase.co",
+    //   "lporvjkotuidemnfvuzt.supabase.co",
+    //   "images.unsplash.com",
+    //   "app.tallity.co.tz",
+    // ],
     remotePatterns: [
       {
         protocol: "https",
         hostname: "fhuvexerkaysoazmmlal.supabase.co",
+        port: "",
+      },
+      {
+        protocol: "https",
+        hostname: "lporvjkotuidemnfvuzt.supabase.co",
+        port: "",
+      },
+      {
+        protocol: "https",
+        hostname: "images.unsplash.com",
+        port: "",
+      },
+      {
+        protocol: "https",
+        hostname: "app.tallity.co.tz",
         port: "",
       },
     ],
