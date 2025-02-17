@@ -5,7 +5,7 @@ import {redirect} from "next/navigation";
 export default async function BusinessRegistrationPage() {
   const data = await getBusinessDropDown();
 
-  if (data.length > 0) {
+  if (data && data.length > 0) {
     redirect('/select-business');
   }
 

@@ -2,6 +2,7 @@ import { UUID } from "crypto"
 
 export interface OrderItemRefunds {
     id: UUID
+    quantity: number
     dateOfReturn: string
     reason: string
     order: UUID

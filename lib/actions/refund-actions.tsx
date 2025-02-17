@@ -41,7 +41,7 @@ export const searchOrderItemRefunds = async (
             filters: [
                 {
                     key:"orderItem.name",
-                    operator:"EQUAL",
+                    operator:"LIKE",
                     field_type:"STRING",
                     value:q
                 }
@@ -56,6 +56,7 @@ export const searchOrderItemRefunds = async (
             size:pageLimit ? pageLimit : 10
         }
         const location = await getCurrentLocation();
+        // console.log("The location passed is: ", location)
         const refunds = await  apiClient.post(
             `/api/order-item-refunds/${location?.id}`,
             query

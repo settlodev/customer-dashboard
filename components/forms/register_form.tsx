@@ -41,7 +41,6 @@ import {
     EyeOffIcon,
     Loader2Icon,
     ChevronRight,
-    ChevronDownIcon,
 } from "lucide-react";
 import _ from "lodash";
 import { BusinessSchema } from "@/types/business/schema";

@@ -72,7 +72,7 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
       case 'ORDER_ITEM_DELETE':
       case 'ORDER_ITEM_REFUND':
         if (movement.order) {
-          router.push(`/orders/${movement.order}`);
+          router.push(`/refunds/${movement.order}`);
         }
         break;
       

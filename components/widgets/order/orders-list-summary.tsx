@@ -2,11 +2,22 @@ import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Clock, DollarSign, Package, AlertCircle } from "lucide-react";
 
-const OrdersSummary = ({ data }) => {
+interface Order {
+  amount: number;
+  orderPaymentStatus: string;
+  orderStatus: string;
+}
+
+interface Data {
+  totalElements: number;
+  content: Order[];
+}
+
+const OrdersSummary = ({ data }: { data: Data }) => {
     const totalOrders = data.totalElements;
-    const totalRevenue = data.content.reduce((sum, order) => sum + order.amount, 0);
-    const pendingPayments = data.content.filter(order => order.orderPaymentStatus !== "PAID").length;
-    const openOrders = data.content.filter(order => order.orderStatus === "OPEN").length;
+    const totalRevenue = data.content.reduce((sum: number, order: Order) => sum + order.amount, 0);
+    const pendingPayments = data.content.filter((order: Order) => order.orderPaymentStatus !== "PAID").length;
+    const openOrders = data.content.filter((order: Order) => order.orderStatus === "OPEN").length;
 
     const stats = [
         {
