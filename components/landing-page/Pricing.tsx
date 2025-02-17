@@ -131,7 +131,7 @@ export const Pricing: React.FC = () => {
                 </div>
 
                 <div className="container mx-auto px-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                         {subscriptions.map((sub, index) => (
                             <PricingCard
                                 key={sub.id}
