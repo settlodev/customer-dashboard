@@ -15,36 +15,38 @@ import {
 } from "@/routes";
 import { AuthToken } from "@/types/types";
 import { Business } from "@/types/business/type";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import type { Session } from "next-auth";
+
+// Extend NextRequest to include auth property
+interface RequestWithAuth extends NextRequest {
+  auth: Session | null;
+}
 
 const { auth } = NextAuth(authConfig);
 
-export default auth((req) => {
-  const { nextUrl } = req;
-  const isLoggedIn = !!req.auth;
+export default auth((req: NextRequest) => {
+  // Cast the request to include auth property
+  const request = req as RequestWithAuth;
+  const { nextUrl } = request;
+  const isLoggedIn = !!request.auth;
 
-  const isApiAuthRoute = nextUrl.pathname.startsWith(apiAuthPrefix);
-  const isPublicRoute = publicRoutes.some(route => {
+  // Helper function to check if a route matches the pattern
+  const matchesRoute = (route: string) => {
     const pattern = route.replace(/\[.*?\]/g, '[\\w-]+');
     const regex = new RegExp(`^${pattern}$`);
     return regex.test(nextUrl.pathname);
-  });
-  const isAuthRoute = authRoutes.includes(nextUrl.pathname);
-  const isUpdatePasswordRoute = nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL);
-  const isLoginPage = nextUrl.pathname === "/login";
+  };
 
-  // Allow access to API routes, public routes, and password update routes
-  if (isApiAuthRoute || isPublicRoute || isUpdatePasswordRoute) {
-    return;
+  // Early returns for API and public routes
+  if (nextUrl.pathname.startsWith(apiAuthPrefix) || 
+      publicRoutes.some(matchesRoute) || 
+      nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL)) {
+    return NextResponse.next();
   }
 
-  // Handle login page separately to prevent redirect loops
-  if (isLoginPage) {
-    if (isLoggedIn) {
-      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
-    }
-    return;
-  }
-
+  // Parse auth token and current business
   let authToken: AuthToken | null = null;
   let currentBusiness: Business | null = null;
 
@@ -53,72 +55,72 @@ export default auth((req) => {
     if (tokens) {
       authToken = JSON.parse(tokens);
       const currentBusinessToken = cookies().get("currentBusiness");
-
       if (currentBusinessToken?.value) {
         currentBusiness = JSON.parse(currentBusinessToken.value);
       }
     }
   } catch (error) {
     console.error("Error parsing tokens:", error);
-    return Response.redirect(new URL("/login", nextUrl));
+    // Only redirect to login if we're not already there
+    return nextUrl.pathname !== "/login" 
+      ? NextResponse.redirect(new URL("/login", nextUrl))
+      : NextResponse.next();
   }
 
   // Handle unauthenticated users
   if (!isLoggedIn || !authToken) {
-    if (isAuthRoute) {
-      return;
+    // Allow access to auth routes
+    if (authRoutes.includes(nextUrl.pathname)) {
+      return NextResponse.next();
     }
-    return Response.redirect(new URL("/login", nextUrl));
+    // Only redirect to login if we're not already there
+    return nextUrl.pathname !== "/login" 
+      ? NextResponse.redirect(new URL("/login", nextUrl))
+      : NextResponse.next();
   }
 
-  // Handle authenticated users
-  if (isLoggedIn) {
-    // Prevent authenticated users from accessing auth routes
-    if (isAuthRoute) {
-      return Response.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
-    }
+  // Handle authenticated users trying to access auth routes
+  if (authRoutes.includes(nextUrl.pathname)) {
+    return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
+  }
 
-    // Email verification check
-    if (authToken.emailVerified === null) {
-      if (nextUrl.pathname === VERIFICATION_PAGE) {
-        return;
-      }
-      if (nextUrl.pathname !== VERIFICATION_REDIRECT_URL) {
-        return Response.redirect(new URL(VERIFICATION_REDIRECT_URL, nextUrl));
-      }
-      return;
+  // Priority-based redirect chain
+  const redirectChain = [
+    {
+      condition: () => authToken?.emailVerified === null && nextUrl.pathname !== VERIFICATION_PAGE,
+      destination: VERIFICATION_REDIRECT_URL,
+      allowedPath: VERIFICATION_PAGE
+    },
+    {
+      condition: () => !authToken?.businessComplete,
+      destination: COMPLETE_ACCOUNT_REGISTRATION_URL,
+      allowedPath: COMPLETE_ACCOUNT_REGISTRATION_URL
+    },
+    {
+      condition: () => authToken?.businessComplete && !currentBusiness,
+      destination: SELECT_BUSINESS_URL,
+      allowedPath: SELECT_BUSINESS_URL
+    },
+    {
+      condition: () => authToken?.businessComplete && currentBusiness && !authToken?.locationComplete,
+      destination: COMPLETE_BUSINESS_LOCATION_SETUP_URL,
+      allowedPath: COMPLETE_BUSINESS_LOCATION_SETUP_URL
     }
+  ];
 
-    // Business registration check
-    if (!authToken.businessComplete) {
-      if (nextUrl.pathname === COMPLETE_ACCOUNT_REGISTRATION_URL) {
-        return;
-      }
-      return Response.redirect(new URL(COMPLETE_ACCOUNT_REGISTRATION_URL, nextUrl));
-    }
-
-    // Business selection check
-    if (authToken.businessComplete && !currentBusiness) {
-      if (nextUrl.pathname === SELECT_BUSINESS_URL) {
-        return;
-      }
-      return Response.redirect(new URL(SELECT_BUSINESS_URL, nextUrl));
-    }
-
-    // Location setup check
-    if (authToken.businessComplete && currentBusiness && !authToken.locationComplete) {
-      if (nextUrl.pathname === COMPLETE_BUSINESS_LOCATION_SETUP_URL) {
-        return;
-      }
-      return Response.redirect(new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, nextUrl));
+  // Check redirect chain
+  for (const { condition, destination, allowedPath } of redirectChain) {
+    if (condition()) {
+      // Only redirect if we're not already at the allowed path
+      return nextUrl.pathname !== allowedPath
+        ? NextResponse.redirect(new URL(destination, nextUrl))
+        : NextResponse.next();
     }
   }
 
-  return;
+  return NextResponse.next();
 });
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|images|favicon.ico).*)",
-  ]
+  matcher: ["/((?!_next/static|_next/image|images|favicon.ico).*)"]
 };
