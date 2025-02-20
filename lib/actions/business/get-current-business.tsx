@@ -100,7 +100,7 @@ export const getBusinessDropDown = async (): Promise<Business[] | null> => {
     } catch (error) {
         console.error("Failed to get business list:", error);
 
-        await signOut();
+        // await signOut();
         return null;
     }
 }
