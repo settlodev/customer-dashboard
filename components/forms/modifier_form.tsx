@@ -202,7 +202,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
                     <ProductVariantSelector
                      value={field.value}
                      onChange={field.onChange}
-                     placeholder="Select room to reserve"
+                     placeholder="Select product variant"
                      isDisabled={isPending}
                     />
                   </FormControl>

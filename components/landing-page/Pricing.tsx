@@ -111,7 +111,7 @@ export const Pricing: React.FC = () => {
     }, []);
 
     return (
-        <section className="relative w-full overflow-hidden py-24">
+        <section id="pricing" className="relative w-full overflow-hidden py-24">
             {/* Background with gradients */}
             <div className="absolute inset-0">
                 <div className="absolute inset-0 bg-gradient-to-br from-emerald-50 via-white to-white" />
@@ -131,7 +131,7 @@ export const Pricing: React.FC = () => {
                 </div>
 
                 <div className="container mx-auto px-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                         {subscriptions.map((sub, index) => (
                             <PricingCard
                                 key={sub.id}

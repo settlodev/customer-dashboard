@@ -3,7 +3,7 @@ import {ColumnDef} from "@tanstack/react-table";
 import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
-// import {CellAction} from "@/components/tables/orders/cell-action";
+import {CellAction} from "@/components/tables/refunds/cell-action";
 import { OrderItemRefunds } from "@/types/refunds/type";
 
 
@@ -98,5 +98,9 @@ export const columns: ColumnDef<OrderItemRefunds>[] = [
             
         }
 
+    },
+    {
+        id: "actions",
+        cell: ({ row }) => <CellAction data={row.original} />,
     },
 ];

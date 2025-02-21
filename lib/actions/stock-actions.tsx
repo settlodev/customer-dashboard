@@ -170,7 +170,8 @@ export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
 
 export const updateStock = async (
     id: UUID,
-    stock: z.infer<typeof StockSchema>
+    stock: z.infer<typeof StockSchema>,
+    paginationState?: { pageIndex: number; pageSize: number } | null
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
     const validData = StockSchema.safeParse(stock);
@@ -215,8 +216,17 @@ export const updateStock = async (
     }
     if (formResponse?.responseType === "error") return parseStringify(formResponse);
 
-    revalidatePath("/stocks")
-    redirect("/stocks");
+    revalidatePath("/stock-variants")
+    if (paginationState && typeof paginationState.pageIndex === 'number' && typeof paginationState.pageSize === 'number') {
+        const page = paginationState.pageIndex + 1; 
+        const limit = paginationState.pageSize;
+        console.log('↪️ Redirecting to:', `/stock-variants?page=${page}&limit=${limit}`);
+        redirect(`/stock-variants?page=${page}&limit=${limit}`);
+    } else {
+        console.log('↪️ Redirecting to default products page');
+        redirect("/stock-variants");
+    }
+    
 };
 
 export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {

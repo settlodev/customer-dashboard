@@ -49,7 +49,7 @@ type ProductFormProps = {
 };
 
 export default function ProductForm({ item }: ProductFormProps) {
-    console.log("ProductForm item:", item );
+    // console.log("ProductForm item:", item );
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     const [showTrackingModal, setShowTrackingModal] = useState(false);
@@ -89,6 +89,7 @@ export default function ProductForm({ item }: ProductFormProps) {
         name: "variants"
     });
 
+    
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
             console.log("errors", errors);
@@ -152,17 +153,22 @@ export default function ProductForm({ item }: ProductFormProps) {
 
 
     const submitData = (values: z.infer<typeof ProductSchema>) => {
+
+        const stored = localStorage.getItem('pagination-products');
+        const paginationState = stored ? JSON.parse(stored) : null;
+        console.log('Pagination state:', paginationState);
+        
         setResponse(undefined);
         const productData = {
             ...values,
             image: imageUrl
         };
 
-        console.log("Submitting data:", productData);
+        // console.log("Submitting data:", productData);
 
         startTransition(() => {
             if (item) {
-                updateProduct(item.id, productData)
+                updateProduct(item.id, productData,paginationState)
                     .then((data) => {
                         if (data) setResponse(data);
                         if (data?.responseType === "success") {
@@ -490,7 +496,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                             <FormControl>
                                                                 <NumericFormat
                                                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                                                    value={field.value}
+                                                                    value={field.value ?? 0}
                                                                     onValueChange={(values) => {
                                                                         field.onChange(Number(values.value));
                                                                     }}

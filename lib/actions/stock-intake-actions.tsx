@@ -114,32 +114,25 @@ export const createStockIntake = async (
 };
 
 
-export const getStockIntake= async (id:UUID, stockVariant:UUID) : Promise<ApiResponse<StockIntake>> => {
-
-    console.log("The id  & stockVariant to get stock intake: ", id , stockVariant)
-
+export const getStockIntake= async (id:UUID, stockVariant:UUID)  => {
+    // const formResponse: FormResponse | null = null;
+  
+    try {
     const apiClient = new ApiClient();
-    const query ={
-        filters:[
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            }
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
-    }
-    console.log("The query to get stock intake: ", query)
-    const response = await apiClient.post(
+    const response = await apiClient.get(
         `/api/stock-intakes/${stockVariant}/${id}`,
-        query,
-    );
-
+       
+    )
+   
     return parseStringify(response)
+
+    } catch (error) {
+        console.error("Error fetching stock intake:", error);
+        throw error
+    }
 }
+
+    
 
 
 export const updateStockIntake = async (

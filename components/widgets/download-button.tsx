@@ -73,12 +73,13 @@ const DownloadButton = ({ orderNumber }: DownloadButtonProps) => {
   };
 
   return (
+
     <button
       onClick={handleDownload}
-      className="bg-emerald-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-700 transition-colors"
+      className="flex justify-center items-center gap-1 lg:w-[50%] w-full px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors "
     >
-      <Download className="w-4 h-4" />
-      Download Receipt
+      <Download size={16} />
+      Download
     </button>
   );
 };

@@ -149,7 +149,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                     )}
                                 />
 
-                                <div className="lg:grid grid-cols-2  gap-4 mt-2">
+                                <div className="lg:grid grid-cols-2 items-center gap-4 mt-2">
                                     <div className="mt-4 flex">
                                         <div className="flex-1">
                                             <FormField
@@ -182,40 +182,35 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                         </div>
                                     </div>
 
-                                    <div className="mt-4 flex">
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="value"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Value / Amount</FormLabel>
-                                                        <FormControl>
-
-                                                        <NumericFormat
-                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                value={field.value}
-                                                                disabled={isPending}
-                                                                placeholder="Enter stock value"
-                                                                thousandSeparator={true}
-                                                                allowNegative={false}
-                                                                onValueChange={(values) => {
-                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                    field.onChange(rawValue);
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
+                                    {/* staff */}
+                                    <FormField
+                                        control={form.control}
+                                        name="staff"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Staff</FormLabel>
+                                                <FormControl>
+                                                    <StaffSelectorWidget
+                                                        value={field.value}
+                                                        onChange={field.onChange}
+                                                        onBlur={field.onBlur}
+                                                        isRequired
+                                                        isDisabled={isPending}
+                                                        label="staff"
+                                                        placeholder="Select staff"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                   
                                 </div>
 
                                 <div className="mt-4 grid lg:grid-cols-2 gap-4">
+                            
                                     {/* Reason for Modification */}
-                                    <FormField
+                                   <FormField
                                         control={form.control}
                                         name="reason"
                                         render={({ field }) => (
@@ -242,29 +237,6 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                                                             </FormItem>
                                                         ))}
                                                     </RadioGroup>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {/* staff */}
-                                    <FormField
-                                        control={form.control}
-                                        name="staff"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Staff</FormLabel>
-                                                <FormControl>
-                                                    <StaffSelectorWidget
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="staff"
-                                                        placeholder="Select staff"
-                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

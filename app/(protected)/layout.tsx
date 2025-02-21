@@ -17,10 +17,10 @@ export default async function RootLayout({children}: {
     const locationList = await fetchAllLocations();
 
     const businessData = {
-        "business": currentBusiness,
-        "businessList": businessList,
-        "locationList": locationList,
-        "currentLocation": currentLocation
+        business: currentBusiness, 
+        businessList: businessList || [],  
+        locationList: locationList || [], 
+        currentLocation: currentLocation 
     }
 
     return (

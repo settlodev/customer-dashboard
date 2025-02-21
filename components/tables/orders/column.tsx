@@ -6,7 +6,6 @@ import {Button} from "@/components/ui/button";
 import {CellAction} from "@/components/tables/orders/cell-action";
 import { Orders } from "@/types/orders/type";
 
-
 export const columns: ColumnDef<Orders>[] = [
     {
         id: "select",
@@ -29,117 +28,123 @@ export const columns: ColumnDef<Orders>[] = [
     },
     {
         accessorKey: "orderNumber",
-        enableHiding: false,
-        header: ({ column }) => {
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                className="text-left p-0"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            >
+                Order #
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({ row }) => (
+            <div className="font-medium">{row.original.orderNumber}</div>
+        ),
+    },
+    {
+        accessorKey: "customerName",
+        header: "Customer",
+        cell: ({ row }) => (
+            <div className="flex flex-col">
+                <span className="font-medium">{row.original.customerName}</span>
+                <span className="text-sm text-gray-500">{row.original.platformType}</span>
+            </div>
+        ),
+    },
+    {
+        accessorKey: "amount",
+        header: ({ column }) => (
+            <Button
+                variant="ghost"
+                className="text-left p-0"
+                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+            >
+                Amount
+                <ArrowUpDown className="ml-2 h-4 w-4" />
+            </Button>
+        ),
+        cell: ({ row }) => {
+            const amount = parseFloat(String(row.original.amount));
+            const formatted = new Intl.NumberFormat('en-Tz', {
+                style: 'currency',
+                currency: 'Tzs'
+            }).format(amount);
+
             return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Order Number
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
+                <div className="font-medium">
+                    {formatted}
+                </div>
             );
         },
     },
     {
-        
-        accessorKey: "openedDate",
-        header: "Open Date",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const orderDate = row.original.openedDate;
-            const formatted = new Intl.DateTimeFormat("en",{dateStyle: "medium",timeStyle: "short"}).format(new Date(orderDate));
-            return <div className="w-[100px]">{formatted}</div>;
-        }
-       
-    },
-    {
-        
-        accessorKey: "closedDate",
-        header: "Closed Date",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const closedDate = row.original.closedDate;
-            const formatted = new Intl.DateTimeFormat("en",{dateStyle: "medium",timeStyle: "short",timeZone: "UTC"}).format(new Date(closedDate));
-            return <div className="w-[100px]">{
-                closedDate ? formatted : "-"
-            }</div>;
-        }
-       
-    },
-    {
-        accessorKey:'orderType',
-        header: "OrderType",
+        accessorKey: "orderType",
+        header: "Order Type",
         cell: ({ row }) => {
             const orderType = row.original.orderType;
             return (
-                <div className="flex items-center px-2 py-1 rounded">
+                <div className="flex items-center">
                     {orderType === "IMMEDIATE" && (
-                        <span className="text-white bg-[#FF8755] p-1 rounded-sm">Immediate</span>
+                        <span className="text-white bg-[#FF8755] px-2 py-1 rounded-full text-xs">
+                            Immediate
+                        </span>
                     )}
                     {orderType === "RESERVATION" && (
-                        <span className="text-white bg-yellow-500 p-1 rounded-sm">Reservation</span>
+                        <span className="text-white bg-yellow-500 px-2 py-1 rounded-full text-xs">
+                            Reservation
+                        </span>
                     )}
                 </div>
-            )
+            );
         },
     },
     {
         accessorKey: "orderPaymentStatus",
-        header: "Payment",
+        header: "Payment status",
         cell: ({ row }) => {
-            const paymentStatus = row.original.orderPaymentStatus;
-            return (
-                <div className="flex items-center px-2 py-1 rounded">
-                    {paymentStatus === "PAID" && (
-                        <span className="text-white bg-green-500 p-1 rounded-sm">Paid</span>
-                    )}
-                    {paymentStatus === "PARTIAL_PAID" && (
-                        <span className="text-sm text-white bg-yellow-500 p-1 rounded-sm">Partial Paid</span>
-                    )}
-                    {paymentStatus === "NOT_PAID" && (
-                        <span className="text-sm text-white bg-gray-500 p-1 rounded-sm">Not Paid</span>
-                    )}
-                </div>
-            )
-        },
-        enableHiding: false,
-    },
-    {
-        accessorKey: "items",
-        header: "Items",
-        cell: ({ row }) => {
-            const items = row.original.items.length;
-            return (
-                <div className="flex items-center px-2 py-1 rounded">
-                    {items}
-                </div>
-            )
-        }
+            const status = row.original.orderPaymentStatus;
+            const statusStyles = {
+                PAID: "bg-green-500",
+                PARTIAL_PAID: "bg-yellow-500",
+                NOT_PAID: "bg-gray-500"
+            };
+            const statusText = {
+                PAID: "Paid",
+                PARTIAL_PAID: "Partial",
+                NOT_PAID: "Unpaid"
+            };
 
+            return (
+                <div className="flex items-center">
+                    <span className={`${statusStyles[status as keyof typeof statusStyles]} text-white px-2 py-1 rounded-full text-xs`}>
+                        {statusText[status as keyof typeof statusText]}
+                    </span>
+                </div>
+            );
+        },
     },
     {
         accessorKey: "orderStatus",
-        header: "Status",
+        header: "Order status",
         cell: ({ row }) => {
-            const orderStatus = row.original.orderStatus;
+            const status = row.original.orderStatus;
             return (
-                <div className="flex items-center px-2 py-1 rounded">
-                    {orderStatus === "OPEN" && (
-                        <span className="text-white bg-blue-500 p-1 rounded-sm">Open</span>
+                <div className="flex items-center">
+                    {status === "OPEN" && (
+                        <span className="text-white bg-blue-500 px-2 py-1 rounded-full text-xs">
+                            Open
+                        </span>
                     )}
-                    {orderStatus === "CLOSED" && (
-                        <span className="text-white bg-green-500 p-1 rounded-sm">Closed</span>
+                    {status === "CLOSED" && (
+                        <span className="text-white bg-green-500 px-2 py-1 rounded-full text-xs">
+                            Closed
+                        </span>
                     )}
                 </div>
-            )
+            );
         },
-        enableHiding: false,
     },
-    
-    
     {
         id: "actions",
         cell: ({ row }) => <CellAction data={row.original} />,

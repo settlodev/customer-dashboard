@@ -28,7 +28,7 @@ const Dashboard: React.FC = () => {
         const [summary, orders] = await Promise.all([fetchSummaries(), fetchOrders()]);
         setSummaries(summary as SummaryResponse);
         setOrders(orders);
-        console.log("Summaries and orders are as follow:", summary);
+        // console.log("Summaries and orders are as follow:", summary);
       } catch (error) {
         console.error("Error fetching summaries:", error);
       }
@@ -61,7 +61,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-between  p-3">
+      <div className="flex justify-between p-1 mt-6">
         <div>
         </div>
         <DateRangePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>} />

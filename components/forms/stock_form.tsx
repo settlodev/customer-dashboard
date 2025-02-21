@@ -79,8 +79,11 @@ export default function StockForm({ item }: StockFormProps) {
 
     const submitData = (values: z.infer<typeof StockSchema>) => {
         
-        setResponse(undefined);
+        const stored = localStorage.getItem('pagination-stock-variants');
+        const paginationState = stored ? JSON.parse(stored) : null;
+        console.log('Pagination state:', paginationState);
 
+        setResponse(undefined);
         const updatedValues = {
             ...values,
             stockVariants: values.stockVariants.map(variant => ({
@@ -96,7 +99,7 @@ export default function StockForm({ item }: StockFormProps) {
 
             if (item) {
                 // console.log('Updating existing stock with ID:', item);
-                updateStock(item.id, updatedValues)
+                updateStock(item.id, updatedValues,paginationState)
                     .then((data) => {
                         // console.log('Update stock response:', data);
                         if (data) setResponse(data);

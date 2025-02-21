@@ -3,7 +3,7 @@ import { MapPin, Clock, Phone, Mail } from 'lucide-react';
 
 export const LocationSection = () => {
     return (
-        <section className="relative w-full h-[800px]">
+        <section id="contacts" className="relative w-full h-[800px]">
             <div className="absolute inset-0 w-full h-full">
                 <iframe
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3961.8880255231497!2d39.2491219!3d-6.7793289!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x185c4d1423209e71%3A0xf723736fe933f716!2sSettlo%20Technologies%20Ltd!5e0!3m2!1sen!2s!4v1705520169789!5m2!1sen!2s"

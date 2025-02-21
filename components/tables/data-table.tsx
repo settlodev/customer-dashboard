@@ -45,6 +45,7 @@ import { CSVStockDialog } from "../csv/stockCsvImport";
 import { ProductWithStockCSVDialog } from "../csv/ProductWithStockCsvImport";
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import Loading from "@/app/loading";
+import { usePaginationState } from "@/hooks/usePaginationState";
 // import TableExport from "../widgets/export";
 // import { StockIntake } from "@/types/stock-intake/type";
 
@@ -76,6 +77,21 @@ export function DataTable<TData, TValue>({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  
+
+  const { initializePaginationState, savePaginationState } = usePaginationState({
+    key: pathname.replace('/', '') // Use the route as the key, e.g., 'products'
+  });
+
+  // Initialize state on component mount
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      initializePaginationState();
+    }, 0);
+    
+    return () => clearTimeout(timer);
+  }, [searchParams]);
+
   // Search params
   const page = searchParams?.get("page") ?? "1";
   const pageAsNumber = Number(page);
@@ -85,6 +101,31 @@ export function DataTable<TData, TValue>({
   const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = React.useState<string>("");
+
+  // console.log('Current pagination state:', {
+  //   page: fallbackPage,
+  //   pageSize: fallbackPerPage,
+  //   pathname,
+  //   searchParams: Object.fromEntries(searchParams?.entries() ?? [])
+  // });
+
+   // Save pagination state when it changes
+   React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const paginationState = {
+        pageIndex: fallbackPage - 1,
+        pageSize: fallbackPerPage,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem('pagination-products', JSON.stringify(paginationState));
+    }
+  }, [fallbackPage, fallbackPerPage]);
+
+  React.useEffect(() => {
+    if (!searchParams?.has("_rsc")) {
+      savePaginationState(String(fallbackPage), String(fallbackPerPage));
+    }
+  }, [fallbackPage, fallbackPerPage]);
   
   // Loading state
   const [loading, setLoading] = React.useState<boolean>(false);

@@ -1,58 +1,31 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import CreatedBusinessList from './business_list';
 import { getBusinessDropDown } from '@/lib/actions/business/get-current-business';
 import RegisterForm from '@/components/forms/register_form';
-import { Business } from "@/types/business/type";
+import { redirect } from "next/navigation";
+import { Suspense } from 'react';
+import Loading from '@/app/loading';
 
-export default function BusinessRegistrationPage() {
-  const [businesses, setBusinesses] = useState<Business[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [, setError] = useState<string | null>(null);
-  const router = useRouter();
+export default async function BusinessRegistrationPage() {
+  try {
+    const data = await getBusinessDropDown();
 
-  useEffect(() => {
-    let isMounted = true;
+    // If data is null, redirect to login
+    if (data === null) {
+      redirect('/login');
+    }
 
-    const fetchBusinesses = async () => {
-      try {
-        const data = await getBusinessDropDown();
-        if (isMounted) {
-          setBusinesses(data);
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError(err instanceof Error ? err.message : 'Failed to load businesses');
-          console.error('Error fetching businesses:', err);
-          router.push('/login');
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
+    // Check for businesses
+    if (Array.isArray(data) && data.length > 0) {
+      redirect('/select-business');
+    }
 
-    fetchBusinesses();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [router]);
-
-  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div>Loading...</div>
-      </div>
+      <Suspense fallback={<Loading />}>
+        <RegisterForm step="step3" />
+      </Suspense>
     );
+  } catch (error) {
+    console.error('Error fetching business data:', error);
+    // Redirect to login on error
+    redirect('/login');
   }
-
-  return businesses.length > 0 ? (
-    <CreatedBusinessList businesses={businesses} />
-  ) : (
-    <RegisterForm step="step3" />
-  );
 }

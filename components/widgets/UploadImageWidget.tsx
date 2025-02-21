@@ -16,18 +16,26 @@ interface ImageUploadProps {
 }
 
 function UploadImageWidget({
-                               setImage,
-                               displayImage = true,
-                               displayStyle = 'default',
-                               imagePath = 'products',
-                               label = 'Upload image',
-                               showLabel = true,
-                               image = null,
-                               className = ''
-                           }: ImageUploadProps) {
+    setImage,
+    displayImage = true,
+    displayStyle = 'default',
+    imagePath = 'products',
+    label = 'Upload image',
+    showLabel = true,
+    image = null,
+    className = ''
+}: ImageUploadProps) {
     const [uploading, setUploading] = useState<boolean>(false);
     const [imageUrl, setImageUrl] = useState<string>(image || '');
 
+    const isValidImageUrl = (image: string) => {
+        return (
+            image &&
+            (image.startsWith('http://') ||
+                image.startsWith('https://') ||
+                image.startsWith('/'))
+        );
+    };
     const uploadMyImage = async (mFile: File) => {
         setUploading(true);
         await uploadImage(mFile, imagePath, function (response) {
@@ -73,7 +81,7 @@ function UploadImageWidget({
                 </div>
             )}
 
-            {(imageUrl && displayImage) ? (
+            {isValidImageUrl(imageUrl) && displayImage ? (
                 !uploading ? (
                     <div className="w-full h-full relative">
                         <Image
@@ -98,6 +106,7 @@ function UploadImageWidget({
                     )}
                 </>
             )}
+
 
             <input
                 className="hidden"

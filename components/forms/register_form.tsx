@@ -41,7 +41,6 @@ import {
     EyeOffIcon,
     Loader2Icon,
     ChevronRight,
-    ChevronDownIcon,
 } from "lucide-react";
 import _ from "lodash";
 import { BusinessSchema } from "@/types/business/schema";
@@ -109,9 +108,10 @@ function RegisterForm({ step }: { step: string }) {
     const [imageUrl, setImageUrl] = useState<string>("");
     const [locationImageUrl, setLocationImageUrl] = useState<string>("");
     const router = useRouter();
-    const session = useSession(); 
+    const session = useSession();
     const searchParams = useSearchParams();
     const subscription = searchParams.get('package');
+    const referredByCode = searchParams.get("referredByCode");
 
     useEffect(() => {
         if (subscription) {
@@ -131,10 +131,18 @@ function RegisterForm({ step }: { step: string }) {
 
     const { toast } = useToast();
 
+
     const form = useForm<z.infer<typeof RegisterSchema>>({
         resolver: zodResolver(RegisterSchema),
-        defaultValues: { },
+        defaultValues: {},
     });
+
+    useEffect(() => {
+        if (referredByCode) {
+            form.setValue("referredByCode", referredByCode);
+        }
+    }, [referredByCode, form]);
+
 
     const emailVerificationForm = useForm<z.infer<typeof EmailVerificationSchema>>({
         resolver: zodResolver(EmailVerificationSchema),
@@ -203,7 +211,7 @@ function RegisterForm({ step }: { step: string }) {
         startTransition(() => {
             register(values)
                 .then((data: FormResponse) => {
-                  
+
                     if (data.responseType === "error") {
                         setError(data.message);
                     }
@@ -282,7 +290,7 @@ function RegisterForm({ step }: { step: string }) {
                         setTimeout(() => {
                             setError('');
                             router.push('/login')
-                        },3000)
+                        }, 3000)
                     } else {
                         setEmailSent(true);
                     }
@@ -333,9 +341,6 @@ function RegisterForm({ step }: { step: string }) {
                             <form onSubmit={form.handleSubmit(submitData)}>
                                 <div className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                     <h3 className="font-bold flex-1">Basic Information</h3>
-                                    <span className="flex-end">
-                                        <ChevronDownIcon />
-                                    </span>
                                 </div>
                                 <div className="grid gap-4">
                                     <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
@@ -439,33 +444,30 @@ function RegisterForm({ step }: { step: string }) {
                                         />
 
 
-                                                    <FormField
-                                                        control={form.control}
-                                                        name="referredByCode"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Referral Code</FormLabel>
-                                                                <FormControl>
-                                                                    <Input
-                                                                        {...field}
-                                                                        disabled={isPending}
-                                                                        
-                                                                        value={field.value || ""}
-                                                                        placeholder="Enter your referral code"
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                
+                                        <FormField
+                                            control={form.control}
+                                            name="referredByCode"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Referral Code</FormLabel>
+                                                    <FormControl>
+                                                        <Input
+                                                            {...field}
+                                                            disabled={isPending}
 
+                                                            value={field.value || ""}
+                                                            placeholder="Enter your referral code"
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
 
                                     <div
                                         className="pl-0 pr-3 pt-2 pb-2 mb-4 border-b-1 border-b-gray-200- flex rounded-none">
                                         <h3 className="font-bold flex-1">Login Information</h3>
-                                        <span className="flex-end"><ChevronDownIcon /></span>
                                     </div>
 
                                     <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-4">
@@ -505,7 +507,6 @@ function RegisterForm({ step }: { step: string }) {
                                                                     <EyeIcon size={20} />}</span>
                                                         </div>
                                                     </FormControl>
-                                                    <FormDescription>{/* Enter user name */}</FormDescription>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -513,18 +514,13 @@ function RegisterForm({ step }: { step: string }) {
                                     </div>
                                 </div>
 
-                                <div className="">
-                                    <div className="w-full sm:w-auto">
-                                        <Button
-                                            type="submit"
-                                            disabled={isPending || emailVerified}
-                                            className="w-full sm:w-auto mt-4 p-7 hover:bg-emerald-500">
-                                            {(isPending) ?
-                                                <Loader2Icon className="w-6 h-6 animate-spin" /> :
-                                                <>Next: Business info <ChevronRight /></>
-                                            }
-                                        </Button>
-                                    </div>
+                                <div className="w-full sm:w-auto mt-5">
+                                    <Button type="submit" disabled={isPending || emailVerified} className="hover:bg-emerald-500">
+                                        {(isPending) ?
+                                            <Loader2Icon className="w-6 h-6 animate-spin" /> :
+                                            <>Next: Business info <ChevronRight /></>
+                                        }
+                                    </Button>
                                 </div>
                             </form>
                         </Form>
@@ -540,7 +536,7 @@ function RegisterForm({ step }: { step: string }) {
                                     <CardTitle>Verify email</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                <FormError message={error ? `${error}. Please log in to resend the email for verification.` : ""} />
+                                    <FormError message={error ? `${error}. Please log in to resend the email for verification.` : ""} />
                                     <CardDescription className="font-normal">
                                         We have sent a link with activation instruction to your email address.
                                         Please check your email and click on the link to verify your email address.
@@ -615,11 +611,11 @@ function RegisterForm({ step }: { step: string }) {
                                         <div className="mt-4 flex flex-col lg:flex-row gap-6">
 
                                             <div>
-                                                <UploadImageWidget 
-                                                    imagePath={'business'} 
-                                                    displayStyle={'default'} 
-                                                    displayImage={true} 
-                                                    setImage={setImageUrl} 
+                                                <UploadImageWidget
+                                                    imagePath={'business'}
+                                                    displayStyle={'default'}
+                                                    displayImage={true}
+                                                    setImage={setImageUrl}
                                                     label={'Upload business logo'}
                                                 />
 
@@ -646,51 +642,51 @@ function RegisterForm({ step }: { step: string }) {
                                                     />
 
                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                                                    <FormField
-                                                        control={businessForm.control}
-                                                        name="businessType"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Type of business</FormLabel>
-                                                                <FormControl>
-                                                                    <BusinessTypeSelector
-                                                                        value={field.value}
-                                                                        onChange={field.onChange}
-                                                                        onBlur={field.onBlur}
-                                                                        isRequired
-                                                                        isDisabled={isPending}
-                                                                        label="Business Type"
-                                                                        placeholder="Select business type"
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                                        <FormField
+                                                            control={businessForm.control}
+                                                            name="businessType"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Type of business</FormLabel>
+                                                                    <FormControl>
+                                                                        <BusinessTypeSelector
+                                                                            value={field.value}
+                                                                            onChange={field.onChange}
+                                                                            onBlur={field.onBlur}
+                                                                            isRequired
+                                                                            isDisabled={isPending}
+                                                                            label="Business Type"
+                                                                            placeholder="Select business type"
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
 
-                                                    <FormField
-                                                        control={businessForm.control}
-                                                        name="country"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Country of registration</FormLabel>
-                                                                <FormControl>
-                                                                    <CountrySelector
-                                                                        {...field}
-                                                                        isDisabled={isPending}
-                                                                        placeholder="Select country of registration"
-                                                                    />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                                        <FormField
+                                                            control={businessForm.control}
+                                                            name="country"
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Country of registration</FormLabel>
+                                                                    <FormControl>
+                                                                        <CountrySelector
+                                                                            {...field}
+                                                                            isDisabled={isPending}
+                                                                            placeholder="Select country of registration"
+                                                                        />
+                                                                    </FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        
+
                                         <div className="grid grid-cols-1 grid-rows-1 gap-4">
                                             <FormField
                                                 control={businessForm.control}
@@ -754,14 +750,14 @@ function RegisterForm({ step }: { step: string }) {
                                             </div>
                                             <div className="mt-4 flex flex-col lg:flex-row gap-6">
                                                 <div>
-                                                <UploadImageWidget 
-                                                imagePath={'location'} 
-                                                displayStyle={'default'} 
-                                                displayImage={true} 
-                                                setImage={setLocationImageUrl} 
-                                                />
+                                                    <UploadImageWidget
+                                                        imagePath={'location'}
+                                                        displayStyle={'default'}
+                                                        displayImage={true}
+                                                        setImage={setLocationImageUrl}
+                                                    />
                                                 </div>
-                                                
+
                                                 <div className="flex-1">
                                                     <FormField
                                                         control={locationForm.control}
@@ -794,9 +790,9 @@ function RegisterForm({ step }: { step: string }) {
                                                                     <PhoneInput
                                                                         placeholder="Enter phone number"
                                                                         {...field}
-                                                                         disabled={isPending}
-                                                                         value={field.value || ""}
-                                                                         onChange={(value) => {
+                                                                        disabled={isPending}
+                                                                        value={field.value || ""}
+                                                                        onChange={(value) => {
                                                                             console.log("Phone number:", value);
                                                                             field.onChange(value);
                                                                         }}
@@ -889,7 +885,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                 <FormLabel>Opening Time</FormLabel>
                                                                 <FormControl>
                                                                     <Select
-                                                                        disabled={isPending }
+                                                                        disabled={isPending}
                                                                         onValueChange={field.onChange}
                                                                         value={field.value}>
                                                                         <SelectTrigger>
@@ -956,6 +952,7 @@ function RegisterForm({ step }: { step: string }) {
                                                     <Button
                                                         type="submit"
                                                         disabled={isPending}
+                                                        size="sm"
                                                         className={`w-full sm:w-auto mt-3 p-7`}>
                                                         {isPending ?
                                                             <Loader2Icon className="w-6 h-6 animate-spin" /> :
@@ -970,7 +967,7 @@ function RegisterForm({ step }: { step: string }) {
                                 </CardContent>
                             </Card>
                         </>
-                    : <p>End</p>
+                            : <p>End</p>
             }
 
         </div>

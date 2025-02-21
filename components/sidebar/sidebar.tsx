@@ -15,7 +15,8 @@ import {
     Settings,
     ChevronDown,
     X,
-    CreditCard
+    CreditCard,
+    MenuIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -143,9 +144,9 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
                     <span>Settings</span>
                 </Link>
 
-                <VersionDisplay version="1.2.3" />
+                <VersionDisplay />
 
-                <p className="mt-4 text-xs text-gray-500">
+                <p className="mt-2 text-xs text-gray-500">
                     &copy; {new Date().getFullYear()} Settlo Technologies Ltd
                 </p>
             </div>
@@ -159,19 +160,20 @@ export const SidebarWrapper = ({ data }: { data: BusinessPropsType }) => {
     return (
         <>
             {/* Desktop Sidebar */}
-            <aside className="hidden lg:block left-0 top-0 h-screen w-75 bg-gray-800">
+            <aside className="hidden lg:block left-0 top-0 h-screen w-80 bg-gray-800">
                 <SidebarContent data={data} />
             </aside>
 
             {/* Mobile Sidebar */}
-            <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+           <div className="fixed top-0 z-[60] p-4 lg:hidden">
+           <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
                 <SheetTrigger asChild>
                     <Button
                         variant="ghost"
                         size="icon"
                         className="fixed top-4 left-4 z-40 lg:hidden"
                     >
-                        <ChartNoAxesColumn className="h-6 w-6" />
+                        <MenuIcon className="h-6 w-6" />
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-64 p-0 bg-gray-800">
@@ -182,6 +184,7 @@ export const SidebarWrapper = ({ data }: { data: BusinessPropsType }) => {
                     />
                 </SheetContent>
             </Sheet>
+           </div>
         </>
     );
 };

@@ -17,6 +17,7 @@ export declare interface Stock {
 export declare interface StockHistory {
     totalStockIntakes: number,
     totalStockRemaining: number,
+    totalStockValue: number,
     lowStockItems: lowStockItems[],
     outOfStockItems: outOfStockItems[]
 }

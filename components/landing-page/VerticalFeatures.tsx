@@ -111,7 +111,7 @@ export const VerticalFeatures: React.FC = () => {
   const displayedFeatures = showAll ? features : features.slice(0, 6);
 
   return (
-      <section className="relative w-full overflow-hidden py-24">
+      <section id="features" className="relative w-full overflow-hidden py-24">
         {/* Gradient Background */}
         <div className="absolute inset-0 bg-gradient-to-tl from-white via-emerald-50/30 to-white">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,0.1),transparent_50%)]" />
