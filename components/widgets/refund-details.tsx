@@ -12,7 +12,7 @@ import { OrderItemRefunds } from '@/types/refunds/type';
 
 export default function RefundDetails({ refund }: { refund: OrderItemRefunds }) {
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 mt-12">
       {/* Header Card */}
       <Card>
         <CardHeader>
@@ -26,15 +26,7 @@ export default function RefundDetails({ refund }: { refund: OrderItemRefunds }) 
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Badge variant={refund.status ? "default" : "secondary"}>
-                {refund.status ? "Active" : "Inactive"}
-              </Badge>
-              {refund.isArchived && (
-                <Badge variant="destructive">
-                  <Archive className="w-4 h-4 mr-1" />
-                  Archived
-                </Badge>
-              )}
+              
               {refund.stockReturned && (
                 <Badge variant="outline" className="bg-green-50">
                   <CheckCircle2 className="w-4 h-4 mr-1" />
