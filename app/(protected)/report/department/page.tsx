@@ -58,13 +58,13 @@ export default function DepartmentReportPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
-      <Card className="w-full">
+    <div className="container mx-auto p-4 max-w-7xl ">
+      <Card className="w-full mt-[70px] ">
         <CardHeader className="border-b pb-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="flex items-center space-x-4">
               <Select value={selectedDepartment?.id} onValueChange={(value) => setSelectedDepartment(departments.find(dept => dept.id === value))}>
-                <SelectTrigger className="w-[200px]">
+                <SelectTrigger className="w-full lg:w-[200px]">
                   <SelectValue placeholder="Select a Department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -76,7 +76,7 @@ export default function DepartmentReportPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex items-center space-x-2">
+           
             <div className="flex items-center space-x-2">
               <DateRangeSelect 
                 dateRange={dateRange} 
@@ -89,7 +89,7 @@ export default function DepartmentReportPage() {
                 {loading ? "Loading..." : "Filter"}
               </Button>
             </div>
-            </div>
+            
           </div>
         </CardHeader>
         <CardContent className="grid md:grid-cols-2 gap-4 p-6">

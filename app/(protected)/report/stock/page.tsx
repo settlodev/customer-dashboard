@@ -190,7 +190,7 @@ const StockHistoryDashboard = () => {
 
     return (
         <div className="space-y-6 p-10">
-            <h2 className="text-2xl font-semibold">Stock History</h2>
+            <h2 className="text-2xl font-semibold mt-6">Stock History</h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 

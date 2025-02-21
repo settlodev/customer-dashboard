@@ -171,7 +171,7 @@ export default function StockVariantDetails({ params }: { params: { id: string }
               <div className='grid grid-cols-2 lg:flex items-center gap-2'>
                 <DateTimePicker label="From" value={startDate} onChange={setStartDate} />
                 <DateTimePicker label="To" value={endDate} onChange={setEndDate} />
-                <Button variant="default" className='ml-4 w-full' onClick={handleFilter}>
+                <Button variant="default" className='ml-4 w-full lg:mt-4' onClick={handleFilter}>
                   Filter
                 </Button>
               </div>

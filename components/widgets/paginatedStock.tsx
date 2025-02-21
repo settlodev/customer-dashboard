@@ -45,7 +45,7 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
     const labels = {
       'STOCK_INTAKE': 'Stock Intake',
       'ORDER_ITEM_SALE': 'Sale of Item',
-      'ORDER_ITEM_DELETE': 'Deleted Order Item',
+      'ORDER_ITEM_REMOVE': 'Removed Order Item',
       'ORDER_ITEM_REFUND': 'Refund of Order Item',
       'ORDER_ITEM_AMOUNT_CHANGE': 'Amount Change',
       'ADDON_SALE': 'Addon Sale',
@@ -69,7 +69,11 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
           router.push(`/orders/${movement.order}`);
         }
         break;
-      case 'ORDER_ITEM_DELETE':
+      case 'ORDER_ITEM_REMOVE':
+        if (movement.order) {
+          router.push(`/orders/${movement.order}`);
+        }
+        break;
       case 'ORDER_ITEM_REFUND':
         if (movement.order) {
           router.push(`/refunds/${movement.order}`);
@@ -107,7 +111,7 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
             <tbody>
               {currentItems.map((movement, index) => (
                 <tr key={movement.id} 
-                className="border-b hover:bg-gray-50"
+                className="border-b hover:bg-gray-50 cursor-pointer"
                 onClick={() => handleRedirect(movement)}
                 >
                   <td className="p-2">{startIndex + index + 1}</td>

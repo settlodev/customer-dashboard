@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Calendar, Package, User, Truck, Hash, AlertTriangle } from 'lucide-react';
+import { Calendar, Package, User, Truck, Hash, AlertTriangle} from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
 
 
@@ -60,7 +60,7 @@ export default function StockIntakeDetails({ item}: { item: any }) {
                 <Hash className="h-5 w-5 text-gray-500" />
                 <div>
                   <p className="text-sm text-gray-500">Value</p>
-                  <p className="text-lg font-semibold">KES {item.value.toLocaleString()}</p>
+                  <p className="text-lg font-semibold">{item.value.toLocaleString()}</p>
                 </div>
               </div>
             </div>

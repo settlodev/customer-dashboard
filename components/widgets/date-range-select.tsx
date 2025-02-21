@@ -26,7 +26,7 @@ export function DateRangeSelect({ dateRange, onDateRangeChange }: DateRangeSelec
             id="date"
             variant={"outline"}
             className={cn(
-              "w-[300px] justify-start text-left font-normal",
+              "w-[280px] lg:w-[300px] justify-start text-left font-normal",
               !dateRange && "text-muted-foreground"
             )}
           >
