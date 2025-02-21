@@ -126,6 +126,7 @@ export interface OrderItemRefunds{
     approvedBy:string,
     approvedByName:string,
     location: string,
+    locationName: string,
     isArchived: boolean,
     comment: string,
 }

@@ -139,7 +139,7 @@ const OrderRefundSection: React.FC<OrderRefundSectionProps> = ({ orderItemRefund
                                             <div className="space-y-1">
                                                 <div>{refund.orderItemName}</div>
                                                 <div className="text-sm text-gray-500">
-                                                    {/* Location: {refund.location} */}
+                                                    Location: {refund.locationName}
                                                 </div>
                                             </div>
                                         </TableCell>
