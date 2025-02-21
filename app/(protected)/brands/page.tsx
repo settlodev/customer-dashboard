@@ -30,7 +30,7 @@ const breadCrumbItems = [{title:"Brands",link:"/brands"}];
      const pageCount = responseData.totalPages
 
     return (
-        <div className={`flex-1 space-y-4 md:p-8 pt-6`}>
+        <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
             <div className={`flex items-center justify-between mb-2`}>
                 <div className={`relative flex-1 md:max-w-md`}>
                     <BreadcrumbsNav items={breadCrumbItems} />

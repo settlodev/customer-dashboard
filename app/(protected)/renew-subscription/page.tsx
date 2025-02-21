@@ -42,8 +42,8 @@ const SubscriptionRenewal = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto p-4 space-y-6">
-      <div className='flex flex-col gap-4 lg:flex-row '>
+    <div className="max-w-6xl mx-auto p-4 space-y-6 ">
+      <div className='flex flex-col gap-4 lg:flex-row mt-16'>
         <div className='w-full lg:w-1/2'>
           <Card>
             <CardHeader>
