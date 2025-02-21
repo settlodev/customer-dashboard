@@ -15,7 +15,8 @@ import {
     Settings,
     ChevronDown,
     X,
-    CreditCard
+    CreditCard,
+    MenuIcon
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -164,14 +165,15 @@ export const SidebarWrapper = ({ data }: { data: BusinessPropsType }) => {
             </aside>
 
             {/* Mobile Sidebar */}
-            <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+           <div className="fixed top-0 z-[60] p-4 lg:hidden">
+           <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
                 <SheetTrigger asChild>
                     <Button
                         variant="ghost"
                         size="icon"
                         className="fixed top-4 left-4 z-40 lg:hidden"
                     >
-                        <ChartNoAxesColumn className="h-6 w-6" />
+                        <MenuIcon className="h-6 w-6" />
                     </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-64 p-0 bg-gray-800">
@@ -182,6 +184,7 @@ export const SidebarWrapper = ({ data }: { data: BusinessPropsType }) => {
                     />
                 </SheetContent>
             </Sheet>
+           </div>
         </>
     );
 };

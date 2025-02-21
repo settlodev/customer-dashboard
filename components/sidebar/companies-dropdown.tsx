@@ -74,7 +74,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-                className="w-[260px] bg-white/95 backdrop-blur-sm"
+                className="hidden lg:block w-[260px] bg-white/95 backdrop-blur-sm"
                 align="start"
                 side="right"
             >
