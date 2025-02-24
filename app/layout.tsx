@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import React from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { Viewport } from "next";
+import { GoogleAnalytics } from '@next/third-parties/google'
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.settlo.co.tz"),
@@ -141,6 +142,7 @@ export default async function RootLayout({
           <Providers>{children}</Providers>
         </SessionProvider>
         <Analytics />
+        <GoogleAnalytics gaId="G-7FEFKJQ300" />
       </body>
     </html>
   );
