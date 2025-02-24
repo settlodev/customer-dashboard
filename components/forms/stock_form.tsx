@@ -37,6 +37,7 @@ type StockFormProps = {
 };
 
 export default function StockForm({ item }: StockFormProps) {
+    console.log("The stock is",item)
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
 
@@ -48,6 +49,7 @@ export default function StockForm({ item }: StockFormProps) {
             status: item?.status ?? true,
             unit: item?.unit || "",
             stockVariants: item?.stockVariants.map(variant => ({
+                id: variant.id,
                 name: variant.name,
                 startingQuantity: variant.startingQuantity,
                 startingValue: variant.startingValue,
@@ -76,6 +78,16 @@ export default function StockForm({ item }: StockFormProps) {
         },
         [toast]
     );
+    const handleAddVariant = () => {
+        append({
+            name: "",
+            startingQuantity: 0,
+            startingValue: 0,
+            alertLevel: 0,
+            imageOption: "",
+            // unit: form.getValues("unit")
+        });
+    };
 
     const submitData = (values: z.infer<typeof StockSchema>) => {
         
@@ -84,24 +96,37 @@ export default function StockForm({ item }: StockFormProps) {
         console.log('Pagination state:', paginationState);
 
         setResponse(undefined);
+        
+        // When updating, preserve the existing variant IDs
         const updatedValues = {
             ...values,
-            stockVariants: values.stockVariants.map(variant => ({
-                ...variant,
-                unit: values.unit, 
-            })),
+            stockVariants: values.stockVariants.map((variant, index) => {
+                // If this is an existing variant (has an id), preserve it
+                if (item?.stockVariants[index]?.id) {
+                    return {
+                        ...variant,
+                        id: item.stockVariants[index].id,
+                        unit: values.unit
+                    };
+                }
+                // For new variants, don't include an id
+                return {
+                    ...variant,
+                    unit: values.unit
+                };
+            })
         };
 
-        // console.log('Starting submitData with values:', updatedValues);
+        console.log('Starting submitData with values:', updatedValues);
 
         startTransition(() => {
          
 
             if (item) {
-                // console.log('Updating existing stock with ID:', item);
+                console.log('Updating existing stock with ID:', updatedValues);
                 updateStock(item.id, updatedValues,paginationState)
                     .then((data) => {
-                        // console.log('Update stock response:', data);
+                        console.log('Update stock response:', data);
                         if (data) setResponse(data);
                     })
                     .catch((error) => {
@@ -254,13 +279,7 @@ export default function StockForm({ item }: StockFormProps) {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => append({
-                                        name: "",
-                                        startingQuantity: 0,
-                                        startingValue: 0,
-                                        alertLevel: 0,
-                                        imageOption: ""
-                                    })}
+                                    onClick={handleAddVariant}
                                     disabled={isPending}
                                 >
                                     <Plus className="w-4 h-4 mr-2"/>
