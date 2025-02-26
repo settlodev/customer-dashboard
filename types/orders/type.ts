@@ -1,4 +1,6 @@
 import { UUID } from "crypto"
+import { Modifier } from "../modifiers/type"
+import { Addon } from "../addon/type"
 
 export interface Orders {
     id: UUID
@@ -32,6 +34,7 @@ export interface Orders {
     discount: string
     discountName: string
     items: OrderItems[]
+    removedItems: RemovedItems[]
     orderItemRefunds:OrderItemRefunds[]
     orderType: string
     paymentType: string
@@ -79,6 +82,7 @@ export interface OrderItems {
     modifierPrice:string
     addons:string
     addonTotalPrice:string
+   
     [key: string]: any
 }
 
@@ -129,5 +133,39 @@ export interface OrderItemRefunds{
     locationName: string,
     isArchived: boolean,
     comment: string,
+}
+export interface RemovedItems{
+    id: UUID,
+    isRemoved: boolean,
+    image: string,
+    quantity: number,
+    name: string,
+    hasBeenRefunded: boolean,
+    price: number,
+    itemPrice: number,
+    itemOriginalPrice: number,
+    cost: number,
+    discountValue: number,
+    discountAmount: number,
+    netAmount: number,
+    grossProfit: number,
+    comment: string,
+    preparationStatus: boolean,
+    staffId: string,
+      staffName: string,
+      departmentName: string,
+      variant: string,
+      product: string,
+      order: string,
+      discountId: UUID,
+      stockIntake: string,
+      stockIntakeBatchNumber: string,
+      modifier:string
+    modifierPrice:string
+    addons:string
+    addonTotalPrice:string
+    canDelete: boolean,
+    isArchived: boolean,
+    status: boolean
 }
 

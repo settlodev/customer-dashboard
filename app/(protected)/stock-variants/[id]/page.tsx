@@ -119,6 +119,8 @@ export default function StockVariantDetails({ params }: { params: { id: string }
     return today;
   });
   const [endDate, setEndDate] = useState(new Date());
+  const [isFiltering, setIsFiltering] = useState(false); // New state for loading
+
   const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"},
     {title: `${variant[0]?.stockName}-${variant[0]?.stockVariantName}`, link: ""}];
 
@@ -129,7 +131,7 @@ export default function StockVariantDetails({ params }: { params: { id: string }
         setVariant(data);
         setFilteredMovements(data);
       } catch (error) {
-        console.error("Error fetching stock movement history:", error);
+        console.log(error);
       } finally {
         setIsLoading(false);
       }
@@ -138,12 +140,18 @@ export default function StockVariantDetails({ params }: { params: { id: string }
     fetchStockVariantDetail();
   }, [params.id]);
 
-  const handleFilter = () => {
-    const filtered = variant.filter((movement) => {
-      const movementDate = new Date(movement.dateCreated);
-      return movementDate >= startDate && movementDate <= endDate;
-    });
-    setFilteredMovements(filtered);
+  const handleFilter = async () => {
+    setIsFiltering(true); // Set loading state to true
+  
+    // Use setTimeout to allow the UI to update before filtering
+    setTimeout(async () => {
+      const filtered = variant.filter((movement) => {
+        const movementDate = new Date(movement.dateCreated);
+        return movementDate >= startDate && movementDate <= endDate;
+      });
+      setFilteredMovements(filtered);
+      setIsFiltering(false); // Reset loading state after filtering
+    }, 0); // 0 milliseconds delay
   };
 
   if (isLoading) {
@@ -157,7 +165,7 @@ export default function StockVariantDetails({ params }: { params: { id: string }
   }
 
   return (
-    <div className="p-4 space-y-4">
+    <div className="p-4 space-y-4 mt-6">
     <BreadcrumbsNav items={breadCrumbItems} />
       <Card>
         <CardContent className="pt-6">
@@ -171,9 +179,9 @@ export default function StockVariantDetails({ params }: { params: { id: string }
               <div className='grid grid-cols-2 lg:flex items-center gap-2'>
                 <DateTimePicker label="From" value={startDate} onChange={setStartDate} />
                 <DateTimePicker label="To" value={endDate} onChange={setEndDate} />
-                <Button variant="default" className='ml-4 w-full lg:mt-4' onClick={handleFilter}>
-                  Filter
-                </Button>
+                <Button variant="default" className='ml-4 w-full lg:mt-4' onClick={handleFilter} disabled={isFiltering}>
+                    {isFiltering ? "Filtering..." : "Filter"} 
+              </Button>
               </div>
             </div>
           </div>

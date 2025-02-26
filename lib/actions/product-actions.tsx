@@ -394,6 +394,7 @@ export const topSellingProduct = async (startDate?: Date, endDate?: Date,limit?:
         const topSelling = await apiClient.get(`/api/reports/${location?.id}/products/top-selling`, {
             params
         });
+        // console.log("The products sold",topSelling)
 
         return parseStringify(topSelling);
     }

@@ -52,26 +52,28 @@ const OrdersSummary = ({ data }: { data: Data }) => {
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {stats.map((stat, index) => (
-                <Card key={index} className="shadow-sm">
-                    <CardContent className="p-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-2">
-                                <div className={`${stat.color} p-2 rounded-lg text-white`}>
-                                    <stat.icon size={20} />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-gray-500">{stat.title}</p>
-                                    <h3 className="text-2xl font-bold">{stat.value}</h3>
-                                </div>
-                            </div>
-                            {stat.trend === "up" && <TrendingUp className="text-green-500" size={20} />}
-                            {stat.trend === "down" && <TrendingDown className="text-red-500" size={20} />}
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
-        </div>
+        {stats.map((stat, index) => (
+          <Card key={index} className="shadow-sm">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-start space-x-2 min-w-0"> {/* Using items-start and min-w-0 */}
+                  <div className={`${stat.color} p-2 rounded-lg text-white flex-shrink-0`}>
+                    <stat.icon size={20} />
+                  </div>
+                  <div className="min-w-0"> {/* Added min-w-0 to allow text truncation */}
+                    <p className="text-sm font-medium text-gray-500 truncate">{stat.title}</p>
+                    <h3 className="text-xl font-bold truncate md:text-2xl">{stat.value}</h3>
+                  </div>
+                </div>
+                <div className="flex-shrink-0 ml-2">
+                  {stat.trend === "up" && <TrendingUp className="text-green-500" size={20} />}
+                  {stat.trend === "down" && <TrendingDown className="text-red-500" size={20} />}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     );
 };
 
