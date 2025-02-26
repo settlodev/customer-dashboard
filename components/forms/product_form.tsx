@@ -78,6 +78,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                 trackingType: variant.trackingType || null,
                 trackItem: variant.trackItem || null,
                 unit: variant.unit || null,
+                barcode: variant.barcode || null,
                 purchasingPrice: variant.purchasingPrice || 0,
             })) || [{}]
         },
@@ -543,6 +544,24 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                             <Input
                                                                 {...field}
                                                                 placeholder="Enter SKU"
+                                                                disabled={isPending}
+                                                                value={field.value ?? ""}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name={`variants.${index}.barcode`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Barcode</FormLabel>
+                                                        <FormControl>
+                                                            <Input
+                                                                {...field}
+                                                                placeholder="Enter barcode"
                                                                 disabled={isPending}
                                                                 value={field.value ?? ""}
                                                             />
