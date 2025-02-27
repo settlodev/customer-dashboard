@@ -18,21 +18,21 @@ const testimonials: Testimonial[] = [
         name: 'Yolanda',
         title: 'Business Owner',
         text: 'I travel a lot, hivyo Settlo inanisaidia ku-access sales na pia kuangalia inventory. \n Lakini pia, huwa natumia app kuhakikisha kwamba naona kitu gani kinauzika zaidi. Hii inanisaidia kupanga ratiba yangu ya kutengeneza au kuagiza bidhaa, \n I will always choose Settlo.',
-        image: 'https://images.unsplash.com/photo-1499714608240-22fc6ad53fb2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=76&q=80',
+        image: '/images/customers/yolanda.png',
     },
     {
         id: 2,
         name: 'White',
         title: 'Business Owner',
         text: 'Wafanyakazi waliiba na wakaiba tena. Baada ya kuweka Settlo wakaacha kazi....sababu ukitumia Settlo hata nisipokua dukani naona kila kinachoendelea',
-        image: 'https://images.unsplash.com/photo-1499714608240-22fc6ad53fb2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=76&q=80',
+        image: '/images/customers/white.png',
     },
     {
         id: 3,
         name: 'Roras',
         title: 'Sales manager',
         text: 'Settlo inanisaidia kufanya mauzo na kurekodi taarifa za mauzo ili kutoa ripoti kwa bosi wangu. \n Sababu ni kwamba hata kama hayupo dukani, anaweza kuona kinachoendelea. Hata kabla sijampigia simu, anaweza kuona kabisa ni bidhaa gani zimebaki na zipi zinahitaji kununuliwa.',
-        image: 'https://images.unsplash.com/photo-1499714608240-22fc6ad53fb2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=76&q=80',
+        image: '/images/customers/roras.png',
     }
 ];
 
