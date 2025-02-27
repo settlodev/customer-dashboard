@@ -25,23 +25,14 @@ const socialMedia: SocialLink[] = [
   { name: 'LinkedIn', href: 'https://www.linkedin.com/company/settlo', icon: <Linkedin className="w-5 h-5" /> },
 ];
 
-const businessType: FooterLink[] = [
-  { name: 'Retails', href: '/' },
-  { name: 'Restaurants', href: '/' },
-  { name: 'Hotels', href: '/' },
-  { name: 'Bars & Breweries', href: '/' },
-];
-
 const quickLinks: FooterLink[] = [
-  { name: 'About Us', href: '/' },
-  { name: 'Culture', href: '/' },
-  { name: 'Join Our Team', href: '/' },
+  { name: 'Contact support', href: '/contact-us' },
+  { name: 'Join Our Team', href: '/careers' },
 ];
 
 const legalLinks: FooterLink[] = [
-  { name: 'Privacy Policy', href: '/' },
   { name: 'Terms of Service', href: '/terms' },
-  { name: 'FAQ', href: '/' },
+  { name: 'FAQ', href: '/#faqs' },
 ];
 
 const contactLinks: ContactLink[] = [
@@ -108,21 +99,7 @@ export const Footer = () => {
             <div className="lg:col-span-8">
               <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold uppercase tracking-wider text-gray-400">
-                    Business Type
-                  </h3>
-                  <ul className="space-y-3">
-                    {businessType.map((item) => (
-                        <li key={item.name}>
-                          <Link
-                              href={item.href}
-                              className="text-base hover:text-emerald-500 transition-colors duration-200"
-                          >
-                            {item.name}
-                          </Link>
-                        </li>
-                    ))}
-                  </ul>
+                  <></>
                 </div>
 
                 {/* Company Links */}
