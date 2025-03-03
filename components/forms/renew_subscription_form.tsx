@@ -171,7 +171,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
     // Set up a counter to limit the number of verification attempts
     let attemptCount = 0;
     const maxAttempts = 5; // Adjust as needed
-    const pollingInterval = 1000; // 1 seconds, adjust as needed
+    const pollingInterval = 3000; // 1 seconds, adjust as needed
     
     // Create a polling interval
     const verificationInterval = setInterval(async () => {
