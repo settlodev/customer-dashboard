@@ -27,3 +27,10 @@ export const StockIntakeSchema = object({
     supplier: string({message:"Please select a supplier"}).uuid().optional(),
     staff: string({message:"Please select a staff"}).uuid(),
 });
+
+export const UpdatedStockIntakeSchema = object({
+    value:number().min(0, { message: "Value must be a positive number" })
+    .refine((val) => !isNaN(val), {
+      message: "Please enter a valid number",
+    }),
+})

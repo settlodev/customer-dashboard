@@ -12,9 +12,10 @@ export const fetchSummaries = async (startDate?: string, endDate?: string) => {
         params: {
           startDate,
           endDate,
+          orderType:'OPEN_AND_CLOSED'
         },
       });  
-      // console.log("Summaries are as follow:", data);
+      console.log("Summaries are as follow:", data );
       return data;
     } catch (error) {
       console.error("Error fetching summaries:", error );
