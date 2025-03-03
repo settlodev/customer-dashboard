@@ -56,6 +56,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         setIsSubmitting(true);
         try {
             await updateStockIntake(data.id, { value: values.value });
+            setShowEditModal(false);
 
         } catch (error) {
 
