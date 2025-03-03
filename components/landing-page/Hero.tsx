@@ -34,7 +34,7 @@ export const Hero = () => {
                                         <ArrowRight className="ml-2 h-5 w-5" />
                                     </button>
                                 </Link>
-                                <Link href="/register">
+                                <Link href="/contact-us">
                                     <button className="px-8 py-3 bg-white text-gray-800 rounded-full font-medium border-2 border-emerald-500 hover:bg-emerald-50 transition-all duration-200">
                                         Talk to Sales
                                     </button>
@@ -46,7 +46,7 @@ export const Hero = () => {
                             <div className="absolute -inset-4 bg-gradient-to-r from-emerald-500/10 to-emerald-300/10 rounded-2xl blur-xl" />
                             <Image
                                 className="relative rounded-2xl shadow-xl"
-                                src="/images/user/hero3.jpg"
+                                src="/images/cover/main.png"
                                 alt="Settlo POS Interface"
                                 width={600}
                                 height={400}
