@@ -9,8 +9,10 @@ import { FormResponse } from "@/types/types";
 import { getCurrentLocation } from "./business/get-current-business";
 import { getAuthenticatedUser } from "../auth-utils";
 
-interface User {
+export interface User {
     id: string;
+    email: string;
+    phoneNumber: string;
 }
 
 interface SubscriptionResponse {
@@ -60,6 +62,7 @@ export const validateDiscountCode = async (discountCode: string): Promise<any> =
 export const paySubscription = async (subscription: z.infer<typeof RenewSubscriptionSchema>) => {
     let formResponse: FormResponse | null = null;
     const user = await getAuthenticatedUser() as User | null;
+    // console.log("The user is", user);
     const validSubscription = RenewSubscriptionSchema.safeParse(subscription);
     const provider = process.env.PAYMENT_PROVIDER;
 
@@ -73,7 +76,8 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
         };
         return parseStringify(formResponse);
     }
-    const location = await getCurrentLocation();
+    const location = await getCurrentLocation() || { id: validSubscription.data.locationId };
+    
 
     const payload = {
         ...validSubscription.data,
@@ -82,7 +86,7 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
         locationId: location?.id
     };
 
-    
+    console.log("Payload:", payload );
 
     try {
         const apiClient = new ApiClient();
