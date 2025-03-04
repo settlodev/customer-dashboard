@@ -27,9 +27,9 @@ export const menuItems = (args?: MenuItemArgType) => {
             current: args?.isCurrentItem,
             icon: 'inventory',
             items: [
-                { title: "Products", link: "/products", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Categories", link: "/categories", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Departments", link: "/departments", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Categories", link: "/categories", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Products", link: "/products", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Brands", link: "/brands", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Suppliers", link: "/suppliers", current: args?.isCurrentItem, icon: "cart" },
             ]

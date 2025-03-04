@@ -73,14 +73,16 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
         };
         return parseStringify(formResponse);
     }
+    const location = await getCurrentLocation();
 
     const payload = {
         ...validSubscription.data,
         userId: user?.id,
         provider: provider,
+        locationId: location?.id
     };
 
-    const location = await getCurrentLocation();
+    
 
     try {
         const apiClient = new ApiClient();
@@ -95,16 +97,12 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
             return parseStringify(formResponse);
         }
 
+        console.log("Payment successful:", response);
 
-
-        formResponse = {
-            responseType: "success",
-            message: "Subscription payment successful"
-        };
-        return parseStringify(formResponse);
+        return parseStringify(response);
 
     } catch (error: any) {
-        // console.error("Payment error:", error);
+        console.error("Payment error:", error);
 
         if (error.response?.data) {
             
@@ -125,3 +123,16 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
         return parseStringify(formResponse);
     }
 };
+
+
+export const verifyPayment = async (transactionId: string) => {
+    const location = await getCurrentLocation();
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/api/subscription-payments/${location?.id}/verify/${transactionId}`);
+        console.log("Payment verification response:", response);
+        return parseStringify(response);
+    } catch (error) {
+        throw error;
+    }
+}

@@ -5,12 +5,6 @@ const nextConfig = {
     serverActions: true,
   },
   images: {
-    // remotePatterns: [
-    //   "fhuvexerkaysoazmmlal.supabase.co",
-    //   "lporvjkotuidemnfvuzt.supabase.co",
-    //   "images.unsplash.com",
-    //   "app.tallity.co.tz",
-    // ],
     remotePatterns: [
       {
         protocol: "https",

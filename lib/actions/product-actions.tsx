@@ -248,9 +248,11 @@ export const updateProduct = async (
             variants: variantsPayload
         };
 
+        console.log("The final payload to update product", finalPayload);
+
         // Update the product with new data
         await apiClient.put(
-            `/api/products/${location?.id}/${productId}`,
+            `/api/products/${location?.id}/${productId}x`,
             finalPayload
         );
 
@@ -392,6 +394,7 @@ export const topSellingProduct = async (startDate?: Date, endDate?: Date,limit?:
         const topSelling = await apiClient.get(`/api/reports/${location?.id}/products/top-selling`, {
             params
         });
+        // console.log("The products sold",topSelling)
 
         return parseStringify(topSelling);
     }

@@ -30,6 +30,7 @@ import { useRouter } from "next/navigation";
 import { Calendar, Clock } from "lucide-react";
 import { useSearchParams } from 'next/navigation'
 function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
+
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [orderDate, setOrderDate] = useState<Date | undefined>(
@@ -82,9 +83,12 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
             setError("Delivery date cannot be before order date.");
             return;
         }
+        const updatedValues = {
+            value: values.value
+        };
         startTransition(() => {
             if (item) {
-                updateStockIntake(item.id, values).then((data) => {
+                updateStockIntake(item.id, updatedValues).then((data) => {
                     if (data) setResponse(data);
                     if (data && data.responseType === "success") {
                         toast({
@@ -151,7 +155,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
     const handleDeliveryDateSelect = (date: Date) => {
         const today = new Date();
-        today.setHours(0, 0, 0, 0); // Set time to midnight for accurate comparison
+        today.setHours(0, 0, 0, 0);
 
         if (validateDates(date) && date <= today) {
             setDeliveryDate(date);
@@ -180,7 +184,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                         <StockVariantSelector
                                             {...field}
                                             isRequired
-                                            isDisabled={isPending || false}
+                                            isDisabled={!!item || isPending}
                                             placeholder="Select stock item"
                                         />
                                     </FormControl>
@@ -200,7 +204,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                             type="text"
                                             className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                                             value={field.value || ""}
-                                            disabled={isPending}
+                                            disabled={!!item || isPending}
                                             placeholder="Enter quantity"
                                             onChange={(e) => {
                                                 const rawValue = e.target.value.replace(/,/g, ""); // Remove commas
@@ -258,7 +262,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                         <StaffSelectorWidget
                                             {...field}
                                             isRequired
-                                            isDisabled={isPending}
+                                            isDisabled={!!item || isPending}
                                             placeholder="Select staff member"
                                             label="Select staff member"
                                         />
@@ -284,6 +288,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                         handleTimeChange={handleTimeChange}
                                         onDateSelect={handleDateSelect}
                                         maxDate={new Date()}
+                                        disabled={!!item}
                                     />
                                     <FormMessage />
                                 </FormItem>
@@ -307,6 +312,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                         onDateSelect={handleDeliveryDateSelect}
                                         minDate={orderDate}
                                         maxDate={new Date()}
+                                        disabled={!!item}
                                     />
                                     <FormMessage />
                                 </FormItem>
@@ -328,6 +334,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                         setDate={setBatchExpiryDate}
                                         handleTimeChange={handleTimeChange}
                                         onDateSelect={handleDateSelect}
+                                        disabled={!!item}
                                     />
                                     <FormMessage />
                                 </FormItem>
@@ -345,7 +352,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                     <FormControl>
                                         <SupplierSelector
                                             {...field}
-                                            isDisabled={isPending}
+                                            isDisabled={!!item || isPending}
                                             placeholder="Select supplier"
                                             label="Select supplier"
                                         />

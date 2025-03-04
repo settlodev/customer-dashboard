@@ -47,15 +47,16 @@ const SalesDashboard = () => {
         return today;
     });
     const [endDate] = useState(new Date());
-    const [sampleData, setSampleData] = useState<TopSellingProduct | null>(null);
+    const [soldData, setSoldData] = useState<TopSellingProduct | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [activeTab,setActiveTab]=useState('topSelling')
     const limit = 5
 
     useEffect(() => {
         const fetchingTopSellingProducts = async () => {
             try {
                 const response = await topSellingProduct(startDate, endDate, limit);
-                setSampleData(response);
+                setSoldData(response);
             } catch (error) {
                 console.error("Error fetching stock history:", error);
             }
@@ -97,7 +98,7 @@ const SalesDashboard = () => {
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {
         try {
             const response = await topSellingProduct(values.startDate, values.endDate, values.limit);
-            setSampleData(response);
+            setSoldData(response);
         } catch (error) {
             console.error("Error fetching stock history:", error);
         }
@@ -199,6 +200,32 @@ const SalesDashboard = () => {
         );
     };
 
+    const getSummaryData = () => {
+        if (activeTab === 'topSelling') {
+          // For top selling tab, we display revenue
+          return {
+            totalLabel: 'Total Revenue:',
+            totalValue: soldData?.totalRevenue ?? 0,
+            secondaryLabel: 'Total Quantity Sold:',
+            secondaryValue: soldData?.totalQuantitySold ?? 0
+          };
+        } else {
+          // For sold items tab, we display profit
+          const totalProfit = soldData?.soldItemsReport.items.reduce(
+            (sum, item) => sum + item.profit, 0
+          ) ?? 0;
+          
+          return {
+            totalLabel: 'Total Profit:',
+            totalValue: totalProfit,
+            secondaryLabel: 'Total Quantity Sold:',
+            secondaryValue: soldData?.totalQuantitySold ?? 0
+          };
+        }
+      };
+      const summaryData = getSummaryData();
+
+
     if (isLoading) {
         return (
           <div className="flex items-center justify-center min-h-screen">
@@ -278,28 +305,33 @@ const SalesDashboard = () => {
                 </Card>
 
                 <Card>
-                    <CardHeader>
-                        <CardTitle>Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-2">
-                            <p className="text-sm text-muted-foreground">Selected Range:</p>
-                            <p className="font-medium">
-                                {sampleData?.startDate ? format(sampleData?.startDate, "PPP HH:mm") : format(startDate, "PPP HH:mm")}
-                                -
-                                {sampleData?.endDate ? format(sampleData?.endDate, "PPP HH:mm") : format(endDate, "PPP HH:mm")}
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-4">Total Quantity Sold:</p>
-                            <p className="font-medium">{formatCurrency(sampleData?.totalQuantitySold ?? 0)}</p>
+          <CardHeader>
+            <CardTitle>Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Selected Range:</p>
+              <p className="font-medium">
+                {soldData?.startDate ? format(soldData?.startDate, "PPP HH:mm") : format(startDate, "PPP HH:mm")}
+                -
+                {soldData?.endDate ? format(soldData?.endDate, "PPP HH:mm") : format(endDate, "PPP HH:mm")}
+              </p>
+              
+              <p className="text-sm text-muted-foreground mt-4">{summaryData.secondaryLabel}</p>
+              <p className="font-medium">{formatCurrency(summaryData.secondaryValue)}</p>
 
-                            <p className="text-sm text-muted-foreground mt-4">Total Revenue:</p>
-                            <p className="font-medium">{formatCurrency(sampleData?.totalRevenue ?? 0)}</p>
-                        </div>
-                    </CardContent>
-                </Card>
+              <p className="text-sm text-muted-foreground mt-4">{summaryData.totalLabel}</p>
+              <p className="font-medium">{formatCurrency(summaryData.totalValue)}</p>
+            </div>
+          </CardContent>
+        </Card>
             </div>
 
-            <Tabs defaultValue="topSelling" className="w-full">
+            <Tabs 
+            defaultValue="topSelling"
+             className="w-full"
+             onValueChange={(value) => setActiveTab(value)}
+             >
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="topSelling">Top Selling Items</TabsTrigger>
                     <TabsTrigger value="soldItems">List of Sold Items</TabsTrigger>
@@ -313,7 +345,7 @@ const SalesDashboard = () => {
                             <div className="h-96">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart
-                                        data={sampleData?.topItems}
+                                        data={soldData?.topItems}
                                         margin={{
                                             top: 20,
                                             right: 30,
@@ -349,7 +381,7 @@ const SalesDashboard = () => {
                             <div className="h-96">
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart
-                                        data={sampleData?.soldItemsReport.items}
+                                        data={soldData?.soldItemsReport.items}
                                         margin={{
                                             top: 20,
                                             right: 30,
@@ -400,7 +432,7 @@ const SalesDashboard = () => {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {sampleData?.soldItemsReport.items.map((item: SoldItem, index: number) => (
+                                    {soldData?.soldItemsReport.items.map((item: SoldItem, index: number) => (
                                         <TableRow key={index}>
                                             <TableCell className="font-medium">
                                                 {index + 1}
@@ -423,12 +455,6 @@ const SalesDashboard = () => {
                     </Card>
                 </TabsContent>
             </Tabs>
-
-
-
-         
-
-
         </div>
     );
 };

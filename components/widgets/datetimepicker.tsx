@@ -20,7 +20,8 @@ const DateTimePicker = ({
                           handleTimeChange,
                           onDateSelect,
                           minDate,
-                          maxDate
+                          maxDate,
+                          disabled
                         }: {
   field: FieldType;
   date: Date | undefined;
@@ -29,6 +30,7 @@ const DateTimePicker = ({
   onDateSelect: (date: Date) => void;
   minDate?: Date;
   maxDate?: Date;
+  disabled?: boolean;
 }) => {
   // Helper function to check if a specific hour is disabled
   const isHourDisabled = (hour: number) => {
@@ -103,7 +105,8 @@ const DateTimePicker = ({
   </Button>
 </PopoverTrigger>
 
-        <PopoverContent className="w-auto p-0">
+       {!disabled && (
+          <PopoverContent className="w-auto p-0">
           <div className="sm:flex">
             <Calendar
                 mode="single"
@@ -188,6 +191,7 @@ const DateTimePicker = ({
             </div>
           </div>
         </PopoverContent>
+       )}
       </Popover>
   );
 };

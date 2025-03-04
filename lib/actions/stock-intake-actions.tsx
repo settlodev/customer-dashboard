@@ -7,10 +7,10 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {UUID} from "node:crypto";
-import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import {getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
-import { StockIntakeSchema } from "@/types/stock-intake/schema";
+import { StockIntakeSchema, UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
 
 export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
     await  getAuthenticatedUser();
@@ -23,7 +23,7 @@ export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
         const data = await  apiClient.get(
             `/api/stock-intakes/${location?.id}/all`,
         );
-        console.log("The list of Stock Intakes in this location: ", data)
+        // console.log("The list of Stock Intakes in this location: ", data)
         return parseStringify(data);
     }
     catch (error){
@@ -114,15 +114,13 @@ export const createStockIntake = async (
 };
 
 
-export const getStockIntake= async (id:UUID, stockVariant:UUID)  => {
-    // const formResponse: FormResponse | null = null;
-  
-    try {
+export const getStockIntake= async (id:UUID, effectiveStockVariant:UUID) => {
     const apiClient = new ApiClient();
+    
+    try {
+
     const response = await apiClient.get(
-        `/api/stock-intakes/${stockVariant}/${id}`,
-       
-    )
+        `/api/stock-intakes/${effectiveStockVariant}/${id}`)
    
     return parseStringify(response)
 
@@ -132,15 +130,16 @@ export const getStockIntake= async (id:UUID, stockVariant:UUID)  => {
     }
 }
 
-    
-
 
 export const updateStockIntake = async (
     id: UUID,
-    stockIntake: z.infer<typeof StockIntakeSchema>
+    stockIntake: z.infer<typeof UpdatedStockIntakeSchema>
 ): Promise<FormResponse | void> => {
+    console.log("The values are",id,stockIntake)
     let formResponse: FormResponse | null = null;
-    const validData = StockIntakeSchema.safeParse(stockIntake);
+    const validData = UpdatedStockIntakeSchema.safeParse(stockIntake);
+
+    console.log("The validated data",validData)
 
     if (!validData.success) {
         formResponse = {
@@ -151,24 +150,23 @@ export const updateStockIntake = async (
         return parseStringify(formResponse);
     }
 
-    const location = await getCurrentLocation();
-    const business = await getCurrentBusiness();
+
     const payload = {
         ...validData.data,
-        location: location?.id,
-        business: business?.id
+       
     };
+    console.log("The payload is",payload)
 
     try {
         const apiClient = new ApiClient();
 
-        await apiClient.put(
-            `/api/stock-intakes/${location?.id}/${id}`,
+        await apiClient.post(
+            `/api/stock-intake-value-modifications/${id}`,
             payload
         );
         formResponse = {
             responseType: "success",
-            message: "Stock Intake updated successfully",
+            message: "Stock Intake Value updated successfully",
         };
 
     } catch (error) {

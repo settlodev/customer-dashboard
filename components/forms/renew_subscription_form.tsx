@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 // import { FormResponse } from "@/types/types";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
 import { Calendar, Mail, Phone, Tag, Check, X, Loader2, AlertCircle } from "lucide-react";
-import { paySubscription } from "@/lib/actions/subscriptions";
+import { paySubscription, verifyPayment } from "@/lib/actions/subscriptions";
 import { validateDiscountCode } from "@/lib/actions/subscriptions";
 import { Button } from "../ui/button";
 import { PhoneInput } from "../ui/phone-input";
@@ -45,6 +45,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
     defaultValues: {
       planId: activeSubscription?.subscription.id ?? '',
       quantity: 1,
+      discount: "",
     },
   });
 
@@ -59,9 +60,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
     name: "discount",
   });
 
-  // Determine if pay button should be disabled
-  // const isPayButtonDisabled = isPending || 
-  //   (discountCode && (isValidatingDiscount || discountValid === false));
+ 
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -114,7 +113,6 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
 
   const submitData = async (values: z.infer<typeof RenewSubscriptionSchema>) => {
     setError(null);
-    // console.log("Submitting data:", values);
     
     startTransition(() => {
       paySubscription(values)
@@ -129,13 +127,31 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
             });
             return;
           }
-
-          // Handle success
-          toast({
-            title: "Payment Successful",
-            description: `You have successfully paid ${totalAmount} for ${quantity} month subscription`,
-            variant: "default"
-          });
+  
+          console.log("Payment response:", response);
+          
+          if (response.status === "PENDING") {
+            toast({
+              title: "Payment Pending",
+              description: "Your payment is processing. Please wait...",
+              variant: "default"
+            });
+            
+            // Start polling to check payment status
+            const transactionId = response.id;
+            console.log("Transaction ID:", transactionId);
+            if (!transactionId) {
+              console.error("No transaction ID found for pending payment");
+              return;
+            }
+            
+            // Call function to handle payment verification
+            handlePendingPayment(transactionId, values);
+            return;
+          }
+          
+          // Handle success case
+          handleSuccessfulPayment(response, values);
         })
         .catch((err) => {
           console.error("Payment error:", err);
@@ -148,6 +164,70 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
           });
         });
     });
+  };
+  
+  // Function to handle pending payment verification
+  const handlePendingPayment = (transactionId: string, values: z.infer<typeof RenewSubscriptionSchema>) => {
+    // Set up a counter to limit the number of verification attempts
+    let attemptCount = 0;
+    const maxAttempts = 5; // Adjust as needed
+    const pollingInterval = 3000; // 1 seconds, adjust as needed
+    
+    // Create a polling interval
+    const verificationInterval = setInterval(async () => {
+      attemptCount++;
+      
+      try {
+        const verificationResult = await verifyPayment(transactionId);
+        console.log("Verification result:", verificationResult);
+        
+        // Check if payment status has changed
+        if (verificationResult.status === "SUCCESS") {
+          clearInterval(verificationInterval);
+          handleSuccessfulPayment(verificationResult, values);
+        } else if (verificationResult.status === "FAILED") {
+          clearInterval(verificationInterval);
+          const errorMessage = verificationResult.errorDescription || 
+            verificationResult.message || 
+            "Payment verification failed. Please try again.";
+          setError(errorMessage);
+          toast({
+            title: "Payment Failed",
+            description: errorMessage,
+            variant: "destructive"
+          });
+        } else if (attemptCount >= maxAttempts) {
+          // Stop polling after max attempts
+          clearInterval(verificationInterval);
+          toast({
+            title: "Payment Status Unclear",
+            description: "We couldn't confirm your payment status. Please check your email or account for updates.",
+            variant: "default"
+          });
+        }
+        // If still pending, continue polling
+        
+      } catch (error) {
+        console.error("Payment verification error:", error);
+        clearInterval(verificationInterval);
+        toast({
+          title: "Verification Error",
+          description: "Failed to verify payment status. Please check your account later.",
+          variant: "destructive"
+        });
+      }
+    }, pollingInterval);
+  };
+  
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSuccessfulPayment = (response: any, values: z.infer<typeof RenewSubscriptionSchema>) => {
+    toast({
+      title: "Payment Successful",
+      description: `You have successfully paid ${totalAmount} for ${quantity} month subscription`,
+      variant: "default"
+    });
+    
+    // Add any additional success handling here (e.g., redirects, UI updates)
   };
 
   if (!activeSubscription) {

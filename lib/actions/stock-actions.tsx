@@ -174,8 +174,13 @@ export const updateStock = async (
     paginationState?: { pageIndex: number; pageSize: number } | null
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
+
+    // Store the IDs before validation
+    const variantIds = stock.stockVariants.map(variant => (variant as any).id);
+
     const validData = StockSchema.safeParse(stock);
 
+    
     if (!validData.success) {
         formResponse = {
             responseType: "error",
@@ -190,15 +195,65 @@ export const updateStock = async (
     const payload = {
         ...validData.data,
         location: location?.id,
-        business: business?.id
+        business: business?.id,
+        stockVariants: validData.data.stockVariants.map((variant, index) => ({
+            ...variant,
+            id: variantIds[index]  
+        }))
     };
+    // console.log("The payload",payload)
 
     try {
+
         const apiClient = new ApiClient();
+
+        // First, fetch the stock by ID
+        const existingStock= await getStock(id);
+        if (!existingStock || existingStock.totalElements == 0) {
+            formResponse = {
+                responseType: "error",
+                message: "Stock not found",
+                error: new Error("Stock not found"),
+            };
+            return parseStringify(formResponse);
+        }
+        const existingStockVariants = existingStock.content[0].stockVariants;
+        
+        //variant data
+        const stockVariantPayload :any[] = [];
+
+        const existingStockVariantMap = new Map();
+        existingStockVariants.forEach(variant => {
+            existingStockVariantMap.set(variant.id, variant);
+        });
+        // console.log('Existing stock variant map:', existingStockVariantMap);
+        // console.log('Stock variants:', stock.stockVariants);
+
+       
+        payload.stockVariants.forEach((newVariant)=>{
+            if(newVariant.id && existingStockVariantMap.has(newVariant.id)){
+                stockVariantPayload.push({
+                    ...newVariant,
+                    id: newVariant.id,
+                })
+                existingStockVariantMap.delete(newVariant.id);
+            }
+            else{
+                stockVariantPayload.push(newVariant);
+            }
+        })
+
+        // payload.stockVariants = stockVariantPayload;
+
+        const finalPayload = {
+            ...payload,
+            stockVariants:stockVariantPayload
+        }
+        // console.log("The final payload",finalPayload )
 
         await apiClient.put(
             `/api/stock/${location?.id}/${id}`,
-            payload
+            finalPayload
         );
 
         formResponse = {
@@ -220,10 +275,10 @@ export const updateStock = async (
     if (paginationState && typeof paginationState.pageIndex === 'number' && typeof paginationState.pageSize === 'number') {
         const page = paginationState.pageIndex + 1; 
         const limit = paginationState.pageSize;
-        console.log('↪️ Redirecting to:', `/stock-variants?page=${page}&limit=${limit}`);
+        // console.log('↪️ Redirecting to:', `/stock-variants?page=${page}&limit=${limit}`);
         redirect(`/stock-variants?page=${page}&limit=${limit}`);
     } else {
-        console.log('↪️ Redirecting to default products page');
+        // console.log('↪️ Redirecting to default products page');
         redirect("/stock-variants");
     }
     
@@ -248,14 +303,14 @@ export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
    }
    catch (error: any){
         const formattedError = await error;
-        console.error("Error deleting stock", formattedError );
+        // console.error("Error deleting stock", formattedError );
 
         throw new Error(formattedError.message);
     }
 }
 
 export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
-    console.log("Starting CSV upload");
+    // console.log("Starting CSV upload");
 
     if (!fileName.endsWith(".csv")) {
         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
@@ -268,16 +323,16 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
     }
 
-    console.log("CSV content to be sent:", fileData);
+    // console.log("CSV content to be sent:", fileData);
 
     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
-    console.log("Formatted CSV data:", formattedCSVData);
+    // console.log("Formatted CSV data:", formattedCSVData);
 
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        const response = await apiClient.post(
+        await apiClient.post(
             `/api/stock/${location?.id}/upload-csv`,
             formattedCSVData,
             {
@@ -288,12 +343,12 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
             }
         );
 
-        console.log("CSV upload response", response);
+        // console.log("CSV upload response", response);
 
         // Revalidate or redirect after successful upload
-        revalidatePath("/products");
-        redirect("/products");
-    } catch (error) {
+        revalidatePath("/stock-variants");
+        redirect("/stock-variants");
+    } catch (error: any) {
         console.error("Error uploading CSV file:", error);
 
         return ;
@@ -302,7 +357,7 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
 };
 
 export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
-    console.log("Starting CSV upload");
+    // console.log("Starting CSV upload");
 
     if (!fileName.endsWith(".csv")) {
         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
@@ -315,16 +370,16 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
     }
 
-    console.log("CSV content to be sent:", fileData);
+    // console.log("CSV content to be sent:", fileData);
 
     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
-    console.log("Formatted CSV data:", formattedCSVData);
+    // console.log("Formatted CSV data:", formattedCSVData);
 
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        const response = await apiClient.post(
+        await apiClient.post(
             `/api/stock/${location?.id}/upload-products-and-stock-csv`,
             formattedCSVData,
             {
@@ -335,18 +390,18 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
             }
         );
 
-        console.log("CSV upload response", response);
+        // console.log("CSV upload response", response);
 
         revalidatePath("/stocks");
         redirect("/stocks");
     } catch (error) {
 
         if (typeof error === "object" && error !== null && "digest" in error && (error as any).digest.startsWith("NEXT_REDIRECT")) {
-            console.log("Redirect triggered, ignoring error:", error);
+            // console.log("Redirect triggered, ignoring error:", error);
             return;
         }
 
-        console.error("Error uploading CSV file:", error);
+        // console.error("Error uploading CSV file:", error);
         throw error;
     }
 
@@ -363,7 +418,7 @@ export const stockHistory = async (): Promise<StockHistory | null> => {
 
         return parseStringify(history);
     } catch (error) {
-        console.error("Error fetching stock history:", error);
+        // console.error("Error fetching stock history:", error);
         throw error;
     }
 };

@@ -1,6 +1,8 @@
 import Image from "next/image";
 import { Quote } from 'lucide-react';
 import React from "react";
+import { Button } from "@/components/ui/button"
+import Link from "next/link";
 
 interface Testimonial {
     id: number;
@@ -13,24 +15,24 @@ interface Testimonial {
 const testimonials: Testimonial[] = [
     {
         id: 1,
-        name: 'Jenny Willson',
-        title: 'Small Business Owner',
-        text: 'Settlo POS has transformed the way I run my retail store! The user-friendly interface makes transactions a breeze, and the real-time inventory management keeps me organized. I cant imagine going back to my old system.',
-        image: 'https://images.unsplash.com/photo-1499714608240-22fc6ad53fb2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=76&q=80',
+        name: 'Yolanda',
+        title: 'Business Owner',
+        text: 'I travel a lot, hivyo Settlo inanisaidia ku-access sales na pia kuangalia inventory. \n Lakini pia, huwa natumia app kuhakikisha kwamba naona kitu gani kinauzika zaidi. Hii inanisaidia kupanga ratiba yangu ya kutengeneza au kuagiza bidhaa, \n I will always choose Settlo.',
+        image: '/images/customers/yolanda.png',
     },
     {
         id: 2,
-        name: 'Mark Thomas',
-        title: 'Restaurant Manager',
-        text: 'With Settlo, our checkout process is faster than ever! The mobile POS feature allows my staff to take orders and payments right at the table, enhancing customer satisfaction. Highly recommend it!"',
-        image: 'https://images.unsplash.com/photo-1499714608240-22fc6ad53fb2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=76&q=80',
+        name: 'White',
+        title: 'Business Owner',
+        text: 'Wafanyakazi waliiba na wakaiba tena. Baada ya kuweka Settlo wakaacha kazi....sababu ukitumia Settlo hata nisipokua dukani naona kila kinachoendelea',
+        image: '/images/customers/white.png',
     },
     {
         id: 3,
-        name: 'Jane Doe',
-        title: 'Co-Founder, Company',
-        text: 'The loyalty program feature has helped me build a loyal customer base! My clients love earning rewards, and its boosted my sales tremendously. Settlo is an essential part of my business.',
-        image: 'https://images.unsplash.com/photo-1499714608240-22fc6ad53fb2?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=crop&w=76&q=80',
+        name: 'Roras',
+        title: 'Sales manager',
+        text: 'Settlo inanisaidia kufanya mauzo na kurekodi taarifa za mauzo ili kutoa ripoti kwa bosi wangu. \n Sababu ni kwamba hata kama hayupo dukani, anaweza kuona kinachoendelea. Hata kabla sijampigia simu, anaweza kuona kabisa ni bidhaa gani zimebaki na zipi zinahitaji kununuliwa.',
+        image: '/images/customers/roras.png',
     }
 ];
 
@@ -93,9 +95,9 @@ export const Testimonials: React.FC = () => {
                     <p className="text-gray-600 mb-6">
                         Join thousands of satisfied businesses using Settlo
                     </p>
-                    <button className="inline-flex items-center px-6 py-3 bg-emerald-500 text-white rounded-full font-medium hover:bg-emerald-600 transition-all duration-200 transform hover:scale-105">
-                        Start Your Free Trial
-                    </button>
+                    <Button  asChild className="inline-flex items-center px-6 py-3 bg-emerald-500 text-white rounded-full font-medium hover:bg-emerald-600 transition-all duration-200 transform hover:scale-105">
+                        <Link href="/register">Start Your Free Trial</Link>
+                    </Button>
                 </div>
             </div>
         </section>

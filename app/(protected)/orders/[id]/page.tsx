@@ -1,13 +1,14 @@
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {ShoppingCart, AlertTriangle} from 'lucide-react';
+import {ShoppingCart, AlertTriangle, Trash} from 'lucide-react';
 import { getOrder } from "@/lib/actions/order-actions";
 import { UUID } from "crypto";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import OrderRefundSection from "@/components/widgets/order/order-refund-section";
 import OrderItemCard from "@/components/widgets/order/order-item-card";
+import OrderItemRemovedCard from "@/components/widgets/order/order-item-removed-card";
 import {OrderFinancialSummaryCard} from "@/components/widgets/order/order-financial-summary-card";
 import {OrderInformationCard} from "@/components/widgets/order/order-information-card";
 import {OrderQuickStatsCard} from "@/components/widgets/order/order-quick-stats-card";
@@ -26,6 +27,9 @@ type StatusType = 'OPEN' | 'PAID' | 'NOT_PAID';
 const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => {
     const order = await getOrder(params.id as UUID);
     const orderData: Orders = order?.content[0];
+
+    console.log("orderData is: ", orderData);
+  
 
     if (!orderData) {
         return (
@@ -154,6 +158,26 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
                                 ))}
                             </CardContent>
                         </Card>
+
+                        <Card>
+                            <CardHeader className="border-b">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                                        <Trash className="text-emerald-600" />
+                                        Items Removed
+                                    </h2>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="divide-y">
+                                {orderData.removedItems?.map((item) => (
+                                    <OrderItemRemovedCard
+                                        key={item.id}
+                                        item={item}
+                                        isValidImageUrl={isValidImageUrl}
+                                    />
+                                ))}
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Sidebar - Right Side */}
@@ -174,6 +198,14 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
 
                     </div>
                 </div>
+
+                {/* Order items removed */}
+                {/* {orderData.orderItemRemovals?.length > 0 && (
+                    <OrderRemovalSection
+                        orderItemRemovals={orderData.orderItemRemovals}
+                        items={orderData.items}
+                    />
+                )} */}
 
                 {/* Refund Section */}
                 {orderData.orderItemRefunds?.length > 0 && (
