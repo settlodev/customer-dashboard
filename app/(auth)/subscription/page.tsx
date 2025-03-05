@@ -10,9 +10,8 @@ import Loading from "../loading";
 import { paySubscription, User, verifyPayment } from "@/lib/actions/subscriptions";
 import { useSearchParams } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { useToast } from "@/hooks/use-toast";
 import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
-import { set } from "lodash";
+
 
 
 const SubscriptionPage = () => {
@@ -21,7 +20,6 @@ const SubscriptionPage = () => {
   const searchParams = useSearchParams()
   const locationId = searchParams.get("location") as string
   const [userAuthenticated, setUserAuthenticated] = useState<User>();
-  const { toast } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>(null);
 
