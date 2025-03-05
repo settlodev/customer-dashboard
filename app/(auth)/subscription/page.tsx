@@ -12,6 +12,7 @@ import { useSearchParams } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { useToast } from "@/hooks/use-toast";
 import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
+import { set } from "lodash";
 
 
 const SubscriptionPage = () => {
@@ -77,57 +78,54 @@ const SubscriptionPage = () => {
       setPaymentStatus("FAILED")
     }
   };
-  const handlePendingPayment = (transactionId: string) => {
-    // Set up a counter to limit the number of verification attempts
-    let attemptCount = 0;
-    const maxAttempts = 5; // Adjust as needed
-    const pollingInterval = 3000; // 1 seconds, adjust as needed
+ const handlePendingPayment = (transactionId: string) => {
+    // Initial delay of 20 seconds before starting verification
+    setTimeout(() => {
+      // Set up a counter to limit the number of verification attempts
+      let attemptCount = 0;
+      const maxAttempts = 2; // Adjust as needed
+      const pollingInterval = 5000; // 3 seconds, adjust as needed
 
-    // Create a polling interval
-    const verificationInterval = setInterval(async () => {
-      attemptCount++;
+      // Create a polling interval
+      const verificationInterval = setInterval(async () => {
+        attemptCount++;
+   
+        try {
+          const verificationResult = await verifyPayment(transactionId);
+          setPaymentStatus(verificationResult.status)
 
-      try {
-        const verificationResult = await verifyPayment(transactionId);
-        // console.log("Verification result:", verificationResult );
-        setPaymentStatus(verificationResult.status)
+          // Check if payment status has changed
+          if (verificationResult.status === "SUCCESS") {
+            clearInterval(verificationInterval);
+            setTimeout(() => {
+              setIsModalOpen(false);
+              window.location.href = `/select-location`;
+            }, 2000);
 
-        // Check if payment status has changed
-        if (verificationResult.status === "SUCCESS") {
-          clearInterval(verificationInterval);
-          setTimeout(() => {
-            setIsModalOpen(false);
-            window.location.href = `/select-location`;
-          }, 2000);
-        }
-        else if (verificationResult.status === "PROCESSING") {
-          // If still pending, continue polling
-          setPaymentStatus("PROCESSING")
-        }
-        else if (verificationResult.status === "FAILED") {
-          clearInterval(verificationInterval);
-          const errorMessage = verificationResult.errorDescription ||
-            verificationResult.message ||
-            "Payment verification failed. Please try again.";
-          // setError(errorMessage);
-          toast({
-            title: "Payment Failed",
-            description: errorMessage,
-            variant: "destructive"
-          });
-        } else if (attemptCount >= maxAttempts) {
-          // Stop polling after max attempts
+          }
+          else if (verificationResult.status === "PROCESSING") {
+            setPaymentStatus("PROCESSING")
+          }
+          else if (verificationResult.status === "FAILED") {
+            clearInterval(verificationInterval);
+            setPaymentStatus("FAILED");
+            setTimeout(() => {
+              setIsModalOpen(false);
+              window.location.href = `/subscriptions`;
+            }, 2000);
+            
+          } else if (attemptCount >= maxAttempts) {
+            clearInterval(verificationInterval);
+            setPaymentStatus("FAILED");
+          }
+
+        } catch (error) {
+          console.error("Payment verification error:", error);
           clearInterval(verificationInterval);
           setPaymentStatus("FAILED");
         }
-        // If still pending, continue polling
-
-      } catch (error) {
-        console.error("Payment verification error:", error);
-        clearInterval(verificationInterval);
-        setPaymentStatus("FAILED");
-      }
-    }, pollingInterval);
+      }, pollingInterval);
+    }, 20000); // 20 seconds delay before starting verification
   };
 
   if (isLoading) {

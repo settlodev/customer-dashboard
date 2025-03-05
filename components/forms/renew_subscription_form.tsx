@@ -170,10 +170,12 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
   
   // Function to handle pending payment verification
   const handlePendingPayment = (transactionId: string, values: z.infer<typeof RenewSubscriptionSchema>) => {
-    // Set up a counter to limit the number of verification attempts
+    //initial delay for 20 seconds before starting verification
+    setTimeout(() => {
+       // Set up a counter to limit the number of verification attempts
     let attemptCount = 0;
-    const maxAttempts = 5; // Adjust as needed
-    const pollingInterval = 3000; // 1 seconds, adjust as needed
+    const maxAttempts = 1; // Adjust as needed
+    const pollingInterval = 5000; // 1 seconds, adjust as needed
     
     // Create a polling interval
     const verificationInterval = setInterval(async () => {
@@ -195,6 +197,10 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
         else if (verificationResult.status === "FAILED") {
           clearInterval(verificationInterval);
           setPaymentStatus("FAILED");
+          setTimeout(() => {
+            setIsModalOpen(false);
+            // window.location.href = `/select-location`;
+          })
           
         } else if (attemptCount >= maxAttempts) {
           // Stop polling after max attempts
@@ -209,6 +215,8 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
         setPaymentStatus("FAILED");
       }
     }, pollingInterval);
+    }, 20000);
+   
   };
   
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -216,7 +224,7 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
     
     setTimeout(() => {
       setIsModalOpen(false);
-      window.location.href = `/select-location`;
+      // window.location.href = `/select-location`;
     }, 2000)
     
     // Add any additional success handling here (e.g., redirects, UI updates)
