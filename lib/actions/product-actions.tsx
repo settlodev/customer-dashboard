@@ -252,7 +252,7 @@ export const updateProduct = async (
 
         // Update the product with new data
         await apiClient.put(
-            `/api/products/${location?.id}/${productId}x`,
+            `/api/products/${location?.id}/${productId}`,
             finalPayload
         );
 
