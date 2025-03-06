@@ -1,6 +1,6 @@
 import { UUID } from "crypto"
 
-export declare interface Subscription {
+export declare interface Subscriptions {
     id: UUID
     amount: number
     discount: number
@@ -48,7 +48,7 @@ export declare interface ActiveSubscription{
     subscriptionStatus: string
     active:boolean
     location: UUID
-    subscription: Subscription
+    subscription: Subscriptions
     status: boolean
     canDelete: boolean
     isArchived: boolean

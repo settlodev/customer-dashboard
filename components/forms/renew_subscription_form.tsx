@@ -174,7 +174,7 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
     setTimeout(() => {
        // Set up a counter to limit the number of verification attempts
     let attemptCount = 0;
-    const maxAttempts = 1; // Adjust as needed
+    const maxAttempts = 4; // Adjust as needed
     const pollingInterval = 5000; // 1 seconds, adjust as needed
     
     // Create a polling interval
@@ -210,7 +210,7 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
         // If still pending, continue polling
         
       } catch (error) {
-        console.error("Payment verification error:", error);
+        console.error("Payment verification error:", error );
         clearInterval(verificationInterval);
         setPaymentStatus("FAILED");
       }
@@ -224,7 +224,7 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
     
     setTimeout(() => {
       setIsModalOpen(false);
-      // window.location.href = `/select-location`;
+      window.location.href = `/renew-subscription`;
     }, 2000)
     
     // Add any additional success handling here (e.g., redirects, UI updates)

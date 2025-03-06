@@ -1,5 +1,5 @@
 'use server'
-import { ActiveSubscription, Subscription } from "@/types/subscription/type";
+import { ActiveSubscription, Subscriptions } from "@/types/subscription/type";
 import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
@@ -20,10 +20,10 @@ interface SubscriptionResponse {
     message: string;
     errorDescription?: string;
 }
-export const fetchSubscriptions = async (): Promise<Subscription[]> => {
+export const fetchSubscriptions = async (): Promise<Subscriptions[]> => {
     try {
         const apiClient = new ApiClient();
-        const response = await apiClient.get<Subscription[]>("/api/subscriptions/");
+        const response = await apiClient.get<Subscriptions[]>("/api/subscriptions/");
         const sortedSubscriptions = response.sort((a, b) => a.amount - b.amount);
         return parseStringify(sortedSubscriptions);
     } catch (error) {
@@ -129,8 +129,8 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
 };
 
 
-export const verifyPayment = async (transactionId: string) => {
-    const location = await getCurrentLocation();
+export const verifyPayment = async (transactionId: string,locationId?:string) => {
+    const location = await getCurrentLocation() || {id:locationId};
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/subscription-payments/${location?.id}/verify/${transactionId}`);
