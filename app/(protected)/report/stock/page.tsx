@@ -227,6 +227,22 @@ const StockHistoryDashboard = () => {
                         </p>
                     </CardContent>
                 </Card>
+
+                {/* Estimated profit */}
+                <Card className="bg-white">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium text-muted-foreground">
+                            Estimated profit
+                        </CardTitle>
+                        <Package className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{Intl.NumberFormat().format(history?.totalEstimatedProfit || 0)} </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            Total estimated profit
+                        </p>
+                    </CardContent>
+                </Card>
                
             
                 <Card className="bg-white">

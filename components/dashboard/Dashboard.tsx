@@ -46,8 +46,8 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-between p-1 mt-6">
-        <div>
+      <div className="flex justify-center lg:justify-between pt-12 mt-12">
+        <div className="hidden md:block">
         </div>
         <DateRangePicker setSummaries={setSummaries as React.Dispatch<React.SetStateAction<SummaryResponse>>} />
       </div>

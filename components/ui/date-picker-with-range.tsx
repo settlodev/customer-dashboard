@@ -10,7 +10,7 @@ import { useEffect, useState, useTransition } from "react";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
-import {CalendarIcon } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { ScrollArea, ScrollBar } from "./scroll-area";
 import { Calendar } from "./calendar";
 
@@ -25,7 +25,7 @@ interface DateRangePickerProps {
 
 function DateTimePicker({ value, onChange }: { value?: Date; onChange: (date: Date) => void }) {
   const [date, setDate] = useState<Date | undefined>(value);
-  const [isOpen, setIsOpen] =useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
 
   useEffect(() => {
@@ -68,7 +68,7 @@ function DateTimePicker({ value, onChange }: { value?: Date; onChange: (date: Da
           variant="outline"
           className="w-full justify-start text-left font-normal"
         >
-          <CalendarIcon className="mr-2 h-4 w-4" />
+          <CalendarIcon className="hidden mr-2 h-4 w-4" />
           {date ? format(date, "MM/dd/yyyy HH:mm") : <span>MM/DD/YYYY HH:mm</span>}
         </Button>
       </PopoverTrigger>
@@ -128,7 +128,7 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
     defaultValues: {
       from: (() => {
         const now = new Date();
-        now.setHours(0, 0, 0, 0); 
+        now.setHours(0, 0, 0, 0);
         return now;
       })(),
       to: new Date(),
@@ -137,7 +137,7 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
     setLoading(true);
-    console.log("Submitting data:", data);
+    // console.log("Submitting data:", data);
     startTransition(() => {
       fetchSummaries(data.from.toISOString(), data.to.toISOString())
         .then((response) => {
@@ -154,43 +154,43 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
 
   return (
     <div className="">
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="flex lg:gap-4 gap-1 items-center justify-center">
-        <FormField
-          control={form.control}
-          name="from"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <DateTimePicker
-                value={field.value}
-                onChange={(date) => form.setValue("from", date)}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="to"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <DateTimePicker
-                value={field.value}
-                onChange={(date) => form.setValue("to", date)}
-              />
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-         <Button type="submit" className="text-sm">
-                {loading ? (
-                    <div className="border-t-transparent border-4 border-green-500 w-[20px] h-[20px] rounded-full animate-spin"></div> // Replace with your loading spinner component
-                ) : (
-                    'Filter'
-                )}
-            </Button>
-      </form>
-    </Form>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="flex lg:gap-4 gap-1 items-center justify-center">
+          <FormField
+            control={form.control}
+            name="from"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <DateTimePicker
+                  value={field.value}
+                  onChange={(date) => form.setValue("from", date)}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="to"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <DateTimePicker
+                  value={field.value}
+                  onChange={(date) => form.setValue("to", date)}
+                />
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="text-sm">
+            {loading ? (
+              <div className="border-t-transparent border-4 border-green-500 w-[20px] h-[20px] rounded-full animate-spin"></div> // Replace with your loading spinner component
+            ) : (
+              'Filter'
+            )}
+          </Button>
+        </form>
+      </Form>
     </div>
   );
 }
