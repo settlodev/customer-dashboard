@@ -64,7 +64,7 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
     const user = await getAuthenticatedUser() as User | null;
     // console.log("The user is", user);
     const validSubscription = RenewSubscriptionSchema.safeParse(subscription);
-    const provider = process.env.PAYMENT_PROVIDER;
+    const provider = 'selcom';
 
 
 
