@@ -77,7 +77,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
       bgGradient: 'bg-gradient-to-br from-blue-50 to-blue-100'
     },
     {
-      name: (salesData?.grossProfit ?? 0) >= 0 ? 'Net Profit' : 'Net Loss',
+      name: (salesData?.grossProfit ?? 0) >= 0 ? 'Gross Profit' : 'Gross Loss',
       value: formatCurrency(salesData.grossProfit),
       icon:(salesData?.grossProfit ?? 0) >= 0 ? <ArrowUpCircle className="w-5 h-5 text-emerald-600" />: <TrendingDown className="w-5 h-5 text-red-600" />,
       color: (salesData?.grossProfit ?? 0) >= 0 ? 'bg-emerald-50': 'bg-red-50',
