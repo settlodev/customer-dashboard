@@ -28,7 +28,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
     const order = await getOrder(params.id as UUID);
     const orderData: Orders = order?.content[0];
 
-    console.log("orderData is: ", orderData);
+    // console.log("orderData is: ", orderData);
   
 
     if (!orderData) {
@@ -109,7 +109,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="min-h-screen bg-gray-50 p-4 md:p-8 mt-3">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Breadcrumbs */}
                 <BreadcrumbsNav items={[{ title: "Order Details", link: `/orders/${params.id}` }]} />
@@ -159,25 +159,27 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="border-b">
-                                <div className="flex justify-between items-center">
-                                    <h2 className="text-xl font-semibold flex items-center gap-2">
-                                        <Trash className="text-emerald-600" />
-                                        Items Removed
-                                    </h2>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="divide-y">
-                                {orderData.removedItems?.map((item) => (
-                                    <OrderItemRemovedCard
-                                        key={item.id}
-                                        item={item}
-                                        isValidImageUrl={isValidImageUrl}
-                                    />
-                                ))}
-                            </CardContent>
-                        </Card>
+                        {orderData.removedItems && orderData.removedItems.length > 0 && (
+                            <Card>
+                                <CardHeader className="border-b">
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <Trash className="text-emerald-600" />
+                                            Items Removed
+                                        </h2>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="divide-y">
+                                    {orderData.removedItems.map((item) => (
+                                        <OrderItemRemovedCard
+                                            key={item.id}
+                                            item={item}
+                                            isValidImageUrl={isValidImageUrl}
+                                        />
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
 
                     {/* Sidebar - Right Side */}

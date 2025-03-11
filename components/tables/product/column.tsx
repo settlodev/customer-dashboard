@@ -3,7 +3,6 @@ import {ColumnDef} from "@tanstack/react-table";
 import {ArrowUpDown, ShoppingCartIcon} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
-import {StateColumn} from "@/components/tables/state-column";
 import {CellAction} from "@/components/tables/product/cell-action";
 import {Product} from "@/types/product/type";
 import Image from "next/image";
@@ -112,35 +111,35 @@ export const columns: ColumnDef<Product>[] = [
         },
     },
 
-    {
-        accessorKey: "sku",
-        header: "SKU",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const sku = row.original.sku;
-            return <span>{sku ? sku : "None"}</span>;
-        }
-    },
+    // {
+    //     accessorKey: "sku",
+    //     header: "SKU",
+    //     enableHiding: true,
+    //     cell: ({ row }) => {
+    //         const sku = row.original.sku;
+    //         return <span>{sku ? sku : "None"}</span>;
+    //     }
+    // },
 
-    {
-        id: "status",
-        accessorKey: "status",
-        enableHiding:true,
-        header: ({ column }) => {
-            return (
-                <Button
-                    className="text-left p-0"
-                    variant="ghost"
-                    onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-                >
-                    Status
-                    <ArrowUpDown className="ml-2 h-4 w-4" />
-                </Button>
-            );
-        },
-        cell: ({ row }) => <StateColumn state={row.original.status} />,
+    // {
+    //     id: "status",
+    //     accessorKey: "status",
+    //     enableHiding:true,
+    //     header: ({ column }) => {
+    //         return (
+    //             <Button
+    //                 className="text-left p-0"
+    //                 variant="ghost"
+    //                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+    //             >
+    //                 Status
+    //                 <ArrowUpDown className="ml-2 h-4 w-4" />
+    //             </Button>
+    //         );
+    //     },
+    //     cell: ({ row }) => <StateColumn state={row.original.status} />,
 
-    },
+    // },
     {
         id: "actions",
         cell: ({ row }) => <CellAction data={row.original} />,
