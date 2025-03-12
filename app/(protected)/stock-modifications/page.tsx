@@ -27,9 +27,9 @@ const breadCrumbItems = [{title: "Stock Modification", link: "/stock-modificatio
      const pageCount = responseData.totalPages
 
     return (
-        <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
-            <div className={`flex items-center justify-between mb-2`}>
-                <div className={`relative flex-1 md:max-w-md`}>
+        <div className="flex-1 space-y-4 md:p-8 pt-6 mt-10">
+            <div className="flex items-center justify-between mb-2 p-4">
+                <div className="relative flex-1 md:max-w-md">
                     <BreadcrumbsNav items={breadCrumbItems} />
                 </div>
                 <div className={`flex items-center space-x-2`}>

@@ -70,10 +70,11 @@ export const columns: ColumnDef<StockVariant>[] = [
             return <span>{formattedAverageValue}/=</span>;
         }
     },
-    
-      {
+    {
         accessorKey: "lastStockIntakeTime",
-        header: "Last intake at",
+        header: ({ }) => (
+          <div className="hidden md:block">Last intake at</div>
+        ),
         enableHiding: true,
         cell: ({ row }) => {
             const time = row.original.lastStockIntakeTime
@@ -86,7 +87,7 @@ export const columns: ColumnDef<StockVariant>[] = [
                 second: '2-digit',
                 hour12: false
               }).format(new Date(time))
-            return <span>{formattedValue}</span>;
+            return <span className="hidden md:block lg:block">{formattedValue}</span>;
         }
     },
     {

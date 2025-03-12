@@ -66,7 +66,7 @@ export const columns: ColumnDef<StockModification>[] = [
         cell: ({ row }) => {
             const quantity = row.original.quantity;
             const formatted = new Intl.NumberFormat().format(quantity);
-            return <div className="w-[100px]">{formatted}</div>;
+            return <div className="">{formatted}</div>;
         }
        
     },
@@ -77,7 +77,7 @@ export const columns: ColumnDef<StockModification>[] = [
         cell: ({ row }) => {
             const value = row.original.value;
             const formatted = new Intl.NumberFormat().format(value);
-            return <div className="w-[100px]">{formatted}</div>;
+            return <div className="">{formatted}</div>;
         }
        
     },
@@ -85,11 +85,13 @@ export const columns: ColumnDef<StockModification>[] = [
     {
         
         accessorKey: "staffName",
-        header: "Staff",
+        header: ({}) => (
+            <div className="hidden md:block lg:block">Staff</div>
+          ),
         enableHiding: true,
         cell: ({ row }) => {
             const staff = row.original.staffName;
-            return <div className="w-[100px]">{staff}</div>;
+            return <div className="hidden md:block lg:block">{staff}</div>;
         }
        
     },
@@ -97,12 +99,14 @@ export const columns: ColumnDef<StockModification>[] = [
     {
         
         accessorKey: "dateCreated",
-        header: "Modification Date",
+        header: ({}) => (
+            <div className="hidden md:block">Modification Date</div>
+          ),
         enableHiding: true,
         cell: ({ row }) => {
             const modificationDate = row.original.dateCreated;
             const formatted = new Intl.DateTimeFormat().format(new Date(modificationDate));
-            return <div className="w-[100px]">{formatted}</div>;
+            return <div className="hidden md:block lg:block">{formatted}</div>;
         }
        
     },
