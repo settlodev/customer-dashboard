@@ -54,3 +54,14 @@ export declare interface StockFormVariant {
     alertLevel: number,
     imageOption?: string|undefined|null,
 }
+
+export declare interface stockVariantSummary{
+    id:UUID,
+    stockVariantName:string,
+    stockName:string,
+    totalEstimatedProfit:number,
+    currentCostPerItem:number,
+    currentTotalQuantity:number,
+    currentTotalValue:number,
+    currentAverageValue:number
+}

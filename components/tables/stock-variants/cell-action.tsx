@@ -27,7 +27,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
 
   const handleRedirect = (id: string) => {
-    router.push(`/stock-variants/${id}`);
+    
+    router.push(`/stock-variants/${id}?stock=${data.stock}`);
   };
 
   const handleRedirectUpdateStock = (id: string) => {

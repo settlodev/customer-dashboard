@@ -1,43 +1,52 @@
 'use client';
 
-import { getStockVariantMovement } from '@/lib/actions/stock-variant-actions';
+import { getStockVariantMovement, getStockVariantSummary } from '@/lib/actions/stock-variant-actions';
 import { UUID } from 'crypto';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import StockMovementDashboard from '@/components/widgets/stock-movement';
-import { StockMovement } from '@/types/stockVariant/type';
+import { StockMovement, stockVariantSummary } from '@/types/stockVariant/type';
 import Loading from '@/app/loading';
 // import { BoxIcon } from '@/components/icons/box';
 
 import BreadcrumbsNav from '@/components/layouts/breadcrumbs-nav';
-
-
-
+import { useSearchParams } from 'next/navigation';
 
 export default function StockVariantDetails({ params }: { params: { id: string } }) {
+  // console.log("The id is: ", params);
   const [variant, setVariant] = useState<StockMovement[]>([]);
   const [filteredMovements, setFilteredMovements] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // New state for loading
+  const searchParams = useSearchParams();
+  const stock = searchParams.get("stock");
+  const [summary, setSummary] = useState<stockVariantSummary>({} as stockVariantSummary);
+  const [error, setError] = useState<Error | null>(null);
 
-  const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"},
-    {title: `${variant[0]?.stockName}-${variant[0]?.stockVariantName}`, link: ""}];
 
-  useEffect(() => {
-    const fetchStockVariantDetail = async () => {
-      try {
-        const data = await getStockVariantMovement(params.id as UUID);
-        setVariant(data);
-        setFilteredMovements(data);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const breadCrumbItems = useMemo(() => [{title: "Stock Items", link: "/stock-variants"},
+    {title: `${variant[0]?.stockName}-${variant[0]?.stockVariantName}`, link: ""}],[]);
 
-    fetchStockVariantDetail();
-  }, [params.id]);
+    useEffect(() => {
+      const fetchData = async () => {
+        setIsLoading(true);
+        try {
+          const [movementData, summaryData] = await Promise.all([
+            getStockVariantMovement(params.id as UUID),
+            getStockVariantSummary(params.id as UUID, stock as UUID)
+          ]);
+          
+          setVariant(movementData);
+          setFilteredMovements(movementData);
+          setSummary(summaryData);
+        } catch (error) {
+          setError(error instanceof Error ? error : new Error('Unknown error occurred'));
+        } finally {
+          setIsLoading(false);
+        }
+      };
+    
+      fetchData();
+    }, [params.id, stock]);
 
 
   if (isLoading) {
@@ -49,6 +58,9 @@ export default function StockVariantDetails({ params }: { params: { id: string }
       </div>
     );
   }
+  if (error) {
+    return <div>Error loading data: {error.message}</div>;
+  }
 
   return (
     <div className="p-4 space-y-4 mt-6">
@@ -57,20 +69,16 @@ export default function StockVariantDetails({ params }: { params: { id: string }
         <CardContent className="pt-6">
           <div className="space-y-2">
             <div className='space-y-2'>
-              <p className='text-gray-600 text-sm font-medium'>
-                Stock Movement Details
-              </p>
+            <h3 className='font-bold text-lg'>Stock Movements History</h3>
               <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
-                <span className='text-gray-700 font-semibold'>
-                  Previewing stock movement for
-                </span>
+              
                 <div className='flex items-center gap-2'>
-                  <span className='px-3 py-2 bg-emerald-500 text-white rounded-md font-medium flex items-center gap-1'>
+                  <h2 className='text-[32px] font-bold capitalize'>
                     {/* <BoxIcon className="w-4 h-4" /> */}
                     {variant[0]?.stockName}
-                    <span className="text-emerald-200">|</span>
+                    <span className="text-black">-</span>
                     {variant[0]?.stockVariantName}
-                  </span>
+                  </h2>
                 </div>
               </div>
             </div>
@@ -78,7 +86,7 @@ export default function StockVariantDetails({ params }: { params: { id: string }
         </CardContent>
       </Card>
 
-      <StockMovementDashboard movements={filteredMovements} />
+      <StockMovementDashboard movements={filteredMovements} summary={summary} />
     </div>
   );
 }

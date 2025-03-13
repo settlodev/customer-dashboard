@@ -233,7 +233,7 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
   return (
     <Card>
   <CardHeader className='flex flex-col space-y-4 lg:space-y-0 lg:flex-row lg:justify-between'>
-    <h3 className='font-bold text-lg'>Stock Movements History</h3>
+    <div></div>
     <div className='w-full lg:w-auto'>
       <div className='grid grid-cols-1 sm:grid-cols-2 lg:flex items-center gap-2'>
         <div className="w-full sm:w-auto">
