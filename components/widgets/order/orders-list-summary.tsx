@@ -1,6 +1,7 @@
 import React from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { TrendingUp, TrendingDown, Clock, DollarSign, Package, AlertCircle } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface Order {
   amount: number;
@@ -62,8 +63,18 @@ const OrdersSummary = ({ data }: { data: Data }) => {
                   </div>
                   <div className="min-w-0"> {/* Added min-w-0 to allow text truncation */}
                     <p className="text-sm font-medium text-gray-500 truncate">{stat.title}</p>
-                    <h3 className="text-xl font-bold truncate md:text-2xl">{stat.value}</h3>
-                  </div>
+                    <TooltipProvider>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <h3 className="text-xl font-bold truncate md:text-2xl cursor-pointer">
+        {stat.value}
+      </h3>
+    </TooltipTrigger>
+    <TooltipContent>
+      <p>{stat.value}</p>
+    </TooltipContent>
+  </Tooltip>
+</TooltipProvider>                  </div>
                 </div>
                 <div className="flex-shrink-0 ml-2">
                   {stat.trend === "up" && <TrendingUp className="text-green-500" size={20} />}
