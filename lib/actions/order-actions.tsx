@@ -122,7 +122,6 @@ export const getOrderLogs = async (id:UUID)=>{
         const orderLogs = await apiClient.post(
             `/api/order-logs/${id}`,query
         );
-        console.log("The order logs are: ",orderLogs)
         return parseStringify(orderLogs);
     }catch (error){
         throw error;
