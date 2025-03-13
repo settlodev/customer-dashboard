@@ -169,3 +169,17 @@ export interface RemovedItems{
     status: boolean
 }
 
+export interface OrderLogs{
+    content: any
+    sort(arg0: (a: OrderLogs, b: OrderLogs) => number): unknown
+    id:UUID
+    orderLogEvent:string
+    orderItemName:string
+    modifierName:string
+    addonName:string
+    orderTransactionPaymentMethodName:string
+    discountIdName:string
+    discountAmountValue:number
+    staffName:string
+    dateCreated:string
+}
