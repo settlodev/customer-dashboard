@@ -189,21 +189,21 @@ const OrderTimeline = ({ data }: { data: OrderLogs }) => {
                 <div className="w-full h-80 overflow-y-auto">
                     <div className="space-y-0">
                         {timelineItems.map((item: any, index: number) => (
-                            <div key={item.id} className={`flex p-4 ${getEventColor(item.orderLogEvent)}`}>
+                            <div key={item.id} className={`flex p-1 ${getEventColor(item.orderLogEvent)}`}>
                                 {/* Timeline connector */}
                                 <div className="mr-4 flex flex-col items-center">
                                     <div className={`flex h-8 w-8 items-center justify-center rounded-full ${getIconBgColor(item.orderLogEvent)}`}>
                                         {getEventIcon(item.orderLogEvent)}
                                     </div>
                                     {index < timelineItems.length - 1 && (
-                                        <div className="h-full w-0.5 bg-gray-200 mt-1"></div>
+                                        <div className="h-8 w-0.5 bg-gray-200 "></div>
                                     )}
                                 </div>
 
                                 {/* Content */}
-                                <div className="pb-4">
+                                <div className="pb-2">
                                     <div className="flex items-baseline mb-1">
-                                        <h3 className="text-lg font-semibold">{getEventDescription(item)}</h3>
+                                        <h3 className="text-sm font-bold">{getEventDescription(item)}</h3>
                                     </div>
                                     <time className="text-sm text-gray-500 mb-2 flex items-center">
                                         <Clock className="h-3 w-3 mr-1" />
