@@ -1,7 +1,9 @@
+'use client';
+
 import React from 'react';
-import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, TrendingDown, Clock, DollarSign, Package, AlertCircle } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Package, DollarSign, AlertCircle, Clock } from 'lucide-react';
+import MetricCard from './order-summary-card';
+
 
 interface Order {
   amount: number;
@@ -10,8 +12,8 @@ interface Order {
 }
 
 interface Data {
-  totalElements: number;
   content: Order[];
+  totalElements: number;
 }
 
 const OrdersSummary = ({ data }: { data: Data }) => {
@@ -20,69 +22,54 @@ const OrdersSummary = ({ data }: { data: Data }) => {
   const pendingPayments = data.content.filter((order: Order) => order.orderPaymentStatus !== "PAID").length;
   const openOrders = data.content.filter((order: Order) => order.orderStatus === "OPEN").length;
 
+  // Format currency values
+  const formatCurrency = (value: number) => 
+    new Intl.NumberFormat('en-TZ', { style: 'currency', currency: 'TZS' }).format(value);
+
   const stats = [
     {
       title: "Total Orders",
       value: totalOrders,
-      icon: Package,
-      trend: totalOrders > 0 ? "up" : "neutral",
-      color: "bg-blue-500"
+      icon: <Package size={20} />,
+      trend: totalOrders > 0 ? "up" : "neutral" as const,
+      colorTheme: "blue" as const
     },
     {
       title: "Total Revenue",
-      value: new Intl.NumberFormat('en-Tz', { style: 'currency', currency: 'Tzs' }).format(totalRevenue),
-      icon: DollarSign,
-      trend: totalRevenue > 0 ? "up" : "neutral",
-      color: "bg-green-500"
+      value: totalRevenue,
+      icon: <DollarSign size={20} />,
+      trend: totalRevenue > 0 ? "up" : "neutral" as const,
+      colorTheme: "green" as const,
+      formatter: formatCurrency
     },
     {
       title: "Pending Payments",
       value: pendingPayments,
-      icon: AlertCircle,
-      trend: pendingPayments > 0 ? "up" : "neutral",
-      color: "bg-yellow-500"
+      icon: <AlertCircle size={20} />,
+      trend: pendingPayments > 0 ? "up" : "neutral" as const,
+      colorTheme: "yellow" as const
     },
     {
       title: "Open Orders",
       value: openOrders,
-      icon: Clock,
-      trend: "neutral",
-      color: "bg-purple-500"
+      icon: <Clock size={20} />,
+      trend: "neutral" as const,
+      colorTheme: "purple" as const
     }
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pt-6 mb-6">
       {stats.map((stat, index) => (
-        <Card key={index} className="shadow-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-start space-x-2 min-w-0"> {/* Using items-start and min-w-0 */}
-                <div className={`${stat.color} p-2 rounded-lg text-white flex-shrink-0`}>
-                  <stat.icon size={20} />
-                </div>
-                <div className="min-w-0"> {/* Added min-w-0 to allow text truncation */}
-                  <p className="text-sm font-medium text-gray-500 truncate">{stat.title}</p>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <h3 className="text-xl font-bold truncate md:text-2xl cursor-pointer">
-                          {stat.value}
-                        </h3>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{stat.value}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>                  </div>
-              </div>
-              <div className="flex-shrink-0 ml-2">
-                {stat.trend === "up" && <TrendingUp className="text-green-500" size={20} />}
-                {stat.trend === "down" && <TrendingDown className="text-red-500" size={20} />}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          key={index}
+          title={stat.title}
+          value={stat.value}
+          icon={stat.icon}
+          colorTheme={stat.colorTheme}
+          formatter={stat.formatter}
+          showTooltip={true}
+        />
       ))}
     </div>
   );

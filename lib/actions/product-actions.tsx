@@ -64,6 +64,7 @@ export const searchProducts = async (
             `/api/products/${location?.id}`,
             query
         );
+        console.log("Products are as follow:", data);
         return parseStringify(data);
     }
     catch (error){

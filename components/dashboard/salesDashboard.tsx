@@ -31,13 +31,31 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
   // Performance Metrics with enhanced styling and semantic colors
   const performanceMetrics = [
     {
-      name: 'Total Collection',
-      value: formatCurrency(salesData.totalRevenue),
-      icon: <DollarSign className="w-5 h-5 text-green-600" />,
-      color: 'bg-green-50',
-      textColor: 'text-green-700',
-      borderColor: 'border-green-100',
-      bgGradient: 'bg-gradient-to-br from-green-50 to-green-100'
+      name: 'Closing Balance',
+      value: formatCurrency(salesData.closingBalance),
+      icon: <DollarSign className="w-5 h-5 text-blue-600" />,
+      color: 'bg-blue-50',
+      textColor: 'text-blue-700',
+      borderColor: 'border-blue-100',
+      bgGradient: 'bg-gradient-to-br from-blue-50 to-blue-100'
+    },
+    // {
+    //   name: 'Net Sales',
+    //   value: formatCurrency(salesData.netSales),
+    //   icon: <DollarSign className="w-5 h-5 text-emerald-600" />,
+    //   color: 'bg-emerald-50',
+    //   textColor: 'text-emerald-700',
+    //   borderColor: 'border-emerald-100',
+    //   bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100'
+    // },
+    {
+      name: 'Gross Sales',
+      value: formatCurrency(salesData.grossSales),
+      icon: <DollarSign className="w-5 h-5 text-emerald-600" />,
+      color: 'bg-emerald-50',
+      textColor: 'text-emerald-700',
+      borderColor: 'border-emerald-100',
+      bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100'
     },
     
     {
@@ -69,23 +87,23 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
     },
     {
       name: 'Cost of Goods Sold',
-      value: formatCurrency(salesData.cost),
+      value: formatCurrency(salesData.costAmount),
       icon: <TrendingUp className="w-5 h-5 text-blue-600" />,
       color: 'bg-blue-50',
       textColor: 'text-blue-700',
       borderColor: 'border-blue-100',
       bgGradient: 'bg-gradient-to-br from-blue-50 to-blue-100'
     },
-    {
-      name: (salesData?.grossProfit ?? 0) >= 0 ? 'Gross Profit' : 'Gross Loss',
-      value: formatCurrency(salesData.grossProfit),
-      icon:(salesData?.grossProfit ?? 0) >= 0 ? <ArrowUpCircle className="w-5 h-5 text-emerald-600" />: <TrendingDown className="w-5 h-5 text-red-600" />,
-      color: (salesData?.grossProfit ?? 0) >= 0 ? 'bg-emerald-50': 'bg-red-50',
-      textColor: (salesData?.grossProfit ?? 0) >= 0 ? 'text-emerald-700': 'text-red-700',
-      borderColor:(salesData?.grossProfit ?? 0) >= 0 ? 'border-emerald-100': 'border-red-100',
-      bgGradient: (salesData?.grossProfit ?? 0) >= 0 ? 'bg-gradient-to-br from-emerald-50 to-emerald-100' : 'bg-gradient-to-br from-red-50 to-red-100',
-      positive: (salesData?.grossProfit ?? 0) >= 0 ? true: false
-    }
+    // {
+    //   name: (salesData?.grossProfit ?? 0) >= 0 ? 'Gross Profit' : 'Gross Loss',
+    //   value: formatCurrency(salesData.grossProfit),
+    //   icon:(salesData?.grossProfit ?? 0) >= 0 ? <ArrowUpCircle className="w-5 h-5 text-emerald-600" />: <TrendingDown className="w-5 h-5 text-red-600" />,
+    //   color: (salesData?.grossProfit ?? 0) >= 0 ? 'bg-emerald-50': 'bg-red-50',
+    //   textColor: (salesData?.grossProfit ?? 0) >= 0 ? 'text-emerald-700': 'text-red-700',
+    //   borderColor:(salesData?.grossProfit ?? 0) >= 0 ? 'border-emerald-100': 'border-red-100',
+    //   bgGradient: (salesData?.grossProfit ?? 0) >= 0 ? 'bg-gradient-to-br from-emerald-50 to-emerald-100' : 'bg-gradient-to-br from-red-50 to-red-100',
+    //   positive: (salesData?.grossProfit ?? 0) >= 0 ? true: false
+    // }
   ];
 
   // Secondary financial metrics with enhanced styling
@@ -110,7 +128,28 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
       borderColor: 'border-amber-100',
       bgGradient: 'bg-gradient-to-br from-amber-50 to-amber-100'
     },
-    
+    {
+      name: (salesData?.grossProfit ?? 0) >= 0 ? 'Gross Profit' : 'Gross Loss',
+      value: formatCurrency(salesData.grossProfit),
+      icon:(salesData?.grossProfit ?? 0) >= 0 ? <ArrowUpCircle className="w-5 h-5 text-emerald-600" />: <TrendingDown className="w-5 h-5 text-red-600" />,
+      color: (salesData?.grossProfit ?? 0) >= 0 ? 'bg-emerald-50': 'bg-red-50',
+      textColor: (salesData?.grossProfit ?? 0) >= 0 ? 'text-emerald-700': 'text-red-700',
+      borderColor:(salesData?.grossProfit ?? 0) >= 0 ? 'border-emerald-100': 'border-red-100',
+      bgGradient: (salesData?.grossProfit ?? 0) >= 0 ? 'bg-gradient-to-br from-emerald-50 to-emerald-100' : 'bg-gradient-to-br from-red-50 to-red-100',
+      positive: (salesData?.grossProfit ?? 0) >= 0 ? true: false,
+      description:'Gross sales - cost of goods sold (COGS).'
+    },
+    // {
+    //   name: (salesData?.netProfit ?? 0) >= 0 ? 'Net Profit' : 'Net Loss',
+    //   value: formatCurrency(salesData.netProfit),
+    //   icon:(salesData?.netProfit ?? 0) >= 0 ? <ArrowUpCircle className="w-5 h-5 text-emerald-600" />: <TrendingDown className="w-5 h-5 text-red-600" />,
+    //   color: (salesData?.netProfit ?? 0) >= 0 ? 'bg-emerald-50': 'bg-red-50',
+    //   textColor: (salesData?.netProfit ?? 0) >= 0 ? 'text-emerald-700': 'text-red-700',
+    //   borderColor:(salesData?.netProfit ?? 0) >= 0 ? 'border-emerald-100': 'border-red-100',
+    //   bgGradient: (salesData?.netProfit ?? 0) >= 0 ? 'bg-gradient-to-br from-emerald-50 to-emerald-100' : 'bg-gradient-to-br from-red-50 to-red-100',
+    //   positive: (salesData?.netProfit ?? 0) >= 0 ? true: false,
+    //   description:'Gross profit - expenses, taxes, and other costs.'
+    // }    
   ];
 
   // Payment Method Data
@@ -133,7 +172,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                 <div>
                   <p className="text-sm font-medium text-gray-600">{metric.name}</p>
                   <h3 className={`text-2xl font-bold ${metric.textColor}`}>{metric.value}</h3>
-                  {metric.positive && <p className="text-xs text-emerald-600 mt-1 font-medium">↑ Positive trend</p>}
+                  
                 </div>
                 <div className={`${metric.color} p-3 rounded-full shadow-sm`}>
                   {metric.icon}
@@ -145,7 +184,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
       </div>
       
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {secondaryMetrics.map((metric, index) => (
           <Card 
             key={index} 
@@ -157,6 +196,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                   <p className="text-sm font-medium text-gray-600">{metric.name}</p>
                   <h3 className={`text-2xl font-bold ${metric.textColor}`}>{metric.value}</h3>
                   <p className="text-xs text-gray-600 mt-1">{metric.description}</p>
+                  {metric.positive && <p className="text-xs text-emerald-600 mt-1 font-medium">↑ Positive trend</p>}
                 </div>
                 <div className={`${metric.color} p-3 rounded-full shadow-sm`}>
                   {metric.icon}

@@ -8,6 +8,7 @@ export interface OrderItemRefunds {
     order: UUID
     orderNumber: string
     orderItem: UUID
+    orderItemNetAmount: UUID
     orderItemName: string
     staff: UUID
     staffName: string

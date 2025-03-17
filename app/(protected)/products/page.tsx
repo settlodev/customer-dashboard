@@ -22,10 +22,10 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
      const pageLimit = Number(searchParams.limit);
 
      const responseData = await searchProducts(q,page,pageLimit);
-    //  console.log("The response data ", responseData)
-
+     
      const data:Product[]=responseData.content;
      const total =responseData.totalElements;
+    //  console.log("Total is: ", total);
      const pageCount = responseData.totalPages
 
     return (
