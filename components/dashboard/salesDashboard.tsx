@@ -69,7 +69,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
     },
     {
       name: 'Total Refunds',
-      value: formatCurrency(salesData.totalRefundsAmount),
+      value: formatCurrency(salesData.refundsAmount),
       icon: <RefreshCcw className="w-5 h-5 text-orange-600" />,
       color: 'bg-orange-50',
       textColor: 'text-orange-700',
@@ -87,7 +87,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
     },
     {
       name: 'Cost of Goods Sold',
-      value: formatCurrency(salesData.costAmount),
+      value: formatCurrency(salesData.costsAmount),
       icon: <TrendingUp className="w-5 h-5 text-blue-600" />,
       color: 'bg-blue-50',
       textColor: 'text-blue-700',

@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash } from "lucide-react";
+import { Edit, KeyRound, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -13,10 +13,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
-import { deleteStaff } from "@/lib/actions/staff-actions";
-import {Staff} from "@/types/staff";
-import {useDisclosure} from "@nextui-org/modal";
-import {toast} from "@/hooks/use-toast";
+import { deleteStaff, resetStaffPasscode } from "@/lib/actions/staff-actions";
+import { Staff } from "@/types/staff";
+import { toast } from "@/hooks/use-toast";
+import { UUID } from "crypto";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"; // Import Dialog components from shadcn
 
 interface CellActionProps {
   data: Staff;
@@ -24,7 +33,8 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = React.useState(false);
 
   const onDelete = async () => {
     try {
@@ -48,17 +58,73 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
         description:
-        (error as Error).message ||
+          (error as Error).message ||
           "There was an issue with your request, please try again later",
       });
     } finally {
-      onOpenChange();
+      setIsDeleteModalOpen(false);
+    }
+  };
+
+  const handleResetPasscode = async (staffId: string) => {
+    try {
+      await resetStaffPasscode(staffId as UUID);
+      toast({
+        title: "Success",
+        description: "Staff passcode has been reset",
+        variant: "default",
+      });
+    }  catch (error: any) {
+      const errorMessage = error?.response?.data?.message  
+        || error?.message  
+        || "Failed to reset staff passcode";  
+
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsResetModalOpen(false);
     }
   };
 
   return (
     <>
       <div className="relative flex items-center gap-2">
+        {/* Reset Passcode Button */}
+        <Dialog open={isResetModalOpen} onOpenChange={setIsResetModalOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <KeyRound className="h-4 w-4" />
+              <span className="sr-only">Reset Passcode</span>
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Reset Passcode</DialogTitle>
+              <DialogDescription>
+                Would you like to reset the passcode for this staff?
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setIsResetModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={() => handleResetPasscode(data.id)}
+              >
+                Confirm
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Actions Dropdown Menu */}
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <Button className="h-8 w-8 p-0" variant="ghost">
@@ -73,7 +139,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             </DropdownMenuItem>
             {data.canDelete && (
               <>
-                <DropdownMenuItem onClick={onOpen}>
+                <DropdownMenuItem onClick={() => setIsDeleteModalOpen(true)}>
                   <Trash className="mr-2 h-4 w-4" /> Delete
                 </DropdownMenuItem>
               </>
@@ -81,12 +147,14 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Delete Modal */}
       {data.canDelete && (
         <DeleteModal
-          isOpen={isOpen}
+          isOpen={isDeleteModalOpen}
           itemName={data.firstName + " " + data.lastName}
           onDelete={onDelete}
-          onOpenChange={onOpenChange}
+          onOpenChange={() => setIsDeleteModalOpen(!isDeleteModalOpen)}
         />
       )}
     </>

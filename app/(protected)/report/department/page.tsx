@@ -1,23 +1,28 @@
-'use client';
-import { useState, useEffect } from "react";
-import { Select, SelectItem, SelectTrigger, SelectContent, SelectValue } from "@/components/ui/select";
+'use client'
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { ShoppingCart, DollarSign, TrendingUp, TrendingDown } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DateTimeRange, DateTimeRangeSelect } from "@/components/widgets/date-range-select";
 import { DepartmentReport, fectchAllDepartments } from "@/lib/actions/department-actions";
+import { Department,Report } from "@/types/department/type";
 import { UUID } from "crypto";
-import { Department, Report } from "@/types/department/type";
-import { DateRange } from "react-day-picker";
-import { DateRangeSelect } from "@/components/widgets/date-range-select";
+import { DollarSign, ShoppingCart, TrendingDown, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export default function DepartmentReportPage() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null|undefined>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false);
-  const [dateRange, setDateRange] = useState<DateRange >({
-    from: new Date(),
-    to: new Date(),
+  
+  // Set default values - from: today at 00:00, to: current time
+  const today = new Date();
+  const startOfDay = new Date(today);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const [dateRange, setDateRange] = useState<DateTimeRange>({
+    from: startOfDay,
+    to: today,
   });
 
   useEffect(() => {
@@ -32,8 +37,10 @@ export default function DepartmentReportPage() {
     fetchDepartments();
   }, []);
 
-  const handleDateRangeChange = (newDateRange: DateRange ) => {
-    setDateRange(newDateRange);
+  const handleDateRangeChange = (newDateRange: DateTimeRange | undefined) => {
+    if (newDateRange) {
+      setDateRange(newDateRange);
+    }
   };
 
   const fetchReport = async () => {
@@ -78,9 +85,9 @@ export default function DepartmentReportPage() {
             </div>
            
             <div className="flex items-center space-x-2">
-              <DateRangeSelect 
+              <DateTimeRangeSelect 
                 dateRange={dateRange} 
-                onDateRangeChange={(newDateRange) => handleDateRangeChange(newDateRange ?? { from: undefined, to: undefined })}
+                onDateRangeChange={handleDateRangeChange}
               />
               <Button 
                 onClick={fetchReport}

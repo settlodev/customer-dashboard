@@ -15,8 +15,9 @@ export default interface SummaryResponse {
   averageSale: number;
   closingBalance: number;
   complimentary: number;
-  costAmount: number;
+  costsAmount: number;
   discountsAmount: number;
+  refundsAmount: number;
   expense: number;
   grossProfit: number;
   grossSales: number;
