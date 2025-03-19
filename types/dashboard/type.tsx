@@ -1,6 +1,7 @@
 export default interface SummaryResponse {
   totalOrders: number;
   totalRevenue: number;
+  totalCollections: number;
   totalDiscounts: number;
   averageOrderValue: number;
   completedOrders: number;
@@ -15,7 +16,7 @@ export default interface SummaryResponse {
   closingBalance: number;
   complimentary: number;
   costAmount: number;
-  discounts: number;
+  discountsAmount: number;
   expense: number;
   grossProfit: number;
   grossSales: number;

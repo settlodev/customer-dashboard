@@ -49,8 +49,8 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
     //   bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100'
     // },
     {
-      name: 'Gross Sales',
-      value: formatCurrency(salesData.grossSales),
+      name: 'Total Collection',
+      value: formatCurrency(salesData.totalCollections),
       icon: <DollarSign className="w-5 h-5 text-emerald-600" />,
       color: 'bg-emerald-50',
       textColor: 'text-emerald-700',
@@ -60,7 +60,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
     
     {
       name: 'Total Discount',
-      value: formatCurrency(salesData.discounts),
+      value: formatCurrency(salesData.discountsAmount),
       icon: <TrendingDown className="w-5 h-5 text-purple-600" />,
       color: 'bg-purple-50',
       textColor: 'text-purple-700',
