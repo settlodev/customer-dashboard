@@ -5,20 +5,19 @@ import { format, parseISO } from 'date-fns';
 import { Building2, Calendar, ShoppingCart, TrendingUp, DollarSign, TrendingDown } from 'lucide-react';
 import { Report } from '@/types/department/type';
 import { useRouter } from 'next/navigation';
-import { DateRange } from 'react-day-picker';
-import { DateRangeSelect } from './date-range-select';
 import { Button } from '../ui/button';
+import { DateTimeRange, DateTimeRangeSelect } from './date-range-select';
 
 const DepartmentReportPage: React.FC<{ report: Report }> = ({ report }) => {
   console.log(report);
   const router = useRouter();
-  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+  const [dateRange, setDateRange] = useState<DateTimeRange | undefined>({
     from: parseISO(report.startDate),
     to: parseISO(report.endDate),
   });
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
+  const handleDateRangeChange = (newDateRange: DateTimeRange | undefined) => {
     setDateRange(newDateRange);
   };
 
@@ -50,7 +49,7 @@ const DepartmentReportPage: React.FC<{ report: Report }> = ({ report }) => {
               </div>
             </div>
             <div className="flex items-center space-x-2">
-              <DateRangeSelect 
+            <DateTimeRangeSelect 
                 dateRange={dateRange} 
                 onDateRangeChange={handleDateRangeChange}
               />

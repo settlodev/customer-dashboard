@@ -292,3 +292,18 @@ export const staffReport = async (startDate?: Date, endDate?: Date): Promise<Sta
         throw error
     }
 }
+
+export const resetStaffPasscode = async (staffId: UUID): Promise<void> => {
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+
+        const location = await getCurrentLocation();
+
+        await apiClient.put(`/api/staff/${location?.id}/reset-passcode/${staffId}`,{});
+        revalidatePath("/staff");
+    } catch (error) {
+        throw error;
+    }
+};
