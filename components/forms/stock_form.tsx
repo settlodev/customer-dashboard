@@ -1,7 +1,7 @@
 "use client";
 
-import React, {useCallback, useState} from "react";
-import {useForm, useFieldArray, FieldErrors} from "react-hook-form";
+import React, { useCallback, useState } from "react";
+import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Trash2, Plus } from "lucide-react";
@@ -37,7 +37,7 @@ type StockFormProps = {
 };
 
 export default function StockForm({ item }: StockFormProps) {
-    console.log("The stock is",item)
+    console.log("The stock is", item)
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
 
@@ -70,7 +70,7 @@ export default function StockForm({ item }: StockFormProps) {
         name: "stockVariants"
     });
 
-    const {toast} = useToast();
+    const { toast } = useToast();
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
@@ -90,13 +90,13 @@ export default function StockForm({ item }: StockFormProps) {
     };
 
     const submitData = (values: z.infer<typeof StockSchema>) => {
-        
+
         const stored = localStorage.getItem('pagination-stock-variants');
         const paginationState = stored ? JSON.parse(stored) : null;
         console.log('Pagination state:', paginationState);
 
         setResponse(undefined);
-        
+
         // When updating, preserve the existing variant IDs
         const updatedValues = {
             ...values,
@@ -120,11 +120,11 @@ export default function StockForm({ item }: StockFormProps) {
         console.log('Starting submitData with values:', updatedValues);
 
         startTransition(() => {
-         
+
 
             if (item) {
                 console.log('Updating existing stock with ID:', updatedValues);
-                updateStock(item.id, updatedValues,paginationState)
+                updateStock(item.id, updatedValues, paginationState)
                     .then((data) => {
                         console.log('Update stock response:', data);
                         if (data) setResponse(data);
@@ -155,18 +155,20 @@ export default function StockForm({ item }: StockFormProps) {
         <Form {...form}>
             <FormError message={response?.message} />
             <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-                <div className="grid xl:grid-cols-3 md:grid-cols-2 gap-6">
+                <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+
                     {/* Left Column - Basic Information */}
                     <Card className="order-1 xl:order-none md:col-span-1">
                         <CardContent className="pt-6 space-y-6">
-                            {/* Basic Information section remains unchanged */}
+                            {/* Basic Information Section */}
                             <div>
                                 <h2 className="text-xl font-semibold mb-4">Basic Information</h2>
                                 <div className="space-y-6">
+                                    {/* Stock Name Field */}
                                     <FormField
                                         control={form.control}
                                         name="name"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Stock Name</FormLabel>
                                                 <FormControl>
@@ -179,35 +181,38 @@ export default function StockForm({ item }: StockFormProps) {
                                                 <FormDescription>
                                                     Enter a unique name for this stock item
                                                 </FormDescription>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
-                                    <div className="col-span-4">
-                          <FormField
-                              control={form.control}
-                              name="unit"
-                              render={({field}) => (
-                                  <FormItem>
-                                <FormLabel>Stock Unit (Optional)</FormLabel>
-                                    <FormControl>
-                                     <UnitSelector
-                                         value={field.value}
-                                         onChange={field.onChange}
-                                         placeholder="Select unit"
-                                        //  disabled={isPending}
-                                     />
-                                    </FormControl>
-                                    <FormMessage/>
-                                  </FormItem>
-                              )}
-                          />
-                        </div>
 
+                                    {/* Stock Unit Field */}
+                                    <div className="col-span-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="unit"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Stock Unit (Optional)</FormLabel>
+                                                    <FormControl>
+                                                        <UnitSelector
+                                                            value={field.value}
+                                                            onChange={field.onChange}
+                                                            placeholder="Select unit"
+                                                        // disabled={isPending}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+
+                                    {/* Stock Description Field */}
                                     <FormField
                                         control={form.control}
                                         name="description"
-                                        render={({field}) => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Description</FormLabel>
                                                 <FormControl>
@@ -221,7 +226,7 @@ export default function StockForm({ item }: StockFormProps) {
                                                 <FormDescription>
                                                     Provide additional details about the stock item
                                                 </FormDescription>
-                                                <FormMessage/>
+                                                <FormMessage />
                                             </FormItem>
                                         )}
                                     />
@@ -233,7 +238,7 @@ export default function StockForm({ item }: StockFormProps) {
                                 <FormField
                                     control={form.control}
                                     name="status"
-                                    render={({field}) => (
+                                    render={({ field }) => (
                                         <FormItem className="flex items-center justify-between p-4 rounded-lg border">
                                             <div className="space-y-0.5">
                                                 <FormLabel>Stock Status</FormLabel>
@@ -252,16 +257,6 @@ export default function StockForm({ item }: StockFormProps) {
                                     )}
                                 />
                             )}
-
-                            {/* Action Buttons */}
-                            <div className="flex h-5 items-center space-x-4">
-                                <CancelButton/>
-                                <Separator orientation="vertical"/>
-                                <SubmitButton
-                                    isPending={isPending}
-                                    label={item ? "Update stock" : "Create stock"}
-                                />
-                            </div>
                         </CardContent>
                     </Card>
 
@@ -282,22 +277,21 @@ export default function StockForm({ item }: StockFormProps) {
                                     onClick={handleAddVariant}
                                     disabled={isPending}
                                 >
-                                    <Plus className="w-4 h-4 mr-2"/>
+                                    <Plus className="w-4 h-4 mr-2" />
                                     Add Variant
                                 </Button>
                             </div>
 
+                            {/* Variants List */}
                             <div className="space-y-6 overflow-y-auto pr-2">
                                 {fields.map((field, index) => (
-                                    <div
-                                        key={field.id}
-                                        className="p-4 rounded-lg border bg-card"
-                                    >
+                                    <div key={field.id} className="p-4 rounded-lg border bg-card">
                                         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                                            {/* Variant Name Field */}
                                             <FormField
                                                 control={form.control}
                                                 name={`stockVariants.${index}.name`}
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Variant Name</FormLabel>
                                                         <FormControl>
@@ -308,45 +302,43 @@ export default function StockForm({ item }: StockFormProps) {
                                                                 disabled={isPending}
                                                             />
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
 
-<FormField
-    control={form.control}
-    name={`stockVariants.${index}.startingQuantity`}
-    render={({ field }) => (
-        <FormItem>
-            <FormLabel>Initial Quantity</FormLabel>
-            <div className="flex items-center gap-2">
-                <FormControl>
-                    <NumericFormat
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
-                        value={field.value}
-                        onValueChange={(values) => {
-                            field.onChange(Number(values.value));
-                        }}
-                        thousandSeparator={true}
-                        placeholder="Enter quantity"
-                        disabled={isPending || isFieldReadOnly(index)}
-                        readOnly={isFieldReadOnly(index)}
-                    />
-                </FormControl>
-                {/* <span className="text-sm text-muted-foreground">
-                    {form.getValues("unit") || "unit"}
-                </span> */}
-            </div>
-            <FormMessage />
-        </FormItem>
-    )}
-/>
+                                            {/* Initial Quantity Field */}
+                                            <FormField
+                                                control={form.control}
+                                                name={`stockVariants.${index}.startingQuantity`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Initial Quantity</FormLabel>
+                                                        <div className="flex items-center gap-2">
+                                                            <FormControl>
+                                                                <NumericFormat
+                                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
+                                                                    value={field.value}
+                                                                    onValueChange={(values) => {
+                                                                        field.onChange(Number(values.value));
+                                                                    }}
+                                                                    thousandSeparator={true}
+                                                                    placeholder="Enter quantity"
+                                                                    disabled={isPending || isFieldReadOnly(index)}
+                                                                    readOnly={isFieldReadOnly(index)}
+                                                                />
+                                                            </FormControl>
+                                                        </div>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
 
-
+                                            {/* Starting Value Field */}
                                             <FormField
                                                 control={form.control}
                                                 name={`stockVariants.${index}.startingValue`}
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Starting Value</FormLabel>
                                                         <FormControl>
@@ -362,15 +354,16 @@ export default function StockForm({ item }: StockFormProps) {
                                                                 readOnly={isFieldReadOnly(index)}
                                                             />
                                                         </FormControl>
-                                                        <FormMessage/>
+                                                        <FormMessage />
                                                     </FormItem>
                                                 )}
                                             />
 
+                                            {/* Alert Level Field */}
                                             <FormField
                                                 control={form.control}
                                                 name={`stockVariants.${index}.alertLevel`}
-                                                render={({field}) => (
+                                                render={({ field }) => (
                                                     <div className="flex gap-2 items-start">
                                                         <FormItem className="flex-1">
                                                             <FormLabel>Alert Level</FormLabel>
@@ -386,7 +379,7 @@ export default function StockForm({ item }: StockFormProps) {
                                                                     disabled={isPending}
                                                                 />
                                                             </FormControl>
-                                                            <FormMessage/>
+                                                            <FormMessage />
                                                         </FormItem>
                                                         <Button
                                                             type="button"
@@ -396,7 +389,7 @@ export default function StockForm({ item }: StockFormProps) {
                                                             disabled={fields.length === 1 || isPending}
                                                             className="mt-8"
                                                         >
-                                                            <Trash2 className="w-4 h-4 text-red-500"/>
+                                                            <Trash2 className="w-4 h-4 text-red-500" />
                                                         </Button>
                                                     </div>
                                                 )}
@@ -407,6 +400,16 @@ export default function StockForm({ item }: StockFormProps) {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center space-x-4 order-3 md:order-none">
+                        <CancelButton />
+                        <Separator orientation="vertical" />
+                        <SubmitButton
+                            isPending={isPending}
+                            label={item ? "Update stock" : "Create stock"}
+                        />
+                    </div>
                 </div>
             </form>
         </Form>

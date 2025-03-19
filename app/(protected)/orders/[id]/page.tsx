@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {ShoppingCart, AlertTriangle, Trash} from 'lucide-react';
-import { getOrder } from "@/lib/actions/order-actions";
+import { getOrder, getOrderLogs } from "@/lib/actions/order-actions";
 import { UUID } from "crypto";
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -15,6 +15,7 @@ import {OrderQuickStatsCard} from "@/components/widgets/order/order-quick-stats-
 import {OrderTransactionDetailsCard} from "@/components/widgets/order/order-transaction-details";
 import OrderDepartmentPerformanceCard from "@/components/widgets/order/order-department-performance-card";
 import {Orders} from "@/types/orders/type";
+import OrderTimeline from '@/components/widgets/order/order-timeline';
 
 interface OrderDetailsPageProps {
     params: {
@@ -26,10 +27,8 @@ type StatusType = 'OPEN' | 'PAID' | 'NOT_PAID';
 
 const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => {
     const order = await getOrder(params.id as UUID);
+    const orderLogs = await getOrderLogs(params.id as UUID);
     const orderData: Orders = order?.content[0];
-
-    console.log("orderData is: ", orderData);
-  
 
     if (!orderData) {
         return (
@@ -109,7 +108,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
     );
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 md:p-8">
+        <div className="min-h-screen bg-gray-50 p-4 md:p-8 mt-3">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Breadcrumbs */}
                 <BreadcrumbsNav items={[{ title: "Order Details", link: `/orders/${params.id}` }]} />
@@ -139,11 +138,11 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
                                         Order Items
                                     </h2>
                                     <div className="flex gap-2">
-                                        <Badge variant="outline" className="bg-blue-50">
-                                            Total Items: {metrics.totalItems}
+                                        <Badge variant="outline" className="bg-blue-50 items-center sm:text-sm">
+                                            <p className='text-center sm:text-xs'>Total Items: {metrics.totalItems}</p>
                                         </Badge>
-                                        <Badge variant="outline" className="bg-green-50">
-                                            Unique Products: {orderData.items.length}
+                                        <Badge variant="outline" className="bg-green-50 ">
+                                           <p className='text-center sm:text-xs'> Unique Products: {orderData.items.length}</p>
                                         </Badge>
                                     </div>
                                 </div>
@@ -159,25 +158,40 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
                             </CardContent>
                         </Card>
 
-                        <Card>
-                            <CardHeader className="border-b">
-                                <div className="flex justify-between items-center">
-                                    <h2 className="text-xl font-semibold flex items-center gap-2">
-                                        <Trash className="text-emerald-600" />
-                                        Items Removed
-                                    </h2>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="divide-y">
-                                {orderData.removedItems?.map((item) => (
-                                    <OrderItemRemovedCard
-                                        key={item.id}
-                                        item={item}
-                                        isValidImageUrl={isValidImageUrl}
-                                    />
-                                ))}
-                            </CardContent>
-                        </Card>
+                        {orderData.removedItems && orderData.removedItems.length > 0 && (
+                            <Card>
+                                <CardHeader className="border-b">
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-xl font-semibold flex items-center gap-2">
+                                            <Trash className="text-emerald-600" />
+                                            Items Removed
+                                        </h2>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="divide-y">
+                                    {orderData.removedItems.map((item) => (
+                                        <OrderItemRemovedCard
+                                            key={item.id}
+                                            item={item}
+                                            isValidImageUrl={isValidImageUrl}
+                                        />
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Refund Section */}
+                {orderData.orderItemRefunds?.length > 0 && (
+                    <OrderRefundSection
+                        orderItemRefunds={orderData.orderItemRefunds}
+                        items={orderData.items}
+                    />
+                )}
+                         <OrderTransactionDetailsCard
+                    orderData={orderData}
+                    getStatusColor={getStatusColor}
+                />
+                
                     </div>
 
                     {/* Sidebar - Right Side */}
@@ -195,30 +209,9 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
                             departmentData={departmentData}
                             colors={COLORS}
                         />
-
+                        <OrderTimeline data={orderLogs} />
                     </div>
                 </div>
-
-                {/* Order items removed */}
-                {/* {orderData.orderItemRemovals?.length > 0 && (
-                    <OrderRemovalSection
-                        orderItemRemovals={orderData.orderItemRemovals}
-                        items={orderData.items}
-                    />
-                )} */}
-
-                {/* Refund Section */}
-                {orderData.orderItemRefunds?.length > 0 && (
-                    <OrderRefundSection
-                        orderItemRefunds={orderData.orderItemRefunds}
-                        items={orderData.items}
-                    />
-                )}
-
-                <OrderTransactionDetailsCard
-                    orderData={orderData}
-                    getStatusColor={getStatusColor}
-                />
 
             </div>
         </div>

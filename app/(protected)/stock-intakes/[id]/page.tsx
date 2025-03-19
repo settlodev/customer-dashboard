@@ -43,7 +43,7 @@ const StockIntakeCard =({isNewItem, item}:{
     isNewItem:boolean,
     item: StockIntake | null | undefined
 }) =>(
-    <Card>
+    <Card className="mt-12" >
        <CardHeader>
            <CardTitle>
                {isNewItem ? "Record Stock Intake" : "Edit stock intake"}

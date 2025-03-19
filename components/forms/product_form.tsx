@@ -201,14 +201,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                 {/* Top Section - Basic Info and Settings */}
                 <div className="grid lg:grid-cols-3 gap-6">
                     {/* Left Column - Basic Info */}
-                    <Card className="lg:col-span-2">
+                    <Card className=" mt-4 lg:col-span-2">
                         <CardContent className="pt-6">
                             <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
                                 <Info className="w-5 h-5" />
                                 Basic Information
                             </h2>
 
-                            <div className="grid grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                 <div className="col-span-1">
                                     <div className="flex flex-col items-center mb-6">
                                         <UploadImageWidget
@@ -264,9 +264,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                                 </div>
                             </div>
 
-                            <Separator className="my-6" />
+                            <Separator className="lg:my-6" />
 
-                            <div>
+                            <div className="mt-4">
                                 <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
                                     <Building2 className="w-4 h-4" />
                                     Classification

@@ -44,9 +44,12 @@ export const columns: ColumnDef<Orders>[] = [
     },
     {
         accessorKey: "customerName",
-        header: "Customer",
+        
+        header: ({}) => (
+            <div className="hidden md:block">Customer</div>
+        ),
         cell: ({ row }) => (
-            <div className="flex flex-col">
+            <div className="hidden md:flex lg:flex flex-col">
                 <span className="font-medium">{row.original.customerName}</span>
                 <span className="text-sm text-gray-500">{row.original.platformType}</span>
             </div>
@@ -79,24 +82,24 @@ export const columns: ColumnDef<Orders>[] = [
         },
     },
     {
-        accessorKey: "orderType",
-        header: "Order Type",
+        accessorKey: "openedDate",
+        header: ({}) => (
+            <div className="hidden md:block">Date Created</div>
+        ),
+     
         cell: ({ row }) => {
-            const orderType = row.original.orderType;
-            return (
-                <div className="flex items-center">
-                    {orderType === "IMMEDIATE" && (
-                        <span className="text-white bg-[#FF8755] px-2 py-1 rounded-full text-xs">
-                            Immediate
-                        </span>
-                    )}
-                    {orderType === "RESERVATION" && (
-                        <span className="text-white bg-yellow-500 px-2 py-1 rounded-full text-xs">
-                            Reservation
-                        </span>
-                    )}
-                </div>
-            );
+            const dateCreated = row.original.openedDate
+            const formatted = new Intl.DateTimeFormat(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+            }).format(new Date(dateCreated));
+            return <div className="hidden md:block lg:block">{formatted}</div>;
+            
         },
     },
     {
@@ -126,11 +129,13 @@ export const columns: ColumnDef<Orders>[] = [
     },
     {
         accessorKey: "orderStatus",
-        header: "Order status",
+        header: ({}) => (
+            <div className="hidden md:block">Order status</div>
+        ),
         cell: ({ row }) => {
             const status = row.original.orderStatus;
             return (
-                <div className="flex items-center">
+                <div className="hidden md:flex items-center">
                     {status === "OPEN" && (
                         <span className="text-white bg-blue-500 px-2 py-1 rounded-full text-xs">
                             Open

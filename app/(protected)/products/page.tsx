@@ -22,16 +22,16 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
      const pageLimit = Number(searchParams.limit);
 
      const responseData = await searchProducts(q,page,pageLimit);
-    //  console.log("The response data ", responseData)
-
+     
      const data:Product[]=responseData.content;
      const total =responseData.totalElements;
+    //  console.log("Total is: ", total);
      const pageCount = responseData.totalPages
 
     return (
-        <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
-            <div className={`flex items-center justify-between mb-2`}>
-                <div className={`relative flex-1 md:max-w-md`}>
+        <div className="flex-1 space-y-4 md:p-8 pt-6 mt-10">
+            <div className="flex items-center justify-between mt-2 p-2">
+                <div className="relative flex-1 md:max-w-md">
                     <BreadcrumbsNav items={breadCrumbItems} />
                 </div>
                 <div className={`flex items-center space-x-2`}>

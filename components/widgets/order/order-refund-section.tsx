@@ -128,7 +128,7 @@ const OrderRefundSection: React.FC<OrderRefundSectionProps> = ({ orderItemRefund
                                 <TableHead>Item Details</TableHead>
                                 <TableHead>Reason & Notes</TableHead>
                                 <TableHead>Processing Details</TableHead>
-                                <TableHead>Status</TableHead>
+                                
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -161,10 +161,10 @@ const OrderRefundSection: React.FC<OrderRefundSectionProps> = ({ orderItemRefund
                                                 <div className="text-sm">
                                                     {new Date(refund.dateOfReturn).toLocaleDateString()}
                                                 </div>
-                                                <div className="text-sm text-gray-500">
+                                                <div className="text-xs md:text-sm lg:text-sm text-gray-500">
                                                     Processed by: {refund.staffName}
                                                 </div>
-                                                <div className="text-sm text-gray-500">
+                                                <div className="text-xs md:text-sm lg:text-sm text-gray-500">
                                                     Approved by: {refund.approvedByName}
                                                 </div>
                                             </div>

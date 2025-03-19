@@ -1,158 +1,53 @@
 'use client';
 
-import { getStockVariantMovement } from '@/lib/actions/stock-variant-actions';
+import { getStockVariantMovement, getStockVariantSummary } from '@/lib/actions/stock-variant-actions';
 import { UUID } from 'crypto';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import StockMovementDashboard from '@/components/widgets/stock-movement';
-import { StockMovement } from '@/types/stockVariant/type';
+import { StockMovement, stockVariantSummary } from '@/types/stockVariant/type';
 import Loading from '@/app/loading';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Calendar as CalendarIcon } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { ScrollArea} from '@/components/ui/scroll-area';
-import { Calendar } from '@/components/ui/calendar'; // Added this import
+// import { BoxIcon } from '@/components/icons/box';
+
 import BreadcrumbsNav from '@/components/layouts/breadcrumbs-nav';
-
-interface DatePickerProps {
-  value: Date;
-  onChange: (date: Date) => void;
-  label: string;
-}
-
-const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
-  function handleDateSelect(date: Date | undefined) {
-    if (date) {
-      const newDate = new Date(date);
-      // Preserve the current time when changing the date
-      newDate.setHours(value.getHours());
-      newDate.setMinutes(value.getMinutes());
-      onChange(newDate);
-    }
-  }
-
-  function handleTimeChange(type: "hour" | "minute", val: string) {
-    const newDate = new Date(value);
-    if (type === "hour") {
-      newDate.setHours(parseInt(val, 10));
-    } else if (type === "minute") {
-      newDate.setMinutes(parseInt(val, 10));
-    }
-    onChange(newDate);
-  }
-
-  return (
-    <div className="flex flex-col space-y-2">
-      <span className="text-sm font-medium">{label}</span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn(
-              "w-full justify-start text-left font-normal",
-              !value && "text-muted-foreground"
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {value ? format(value, "MMM do, yyyy HH:mm") : <span>Pick date and time</span>}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <div className="flex flex-col sm:flex-row">
-            <div className="p-2">
-              <Calendar
-                mode="single"
-                selected={value}
-                onSelect={handleDateSelect}
-                initialFocus
-              />
-            </div>
-            <div className="border-l flex flex-row sm:flex-col p-2 sm:h-[300px]">
-              <ScrollArea className="w-full h-full">
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium pl-2 pb-1">Hours</p>
-                  {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
-                    <Button
-                      key={hour}
-                      variant={value.getHours() === hour ? "default" : "ghost"}
-                      className="w-full"
-                      onClick={() => handleTimeChange("hour", hour.toString())}
-                    >
-                      {hour.toString().padStart(2, '0')}:00
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
-              <ScrollArea className="w-full h-full">
-                <div className="flex flex-col gap-1">
-                  <p className="text-sm font-medium pl-2 pb-1">Minutes</p>
-                  {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
-                    <Button
-                      key={minute}
-                      variant={value.getMinutes() === minute ? "default" : "ghost"}
-                      className="w-full"
-                      onClick={() => handleTimeChange("minute", minute.toString())}
-                    >
-                      :{minute.toString().padStart(2, '0')}
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-};
-
+import { useSearchParams } from 'next/navigation';
 
 export default function StockVariantDetails({ params }: { params: { id: string } }) {
+  // console.log("The id is: ", params);
   const [variant, setVariant] = useState<StockMovement[]>([]);
   const [filteredMovements, setFilteredMovements] = useState<StockMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [startDate, setStartDate] = useState(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return today;
-  });
-  const [endDate, setEndDate] = useState(new Date());
-  const [isFiltering, setIsFiltering] = useState(false); // New state for loading
+  const searchParams = useSearchParams();
+  const stock = searchParams.get("stock");
+  const [summary, setSummary] = useState<stockVariantSummary>({} as stockVariantSummary);
+  const [error, setError] = useState<Error | null>(null);
 
-  const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"},
-    {title: `${variant[0]?.stockName}-${variant[0]?.stockVariantName}`, link: ""}];
 
-  useEffect(() => {
-    const fetchStockVariantDetail = async () => {
-      try {
-        const data = await getStockVariantMovement(params.id as UUID);
-        setVariant(data);
-        setFilteredMovements(data);
-      } catch (error) {
-        console.log(error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const breadCrumbItems = useMemo(() => [{title: "Stock Items", link: "/stock-variants"},
+    {title: `${variant[0]?.stockName}-${variant[0]?.stockVariantName}`, link: ""}],[]);
 
-    fetchStockVariantDetail();
-  }, [params.id]);
+    useEffect(() => {
+      const fetchData = async () => {
+        setIsLoading(true);
+        try {
+          const [movementData, summaryData] = await Promise.all([
+            getStockVariantMovement(params.id as UUID),
+            getStockVariantSummary(params.id as UUID, stock as UUID)
+          ]);
+          
+          setVariant(movementData);
+          setFilteredMovements(movementData);
+          setSummary(summaryData);
+        } catch (error) {
+          setError(error instanceof Error ? error : new Error('Unknown error occurred'));
+        } finally {
+          setIsLoading(false);
+        }
+      };
+    
+      fetchData();
+    }, [params.id, stock]);
 
-  const handleFilter = async () => {
-    setIsFiltering(true); // Set loading state to true
-  
-    // Use setTimeout to allow the UI to update before filtering
-    setTimeout(async () => {
-      const filtered = variant.filter((movement) => {
-        const movementDate = new Date(movement.dateCreated);
-        return movementDate >= startDate && movementDate <= endDate;
-      });
-      setFilteredMovements(filtered);
-      setIsFiltering(false); // Reset loading state after filtering
-    }, 0); // 0 milliseconds delay
-  };
 
   if (isLoading) {
     return (
@@ -163,6 +58,9 @@ export default function StockVariantDetails({ params }: { params: { id: string }
       </div>
     );
   }
+  if (error) {
+    return <div>Error loading data: {error.message}</div>;
+  }
 
   return (
     <div className="p-4 space-y-4 mt-6">
@@ -170,25 +68,25 @@ export default function StockVariantDetails({ params }: { params: { id: string }
       <Card>
         <CardContent className="pt-6">
           <div className="space-y-2">
-            <div className='flex flex-col lg:flex-row justify-between'>
-              <p>
-                <span className='font-bold text-black-2 text-xlg'>
-                  {variant[0]?.stockName}-{variant[0]?.stockVariantName}
-                </span>
-              </p>
-              <div className='grid grid-cols-2 lg:flex items-center gap-2'>
-                <DateTimePicker label="From" value={startDate} onChange={setStartDate} />
-                <DateTimePicker label="To" value={endDate} onChange={setEndDate} />
-                <Button variant="default" className='ml-4 w-full lg:mt-4' onClick={handleFilter} disabled={isFiltering}>
-                    {isFiltering ? "Filtering..." : "Filter"} 
-              </Button>
+            <div className='space-y-2'>
+            <h3 className='font-bold text-lg'>Stock Movements History</h3>
+              <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
+              
+                <div className='flex items-center gap-2'>
+                  <h2 className='text-[32px] font-bold capitalize'>
+                    {/* <BoxIcon className="w-4 h-4" /> */}
+                    {variant[0]?.stockName}
+                    <span className="text-black">-</span>
+                    {variant[0]?.stockVariantName}
+                  </h2>
+                </div>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <StockMovementDashboard movements={filteredMovements} />
+      <StockMovementDashboard movements={filteredMovements} summary={summary} />
     </div>
   );
 }

@@ -31,6 +31,7 @@ import { PhoneInput } from "../ui/phone-input";
 import { ActiveSubscription } from "@/types/subscription/type";
 import { Alert, AlertDescription } from "../ui/alert";
 import { NumericFormat } from "react-number-format";
+import PaymentStatusModal from "../widgets/paymentStatusModal";
 
 const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: ActiveSubscription }) => {
   const [isPending, startTransition] = useTransition();
@@ -38,11 +39,17 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
   const [error, setError] = useState<string | null>(null);
   const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
   const [discountValid, setDiscountValid] = useState<boolean | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const { toast } = useToast();
 
-  const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
+  
+
+const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
     resolver: zodResolver(RenewSubscriptionSchema),
     defaultValues: {
+      locationId: activeSubscription?.location?? '',
       planId: activeSubscription?.subscription.id ?? '',
       quantity: 1,
       discount: "",
@@ -59,7 +66,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
     control: form.control,
     name: "discount",
   });
-
+  
  
 
   useEffect(() => {
@@ -87,11 +94,6 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
     } catch (error) {
       setDiscountValid(false);
       console.log("Error validating discount code:", error);
-      // toast({
-      //   title: "Invalid Discount Code",
-      //   description: "Please check your discount code and try again",
-      //   variant: "destructive"
-      // });
     } finally {
       setIsValidatingDiscount(false);
     }
@@ -99,7 +101,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log("Errors during form submission:", errors);
+      // console.log("Errors during form submission:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
@@ -113,6 +115,8 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
 
   const submitData = async (values: z.infer<typeof RenewSubscriptionSchema>) => {
     setError(null);
+    setIsModalOpen(true);
+    setPaymentStatus("PENDING");
     
     startTransition(() => {
       paySubscription(values)
@@ -128,18 +132,13 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
             return;
           }
   
-          console.log("Payment response:", response);
+          // console.log("Payment response:", response);
           
           if (response.status === "PENDING") {
-            toast({
-              title: "Payment Pending",
-              description: "Your payment is processing. Please wait...",
-              variant: "default"
-            });
             
             // Start polling to check payment status
             const transactionId = response.id;
-            console.log("Transaction ID:", transactionId);
+            // console.log("Transaction ID:", transactionId);
             if (!transactionId) {
               console.error("No transaction ID found for pending payment");
               return;
@@ -148,6 +147,9 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
             // Call function to handle payment verification
             handlePendingPayment(transactionId, values);
             return;
+          }
+          else {
+            setPaymentStatus(response.status);
           }
           
           // Handle success case
@@ -168,10 +170,12 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
   
   // Function to handle pending payment verification
   const handlePendingPayment = (transactionId: string, values: z.infer<typeof RenewSubscriptionSchema>) => {
-    // Set up a counter to limit the number of verification attempts
+    //initial delay for 20 seconds before starting verification
+    setTimeout(() => {
+       // Set up a counter to limit the number of verification attempts
     let attemptCount = 0;
-    const maxAttempts = 5; // Adjust as needed
-    const pollingInterval = 3000; // 1 seconds, adjust as needed
+    const maxAttempts = 4; // Adjust as needed
+    const pollingInterval = 5000; // 1 seconds, adjust as needed
     
     // Create a polling interval
     const verificationInterval = setInterval(async () => {
@@ -179,53 +183,49 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
       
       try {
         const verificationResult = await verifyPayment(transactionId);
-        console.log("Verification result:", verificationResult);
+        setPaymentStatus(verificationResult.status);
         
         // Check if payment status has changed
         if (verificationResult.status === "SUCCESS") {
           clearInterval(verificationInterval);
           handleSuccessfulPayment(verificationResult, values);
-        } else if (verificationResult.status === "FAILED") {
+        }
+        else if (verificationResult.status === "PROCESSING") {
+          // If still pending, continue polling
+          setPaymentStatus("PROCESSING")
+        } 
+        else if (verificationResult.status === "FAILED") {
           clearInterval(verificationInterval);
-          const errorMessage = verificationResult.errorDescription || 
-            verificationResult.message || 
-            "Payment verification failed. Please try again.";
-          setError(errorMessage);
-          toast({
-            title: "Payment Failed",
-            description: errorMessage,
-            variant: "destructive"
-          });
+          setPaymentStatus("FAILED");
+          setTimeout(() => {
+            setIsModalOpen(false);
+            // window.location.href = `/select-location`;
+          })
+          
         } else if (attemptCount >= maxAttempts) {
           // Stop polling after max attempts
           clearInterval(verificationInterval);
-          toast({
-            title: "Payment Status Unclear",
-            description: "We couldn't confirm your payment status. Please check your email or account for updates.",
-            variant: "default"
-          });
+          setPaymentStatus("FAILED");
         }
         // If still pending, continue polling
         
       } catch (error) {
-        console.error("Payment verification error:", error);
+        console.error("Payment verification error:", error );
         clearInterval(verificationInterval);
-        toast({
-          title: "Verification Error",
-          description: "Failed to verify payment status. Please check your account later.",
-          variant: "destructive"
-        });
+        setPaymentStatus("FAILED");
       }
     }, pollingInterval);
+    }, 20000);
+   
   };
   
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSuccessfulPayment = (response: any, values: z.infer<typeof RenewSubscriptionSchema>) => {
-    toast({
-      title: "Payment Successful",
-      description: `You have successfully paid ${totalAmount} for ${quantity} month subscription`,
-      variant: "default"
-    });
+    
+    setTimeout(() => {
+      setIsModalOpen(false);
+      window.location.href = `/renew-subscription`;
+    }, 2000)
     
     // Add any additional success handling here (e.g., redirects, UI updates)
   };
@@ -238,6 +238,7 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
   const totalAmount = subscription.amount * quantity;
 
   return (
+    <div>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="w-full max-w-5xl mx-auto">
         <Card className="shadow-lg">
@@ -434,6 +435,12 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
         </Card>
       </form>
     </Form>
+    <PaymentStatusModal
+      isOpen={isModalOpen}
+      status={paymentStatus}
+        onClose={() => setIsModalOpen(false)}
+      />
+    </div>
   );
 }
 

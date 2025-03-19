@@ -1,5 +1,5 @@
 'use server'
-import { ActiveSubscription, Subscription } from "@/types/subscription/type";
+import { ActiveSubscription, Subscriptions } from "@/types/subscription/type";
 import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
@@ -9,8 +9,10 @@ import { FormResponse } from "@/types/types";
 import { getCurrentLocation } from "./business/get-current-business";
 import { getAuthenticatedUser } from "../auth-utils";
 
-interface User {
+export interface User {
     id: string;
+    email: string;
+    phoneNumber: string;
 }
 
 interface SubscriptionResponse {
@@ -18,10 +20,10 @@ interface SubscriptionResponse {
     message: string;
     errorDescription?: string;
 }
-export const fetchSubscriptions = async (): Promise<Subscription[]> => {
+export const fetchSubscriptions = async (): Promise<Subscriptions[]> => {
     try {
         const apiClient = new ApiClient();
-        const response = await apiClient.get<Subscription[]>("/api/subscriptions/");
+        const response = await apiClient.get<Subscriptions[]>("/api/subscriptions/");
         const sortedSubscriptions = response.sort((a, b) => a.amount - b.amount);
         return parseStringify(sortedSubscriptions);
     } catch (error) {
@@ -60,8 +62,9 @@ export const validateDiscountCode = async (discountCode: string): Promise<any> =
 export const paySubscription = async (subscription: z.infer<typeof RenewSubscriptionSchema>) => {
     let formResponse: FormResponse | null = null;
     const user = await getAuthenticatedUser() as User | null;
+    // console.log("The user is", user);
     const validSubscription = RenewSubscriptionSchema.safeParse(subscription);
-    const provider = process.env.PAYMENT_PROVIDER;
+    const provider = 'selcom';
 
 
 
@@ -73,7 +76,8 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
         };
         return parseStringify(formResponse);
     }
-    const location = await getCurrentLocation();
+    const location = await getCurrentLocation() || { id: validSubscription.data.locationId };
+    
 
     const payload = {
         ...validSubscription.data,
@@ -82,7 +86,7 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
         locationId: location?.id
     };
 
-    
+    console.log("Payload:", payload );
 
     try {
         const apiClient = new ApiClient();
@@ -125,8 +129,8 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
 };
 
 
-export const verifyPayment = async (transactionId: string) => {
-    const location = await getCurrentLocation();
+export const verifyPayment = async (transactionId: string,locationId?:string) => {
+    const location = await getCurrentLocation() || {id:locationId};
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/subscription-payments/${location?.id}/verify/${transactionId}`);

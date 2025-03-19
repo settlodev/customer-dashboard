@@ -1,6 +1,7 @@
 export default interface SummaryResponse {
   totalOrders: number;
   totalRevenue: number;
+  totalCollections: number;
   totalDiscounts: number;
   averageOrderValue: number;
   completedOrders: number;
@@ -14,8 +15,8 @@ export default interface SummaryResponse {
   averageSale: number;
   closingBalance: number;
   complimentary: number;
-  cost: number;
-  discounts: number;
+  costAmount: number;
+  discountsAmount: number;
   expense: number;
   grossProfit: number;
   grossSales: number;
@@ -26,6 +27,7 @@ export default interface SummaryResponse {
   advancePayment: number;
   soldItems: SoldItems[];
   numberOfSoldItems: number;
+  netSales: number;
 }
 
 export interface PaymentStatusSummary {

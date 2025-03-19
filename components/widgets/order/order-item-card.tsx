@@ -19,9 +19,9 @@ interface OrderItemCardProps {
 }
 
 const OrderItemCard: React.FC<OrderItemCardProps> = ({
-                                                         item,
-                                                         isValidImageUrl
-                                                     }) => {
+    item,
+    isValidImageUrl
+}) => {
     const itemProfitMargin = (item.grossProfit / (item.price * item.quantity)) * 100;
     const isLoss = item.grossProfit < 0;
     const totalRevenue = item.price;
@@ -76,8 +76,8 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
                                 </div>
                                 <div className="flex items-center gap-2 text-sm text-gray-600">
                                     <span>{item.departmentName}</span>
-                                    <span className="text-gray-300">•</span>
-                                    <span>SKU: {item.sku || 'N/A'}</span>
+                                    <span className="hidden lg:block md:block text-gray-300">•</span>
+                                    <span className='hidden lg:block md:block'>SKU: {item.sku || 'N/A'}</span>
                                 </div>
                             </div>
                             {(hasModifiers || hasAddons) && (
@@ -107,7 +107,7 @@ const OrderItemCard: React.FC<OrderItemCardProps> = ({
                             {isLoss ? 'Loss' : 'Profit'}: {Intl.NumberFormat().format(Math.abs(item.grossProfit))}
                         </span>
                         {item.staffName && (
-                            <div className="flex items-center gap-1 text-sm text-gray-500">
+                            <div className="hidden md:flex lg:flex items-center gap-1 text-sm text-gray-500">
                                 <User size={12} />
                                 {item.staffName}
                             </div>

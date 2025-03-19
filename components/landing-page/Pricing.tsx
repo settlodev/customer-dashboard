@@ -1,12 +1,12 @@
 'use client'
 import { fetchSubscriptions } from "@/lib/actions/subscriptions"
-import { Subscription, SubscriptionFeature } from "@/types/subscription/type"
+import { Subscriptions, SubscriptionFeature } from "@/types/subscription/type"
 import { ArrowRight, CheckIcon, Sparkles } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
 
 interface PricingCardProps {
-    sub: Subscription;
+    sub: Subscriptions;
     packageName: string;
     amount: number;
     discount: number;
@@ -95,7 +95,7 @@ const PricingCard: React.FC<PricingCardProps> = ({
 };
 
 export const Pricing: React.FC = () => {
-    const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+    const [subscriptions, setSubscriptions] = useState<Subscriptions[]>([]);
 
     useEffect(() => {
         const getSubscriptions = async () => {

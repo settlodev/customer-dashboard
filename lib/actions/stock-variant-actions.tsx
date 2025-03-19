@@ -6,7 +6,7 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
-import { StockMovement, StockVariant } from "@/types/stockVariant/type";
+import { StockMovement, StockVariant, stockVariantSummary } from "@/types/stockVariant/type";
 
 export const fetchStockVariants = async (stockId: string) : Promise<StockVariant[]> => {
     await  getAuthenticatedUser();
@@ -72,6 +72,21 @@ export const getStockVariantMovement= async (id:UUID) : Promise<StockMovement[]>
         const apiClient = new ApiClient();
         const data: StockMovement[] = await apiClient.get<StockMovement[]>(
             `/api/stock-movements/${id}`,
+        );
+        return parseStringify(data);
+    }
+    catch (error){
+        throw error;
+    }
+}
+
+export const getStockVariantSummary = async (id:UUID,stockId:UUID) : Promise<stockVariantSummary>=> {
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+        const data: stockVariantSummary = await apiClient.get<stockVariantSummary>(
+            `/api/stock-variants/${stockId}/summary/${id}`,
         );
         return parseStringify(data);
     }

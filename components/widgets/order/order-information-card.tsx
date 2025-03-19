@@ -31,7 +31,7 @@ export const OrderInformationCard: React.FC<OrderInformationCardProps> = ({ orde
                             <span className="font-medium">Timing</span>
                         </div>
                         <div className="space-y-2 text-sm">
-                            <div className="flex justify-between">
+                            <div className="flex justify-between"> 
                                 <span className="text-gray-600">Opened</span>
                                 <span className="font-medium">
                                     {new Date(orderData.openedDate).toLocaleString()}

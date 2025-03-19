@@ -8,6 +8,7 @@ import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
 import { Orders } from "@/types/orders/type";
 
+
 export const fetchOrders = async () : Promise<Orders[]> => {
     await  getAuthenticatedUser();
 
@@ -61,6 +62,7 @@ export const searchOrder = async (
             `/api/orders/${location?.id}?dashboard=true`,
             query
         );
+       
         return parseStringify(orderData);
     }
     catch (error){
@@ -106,4 +108,22 @@ export const getOrderReceipt= async (id:UUID)=> {
         throw error
     }
    
+}
+
+export const getOrderLogs = async (id:UUID)=>{
+    await getAuthenticatedUser();
+    try{
+        const apiClient = new ApiClient();
+        const query ={
+            
+            page: 0,
+            size: 100,
+        }
+        const orderLogs = await apiClient.post(
+            `/api/order-logs/${id}`,query
+        );
+        return parseStringify(orderLogs);
+    }catch (error){
+        throw error;
+    }
 }

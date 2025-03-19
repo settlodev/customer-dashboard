@@ -49,7 +49,7 @@ export const searchOrderItemRefunds = async (
             sorts:[
                 {
                     key:"dateOfReturn",
-                    direction:"ASC"
+                    direction:"DESC"
                 }
             ],
             page:page ? page - 1:0,
@@ -89,6 +89,5 @@ export const getRefund= async (id:UUID) : Promise<ApiResponse<OrderItemRefunds>>
         `/api/order-item-refunds/${location?.id}`,
         query,
     );
-    
     return parseStringify(refund)
 }

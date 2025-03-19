@@ -9,4 +9,5 @@ export const RenewSubscriptionSchema = object({
     }),
     email: string({ required_error: "Email is required" }).email("Not a valid email"),
     planId: string({ required_error: "Plan is required" }).uuid("Please select a valid plan"),
+    locationId: string({ required_error: "Location is required" }).uuid("Please select a valid location"),
 })
