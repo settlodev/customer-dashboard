@@ -18,7 +18,7 @@ export default interface SummaryResponse {
   costsAmount: number;
   discountsAmount: number;
   refundsAmount: number;
-  expense: number;
+  expensesAmount: number;
   grossProfit: number;
   grossSales: number;
   margins: number;

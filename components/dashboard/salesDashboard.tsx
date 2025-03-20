@@ -78,7 +78,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
     },
     {
       name: 'Total Expenses',
-      value: formatCurrency(salesData.expense),
+      value: formatCurrency(salesData.expensesAmount),
       icon: <ShoppingCart className="w-5 h-5 text-red-600" />,
       color: 'bg-red-50',
       textColor: 'text-red-700',
