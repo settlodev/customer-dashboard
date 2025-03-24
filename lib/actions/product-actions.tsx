@@ -249,7 +249,7 @@ export const updateProduct = async (
             variants: variantsPayload
         };
 
-        console.log("The final payload to update product", finalPayload);
+        // console.log("The final payload to update product", finalPayload);
 
         // Update the product with new data
         await apiClient.put(
