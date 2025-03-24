@@ -53,3 +53,21 @@ export declare interface ActiveSubscription{
     canDelete: boolean
     isArchived: boolean
 }
+
+export declare interface ValidDiscountCode {
+    discount: UUID
+    validityStatus: string
+    discountCode: string
+    discountType: string
+    name: string
+    discountValue: number
+    validFrom: Date
+    validTo: Date
+    minimumSpend: number
+    remainingUses: number
+    restrictedToCategory: string
+    restrictedToCustomer: string
+    restrictedToLocation: string
+    errorCode: string
+    errorDescription: string
+}

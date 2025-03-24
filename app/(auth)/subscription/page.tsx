@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getAllSubscriptions } from "@/lib/actions/subscription";
-import { Subscriptions } from "@/types/subscription/type";
+import { Subscriptions, ValidDiscountCode } from "@/types/subscription/type";
 import { AlertCircle, Calendar, Check, CheckCircle2, Loader2, Mail, Phone, Star, Tag, X } from "lucide-react";
 import Loading from "../loading";
 import { paySubscription, User, validateDiscountCode, verifyPayment } from "@/lib/actions/subscriptions";
@@ -28,6 +28,7 @@ import {
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Input } from "@/components/ui/input";
 import { NumericFormat } from "react-number-format";
+import { isValidPhoneNumber } from "libphonenumber-js";
 
 
 
@@ -36,7 +37,10 @@ const SubscriptionSchema = z.object({
   planId: z.string().min(1, "Subscription plan is required"),
   locationId: z.string().min(1, "Location is required"),
   email: z.string().email("Valid email is required"),
-  phone: z.string().min(1, "Phone number is required"),
+  phone: z.string({ required_error: "Phone number is required" })
+  .refine(isValidPhoneNumber, {
+      message: "Invalid phone number",
+  }),
   quantity: z.number().int().positive("Quantity must be at least 1"),
   discount: z.string().optional(),
 });
@@ -105,24 +109,24 @@ const SubscriptionPage = () => {
   }
 
   return (
-    <div className="w-full px-4 sm:px-6 lg:px-8 py-8 mx-auto">
+    <div className="w-full px-4 sm:px-6 lg:px-8  mx-auto">
   <div className="max-w-7xl mx-auto">
     {/* Header Section */}
-    <div className="text-center mb-8 sm:mb-12 lg:mb-16">
-      <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-2 sm:mb-4">
+    <div className="text-start lg:text-center mb-3">
+      <h1 className="text-2xl lg:text-4xl font-bold text-gray-900 mb-2 ">
         Choose Your Perfect Plan for Your Business
       </h1>
-      <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto px-4">
+      <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-2xl mx-auto mb-4">
         Our flexible pricing options are designed to grow with your business, ensuring you have all the tools you need at every stage.
       </p>
     </div>
 
     {/* Features Grid */}
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8 mb-8 sm:mb-12 lg:mb-16 rounded-2xl">
+    <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-3">
       {subscriptionData.map((plan, index) => (
         <Card
           key={index}
-          className={`relative transform hover:scale-105 transition-transform duration-300 ${
+          className={`w-full relative transform hover:scale-105 transition-transform duration-300 ${
             index === 1 ? "border-2 border-emerald-500" : ""
           }`}
         >
@@ -215,11 +219,16 @@ const SubscriptionFormModal = ({
   setPaymentStatus: React.Dispatch<React.SetStateAction<"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>>;
   setIsPaymentModalOpen: React.Dispatch<React.SetStateAction<boolean>>;
 }) => {
+
+
+ 
+
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
-  const [isValidatingDiscount,] = useState(false);
   const [discountValid, setDiscountValid] = useState<boolean | null>(null);
   const { toast } = useToast();
+  const [isValidatingDiscount, setIsValidatingDiscount] = useState(false);
+  const [validatedDiscountCode, setValidatedDiscountCode] = useState<ValidDiscountCode | null>(null);
   
 
   // Initialize form with default values
@@ -250,7 +259,7 @@ const SubscriptionFormModal = ({
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (discountCode && discountCode.length > 0) {
-        validateDiscountCode(discountCode);
+        validateDiscount(discountCode,locationId);
       } else {
         setDiscountValid(null);
       }
@@ -259,28 +268,32 @@ const SubscriptionFormModal = ({
     return () => clearTimeout(timeoutId);
   }, [discountCode]);
 
-  // Validate discount code
-  // const validateDiscount = async (code: string) => {
-  //   setIsValidatingDiscount(true);
-  //   try {
-  //     await validateDiscountCode(code);
-  //     setDiscountValid(true);
-  //     toast({
-  //       title: "Discount Code Valid",
-  //       description: "The discount code has been applied successfully",
-  //       variant: "default"
-  //     });
-  //   } catch (error) {
-  //     setDiscountValid(false);
-  //     console.log("Error validating discount code:", error);
-  //   } finally {
-  //     setIsValidatingDiscount(false);
-  //   }
-  // };
+  //Validate discount code
+  const validateDiscount = async (code: string,locationId?:string) => {
+    
+    setIsValidatingDiscount(true);
+    try {
+      const validateCode = await validateDiscountCode(code,locationId);
+      setValidatedDiscountCode(validateCode);
+      setDiscountValid(true);
+      toast({
+        title: "Discount Code Valid",
+        description: "The discount code has been applied successfully",
+        variant: "default"
+      });
+    } catch (error) {
+      setDiscountValid(false);
+      // console.log("Error validating discount code:", error);
+      throw error
+    } finally {
+      setIsValidatingDiscount(false);
+    }
+  };
 
   // Handle form submission errors
   const onInvalid = useCallback(
     (errors: any) => {
+      // console.log("Form errors:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong",
@@ -297,10 +310,13 @@ const SubscriptionFormModal = ({
     setIsPaymentModalOpen(true); // Open the payment modal
     setPaymentStatus("PENDING");
     
-    console.log("The values submitted are",values)
+    const paymentValues = {
+      ...values,
+      discount: validatedDiscountCode?.discount 
+    };
 
     startTransition(() => {
-      paySubscription(values)
+      paySubscription(paymentValues)
         .then((response) => {
           if (response.responseType === "error" || response.status === "FAILED") {
             const errorMessage = response.errorDescription || response.message || "Payment failed. Please try again.";
@@ -430,6 +446,7 @@ const SubscriptionFormModal = ({
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
+
             
             {/* Phone Field */}
             <FormField
@@ -448,6 +465,8 @@ const SubscriptionFormModal = ({
                       <PhoneInput
                         placeholder="Enter phone number"
                         {...field}
+                        value={field.value}
+                        onChange={(value) => field.onChange(value)}
                         disabled={isPending}
                       />
                     </FormControl>
@@ -512,7 +531,7 @@ const SubscriptionFormModal = ({
                       />
                     </FormControl>
                     <FormDescription className="text-sm text-gray-500 mt-1">
-                      Specify how many months you&rsquod like to subscribe for
+                      Specify how many months you&rsquo;d like to subscribe for
                     </FormDescription>
                     <FormMessage className="text-sm" />
                   </div>
@@ -580,6 +599,7 @@ const SubscriptionFormModal = ({
                 variant="outline"
                 type="button"
                 className="w-28"
+
                 onClick={onClose}
               >
                 Cancel
@@ -589,6 +609,7 @@ const SubscriptionFormModal = ({
                 type="submit"
                 className="w-28"
                 disabled={isPending}
+                onClick = {()=>console.log('Button clicked')}
               >
                 {isPending ? (
                   <div className="flex items-center space-x-2">

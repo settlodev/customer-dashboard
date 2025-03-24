@@ -84,7 +84,7 @@ export default function DepartmentReportPage() {
               </Select>
             </div>
            
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col lg:flex-row items-center space-x-2 space-y-2 lg:space-y-0">
               <DateTimeRangeSelect 
                 dateRange={dateRange} 
                 onDateRangeChange={handleDateRangeChange}
@@ -92,6 +92,7 @@ export default function DepartmentReportPage() {
               <Button 
                 onClick={fetchReport}
                 disabled={!dateRange?.from || !dateRange?.to || loading}
+                className="w-full lg:w-auto"
               >
                 {loading ? "Loading..." : "Filter"}
               </Button>

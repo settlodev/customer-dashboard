@@ -28,7 +28,7 @@ import { paySubscription, verifyPayment } from "@/lib/actions/subscriptions";
 import { validateDiscountCode } from "@/lib/actions/subscriptions";
 import { Button } from "../ui/button";
 import { PhoneInput } from "../ui/phone-input";
-import { ActiveSubscription } from "@/types/subscription/type";
+import { ActiveSubscription, ValidDiscountCode } from "@/types/subscription/type";
 import { Alert, AlertDescription } from "../ui/alert";
 import { NumericFormat } from "react-number-format";
 import PaymentStatusModal from "../widgets/paymentStatusModal";
@@ -41,10 +41,11 @@ const RenewSubscriptionForm = ({ activeSubscription }: { activeSubscription?: Ac
   const [discountValid, setDiscountValid] = useState<boolean | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [validatedDiscountCode, setValidatedDiscountCode] = useState<ValidDiscountCode | null>(null);
 
   const { toast } = useToast();
 
-  
+
 
 const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
     resolver: zodResolver(RenewSubscriptionSchema),
@@ -84,7 +85,8 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
   const validateDiscount = async (code: string) => {
     setIsValidatingDiscount(true);
     try {
-      await validateDiscountCode(code);
+      const validateCode = await validateDiscountCode(code);
+      setValidatedDiscountCode(validateCode);
       setDiscountValid(true);
       toast({
         title: "Discount Code Valid",
@@ -117,9 +119,14 @@ const form = useForm<z.infer<typeof RenewSubscriptionSchema>>({
     setError(null);
     setIsModalOpen(true);
     setPaymentStatus("PENDING");
+
+    const paymentValues = {
+      ...values,
+      discount: validatedDiscountCode?.discount 
+    };
     
     startTransition(() => {
-      paySubscription(values)
+      paySubscription(paymentValues)
         .then((response) => {
           if (response.responseType === "error" || response.status === "FAILED") {
             const errorMessage = response.errorDescription || response.message || "Payment failed. Please try again.";

@@ -8,6 +8,7 @@ import {columns} from '@/components/tables/product/column'
 import { Product } from "@/types/product/type";
 import {searchProducts} from "@/lib/actions/product-actions";
 import { ProductCSVDialog } from "@/components/csv/CSVImport";
+import { Plus } from "lucide-react";
 
 const breadCrumbItems = [{title: "Products", link: "/products"}];
  type ParamsProps ={
@@ -36,6 +37,7 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
                 </div>
                 <div className={`flex items-center space-x-2`}>
                     <Button>
+                        <Plus className="mr-2 h-4 w-4" />
                         <Link href={`/products/new`}>Add Product</Link>
                     </Button>
                  {total === 0 && 

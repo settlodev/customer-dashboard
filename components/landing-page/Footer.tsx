@@ -97,7 +97,7 @@ export const Footer = () => {
 
             {/* Links Sections */}
             <div className="lg:col-span-8">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-3 md:grid-cols-3 gap-8">
                 <div className="space-y-4">
                   <></>
                 </div>

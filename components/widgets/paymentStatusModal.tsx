@@ -15,7 +15,7 @@ const PaymentStatusModal: React.FC<PaymentStatusModalProps> = ({ isOpen, status,
     switch (status) {
       case "PENDING":
         return {
-          message: "Subscription created, awaiting payment confirmation",
+          message: "Awaiting payment confirmation ...",
           icon: <Loader2 className="w-8 h-8 animate-spin text-blue-500" />,
         };
       case "PROCESSING":

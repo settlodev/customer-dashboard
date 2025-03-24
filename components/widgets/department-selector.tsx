@@ -146,7 +146,7 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
                         <Plus className="h-4 w-4" />
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-[350px] lg:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Add New Department</DialogTitle>
                     </DialogHeader>
