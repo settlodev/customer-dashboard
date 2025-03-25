@@ -1,6 +1,6 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowUpCircle, TrendingDown, DollarSign, RefreshCcw, ShoppingCart, TrendingUp, BarChart } from 'lucide-react';
+import { ArrowUpCircle, TrendingDown, DollarSign, RefreshCcw, ShoppingCart, TrendingUp, BarChart, Clock, CheckCircle, Package} from 'lucide-react';
 
 const SalesDashboard = ({ salesData }: { salesData: any }) => {
   // Format currency with TZS
@@ -20,6 +20,57 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
         <CardContent className="pt-4">
           <div className="grid grid-cols-1 gap-6">
 
+          <div className="space-y-4">
+              <h3 className="text-lg font-medium text-blue-700 flex items-center">
+                <ShoppingCart className="w-5 h-5 mr-2" /> Order Status
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                
+
+                {/* New Order Cards */}
+                <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Total Orders</p>
+                        <h3 className="text-xl font-bold text-teal-700">{salesData.totalOrders || 0}</h3>
+                      </div>
+                      <div className="bg-teal-100 p-3 rounded-full shadow-sm">
+                        <Package className="w-5 h-5 text-teal-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Completed Orders</p>
+                        <h3 className="text-xl font-bold text-green-700">{salesData.completedOrders || 0}</h3>
+                      </div>
+                      <div className="bg-green-100 p-3 rounded-full shadow-sm">
+                        <CheckCircle className="w-5 h-5 text-green-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Pending Orders</p>
+                        <h3 className="text-xl font-bold text-amber-700">{salesData.pendingOrders || 0}</h3>
+                      </div>
+                      <div className="bg-amber-100 p-3 rounded-full shadow-sm">
+                        <Clock className="w-5 h-5 text-amber-600" />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
             {/* Payment Status Section */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-purple-700 flex items-center">
@@ -56,6 +107,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                 </Card>
               </div>
             </div>
+            
 
             {/* Revenue Section */}
             <div className="space-y-4">

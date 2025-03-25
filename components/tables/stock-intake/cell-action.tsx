@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useDisclosure } from "@nextui-org/modal";
 import { EyeIcon } from "@nextui-org/shared-icons";
-import { EditIcon, InfoIcon } from "lucide-react";
+import { Calculator, EditIcon, InfoIcon } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
@@ -37,7 +37,8 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const { isOpen, onOpen, onOpenChange } = useDisclosure();
-   
+
+    
 
     // State for edit modal
     const [showEditModal, setShowEditModal] = useState(false);
@@ -69,6 +70,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const handleOpenEditModal = () => {
         // Reset form with current data values when opening modal
         form.reset({ value: data.value || 0 });
+        console.log("The data is",data)
         setShowEditModal(true);
     };
 
@@ -152,6 +154,30 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                                         </FormItem>
                                     )}
                                 />
+                            </div>
+
+                            {/* Cost Per Item Calculation */}
+                            <div className="rounded-md border border-blue-100 bg-blue-50 p-4">
+                                <div className="flex items-center gap-2 text-blue-700">
+                                    <Calculator className="h-5 w-5" />
+                                    <h4 className="font-medium">Cost Calculation</h4>
+                                </div>
+                                <div className="mt-2 space-y-1 text-sm text-blue-600">
+                                    <p>Quantity: {data.quantity}</p>
+                                    <p>New Value: {form.watch('value')?.toLocaleString() || 0} TSH</p>
+                                    <div className="mt-2 pt-2 border-t border-blue-200">
+                                        <p className="font-semibold">
+                                            Cost Per Item: {' '}
+                                            {data.quantity > 0 
+                                                ? (form.watch('value') / data.quantity).toLocaleString(undefined, {
+                                                    minimumFractionDigits: 2,
+                                                    maximumFractionDigits: 2
+                                                  })
+                                                : 0
+                                            } TSH
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
 
                             <DialogFooter>
