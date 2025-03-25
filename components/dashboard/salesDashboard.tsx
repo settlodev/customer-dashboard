@@ -9,10 +9,6 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
     return `${value.toLocaleString()} TZS`;
   };
 
-  // Calculate percentages for visual indicators
-  const paidPercentage = salesData.netSales > 0 ? (salesData.paidAmount / salesData.netSales) * 100 : 0;
-  const unpaidPercentage = salesData.netSales > 0 ? (salesData.unpaidAmount / salesData.netSales) * 100 : 0;
-  const profitMargin = salesData.netSales > 0 ? (salesData.netProfit / salesData.netSales) * 100 : 0;
 
   return (
     <div className="p-6 bg-gray-50 space-y-8">
