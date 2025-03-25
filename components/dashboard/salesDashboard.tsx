@@ -36,15 +36,10 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                       <div className="w-full">
                         <div className="flex justify-between items-center mb-1">
                           <p className="text-sm font-medium text-gray-600">Paid Amount</p>
-                          <span className="text-xs font-medium text-green-700">{paidPercentage.toFixed(1)}%</span>
+                          {/* <span className="text-xs font-medium text-green-700">{paidPercentage.toFixed(1)}%</span> */}
                         </div>
                         <h3 className="text-xl font-bold text-green-700">{formatCurrency(salesData.paidAmount)}</h3>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                          <div
-                            className="bg-green-600 h-2 rounded-full"
-                            style={{ width: `${paidPercentage}%` }}
-                          ></div>
-                        </div>
+                        
                       </div>
                     </div>
                   </CardContent>
@@ -56,15 +51,9 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                       <div className="w-full">
                         <div className="flex justify-between items-center mb-1">
                           <p className="text-sm font-medium text-gray-600">Unpaid Amount</p>
-                          <span className="text-xs font-medium text-amber-700">{unpaidPercentage.toFixed(1)}%</span>
+
                         </div>
                         <h3 className="text-2xl font-bold text-amber-700">{formatCurrency(salesData.unpaidAmount)}</h3>
-                        <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                          <div
-                            className="bg-amber-600 h-2 rounded-full"
-                            style={{ width: `${unpaidPercentage}%` }}
-                          ></div>
-                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -106,15 +95,15 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
+                <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Discounts</p>
-                        <h3 className="text-xl font-bold text-orange-700">{formatCurrency(salesData.discountsAmount)}</h3>
+                        <h3 className="text-xl font-bold text-purple-700">{formatCurrency(salesData.discountsAmount)}</h3>
                       </div>
-                      <div className="bg-orange-100 p-3 rounded-full shadow-sm">
-                        <RefreshCcw className="w-5 h-5 text-orange-600" />
+                      <div className="bg-purple-50 p-3 rounded-full shadow-sm">
+                        <RefreshCcw className="w-5 h-5 text-purple-600" />
                       </div>
                     </div>
                   </CardContent>
@@ -194,19 +183,12 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                     <div className="w-full">
                       <div className="flex justify-between items-center mb-1">
                         <p className="text-lg font-medium text-gray-700">{salesData.netProfit >= 0 ? 'Net Profit' : 'Net Loss'}</p>
-                        <span className={`text-sm font-medium ${salesData.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                          {profitMargin.toFixed(1)}% margin
-                        </span>
+                      
                       </div>
                       <h3 className={`text-3xl font-bold ${salesData.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                         {formatCurrency(salesData.netProfit)}
                       </h3>
-                      <div className="w-full bg-gray-200 rounded-full h-3 mt-3">
-                        <div
-                          className={`${salesData.netProfit >= 0 ? 'bg-emerald-600' : 'bg-red-600'} h-3 rounded-full`}
-                          style={{ width: `${Math.min(Math.abs(profitMargin), 100)}%` }}
-                        ></div>
-                      </div>
+                      
                     </div>
                     <div className={`${salesData.netProfit >= 0 ? 'bg-emerald-100' : 'bg-red-100'} p-4 rounded-full shadow-sm ml-4`}>
                       {salesData.netProfit >= 0 ?
