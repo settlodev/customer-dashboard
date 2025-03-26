@@ -11,6 +11,8 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.677.0",
     "@aws-sdk/s3-presigned-post": "^3.677.0",
+    "@google/genai": "^0.6.1",
+    "@google/generative-ai": "^0.24.0",
     "@hookform/resolvers": "^3.9.0",
     "@iconify/react": "^5.0.2",
     "@next/third-parties": "^15.1.7",
