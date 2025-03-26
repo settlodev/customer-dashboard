@@ -102,7 +102,7 @@ export const createBusiness = async (
 
 
     const validatedData = BusinessSchema.safeParse(business);
-    console.log("validatedData: ", validatedData);
+    
 
     if (!validatedData.success) {
         formResponse = {

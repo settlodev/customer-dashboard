@@ -1,10 +1,27 @@
 import React from 'react';
 import { Button } from "@/components/ui/button";
-import { Download, Printer } from "lucide-react";
-import { StockIntake } from '@/types/stock-intake/type';
+import { Download } from "lucide-react";
+
+interface Variant {
+  id: string;
+  name: string;
+  availableStock: number;
+  purchasingPrice: number;
+  price: number;
+  barcode: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  departmentName: string;
+  categoryName: string;
+  quantity: number;
+  variants: Variant[];
+}
 
 interface ExportButtonsProps {
-  data: StockIntake[];
+  data: Product[];
   filename?: string;
 }
 
@@ -12,87 +29,76 @@ const TableExport: React.FC<ExportButtonsProps> = ({
   data, 
   filename = 'exported-data'
 }) => {
-  // Convert data to CSV format
-  const convertToCSV = (data: StockIntake[]): string => {
+  console.log('data', data)
+  // Convert data to CSV format with specific columns and variant handling
+  const convertToCSV = (data: Product[]): string => {
     if (data.length === 0) return '';
     
-    const headers = Object.keys(data[0]);
+    // Specific columns to export
+    const headers = [
+      'Product Name', 
+      'Category Name', 
+      'Department Name', 
+      'Quantity', 
+      'Variant Name', 
+      'Variant Available in Stock',
+      'Variant Purchasing Price', 
+      'Variant Selling Price',
+      'Variant Barcode'
+    ];
+
+    // Create CSV rows
     const csvRows = [
       headers.join(','), // Header row
-      ...data.map(row => 
-        headers.map(header => {
-          const value = row[header as keyof StockIntake];
-          return typeof value === 'string' && value.includes(',') 
-            ? `"${value}"` 
-            : value;
-        }).join(',')
-      )
+      ...data.flatMap(product => {
+        // If no variants, create a row with empty variant fields
+        if (product.variants.length === 0) {
+          return [
+            [
+              product.name,
+              product.categoryName,
+              product.departmentName,
+              product.quantity,
+              '',
+              '',
+              ''
+            ].map(escapeCSVValue).join(',')
+          ];
+        }
+
+        // Create a row for each variant
+        return product.variants.map(variant => {
+          return [
+            product.name,
+            product.categoryName,
+            product.departmentName,
+            product.quantity,
+            variant.name,
+            variant.availableStock,
+            variant.purchasingPrice,
+            variant.price,
+            variant.barcode
+          ].map(escapeCSVValue).join(',');
+        });
+      })
     ];
     
     return csvRows.join('\n');
   };
 
-  // Convert data to Excel-compatible XML format
-  const convertToExcel = (data: StockIntake[]): string => {
-    if (data.length === 0) return '';
+  // Escape CSV values
+  const escapeCSVValue = (value: any): string => {
+    // Convert to string
+    const stringValue = value !== null && value !== undefined 
+      ? String(value) 
+      : '';
     
-    const headers = Object.keys(data[0]);
-    const rows = data.map(row => 
-      headers.map(header => row[header as keyof StockIntake]).join('\t')
-    ).join('\n');
+    // Escape quotes and wrap in quotes if value contains comma
+    if (stringValue.includes(',') || stringValue.includes('"')) {
+      return `"${stringValue.replace(/"/g, '""')}"`;
+    }
     
-    return `${headers.join('\t')}\n${rows}`;
-  };
-
-  // Generate PDF using browser's print functionality
-  const handlePrint = () => {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const headers = Object.keys(data[0]);
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${filename}</title>
-          <style>
-            table { 
-              width: 100%;
-              border-collapse: collapse;
-              margin: 20px 0;
-            }
-            th, td { 
-              border: 1px solid #ddd;
-              padding: 8px;
-              text-align: left;
-            }
-            th {
-              background-color: #f5f5f5;
-            }
-          </style>
-        </head>
-        <body>
-          <table>
-            <thead>
-              <tr>
-                ${headers.map(header => `<th>${header}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${data.map(row => `
-                <tr>
-                  ${headers.map(header => `<td>${row[header as keyof StockIntake]}</td>`).join('')}
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </body>
-      </html>
-    `;
-
-    printWindow.document.write(htmlContent);
-    printWindow.document.close();
-    printWindow.print();
+    return stringValue;
   };
 
   // Download handler function
@@ -107,16 +113,10 @@ const TableExport: React.FC<ExportButtonsProps> = ({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
-  // Handler functions for different export types
+  
   const handleCSVDownload = () => {
     const csvContent = convertToCSV(data);
     downloadFile(csvContent, 'text/csv', 'csv');
-  };
-
-  const handleExcelDownload = () => {
-    const excelContent = convertToExcel(data);
-    downloadFile(excelContent, 'application/vnd.ms-excel', 'xls');
   };
 
   return (
@@ -129,26 +129,6 @@ const TableExport: React.FC<ExportButtonsProps> = ({
       >
         <Download className="h-4 w-4" />
         CSV
-      </Button>
-      
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handleExcelDownload}
-        className="flex items-center gap-2"
-      >
-        <Download className="h-4 w-4" />
-        Excel
-      </Button>
-      
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={handlePrint}
-        className="flex items-center gap-2"
-      >
-        <Printer className="h-4 w-4" />
-        Print/PDF
       </Button>
     </div>
   );
