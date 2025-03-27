@@ -11,23 +11,25 @@ import { ProductCSVDialog } from "@/components/csv/CSVImport";
 import { Plus } from "lucide-react";
 
 const breadCrumbItems = [{title: "Products", link: "/products"}];
- type ParamsProps ={
-     searchParams:{
-         [key:string]:string | undefined
-     }
- };
- async function Page({searchParams}:ParamsProps) {
 
-     const q = searchParams.search || "";
-     const page = Number(searchParams.page) || 0;
-     const pageLimit = Number(searchParams.limit);
+type ParamsProps ={
+    searchParams:{
+        [key:string]:string | undefined
+    }
+};
 
-     const responseData = await searchProducts(q,page,pageLimit);
-     
-     const data:Product[]=responseData.content;
-     const total =responseData.totalElements;
-    //  console.log("Total is: ", total);
-     const pageCount = responseData.totalPages
+async function Page({searchParams}:ParamsProps) {
+    const q = searchParams.search || "";
+    const page = Number(searchParams.page) || 0;
+    const pageLimit = Number(searchParams.limit);
+
+    const responseData = await searchProducts(q,page,pageLimit);
+    
+    // Filter out archived products
+    const filteredData: Product[] = responseData.content.filter(product => !product.isArchived);
+    
+    const total = filteredData.length;
+    const pageCount = Math.ceil(total / pageLimit);
 
     return (
         <div className="flex-1 space-y-4 md:p-8 pt-6 mt-10">
@@ -40,11 +42,11 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
                         <Plus className="mr-2 h-4 w-4" />
                         <Link href={`/products/new`}>Add Product</Link>
                     </Button>
-                 {total === 0 && 
-                 <div className="rounded">
-                    <ProductCSVDialog />
-                 </div>
-                 }
+                    {total === 0 && 
+                    <div className="rounded">
+                        <ProductCSVDialog />
+                    </div>
+                    }
                 </div>
             </div>
             {
@@ -55,26 +57,19 @@ const breadCrumbItems = [{title: "Products", link: "/products"}];
                             <CardDescription>Manage products in your business location</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <DataTable columns={columns}
-                                       data={data}
-                                       searchKey="name"
-                                       pageNo={page}
-                                       total={total}
-                                       pageCount={pageCount}
-                                //        filterKey="trackingInventory"
-                                //        filterOptions={[
-                                //         { label: "All", value: "" },
-                                //    { label: "Out of Stock", value: "true" },
-                                //    { label: "Low Stock", value: "false" },
-                                //    {label: "Best selling", value: "false"}
-                                //        ]}
+                            <DataTable 
+                                columns={columns}
+                                data={filteredData}
+                                searchKey="name"
+                                pageNo={page}
+                                total={total}
+                                pageCount={pageCount}
                             />
                         </CardContent>
                     </Card>
-                ):
-                    (
-                        <NoItems newItemUrl={`/products/new`} itemName={`products`}/>
-                    )
+                ) : (
+                    <NoItems newItemUrl={`/products/new`} itemName={`products`}/>
+                )
             }
         </div>
     );
