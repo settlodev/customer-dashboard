@@ -28,8 +28,10 @@ async function Page({searchParams}:ParamsProps) {
     // Filter out archived products
     const filteredData: Product[] = responseData.content.filter(product => !product.isArchived);
     
-    const total = filteredData.length;
-    const pageCount = Math.ceil(total / pageLimit);
+    
+    const total =responseData.totalElements;
+     const pageCount = responseData.totalPages
+
 
     return (
         <div className="flex-1 space-y-4 md:p-8 pt-6 mt-10">
