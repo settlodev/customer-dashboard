@@ -4,7 +4,7 @@ import React, { useCallback, useState, useTransition } from "react";
 import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Trash2, Plus, ListPlus, Settings, Building2, Info } from "lucide-react";
+import { Trash2, Plus, ListPlus, Settings, Building2, Info} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FormError } from "../widgets/form-error";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
-import { createProduct, updateProduct } from "@/lib/actions/product-actions";
+import { createProduct,updateProduct } from "@/lib/actions/product-actions";
 import {
     Dialog,
     DialogContent,
@@ -48,6 +48,7 @@ type ProductFormProps = {
     item: Product | null | undefined;
 };
 
+
 export default function ProductForm({ item }: ProductFormProps) {
     // console.log("ProductForm item:", item );
     const [isPending, startTransition] = useTransition();
@@ -55,6 +56,8 @@ export default function ProductForm({ item }: ProductFormProps) {
     const [showTrackingModal, setShowTrackingModal] = useState(false);
     const [imageUrl, setImageUrl] = useState(item?.image || '');
     const { toast } = useToast();
+    // const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+
 
 
     const form = useForm<z.infer<typeof ProductSchema>>({
@@ -90,7 +93,7 @@ export default function ProductForm({ item }: ProductFormProps) {
         name: "variants"
     });
 
-    
+
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
             console.log("errors", errors);
@@ -158,7 +161,7 @@ export default function ProductForm({ item }: ProductFormProps) {
         const stored = localStorage.getItem('pagination-products');
         const paginationState = stored ? JSON.parse(stored) : null;
         console.log('Pagination state:', paginationState);
-        
+
         setResponse(undefined);
         const productData = {
             ...values,
@@ -169,7 +172,7 @@ export default function ProductForm({ item }: ProductFormProps) {
 
         startTransition(() => {
             if (item) {
-                updateProduct(item.id, productData,paginationState)
+                updateProduct(item.id, productData, paginationState)
                     .then((data) => {
                         if (data) setResponse(data);
                         if (data?.responseType === "success") {
@@ -193,6 +196,33 @@ export default function ProductForm({ item }: ProductFormProps) {
             }
         });
     };
+    // const handleGenerateDescription = async () => {
+    //     const name = form.getValues('name');
+    //     const category = form.getValues('category');
+
+    //     if (!name || !category) {
+    //         toast({
+    //             variant: "destructive",
+    //             title: "Missing Information",
+    //             description: "Please enter a product name and select a category first."
+    //         });
+    //         return;
+    //     }
+
+    //     setIsGeneratingDescription(true);
+    //     try {
+    //         const aiDescription = await generateAIDescription(name, category);
+    //         form.setValue('description', aiDescription);
+    //     } catch (error) {
+    //         toast({
+    //             variant: "destructive",
+    //             title: "Description Generation Failed",
+    //             description: "Unable to generate description. Please try again."
+    //         });
+    //     } finally {
+    //         setIsGeneratingDescription(false);
+    //     }
+    // };
 
     return (
         <Form {...form}>
@@ -247,7 +277,19 @@ export default function ProductForm({ item }: ProductFormProps) {
                                         name="description"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Description</FormLabel>
+                                                <div className="flex items-center justify-between">
+                                                    <FormLabel>Description</FormLabel>
+                                                    {/* <Button
+                                                        type="button"
+                                                        variant="default"
+                                                        size="sm"
+                                                        onClick={handleGenerateDescription}
+                                                        disabled={isGeneratingDescription || isPending}
+                                                    >
+                                                        <Sparkles className="w-4 h-4 mr-2" />
+                                                        Generate AI Description
+                                                    </Button> */}
+                                                </div>
                                                 <FormControl>
                                                     <Textarea
                                                         {...field}

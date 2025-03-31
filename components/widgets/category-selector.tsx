@@ -147,14 +147,14 @@ const CategorySelector = ({
                         <Plus className="h-4 w-4" />
                     </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-[350px] lg:max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Add New Category</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={handleAddCategory} className="space-y-6">
                         <FormError message={error} />
 
-                        <Card>
+                        <Card className=" ">
                             <CardContent className="pt-6 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-6 items-start">
                                     <div className="space-y-4">

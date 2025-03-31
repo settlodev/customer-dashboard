@@ -38,7 +38,7 @@ export const columns: ColumnDef<StockIntake>[] = [
                     className="text-left p-0"
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Stock Item
+                    Item
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
@@ -64,16 +64,45 @@ export const columns: ColumnDef<StockIntake>[] = [
         cell: ({ row }) => {
             const value = row.original.value;
             const formatted = new Intl.NumberFormat("en-US").format(value);
-            return <div className="">{formatted}</div>;
+            return <div>{formatted}</div>;
         }
        
     },
     {
+        id: "costPerItem",
+        header: "Cost Per Item",
+        enableHiding: true,
+        enableSorting: true,
+        sortingFn: (rowA, rowB) => {
+            const costA = rowA.original.value / rowA.original.quantity;
+            const costB = rowB.original.value / rowB.original.quantity;
+            return costA - costB;
+        },
+        cell: ({ row }) => {
+            const quantity = row.original.quantity;
+            const value = row.original.value;
+            
+            const costPerItem = quantity > 0 ? value / quantity : 0;
+            
+            const formatted = new Intl.NumberFormat("en-US", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(costPerItem);
+            
+            return (
+                <div className="text-black p-2 rounded-sm bg-emerald-400">
+                    {formatted}
+                    <span className="text-black text-sm ml-1">TSH</span>
+                </div>
+            );
+        }
+    },
+    {
         
         accessorKey: "orderDate",
-        header: ({}) => (
+        header: ({ }) => (
             <div className="hidden md:block lg:block">Order Date</div>
-          ),
+        ),
         enableHiding: true,
         cell: ({ row }) => {
             const orderDate = row.original.orderDate;
@@ -85,9 +114,9 @@ export const columns: ColumnDef<StockIntake>[] = [
     {
         
         accessorKey: "deliveryDate",
-        header: ({}) => (
+        header: ({ }) => (
             <div className="hidden md:block lg:block">Delivery Date</div>
-          ),
+        ),
         enableHiding: true,
         cell: ({ row }) => {
             const deliveryDate = row.original.deliveryDate;
@@ -98,38 +127,22 @@ export const columns: ColumnDef<StockIntake>[] = [
     },
 
     {
-        
         accessorKey: "batchExpiryDate",
-        header: ({}) => (
+        header: ({ }) => (
             <div className="hidden md:block lg:block">Expiry Date</div>
-          ),
+        ),
         enableHiding: true,
         cell: ({ row }) => {
             const batchExpiryDate = row.original.batchExpiryDate;
             const formatted = new Intl.DateTimeFormat("en-US").format(new Date(batchExpiryDate));
-            return <div className="hidden md:block lg:block">{batchExpiryDate !== null ? formatted : "-"}</div>;
+            return (
+                <div className="hidden md:block lg:block">
+                    {batchExpiryDate !== null ? formatted : "-"}
+                </div>
+            );
         }
-       
     },
    
-    // {
-    //     id: "status",
-    //     accessorKey: "status",
-    //     header: ({ column }) => {
-    //         return (
-    //             <Button
-    //                 className="text-left p-0"
-    //                 variant="ghost"
-    //                 onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-    //             >
-    //                 Status
-    //                 <ArrowUpDown className="ml-2 h-4 w-4" />
-    //             </Button>
-    //         );
-    //     },
-    //     cell: ({ row }) => <StateColumn state={row.original.status} />,
-    //     enableHiding: false,
-    // },
     {
         id: "actions",
         accessorKey: "actions",

@@ -1,5 +1,5 @@
 'use server'
-import { ActiveSubscription, Subscriptions } from "@/types/subscription/type";
+import { ActiveSubscription, Subscriptions, ValidDiscountCode } from "@/types/subscription/type";
 import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
@@ -42,18 +42,22 @@ export const getActiveSubscription = async (): Promise<ActiveSubscription> => {
     }
 }
 
-export const validateDiscountCode = async (discountCode: string): Promise<any> => {
+export const validateDiscountCode = async (discountCode: string,locationId?:string): Promise<ValidDiscountCode> => {
+
+    
     // let formResponse: FormResponse | null = null;
-    const location = await getCurrentLocation();
+    const location = await getCurrentLocation() || { id: locationId };
     const payload = {
-        discountCode: discountCode
+        discountCode: discountCode,
+        location:location?.id
     }
+  
     try {
         const apiClient = new ApiClient();
-        const response = await apiClient.post(`/api/subscription-payments/${location?.id}/validate-discount-code`, { data: payload });
-        console.log("response", response);
+        const response = await apiClient.post(`/api/subscription-payments/${location?.id}/validate-discount-code`,  payload );
         return parseStringify(response);
-    } catch (error) {
+    } catch (error: any) {
+    
         throw error;
     }
 }
@@ -85,6 +89,7 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
         provider: provider,
         locationId: location?.id
     };
+
 
     console.log("Payload:", payload );
 

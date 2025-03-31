@@ -12,6 +12,7 @@ import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-b
 import {Product, TopSellingProduct} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
 // import {Variant} from "@/types/variant/type";
+import { GoogleGenAI } from "@google/genai";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
     await  getAuthenticatedUser();
@@ -249,7 +250,7 @@ export const updateProduct = async (
             variants: variantsPayload
         };
 
-        console.log("The final payload to update product", finalPayload);
+        // console.log("The final payload to update product", finalPayload);
 
         // Update the product with new data
         await apiClient.put(
@@ -404,3 +405,21 @@ export const topSellingProduct = async (startDate?: Date, endDate?: Date,limit?:
         throw error
     }
 }
+
+export const generateAIDescription = async (name: string, category: string): Promise<string> => {
+    const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+    });
+
+    const prompt = `Generate a product description for a ${name} in the ${category} category.`;
+    const response = await ai.models.generateContent({
+        model: "text-bison@001",
+        contents:prompt,
+        // maxOutputTokens: 100,
+        // temperature: 0.5,
+        // topP: 0.9
+    });
+    console.log("The generated description", response.text ?? "No description generated")
+
+    return response.text ?? "No description generated";
+};

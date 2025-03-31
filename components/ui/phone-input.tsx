@@ -38,7 +38,8 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
           className={cn("flex", className)}
           flagComponent={FlagComponent}
           countrySelectComponent={CountrySelect}
-          inputComponent={InputComponent} defaultCountry={"TZ"}
+          inputComponent={InputComponent} 
+          defaultCountry={"TZ"}
           /**
            * Handles the onChange event.
            *

@@ -19,7 +19,7 @@ export const BusinessSchema= object({
     receiptImage: string().nullable().optional(),
     logo: string().nullable().optional(),
     notificationPhone: string().nullable().optional(),
-    notificationEmailAddress: string().optional(),
+    notificationEmailAddress: string({ message: "Notification email address is required" }).email({ message: "Invalid email address" }).optional(),
     website: string().nullish().optional(),
     facebook: string().nullish().optional(),
     instagram: string().nullish().optional(),

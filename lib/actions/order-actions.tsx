@@ -6,7 +6,7 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
-import { Orders } from "@/types/orders/type";
+import { CashFlow, Orders } from "@/types/orders/type";
 
 
 export const fetchOrders = async () : Promise<Orders[]> => {
@@ -125,5 +125,29 @@ export const getOrderLogs = async (id:UUID)=>{
         return parseStringify(orderLogs);
     }catch (error){
         throw error;
+    }
+}
+
+export const cashFlowReport = async (startDate?: Date, endDate?: Date): Promise<CashFlow | null> => {
+
+    await getAuthenticatedUser();
+    try{
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        const params = {
+            startDate,
+            endDate,
+        }
+        const report = await apiClient.get(`/api/reports/${location?.id}/cash-flow/summary`, {
+            params
+        });
+
+        console.log ("The transactions report with filter is: ", report);
+
+        return parseStringify(report);
+    }
+    catch (error){
+        console.error("Error fetching transactions report:", error);
+        throw error
     }
 }

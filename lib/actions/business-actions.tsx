@@ -102,7 +102,7 @@ export const createBusiness = async (
 
 
     const validatedData = BusinessSchema.safeParse(business);
-    console.log("validatedData: ", validatedData);
+    
 
     if (!validatedData.success) {
         formResponse = {
@@ -167,20 +167,25 @@ export const updateBusiness = async (
         return parseStringify(formResponse);
     }
 
+    //
+
     const payload = {
         ...validatedData.data,
         owner: userId
     }
 
-    console.log("validatedData", validatedData)
-
     try {
 
-       const dataSent = await apiClient.put(
+      await apiClient.put(
             `/api/businesses/${userId}/${id}`,
             payload,
         );
-      console.log("dataSent", dataSent)
+ 
+    formResponse = {
+        responseType: "success",
+        message: "Business updated successfully",
+
+    }
     }catch (error: any) {
         const formattedError = await error;
         console.error("Error updating product - Full Details:", {
@@ -190,8 +195,7 @@ export const updateBusiness = async (
                 fieldErrors: JSON.stringify(formattedError.details?.fieldErrors, null, 2)
             }
         });
-        // Or just log the field errors directly:
-        console.error("Field Errors Detail:", JSON.stringify(formattedError.details?.fieldErrors, null, 2));
+      
 
         formResponse = {
             responseType: "error",
@@ -201,7 +205,8 @@ export const updateBusiness = async (
     }
 
     revalidatePath("/business");
-    return parseStringify(formResponse);
+    redirect("/business");
+    // return parseStringify(formResponse);
 };
 
 export const getSingleBusiness = async (id: UUID): Promise<Business> => {

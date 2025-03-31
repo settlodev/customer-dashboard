@@ -12,10 +12,10 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Icon } from "@iconify/react";
 import React from "react";
 import { useCSVUpload } from "@/hooks/uploadProduct";
 import { Progress } from "../ui/progress";
+import { Upload } from "lucide-react";
 
 // Validation Function
 const validateCSV = (
@@ -203,8 +203,8 @@ export function ProductCSVDialog() {
           variant="default"
           onClick={() => setIsOpen(true)}
         >
-          <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-black dark:bg-black dark:text-white">Import CSV</span>
+          <Upload className="h-4 w-4 text-black hover:text-white" />
+          <span className="text-black hover:text-white" >Import CSV</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">

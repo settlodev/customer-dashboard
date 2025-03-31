@@ -180,6 +180,7 @@ function RegisterForm({ step }: { step: string }) {
     const onInvalid = useCallback(
 
         (errors: FieldErrors) => {
+            console.log(errors);
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong.",

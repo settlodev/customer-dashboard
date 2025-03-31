@@ -66,6 +66,7 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
+            
             console.log("Errors during form submission:", errors);
             toast({
                 variant: "destructive",
@@ -87,11 +88,7 @@ const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: {
                     if (data) setResponse(data);
                 });
             } else {
-                // createBusiness(values)
-                //     .then((data) => {
-
-                //         if (data) setResponse(data);
-                //     });
+                
                 onSubmit(values)
             }
         });

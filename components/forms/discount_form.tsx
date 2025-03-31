@@ -44,6 +44,8 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [validTo, setValidTo] = useState<Date | undefined>(item?.validTo ? new Date(item.validTo) : undefined);
   const { toast } = useToast();
   const router = useRouter();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
 
@@ -268,7 +270,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                         setDate={setValidFrom}
                         handleTimeChange={handleTimeChange}
                         onDateSelect={handleDateSelect}
-                        minDate={new Date()}
+                        minDate={today}
                       />
                       <FormDescription>
                         Please select your preferred start date and time.
