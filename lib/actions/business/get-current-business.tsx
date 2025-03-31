@@ -23,6 +23,7 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
             try {
                 const parsedBusiness = JSON.parse(businessCookie.value) as Business;
                 console.log('Successfully parsed business from cookie');
+                
                 return parsedBusiness;
             } catch (error) {
                 console.error('Failed to parse business cookie:', error);
@@ -31,25 +32,25 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
         }
 
         // No cookie or invalid cookie, fetch fresh data
-        console.log('Fetching fresh business data...');
+        // console.log('Fetching fresh business data...');
         const currentLocation = await getCurrentLocation();
 
         if (!currentLocation) {
-            console.warn('getCurrentLocation returned undefined');
+            // console.warn('getCurrentLocation returned undefined');
             return undefined;
         }
 
         if (!currentLocation.business) {
-            console.warn('No business ID found in current location');
+            // console.warn('No business ID found in current location');
             return undefined;
         }
 
-        console.log('Attempting to get business with ID:', currentLocation.business);
+        // console.log('Attempting to get business with ID:', currentLocation.business);
         const currentBusiness = await getBusiness(currentLocation.business);
         console.log('getBusiness returned data');
 
         if (!currentBusiness) {
-            console.warn('No business found for ID:', currentLocation.business);
+            // console.warn('No business found for ID:', currentLocation.business);
             return undefined;
         }
 
