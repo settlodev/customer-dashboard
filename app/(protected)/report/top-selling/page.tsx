@@ -2,9 +2,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon } from 'lucide-react';
+import {CalendarDaysIcon, CalendarIcon, DollarSignIcon, PackageIcon, PercentIcon, TrendingUpIcon, UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -15,16 +14,10 @@ import { z } from 'zod';
 import { FieldErrors, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Input } from '@/components/ui/input';
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { SoldItem, TopSellingProduct } from '@/types/product/type';
+import { TopItems, TopSellingProduct } from '@/types/product/type';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
-import {
-    Tabs,
-    TabsContent,
-    TabsList,
-    TabsTrigger,
-} from "@/components/ui/tabs"
+
 import Loading from '../../loading';
 
 interface DatePickerProps {
@@ -49,7 +42,6 @@ const SalesDashboard = () => {
     const [endDate] = useState(new Date());
     const [soldData, setSoldData] = useState<TopSellingProduct | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const [activeTab,setActiveTab]=useState('topSelling')
     const limit = 5
 
     useEffect(() => {
@@ -62,7 +54,7 @@ const SalesDashboard = () => {
             }
             finally {
                 setIsLoading(false);
-              }
+            }
         };
 
         fetchingTopSellingProducts();
@@ -104,7 +96,7 @@ const SalesDashboard = () => {
         }
         finally {
             setIsLoading(false);
-          }
+        }
     };
 
 
@@ -200,50 +192,30 @@ const SalesDashboard = () => {
         );
     };
 
-    const getSummaryData = () => {
-        if (activeTab === 'topSelling') {
-          // For top selling tab, we display revenue
-          return {
-            totalLabel: 'Total Revenue:',
-            totalValue: soldData?.totalRevenue ?? 0,
-            secondaryLabel: 'Total Quantity Sold:',
-            secondaryValue: soldData?.totalQuantitySold ?? 0
-          };
-        } else {
-          // For sold items tab, we display profit
-          const totalProfit = soldData?.soldItemsReport.items.reduce(
-            (sum, item) => sum + item.profit, 0
-          ) ?? 0;
-          
-          return {
-            totalLabel: 'Total Profit:',
-            totalValue: totalProfit,
-            secondaryLabel: 'Total Quantity Sold:',
-            secondaryValue: soldData?.totalQuantitySold ?? 0
-          };
-        }
-      };
-      const summaryData = getSummaryData();
+  
 
 
     if (isLoading) {
         return (
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="text-lg">
-                <Loading />
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-lg">
+                    <Loading />
+                </div>
             </div>
-          </div>
         );
-      }
+    }
 
     return (
         <div className="p-6 space-y-6 bg-gray-50 min-h-screen mt-16">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Date Range Selection</CardTitle>
+                <Card className='shadow-md'>
+                    <CardHeader className='bg-slate-50 border-b'>
+                        <CardTitle className="flex items-center" >
+                        <CalendarIcon className="mr-2 h-5 w-5 text-teal-600" />
+                            Date Range Selection
+                        </CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 pt-4">
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit, onInvalid)}>
                                 <FormField
@@ -304,157 +276,116 @@ const SalesDashboard = () => {
                     </CardContent>
                 </Card>
 
-                <Card>
-          <CardHeader>
-            <CardTitle>Summary</CardTitle>
+                <Card className="shadow-md">
+          <CardHeader className="bg-slate-50 border-b">
+            <CardTitle className="flex items-center">
+              <TrendingUpIcon className="mr-2 h-5 w-5 text-teal-600" />
+              Sales Summary
+            </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Selected Range:</p>
-              <p className="font-medium">
-                {soldData?.startDate ? format(soldData?.startDate, "PPP HH:mm") : format(startDate, "PPP HH:mm")}
-                -
-                {soldData?.endDate ? format(soldData?.endDate, "PPP HH:mm") : format(endDate, "PPP HH:mm")}
-              </p>
+            <div className="space-y-2 pt-4">
+              <div className="flex items-center justify-between border-b pb-2">
+                <p className="text-sm font-medium text-slate-500">Location:</p>
+                <p className="font-medium text-right">{soldData?.locationName}</p>
+              </div>
               
-              <p className="text-sm text-muted-foreground mt-4">{summaryData.secondaryLabel}</p>
-              <p className="font-medium">{formatCurrency(summaryData.secondaryValue)}</p>
-
-              <p className="text-sm text-muted-foreground mt-4">{summaryData.totalLabel}</p>
-              <p className="font-medium">{formatCurrency(summaryData.totalValue)}</p>
+              <div className="flex items-center justify-between border-b pb-2">
+                <p className="text-sm font-medium text-slate-500">Date Range:</p>
+                <p className="font-medium text-right">
+                  {soldData?.startDate ? format(soldData.startDate, "dd MMM yyyy HH:mm") : 'N/A'} - {soldData?.endDate ? format(soldData.endDate, "dd MMM yyyy HH:mm") : 'N/A'}
+                </p>
+              </div>
+              
+              <div className="flex items-center justify-between border-b pb-2">
+                <p className="text-sm font-medium text-slate-500">Items Sold:</p>
+                <p className="font-medium text-right">{soldData?.totalQuantitySold} units</p>
+              </div>
+              
+              <div className="flex items-center justify-between pt-2">
+                <p className="text-sm font-medium text-slate-500">Total Revenue:</p>
+                <p className="font-medium text-emerald-600 text-lg">{formatCurrency(soldData?.totalRevenue ?? 0)}</p>
+              </div>
             </div>
           </CardContent>
         </Card>
             </div>
 
-            <Tabs 
-            defaultValue="topSelling"
-             className="w-full"
-             onValueChange={(value) => setActiveTab(value)}
-             >
-                <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="topSelling">Top Selling Items</TabsTrigger>
-                    <TabsTrigger value="soldItems">List of Sold Items</TabsTrigger>
-                </TabsList>
-                <TabsContent value="topSelling">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle>Top selling Items</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-96">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={soldData?.topItems}
-                                        margin={{
-                                            top: 20,
-                                            right: 30,
-                                            left: 20,
-                                            bottom: 5,
-                                        }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="productName" />
-                                        <YAxis />
-                                        <Tooltip
-                                            formatter={(value, name) => {
-                                                if (name === 'revenue') return formatCurrency(Number(value));
-                                                if (name === 'quantity') return `${Number(value)} units`;
-                                                return value;
-                                            }}
-                                        />
-                                        <Legend />
-                                        <Bar dataKey="revenue" fill="#A3FFD6" name="Revenue" />
-                                        <Bar dataKey="quantity" fill="#1E2A37" name="Quantity" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="soldItems" className='space-y-4'>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle>Bar Graph of Sold Items</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-96">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart
-                                        data={soldData?.soldItemsReport.items}
-                                        margin={{
-                                            top: 20,
-                                            right: 30,
-                                            left: 20,
-                                            bottom: 5,
-                                        }}
-                                    >
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="productName" />
-                                        <YAxis />
-                                        <Tooltip
-                                            formatter={(value, name) => {
-                                                if (name === 'profit') return formatCurrency(Number(value));
-                                                if (name === 'quantity') return `${Number(value)} units`;
-                                                return value;
-                                            }}
-                                        />
-                                        <Legend />
-                                        <Bar dataKey="profit" fill="#EB7118" name="Profit" />
-                                        <Bar dataKey="quantity" fill="#1E2A37" name="Quantity" />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-lg">List of Sold Items</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-
-                            <Table>
-                                <TableCaption>A list of sold items.</TableCaption>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="font-bold">#</TableHead>
-                                        <TableHead className="font-bold">Product</TableHead>
-                                        <TableHead className="font-bold">Variant</TableHead>
-                                        <TableHead className="font-bold">Category</TableHead>
-                                        <TableHead className="font-bold">Quantity</TableHead>
-                                        <TableHead className="font-bold">Price</TableHead>
-                                        <TableHead className="font-bold">Cost</TableHead>
-                                        <TableHead className="font-bold">Profit</TableHead>
-                                        <TableHead className="font-bold">Margin</TableHead>
-                                        <TableHead className="font-bold">Staff</TableHead>
-                                        <TableHead className="font-bold">Date</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {soldData?.soldItemsReport.items.map((item: SoldItem, index: number) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-medium">
-                                                {index + 1}
-                                            </TableCell>
-                                            <TableCell className="font-medium">{item.productName}</TableCell>
-                                            <TableCell className='font-medium'>{item.variantName}</TableCell>
-                                            <TableCell className='font-medium'>{item.categoryName}</TableCell>
-                                            <TableCell className='font-medium'>{Intl.NumberFormat().format(item.quantity)}</TableCell>
-                                            <TableCell className='font-medium'>{formatCurrency(item.price)}</TableCell>
-                                            <TableCell className='font-medium'>{formatCurrency(item.cost)}</TableCell>
-                                            <TableCell className='font-medium'>{formatCurrency(item.profit)}</TableCell>
-                                            <TableCell className='font-medium'>{item.margin}%</TableCell>
-                                            <TableCell className='font-medium'>{item.staffName}</TableCell>
-                                            <TableCell className='font-medium'>{Intl.DateTimeFormat().format(new Date(item.soldDate))}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+            <Card className="shadow-md">
+        <CardHeader className="bg-slate-50 border-b">
+          <CardTitle className="flex items-center">
+            <PackageIcon className="mr-2 h-5 w-5 text-teal-600" />
+            Top Selling Products
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-1 divide-y">
+              {soldData?.items.map((item:TopItems , index: number) => (
+                <div key={index} className="p-4 hover:bg-slate-50 transition-colors">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-start gap-3">
+                        <div className="h-16 w-16 min-w-16 bg-slate-200 rounded-md flex items-center justify-center">
+                          {!item.imageUrl && (
+                            <PackageIcon className="h-8 w-8 text-slate-400" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-lg">{item.productName}</h3>
+                          <p className="text-sm text-slate-500">{item.variantName}</p>
+                          <div className="flex items-center mt-1">
+                            <p className="bg-slate-100 text-slate-700 hover:bg-slate-100 p-1">{item.categoryName}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-3 md:mt-0">
+                      <div className="flex flex-col items-center p-2 bg-slate-50 rounded-md">
+                        <DollarSignIcon className="h-4 w-4 text-emerald-500 mb-1" />
+                        <p className="text-xs text-slate-500">Revenue</p>
+                        <p className="font-semibold">{formatCurrency(item.revenue)}</p>
+                      </div>
+                      
+                      <div className="flex flex-col items-center p-2 bg-slate-50 rounded-md">
+                        <PackageIcon className="h-4 w-4 text-blue-500 mb-1" />
+                        <p className="text-xs text-slate-500">Quantity</p>
+                        <p className="font-semibold">{item.quantity} units</p>
+                      </div>
+                      
+                      <div className="flex flex-col items-center p-2 bg-slate-50 rounded-md">
+                        <PercentIcon className="h-4 w-4 text-purple-500 mb-1" />
+                        <p className="text-xs text-slate-500">% of Total</p>
+                        <p className="font-semibold">{item.percentageOfTotal}%</p>
+                      </div>
+                      <div className="flex flex-col items-center p-2 bg-slate-50 rounded-md">
+                        <CalendarDaysIcon className="h-4 w-4 text-amber-500 mb-1" />
+                        <p className="text-xs text-slate-500">Latest Sold</p>
+                        <p className="font-semibold text-xs">{format(new Date(item.latestSoldDate), "dd MMM HH:mm")}</p>
+                      </div>
+                      <div className="flex flex-col items-center p-2 bg-slate-50 rounded-md">
+                        <CalendarDaysIcon className="h-4 w-4 text-amber-500 mb-1" />
+                        <p className="text-xs text-slate-500">Earliest Sold</p>
+                        <p className="font-semibold text-xs">{format(new Date(item.earliestSoldDate), "dd MMM HH:mm")}</p>
+                      </div>
+                     
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between items-center mt-3 text-sm text-slate-500">
+                    <div className="flex items-center">
+                      <UserIcon className="h-3 w-3 mr-1" />
+                      <span>Sold by: {item.staffName}</span>
+                    </div>
+                    <div>Avg. price: {formatCurrency(item.averagePrice)}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
         </div>
     );
 };

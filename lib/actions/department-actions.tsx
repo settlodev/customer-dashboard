@@ -256,7 +256,7 @@ export const DepartmentReport = async (
         const url = `/api/reports/${id}/department/summary${queryString ? `?${queryString}` : ''}`;
 
         const report = await apiClient.get(url);
-        console.log("The report is: ", report);
+        // console.log("The report is: ", report);
         return parseStringify(report);
     } catch (error) {
         throw error;
