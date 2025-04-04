@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarDaysIcon, CalendarIcon, ChevronLeftIcon, ChevronRightIcon, DollarSignIcon, PackageIcon, PercentIcon, TrendingUpIcon, UserIcon } from 'lucide-react';
+import { CalendarDaysIcon, CalendarIcon, ChevronLeftIcon, ChevronRightIcon, DollarSignIcon, PackageIcon,TrendingUpIcon, UserIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
