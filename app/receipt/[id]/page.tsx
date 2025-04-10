@@ -80,8 +80,8 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
                   </div>
                   <div>
                     <h2 className="text-sm font-semibold text-gray-600 mb-2">Payment Info</h2>
-                    <p className="text-sm">Method: <span className='font-semibold'>{orderData.transactions[0].paymentMethodName}</span></p>
-                    <p className="text-sm">Status: <span className='font-semibold'>{orderData.orderPaymentStatus}</span></p>
+                    <p className="text-sm">Method: <span className='font-semibold'>{orderData.transactions?.length > 0 ? orderData.transactions[0].paymentMethodName : 'N/A'}</span></p>
+                    <p className="text-sm">Status: <span className='font-semibold'>{orderData.orderPaymentStatus === 'NOT_PAID' ? 'NOT PAID' : 'PAID'}</span></p>
                     <p className="text-sm">Staff: <span className='font-semibold'>{orderData.finishedByName}</span></p>
                   </div>
                   {orderData.customerName && (
@@ -201,16 +201,16 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
             <div className="p-6">
               {/* Order Info */}
               <div className="flex flex-col lg:grid lg:grid-cols-2 gap-6 mb-6">
-                <div className="lg:border-r lg:border-gray-200">
+                <div className="lg:border-r lg:border-gray-200 gap-6">
                   <h2 className="text-sm font-semibold text-gray-600 mb-2">Order Details</h2>
                   <p className="text-sm">Order #: <span className='font-semibold'>{orderData.orderNumber}</span></p>
                   <p className="text-sm">Order start date: <span className='font-semibold'>{formatDate(orderData.openedDate)}</span></p>
                   <p className="text-sm">Order closed date: <span className='font-semibold'>{formatDate(orderData.closedDate)}</span></p>
                 </div>
-                <div>
+                <div className='gap-6'>
                   <h2 className="text-sm font-semibold text-gray-600 mb-2">Payment Info</h2>
-                  <p className="text-sm">Method: <span className='font-semibold'>{orderData.transactions[0].paymentMethodName}</span></p>
-                  <p className="text-sm">Status: <span className='font-semibold'>{orderData.orderPaymentStatus}</span></p>
+                  <p className="text-sm">Method: <span className='font-semibold'>{orderData.transactions?.length > 0 ? orderData.transactions[0].paymentMethodName : 'N/A'}</span></p>
+                  <p className="text-sm">Status: <span className='font-semibold'>{orderData.orderPaymentStatus === 'NOT_PAID' ? 'NOT PAID' : 'PAID'}</span></p>
                   <p className="text-sm">Staff: <span className='font-semibold'>{orderData.finishedByName}</span></p>
                 </div>
                 {orderData.customerName && (
