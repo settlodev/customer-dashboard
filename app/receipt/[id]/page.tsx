@@ -10,8 +10,6 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
   const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/receipt/${orderData.id}`;
 
 
-  // console.log("The order data is",orderData)
-
   const formatDate = (dateStr: string | number | Date) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
