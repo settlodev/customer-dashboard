@@ -4,6 +4,7 @@ import VerifyEmailTemplate from "@/components/emails/verify-email";
 import InviteStaffEmailTemplate from "@/components/emails/invite-staff";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
+
 export async function sendPasswordResetEmail(token: string, email: string) {
     try {
         const {data,error} = await resend.emails.send({
