@@ -42,6 +42,7 @@ export default auth((req: NextRequest) => {
   // Early returns for API and public routes
   if (nextUrl.pathname.startsWith(apiAuthPrefix) || 
       publicRoutes.some(matchesRoute) || 
+      nextUrl.pathname.endsWith('.txt') ||
       nextUrl.pathname.startsWith(UPDATE_PASSWORD_URL)) {
     return NextResponse.next();
   }
