@@ -51,7 +51,7 @@ export default {
                 } catch (error) {
                     console.log("error during registration: ", error)
                         if(error instanceof AuthError) {
-                            switch (error.type) {
+                            switch (error.name) {
                                 case "CredentialsSignin":
                                     return {
                                         error: "Wrong credentials! Invalid email address and/or password",status:"error"}
