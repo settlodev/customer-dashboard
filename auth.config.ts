@@ -10,13 +10,11 @@ export default {
             async authorize(credentials) {
                 const validatedData = LoginSchema.safeParse(credentials);
 
-
                 if (!validatedData.success) {
                     return null;
                 }
 
                 const { email, password } = validatedData.data;
-
 
                 try {
                     const response = await fetch(`${serviceURL}/api/auth/login`, {
@@ -50,15 +48,20 @@ export default {
                     return await response.json();
                 } catch (error) {
                     console.log("error during registration: ", error)
-                        if(error instanceof AuthError) {
-                            switch (error.type) {
-                                case "CredentialsSignin":
-                                    return {
-                                        error: "Wrong credentials! Invalid email address and/or password",status:"error"}
-                                    default:
-                                        return {error: "An unexpected error occurred. Please try again.",status:"error"}
-                            }
+                    if(error instanceof AuthError) {
+                        switch (error.name) {
+                            case "CredentialsSignin":
+                                return {
+                                    error: "Wrong credentials! Invalid email address and/or password",
+                                    status: "error"
+                                }
+                            default:
+                                return {
+                                    error: "An unexpected error occurred. Please try again.",
+                                    status: "error"
+                                }
                         }
+                    }
                     throw error
                 }
             },

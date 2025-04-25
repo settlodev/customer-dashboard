@@ -11,7 +11,6 @@ import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import {Product, SoldItemsReport, TopSellingProduct} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
-// import {Variant} from "@/types/variant/type";
 import { GoogleGenAI } from "@google/genai";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
@@ -287,10 +286,10 @@ export const updateProduct = async (
     console.log('🔄 Preparing redirect with pagination state:', paginationState);
     revalidatePath("/products");
 
-    if (paginationState && 
-        typeof paginationState.pageIndex === 'number' && 
+    if (paginationState &&
+        typeof paginationState.pageIndex === 'number' &&
         typeof paginationState.pageSize === 'number') {
-        
+
         const page = paginationState.pageIndex + 1;
         const limit = paginationState.pageSize;
         console.log('↪️ Redirecting to:', `/products?page=${page}&limit=${limit}`);
