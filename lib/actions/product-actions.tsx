@@ -33,6 +33,26 @@ export const fectchAllProducts = async () : Promise<Product[]> => {
         throw error;
     }
 }
+
+export const productSummary = async () : Promise<any> => {
+    await  getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+
+        const location = await getCurrentLocation();
+
+        const data = await  apiClient.get(
+            `/api/reports/${location?.id}/products/summary`,
+        );
+       
+        return parseStringify(data);
+
+    }
+    catch (error){
+        throw error;
+    }
+}
 export const searchProducts = async (
     q:string,
     page:number,
@@ -65,7 +85,7 @@ export const searchProducts = async (
             `/api/products/${location?.id}`,
             query
         );
-        console.log("Products are as follow:", data);
+        // console.log("Products are as follow:", data);
         return parseStringify(data);
     }
     catch (error){
@@ -360,8 +380,8 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        await apiClient.post(
-            `/api/products/${location?.id}/upload-csv`,
+       await apiClient.post(
+            `/api/products/${location?.id}/csv-uploading`,
             formattedCSVData,
             {
                 headers: {
@@ -370,6 +390,8 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
                 transformRequest: [(data) => data],
             }
         );
+
+        // console.log("The uploading process",upload)
 
         revalidatePath("/products");
         redirect("/products");

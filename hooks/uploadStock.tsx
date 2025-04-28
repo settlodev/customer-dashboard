@@ -10,7 +10,7 @@ interface UseCSVUploadResult {
   isUploading: boolean;
   uploadProgress: number;
   error: string | null;
-  uploadCSV: (options: CSVUploadOptions) => Promise<void>;
+  uploadCSV: (options: CSVUploadOptions) => Promise<any>; // Return type modified to pass through the response
 }
 
 export const useCSVUpload = (): UseCSVUploadResult => {
@@ -32,9 +32,12 @@ export const useCSVUpload = (): UseCSVUploadResult => {
         await new Promise((resolve) => setTimeout(resolve, 100)); // Simulated delay
       }
 
-      // Call the actual upload function
-      await uploadStockCSV({ fileData, fileName });
+      // Call the actual upload function and get the response with task_id
+      const response = await uploadStockCSV({ fileData, fileName });
       setUploadProgress(100); // Mark upload as complete
+      
+      // Return the response so we can access the task_id
+      return response;
     } catch (err: any) {
       setError(err.message || "An unknown error occurred during upload.");
       throw err;
