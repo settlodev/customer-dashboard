@@ -68,7 +68,7 @@ export const login = async (
 
     } catch (error) {
         if (error instanceof AuthError) {
-            switch (error.type) {
+            switch (error.name) {
                 case "CredentialsSignin":
                     return parseStringify({
                         responseType: "error",
