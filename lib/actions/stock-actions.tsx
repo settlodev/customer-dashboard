@@ -412,33 +412,7 @@ export const checkTaskStatus = async (taskId: string) => {
     return parseStringify(response);
 }
 
-// Function to poll the task status until it's complete
-// const pollTaskUntilComplete = async (taskId: string, maxAttempts = 30): Promise<void> => {
-//     let attempts = 0;
-    
-//     while (attempts < maxAttempts) {
-//         // Wait for 2 seconds between checks
-//         await new Promise(resolve => setTimeout(resolve, 2000));
-        
-//         const taskStatus = await checkTaskStatus(taskId);
-//         // console.log("Task status check:", taskStatus);
-        
-//         // Check if the task is complete based on the status
-//         if (taskStatus.csv_upload_status === "COMPLETED" || taskStatus.csv_upload_result === "FAILED") {
-//             // If task failed, throw an error with the message
-//             if (taskStatus.csv_upload_result === "FAILED") {
-//                 throw new Error(`Task failed: ${taskStatus.message}`);
-//             }
-//             // Task completed successfully, return to continue with redirect
-//             return;
-//         }
-        
-//         attempts++;
-//     }
-    
-//     // If we reached max attempts, throw an error
-//     throw new Error("Task processing timeout. Please check the status manually.");
-// };
+
 
 export const stockHistory = async (): Promise<StockHistory | null> => {
 

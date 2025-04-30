@@ -62,28 +62,50 @@ const StaffForm: React.FC<StaffFormProps> = ({
     );
 
     const submitData = (values: z.infer<typeof StaffSchema>) => {
-        console.log("Submitting data:", values);
         setResponse(undefined);
-
+    
         startTransition(() => {
             if (item) {
-                updateStaff(item.id, values).then((data) => {
-                    if (data) {
-                        setResponse(data);
-                        onFormSubmitted?.(data);
-                    }
-                });
+                updateStaff(item.id, values)
+                    .then((data) => {
+                        if (data) {
+                            setResponse(data);
+                            onFormSubmitted?.(data);
+                        }
+                    })
+                    .catch((error) => {
+                        // Handle the error
+                        const errorMessage = error instanceof Error ? error.message : 
+                            "There was an issue with your request, please try again later";
+                        
+                        toast({
+                            variant: "destructive",
+                            title: "Uh oh! Something went wrong.",
+                            description: errorMessage
+                        });
+                    });
             } else {
-                createStaff(values).then((data) => {
-                    if (data) {
-                        setResponse(data);
-                        onFormSubmitted?.(data);
-                    }
-                });
+                createStaff(values)
+                    .then((data) => {
+                        if (data) {
+                            setResponse(data);
+                            onFormSubmitted?.(data);
+                        }
+                    })
+                    .catch((error) => {
+                        // Handle the error
+                        const errorMessage = error instanceof Error ? error.message : 
+                            "There was an issue with your request, please try again later";
+                        
+                        toast({
+                            variant: "destructive",
+                            title: "Uh oh! Something went wrong.",
+                            description: errorMessage
+                        });
+                    });
             }
         });
     };
-
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-8">

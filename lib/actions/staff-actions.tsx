@@ -115,14 +115,14 @@ export const createStaff = async (
             payload,
         ) as Staff;
 
-        console.log("The staff created is", staff);
+        // console.log("The staff created is", staff);
 
         if (staff && staff.dashboardAccess === true) {
             const staffId = staff.id;
             const businessId = business?.id;
 
             if (staffId && businessId) {
-                console.log("Inviting staff");
+                // console.log("Inviting staff");
                 await inviteStaff(staffId, businessId);
             } else {
                 throw new Error("Invalid staff or business id");
@@ -134,15 +134,20 @@ export const createStaff = async (
             message: "Staff created successfully",
         }
     } catch (error: unknown) {
-        formResponse = {
-            responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error)),
-        };
+        // Extract the actual error message from the API response if possible
+        let errorMessage = "Something went wrong while processing your request, please try again";
+        
+        if (error && typeof error === 'object') {
+            if ('message' in error && typeof error.message === 'string') {
+                errorMessage = error.message;
+            } else if ('data' in error && typeof error.data === 'object' && error.data && 'message' in error.data) {
+                errorMessage = String(error.data.message);
+            }
+        }
+        
+        // Throw the error instead of returning it
+        throw new Error(errorMessage);
     }
-
-    if( formResponse.responseType === "error" ) return parseStringify(formResponse);
 
     revalidatePath("/staff");
     redirect("/staff");
@@ -228,7 +233,7 @@ export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
 };
 
 export const deleteStaff = async (id: UUID): Promise<void> => {
-    console.log("The staff id to delete is: ", id)
+   
     if (!id) throw new Error("Staff ID is required to perform this request");
     await getAuthenticatedUser();
 
@@ -239,9 +244,10 @@ export const deleteStaff = async (id: UUID): Promise<void> => {
 
         await apiClient.delete(`/api/staff/${location?.id}/${id}`);
         revalidatePath("/staff");
-    } catch (error) {
-        console.error("Error deleting staff:", error);
-        throw error;
+    } catch (error :any) {
+        
+        throw new Error(error.message || error.details?.message || "An unexpected error occurred. Please try again.");
+
     }
 };
 
@@ -259,15 +265,17 @@ const inviteStaff = async (staffId: UUID,businessId:UUID): Promise<void> => {
         }
 
        const invitedStaff: invitedStaff = await apiClient.put(`/api/staff/${location?.id}/invite-to-business`, payload);
-       console.log("The invited staff is", invitedStaff);
+    //    console.log("The invited staff is", invitedStaff);
        const token = invitedStaff.passwordResetToken;
        const email = invitedStaff.staffEmail;
        if(token && email) {
         await inviteStaffToBusiness(token,email);
     }
         revalidatePath("/staff");
-    } catch (error) {
-        throw error;
+    } catch (error:any) {
+
+        throw new Error(error.message || error.details?.message || "An unexpected error occurred. Please try again.");
+
     }
 };
 
@@ -287,9 +295,9 @@ export const staffReport = async (startDate?: Date, endDate?: Date): Promise<Sta
 
         return parseStringify(report);
     }
-    catch (error){
-        console.error("Error fetching staff summary report:", error);
-        throw error
+    catch (error:any){
+        // console.error("Error fetching staff summary report:", error);
+        throw new Error(error.message || error.details?.message || "An unexpected error occurred. Please try again.");
     }
 }
 
@@ -303,7 +311,7 @@ export const resetStaffPasscode = async (staffId: UUID): Promise<void> => {
 
         await apiClient.put(`/api/staff/${location?.id}/reset-passcode/${staffId}`,{});
         revalidatePath("/staff");
-    } catch (error) {
-        throw error;
+    } catch (error:any) {
+        throw new Error(error.message || error.details?.message || "An unexpected error occurred. Please try again.");
     }
 };
