@@ -337,27 +337,27 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
         await apiClient.post(
-            `/api/stock/${location?.id}/upload-csv`,
+            `/rust/csv-uploading/upload-stock-csv?location_id=${location?.id}`,
             formattedCSVData,
             {
                 headers: {
                     "Content-Type": "text/csv",
                 },
                 transformRequest: [(data) => data],
+                timeout: 30000,
             }
         );
 
         // console.log("CSV upload response", response);
 
-        // Revalidate or redirect after successful upload
-        revalidatePath("/stock-variants");
-        redirect("/stock-variants");
+      
     } catch (error: any) {
         console.error("Error uploading CSV file:", error);
-
-        return ;
-        // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
+      // Revalidate or redirect after successful upload
+      revalidatePath("/stock-variants");
+      redirect("/stock-variants");
 };
 
 

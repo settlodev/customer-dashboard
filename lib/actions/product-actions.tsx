@@ -380,7 +380,7 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
        await apiClient.post(
-            `/api/products/${location?.id}/csv-uploading`,
+             `/rust/csv-uploading/upload-products-csv?location_id=${location?.id}`,
             formattedCSVData,
             {
                 headers: {
@@ -417,7 +417,7 @@ export const topSellingProduct = async (startDate?: Date, endDate?: Date,limit?:
         const topSelling = await apiClient.get(`/api/reports/${location?.id}/products/top-selling`, {
             params
         });
-        console.log("The products sold",topSelling )
+        // console.log("The products sold",topSelling )
 
         return parseStringify(topSelling);
     }
@@ -440,7 +440,7 @@ export const SoldItemsReports = async (startDate?: Date, endDate?: Date): Promis
         const soldItems = await apiClient.get(`/api/reports/${location?.id}/products/sold-items`, {
             params
         });
-        console.log("List of  sold items",soldItems )
+        // console.log("List of  sold items",soldItems)
 
         return parseStringify(soldItems);
     }
