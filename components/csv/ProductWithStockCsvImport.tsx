@@ -38,7 +38,7 @@ const CSV_CONFIG = {
     "Starting Quantity",
     "Starting Value",
     "Alert Level",
-     "Expiry Date"
+     // "Expiry Date"
   ],
   requiredFields: [
     "Product Name", 
