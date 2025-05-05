@@ -21,7 +21,7 @@ const breadCrumbItems = [{title: "Stock Intake", link: "/stock-intakes"}];
      const pageLimit = Number(searchParams.limit);
 
      const responseData = await searchStockIntakes(q,page,pageLimit);
-     console.log("The response data is",responseData)
+   
      
 
      const data:StockIntake[]=responseData.content;
