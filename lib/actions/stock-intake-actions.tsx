@@ -11,6 +11,7 @@ import {getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema, UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
+import { redirect } from "next/navigation";
 
 export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
     await  getAuthenticatedUser();
@@ -199,70 +200,49 @@ export const downloadStockIntakeCSV = async (locationId?:string) => {
     }
 };
 
-// export const deleteStockIntake = async (id: UUID, stockVariant:UUID): Promise<void> => {
-//     if (!id && !stockVariant) throw new Error("Stock Intake ID & stockVariant is required to perform this request");
+export const uploadStockIntakeCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
+    // console.log("Starting CSV upload");
 
-//     await getAuthenticatedUser();
+    if (!fileName.endsWith(".csv")) {
+        throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
+    }
 
-//     console.log("Deleting stock intake with ID:", id, stockVariant);
+    const lines = fileData.split("\n");
+    const isCSVContent = lines.every(line => line.split(",").length > 1);
 
-//    try{
-//     const apiClient = new ApiClient();
+    if (!isCSVContent) {
+        throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
+    }
 
-//     await apiClient.delete(
-//         `/api/stock-intakes/${stockVariant}/${id}`,
-//     );
-//     revalidatePath("/stock-intakes");
+    // console.log("CSV content to be sent:", fileData);
 
-//    }
-//    catch (error){
-//        throw error
-//    }
-// }
+    const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
-// export const uploadCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
-//     console.log("Starting CSV upload");
+    // console.log("Formatted CSV data:", formattedCSVData);
 
-//     if (!fileName.endsWith(".csv")) {
-//         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
-//     }
+    try {
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        await apiClient.post(
+            `/rust/csv-uploading/upload-stock-intake-csv?location_id=${location?.id}`,
+            formattedCSVData,
+            {
+                headers: {
+                    "Content-Type": "text/csv",
+                },
+                transformRequest: [(data) => data],
+                timeout: 30000,
+            }
+        );
 
-//     const lines = fileData.split("\n");
-//     const isCSVContent = lines.every(line => line.split(",").length > 1);
+        // console.log("CSV upload response", response);
 
-//     if (!isCSVContent) {
-//         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
-//     }
-
-//     console.log("CSV content to be sent:", fileData);
-
-//     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
-
-//     console.log("Formatted CSV data:", formattedCSVData);
-
-//     try {
-//         const apiClient = new ApiClient();
-//         const location = await getCurrentLocation();
-//         const response = await apiClient.post(
-//             `/api/products/${location?.id}/upload-csvx`,
-//             formattedCSVData, // Send as plain text
-//             {
-//                 headers: {
-//                     "Content-Type": "text/csv",
-//                 },
-//                 transformRequest: [(data) => data],
-//             }
-//         );
-
-//         console.log("CSV upload response", response);
-
-//         // Revalidate or redirect after successful upload
-//         revalidatePath("/products");
-//         redirect("/products");
-//     } catch (error) {
-//         console.error("Error uploading CSV file:", error);
-
-//         return ;
-//         // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
-//     }
-// };
+      
+    } catch (error: any) {
+        console.error("Error uploading CSV file:", error);
+        throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+      // Revalidate or redirect after successful upload
+      revalidatePath("/stock-intakes");
+      redirect("/stock-intakes");
+};

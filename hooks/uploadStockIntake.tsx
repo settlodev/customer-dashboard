@@ -1,8 +1,7 @@
 
-
-
+"use client";
 import { useState, useCallback } from "react";
-import { uploadStockCSV } from "@/lib/actions/stock-actions";
+import { uploadStockIntakeCSV } from "@/lib/actions/stock-intake-actions";
 
 interface CSVUploadOptions {
   fileData: string;
@@ -59,7 +58,7 @@ export const useCSVUpload = (): UseCSVUploadResult => {
       }
 
       // Final phase: Actual upload
-      const response = await uploadStockCSV({ fileData, fileName });
+      const response = await uploadStockIntakeCSV({ fileData, fileName });
       
       // Complete the progress
       setUploadProgress(COMPLETION_PROGRESS);

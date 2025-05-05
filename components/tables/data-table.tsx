@@ -49,6 +49,7 @@ import { usePaginationState } from "@/hooks/usePaginationState";
 import TableExport from "../widgets/export";
 import StockExport from "../widgets/export-stock";
 import StockIntakeExport from "../widgets/export-intake";
+import { CSVStockIntakeDialog } from "../csv/stockIntakeImport";
 
 
 interface DataTableProps<TData, TValue> {
@@ -294,6 +295,7 @@ export function DataTable<TData, TValue>({
          {pathname === "/stock-variants" && <ProductWithStockCSVDialog />}
          {pathname === "/products" && <TableExport filename="products-csv"/>}
          {pathname === "/stock-variants" && <StockExport filename="stock"/>}
+         {pathname === "/stock-intakes" && <CSVStockIntakeDialog/>}
          {pathname === "/stock-intakes" && <StockIntakeExport filename="Stock Intake"/>}
 
         </div>
