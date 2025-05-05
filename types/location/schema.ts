@@ -6,7 +6,7 @@ export const LocationSchema = object({
     phone: string().min(8, 'Phone number must be more than 8 characters').max(20, 'Phone number can not be more than 20 characters').refine(isValidPhoneNumber, {
         message: "Invalid phone number",
     }),
-    email: string().min(2, 'Email must be less than 10 characters').max(120, 'Email can not be more than 120 characters').optional().nullish(),
+    email: string().email("Please enter a valid email address"),
     description: string().min(2, 'Description must be more than 2 characters').max(120, 'Description can not be more than 120 characters').optional().nullish(),
     address: string().min(2, 'Address must be more than 20 characters').max(120, 'Address can not be more than 0 characters'),
     city: string(),

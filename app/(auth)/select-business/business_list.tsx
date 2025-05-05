@@ -55,7 +55,7 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
             return;
 
         } catch (error) {
-            console.error("Error in handleBusinessSelect:", error);
+            // console.error("Error in handleBusinessSelect:", error);
             Sentry.captureException(error);
 
             // Reset states only if there's an error

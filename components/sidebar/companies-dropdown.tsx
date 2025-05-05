@@ -53,8 +53,8 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                 setConfirmationOpen(false);
                 setSelectedLocation(null);
                 setLoadingLocationId(null);
-                // Reload the page
-                window.location.reload();
+                // Reload the page and redirect to dashboard
+                window.location.href = '/dashboard';
             });
         } catch (error) {
             Sentry.captureException(error);
