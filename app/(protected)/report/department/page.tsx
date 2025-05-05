@@ -252,7 +252,7 @@ export default function DepartmentReportPage() {
           <CardHeader className="bg-slate-50 border-b">
             <CardTitle className="flex items-center">
               <PackageIcon className="mr-2 h-5 w-5 text-teal-600" />
-              Products Sold
+              Items Sold
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
