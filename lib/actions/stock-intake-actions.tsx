@@ -30,6 +30,7 @@ export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
         throw error;
     }
 }
+
 export const searchStockIntakes = async (
     q:string,
     page:number,
@@ -102,7 +103,7 @@ export const createStockIntake = async (
             message: "Stock Intake recorded successfully",
         }
     } catch (error) {
-        console.error("Error creating product", error);
+        // console.error("Error creating product", error);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",
@@ -139,7 +140,7 @@ export const updateStockIntake = async (
     let formResponse: FormResponse | null = null;
     const validData = UpdatedStockIntakeSchema.safeParse(stockIntake);
 
-    console.log("The validated data",validData)
+    // console.log("The validated data",validData)
 
     if (!validData.success) {
         formResponse = {
@@ -180,6 +181,22 @@ export const updateStockIntake = async (
 
     revalidatePath("/stock-intakes");
    return parseStringify(formResponse);
+};
+
+export const downloadStockIntakeCSV = async (locationId?:string) => {
+
+    const location = await getCurrentLocation() || {id:locationId};
+    console.log("location",location)
+    
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/rust/csv-downloading/download-stock-intake-upload-sample-csv?location_id=${location?.id}`);
+        console.log("CSV download response", response);
+        return response;
+    } catch (error) {
+        console.error("Error downloading CSV file:", error);
+        throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
 };
 
 // export const deleteStockIntake = async (id: UUID, stockVariant:UUID): Promise<void> => {

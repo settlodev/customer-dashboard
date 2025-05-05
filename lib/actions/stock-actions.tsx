@@ -428,3 +428,19 @@ export const stockHistory = async (): Promise<StockHistory | null> => {
         throw error;
     }
 };
+
+export const downloadStockCSV = async (locationId?:string) => {
+
+    const location = await getCurrentLocation() || {id:locationId};
+   
+    
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/rust/csv-downloading/download-stock-csv?location_id=${location?.id}`);
+        // console.log("CSV download response", response);
+        return response;
+    } catch (error) {
+        console.error("Error downloading CSV file:", error);
+        throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+};

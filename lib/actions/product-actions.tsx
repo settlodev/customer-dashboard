@@ -467,3 +467,19 @@ export const generateAIDescription = async (name: string, category: string): Pro
 
     return response.text ?? "No description generated";
 };
+
+export const downloadProductsCSV = async (locationId?:string) => {
+
+    const location = await getCurrentLocation() || {id:locationId};
+    console.log("location",location)
+    
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/rust/csv-downloading/download-products-csv?location_id=${location?.id}`);
+        console.log("CSV download response", response);
+        return response;
+    } catch (error) {
+        console.error("Error downloading CSV file:", error);
+        throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+};

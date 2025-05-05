@@ -1,36 +1,17 @@
-
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { downloadProductsCSV } from '@/lib/actions/product-actions';
-
-interface Variant {
-  id: string;
-  name: string;
-  availableStock: number;
-  purchasingPrice: number;
-  price: number;
-  barcode: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  departmentName: string;
-  categoryName: string;
-  quantity: number;
-  variants: Variant[];
-}
+import { StockIntake } from '@/types/stock-intake/type';
+import { downloadStockIntakeCSV } from '@/lib/actions/stock-intake-actions';
 
 interface TableExportProps {
-  data?: Product[];
+  data?: StockIntake[];
   filename?: string;
   locationId?: string;
   useEndpoint?: boolean;
 }
 
-const TableExport: React.FC<TableExportProps> = ({ 
+const StockIntakeExport: React.FC<TableExportProps> = ({ 
   data = [], 
   filename = 'exported-data',
   locationId,
@@ -39,56 +20,40 @@ const TableExport: React.FC<TableExportProps> = ({
   const [isLoading, setIsLoading] = useState(false);
 
   // Convert data to CSV format with specific columns and variant handling
-  const convertToCSV = (data: Product[]): string => {
+  const convertToCSV = (data: StockIntake[]): string => {
     if (data.length === 0) return '';
+    
+    // Add a note at the top of the CSV indicating the identifier column should not be modified
+    const csvNote = '# IMPORTANT: The "identifier" column contains system IDs and should not be modified.';
     
     // Specific columns to export matching the endpoint format
     const headers = [
-      'Product Name', 
-      'Category Name', 
-      'Variant Name', 
-      'Price', 
-      'SKU', 
-      'Unit', 
-      'Barcode', 
-      'Department'
+      'Stock Name', 
+      'Stock Variant Name', 
+      'Value', 
+      'Quantity', 
+      'Expiry Date', 
+      'identifier (DO NOT EDIT)'  // Renamed to emphasize it should not be edited
     ];
 
-    // Create CSV rows
+    // Create rows
     const csvRows = [
+      csvNote,
       headers.join(','), // Header row
-      ...data.flatMap(product => {
-        // If no variants, create a row with empty variant fields
-        if (product.variants.length === 0) {
-          return [
-            [
-              product.name,
-              product.categoryName,
-              '',
-              '',
-              '',
-              '',
-              '',
-              product.departmentName
-            ].map(escapeCSVValue).join(',')
-          ];
-        }
-
-        // Create a row for each variant
-        return product.variants.map(variant => {
-          // Note: Adjust these field mappings as needed to match your data structure
-          // Some fields like SKU and Unit might not exist in your data model
-          return [
-            product.name,
-            product.categoryName,
-            variant.name,
-            variant.price,
-            variant.id, // Using id as SKU, adjust if needed
-            '', // Unit (not in your data model)
-            variant.barcode,
-            product.departmentName
-          ].map(escapeCSVValue).join(',');
-        });
+      ...data.map(intake => {
+        // Format date if it exists
+        const expiryDate = intake.batchExpiryDate 
+          ? new Date(intake.batchExpiryDate).toISOString().split('T')[0] // Format as YYYY-MM-DD
+          : '';
+        
+        return [
+          intake.stockName || '', // Stock/Product Name
+          intake.stockVariantName || '', // Variant Name
+          intake.value?.toString() || '0', // Starting Value
+          intake.quantity?.toString() || '0', // Starting Quantity  
+          expiryDate, // Expiry Date
+          `[ID:${intake.id || ''}]` // Format ID in a way that makes it clear it's a system identifier
+        ].map(escapeCSVValue).join(',');
       })
     ];
     
@@ -102,7 +67,7 @@ const TableExport: React.FC<TableExportProps> = ({
       ? String(value) 
       : '';
     
-    // Escape quotes and wrap in quotes if value contains comma
+    // Escape quotes and wrap in quotes if value contains comma or quote
     if (stringValue.includes(',') || stringValue.includes('"')) {
       return `"${stringValue.replace(/"/g, '""')}"`;
     }
@@ -127,14 +92,16 @@ const TableExport: React.FC<TableExportProps> = ({
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
-      const response = await downloadProductsCSV(locationId);
+      const response = await downloadStockIntakeCSV(locationId);
       
       // The response might be in different formats depending on your API implementation
-      // let csvData;
+      let csvData;
       
       if (response) {
         if (typeof response === 'string') {
-          // csvData = response;
+          // Add a header note to the CSV data about the identifier column
+          csvData = '# IMPORTANT: The "identifier" column contains system IDs and should not be modified.\n' + response;
+          downloadFile(csvData, 'text/csv', 'csv');
         } else if (response instanceof Blob) {
           const url = URL.createObjectURL(response);
           const link = document.createElement('a');
@@ -193,4 +160,4 @@ const TableExport: React.FC<TableExportProps> = ({
   );
 };
 
-export default TableExport;
+export default StockIntakeExport;

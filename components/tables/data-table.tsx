@@ -47,6 +47,8 @@ import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMe
 import Loading from "@/app/loading";
 import { usePaginationState } from "@/hooks/usePaginationState";
 import TableExport from "../widgets/export";
+import StockExport from "../widgets/export-stock";
+import StockIntakeExport from "../widgets/export-intake";
 
 
 interface DataTableProps<TData, TValue> {
@@ -290,7 +292,9 @@ export function DataTable<TData, TValue>({
          {pathname === "/products" ?  <ProductCSVDialog /> : null}
          {pathname === "/stock-variants" && <CSVStockDialog />}
          {pathname === "/stock-variants" && <ProductWithStockCSVDialog />}
-         {pathname === "/products" && <TableExport data={data as any[]}/>}
+         {pathname === "/products" && <TableExport filename="products-csv"/>}
+         {pathname === "/stock-variants" && <StockExport filename="stock"/>}
+         {pathname === "/stock-intakes" && <StockIntakeExport filename="Stock Intake"/>}
 
         </div>
       </div>

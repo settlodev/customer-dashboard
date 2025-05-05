@@ -1,94 +1,55 @@
-
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { downloadProductsCSV } from '@/lib/actions/product-actions';
-
-interface Variant {
-  id: string;
-  name: string;
-  availableStock: number;
-  purchasingPrice: number;
-  price: number;
-  barcode: string;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  departmentName: string;
-  categoryName: string;
-  quantity: number;
-  variants: Variant[];
-}
+import { downloadStockCSV } from '@/lib/actions/stock-actions';
+import { StockVariant } from '@/types/stockVariant/type';
 
 interface TableExportProps {
-  data?: Product[];
+  data?: StockVariant[];
   filename?: string;
   locationId?: string;
   useEndpoint?: boolean;
 }
 
-const TableExport: React.FC<TableExportProps> = ({ 
+const StockExport: React.FC<TableExportProps> = ({ 
   data = [], 
-  filename = 'exported-data',
+  filename = 'stock-data',
   locationId,
   useEndpoint = true
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
-  // Convert data to CSV format with specific columns and variant handling
-  const convertToCSV = (data: Product[]): string => {
+  // Convert data to CSV format with specific columns for stock data
+  const convertToCSV = (data: StockVariant[]): string => {
     if (data.length === 0) return '';
     
     // Specific columns to export matching the endpoint format
     const headers = [
-      'Product Name', 
-      'Category Name', 
-      'Variant Name', 
-      'Price', 
-      'SKU', 
-      'Unit', 
-      'Barcode', 
-      'Department'
+      'Stock Name', 
+      'Stock Variant Name', 
+      'Starting Value', 
+      'Starting Quantity', 
+      'Alert Level', 
+      'Expiry Date'
     ];
 
     // Create CSV rows
     const csvRows = [
       headers.join(','), // Header row
-      ...data.flatMap(product => {
-        // If no variants, create a row with empty variant fields
-        if (product.variants.length === 0) {
-          return [
-            [
-              product.name,
-              product.categoryName,
-              '',
-              '',
-              '',
-              '',
-              '',
-              product.departmentName
-            ].map(escapeCSVValue).join(',')
-          ];
-        }
-
-        // Create a row for each variant
-        return product.variants.map(variant => {
-          // Note: Adjust these field mappings as needed to match your data structure
-          // Some fields like SKU and Unit might not exist in your data model
-          return [
-            product.name,
-            product.categoryName,
-            variant.name,
-            variant.price,
-            variant.id, // Using id as SKU, adjust if needed
-            '', // Unit (not in your data model)
-            variant.barcode,
-            product.departmentName
-          ].map(escapeCSVValue).join(',');
-        });
+      ...data.map(stock => {
+        // Format date if it exists
+        const expiryDate = stock.expiryDate 
+          ? new Date(stock.expiryDate).toISOString().split('T')[0] // Format as YYYY-MM-DD
+          : '';
+          
+        return [
+          stock.name || '', // Stock/Product Name
+          stock.stockName || '', // Variant Name
+          stock.startingValue?.toString() || '0', // Starting Value
+          stock.startingQuantity?.toString() || '0', // Starting Quantity  
+          stock.alertLevel?.toString() || '0', // Alert Level
+          expiryDate // Expiry Date
+        ].map(escapeCSVValue).join(',');
       })
     ];
     
@@ -127,14 +88,12 @@ const TableExport: React.FC<TableExportProps> = ({
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
-      const response = await downloadProductsCSV(locationId);
-      
-      // The response might be in different formats depending on your API implementation
-      // let csvData;
+      const response = await downloadStockCSV(locationId);
+      let csvData;
       
       if (response) {
         if (typeof response === 'string') {
-          // csvData = response;
+          csvData = response;
         } else if (response instanceof Blob) {
           const url = URL.createObjectURL(response);
           const link = document.createElement('a');
@@ -153,6 +112,19 @@ const TableExport: React.FC<TableExportProps> = ({
         }
       } else {
         throw new Error("No CSV data received from server");
+      }
+
+      // Create a blob and trigger download for string response
+      if (csvData) {
+        const blob = new Blob([csvData], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${filename}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
       }
     } catch (error) {
       console.error("Failed to download CSV:", error);
@@ -193,4 +165,4 @@ const TableExport: React.FC<TableExportProps> = ({
   );
 };
 
-export default TableExport;
+export default StockExport;
