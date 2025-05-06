@@ -14,6 +14,19 @@ export declare interface Department {
 }
 
 export declare interface Report {
+    soldItems: {
+        name: string;
+        productName: string;
+        variantName: string;
+        categoryName: string;
+        imageUrl: string | null;
+        quantity: number;
+        price: number;
+        cost: number;
+        grossProfit: number;
+        latestSoldDate: string;
+        earliestSoldDate: string;
+    }[];
     startDate: string;
     endDate: string;
     name: string;
@@ -22,4 +35,4 @@ export declare interface Report {
     totalGrossAmount: number;
     totalNetAmount: number;
     totalGrossProfit: number;
-};
+}

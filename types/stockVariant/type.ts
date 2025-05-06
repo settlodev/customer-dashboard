@@ -19,6 +19,7 @@ export declare interface StockVariant {
     stockAndStockVariantName: string,
     lastStockIntakeQuantity: number,
     lastStockIntakeTime: Date,
+    expiryDate: Date,
     isArchived: boolean,
     stockMovement: StockMovement[]
 }

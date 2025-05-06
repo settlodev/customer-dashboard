@@ -13,6 +13,10 @@ import { Stock, StockHistory } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { console } from "node:inspector";
 
+interface CSVUploadResponse {
+    task_id: string;
+}
+
 export const fetchStock = async () : Promise<Stock[]> => {
     await  getAuthenticatedUser();
 
@@ -333,32 +337,31 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
         await apiClient.post(
-            `/api/stock/${location?.id}/upload-csv`,
+            `/rust/csv-uploading/upload-stock-csv?location_id=${location?.id}`,
             formattedCSVData,
             {
                 headers: {
                     "Content-Type": "text/csv",
                 },
                 transformRequest: [(data) => data],
+                timeout: 30000,
             }
         );
 
         // console.log("CSV upload response", response);
 
-        // Revalidate or redirect after successful upload
-        revalidatePath("/stock-variants");
-        redirect("/stock-variants");
+      
     } catch (error: any) {
         console.error("Error uploading CSV file:", error);
-
-        return ;
-        // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
+      // Revalidate or redirect after successful upload
+      revalidatePath("/stock-variants");
+      redirect("/stock-variants");
 };
 
-export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
-    // console.log("Starting CSV upload");
 
+export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<CSVUploadResponse | null> => {
     if (!fileName.endsWith(".csv")) {
         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
     }
@@ -370,17 +373,13 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
     }
 
-    // console.log("CSV content to be sent:", fileData);
-
     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
-
-    // console.log("Formatted CSV data:", formattedCSVData);
 
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        await apiClient.post(
-            `/api/stock/${location?.id}/upload-products-and-stock-csv`,
+        const response = await apiClient.post<CSVUploadResponse, string>(
+            `/rust/csv-uploading/upload-products-and-stock-csv?location_id=${location?.id}`,
             formattedCSVData,
             {
                 headers: {
@@ -389,23 +388,31 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
                 transformRequest: [(data) => data],
             }
         );
-
-        // console.log("CSV upload response", response);
-
+        
+        console.log("CSV upload response", response.task_id);
+        
+        // Don't redirect or poll here - return the response to the client
         revalidatePath("/stocks");
-        redirect("/stocks");
+        
+        // Return the response so the client can access the task_id
+        return response;
     } catch (error) {
-
         if (typeof error === "object" && error !== null && "digest" in error && (error as any).digest.startsWith("NEXT_REDIRECT")) {
-            // console.log("Redirect triggered, ignoring error:", error);
-            return;
+            // Handle Next.js redirect error
+            return null;
         }
-
-        // console.error("Error uploading CSV file:", error);
         throw error;
     }
-
 };
+
+export const checkTaskStatus = async (taskId: string) => {
+    const apiClient = new ApiClient();
+    const response = await apiClient.get(`/rust/csv-tasks-checking/check-products-and-stock-csv-upload-task?task_id=${taskId}`);
+    console.log("Task status check response:", response);
+    return parseStringify(response);
+}
+
+
 
 export const stockHistory = async (): Promise<StockHistory | null> => {
 
@@ -419,5 +426,21 @@ export const stockHistory = async (): Promise<StockHistory | null> => {
     } catch (error) {
         // console.error("Error fetching stock history:", error);
         throw error;
+    }
+};
+
+export const downloadStockCSV = async (locationId?:string) => {
+
+    const location = await getCurrentLocation() || {id:locationId};
+   
+    
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/rust/csv-downloading/download-stock-csv?location_id=${location?.id}`);
+        // console.log("CSV download response", response);
+        return response;
+    } catch (error) {
+        console.error("Error downloading CSV file:", error);
+        throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
 };

@@ -11,6 +11,7 @@ import {getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema, UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
+import { redirect } from "next/navigation";
 
 export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
     await  getAuthenticatedUser();
@@ -30,6 +31,7 @@ export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
         throw error;
     }
 }
+
 export const searchStockIntakes = async (
     q:string,
     page:number,
@@ -102,7 +104,7 @@ export const createStockIntake = async (
             message: "Stock Intake recorded successfully",
         }
     } catch (error) {
-        console.error("Error creating product", error);
+        // console.error("Error creating product", error);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",
@@ -139,7 +141,7 @@ export const updateStockIntake = async (
     let formResponse: FormResponse | null = null;
     const validData = UpdatedStockIntakeSchema.safeParse(stockIntake);
 
-    console.log("The validated data",validData)
+    // console.log("The validated data",validData)
 
     if (!validData.success) {
         formResponse = {
@@ -182,70 +184,65 @@ export const updateStockIntake = async (
    return parseStringify(formResponse);
 };
 
-// export const deleteStockIntake = async (id: UUID, stockVariant:UUID): Promise<void> => {
-//     if (!id && !stockVariant) throw new Error("Stock Intake ID & stockVariant is required to perform this request");
+export const downloadStockIntakeCSV = async (locationId?:string) => {
 
-//     await getAuthenticatedUser();
+    const location = await getCurrentLocation() || {id:locationId};
+    console.log("location",location)
+    
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/rust/csv-downloading/download-stock-intake-upload-sample-csv?location_id=${location?.id}`);
+        console.log("CSV download response", response);
+        return response;
+    } catch (error) {
+        console.error("Error downloading CSV file:", error);
+        throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+};
 
-//     console.log("Deleting stock intake with ID:", id, stockVariant);
+export const uploadStockIntakeCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
+    // console.log("Starting CSV upload");
 
-//    try{
-//     const apiClient = new ApiClient();
+    if (!fileName.endsWith(".csv")) {
+        throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
+    }
 
-//     await apiClient.delete(
-//         `/api/stock-intakes/${stockVariant}/${id}`,
-//     );
-//     revalidatePath("/stock-intakes");
+    const lines = fileData.split("\n");
+    const isCSVContent = lines.every(line => line.split(",").length > 1);
 
-//    }
-//    catch (error){
-//        throw error
-//    }
-// }
+    if (!isCSVContent) {
+        throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
+    }
 
-// export const uploadCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
-//     console.log("Starting CSV upload");
+    // console.log("CSV content to be sent:", fileData);
 
-//     if (!fileName.endsWith(".csv")) {
-//         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
-//     }
+    const formattedCSVData = fileData.replace(/\r\n/g, '\n');
 
-//     const lines = fileData.split("\n");
-//     const isCSVContent = lines.every(line => line.split(",").length > 1);
+    // console.log("Formatted CSV data:", formattedCSVData);
 
-//     if (!isCSVContent) {
-//         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
-//     }
+    try {
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        await apiClient.post(
+            `/rust/csv-uploading/upload-stock-intake-csv?location_id=${location?.id}`,
+            formattedCSVData,
+            {
+                headers: {
+                    "Content-Type": "text/csv",
+                },
+                transformRequest: [(data) => data],
+                timeout: 30000,
+            }
+        );
 
-//     console.log("CSV content to be sent:", fileData);
+        // console.log("CSV upload response", response);
 
-//     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
-
-//     console.log("Formatted CSV data:", formattedCSVData);
-
-//     try {
-//         const apiClient = new ApiClient();
-//         const location = await getCurrentLocation();
-//         const response = await apiClient.post(
-//             `/api/products/${location?.id}/upload-csvx`,
-//             formattedCSVData, // Send as plain text
-//             {
-//                 headers: {
-//                     "Content-Type": "text/csv",
-//                 },
-//                 transformRequest: [(data) => data],
-//             }
-//         );
-
-//         console.log("CSV upload response", response);
-
-//         // Revalidate or redirect after successful upload
-//         revalidatePath("/products");
-//         redirect("/products");
-//     } catch (error) {
-//         console.error("Error uploading CSV file:", error);
-
-//         return ;
-//         // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
-//     }
-// };
+      
+    } catch (error: any) {
+        console.error("Error uploading CSV file:", error);
+        throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+      // Revalidate or redirect after successful upload
+      revalidatePath("/stock-intakes");
+      redirect("/stock-intakes");
+};

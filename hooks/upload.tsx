@@ -1,3 +1,5 @@
+
+
 import { useState } from "react";
 import { uploadProductWithStockCSV } from "@/lib/actions/stock-actions";
 
@@ -10,7 +12,7 @@ interface UseCSVUploadResult {
   isUploading: boolean;
   uploadProgress: number;
   error: string | null;
-  uploadCSV: (options: CSVUploadOptions) => Promise<void>;
+  uploadCSV: (options: CSVUploadOptions) => Promise<any>; // Return type includes response
 }
 
 export const useCSVUpload = (): UseCSVUploadResult => {
@@ -32,9 +34,10 @@ export const useCSVUpload = (): UseCSVUploadResult => {
         await new Promise((resolve) => setTimeout(resolve, 100)); // Simulated delay
       }
 
-      // Call the actual upload function
-      await uploadProductWithStockCSV({ fileData, fileName });
+      // Call the actual upload function and return the response
+      const response = await uploadProductWithStockCSV({ fileData, fileName });
       setUploadProgress(100); // Mark upload as complete
+      return response; // Return the response with task_id
     } catch (err: any) {
       setError(err.message || "An unknown error occurred during upload.");
       throw err;

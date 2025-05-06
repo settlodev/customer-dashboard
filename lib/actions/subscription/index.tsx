@@ -7,6 +7,7 @@ export const getAllSubscriptions = async (): Promise<Subscriptions[]> => {
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get("/api/subscriptions/");
+        
         return parseStringify(response);
     } catch (error) {
         throw error;

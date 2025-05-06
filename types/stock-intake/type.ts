@@ -11,6 +11,7 @@ export declare interface StockIntake {
     status: boolean,
     canDelete: boolean,
     isArchived: boolean,
+    stockName: string
     stockVariant: UUID
     stockVariantName: string
     supplier: UUID

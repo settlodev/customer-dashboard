@@ -1,6 +1,3 @@
-
-
-
 'use client';
 
 import { useState, useRef, useEffect } from "react";
@@ -15,18 +12,18 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Icon } from "@iconify/react";
 import React from "react";
-import { useCSVUpload } from "@/hooks/uploadProduct";
 import { Progress } from "../ui/progress";
-import { AlertCircle, Check, Loader2, Upload, Download, X } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
+import { AlertCircle, Check, Loader2 } from "lucide-react";
+import { useCSVUpload } from "@/hooks/uploadStockIntake";
 
 // Validation Function
 const validateCSV = (
   fileContent: string,
   expectedHeaders: string[]
-): { isValid: boolean; errors: string[]; warnings: string[]; rows: string[][] } => {
+): { isValid: boolean; errors: string[]; rows: string[][] } => {
   // Split into lines and remove empty lines
   const lines = fileContent.split("\n").filter(Boolean);
   
@@ -39,92 +36,101 @@ const validateCSV = (
   );
 
   const errors: string[] = [];
-  const warnings: string[] = [];
 
   if (rows.length === 0) {
-    return { isValid: false, errors: ["The file is empty."], warnings: [], rows: [] };
+    return { isValid: false, errors: ["The file is empty."], rows: [] };
   }
 
   // Validate headers
   const headers = rows[0];
   const missingHeaders = expectedHeaders.filter((header) => !headers.includes(header));
   if (missingHeaders.length > 0) {
-    return { 
-      isValid: false, 
-      errors: [`Missing required headers: ${missingHeaders.join(", ")}`], 
-      warnings: [],
-      rows: [] 
-    };
+    return { isValid: false, errors: [`Missing required headers: ${missingHeaders.join(", ")}`], rows: [] };
   }
-
-  // Get column indexes for validation
-  const priceIndex = headers.indexOf("Price");
-  const skuIndex = headers.indexOf("SKU");
-  const barcodeIndex = headers.indexOf("Barcode");
 
   // Validate rows
   rows.slice(1).forEach((row, rowIndex) => {
-    const currentRowIndex = rowIndex + 2; // Adjusting for 1-based index and header row
+    const rowErrors: string[] = [];
+    const currentRowIndex = rowIndex + 2; // Adjusting for 1-based index with headers
 
     // Required Field Validation
-    const requiredFields = ["Product Name", "Category Name", "Variant Name", "Price"];
+    const requiredFields = ["Stock Name", "Stock Variant Name", "Value", "Quantity","Identifier"];
     requiredFields.forEach((field) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && (!row[fieldIndex] || row[fieldIndex].trim() === "")) {
-        errors.push(`Row ${currentRowIndex}: "${field}" cannot be empty`);
+        rowErrors.push(`Row ${currentRowIndex}: "${field}" cannot be empty.`);
       }
     });
 
-    // Price Validation
-    if (priceIndex !== -1) {
-      const price = row[priceIndex]?.trim();
-      if (price) {
-        if (!/^\d+$/.test(price)) {
-          errors.push(
-            `Row ${currentRowIndex}: Price "${price}" must be a whole number without decimals or special characters`
-          );
-        } else if (parseInt(price) <= 0) {
-          errors.push(
-            `Row ${currentRowIndex}: Price must be greater than 0`
-          );
+    // Specific Field Validation
+    const quantityIndex = headers.indexOf("Quantity");
+    if (quantityIndex !== -1) {
+      const quantity = parseFloat(row[quantityIndex]);
+      if (isNaN(quantity) || quantity < 0) {
+        rowErrors.push(`Row ${currentRowIndex}: "Quantity" cannot be less than zero.`);
+      }
+    }
+
+    const valueIndex = headers.indexOf("Value");
+    if (valueIndex !== -1) {
+      const value = parseInt(row[valueIndex], 10);
+      if (isNaN(value) || value < 0) {
+        rowErrors.push(`Row ${currentRowIndex}: "Value" cannot be less than zero.`);
+      }
+    }
+
+    // Date format validation (YYYY-MM-DD)
+    const expiryDateIndex = headers.indexOf("Expiry Date");
+    if (expiryDateIndex !== -1) {
+      const expiryDate = row[expiryDateIndex];
+      if (expiryDate && expiryDate.trim() !== "") {
+        // Check for YYYY-MM-DD format
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(expiryDate)) {
+          rowErrors.push(`Row ${currentRowIndex}: "Expiry Date" must be in YYYY-MM-DD format.`);
+        } else {
+          // Validate that it's a valid date
+          const dateParts = expiryDate.split('-');
+          const year = parseInt(dateParts[0], 10);
+          const month = parseInt(dateParts[1], 10) - 1; // JavaScript months are 0-indexed
+          const day = parseInt(dateParts[2], 10);
+          const date = new Date(year, month, day);
+          
+          if (
+            date.getFullYear() !== year || 
+            date.getMonth() !== month || 
+            date.getDate() !== day
+          ) {
+            rowErrors.push(`Row ${currentRowIndex}: "Expiry Date" is not a valid date.`);
+          }
         }
       }
     }
 
-    // SKU Validation (if present but not required)
-    if (skuIndex !== -1 && row[skuIndex]?.trim()) {
-      const sku = row[skuIndex].trim();
-      if (sku.length > 50) {
-        warnings.push(`Row ${currentRowIndex}: SKU is longer than 50 characters`);
+    //identifier is uuid
+    const identifierIndex = headers.indexOf("Identifier");
+    if (identifierIndex !== -1) {
+      const identifier = row[identifierIndex];
+      if (identifier && !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(identifier)) {
+        rowErrors.push(`Row ${currentRowIndex}: "Identifier" must be a valid UUID.`);
       }
     }
 
-    // Barcode Validation (if present but not required)
-    if (barcodeIndex !== -1 && row[barcodeIndex]?.trim()) {
-      const barcode = row[barcodeIndex].trim();
-      if (!/^[0-9]+$/.test(barcode)) {
-        warnings.push(`Row ${currentRowIndex}: Barcode "${barcode}" should only contain numbers`);
-      }
+    if (rowErrors.length > 0) {
+      errors.push(...rowErrors);
     }
   });
 
-  return { 
-    isValid: errors.length === 0, 
-    errors, 
-    warnings,
-    rows 
-  };
+  return { isValid: errors.length === 0, errors, rows };
 };
 
-export function ProductCSVDialog() {
+export function CSVStockIntakeDialog() {
   const expectedHeaders = [
-    "Product Name",
-    "Category Name",
-    "Variant Name",
-    "Price",
-    "SKU",
-    "Barcode",
-    "Department"
+    "Stock Name",
+    "Stock Variant Name",
+    "Value",
+    "Quantity",
+    "Expiry Date",
+    "Identifier"
   ];
 
   const [fileContent, setFileContent] = useState<string | null>(null);
@@ -132,25 +138,20 @@ export function ProductCSVDialog() {
   const [validationResult, setValidationResult] = useState<{
     isValid: boolean;
     errors: string[];
-    warnings?: string[];
     rows: string[][];
   } | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [uploadComplete, setUploadComplete] = useState(false);
-  const [showWarnings, setShowWarnings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { isUploading, uploadProgress, error, uploadCSV, resetUpload } = useCSVUpload();
+  const { isUploading, uploadProgress, error, uploadCSV } = useCSVUpload();
 
   // Reset upload complete state when dialog is closed
   useEffect(() => {
     if (!isOpen) {
-      setTimeout(() => {
-        setUploadComplete(false);
-        resetUpload();
-      }, 300); // Delay to ensure animation completes
+      setTimeout(() => setUploadComplete(false), 300); // Delay to ensure animation completes
     }
-  }, [isOpen, resetUpload]);
+  }, [isOpen]);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -160,7 +161,6 @@ export function ProductCSVDialog() {
         const fileText = await selectedFile.text();
         const result = validateCSV(fileText, expectedHeaders);
 
-        // If validation passes, convert cleaned rows back to CSV format
         if (result.isValid) {
           const cleanedCSV = result.rows
             .map(row => row.join(','))
@@ -168,25 +168,19 @@ export function ProductCSVDialog() {
 
           setValidationResult(result);
           setFile(selectedFile);
-          setFileContent(cleanedCSV); // Store the cleaned CSV content
-          
-          // Show warnings toggle if there are warnings
-          setShowWarnings(result.warnings && result.warnings.length > 0);
+          setFileContent(cleanedCSV); 
         } else {
           setValidationResult(result);
           setFile(selectedFile);
           setFileContent(null);
-          setShowWarnings(false);
         }
       } catch (error) {
         console.error("Error processing file:", error);
         setValidationResult({
           isValid: false,
           errors: ["Failed to process the file. Please check the file format."],
-          warnings: [],
           rows: []
         });
-        setShowWarnings(false);
       }
     }
   };
@@ -195,7 +189,7 @@ export function ProductCSVDialog() {
     if (file && fileContent && validationResult?.isValid) {
       try {
         await uploadCSV({ 
-          fileData: fileContent,
+          fileData: fileContent, 
           fileName: file.name 
         });
         setUploadComplete(true);
@@ -212,10 +206,10 @@ export function ProductCSVDialog() {
   };
 
   const handleTemplateDownload = () => {
-    fetch("/csv/product-csv-template.csv")
+    fetch("/csv/stock-template.csv")
       .then((res) => {
         if (res.ok) {
-          window.open("/csv/product-csv-template.csv", "_blank");
+          window.open("/csv/stock-template.csv", "_blank");
         } else {
           alert("Template not found");
         }
@@ -228,37 +222,33 @@ export function ProductCSVDialog() {
     setFileContent(null);
     setValidationResult(null);
     setUploadComplete(false);
-    setShowWarnings(false);
-    resetUpload();
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
-    <Dialog 
-      open={isOpen} 
-      onOpenChange={(open) => {
-        if (!isUploading) {
-          setIsOpen(open);
-          if (!open) resetForm();
-        }
-      }}
-    >
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!isUploading) {
+        setIsOpen(open);
+        if (!open) resetForm();
+      }
+    }}>
       <DialogTrigger asChild>
         <Button
-          className="h-10 gap-2 bg-white border border-gray-600 text-black hover:bg-gray-300 hover:text-black"
+          className="h-10 gap-1 dark:bg-white dark:text-black-2"
           size="sm"
-          variant="default"
+          variant="outline"
           onClick={() => setIsOpen(true)}
         >
-          <Upload className="h-4 w-4" />
-          <span>Import CSV</span>
+          <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-black-2 dark:bg-white">Import Stock</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">
         <DialogHeader>
-          <DialogTitle>Upload Product CSV</DialogTitle>
+          <DialogTitle>Upload Stock CSV</DialogTitle>
           <DialogDescription>
-            Import your products in bulk using a CSV file. Please ensure your file follows the required format.
+            Select a CSV file to upload. Please ensure that the file is formatted correctly with all required headers.
+            Note: Expiry Date must be in YYYY-MM-DD format.
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-4">
@@ -280,10 +270,9 @@ export function ProductCSVDialog() {
                 }}
                 variant="outline" 
                 size="sm" 
-                className="whitespace-nowrap flex gap-1"
+                className="whitespace-nowrap"
                 disabled={!file || isUploading}
               >
-                <X className="h-4 w-4" />
                 Clear
               </Button>
             </div>
@@ -301,7 +290,7 @@ export function ProductCSVDialog() {
             <Alert className="bg-green-50 border-green-500">
               <Check className="h-4 w-4 text-green-500" />
               <AlertTitle>Success</AlertTitle>
-              <AlertDescription>Your product data has been uploaded successfully!</AlertDescription>
+              <AlertDescription>Your stock data has been uploaded successfully!</AlertDescription>
             </Alert>
           )}
           
@@ -315,14 +304,13 @@ export function ProductCSVDialog() {
                 value={uploadProgress} 
                 className="w-full h-2 bg-gray-200" 
                 style={{
-                  "--progress-background": "linear-gradient(to right, #3b82f6, #1d4ed8)"
+                  "--progress-background": "linear-gradient(to right, #10b981, #059669)"
                 } as React.CSSProperties}
               />
               <p className="text-sm text-gray-600">Please do not close this window</p>
             </div>
           )}
           
-          {/* Display validation errors if any */}
           {validationResult?.errors && validationResult.errors.length > 0 && !isUploading && (
             <div className="border border-red-300 rounded-md p-3 bg-red-50">
               <h3 className="text-sm font-medium text-red-800 mb-2">Validation Errors:</h3>
@@ -333,45 +321,7 @@ export function ProductCSVDialog() {
               </ul>
             </div>
           )}
-          
-          {/* Display warnings if any and toggle is on */}
-          {validationResult?.warnings && validationResult.warnings.length > 0 && showWarnings && (
-            <div className="border border-amber-300 rounded-md p-3 bg-amber-50">
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-medium text-amber-800">
-                  Warnings <Badge variant="outline" className="ml-2 bg-amber-100">{validationResult.warnings.length}</Badge>
-                </h3>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 text-xs" 
-                  onClick={() => setShowWarnings(false)}
-                >
-                  Hide
-                </Button>
-              </div>
-              <ul className="list-disc pl-5 space-y-1">
-                {validationResult.warnings.map((warning, index) => (
-                  <li key={index} className="text-sm text-amber-700">{warning}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          
-          {/* Show toggle button for warnings if there are warnings but toggle is off */}
-          {validationResult?.warnings && validationResult.warnings.length > 0 && !showWarnings && !isUploading && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              className="w-fit text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100 hover:text-amber-800"
-              onClick={() => setShowWarnings(true)}
-            >
-              <AlertCircle className="h-4 w-4 mr-2" />
-              Show {validationResult.warnings.length} warning{validationResult.warnings.length !== 1 ? 's' : ''}
-            </Button>
-          )}
 
-          {/* Display CSV preview if available */}
           {validationResult?.rows && validationResult.rows.length > 0 && !isUploading && (
             <div className="overflow-auto max-h-60 border rounded-md">
               <table className="min-w-full border-collapse">
@@ -380,9 +330,6 @@ export function ProductCSVDialog() {
                     {validationResult.rows[0]?.map((header, index) => (
                       <th key={index} className="border px-3 py-2 text-left text-sm font-medium text-gray-700">
                         {header}
-                        {expectedHeaders.includes(header) && header !== "Department" && header !== "SKU" && header !== "Barcode" && (
-                          <span className="text-red-500 ml-1">*</span>
-                        )}
                       </th>
                     ))}
                   </tr>
@@ -405,7 +352,6 @@ export function ProductCSVDialog() {
                               colSpan={row.length}
                               className="border px-3 py-1 text-red-600 text-sm"
                             >
-                              <AlertCircle className="h-3 w-3 inline-block mr-1" />
                               {error}
                             </td>
                           </tr>
@@ -420,13 +366,8 @@ export function ProductCSVDialog() {
         <DialogFooter className="space-x-2">
           {!isUploading && !uploadComplete && (
             <>
-              <Button 
-                onClick={handleTemplateDownload} 
-                variant="outline" 
-                size="sm" 
-                className="gap-1"
-              >
-                <Download className="h-4 w-4" />
+              <Button onClick={handleTemplateDownload} variant="outline" size="sm" className="gap-1">
+                <Icon className="h-4 w-4" icon="mdi:file-download" />
                 Download Template
               </Button>
               <Button
@@ -442,7 +383,7 @@ export function ProductCSVDialog() {
                   </>
                 ) : (
                   <>
-                    <Upload className="h-4 w-4" />
+                    <Icon className="h-4 w-4" icon="mdi:cloud-upload" />
                     Upload CSV
                   </>
                 )}

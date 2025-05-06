@@ -63,7 +63,7 @@ export default auth((req: NextRequest) => {
   } catch (error) {
     console.error("Error parsing tokens:", error);
     // Only redirect to login if we're not already there
-    return nextUrl.pathname !== "/login" 
+    return nextUrl.pathname !== "/login"
       ? NextResponse.redirect(new URL("/login", nextUrl))
       : NextResponse.next();
   }
@@ -75,7 +75,7 @@ export default auth((req: NextRequest) => {
       return NextResponse.next();
     }
     // Only redirect to login if we're not already there
-    return nextUrl.pathname !== "/login" 
+    return nextUrl.pathname !== "/login"
       ? NextResponse.redirect(new URL("/login", nextUrl))
       : NextResponse.next();
   }

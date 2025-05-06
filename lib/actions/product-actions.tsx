@@ -9,9 +9,8 @@ import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import {Product, TopSellingProduct} from "@/types/product/type";
+import {Product, SoldItemsReport, TopSellingProduct} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
-// import {Variant} from "@/types/variant/type";
 import { GoogleGenAI } from "@google/genai";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
@@ -26,6 +25,26 @@ export const fectchAllProducts = async () : Promise<Product[]> => {
             `/api/products/${location?.id}`,
         );
 
+        return parseStringify(data);
+
+    }
+    catch (error){
+        throw error;
+    }
+}
+
+export const productSummary = async () : Promise<any> => {
+    await  getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+
+        const location = await getCurrentLocation();
+
+        const data = await  apiClient.get(
+            `/api/reports/${location?.id}/products/summary`,
+        );
+       
         return parseStringify(data);
 
     }
@@ -65,7 +84,7 @@ export const searchProducts = async (
             `/api/products/${location?.id}`,
             query
         );
-        console.log("Products are as follow:", data);
+        // console.log("Products are as follow:", data);
         return parseStringify(data);
     }
     catch (error){
@@ -287,10 +306,10 @@ export const updateProduct = async (
     console.log('🔄 Preparing redirect with pagination state:', paginationState);
     revalidatePath("/products");
 
-    if (paginationState && 
-        typeof paginationState.pageIndex === 'number' && 
+    if (paginationState &&
+        typeof paginationState.pageIndex === 'number' &&
         typeof paginationState.pageSize === 'number') {
-        
+
         const page = paginationState.pageIndex + 1;
         const limit = paginationState.pageSize;
         console.log('↪️ Redirecting to:', `/products?page=${page}&limit=${limit}`);
@@ -360,8 +379,8 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        await apiClient.post(
-            `/api/products/${location?.id}/upload-csv`,
+       await apiClient.post(
+             `/rust/csv-uploading/upload-products-csv?location_id=${location?.id}`,
             formattedCSVData,
             {
                 headers: {
@@ -370,6 +389,8 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
                 transformRequest: [(data) => data],
             }
         );
+
+        // console.log("The uploading process",upload)
 
         revalidatePath("/products");
         redirect("/products");
@@ -396,12 +417,35 @@ export const topSellingProduct = async (startDate?: Date, endDate?: Date,limit?:
         const topSelling = await apiClient.get(`/api/reports/${location?.id}/products/top-selling`, {
             params
         });
-        // console.log("The products sold",topSelling)
+        // console.log("The products sold",topSelling )
 
         return parseStringify(topSelling);
     }
     catch (error){
         console.error("Error fetching top selling products report:", error);
+        throw error
+    }
+}
+
+export const SoldItemsReports = async (startDate?: Date, endDate?: Date): Promise<SoldItemsReport | null> => {
+
+    await getAuthenticatedUser();
+    try{
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        const params = {
+            startDate,
+            endDate,
+        }
+        const soldItems = await apiClient.get(`/api/reports/${location?.id}/products/sold-items`, {
+            params
+        });
+        // console.log("List of  sold items",soldItems)
+
+        return parseStringify(soldItems);
+    }
+    catch (error){
+        console.error("Error fetching sold items report:", error);
         throw error
     }
 }
@@ -422,4 +466,20 @@ export const generateAIDescription = async (name: string, category: string): Pro
     console.log("The generated description", response.text ?? "No description generated")
 
     return response.text ?? "No description generated";
+};
+
+export const downloadProductsCSV = async (locationId?:string) => {
+
+    const location = await getCurrentLocation() || {id:locationId};
+    console.log("location",location)
+    
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/rust/csv-downloading/download-products-csv?location_id=${location?.id}`);
+        console.log("CSV download response", response);
+        return response;
+    } catch (error) {
+        console.error("Error downloading CSV file:", error);
+        throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
 };

@@ -32,22 +32,30 @@ export declare interface TopSellingProduct{
     startDate: Date,
     endDate: Date,
     locationName: string,
-    topItems: topItems[]
+    items: TopItems[]
     totalRevenue: number,
     totalQuantitySold: number,
     soldItemsReport: SoldItemsReport
 }
 
-interface topItems{
+export interface TopItems{
+    name:string,
     productName: string,
     variantName: string,
     categoryName: string,
+    imageUrl:string,
+    staffName:string,
     quantity: number,
     revenue: number
     percentageOfTotal: number
     averagePrice: number
+    latestSoldDate:Date
+    earliestSoldDate:Date
 }
 export interface SoldItemsReport {
+    locationName: string;
+    startDate: Date;
+    endDate: Date;
     items: SoldItem[]; // Changed to an array of SoldItem
     totalQuantity: number;
     totalRevenue: number;
@@ -66,6 +74,7 @@ export interface SoldItem{
     cost: number,
     profit: number,
     margin: number,
-    soldDate: string
+    latestSoldDate: string
+    earliestSoldDate: string
 }
 

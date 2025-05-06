@@ -71,7 +71,7 @@ export const searchLocations = async (
             query,
         );
 
-        console.log(data)
+       
         return parseStringify(data);
 
     } catch (error) {
@@ -86,7 +86,7 @@ export const createLocation = async (
 ): Promise<FormResponse> => {
     let formResponse: FormResponse | null = null;
 
-    console.log('Starting createLocation with data:', location );
+    // console.log('Starting createLocation with data:', location );
 
     try {
         // Authentication check
@@ -108,7 +108,7 @@ export const createLocation = async (
                 error: new Error(validatedData.error.message),
             });
         }
-        console.log("validatedData: ", validatedData);
+        // console.log("validatedData: ", validatedData);
 
         // Get current business
         const currentBusiness = await getCurrentBusiness();
@@ -136,7 +136,7 @@ export const createLocation = async (
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };
-            console.log("payload: ", payload);
+            // console.log("payload: ", payload);
 
        
 
@@ -147,7 +147,7 @@ export const createLocation = async (
             payload,
         );
 
-        console.log("response: ", response);
+        // console.log("response: ", response);
 
         formResponse = parseStringify({
             responseType: "success",
@@ -156,11 +156,11 @@ export const createLocation = async (
         });
 
     } catch (error: unknown) {
-        console.error('Error creating location', {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-            location
-        });
+        // console.error('Error creating location', {
+        //     error: error instanceof Error ? error.message : String(error),
+        //     stack: error instanceof Error ? error.stack : undefined,
+        //     location
+        // });
 
         return parseStringify({
             responseType: "error",
