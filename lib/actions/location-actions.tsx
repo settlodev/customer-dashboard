@@ -189,6 +189,60 @@ export const createLocation = async (
     });
 };
 
+// export const updateLocation = async (
+//     id: UUID,
+//     location: z.infer<typeof LocationSchema>,
+// ): Promise<FormResponse | void> => {
+//     let formResponse: FormResponse | null = null;
+//     const authenticatedUser = await getAuthenticatedUser();
+
+//     if ("responseType" in authenticatedUser)
+//         return parseStringify(authenticatedUser);
+
+//     const validatedData = LocationSchema.safeParse(location);
+
+//     if (!validatedData.success) {
+//         formResponse = {
+//             responseType: "error",
+//             message: "Please fill in all the fields marked with * before proceeding",
+//             error: new Error(validatedData.error.message),
+//         };
+
+//         return parseStringify(formResponse);
+//     }
+
+//     try {
+//         const apiClient = new ApiClient();
+//         const business = await getCurrentBusiness();
+
+//         const payload = {
+//             ...validatedData.data,
+//             business: business?.id,
+//         };
+
+//         await apiClient.put(
+//             `/api/locations/${business?.id}/${id}`,
+//             payload
+//         );
+        
+//     } catch (error: unknown) {
+//         formResponse = {
+//             responseType: "error",
+//             message:
+//                 "Something went wrong while processing your request, please try again",
+//             error: error instanceof Error ? error : new Error(String(error)),
+//         };
+//     }
+
+//     if (formResponse) {
+//         return parseStringify(formResponse);
+//     }
+
+//     revalidatePath("/locations");
+//     redirect("/locations");
+// };
+
+
 export const updateLocation = async (
     id: UUID,
     location: z.infer<typeof LocationSchema>,
@@ -220,10 +274,16 @@ export const updateLocation = async (
             business: business?.id,
         };
 
+        // Make the API call to update location
         await apiClient.put(
             `/api/locations/${business?.id}/${id}`,
             payload
         );
+        
+        //reload the page
+        revalidatePath("/locations");
+        redirect("/locations");
+        
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -237,10 +297,9 @@ export const updateLocation = async (
         return parseStringify(formResponse);
     }
 
-    revalidatePath("/locations");
-    redirect("/locations");
+    // revalidatePath("/locations");
+    // redirect("/locations");
 };
-
 export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
     const apiClient = new ApiClient();
 
@@ -265,7 +324,7 @@ export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
         query,
     );
 
-    console.log(data)
+    // console.log(data)
     return parseStringify(data);
 };
 
