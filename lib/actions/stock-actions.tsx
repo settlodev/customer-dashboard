@@ -17,6 +17,13 @@ interface CSVUploadResponse {
     task_id: string;
 }
 
+interface StockVariant {
+    id: string;
+    // Add other variant properties as needed
+}
+
+let stockCache: Stock[] | null = null;
+
 export const fetchStock = async () : Promise<Stock[]> => {
     await  getAuthenticatedUser();
 
@@ -444,3 +451,36 @@ export const downloadStockCSV = async (locationId?:string) => {
         throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
 };
+
+
+// Function to get a single stock variant by ID (uses cache when possible)
+export const getStockVariantById = async (variantId: string) => {
+    if (!variantId) return null;
+    
+    try {
+        // Try to get from cache first
+        if (!stockCache) {
+            stockCache = await fetchStock();
+        }
+        
+        if (stockCache && stockCache.length > 0) {
+            for (const stock of stockCache) {
+                const variant = stock.stockVariants.find((v: StockVariant) => v.id === variantId);
+                if (variant) {
+                    return {
+                        stockName: stock.name,
+                        variant
+                    };
+                }
+            }
+        }
+        
+        // If not in cache or cache doesn't exist, fetch directly
+        const apiClient = new ApiClient();
+        const data = await apiClient.get(`/api/stock-variants/${variantId}`);
+        return parseStringify(data);
+    } catch (error) {
+        console.error("Error fetching stock variant:", error);
+        return null;
+    }
+}

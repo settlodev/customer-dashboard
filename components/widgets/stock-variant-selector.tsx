@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { Check, ChevronsUpDown } from "lucide-react";
+import React, { useEffect, useState, useMemo } from "react";
+import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -17,9 +17,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { fetchStock } from "@/lib/actions/stock-actions";
+import { searchStock, getStockVariantById } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { StockVariant } from "@/types/stockVariant/type";
+import { ApiResponse } from "@/types/types";
+import { UUID } from "crypto";
 
 interface Props {
   placeholder?: string;
@@ -33,7 +35,6 @@ interface Props {
 
 const StockVariantSelector: React.FC<Props> = ({
   placeholder = "Select stock item",
-//   isRequired,
   value,
   isDisabled,
   description,
@@ -43,35 +44,142 @@ const StockVariantSelector: React.FC<Props> = ({
   const [open, setOpen] = useState(false);
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [hasInitialized, setHasInitialized] = useState(false);
+  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+  const ITEMS_PER_PAGE = 20;
 
   const getDisplayName = (stock: Stock, variant: StockVariant) => {
     return `${stock.name} - ${variant.name}`;
   };
 
+  // Initialize data loading on component mount
   useEffect(() => {
-    async function loadStocks() {
-      try {
-        setIsLoading(true);
-        const fetchedStocks = await fetchStock();
-        setStocks(fetchedStocks);
-      } catch (error: any) {
-        console.log("Error fetching stocks:", error);
-      } finally {
-        setIsLoading(false);
+    if (!hasInitialized) {
+      if (value) {
+        // For a preselected value, fetch that specific variant first for immediate display
+        loadSpecificVariant(value);
+      } else {
+        // For new records, start loading the first page of data immediately
+        loadStocks("", 1);
       }
+      setHasInitialized(true);
     }
-    loadStocks();
-  }, []);
+  }, [hasInitialized, value]);
 
-  const variantOptions = stocks.flatMap((stock) =>
-    stock.stockVariants.map((variant) => ({
-      id: variant.id,
-      displayName: getDisplayName(stock, variant),
-      disabled: disabledValues.includes(variant.id),
-    }))
+  // Handle search with debounce
+  useEffect(() => {
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout);
+    }
+
+    if (hasInitialized && searchTerm !== "") {
+      const timeout = setTimeout(() => {
+        setPage(1);
+        setStocks([]);
+        loadStocks(searchTerm, 1);
+      }, 300);
+      
+      setDebounceTimeout(timeout);
+    }
+
+    return () => {
+      if (debounceTimeout) {
+        clearTimeout(debounceTimeout);
+      }
+    };
+  }, [searchTerm]);
+
+  async function loadSpecificVariant(variantId: string) {
+    try {
+      setIsLoading(true);
+      const variantInfo = await getStockVariantById(variantId);
+      
+      if (variantInfo && variantInfo.variant) {
+        // Create a minimal stock structure with just the selected variant
+        const stockWithVariant = [{
+          id: variantInfo.stockId || 'temp-id',
+          name: variantInfo.stockName || '',
+          description: '',
+          unit: '',
+          status: true,
+          canDelete: false,
+          business: '' as UUID,
+          location: '' as UUID,
+          isArchived: false,
+          stockVariants: [variantInfo.variant]
+        }];
+        
+        setStocks(stockWithVariant);
+        
+        // Load the initial page of stocks in the background for when user opens dropdown
+        loadStocks("", 1, false);
+      } else {
+        // Fallback to loading all stocks if specific variant can't be found
+        loadStocks("", 1);
+      }
+    } catch (error) {
+      console.error("Error loading specific variant:", error);
+      loadStocks("", 1); // Fallback
+    }
+  }
+
+  async function loadStocks(query: string, currentPage: number, showLoading = true) {
+    try {
+      if (showLoading) {
+        setIsLoading(true);
+      }
+      
+      const response: ApiResponse<Stock> = await searchStock(query, currentPage, ITEMS_PER_PAGE);
+      
+      // Check if it's the first page or appending more results
+      if (currentPage === 1) {
+        setStocks(response.content);
+      } else {
+        setStocks(prevStocks => [...prevStocks, ...response.content]);
+      }
+      
+      // Check if there are more pages
+      setHasMore(!response.last);
+      
+    } catch (error: any) {
+      console.log("Error fetching stocks:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  // Memoize option processing to prevent recalculations
+  const allVariantOptions = useMemo(() => 
+    stocks.flatMap((stock) =>
+      stock.stockVariants.map((variant) => ({
+        id: variant.id,
+        displayName: getDisplayName(stock, variant),
+        disabled: disabledValues.includes(variant.id),
+        searchString: `${stock.name.toLowerCase()} ${variant.name.toLowerCase()}`
+      }))
+    ),
+    [stocks, disabledValues]
   );
 
-  const selectedOption = variantOptions.find((option) => option.id === value);
+  const selectedOption = useMemo(() => 
+    allVariantOptions.find((option) => option.id === value),
+    [allVariantOptions, value]
+  );
+
+  // Load more items when reaching the end of the list
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+    
+    if (isNearBottom && !isLoading && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      loadStocks(searchTerm, nextPage, false);
+    }
+  };
 
   return (
     <div className="space-y-2">
@@ -82,47 +190,68 @@ const StockVariantSelector: React.FC<Props> = ({
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
-            disabled={isDisabled || isLoading}
+            disabled={isDisabled || isLoading && !selectedOption}
           >
-            {isLoading 
-              ? "Loading stock items..." 
-              : selectedOption 
-                ? selectedOption.displayName 
-                : placeholder
-            }
+            {isLoading && !selectedOption ? (
+              <div className="flex items-center">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading...
+              </div>
+            ) : selectedOption ? (
+              selectedOption.displayName 
+            ) : (
+              placeholder
+            )}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0">
-          <Command filter={(value, search) => {
-            if (!search) return 1;
-            const item = variantOptions.find(option => option.id === value);
-            if (!item) return 0;
-            return item.displayName.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-          }}>
-            <CommandInput placeholder={`Search ${placeholder.toLowerCase()}...`} />
-            <CommandList>
-              <CommandEmpty>No stock item found.</CommandEmpty>
+          <Command>
+            <CommandInput 
+              placeholder={`Search ${placeholder.toLowerCase()}...`} 
+              value={searchTerm}
+              onValueChange={setSearchTerm}
+            />
+            <CommandList onScroll={handleScroll} className="max-h-[300px]">
+              <CommandEmpty>No stock items found.</CommandEmpty>
               <CommandGroup>
-                {variantOptions.map((option) => (
-                  <CommandItem
-                    key={option.id}
-                    value={option.id}
-                    disabled={option.disabled}
-                    onSelect={(currentValue) => {
-                      onChange(currentValue === value ? "" : currentValue);
-                      setOpen(false);
-                    }}
-                  >
-                    <Check
-                      className={cn(
-                        "mr-2 h-4 w-4",
-                        value === option.id ? "opacity-100" : "opacity-0"
-                      )}
-                    />
-                    {option.displayName}
-                  </CommandItem>
-                ))}
+                {allVariantOptions.length === 0 && isLoading ? (
+                  <div className="py-6 text-center">
+                    <Loader2 className="mx-auto h-5 w-5 animate-spin opacity-50" />
+                    <p className="mt-2 text-sm text-muted-foreground">Loading stock items...</p>
+                  </div>
+                ) : (
+                  allVariantOptions.map((option) => (
+                    <CommandItem
+                      key={option.id}
+                      value={option.id}
+                      disabled={option.disabled}
+                      onSelect={(currentValue) => {
+                        onChange(currentValue === value ? "" : currentValue);
+                        setOpen(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          value === option.id ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {option.displayName}
+                    </CommandItem>
+                  ))
+                )}
+                {isLoading && allVariantOptions.length > 0 && (
+                  <div className="py-2 text-center">
+                    <Loader2 className="mx-auto h-4 w-4 animate-spin opacity-50" />
+                    <p className="text-sm text-muted-foreground">Loading more...</p>
+                  </div>
+                )}
+                {!isLoading && hasMore && allVariantOptions.length > 0 && (
+                  <div className="py-2 text-center text-sm text-muted-foreground">
+                    Scroll down to load more
+                  </div>
+                )}
               </CommandGroup>
             </CommandList>
           </Command>

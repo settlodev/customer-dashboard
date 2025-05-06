@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema } from "@/types/stock-intake/schema";
 import { createStockIntake, updateStockIntake } from "@/lib/actions/stock-intake-actions";
+
 import SupplierSelector from "../widgets/supplier-selector";
 import DateTimePicker from "../widgets/datetimepicker";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
@@ -28,9 +29,10 @@ import StockVariantSelector from "../widgets/stock-variant-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
 import { Calendar, Clock } from "lucide-react";
-import { useSearchParams } from 'next/navigation'
-function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
+import { useSearchParams } from 'next/navigation';
+import { getStockVariantById } from "@/lib/actions/stock-actions";
 
+function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [orderDate, setOrderDate] = useState<Date | undefined>(
@@ -43,26 +45,60 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
         item?.batchExpiryDate ? new Date(item.batchExpiryDate) : undefined
     );
     const [, setResponse] = useState<FormResponse | undefined>();
+    const [selectedVariantInfo, setSelectedVariantInfo] = useState<any>(null);
     const { toast } = useToast();
     const router = useRouter();
-    const searchParams = useSearchParams()
-    const stockVariantId = searchParams.get('stockItem')
+    const searchParams = useSearchParams();
+    const stockVariantId = searchParams.get('stockItem');
 
     const form = useForm<z.infer<typeof StockIntakeSchema>>({
         resolver: zodResolver(StockIntakeSchema),
         defaultValues: item ? item : { 
             status: true,
-            // If stockVariantId exists, set it as the default stock variant
             ...(stockVariantId ? { stockVariant: stockVariantId } : {})
         },
     });
 
+    // Load stock variant info when ID changes or on initial load with ID
+    useEffect(() => {
+        async function loadVariantInfo() {
+            const currentVariantId = form.getValues('stockVariant');
+            if (currentVariantId) {
+                try {
+                    const variantInfo = await getStockVariantById(currentVariantId);
+                    setSelectedVariantInfo(variantInfo);
+                } catch (error) {
+                    console.error("Error loading variant info:", error);
+                }
+            }
+        }
+        
+        if (stockVariantId || form.getValues('stockVariant')) {
+            loadVariantInfo();
+        }
+    }, [stockVariantId, form]);
+
+    // Set form value when stockVariantId from URL params is available
     useEffect(() => {
         if (stockVariantId) {
             form.setValue('stockVariant', stockVariantId);
         }
     }, [stockVariantId, form]);
 
+    // Handle stock variant selection change
+    const handleStockVariantChange = async (value: string) => {
+        form.setValue('stockVariant', value);
+        if (value) {
+            try {
+                const variantInfo = await getStockVariantById(value);
+                setSelectedVariantInfo(variantInfo);
+            } catch (error) {
+                console.error("Error loading variant info:", error);
+            }
+        } else {
+            setSelectedVariantInfo(null);
+        }
+    };
 
     const onInvalid = useCallback(
         (errors: any) => {
@@ -83,9 +119,11 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
             setError("Delivery date cannot be before order date.");
             return;
         }
+        
         const updatedValues = {
             value: values.value
         };
+        
         startTransition(() => {
             if (item) {
                 updateStockIntake(item.id, updatedValues).then((data) => {
@@ -99,7 +137,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                     }
                 });
             } else {
-                createStockIntake(values,)
+                createStockIntake(values)
                     .then((data) => {
                         if (data) setResponse(data);
                         if (data && data.responseType === "success") {
@@ -135,8 +173,8 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
         }
 
         setOrderDate(newDate);
-        setDeliveryDate(newDeliveryDate)
-        setBatchExpiryDate(newBatchExpiryDate)
+        setDeliveryDate(newDeliveryDate);
+        setBatchExpiryDate(newBatchExpiryDate);
     };
 
     const handleDateSelect = (date: Date) => {
@@ -144,6 +182,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
         setDeliveryDate(date);
         setBatchExpiryDate(date);
     };
+    
     const validateDates = (date: Date) => {
         if (orderDate && date < orderDate) {
             setError("Delivery date cannot be before the order date.");
@@ -173,6 +212,15 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                 <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-8">
                     <FormError message={error} />
 
+                    {selectedVariantInfo && (
+                        <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                            <h3 className="font-medium text-blue-800">Selected Stock Item</h3>
+                            <div className="text-sm text-blue-700 mt-1">
+                                {selectedVariantInfo.stockName} - {selectedVariantInfo.variant?.name}
+                            </div>
+                        </div>
+                    )}
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <FormField
                             control={form.control}
@@ -186,6 +234,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                             isRequired
                                             isDisabled={!!item || isPending}
                                             placeholder="Select stock item"
+                                            onChange={handleStockVariantChange}
                                         />
                                     </FormControl>
                                     <FormMessage />
@@ -252,6 +301,8 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                 </FormItem>
                             )}
                         />
+                        
+                        {/* Rest of form fields unchanged */}
                         <FormField
                             control={form.control}
                             name="staff"
@@ -385,7 +436,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                 )}
                             />
                         )}
-
                     </div>
 
                     <div className="flex h-5 items-center space-x-4">
