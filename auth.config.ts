@@ -47,19 +47,16 @@ export default {
                     }
                     return await response.json();
                 } catch (error) {
-                    // console.log("error during registration: ", error)
-                    if(error instanceof AuthError) {
-                        switch (error.name) {
-                            case "CredentialsSignin":
-                                return {
-                                    error: "Wrong credentials! Invalid email address and/or password",
-                                    status: "error"
-                                }
-                            default:
-                                return {
-                                    error: "An unexpected error occurred. Please try again.",
-                                    status: "error"
-                                }
+
+                    console.log("error during registration: ", error)
+                        if(error instanceof AuthError) {
+                            switch (error.name) {
+                                case "CredentialsSignin":
+                                    return {
+                                        error: "Wrong credentials! Invalid email address and/or password",status:"error"}
+                                    default:
+                                        return {error: "An unexpected error occurred. Please try again.",status:"error"}
+                            }
                         }
                     }
                     throw error
