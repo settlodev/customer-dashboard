@@ -476,6 +476,8 @@ export const downloadProductsCSV = async (locationId?:string) => {
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/rust/csv-downloading/download-products-csv?location_id=${location?.id}`);
+
+        // console.log("CSV download response", response);
        
         return response;
     } catch (error) {
@@ -487,21 +489,22 @@ export const downloadProductsCSV = async (locationId?:string) => {
 export const archiveProduct = async(ids: string | string[]) => {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
+
+   
     
     try {
         // Convert single ID to array for consistent handling
         const productIds = Array.isArray(ids) ? ids : [ids];
+
+       
         
         // Process each product ID
-        await Promise.all(
-            productIds.map(id => 
-                apiClient.put(`/api/products/${location?.id}/${id}`, {})
-            )
-        );
+        await apiClient.put(`/api/products/${location?.id}/archive`, productIds);
+        
         
         revalidatePath("/products");
     } catch (error) {
-        console.error("Error archiving products:", error);
+        // console.error("Error archiving products:", error);
         throw error;
     }
 }

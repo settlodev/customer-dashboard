@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
@@ -76,15 +74,13 @@ const TableExport: React.FC<TableExportProps> = ({
 
         // Create a row for each variant
         return product.variants.map(variant => {
-          // Note: Adjust these field mappings as needed to match your data structure
-          // Some fields like SKU and Unit might not exist in your data model
           return [
             product.name,
             product.categoryName,
             variant.name,
             variant.price,
-            variant.id, // Using id as SKU, adjust if needed
-            '', // Unit (not in your data model)
+            '', // SKU (empty)
+            '', // Unit (empty)
             variant.barcode,
             product.departmentName
           ].map(escapeCSVValue).join(',');
@@ -123,19 +119,14 @@ const TableExport: React.FC<TableExportProps> = ({
     URL.revokeObjectURL(url);
   };
   
-  // Handle direct endpoint download
+  // Improved endpoint download handler
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
       const response = await downloadProductsCSV(locationId);
       
-      // The response might be in different formats depending on your API implementation
-      // let csvData;
-      
       if (response) {
-        if (typeof response === 'string') {
-          // csvData = response;
-        } else if (response instanceof Blob) {
+        if (response instanceof Blob) {
           const url = URL.createObjectURL(response);
           const link = document.createElement('a');
           link.href = url;
@@ -144,12 +135,11 @@ const TableExport: React.FC<TableExportProps> = ({
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(url);
-          setIsLoading(false);
-          return; // Exit early as we've handled the download
+        } else if (typeof response === 'string') {
+          downloadFile(response, 'text/csv', 'csv');
         } else {
           console.error("Unexpected response format", response);
-          setIsLoading(false);
-          return;
+          alert("Failed to process the downloaded data. Please try again later.");
         }
       } else {
         throw new Error("No CSV data received from server");
