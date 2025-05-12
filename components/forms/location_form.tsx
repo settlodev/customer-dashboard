@@ -86,21 +86,25 @@ const LocationForm = ({
     startTransition(() => {
       if (item) {
         updateLocation(item.id, values).then((data) => {
-          if (data) setResponse(data);
+          if (data) {
+            setResponse(data);
+          }
         });
       } else {
         if (multipleStep) {
           // Call the parent's onSubmit function
           onSubmit(values);
         } else {
-          // Use the imported function directly
-          createLocation(values)
-            .then((data) => {
-              if (data) setResponse(data);
-            });
+          createLocation(values).then((data) => {
+            if (data) {
+              setResponse(data);
+              window.location.reload(); // Reload after successful create
+            }
+          });
         }
       }
     });
+    
   };
 
   return (

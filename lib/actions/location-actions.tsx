@@ -261,8 +261,8 @@ export const updateLocation = async (
     }
   
     
-    revalidatePath("/locations");
-      redirect("/locations");
+    revalidatePath("/select-location");
+      redirect("/select-location");
   };
 
 
