@@ -58,8 +58,8 @@ function LoginForm() {
                             return;
                         }
 
-                        // console.log("Error 2 Data", data.error);
-                        // console.log("Error 2 Message", data.message);
+                        console.log("Error 2 Data", data.error);
+                        console.log("Error 2 Message", data.message);
                         setError(data.message);
                     }
                 })
