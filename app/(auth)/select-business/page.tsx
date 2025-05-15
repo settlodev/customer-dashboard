@@ -27,7 +27,7 @@ export default async function SelectBusinessPage() {
         return <BusinessSelector businesses={data} />;
     } catch (error) {
         Sentry.captureException(error);
-        // await signOut();
+        await signOut();
         redirect('/login');
     }
 }
