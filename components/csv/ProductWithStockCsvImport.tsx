@@ -98,11 +98,12 @@ const validateNumericField = (
   return null;
 };
 
-// Improved validation function with better error handling and organization
+
 const validateCSV = (
   fileContent: string,
   config = CSV_CONFIG
-): ValidationResult => {
+): ValidationResult => 
+  {
   // Parse the CSV
   const lines = fileContent.trim().split("\n").filter(Boolean);
   const rows: string[][] = lines.map(line => 
@@ -111,7 +112,7 @@ const validateCSV = (
 
   const errors: string[] = [];
 
-  // Basic validation
+ 
   if (rows.length === 0) {
     return { isValid: false, errors: ["The file is empty."], rows: [] };
   }
@@ -120,10 +121,10 @@ const validateCSV = (
     return { isValid: false, errors: ["The file only contains headers but no data."], rows };
   }
 
-  // Regex for emoji detection
+
   const emojiRegex = /[\u{1F300}-\u{1F9FF}|\u{2700}-\u{27BF}|\u{2600}-\u{26FF}|\u{2300}-\u{23FF}|\u{2000}-\u{206F}|\u{FE00}-\u{FE0F}]/gu;
   
-  // Header validation
+  
   const headers = rows[0];
   const missingHeaders = config.expectedHeaders.filter((header) => !headers.includes(header));
   if (missingHeaders.length > 0) {
@@ -134,17 +135,47 @@ const validateCSV = (
     };
   }
 
-  // Validate rows
+  // Duplicate check: Product Name + Variant Name + Stock Name + Stock Variant Name (as an example)
+const duplicateCheckMap = new Map<string, number[]>();
+
+rows.slice(1).forEach((row, i) => {
+  const rowIndex = i + 2; // +2 to account for headers + 0-index
+
+  const productName = row[headers.indexOf("Product Name")]?.toLowerCase().trim();
+  const variantName = row[headers.indexOf("Variant Name")]?.toLowerCase().trim();
+  const stockName = row[headers.indexOf("Stock Name")]?.toLowerCase().trim();
+  const stockVariantName = row[headers.indexOf("Stock Variant Name")]?.toLowerCase().trim();
+
+  const key = `${productName}-${variantName}-${stockName}-${stockVariantName}`;
+
+  if (!duplicateCheckMap.has(key)) {
+    duplicateCheckMap.set(key, [rowIndex]);
+  } else {
+    duplicateCheckMap.get(key)!.push(rowIndex);
+  }
+});
+
+// Collect duplicate keys
+duplicateCheckMap.forEach((indexes, key) => {
+  if (indexes.length > 1) {
+    errors.push(
+      `Duplicate entries found in rows: ${indexes.join(", ")} for combination: ${key.replaceAll("-", " / ")}`
+    );
+  }
+});
+
+
+ 
   rows.slice(1).forEach((row, rowIndex) => {
     const rowErrors: string[] = [];
-    const currentRowIndex = rowIndex + 2; // Adjusting for 1-based index with headers
+    const currentRowIndex = rowIndex + 2; 
     
-    // Check row length matches headers length
+   
     if (row.length !== headers.length) {
       rowErrors.push(`Row ${currentRowIndex}: Column count mismatch. Expected ${headers.length} columns, found ${row.length}.`);
     }
 
-    // Check for emojis in text fields
+   
     config.textFields.forEach((field) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && row[fieldIndex]) {
@@ -154,7 +185,7 @@ const validateCSV = (
       }
     });
 
-    // Required Field Validation
+    
     config.requiredFields.forEach((field) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && (!row[fieldIndex] || row[fieldIndex].trim() === "")) {
@@ -162,7 +193,7 @@ const validateCSV = (
       }
     });
 
-    // Numeric Field Validation
+    
     Object.entries(config.numericFields).forEach(([field, validationConfig]) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && row[fieldIndex]) {
@@ -181,10 +212,13 @@ const validateCSV = (
     }
   });
 
+
   return { isValid: errors.length === 0, errors, rows };
 };
 
-// Define task status type for better type safety
+
+
+
 type TaskStatus = 'idle' | 'processing' | 'complete' | 'failed' | 'error';
 
 export function ProductWithStockCSVDialog() {

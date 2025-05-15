@@ -119,6 +119,8 @@ export const login = async (
             redirect: false,
         });
 
+        console.log("result after login: ", result);
+
         // Check if there's an error in the result
         if (result?.error) {
             console.log("Authentication error:", result.error);
