@@ -6,16 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Search, Tag, X } from 'lucide-react';
+import { 
+  Search, 
+  Tag, 
+  X, 
+  QrCode, 
+  Share2, 
+  Printer, 
+  Download,
+  Info
+} from 'lucide-react';
 import { Product } from '@/types/product/type';
+import { QRCodeSVG } from 'qrcode.react';
 
 type CategorizedProducts = {
   [key: string]: Product[];
 };
 
-// Enhanced color palette for categories
 const categoryColors = {
   backgrounds: [
     'bg-[#0088FE]',
@@ -23,7 +31,6 @@ const categoryColors = {
     'bg-[#FFBB28]',
     'bg-[#FF8042]',
     'bg-[#8884D8]',
-    
   ],
   text: [
     'text-[#FFF]',
@@ -50,6 +57,169 @@ interface ExtendedProduct extends Omit<Product, 'categoryName'> {
   categoryName: string;
 }
 
+// QR Code Modal Component
+const QRCodeModal = ({ isOpen, onClose, url, restaurantName }: { isOpen: boolean, onClose: () => void, url: string, restaurantName: string }) => {
+  if (!isOpen) return null;
+  
+  const downloadQRCode = () => {
+    const canvas = document.getElementById('qr-code-canvas') as HTMLCanvasElement;
+    if (canvas) {
+      const pngUrl = canvas.toDataURL('image/png');
+      const downloadLink = document.createElement('a');
+      downloadLink.href = pngUrl;
+      downloadLink.download = `${restaurantName.replace(/\s+/g, '-').toLowerCase()}-menu-qr.png`;
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      document.body.removeChild(downloadLink);
+    }
+  };
+  
+  const printQRCode = () => {
+    const printWindow = window.open('', '', 'height=500,width=500');
+    const canvas = document.getElementById('qr-code-canvas');
+    
+    if (printWindow && canvas) {
+      printWindow.document.write('<html><head><title>Print QR Code</title>');
+      printWindow.document.write('</head><body>');
+      printWindow.document.write('<div style="text-align: center; padding: 20px;">');
+      printWindow.document.write(`<h2 style="margin-bottom: 10px;">${restaurantName} Menu</h2>`);
+      printWindow.document.write(`<p style="margin-bottom: 20px;">Scan to view our menu</p>`);
+      if (canvas instanceof HTMLCanvasElement) {
+        printWindow.document.write(`<img src="${canvas.toDataURL()}" style="max-width: 300px;" />`);
+      }
+      printWindow.document.write('</div>');
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.focus();
+      
+      // Add slight delay to ensure content is fully loaded before printing
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
+  };
+
+  const shareQRCode = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `${restaurantName} Menu`,
+          text: `Check out the menu for ${restaurantName}`,
+          url: url
+        });
+      } catch (error) {
+        console.error('Error sharing:', error);
+      }
+    } else {
+      navigator.clipboard.writeText(url);
+      alert('Link copied to clipboard!');
+    }
+  };
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-md w-full relative">
+        <button 
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700"
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+        
+        <div className="p-6 text-center">
+          <h3 className="text-lg font-semibold mb-2">{restaurantName} Menu</h3>
+          <p className="text-sm text-gray-600 mb-4">Scan this QR code to view our menu</p>
+          
+          <div className="bg-white p-4 rounded-lg shadow-sm inline-block mb-4">
+            <QRCodeSVG 
+              id="qr-code-canvas"
+              value={url} 
+              size={200}
+              level="H"
+              includeMargin={true}
+              
+            />
+          </div>
+          
+          <div className="flex justify-center space-x-3 mt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={downloadQRCode}
+              className="flex items-center gap-1"
+            >
+              <Download size={16} />
+              <span>Download</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={printQRCode}
+              className="flex items-center gap-1"
+            >
+              <Printer size={16} />
+              <span>Print</span>
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={shareQRCode}
+              className="flex items-center gap-1"
+            >
+              <Share2 size={16} />
+              <span>Share</span>
+            </Button>
+          </div>
+          
+          <div className="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500 flex items-center justify-center">
+            <Info size={12} className="mr-1" />
+            <span>This QR code links directly to your digital menu</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+// Professional Banner Component
+const MenuBanner = ({ restaurantName, tagline, logo, openQRModal }: { restaurantName: string; tagline: string; logo: string | null; openQRModal: () => void }) => {
+  return (
+    <div className="bg-gradient-to-r from-emerald-700 to-emerald-900 text-white rounded-lg shadow-md p-6 mb-6">
+      <div className="flex flex-col md:flex-row items-center justify-between">
+        <div className="flex items-center mb-4 md:mb-0">
+          {logo ? (
+            <img 
+              src={logo} 
+              alt={`${restaurantName} logo`} 
+              className="w-16 h-16 rounded-full bg-white p-1 mr-4" 
+            />
+          ) : (
+            <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-emerald-700 font-bold text-xl mr-4">
+              {restaurantName.substring(0, 2).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">{restaurantName}</h1>
+            <p className="text-emerald-100">{tagline}</p>
+          </div>
+        </div>
+        
+        <Button 
+          onClick={openQRModal}
+          variant="secondary" 
+          className="bg-white text-emerald-700 hover:bg-emerald-50"
+        >
+          <QrCode className="mr-2 h-5 w-5" />
+          <span>Get Menu QR Code</span>
+        </Button>
+      </div>
+    </div>
+  );
+};
+
 const ProductMenu = () => {
     const [products, setProducts] = useState<ExtendedProduct[]>([]);
     const [loading, setLoading] = useState(true);
@@ -63,6 +233,16 @@ const ProductMenu = () => {
     const [isMobile, setIsMobile] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [initialLoad, setInitialLoad] = useState(true);
+    const [showQRModal, setShowQRModal] = useState(false);
+    
+    // Restaurant configuration - customize these values
+    const restaurantConfig = {
+      name: "Culinary Delights",
+      tagline: "Authentic flavors, exceptional experience",
+      logo: null, // Add your logo URL here
+      currency: "TZS"
+    };
+    
     const loaderRef = useRef<HTMLDivElement>(null);
     
     // Check if device is mobile
@@ -130,7 +310,7 @@ const ProductMenu = () => {
         const pageToFetch = isReset ? 1 : currentPage;
         
         const response = await searchProducts(searchQuery, pageToFetch, pageLimit);
-        console.log('Response from API:', response);
+       
         
         if (response && response.content) {
           // Add some demo flags for featured/popular products to enhance UI
@@ -213,11 +393,6 @@ const ProductMenu = () => {
       }
     };
   
-    // const handlePullToRefresh = () => {
-    //   setCurrentPage(1);
-    //   fetchProducts(true);
-    // };
-  
     const getCategoryColorIndex = (category: string) => {
       // Generate a consistent index based on the category name
       const hash = category.split('').reduce((acc, char) => {
@@ -236,17 +411,51 @@ const ProductMenu = () => {
       return categoryColors.text[index];
     };
     
-    // const getAccentColorForCategory = (category: string) => {
-    //   const index = getCategoryColorIndex(category);
-    //   return categoryColors.accent[index];
-    // };
-    
     const getProductPrice = (product: ExtendedProduct) => {
+      // First try to get price from the first variant if available
+      if (product.variants && product.variants.length > 0) {
+        return parseFloat(product.variants[0].price as unknown as string) || 0;
+      }
+      // Fall back to product's price property
       return parseFloat(product.price as string) || 0;
+    };
+    
+    // Generate the current page URL for QR code
+    const getMenuUrl = () => {
+      if (typeof window !== 'undefined') {
+        return window.location.href;
+      }
+      return '';
+    };
+    
+    // Open QR Code modal
+    const openQRModal = () => {
+      setShowQRModal(true);
+    };
+    
+    // Close QR Code modal
+    const closeQRModal = () => {
+      setShowQRModal(false);
     };
   
     return (
-      <div className="max-w-6xl mx-auto p-4 mt-16">
+      <div className="max-w-6xl mx-auto p-4 mt-8">
+        {/* Restaurant Banner with QR Code Button */}
+        <MenuBanner 
+          restaurantName={restaurantConfig.name}
+          tagline={restaurantConfig.tagline}
+          logo={restaurantConfig.logo}
+          openQRModal={openQRModal}
+        />
+        
+        {/* QR Code Modal */}
+        <QRCodeModal 
+          isOpen={showQRModal} 
+          onClose={closeQRModal} 
+          url={getMenuUrl()}
+          restaurantName={restaurantConfig.name}
+        />
+        
         {/* Search and Action Bar */}
         <div className="bg-white shadow-md rounded-lg p-4 mb-6 sticky top-0 z-20">
           <div className="flex flex-wrap items-center gap-2">
@@ -255,7 +464,7 @@ const ProductMenu = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search products..."
+                placeholder="Search menu items..."
                 className="pr-10"
               />
               <div className="absolute inset-y-0 right-0 flex items-center pr-3">
@@ -297,8 +506,8 @@ const ProductMenu = () => {
         {/* Initial Loading State */}
         {initialLoad && loading && (
           <div className="text-center py-16">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading products...</p>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading menu items...</p>
           </div>
         )}
         
@@ -317,15 +526,8 @@ const ProductMenu = () => {
         {!initialLoad && !loading && !error && Object.keys(categorizedProducts).length === 0 && (
           <div className="text-center py-16 bg-gray-50 rounded-lg">
             <div className="text-gray-400 text-4xl mb-2">🔍</div>
-            <p className="text-gray-600 mb-2">No products found</p>
+            <p className="text-gray-600 mb-2">No menu items found</p>
             <p className="text-gray-500 text-sm">Try a different search term or browse our categories</p>
-          </div>
-        )}
-        
-        {/* Pull to Refresh Indicator (for mobile) */}
-        {isMobile && (
-          <div className="w-full flex justify-center mb-4">
-            <div className="text-gray-500 text-sm">Pull down to refresh</div>
           </div>
         )}
         
@@ -366,6 +568,18 @@ const ProductMenu = () => {
                               <span className="text-gray-500">No image</span>
                             </div>
                           )}
+                          
+                          {/* Optional badges for featured or new items */}
+                          {extendedProduct.isNew && (
+                            <div className="absolute top-2 right-2">
+                              <Badge className="bg-blue-500 hover:bg-blue-600">New</Badge>
+                            </div>
+                          )}
+                          {extendedProduct.isFeatured && (
+                            <div className="absolute top-2 left-2">
+                              <Badge className="bg-amber-500 hover:bg-amber-600">Featured</Badge>
+                            </div>
+                          )}
                         </div>
                         
                         <CardHeader className="p-4 pb-0">
@@ -375,7 +589,7 @@ const ProductMenu = () => {
                         <CardContent className="p-4 pt-2 text-center">
                           <div className="flex items-center justify-center gap-2">
                             <p className="text-xl font-bold">
-                              {getProductPrice(extendedProduct).toLocaleString()} <span className="text-sm font-normal text-gray-500">TZS</span>
+                              {getProductPrice(extendedProduct).toLocaleString()} <span className="text-sm font-normal text-gray-500">{restaurantConfig.currency}</span>
                             </p>
                           </div>
                         </CardContent>
@@ -399,14 +613,33 @@ const ProductMenu = () => {
         <div ref={loaderRef} className="w-full py-8 flex justify-center">
           {!initialLoad && loading && (
             <div className="flex flex-col items-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500 mb-2"></div>
-              <p className="text-gray-500 text-sm">Loading more products...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mb-2"></div>
+              <p className="text-gray-500 text-sm">Loading more items...</p>
             </div>
           )}
           
           {!loading && !hasMore && products.length > 0 && (
             <div className="text-gray-500 text-sm py-2">You&apos;ve reached the end</div>
           )}
+        </div>
+        
+        {/* Footer */}
+        <div className="bg-white rounded-lg shadow-md p-4 text-center mt-8">
+          <p className="text-gray-600">© {new Date().getFullYear()} {restaurantConfig.name}</p>
+          <div className="text-sm text-gray-500 mt-1">
+            <p>Scan the QR code to view our menu on your device</p>
+          </div>
+          <div className="flex justify-center mt-3">
+            <Button 
+              onClick={openQRModal}
+              variant="outline" 
+              size="sm"
+              className="text-emerald-600 border-emerald-600 hover:bg-emerald-50"
+            >
+              <QrCode className="mr-2 h-4 w-4" />
+              <span>Get Menu QR Code</span>
+            </Button>
+          </div>
         </div>
         
         {/* Mobile Category Menu */}
@@ -443,15 +676,8 @@ const ProductMenu = () => {
             </div>
           </div>
         )}
-        
-        {/* Pull-to-refresh component (optional, for mobile devices) */}
-        {isMobile && (
-          <div className="fixed top-0 left-0 w-full z-50 flex justify-center">
-           
-          </div>
-        )}
       </div>
     );
   };
 
-export default ProductMenu; 
+export default ProductMenu;
