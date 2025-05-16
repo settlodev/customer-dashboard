@@ -1,4 +1,3 @@
-
 'use client';
 import { searchProducts } from '@/lib/actions/product-actions';
 import React, { useState, useEffect, useRef } from 'react';
@@ -8,7 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge';
 
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Search, Tag, X } from 'lucide-react';
+import { Search, ShoppingCartIcon, Tag, X } from 'lucide-react';
 import { Product } from '@/types/product/type';
 
 type CategorizedProducts = {
@@ -29,16 +28,11 @@ const categoryColors = {
     'text-[#FFF]',
   ],
   accent: [
-    'bg-blue-500',
-    'bg-green-500',
-    'bg-yellow-500',
-    'bg-red-500',
-    'bg-purple-500',
-    'bg-pink-500',
-    'bg-indigo-500',
-    'bg-teal-500',
-    'bg-orange-500',
-    'bg-cyan-500',
+    'bg-[#0088FE]',
+    'bg-[#00C49F]',
+    'bg-[#FFBB28]',
+    'bg-[#FF8042]',
+    'bg-[#8884D8]',
   ]
 };
 
@@ -131,7 +125,6 @@ const ProductMenu = () => {
         
         const response = await searchProducts(searchQuery, pageToFetch, pageLimit);
         console.log('Response from API:', response);
-        
         if (response && response.content) {
           // Add some demo flags for featured/popular products to enhance UI
           const typedContent = response.content.map((product: Product) => {
@@ -213,10 +206,6 @@ const ProductMenu = () => {
       }
     };
   
-    // const handlePullToRefresh = () => {
-    //   setCurrentPage(1);
-    //   fetchProducts(true);
-    // };
   
     const getCategoryColorIndex = (category: string) => {
       // Generate a consistent index based on the category name
@@ -236,14 +225,17 @@ const ProductMenu = () => {
       return categoryColors.text[index];
     };
     
-    // const getAccentColorForCategory = (category: string) => {
-    //   const index = getCategoryColorIndex(category);
-    //   return categoryColors.accent[index];
-    // };
+ 
     
     const getProductPrice = (product: ExtendedProduct) => {
+      // First try to get price from the first variant if available
+      if (product.variants && product.variants.length > 0) {
+        return parseFloat(product.variants[0].price as unknown as string) || 0;
+      }
+      // Fall back to product's price property
       return parseFloat(product.price as string) || 0;
     };
+    // console.log("The product price",getProductPrice)
   
     return (
       <div className="max-w-6xl mx-auto p-4 mt-16">
@@ -362,9 +354,12 @@ const ProductMenu = () => {
                               className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                             />
                           ) : (
-                            <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
-                              <span className="text-gray-500">No image</span>
-                            </div>
+                            // <div className="w-full h-48 bg-gray-200 flex items-center justify-center">
+                            //   <span className="text-gray-500">No image</span>
+                            // </div>
+                            <div className="w-full h-48 rounded-lg bg-gray-200 flex items-center justify-center">
+                            <ShoppingCartIcon  className="w-12 h-12 text-gray-400" />
+                        </div>
                           )}
                         </div>
                         
