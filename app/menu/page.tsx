@@ -57,8 +57,23 @@ const ProductMenu = () => {
     const [isMobile, setIsMobile] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [initialLoad, setInitialLoad] = useState(true);
+    const [locationId, setLocationId] = useState<string | null>(null);
     const loaderRef = useRef<HTMLDivElement>(null);
     
+
+    // Get locationId from URL parameters on component mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const locationParam = urlParams.get('locationId');
+      
+      if (locationParam) {
+        setLocationId(locationParam);
+        console.log('Location ID from QR code:', locationParam);
+      }
+    }
+  }, []);
+
     // Check if device is mobile
     useEffect(() => {
       const checkIfMobile = () => {
@@ -73,13 +88,13 @@ const ProductMenu = () => {
       };
     }, []);
   
-    // Initial data load
-    useEffect(() => {
-      if (initialLoad) {
-        fetchProducts(true);
-        setInitialLoad(false);
-      }
-    }, [initialLoad]);
+    // Initial data load - now depends on locationId
+  useEffect(() => {
+    if (initialLoad && locationId !== null) { // Only fetch when locationId is available
+      fetchProducts(true);
+      setInitialLoad(false);
+    }
+  }, [initialLoad, locationId]);
   
     // Set up intersection observer for infinite scroll
     useEffect(() => {
@@ -111,20 +126,20 @@ const ProductMenu = () => {
       }
     }, [currentPage]);
   
-    // Handle search changes
-    useEffect(() => {
-      if (!initialLoad) {
-        handleSearch();
-      }
-    }, [searchQuery]);
+     // Handle search changes
+  useEffect(() => {
+    if (!initialLoad && locationId !== null) {
+      handleSearch();
+    }
+  }, [searchQuery, locationId]);
   
     const fetchProducts = async (isReset: boolean) => {
       try {
         setLoading(true);
         const pageToFetch = isReset ? 1 : currentPage;
         
-        const response = await searchProducts(searchQuery, pageToFetch, pageLimit);
-        console.log('Response from API:', response);
+        const response = await searchProducts(searchQuery, pageToFetch, pageLimit, locationId ?? '');
+        
         if (response && response.content) {
           // Add some demo flags for featured/popular products to enhance UI
           const typedContent = response.content.map((product: Product) => {

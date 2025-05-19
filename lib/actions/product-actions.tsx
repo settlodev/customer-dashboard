@@ -55,7 +55,8 @@ export const productSummary = async () : Promise<any> => {
 export const searchProducts = async (
     q:string,
     page:number,
-    pageLimit:number
+    pageLimit:number,
+    locationId?:string
 ): Promise<ApiResponse<Product>> =>{
     await getAuthenticatedUser();
 
@@ -79,7 +80,7 @@ export const searchProducts = async (
             page:page ? page - 1:0,
             size:pageLimit ? pageLimit : 10
         }
-        const location = await getCurrentLocation();
+        const location = await getCurrentLocation() || {id:locationId};
         const data = await  apiClient.post(
             `/api/products/${location?.id}`,
             query
