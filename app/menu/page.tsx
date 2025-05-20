@@ -1,5 +1,5 @@
 'use client';
-import { searchProducts } from '@/lib/actions/product-actions';
+import { menuProducts} from '@/lib/actions/product-actions';
 import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -138,7 +138,7 @@ const ProductMenu = () => {
         setLoading(true);
         const pageToFetch = isReset ? 1 : currentPage;
         
-        const response = await searchProducts(searchQuery, pageToFetch, pageLimit, locationId ?? '');
+        const response = await menuProducts(searchQuery, pageToFetch, pageLimit, locationId ?? '');
         
         if (response && response.content) {
           // Add some demo flags for featured/popular products to enhance UI

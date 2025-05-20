@@ -509,3 +509,48 @@ export const archiveProduct = async(ids: string | string[]) => {
         throw error;
     }
 }
+
+export const menuProducts = async (
+    q: string,
+    page: number,
+    pageLimit: number,
+    locationId?: string
+): Promise<ApiResponse<Product>> => {
+    try {
+        const apiClient = new ApiClient();
+        const query = {
+            filters: [
+                {
+                    key: "name",
+                    operator: "LIKE",
+                    field_type: "STRING",
+                    value: q
+                }
+            ],
+            sorts: [
+                {
+                    key: "name",
+                    direction: "ASC"
+                }
+            ],
+            page: page ? page - 1 : 0,
+            size: pageLimit ? pageLimit : 10
+        };
+
+        const location = { id: locationId };
+
+        const data = await apiClient.post(
+            `/api/menu/${location?.id}`,
+            query,
+            {
+                headers: {
+                    "x-api-key": "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
+                }
+            }
+        );
+
+        return parseStringify(data);
+    } catch (error) {
+        throw error;
+    }
+};
