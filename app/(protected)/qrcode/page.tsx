@@ -201,6 +201,7 @@ const QRCodeGenerator = () => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [location, setLocation] = useState<Location | undefined>(undefined);
   const [activeTab, setActiveTab] = useState("about");
+  const [error, setError] = useState<string | null>(null);
   const [qrCodeOptions, setQrCodeOptions] = useState({
     purpose: "Menu",
     fgColor: "#10b981",
@@ -215,8 +216,15 @@ const QRCodeGenerator = () => {
         if (locationCurrent) {
           setLocation(locationCurrent);
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error fetching location:", error);
+        if (error?.details?.message) {
+          setError(error.details.message);
+        } else if (error?.message) {
+          setError(error.message);
+        } else {
+          setError("An error occurred while fetching location data");
+        }
       }
     };
 
@@ -295,6 +303,24 @@ const QRCodeGenerator = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4 mt-8">
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Subscription Limit Reached</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Hero Section */}
       <div className="bg-gradient-to-r from-emerald-700 to-emerald-900 text-white rounded-lg shadow-md overflow-hidden">
         <div className="flex flex-col md:flex-row">

@@ -362,7 +362,7 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
         console.error("Error uploading CSV file:", error);
         throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
-      // Revalidate or redirect after successful upload
+     
       revalidatePath("/stock-variants");
       redirect("/stock-variants");
 };
@@ -403,12 +403,38 @@ export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileDa
         
         // Return the response so the client can access the task_id
         return response;
-    } catch (error) {
+    } catch (error: any) {
+
         if (typeof error === "object" && error !== null && "digest" in error && (error as any).digest.startsWith("NEXT_REDIRECT")) {
-            // Handle Next.js redirect error
+            
             return null;
         }
-        throw error;
+        
+        if (error.code === 'FORBIDDEN' && 
+            error.status === 403 && 
+            error.message?.includes('beyond the limit of the current subscription package')) {
+            
+            // Extract limit and wanted values from the message
+            const limitMatch = error.message.match(/limit is (\d+)/);
+            const wantedMatch = error.message.match(/total of (\d+)/);
+            
+            const limit = limitMatch ? limitMatch[1] : '100';
+            const wanted = wantedMatch ? wantedMatch[1] : 'too many';
+            
+            throw new Error(`Subscription limit exceeded. Your current plan allows up to ${limit} products, but you attempted to upload a total of ${wanted}. Please upgrade your subscription or reduce the number of products.`);
+        }
+        
+        // Handle other API errors with structured messages
+        if (error.message && typeof error.message === 'string') {
+            throw new Error(`Failed to upload CSV: ${error.message}`);
+        }
+        
+        // Handle generic errors - safely convert to string
+        if (error instanceof Error) {
+            throw new Error(`Failed to upload CSV file: ${error.message}`);
+        } else {
+            throw new Error(`Failed to upload CSV file: Please check your file and try again.`);
+        }
     }
 };
 

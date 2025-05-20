@@ -20,8 +20,7 @@ import { useCSVUpload } from "@/hooks/upload";
 import { checkTaskStatus } from "@/lib/actions/stock-actions";
 import SubmitButton from "../widgets/submit-button";
 import { useToast } from "@/hooks/use-toast";
-// Optionally import router if using Next.js
-// import { useRouter } from "next/navigation";
+
 
 // CSV Header and Validation Configuration
 const CSV_CONFIG = {
@@ -239,6 +238,9 @@ export function ProductWithStockCSVDialog() {
   const [shouldRedirect, setShouldRedirect] = useState(false);
   const [backgroundProcessing, setBackgroundProcessing] = useState(false);
 
+  const [, setUploadStarted] = useState(false);
+  const [, setUploadError] = useState<string | null>(null);
+
   // Hook for CSV upload
   const {uploadProgress, error, uploadCSV, isUploading } = useCSVUpload();
   
@@ -382,6 +384,8 @@ export function ProductWithStockCSVDialog() {
   // Upload handling
   const handleUpload = async () => {
     if (file && fileContent && validationResult?.isValid) {
+      setUploadStarted(true);
+      setUploadError(null);
       try {
         const response = await uploadCSV({ fileData: fileContent, fileName: file.name });
       
@@ -409,6 +413,9 @@ export function ProductWithStockCSVDialog() {
         console.error("Error uploading file:", error);
         setTaskStatus("error");
         setTaskMessage("Upload failed");
+
+        setUploadError("Upload failed. Please try again.");
+        setUploadStarted(false);
         
         toast({
           title: "Upload Failed",
