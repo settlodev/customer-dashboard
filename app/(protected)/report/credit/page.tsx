@@ -326,6 +326,7 @@ const CreditReportDashboard = () => {
                         <TableHeader>
                             <TableRow>
                                 <TableHead>Order Number</TableHead>
+                                <TableHead>Order Name</TableHead>
                                 <TableHead>Date</TableHead>
                                 <TableHead>Customer</TableHead>
                                 <TableHead className="text-right">Paid Amount</TableHead>
@@ -340,6 +341,7 @@ const CreditReportDashboard = () => {
                                     onClick={() => router.push(`/orders/${order.orderId}`)}
                                     className="cursor-pointer hover:bg-muted">
                                         <TableCell className="font-medium">{order.orderNumber}</TableCell>
+                                        <TableCell>{order.orderName || 'N/A'}</TableCell>
                                         <TableCell>{format(new Date(order.openedDate), 'PP')}</TableCell>
                                         <TableCell>{order.customerName || 'N/A'}</TableCell>
                                         <TableCell className="text-right">{formatCurrency(order.paidAmount)}</TableCell>

@@ -31,71 +31,9 @@ export async function logout() {
             throw error;
         }
         // Handle or log other types of errors
-        console.error("Logout error:", error);
+        // console.error("Logout error:", error);
     }
 }
-
-// export const login = async (
-//     credentials: z.infer<typeof LoginSchema>,
-// ): Promise<FormResponse> => {
-//     const validatedData = LoginSchema.safeParse(credentials);
-//     if (!validatedData.success) {
-//         return parseStringify({
-//             responseType: "error",
-//             message: "Please fill in all the fields marked with * before proceeding",
-//             error: new Error("Incomplete credentials"),
-//         });
-//     }
-
-//     //Make sure token does not exist
-//     await deleteAuthCookie();
-
-//     try {
-//         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-//         const result = await signIn("credentials", {
-//             email: validatedData.data.email,
-//             password: validatedData.data.password,
-//             redirect: false,
-//         });
-
-//         if (result?.error) {
-//             console.log("result.error: ", result.error);
-//             return parseStringify({
-//                 responseType: "error",
-//                 message: "Wrong credentials! Invalid email address and/or password",
-//                 error: new Error("Wrong credentials"),
-//             });
-//         }
-
-//     } catch (error) {
-//         if (error instanceof AuthError) {
-//             console.log("error during login: ", error);
-//             switch (error.name) {
-//                 case "CredentialsSignin":
-//                     return parseStringify({
-//                         responseType: "error",
-//                         message: "Wrong credentials! Invalid email address and/or password",
-//                         error: new Error("Wrong credentials"),
-//                     });
-//                 default:
-//                     return parseStringify({
-//                         responseType: "error",
-//                         message: error.message ?? "Something about your credentials is not right, please try again.",
-//                         error: new Error("Unexpected"),
-//                     });
-//             }
-//         }
-
-//         return parseStringify({
-//             responseType: "error",
-//             message: "An unexpected error occurred. Please try again.",
-//             error: new Error("Unexpected"),
-//         });
-//     }
-
-//     revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
-//     redirect(DEFAULT_LOGIN_REDIRECT_URL);
-// };
 
 export const login = async (
     credentials: z.infer<typeof LoginSchema>,
@@ -109,36 +47,30 @@ export const login = async (
         });
     }
 
-    // Make sure token does not exist
+    //Make sure token does not exist
     await deleteAuthCookie();
 
     try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const result = await signIn("credentials", {
             email: validatedData.data.email,
             password: validatedData.data.password,
             redirect: false,
         });
 
-        console.log("result after login: ", result);
-
-        // Check if there's an error in the result
         if (result?.error) {
-            console.log("Authentication error:", result.error);
+            console.log("result.error: ", result.error);
             return parseStringify({
                 responseType: "error",
                 message: "Wrong credentials! Invalid email address and/or password",
-                error: new Error(result.error),
+                error: new Error("Wrong credentials"),
             });
         }
 
-        // If we reach here, authentication was successful
-        revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
-        redirect(DEFAULT_LOGIN_REDIRECT_URL);
     } catch (error) {
-        console.log("Error during login:", error);
-        
         if (error instanceof AuthError) {
-            switch (error.type) {  // Use error.type instead of error.name
+            console.log("error during login: ", error);
+            switch (error.name) {
                 case "CredentialsSignin":
                     return parseStringify({
                         responseType: "error",
@@ -160,7 +92,11 @@ export const login = async (
             error: new Error("Unexpected"),
         });
     }
+
+    revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
+    redirect(DEFAULT_LOGIN_REDIRECT_URL);
 };
+
 export const getUserById = async (userId: string|undefined): Promise<ExtendedUser> => {
     if (!userId) throw new Error("User data is required");
 
