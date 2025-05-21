@@ -1,5 +1,5 @@
 import React from 'react';
-import { UUID } from 'crypto';
+// import { UUID } from 'crypto';
 import { getOrderReceipt } from '@/lib/actions/order-actions';
 import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
@@ -7,7 +7,7 @@ import ShareButton from '@/components/widgets/share-button';
 
 const OrderReceipt = async ({ params }: { params: { id: string } }) => {
   const orderData = await getOrderReceipt(params.id);
-  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/receipt/${orderData.orderNumber}`;
+  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${orderData.orderNumber}`;
 
 
   const formatDate = (dateStr: string | number | Date) => {

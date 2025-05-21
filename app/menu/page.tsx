@@ -14,6 +14,24 @@ type CategorizedProducts = {
   [key: string]: Product[];
 };
 
+// Hash decoding utilities
+const locationIds = {
+  "mtgzNTI4Mzk2NTQy": "location123", 
+  "ltgzNpyoDkwNzkx": "location456",
+  // Add more mappings as needed
+};
+// Function to decode hashed location ID
+const decodeLocationId = (hashedId: string) => {
+  if (!hashedId) return null;
+  // First, check our known mappings
+  if (hashedId in locationIds) {
+    return locationIds[hashedId as keyof typeof locationIds];
+  }
+ 
+  console.warn("Unknown location hash, using as-is:", hashedId);
+  return hashedId;
+};
+
 // Enhanced color palette for categories
 const categoryColors = {
   backgrounds: [
@@ -61,15 +79,26 @@ const ProductMenu = () => {
     const loaderRef = useRef<HTMLDivElement>(null);
     
 
-    // Get locationId from URL parameters on component mount
+   // Get hashed locationId from URL parameters on component mount and decode it
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
-      const locationParam = urlParams.get('locationId');
       
-      if (locationParam) {
-        setLocationId(locationParam);
-        console.log('Location ID from QR code:', locationParam);
+      // Check for the new lid parameter (hashed location id)
+      const hashedLocationId = urlParams.get('lid');
+      
+      if (hashedLocationId) {
+        // Decode the hashed location ID
+        const decodedId = decodeLocationId(hashedLocationId);
+        setLocationId(decodedId);
+        console.log('Decoded Location ID:', decodedId);
+      } else {
+        // Fallback to legacy locationId parameter if present
+        const legacyLocationId = urlParams.get('locationId');
+        if (legacyLocationId) {
+          setLocationId(legacyLocationId);
+          console.log('Legacy Location ID from URL:', legacyLocationId);
+        }
       }
     }
   }, []);
