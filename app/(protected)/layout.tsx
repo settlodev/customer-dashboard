@@ -23,6 +23,8 @@ export default async function RootLayout({children}: {
         currentLocation: currentLocation 
     }
 
+    // console.log("Business Data:", businessData);
+
     return (
         <SessionProvider session={session}>
             <div className="flex h-screen w-full overflow-hidden">

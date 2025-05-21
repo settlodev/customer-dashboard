@@ -201,3 +201,25 @@ interface PaymentMethods{
     paymentMethodName:string
     amount:number
 }
+
+export interface Credit{
+    startDate:Date
+    endDate:Date
+    total:number
+    totalUnpaidAmount:number
+    totalPaidAmount:number
+    unpaidOrders:UnpaidOrders[]
+}
+
+interface UnpaidOrders{
+    orderId:UUID
+    orderName:string
+    orderNumber:string
+    openedDate:Date
+    paidAmount:number
+    unpaidAmount:number
+    customerName:string
+    customerId:UUID
+    firstPaymentDate:Date
+    lastPaymentDate:Date
+}

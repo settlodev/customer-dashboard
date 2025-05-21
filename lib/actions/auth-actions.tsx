@@ -31,7 +31,7 @@ export async function logout() {
             throw error;
         }
         // Handle or log other types of errors
-        console.error("Logout error:", error);
+        // console.error("Logout error:", error);
     }
 }
 
@@ -59,6 +59,7 @@ export const login = async (
         });
 
         if (result?.error) {
+            console.log("result.error: ", result.error);
             return parseStringify({
                 responseType: "error",
                 message: "Wrong credentials! Invalid email address and/or password",
@@ -68,6 +69,7 @@ export const login = async (
 
     } catch (error) {
         if (error instanceof AuthError) {
+            console.log("error during login: ", error);
             switch (error.name) {
                 case "CredentialsSignin":
                     return parseStringify({

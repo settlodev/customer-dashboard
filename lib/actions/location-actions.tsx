@@ -10,9 +10,10 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {ApiResponse, FormResponse} from "@/types/types";
-import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
+import {getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {Location} from "@/types/location/type";
 import {LocationSchema} from "@/types/location/schema";
+import { refreshLocation } from "./business/refresh";
 
 export const fetchAllLocations = async (): Promise<Location[] | null> => {
     try {
@@ -189,117 +190,82 @@ export const createLocation = async (
     });
 };
 
-// export const updateLocation = async (
-//     id: UUID,
-//     location: z.infer<typeof LocationSchema>,
-// ): Promise<FormResponse | void> => {
-//     let formResponse: FormResponse | null = null;
-//     const authenticatedUser = await getAuthenticatedUser();
-
-//     if ("responseType" in authenticatedUser)
-//         return parseStringify(authenticatedUser);
-
-//     const validatedData = LocationSchema.safeParse(location);
-
-//     if (!validatedData.success) {
-//         formResponse = {
-//             responseType: "error",
-//             message: "Please fill in all the fields marked with * before proceeding",
-//             error: new Error(validatedData.error.message),
-//         };
-
-//         return parseStringify(formResponse);
-//     }
-
-//     try {
-//         const apiClient = new ApiClient();
-//         const business = await getCurrentBusiness();
-
-//         const payload = {
-//             ...validatedData.data,
-//             business: business?.id,
-//         };
-
-//         await apiClient.put(
-//             `/api/locations/${business?.id}/${id}`,
-//             payload
-//         );
-        
-//     } catch (error: unknown) {
-//         formResponse = {
-//             responseType: "error",
-//             message:
-//                 "Something went wrong while processing your request, please try again",
-//             error: error instanceof Error ? error : new Error(String(error)),
-//         };
-//     }
-
-//     if (formResponse) {
-//         return parseStringify(formResponse);
-//     }
-
-//     revalidatePath("/locations");
-//     redirect("/locations");
-// };
-
-
 export const updateLocation = async (
     id: UUID,
     location: z.infer<typeof LocationSchema>,
-): Promise<FormResponse | void> => {
+  ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const authenticatedUser = await getAuthenticatedUser();
-
-    if ("responseType" in authenticatedUser)
-        return parseStringify(authenticatedUser);
-
-    const validatedData = LocationSchema.safeParse(location);
-
-    if (!validatedData.success) {
-        formResponse = {
-            responseType: "error",
-            message: "Please fill in all the fields marked with * before proceeding",
-            error: new Error(validatedData.error.message),
-        };
-
-        return parseStringify(formResponse);
-    }
-
+     // Validate location data
+     const validatedData = LocationSchema.safeParse(location);
+     if (!validatedData.success) {
+       return parseStringify({
+         responseType: "error",
+         message: "Please fill in all the fields marked with * before proceeding",
+         error: new Error(validatedData.error.message),
+       });
+     }
+ 
+    
     try {
-        const apiClient = new ApiClient();
-        const business = await getCurrentBusiness();
-
-        const payload = {
-            ...validatedData.data,
-            business: business?.id,
+     
+      // Get current business and location
+      const apiClient = new ApiClient();
+      const business = await getCurrentBusiness();
+      const currentLocation = await getCurrentLocation();
+  
+      if (!business?.id) {
+        return parseStringify({
+          responseType: "error",
+          message: "Business information not found",
+          error: new Error("Missing business ID"),
+        });
+      }
+  
+      // Create payload for API call
+      const payload = {
+        ...validatedData.data,
+        business: business.id,
+      };
+  
+      // Make the API call to update location
+      await apiClient.put(
+        `/api/locations/${business.id}/${id}`,
+        payload
+      );
+  
+      // Refresh location data if we're updating the current location
+      if (currentLocation?.id === id) {
+        
+        const updatedLocation = {
+          ...currentLocation,
+         
         };
-
-        // Make the API call to update location
-        await apiClient.put(
-            `/api/locations/${business?.id}/${id}`,
-            payload
-        );
         
-        //reload the page
-        revalidatePath("/locations");
-        redirect("/locations");
+        await refreshLocation(updatedLocation);
         
+      }
+  
+      
+      
+      
     } catch (error: unknown) {
-        formResponse = {
-            responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error)),
-        };
+      formResponse = {
+        responseType: "error",
+        message: "Something went wrong while processing your request, please try again",
+        error: error instanceof Error ? error : new Error(String(error)),
+      };
     }
-
+  
     if (formResponse) {
-        return parseStringify(formResponse);
+      return formResponse;
     }
+  
+    
+    revalidatePath("/select-location");
+      redirect("/select-location");
+  };
 
-    // revalidatePath("/locations");
-    // redirect("/locations");
-};
+
 export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
     const apiClient = new ApiClient();
 

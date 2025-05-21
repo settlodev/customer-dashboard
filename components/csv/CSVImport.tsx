@@ -139,6 +139,8 @@ export function ProductCSVDialog() {
   const [uploadComplete, setUploadComplete] = useState(false);
   const [showWarnings, setShowWarnings] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadStarted, setUploadStarted] = useState(false);
+const [uploadError, setUploadError] = useState<string | null>(null);
 
   const { isUploading, uploadProgress, error, uploadCSV, resetUpload } = useCSVUpload();
 
@@ -193,6 +195,8 @@ export function ProductCSVDialog() {
 
   const handleUpload = async () => {
     if (file && fileContent && validationResult?.isValid) {
+      setUploadStarted(true);
+      setUploadError(null);
       try {
         await uploadCSV({ 
           fileData: fileContent,
@@ -207,6 +211,8 @@ export function ProductCSVDialog() {
         }, 1500);
       } catch (error) {
         console.error("Error uploading file:", error);
+        setUploadError("Upload failed. Please try again.");
+        setUploadStarted(false);
       }
     }
   };
@@ -281,7 +287,7 @@ export function ProductCSVDialog() {
                 variant="outline" 
                 size="sm" 
                 className="whitespace-nowrap flex gap-1"
-                disabled={!file || isUploading}
+                disabled={!file || !isUploading}
               >
                 <X className="h-4 w-4" />
                 Clear
@@ -305,7 +311,7 @@ export function ProductCSVDialog() {
             </Alert>
           )}
           
-          {isUploading && (
+          {isUploading && uploadStarted && !uploadComplete && !uploadError && (
             <div className="space-y-2 py-4">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium">Uploading...</span>

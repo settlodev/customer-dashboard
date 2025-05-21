@@ -19,6 +19,7 @@ export declare interface LoginResponse {
 }
 
 export type ApiResponse<T> = {
+    data: any;
     totalPages: number;
     totalElements: number;
     first: boolean;
@@ -33,6 +34,7 @@ export type ApiResponse<T> = {
 };
 
 export type ApiResponsePage = {
+    totalElements: number;
     pageNumber: number;
     pageSize: number;
     sort: ApiSortResponse;

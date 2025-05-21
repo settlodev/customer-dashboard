@@ -14,6 +14,7 @@ export const menuItems = (args?: MenuItemArgType) => {
                 { title: "CashFlow Report", link: "/report/cashflow", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Top Selling Report", link: "/report/top-selling", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Sold Items Report", link: "/report/sold-items", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Credit Report", link: "/report/credit", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Stock Report", link: "/report/stock", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Staff Report", link: "/report/staff", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Department Report", link: "/report/department", current: args?.isCurrentItem, icon: "cart" },
@@ -110,6 +111,8 @@ export const menuItems = (args?: MenuItemArgType) => {
                 { title: "Reservations", link: "/reservations", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Kitchen Display System (KDS)", link: "/kds", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart" },
+                // { title: "QrCode", link: "/qrcode", current: args?.isCurrentItem, icon: "cart" },
+                // { title: "Requests", link: "/request", current: args?.isCurrentItem, icon: "cart" },
             ]
         }
     ];
