@@ -496,7 +496,6 @@ import {
   Facebook,
   Twitter,
   Mail,
-  Info
 } from 'lucide-react';
 import { Product } from '@/types/product/type';
 
@@ -819,10 +818,10 @@ const ProductMenu = () => {
       return Math.abs(hash) % categoryColors.backgrounds.length;
     };
   
-    const getBgColorForCategory = (category: string) => {
-      const index = getCategoryColorIndex(category);
-      return categoryColors.backgrounds[index];
-    };
+    // const getBgColorForCategory = (category: string) => {
+    //   const index = getCategoryColorIndex(category);
+    //   return categoryColors.backgrounds[index];
+    // };
   
     const getTextColorForCategory = (category: string) => {
       const index = getCategoryColorIndex(category);
