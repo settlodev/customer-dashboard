@@ -111,7 +111,7 @@ export const menuItems = (args?: MenuItemArgType) => {
                 { title: "Reservations", link: "/reservations", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Kitchen Display System (KDS)", link: "/kds", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart" },
-                { title: "QrCodes", link: "/qrcode", current: args?.isCurrentItem, icon: "cart" },
+                // { title: "QrCode", link: "/qrcode", current: args?.isCurrentItem, icon: "cart" },
                 // { title: "Requests", link: "/request", current: args?.isCurrentItem, icon: "cart" },
             ]
         }

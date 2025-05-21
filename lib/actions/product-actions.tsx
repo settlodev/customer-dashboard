@@ -563,7 +563,7 @@ export const menuProducts = async (
             size: pageLimit ? pageLimit : 10
         };
 
-        const location = { id: locationId };
+        const location = await getCurrentLocation() || { id: locationId };
         console.log("The location passed is: ", location)
 
         const data = await apiClient.post(
