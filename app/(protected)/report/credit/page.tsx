@@ -81,39 +81,40 @@ const CreditReportDashboard = () => {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('en-US', { 
             style: 'currency', 
-            currency: 'TZS', 
+            currency: 'TSH', 
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         }).format(value);
     };
 
-    const exportToCsv = () => {
-        if (!creditData || !creditData.unpaidOrders) return;
+    // const exportToCsv = () => {
+    //     if (!creditData || !creditData.unpaidOrders) return;
         
-        const headers = ["Order ID", "Order Number", "Date", "Paid", "Unpaid", "Customer"];
-        const rows = creditData.unpaidOrders.map(order => [
-            order.orderId,
-            order.orderNumber,
-            format(new Date(order.openedDate), 'PPp'),
-            formatCurrency(order.paidAmount),
-            formatCurrency(order.unpaidAmount),
-            order.customerName || 'N/A'
-        ]);
+    //     const headers = ["Order Number","Order Name", "Open Date","Customer", "Paid", "Unpaid",];
+    //     const rows = creditData.unpaidOrders.map(order => [
+    //         order.orderNumber,
+    //         order.orderName,
+    //         format(new Date(order.openedDate), 'PPp'),
+    //         order.customerName || 'N/A',
+    //         formatCurrency(order.paidAmount),
+    //         formatCurrency(order.unpaidAmount),
+            
+    //     ]);
         
-        const csvContent = [
-            headers.join(','),
-            ...rows.map(row => row.join(','))
-        ].join('\n');
+    //     const csvContent = [
+    //         headers.join(','),
+    //         ...rows.map(row => row.join(','))
+    //     ].join('\n');
         
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', `credit-report-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+    //     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    //     const url = URL.createObjectURL(blob);
+    //     const link = document.createElement('a');
+    //     link.href = url;
+    //     link.setAttribute('download', `credit-report-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    //     document.body.appendChild(link);
+    //     link.click();
+    //     document.body.removeChild(link);
+    // };
 
     const DateTimePicker = ({ value, onChange}: DatePickerProps) => {
         function handleDateSelect(date: Date | undefined) {
@@ -309,7 +310,7 @@ const CreditReportDashboard = () => {
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-gray-800">Unpaid Orders</h2>
-                <Button 
+                {/* <Button 
                     variant="outline" 
                     size="sm"
                     onClick={exportToCsv}
@@ -317,7 +318,7 @@ const CreditReportDashboard = () => {
                 >
                     <Download className="h-4 w-4" />
                     Export Report
-                </Button>
+                </Button> */}
             </div>
             
             <Card className="shadow-sm overflow-hidden">

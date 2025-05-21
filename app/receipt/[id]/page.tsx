@@ -6,8 +6,8 @@ import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
 
 const OrderReceipt = async ({ params }: { params: { id: string } }) => {
-  const orderData = await getOrderReceipt(params.id as UUID);
-  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/receipt/${orderData.id}`;
+  const orderData = await getOrderReceipt(params.id);
+  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/receipt/${orderData.orderNumber}`;
 
 
   const formatDate = (dateStr: string | number | Date) => {
