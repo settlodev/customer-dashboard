@@ -65,7 +65,7 @@ const Header: React.FC<HeaderProps> = ({
               <Clock className="h-3 w-3 mr-1" />
               {businessInfo.hours}
             </span>
-            <div className="flex space-x-2">
+            {/* <div className="flex space-x-2">
               <a href={businessInfo.socials.facebook} className="hover:text-gray-200">
                 <Facebook className="h-4 w-4" />
               </a>
@@ -75,7 +75,7 @@ const Header: React.FC<HeaderProps> = ({
               <a href={businessInfo.socials.twitter} className="hover:text-gray-200">
                 <Twitter className="h-4 w-4" />
               </a>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

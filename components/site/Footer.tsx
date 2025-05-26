@@ -36,7 +36,7 @@ const Footer: React.FC<FooterProps> = ({ businessInfo, businessType }) => {
           <p className="text-gray-300 text-sm mb-4">
             {businessInfo.tagline}
           </p>
-          <div className="flex space-x-3 mb-4">
+          {/* <div className="flex space-x-3 mb-4">
             <a href={businessInfo.socials.facebook} className="hover:text-gray-300">
               <Facebook className="h-5 w-5" />
             </a>
@@ -46,7 +46,7 @@ const Footer: React.FC<FooterProps> = ({ businessInfo, businessType }) => {
             <a href={businessInfo.socials.twitter} className="hover:text-gray-300">
               <Twitter className="h-5 w-5" />
             </a>
-          </div>
+          </div> */}
         </div>
         
         {/* Quick Links */}
