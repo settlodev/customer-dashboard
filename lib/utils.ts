@@ -83,3 +83,5 @@ export const getBuildInfo = () => {
     environment: process.env.NEXT_PUBLIC_VERCEL_ENV || 'development'
   };
 };
+
+

@@ -6,7 +6,7 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
-import { OrderItemRefunds } from "@/types/refunds/type";
+import { OrderItemRefunds, RefundReport } from "@/types/refunds/type";
 
 export const fetchRefunds = async () : Promise<OrderItemRefunds[]> => {
     await  getAuthenticatedUser();
@@ -90,4 +90,29 @@ export const getRefund= async (id:UUID) : Promise<ApiResponse<OrderItemRefunds>>
         query,
     );
     return parseStringify(refund)
+}
+
+export const GetRefundReport = async (
+    startDate?: string,
+    endDate?: string
+): Promise<RefundReport> => {
+    
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        const queryParams = new URLSearchParams();
+        
+        if (startDate) queryParams.append('startDate', startDate);
+        if (endDate) queryParams.append('endDate', endDate);
+
+        const queryString = queryParams.toString();
+        const url = `/api/reports/${location?.id}/refunds/refunded-items${queryString ? `?${queryString}` : ''}`;
+        const report = await apiClient.get(url);
+        console.log("The refund report data is:", report);
+        return parseStringify(report);
+    } catch (error) {
+        throw error;
+    }
 }

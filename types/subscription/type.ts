@@ -49,6 +49,7 @@ export declare interface ActiveSubscription{
     active:boolean
     location: UUID
     subscription: Subscriptions
+    subscriptionFeatures: SubscriptionFeature[],
     status: boolean
     canDelete: boolean
     isArchived: boolean

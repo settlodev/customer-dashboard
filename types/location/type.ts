@@ -17,7 +17,10 @@ export interface Location {
     canDelete: boolean;
     setting: string;
     business: UUID;
+    businessName: string;
+    image: string;
     endDate: string;
+    locationBusinessTypeName: string;
     subscriptionStatus: subscriptionStatus;
     subscription:UUID;
     isArchived: boolean;

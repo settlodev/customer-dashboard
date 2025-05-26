@@ -21,6 +21,26 @@ export interface OrderItemRefunds {
     isArchived: boolean    
 }
 
+export interface RefundReport{
+    startDate: Date
+    endDate: Date
+    totalRefunds: number
+    totalRefundsAmount: number
+    totalReturnedCost: number
+    refundedItems: ItemRefunds[]
+
+}
+
+export interface ItemRefunds{
+    orderItemName: string
+    staffName: string
+    quantity: number
+    refundAmount: number
+    returnedCost: number
+    latestRefunded:Date
+    earliestRefunded:Date
+}
+
 
 
 

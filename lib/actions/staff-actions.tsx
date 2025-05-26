@@ -122,7 +122,7 @@ export const createStaff = async (
             const businessId = business?.id;
 
             if (staffId && businessId) {
-                // console.log("Inviting staff");
+                
                 await inviteStaff(staffId, businessId);
             } else {
                 throw new Error("Invalid staff or business id");
@@ -133,20 +133,10 @@ export const createStaff = async (
             responseType: "success",
             message: "Staff created successfully",
         }
-    } catch (error: unknown) {
-        // Extract the actual error message from the API response if possible
-        let errorMessage = "Something went wrong while processing your request, please try again";
-        
-        if (error && typeof error === 'object') {
-            if ('message' in error && typeof error.message === 'string') {
-                errorMessage = error.message;
-            } else if ('data' in error && typeof error.data === 'object' && error.data && 'message' in error.data) {
-                errorMessage = String(error.data.message);
-            }
-        }
-        
-        // Throw the error instead of returning it
-        throw new Error(errorMessage);
+    } catch (error: any) {
+       
+        throw new Error(error.message || error.details?.message || "An unexpected error occurred. Please try again.");
+      
     }
 
     revalidatePath("/staff");

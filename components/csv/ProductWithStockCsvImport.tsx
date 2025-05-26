@@ -101,8 +101,7 @@ const validateNumericField = (
 const validateCSV = (
   fileContent: string,
   config = CSV_CONFIG
-): ValidationResult => 
-  {
+): ValidationResult => {
   // Parse the CSV
   const lines = fileContent.trim().split("\n").filter(Boolean);
   const rows: string[][] = lines.map(line => 
@@ -111,7 +110,6 @@ const validateCSV = (
 
   const errors: string[] = [];
 
- 
   if (rows.length === 0) {
     return { isValid: false, errors: ["The file is empty."], rows: [] };
   }
@@ -120,9 +118,7 @@ const validateCSV = (
     return { isValid: false, errors: ["The file only contains headers but no data."], rows };
   }
 
-
   const emojiRegex = /[\u{1F300}-\u{1F9FF}|\u{2700}-\u{27BF}|\u{2600}-\u{26FF}|\u{2300}-\u{23FF}|\u{2000}-\u{206F}|\u{FE00}-\u{FE0F}]/gu;
-  
   
   const headers = rows[0];
   const missingHeaders = config.expectedHeaders.filter((header) => !headers.includes(header));
@@ -134,47 +130,73 @@ const validateCSV = (
     };
   }
 
-  // Duplicate check: Product Name + Variant Name + Stock Name + Stock Variant Name (as an example)
-const duplicateCheckMap = new Map<string, number[]>();
+  // IMPROVED DUPLICATE CHECKING - Section-wise validation
+  const productDuplicates = new Map<string, number[]>();
+  const stockDuplicates = new Map<string, number[]>();
 
-rows.slice(1).forEach((row, i) => {
-  const rowIndex = i + 2; // +2 to account for headers + 0-index
+  // Get header indices
+  const productNameIndex = headers.indexOf("Product Name");
+  const variantNameIndex = headers.indexOf("Variant Name");
+  const stockNameIndex = headers.indexOf("Stock Name");
+  const stockVariantNameIndex = headers.indexOf("Stock Variant Name");
 
-  const productName = row[headers.indexOf("Product Name")]?.toLowerCase().trim();
-  const variantName = row[headers.indexOf("Variant Name")]?.toLowerCase().trim();
-  const stockName = row[headers.indexOf("Stock Name")]?.toLowerCase().trim();
-  const stockVariantName = row[headers.indexOf("Stock Variant Name")]?.toLowerCase().trim();
+  rows.slice(1).forEach((row, i) => {
+    const rowIndex = i + 2; // +2 to account for headers + 0-index
 
-  const key = `${productName}-${variantName}-${stockName}-${stockVariantName}`;
+    // Product Section Duplicate Check (Product Name + Variant Name)
+    const productName = row[productNameIndex]?.toLowerCase().trim();
+    const variantName = row[variantNameIndex]?.toLowerCase().trim();
+    const productKey = `${productName}|||${variantName}`; // Using ||| as separator to avoid conflicts
 
-  if (!duplicateCheckMap.has(key)) {
-    duplicateCheckMap.set(key, [rowIndex]);
-  } else {
-    duplicateCheckMap.get(key)!.push(rowIndex);
-  }
-});
+    if (!productDuplicates.has(productKey)) {
+      productDuplicates.set(productKey, [rowIndex]);
+    } else {
+      productDuplicates.get(productKey)!.push(rowIndex);
+    }
 
-// Collect duplicate keys
-duplicateCheckMap.forEach((indexes, key) => {
-  if (indexes.length > 1) {
-    errors.push(
-      `Duplicate entries found in rows: ${indexes.join(", ")} for combination: ${key.replaceAll("-", " / ")}`
-    );
-  }
-});
+    // Stock Section Duplicate Check (Stock Name + Stock Variant Name)
+    const stockName = row[stockNameIndex]?.toLowerCase().trim();
+    const stockVariantName = row[stockVariantNameIndex]?.toLowerCase().trim();
+    const stockKey = `${stockName}|||${stockVariantName}`;
 
+    if (!stockDuplicates.has(stockKey)) {
+      stockDuplicates.set(stockKey, [rowIndex]);
+    } else {
+      stockDuplicates.get(stockKey)!.push(rowIndex);
+    }
+  });
 
- 
+  // Collect Product Section duplicates
+  productDuplicates.forEach((indexes, key) => {
+    if (indexes.length > 1) {
+      const [productName, variantName] = key.split('|||');
+      errors.push(
+        `🔄 Product Section - Duplicate entries found in rows: ${indexes.join(", ")} for Product: "${productName}" + Variant: "${variantName}"`
+      );
+    }
+  });
+
+  // Collect Stock Section duplicates
+  stockDuplicates.forEach((indexes, key) => {
+    if (indexes.length > 1) {
+      const [stockName, stockVariantName] = key.split('|||');
+      errors.push(
+        `📦 Stock Section - Duplicate entries found in rows: ${indexes.join(", ")} for Stock: "${stockName}" + Stock Variant: "${stockVariantName}"`
+      );
+    }
+  });
+
+  // Rest of the validation logic (field validation, etc.)
   rows.slice(1).forEach((row, rowIndex) => {
     const rowErrors: string[] = [];
     const currentRowIndex = rowIndex + 2; 
     
-   
+    // Column count validation
     if (row.length !== headers.length) {
       rowErrors.push(`Row ${currentRowIndex}: Column count mismatch. Expected ${headers.length} columns, found ${row.length}.`);
     }
 
-   
+    // Emoji validation for text fields
     config.textFields.forEach((field) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && row[fieldIndex]) {
@@ -184,7 +206,7 @@ duplicateCheckMap.forEach((indexes, key) => {
       }
     });
 
-    
+    // Required field validation
     config.requiredFields.forEach((field) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && (!row[fieldIndex] || row[fieldIndex].trim() === "")) {
@@ -192,7 +214,7 @@ duplicateCheckMap.forEach((indexes, key) => {
       }
     });
 
-    
+    // Numeric field validation
     Object.entries(config.numericFields).forEach(([field, validationConfig]) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && row[fieldIndex]) {
@@ -211,12 +233,83 @@ duplicateCheckMap.forEach((indexes, key) => {
     }
   });
 
-
   return { isValid: errors.length === 0, errors, rows };
 };
 
 
 
+// Helper function for comprehensive duplicate analysis
+// const analyzeDuplicates = (rows: string[][], headers: string[]) => {
+//   const errors: string[] = [];
+  
+//   // Get header indices
+//   const indices = {
+//     productName: headers.indexOf("Product Name"),
+//     variantName: headers.indexOf("Variant Name"),
+//     stockName: headers.indexOf("Stock Name"),
+//     stockVariantName: headers.indexOf("Stock Variant Name")
+//   };
+
+//   // Maps to track duplicates
+//   const productMap = new Map<string, Array<{row: number, data: string[]}>>();
+//   const stockMap = new Map<string, Array<{row: number, data: string[]}>>();
+
+//   // Analyze each row
+//   rows.slice(1).forEach((row, i) => {
+//     const rowIndex = i + 2;
+
+//     // Product analysis
+//     const productKey = `${row[indices.productName]?.toLowerCase().trim()}|||${row[indices.variantName]?.toLowerCase().trim()}`;
+//     if (!productMap.has(productKey)) {
+//       productMap.set(productKey, []);
+//     }
+//     productMap.get(productKey)!.push({ 
+//       row: rowIndex, 
+//       data: [row[indices.productName], row[indices.variantName]]
+//     });
+
+//     // Stock analysis
+//     const stockKey = `${row[indices.stockName]?.toLowerCase().trim()}|||${row[indices.stockVariantName]?.toLowerCase().trim()}`;
+//     if (!stockMap.has(stockKey)) {
+//       stockMap.set(stockKey, []);
+//     }
+//     stockMap.get(stockKey)!.push({ 
+//       row: rowIndex, 
+//       data: [row[indices.stockName], row[indices.stockVariantName]]
+//     });
+//   });
+
+//   // Report Product duplicates
+//   productMap.forEach((entries, key) => {
+//     if (entries.length > 1) {
+//       const [productName, variantName] = key.split('|||');
+//       const rowNumbers = entries.map(e => e.row);
+//       errors.push(
+//         `🔄 PRODUCT DUPLICATE: Rows ${rowNumbers.join(", ")} have the same Product Name "${productName}" + Variant Name "${variantName}"`
+//       );
+//     }
+//   });
+
+//   // Report Stock duplicates
+//   stockMap.forEach((entries, key) => {
+//     if (entries.length > 1) {
+//       const [stockName, stockVariantName] = key.split('|||');
+//       const rowNumbers = entries.map(e => e.row);
+      
+//       // Get the product names for these stock duplicates to provide context
+//       const productContext = entries.map(e => {
+//         const originalRow = rows[e.row - 2 + 1]; // Adjust for header offset
+//         return `"${originalRow[indices.productName]}" (Row ${e.row})`;
+//       });
+      
+//       errors.push(
+//         `📦 STOCK DUPLICATE: Rows ${rowNumbers.join(", ")} have the same Stock Name "${stockName}" + Stock Variant "${stockVariantName}". Found in products: ${productContext.join(", ")}`
+//       );
+//     }
+//   });
+
+//   return { errors };
+// };
 
 type TaskStatus = 'idle' | 'processing' | 'complete' | 'failed' | 'error';
 

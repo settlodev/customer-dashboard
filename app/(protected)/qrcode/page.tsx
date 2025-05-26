@@ -213,6 +213,7 @@ const QRCodeGenerator = () => {
     const fetchLocation = async () => {
       try {
         const locationCurrent = await getCurrentLocation();
+        // console.log("Current Location:", locationCurrent);
         if (locationCurrent) {
           setLocation(locationCurrent);
         }
@@ -245,7 +246,7 @@ const QRCodeGenerator = () => {
       
       // Add location ID parameter if available
       if (location && location.id) {
-        return `${baseUrl}?locationId=${location.id}`;
+        return `${baseUrl}?locationId=${location.id}&businessId=${location.business}`;
       }
       
       return baseUrl;
