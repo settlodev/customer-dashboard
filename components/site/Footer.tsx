@@ -9,9 +9,9 @@ import {
   Phone, 
   Mail, 
   Clock,
-  Facebook,
-  Instagram,
-  Twitter
+  // Facebook,
+  // Instagram,
+  // Twitter
 } from 'lucide-react';
 import { BusinessInfo, BusinessType } from '@/types/site/type';
 
