@@ -61,48 +61,65 @@ const StaffForm: React.FC<StaffFormProps> = ({
         [toast],
     );
 
-    const submitData = (values: z.infer<typeof StaffSchema>) => {
+    const submitData = async (values: z.infer<typeof StaffSchema>) => {
         setResponse(undefined);
     
-        startTransition(() => {
-            if (item) {
-                updateStaff(item.id, values)
-                    .then((data) => {
-                        if (data) {
-                            setResponse(data);
-                            onFormSubmitted?.(data);
-                        }
-                    })
-                    .catch((error) => {
-                        // Handle the error
-                        const errorMessage = error instanceof Error ? error.message : 
-                            "There was an issue with your request, please try again later";
-                        
+        startTransition(async () => {
+            try {
+                let result: FormResponse | void;
+                
+                if (item) {
+                    result = await updateStaff(item.id, values);
+                } else {
+                    result = await createStaff(values);
+                }
+    
+                if (result) {
+                    setResponse(result);
+                    
+                    if (result.responseType === "success") {
+                        // Handle success
+                        toast({
+                            title: "Success!",
+                            description: result.message,
+                        });
+                        onFormSubmitted?.(result);
+                    } else if (result.responseType === "error") {
+                        // Handle error from server action
                         toast({
                             variant: "destructive",
-                            title: "Uh oh! Something went wrong.",
-                            description: errorMessage
+                            title: "Error",
+                            description: result.message || "An error occurred while processing your request.",
                         });
-                    });
-            } else {
-                createStaff(values)
-                    .then((data) => {
-                        if (data) {
-                            setResponse(data);
-                            onFormSubmitted?.(data);
-                        }
-                    })
-                    .catch((error) => {
-                        // Handle the error
-                        const errorMessage = error instanceof Error ? error.message : 
-                            "There was an issue with your request, please try again later";
-                        
-                        toast({
-                            variant: "destructive",
-                            title: "Uh oh! Something went wrong.",
-                            description: errorMessage
-                        });
-                    });
+                    }
+                }
+            } catch (error: any) {
+                console.error("Form submission error:", error);
+                
+                // This catch block handles any errors that weren't caught by the server action
+                let errorMessage = "There was an issue with your request, please try again later";
+                
+                // Try to extract error message
+                if (error?.message) {
+                    errorMessage = error.message;
+                } else if (error?.digest) {
+                    // This is a Next.js production error with digest
+                    errorMessage = "A server error occurred. Please try again later.";
+                }
+                
+                toast({
+                    variant: "destructive",
+                    title: "Uh oh! Something went wrong.",
+                    description: errorMessage
+                });
+    
+                // Set error response for form state
+                const errorResponse: FormResponse = {
+                    responseType: "error",
+                    message: errorMessage,
+                    error: error instanceof Error ? error : new Error(errorMessage),
+                };
+                setResponse(errorResponse);
             }
         });
     };

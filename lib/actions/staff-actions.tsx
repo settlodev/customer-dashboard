@@ -110,22 +110,24 @@ export const createStaff = async (
             business: business?.id
         }
 
-       const staff = await apiClient.post(
+        const staff = await apiClient.post(
             `/api/staff/${location?.id}/create`,
             payload,
         ) as Staff;
-
-        // console.log("The staff created is", staff);
 
         if (staff && staff.dashboardAccess === true) {
             const staffId = staff.id;
             const businessId = business?.id;
 
             if (staffId && businessId) {
-                
                 await inviteStaff(staffId, businessId);
             } else {
-                throw new Error("Invalid staff or business id");
+                // Return error instead of throwing
+                return parseStringify({
+                    responseType: "error",
+                    message: "Staff created but invitation failed due to invalid IDs",
+                    error: new Error("Invalid staff or business id"),
+                });
             }
         }
 
@@ -133,14 +135,42 @@ export const createStaff = async (
             responseType: "success",
             message: "Staff created successfully",
         }
+
+        // Move revalidation and redirect after successful response
+        revalidatePath("/staff");
+        redirect("/staff");
+
     } catch (error: any) {
-       
-        throw new Error(error.message || error.details?.message || "An unexpected error occurred. Please try again.");
-      
+        console.error("Error creating staff:", error);
+        
+        // Better error message extraction
+        let errorMessage = "An unexpected error occurred. Please try again.";
+        
+        // Try to extract meaningful error messages
+        if (error.message) {
+            errorMessage = error.message;
+        } else if (error.details?.message) {
+            errorMessage = error.details.message;
+        } else if (error.response?.data?.message) {
+            errorMessage = error.response.data.message;
+        } else if (error.response?.data?.error) {
+            errorMessage = error.response.data.error;
+        }
+
+        // Check for specific error patterns
+        if (errorMessage.includes('beyond the limit') || errorMessage.includes('subscription')) {
+            // This is likely the subscription limit error
+            errorMessage = errorMessage; // Keep the original message
+        }
+
+        return parseStringify({
+            responseType: "error",
+            message: errorMessage,
+            error: new Error(errorMessage),
+        });
     }
 
-    revalidatePath("/staff");
-    redirect("/staff");
+    return parseStringify(formResponse);
 };
 
 export const updateStaff = async (
