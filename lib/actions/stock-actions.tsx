@@ -45,9 +45,9 @@ export const fetchStock = async () : Promise<Stock[]> => {
 }
 
 export const searchStock = async (
-    q:string,
-    page:number,
-    pageLimit:number
+q: string, 
+page: number, 
+pageLimit: number
 ): Promise<ApiResponse<Stock>> =>{
     await getAuthenticatedUser();
 

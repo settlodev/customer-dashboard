@@ -301,8 +301,7 @@ export const updateLocation = async (
 export const getLocationById = async (businessId: string, locationId: string): Promise<Location> => {
     await getAuthenticatedUser();
 
-    // console.log("The business data is:", businessId);
-    // console.log("The location data is:", locationId);
+  
 
     try {
         const apiClient = new ApiClient();

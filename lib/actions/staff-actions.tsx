@@ -122,7 +122,7 @@ export const createStaff = async (
             if (staffId && businessId) {
                 await inviteStaff(staffId, businessId);
             } else {
-                // Return error instead of throwing
+                
                 return parseStringify({
                     responseType: "error",
                     message: "Staff created but invitation failed due to invalid IDs",
@@ -136,14 +136,13 @@ export const createStaff = async (
             message: "Staff created successfully",
         }
 
-        // Move revalidation and redirect after successful response
+        
         revalidatePath("/staff");
         redirect("/staff");
 
     } catch (error: any) {
-        console.error("Error creating staff:", error);
+        // console.error("Error creating staff:", error);
         
-        // Better error message extraction
         let errorMessage = "An unexpected error occurred. Please try again.";
         
         // Try to extract meaningful error messages
@@ -157,10 +156,10 @@ export const createStaff = async (
             errorMessage = error.response.data.error;
         }
 
-        // Check for specific error patterns
+       
         if (errorMessage.includes('beyond the limit') || errorMessage.includes('subscription')) {
-            // This is likely the subscription limit error
-            errorMessage = errorMessage; // Keep the original message
+            
+            errorMessage = errorMessage; 
         }
 
         return parseStringify({

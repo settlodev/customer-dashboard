@@ -35,7 +35,6 @@ export const refreshBusiness = async (data: Business): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
 
     const minimalBusiness = createMinimalBusiness(data);
-    console.log("minimalBusiness", minimalBusiness);
     const cookieStore = cookies();
 
     // Delete existing cookie first
