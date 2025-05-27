@@ -7,6 +7,7 @@ import {DataTable} from "@/components/tables/data-table";
 import {columns} from '@/components/tables/recipe/column'
 import { searchRecipe } from "@/lib/actions/recipe-actions";
 import { Recipe } from "@/types/recipe/type";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 const breadCrumbItems = [{title:"Recipes",link:"/recipes"}];
  type ParamsProps ={
@@ -27,7 +28,10 @@ const breadCrumbItems = [{title:"Recipes",link:"/recipes"}];
      const pageCount = responseData.totalPages
 
     return (
-        <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
+       
+
+<SubscriptionGuard requiredFeatures={['recipes']} featureName="Recipe Management">
+<div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
             <div className={`flex items-center justify-between mb-2`}>
                 <div className={`relative flex-1 md:max-w-md`}>
                     <BreadcrumbsNav items={breadCrumbItems} />
@@ -63,6 +67,7 @@ const breadCrumbItems = [{title:"Recipes",link:"/recipes"}];
                 )
             }
         </div>
+</SubscriptionGuard>
     );
 }
 

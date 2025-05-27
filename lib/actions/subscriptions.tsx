@@ -25,7 +25,7 @@ export const fetchSubscriptions = async (): Promise<Subscriptions[]> => {
         const apiClient = new ApiClient();
         const response = await apiClient.get<Subscriptions[]>("/api/subscriptions/");
         const sortedSubscriptions = response.sort((a, b) => a.amount - b.amount);
-        console.log("Sorted subscriptions:", sortedSubscriptions);
+        // console.log("Sorted subscriptions:", sortedSubscriptions);
         return parseStringify(sortedSubscriptions);
     } catch (error) {
         throw error;
@@ -49,7 +49,7 @@ export const getActiveSubscription = async (): Promise<ActiveSubscription> => {
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/location-subscriptions/${location?.id}/active`);
-        console.log("Active subscription response:", response);
+        // console.log("Active subscription response:", response);
         return parseStringify(response);
     } catch (error) {
         throw error;
