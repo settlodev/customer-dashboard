@@ -36,6 +36,8 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
 
     const handleLocationSelect = (location: Location) => {
         const isActive = currentLocation?.id === location.id;
+
+        console.log("Selected location:", location);
         
         if (isActive) return;
         
