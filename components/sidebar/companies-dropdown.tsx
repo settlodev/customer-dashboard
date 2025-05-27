@@ -46,6 +46,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
     };
 
     const onRefreshLocation = async (location: Location) => {
+        
         try {
             setLoadingLocationId(location.id);
             await refreshLocation(location).then(res => {
@@ -53,8 +54,12 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                 setConfirmationOpen(false);
                 setSelectedLocation(null);
                 setLoadingLocationId(null);
-                // Reload the page and redirect to dashboard
-                window.location.href = '/dashboard';
+                
+                if (location.subscriptionStatus === "EXPIRED" || location.subscriptionStatus === null) {
+                    window.location.href = `/subscription?location=${location.id}`;
+                } else {
+                    window.location.href = '/dashboard';
+                }
             });
         } catch (error) {
             Sentry.captureException(error);
