@@ -244,11 +244,19 @@ const QRCodeGenerator = () => {
     if (typeof window !== 'undefined') {
       const baseUrl = `${window.location.origin}/menu`;
       
-      // Add location ID parameter if available
+      console.log("=== QR URL GENERATION ===");
+      console.log("Base URL:", baseUrl);
+      console.log("Location object:", location);
+      console.log("Location ID:", location?.id);
+      
       if (location && location.id) {
-        return `${baseUrl}?locationId=${location.id}`;
+        const fullUrl = `${baseUrl}/${location.id}`;
+        console.log("Generated QR URL:", fullUrl);
+        return fullUrl;
       }
       
+      console.log("No location ID, returning base URL");
+      console.log("=========================");
       return baseUrl;
     }
     return '';
