@@ -1,4 +1,3 @@
-
 'use client';
 import React from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -42,7 +41,11 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           </div>
           
           {/* Products Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className={`grid gap-4 ${
+            categorizedProducts[category].length === 1 
+              ? 'grid-cols-1 lg:grid-cols-2' 
+              : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-4'
+          }`}>
             {categorizedProducts[category].map(product => {
               const extendedProduct = product as ExtendedProduct;
               return (
