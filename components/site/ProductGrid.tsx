@@ -1,10 +1,8 @@
-// components/ProductGrid.tsx
+
 'use client';
 import React from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Heart, ShoppingCartIcon, Tag } from 'lucide-react';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { ShoppingCartIcon} from 'lucide-react';
 import { BusinessType, CategorizedProducts, ExtendedProduct } from '@/types/site/type';
 
 interface ProductGridProps {
@@ -19,8 +17,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   categorizedProducts,
   selectedCategory,
   businessType,
-  onAddToCart,
-  onAddToWishlist
 }) => {
   const getProductPrice = (product: ExtendedProduct) => {
     if (product.variants && product.variants.length > 0) {
@@ -31,6 +27,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
   return (
     <div>
+      
       {Object.keys(categorizedProducts).map(category => (
         <div 
           key={category} 
@@ -53,16 +50,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   key={`${product.id}-${product.name}`} 
                   className="overflow-hidden group hover:shadow-lg transition-all duration-300 relative"
                 >
-                  {/* Wishlist Button */}
-                  <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    className="absolute top-2 right-2 bg-white rounded-full shadow-md z-10 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={() => onAddToWishlist(extendedProduct)}
-                  >
-                    <Heart className="h-4 w-4 text-gray-600 hover:text-red-500" />
-                  </Button>
-                  
+              
                   <div className="relative">
                     {product.image ? (
                       <img 
@@ -89,20 +77,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                     </div>
                   </CardContent>
                   
-                  <CardFooter className="p-3 pt-0 justify-center flex flex-col gap-2">
-                    <Badge variant="outline" className="px-2 py-1 text-xs w-full justify-center">
-                      <Tag className="h-3 w-3 mr-1" />
-                      {extendedProduct.categoryName}
-                    </Badge>
-                    
-                    <Button 
-                      className={`w-full mt-1 ${businessType.primary} hover:opacity-90`}
-                      size="sm"
-                      onClick={() => onAddToCart(extendedProduct)}
-                    >
-                      Add to Cart
-                    </Button>
-                  </CardFooter>
                 </Card>
               );
             })}

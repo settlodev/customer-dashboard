@@ -21,10 +21,7 @@ interface ProductMenuProps {
 
 const ProductMenu = ({ params }: ProductMenuProps) => {
 
-  console.log("=== PRODUCT MENU DEBUG ===");
-  console.log("ProductMenu received params:", params);
-  console.log("ProductMenu Location ID:", params.id);
-  console.log("===========================");
+  
 
   // State Management
   const [products, setProducts] = useState<ExtendedProduct[]>([]);
@@ -57,7 +54,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
    
     
     if (params?.id) {
-      console.log("Setting locationId state to:", params.id);
+      
       setLocationId(params.id);
     } else {
       console.log("No locationId found in params");
@@ -364,7 +361,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
             {!productsInitialLoad && productsLoading && (
               <div className="flex flex-col items-center">
                 <div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${businessType.accent} mb-2`}></div>
-                <p className="text-gray-500 text-sm">Loading more products...</p>
+                <p className="text-gray-500 text-sm">Loading more items...</p>
               </div>
             )}
             

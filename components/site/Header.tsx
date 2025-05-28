@@ -1,21 +1,12 @@
-// components/Header.tsx
 'use client';
 import React from 'react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
   Phone, 
   MapPin, 
   Clock, 
-  Heart, 
-  ShoppingCart, 
-  User,
-  Menu,
   Search,
   ShoppingCartIcon,
-  // Facebook,
-  // Instagram,
-  // Twitter
 } from 'lucide-react';
 import { BusinessInfo, BusinessType } from '@/types/site/type';
 
@@ -36,14 +27,10 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({
   businessInfo,
   businessType,
-  isMobile,
   searchQuery,
   setSearchQuery,
   handleSearch,
-  cartCount,
-  wishlistCount,
-  setIsMenuOpen,
-  isMenuOpen
+
 }) => {
   return (
     <>
@@ -65,17 +52,6 @@ const Header: React.FC<HeaderProps> = ({
               <Clock className="h-3 w-3 mr-1" />
               {businessInfo?.hours}
             </span>
-            {/* <div className="flex space-x-2">
-              <a href={businessInfo.socials.facebook} className="hover:text-gray-200">
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a href={businessInfo.socials.instagram} className="hover:text-gray-200">
-                <Instagram className="h-4 w-4" />
-              </a>
-              <a href={businessInfo.socials.twitter} className="hover:text-gray-200">
-                <Twitter className="h-4 w-4" />
-              </a>
-            </div> */}
           </div>
         </div>
       </div>
@@ -86,7 +62,7 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex justify-between items-center">
             {/* Logo and Business Name */}
             <div className="flex items-center space-x-2">
-              {isMobile && (
+              {/* {isMobile && (
                 <Button 
                   variant="ghost" 
                   size="icon" 
@@ -95,7 +71,7 @@ const Header: React.FC<HeaderProps> = ({
                 >
                   <Menu className="h-6 w-6" />
                 </Button>
-              )}
+              )} */}
               
               <div className="flex items-center">
                 <div className={`w-10 h-10 rounded-full ${businessType.primary} flex items-center justify-center mr-2`}>
@@ -133,7 +109,7 @@ const Header: React.FC<HeaderProps> = ({
             </div>
             
             {/* Action Icons */}
-            <div className="flex items-center space-x-2">
+            {/* <div className="flex items-center space-x-2">
               <Button variant="ghost" size="icon" onClick={() => alert('Account')}>
                 <User className="h-5 w-5" />
               </Button>
@@ -153,7 +129,7 @@ const Header: React.FC<HeaderProps> = ({
                   </span>
                 )}
               </Button>
-            </div>
+            </div> */}
           </div>
           
           {/* Mobile Search */}
