@@ -11,10 +11,11 @@ import MobileMenu from '@/components/site/MobileMenu';
 import ScrollToTop from '@/components/site/ScrollToTop';
 import { businessTypes, CategorizedProducts, ExtendedProduct,} from '@/types/site/type';
 import { LocationDetails } from '@/types/menu/type';
+import Loading from '@/app/loading';
 
 interface ProductMenuProps {
   params: {
-    locationId: string;
+    id: string;
   };
 }
 
@@ -22,7 +23,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
 
   console.log("=== PRODUCT MENU DEBUG ===");
   console.log("ProductMenu received params:", params);
-  console.log("ProductMenu Location ID:", params.locationId);
+  console.log("ProductMenu Location ID:", params.id);
   console.log("===========================");
 
   // State Management
@@ -53,19 +54,17 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [isBusinessDataReady, setIsBusinessDataReady] = useState(false);
 
   useEffect(() => {
-    console.log("=== LOCATION ID EFFECT ===");
-    console.log("params object:", params);
-    console.log("params.locationId:", params.locationId);
+   
     
-    if (params?.locationId) {
-      console.log("Setting locationId state to:", params.locationId);
-      setLocationId(params.locationId);
+    if (params?.id) {
+      console.log("Setting locationId state to:", params.id);
+      setLocationId(params.id);
     } else {
       console.log("No locationId found in params");
       setLocationError("Missing location or business ID");
       setLocationLoading(false);
     }
-    console.log("==========================");
+    
   }, [params]);
 
   // Fetch location data first - this is critical for business info
@@ -292,11 +291,8 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   if (locationLoading || !businessInfo) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-800 mb-2">Loading Business Information</h2>
-          <p className="text-gray-600">Please wait while we fetch the business details...</p>
-        </div>
+        
+        <Loading/>
       </div>
     );
   }
