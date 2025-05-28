@@ -246,7 +246,7 @@ const QRCodeGenerator = () => {
       
       // Add location ID parameter if available
       if (location && location.id) {
-        return `${baseUrl}?locationId=${location.id}&businessId=${location.business}`;
+        return `${baseUrl}?locationId=${location.id}`;
       }
       
       return baseUrl;

@@ -12,6 +12,7 @@ import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-b
 import {Product, SoldItemsReport, TopSellingProduct} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
 import { GoogleGenAI } from "@google/genai";
+import { LocationDetails} from "@/types/menu/type";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
     await  getAuthenticatedUser();
@@ -581,3 +582,27 @@ export const menuProducts = async (
         throw error;
     }
 };
+
+export const locationMenuDetails = async (
+    locationId?: string
+  ): Promise<LocationDetails> => {
+    try {
+      const apiClient = new ApiClient();
+  
+      const data = await apiClient.get<LocationDetails>(
+        `/api/menu/${locationId}`,
+        {
+          headers: {
+            "SETTLO-API-KEY":
+              "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
+          }
+        }
+      );
+  
+      console.log("location details", data);
+  
+      return parseStringify(data); // Should return LocationDetails
+    } catch (error) {
+      throw error;
+    }
+  };

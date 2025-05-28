@@ -31,10 +31,10 @@ const Footer: React.FC<FooterProps> = ({ businessInfo, businessType }) => {
             <div className={`w-10 h-10 rounded-full ${businessType.primary} flex items-center justify-center mr-2`}>
               <ShoppingCartIcon className="h-6 w-6 text-white" />
             </div>
-            <h2 className="font-bold text-xl">{businessInfo.name}</h2>
+            <h2 className="font-bold text-xl">{businessInfo?.name}</h2>
           </div>
           <p className="text-gray-300 text-sm mb-4">
-            {businessInfo.tagline}
+            {businessInfo?.tagline}
           </p>
           {/* <div className="flex space-x-3 mb-4">
             <a href={businessInfo.socials.facebook} className="hover:text-gray-300">
@@ -67,19 +67,19 @@ const Footer: React.FC<FooterProps> = ({ businessInfo, businessType }) => {
           <ul className="space-y-3 text-gray-300">
             <li className="flex items-start">
               <MapPin className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-              <span>{businessInfo.address}</span>
+              <span>{businessInfo?.address}</span>
             </li>
             <li className="flex items-center">
               <Phone className="h-5 w-5 mr-2" />
-              <span>{businessInfo.phone}</span>
+              <span>{businessInfo?.phone}</span>
             </li>
             <li className="flex items-center">
               <Mail className="h-5 w-5 mr-2" />
-              <span>{businessInfo.email}</span>
+              <span>{businessInfo?.email}</span>
             </li>
             <li className="flex items-start">
               <Clock className="h-5 w-5 mr-2 flex-shrink-0 mt-0.5" />
-              <span>{businessInfo.hours}</span>
+              <span>{businessInfo?.hours}</span>
             </li>
           </ul>
         </div>
@@ -107,7 +107,7 @@ const Footer: React.FC<FooterProps> = ({ businessInfo, businessType }) => {
       <div className="border-t border-gray-700">
         <div className="max-w-6xl mx-auto p-4 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">
-            © {new Date().getFullYear()} {businessInfo.name}. All rights reserved.
+            © {new Date().getFullYear()} {businessInfo?.name}. All rights reserved.
           </p>
           <div className="flex space-x-4 mt-2 md:mt-0">
             <a href="#" className="text-gray-400 hover:text-white text-sm">Privacy Policy</a>

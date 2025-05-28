@@ -53,17 +53,17 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex space-x-4 text-sm">
             <span className="flex items-center">
               <Phone className="h-3 w-3 mr-1" />
-              {businessInfo.phone}
+              {businessInfo?.phone}
             </span>
             <span className="flex items-center">
               <MapPin className="h-3 w-3 mr-1" />
-              {businessInfo.address}
+              {businessInfo?.address}
             </span>
           </div>
           <div className="flex space-x-4 text-sm">
             <span className="flex items-center">
               <Clock className="h-3 w-3 mr-1" />
-              {businessInfo.hours}
+              {businessInfo?.hours}
             </span>
             {/* <div className="flex space-x-2">
               <a href={businessInfo.socials.facebook} className="hover:text-gray-200">
@@ -102,9 +102,9 @@ const Header: React.FC<HeaderProps> = ({
                   <ShoppingCartIcon className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="font-bold text-xl">{businessInfo.name}</h1>
+                  <h1 className="font-bold text-xl">{businessInfo?.name}</h1>
                   <p className="text-xs text-gray-500 hidden md:block">
-                    {businessInfo.tagline}
+                    {businessInfo?.tagline}
                   </p>
                 </div>
               </div>

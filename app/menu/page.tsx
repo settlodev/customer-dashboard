@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
-import { menuProducts } from '@/lib/actions/product-actions';
+import { locationMenuDetails, menuProducts } from '@/lib/actions/product-actions';
 import { Product } from '@/types/product/type';
 import Header from '@/components/site/Header';
 import CategoryMenu from '@/components/site/CategoryMenu';
@@ -10,8 +10,7 @@ import Footer from '@/components/site/Footer';
 import MobileMenu from '@/components/site/MobileMenu';
 import ScrollToTop from '@/components/site/ScrollToTop';
 import { businessTypes, CategorizedProducts, ExtendedProduct,} from '@/types/site/type';
-import { getLocationById } from '@/lib/actions/location-actions';
-import { Location } from '@/types/location/type';
+import { LocationDetails } from '@/types/menu/type';
 
 const ProductMenu = () => {
   // State Management
@@ -28,7 +27,6 @@ const ProductMenu = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [productsInitialLoad, setProductsInitialLoad] = useState(true);
   const [locationId, setLocationId] = useState<string | null>(null);
-  const [businessId, setBusinessId] = useState<string | null>(null);
   const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
@@ -37,7 +35,7 @@ const ProductMenu = () => {
   
   // Separate location/business loading states
   const [locationLoading, setLocationLoading] = useState(true);
-  const [, setLocation] = useState<Location | null>(null);
+  const [, setLocation] = useState<LocationDetails | null>(null);
   const [businessInfo, setBusinessInfo] = useState<any>(null); // Start with null instead of default
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isBusinessDataReady, setIsBusinessDataReady] = useState(false);
@@ -47,11 +45,9 @@ const ProductMenu = () => {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const locationParam = urlParams.get('locationId');
-      const businessParam = urlParams.get('businessId');
-      console.log('The locationId is:', locationParam, 'The businessId is:', businessParam);
-      if (locationParam && businessParam) {
+      if (locationParam) {
         setLocationId(locationParam);
-        setBusinessId(businessParam);
+       
       } else {
         // If no URL params, set error state
         setLocationError("Missing location or business ID");
@@ -63,56 +59,60 @@ const ProductMenu = () => {
   // Fetch location data first - this is critical for business info
   useEffect(() => {
     const fetchLocationData = async () => {
-      if (!locationId || !businessId) {
+      if (!locationId) {
         setLocationLoading(false);
         return;
       }
 
       try {
         setLocationLoading(true);
+        setLocationError(null); // Clear previous errors
         
-        const locationData = await getLocationById(businessId, locationId);
+        const locationData = await locationMenuDetails(locationId);
+       
+      
+       
+        setLocation(locationData);
         
-        if (locationData) {
-          setLocation(locationData);
-          
-          const updatedBusinessInfo = {
-            name: locationData.businessName || "Loading...",
-            tagline: locationData.description || "Loading business details...",
-            logo: locationData.image || "/logo.png",
-            phone: locationData.phone || "",
-            email: locationData.email || "",
-            address: locationData.address || "",
-            hours: locationData.openingTime || "",
-            // socials: {
-            //   instagram: locationData.socialMedia?.instagram || "#",
-            //   facebook: locationData.socialMedia?.facebook || "#",
-            //   twitter: locationData.socialMedia?.twitter || "#"
-            // },
-            businessType: locationData.locationBusinessTypeName || "default"
-          };
-          
-          setBusinessInfo(updatedBusinessInfo);
-          
-          if (locationData.locationBusinessTypeName && businessTypes[locationData.locationBusinessTypeName as keyof typeof businessTypes]) {
-            setBusinessType(businessTypes[locationData.locationBusinessTypeName as keyof typeof businessTypes]);
-          }
-          
-          setIsBusinessDataReady(true);
-        } else {
-          setLocationError("Location not found");
+        // Map API response to business info structure
+        const updatedBusinessInfo = {
+          name: locationData.businessName || "",
+          tagline: locationData.tagline || "",
+          logo: locationData.businessLogo || "",
+          phone: locationData.businessPhone || "",
+          email: locationData.businessEmailAddress || "",
+          address: locationData.locationAddress || "",
+          hours: `${locationData.locationOpeningHours || ""} - ${locationData.locationClosingHours || ""}`.trim(),
+         
+          socials: {
+            instagram: locationData.locationSocials?.instagram || "#",
+            facebook: locationData.locationSocials?.facebook || "#",
+            twitter: locationData.locationSocials?.twitter || "#"
+          },
+          businessType: locationData.businessType || "default"
+        };
+        
+        setBusinessInfo(updatedBusinessInfo);
+        
+        // Set business type if it exists in your enum
+        if (locationData.businessType && businessTypes[locationData.businessType as unknown as keyof typeof businessTypes]) {
+          setBusinessType(businessTypes[locationData.businessType as unknown as keyof typeof businessTypes]);
         }
         
-        setLocationLoading(false);
+        setIsBusinessDataReady(true);
+        
       } catch (err) {
         console.error("Error fetching location data:", err);
-        setLocationError("Failed to fetch location details");
+        const errorMessage = err instanceof Error ? err.message : "Failed to fetch location details";
+        setLocationError(errorMessage);
+        setIsBusinessDataReady(false);
+      } finally {
         setLocationLoading(false);
       }
     };
 
     fetchLocationData();
-  }, [locationId, businessId]);
+  }, [locationId]);
 
   // Only start loading products after business data is ready
   useEffect(() => {
