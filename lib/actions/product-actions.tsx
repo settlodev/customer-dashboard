@@ -572,7 +572,7 @@ export const menuProducts = async (
             query,
             {
                 headers: {
-                    "SETTLO-API-KEY": "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
+                    "SETTLO-API-KEY": "sk_integ_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
                 }
             }
         );
@@ -594,7 +594,7 @@ export const locationMenuDetails = async (
         {
           headers: {
             "SETTLO-API-KEY":
-              "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
+              "sk_integ_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
           }
         }
       );
