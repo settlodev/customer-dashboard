@@ -11,7 +11,7 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import {getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
-import { Expense } from "@/types/expense/type";
+import { Expense, ExpenseReport } from "@/types/expense/type";
 import { ExpenseSchema } from "@/types/expense/schema";
 
 export const fetchAllExpenses = async (): Promise<Expense[]> => {
@@ -125,9 +125,6 @@ export const createExpense = async (
     return parseStringify(formResponse);
 };
 
-
-
-
 export const updateExpense = async (
     id: UUID,
     expense: z.infer<typeof ExpenseSchema>
@@ -220,3 +217,28 @@ export const deleteExpense = async (id: UUID): Promise<void> => {
         throw error;
     }
 };
+
+export const GetExpenseReport = async (
+    startDate?: string,
+    endDate?: string
+): Promise<ExpenseReport> => {
+    
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+        const location = await getCurrentLocation();
+        const queryParams = new URLSearchParams();
+        
+        if (startDate) queryParams.append('startDate', startDate);
+        if (endDate) queryParams.append('endDate', endDate);
+
+        const queryString = queryParams.toString();
+        const url = `/api/reports/${location?.id}/expenses/summary${queryString ? `?${queryString}` : ''}`;
+        const report = await apiClient.get(url);
+        console.log("The expense report data is:", report);
+        return parseStringify(report);
+    } catch (error) {
+        throw error;
+    }
+}

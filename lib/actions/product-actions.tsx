@@ -599,8 +599,6 @@ export const locationMenuDetails = async (
         }
       );
   
-      console.log("location details", data);
-  
       return parseStringify(data); // Should return LocationDetails
     } catch (error) {
       throw error;

@@ -19,9 +19,11 @@ export const menuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscr
                 { title: "Top Selling Report", link: "/report/top-selling", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Sold Items Report", link: "/report/sold-items", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Credit Report", link: "/report/credit", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Refund Report", link: "/report/refunds", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Stock Report", link: "/report/stock", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Staff Report", link: "/report/staff", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Department Report", link: "/report/department", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Expense Report", link: "/report/expense", current: args?.isCurrentItem, icon: "cart" },
             ]
         },
 

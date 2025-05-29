@@ -110,7 +110,7 @@ export const GetRefundReport = async (
         const queryString = queryParams.toString();
         const url = `/api/reports/${location?.id}/refunds/refunded-items${queryString ? `?${queryString}` : ''}`;
         const report = await apiClient.get(url);
-        console.log("The refund report data is:", report);
+       
         return parseStringify(report);
     } catch (error) {
         throw error;

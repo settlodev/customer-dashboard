@@ -11,7 +11,9 @@ export const FEATURE_MAPPING = {
             credit: ['reports'],
             stock: ['reports'],
             staff: ['reports'],
-            department: ['reports']
+            department: ['reports'],
+            refunds: ['reports'],
+            expense: ['reports'],
         }
     },
     
