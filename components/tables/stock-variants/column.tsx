@@ -91,6 +91,14 @@ export const columns: ColumnDef<StockVariant>[] = [
         }
     },
     {
+        accessorKey: "isArchived",
+        enableHiding: false,
+        header: "Archived",
+        cell: ({ row }) => {
+            return <span>{row.original.isArchived ? "YES" : "NO"}</span>;
+        }
+    },
+    {
         id: "actions",
         // header: "Actions",
         enableHiding: false,

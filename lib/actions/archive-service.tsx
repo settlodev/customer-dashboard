@@ -6,7 +6,7 @@ import { getCurrentLocation } from "./business/get-current-business";
 
 interface ArchiveEntityProps {
   ids: string[];
-  entityType: 'product' | 'stock' | 'staff' | 'location' | 'supplier' | 'customer' |'stock-intake';
+  entityType: 'product' | 'stock' | 'staff' |'stock-intake';
   locationId?: string;
 }
 
@@ -29,6 +29,7 @@ export async function archiveEntity({
 const location = locationId ? { id: locationId } : await getCurrentLocation();
 
 const actualLocationId = locationId || location?.id;
+ 
 
 if (!actualLocationId) {
   return { success: false, message: "Location ID is required but not available" };
@@ -43,31 +44,18 @@ if (!actualLocationId) {
           
           break;
         case 'stock':
-          await apiClient.put(`/api/stock-variants/${actualLocationId}/archive`, ids);
+          const response = await apiClient.put(`/api/stock-variants/${actualLocationId}/archive`, ids);
+          console.log("Archive response:", response);
           break;
         case 'staff':
           await apiClient.put(`/api/staff/${actualLocationId}/archive`, ids);
          
           break;
-        case 'location':
-          
-          if (ids.includes(actualLocationId)) {
-            return { 
-              success: false, 
-              message: "Cannot archive the currently active location" 
-            };
-          }
-          await apiClient.put(`/api/locations/archive`, ids);
-          break;
-        case 'supplier':
-          await apiClient.put(`/api/suppliers/${actualLocationId}/archive`, ids);
-          break;
+         
           case 'stock-intake':
             await apiClient.put(`/api/stock-intakes/${actualLocationId}/archive`, ids);
             break;  
-        case 'customer':
-          await apiClient.put(`/api/customers/${actualLocationId}/archive`, ids);
-          break;
+       
         default:
           return { success: false, message: `Unsupported entity type: ${entityType}` };
       }

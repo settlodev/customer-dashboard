@@ -82,24 +82,7 @@ const pageSpecificComponents = {
     exportComponent: null,
     entityNames: { singular: "Staff Member", plural: "Staff Members" }
   },
-  "/locations": {
-    entityType: "location" as const,
-    importComponent: null,
-    exportComponent: null,
-    entityNames: { singular: "Location", plural: "Locations" }
-  },
-  "/suppliers": {
-    entityType: "supplier" as const,
-    importComponent: null,
-    exportComponent: null,
-    entityNames: { singular: "Supplier", plural: "Suppliers" }
-  },
-  "/customers": {
-    entityType: "customer" as const,
-    importComponent: null,
-    exportComponent: null,
-    entityNames: { singular: "Customer", plural: "Customers" }
-  }
+  
 };
 
 interface DataTableProps<TData, TValue> {
@@ -178,7 +161,7 @@ export function DataTable<TData, TValue>({
 
   
   const handleStatusFilterChange = (newStatus: string) => {
-    console.log("Selected Status:", newStatus);
+  
     setStatusFilter(newStatus); 
   };
 
@@ -313,7 +296,7 @@ export function DataTable<TData, TValue>({
           />
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="hidden lg:flex items-center space-x-2">
           {/* Archive Button - Only show when rows are selected and archive is enabled */}
           {!disableArchive && selectedRowIds.length > 0 && (
             <BulkArchive 

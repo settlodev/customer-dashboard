@@ -39,7 +39,14 @@ export const searchStockVariants = async (
                     key:"stockAndStockVariantName",
                     operator:"LIKE",
                     field_type:"STRING",
-                    value:q
+                    value:q,
+                    isArchived:false
+                },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
                 }
             ],
             sorts:[

@@ -17,7 +17,7 @@ import { getCurrentLocation } from "@/lib/actions/business/get-current-business"
 
 interface BulkArchiveProps {
   selectedIds: string[];
-  entityType: 'product' | 'stock' | 'staff' | 'location' | 'supplier' | 'customer' | 'stock-intake';
+  entityType: 'product' | 'stock' | 'staff' |'stock-intake';
   onSuccess?: () => void;
   entityNameSingular?: string;
   entityNamePlural?: string;

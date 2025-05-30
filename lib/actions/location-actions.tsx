@@ -55,6 +55,12 @@ export const searchLocations = async (
                     field_type: "UUID_STRING",
                     value: q,
                 },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
+                }
             ],
             sorts: [
                 {
