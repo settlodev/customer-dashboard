@@ -1,10 +1,11 @@
 'use client'
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import {
   CalendarIcon,
   DollarSign,
   ShoppingCart,
+  Download,
 } from "lucide-react";
 
 
@@ -19,6 +20,18 @@ import { cn } from "@/lib/utils";
 import { ExpenseReport } from "@/types/expense/type";
 import { GetExpenseReport } from "@/lib/actions/expense-actions";
 
+// PDF generation imports
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { Location } from "@/types/location/type";
+
+// Extend jsPDF type to include autoTable
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 interface DatePickerProps {
   value: Date;
@@ -45,6 +58,7 @@ export default function ExpenseReportPage() {
   // State management
   const [expenses, setExpenses] = useState<ExpenseReport>();
   const [loading, setLoading] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [formValues, setFormValues] = useState<FormValues>({
     startDate: (() => {
       const now = new Date();
@@ -53,6 +67,7 @@ export default function ExpenseReportPage() {
     })(),
     endDate: new Date()
   });
+const [location , setLocation] = useState<Location>();
 
   // Form validation state
   const [formErrors, setFormErrors] = useState<{
@@ -60,8 +75,195 @@ export default function ExpenseReportPage() {
     endDate?: string;
     general?: string;
   }>({});
+  useEffect(() => {
+    const fetchLocation = async () => {
+      const location = await getCurrentLocation();
+      console.log("Current Location:", location);
+      setLocation(location);
+    };
+    fetchLocation();
+  }, []);
 
+  // PDF Generation Function
+  const generatePDF = async () => {
+    if (!expenses) {
+      toast({
+        variant: "destructive",
+        title: "No data to export",
+        description: "Please generate a report first before downloading PDF.",
+      });
+      return;
+    }
 
+    setDownloadingPdf(true);
+    
+    try {
+      const doc = new jsPDF();
+      
+      // Set up document styling
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 20;
+      
+      // Title
+      doc.setFontSize(20);
+      doc.setFont('Arial', 'bold');
+      doc.text('Expense Report', margin, 30);
+      
+      // Location Details (Right side)
+      if (location) {
+        doc.setFontSize(10);
+        doc.setFont('Arial', 'normal');
+        const rightMargin = pageWidth - margin;
+        let yPos = 30;
+        
+        // Location Name
+        doc.setFont('Arial', 'bold');
+        doc.text(location.name, rightMargin, yPos, { align: 'right' });
+        yPos += 5;
+        
+        // Address
+        doc.setFont('Arial', 'normal');
+        const addressLines = doc.splitTextToSize(location.address || '', 150);
+        addressLines.forEach((line: string) => {
+          doc.text(line, rightMargin, yPos, { align: 'right' });
+          yPos += 5;
+        });
+        
+        // Phone
+        if (location.phone) {
+          doc.text(`Phone: ${location.phone}`, rightMargin, yPos, { align: 'right' });
+          yPos += 5;
+        }
+        
+        // Email
+        if (location.email) {
+          doc.text(`Email: ${location.email}`, rightMargin, yPos, { align: 'right' });
+        }
+      }
+      
+      // Date range
+      doc.setFontSize(12);
+      doc.setFont('Arial', 'normal');
+      const dateRange = `${format(formValues.startDate, 'MMM dd, yyyy HH:mm')} - ${format(formValues.endDate, 'MMM dd, yyyy HH:mm')}`;
+      doc.text(`Period: ${dateRange}`, margin, 45);
+      
+      // Generated date
+      doc.text(`Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')}`, margin, 55);
+      
+      // Summary Box
+      doc.setFillColor(240, 248, 255); 
+      doc.rect(margin, 70, pageWidth - 2 * margin, 25, 'F');
+      
+      doc.setFontSize(14);
+      doc.setFont('Arial', 'bold');
+      doc.text('Summary', margin + 5, 85);
+      
+      doc.setFontSize(12);
+      doc.setFont('Arial', 'normal');
+      doc.text(`Total Expenses: ${formatCurrency(expenses.totalExpenses)}`, margin + 5, 92);
+      
+      // Category Breakdown Table
+      let yPosition = 110;
+      
+      doc.setFontSize(14);
+      doc.setFont('Arial', 'bold');
+      doc.text('Expense Categories', margin, yPosition);
+      yPosition += 10;
+      
+      // Prepare table data
+      const tableData = expenses.categorySummaries.map(category => [
+        category.categoryName,
+        formatCurrency(category.amount),
+        `${category.percentage}%`
+      ]);
+      
+      // Create table
+      doc.autoTable({
+        startY: yPosition,
+        head: [['Category', 'Amount', 'Percentage']],
+        body: tableData,
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 10,
+          cellPadding: 5,
+        },
+        headStyles: {
+          fillColor: [5, 150, 105], 
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252], 
+        },
+        columnStyles: {
+          1: { halign: 'right' }, 
+          2: { halign: 'center' }, 
+        }
+      });
+      
+const finalY = (doc as any).lastAutoTable?.finalY || yPosition + 50;
+const pageHeight = doc.internal.pageSize.height;
+const footerY = pageHeight - 20;
+
+// If there's not enough space, add a new page
+if (finalY > pageHeight - 60) {
+  doc.addPage();
+}
+
+// Add the disclaimer text
+doc.setFontSize(8);
+doc.setTextColor(128, 128, 128);
+const disclaimerText = 'This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.';
+
+// Split disclaimer into multiple lines if needed
+const maxWidth = pageWidth - 2 * margin;
+const disclaimerLines = doc.splitTextToSize(disclaimerText, maxWidth);
+
+// Calculate positions
+const lineHeight = 3;
+const disclaimerHeight = disclaimerLines.length * lineHeight;
+const poweredByHeight = lineHeight;
+const totalFooterHeight = disclaimerHeight + poweredByHeight + 2; // 2px gap
+
+const disclaimerStartY = footerY - totalFooterHeight + lineHeight;
+
+// Add disclaimer lines centered
+disclaimerLines.forEach((line: string, index: number) => {
+  const textWidth = doc.getTextWidth(line);
+  const centerX = (pageWidth - textWidth) / 2;
+  doc.text(line, centerX, disclaimerStartY + (index * lineHeight));
+});
+
+// Add "Powered by Settlo" below the disclaimer
+const poweredByText = 'Powered by Settlo';
+const poweredByWidth = doc.getTextWidth(poweredByText);
+const poweredByCenterX = (pageWidth - poweredByWidth) / 2;
+const poweredByY = disclaimerStartY + disclaimerHeight + 2; // 2px gap
+
+doc.text(poweredByText, poweredByCenterX, poweredByY);
+      
+      // Generate filename
+      const filename = `expense-report-${format(formValues.startDate, 'yyyy-MM-dd')}-to-${format(formValues.endDate, 'yyyy-MM-dd')}.pdf`;
+      
+      // Save the PDF
+      doc.save(filename);
+      
+      toast({
+        title: "PDF Downloaded",
+        description: `Report saved as ${filename}`,
+      });
+      
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        variant: "destructive",
+        title: "PDF Generation Failed",
+        description: "There was an error generating the PDF. Please try again.",
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
   const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
     function handleDateSelect(date: Date | undefined) {
       if (date) {
@@ -149,7 +351,6 @@ export default function ExpenseReportPage() {
       </div>
     );
   };
-
   const handleDateChange = (field: keyof FormValues, value: Date) => {
     setFormValues(prev => ({
       ...prev,
@@ -164,8 +365,6 @@ export default function ExpenseReportPage() {
       }));
     }
   };
-
-
   const validateForm = (): boolean => {
     const errors: {
       startDate?: string;
@@ -188,7 +387,6 @@ export default function ExpenseReportPage() {
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,7 +449,6 @@ export default function ExpenseReportPage() {
                       label="Filter"
                       margin={6}
                       className="w-full md:w-auto"
-
                     />
                   </div>
                 </div>
@@ -275,6 +472,27 @@ export default function ExpenseReportPage() {
                       {formatCurrency(expenses.totalExpenses)}
                     </p>
                   </div>
+                </div>
+                
+                {/* PDF Download Button */}
+                <div className="flex justify-end">
+                  <Button
+                    onClick={generatePDF}
+                    disabled={downloadingPdf}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    {downloadingPdf ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+                        Generating PDF...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Download PDF
+                      </>
+                    )}
+                  </Button>
                 </div>
             </>
           )}

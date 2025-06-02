@@ -23,9 +23,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
-import {Building2, Clock, Loader2Icon, Mail, MapPin} from "lucide-react";
+import { Building2, Clock, Loader2Icon, Mail, MapPin } from "lucide-react";
 import { Location } from "@/types/location/type";
-import {createLocation, updateLocation } from "@/lib/actions/location-actions";
+import { createLocation, updateLocation } from "@/lib/actions/location-actions";
 import { toast } from "@/hooks/use-toast";
 import { PhoneInput } from "../ui/phone-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -35,24 +35,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import CancelButton from "../widgets/cancel-button";
 import { Separator } from "../ui/separator";
 
-const LocationForm = ({ 
-  item, 
+const LocationForm = ({
+  item,
   // onSubmit, 
-  multipleStep = false 
-}: { 
-  item: Location | null | undefined, 
-  onSubmit: (values: z.infer<typeof LocationSchema>) => void, 
-  multipleStep?: boolean 
+  multipleStep = false
+}: {
+  item: Location | null | undefined,
+  onSubmit: (values: z.infer<typeof LocationSchema>) => void,
+  multipleStep?: boolean
 }) => {
+
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
 
-  
+
   const formatTimeForSelect = (timeString: string | null | undefined) => {
     if (!timeString) return undefined;
-    
+
     const hourAndMinutes = timeString.substring(0, 5);
-    
+
     return hourAndMinutes;
   };
 
@@ -77,22 +78,22 @@ const LocationForm = ({
     },
     [],
   );
-  
-  
+
+
 
   const submitData = (values: z.infer<typeof LocationSchema>) => {
     console.log("Submitting data:", values);
     setResponse(undefined);
-  
+
     startTransition(async () => {
       try {
         const operation = item ? 'update' : 'create';
         console.log(`Performing ${operation} operation`);
-        
+
         const response = item
           ? await updateLocation(item.id, values)
           : await createLocation(values);
-  
+
         if (response) {
           setResponse(response);
           if (!item) {
@@ -110,7 +111,7 @@ const LocationForm = ({
       }
     });
   };
-  
+
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="mx-auto space-y-8">

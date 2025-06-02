@@ -78,7 +78,6 @@ export const searchLocations = async (
             query,
         );
 
-       
         return parseStringify(data);
 
     } catch (error) {

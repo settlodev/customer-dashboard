@@ -99,8 +99,8 @@ export default function ContactUsForm() {
                                 <MapPin className="w-5 h-5 text-emerald-600" />
                             </div>
                             <div className="space-y-1">
-                                <h3 className="font-semibold text-gray-900">Address</h3>
-                                <p className="text-gray-600 leading-relaxed">
+                                <h3 className="font-semibold text-primary-foreground/80">Address</h3>
+                                <p className="text-emerald-600 leading-relaxed">
                                     8th Floor Noble Center Building,<br />
                                     Plot # 89 Block 45B,<br />
                                     P.O. Box 8059,<br />
@@ -114,8 +114,8 @@ export default function ContactUsForm() {
                                 <Clock className="w-5 h-5 text-emerald-600" />
                             </div>
                             <div className="space-y-1">
-                                <h3 className="font-semibold text-gray-900">Business Hours</h3>
-                                <p className="text-gray-600">
+                                <h3 className="font-semibold text-primary-foreground/80">Business Hours</h3>
+                                <p className="text-emerald-600">
                                     Monday - Friday: 9:00 AM - 5:00 PM<br />
                                     Saturday - Sunday: Closed
                                 </p>
@@ -127,12 +127,12 @@ export default function ContactUsForm() {
                                 <Phone className="w-5 h-5 text-emerald-600" />
                             </div>
                             <div className="space-y-1">
-                                <h3 className="font-semibold text-gray-900">Phone</h3>
+                                <h3 className="font-semibold text-primary-foreground/80">Phone</h3>
                                 <a
                                     href="tel:+255788000000"
                                     className="text-emerald-600 hover:text-emerald-700 transition-colors"
                                 >
-                                    +255 788 000 000
+                                    +255 759 229 777
                                 </a>
                             </div>
                         </div>
@@ -142,7 +142,7 @@ export default function ContactUsForm() {
                                 <Mail className="w-5 h-5 text-emerald-600" />
                             </div>
                             <div className="space-y-1">
-                                <h3 className="font-semibold text-gray-900">Email</h3>
+                                <h3 className="font-semibold text-primary-foreground/80">Email</h3>
                                 <a
                                     href="mailto:support@settlo.co.tz"
                                     className="text-emerald-600 hover:text-emerald-700 transition-colors"

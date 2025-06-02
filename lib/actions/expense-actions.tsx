@@ -236,7 +236,7 @@ export const GetExpenseReport = async (
         const queryString = queryParams.toString();
         const url = `/api/reports/${location?.id}/expenses/summary${queryString ? `?${queryString}` : ''}`;
         const report = await apiClient.get(url);
-        console.log("The expense report data is:", report);
+        // console.log("The expense report data is:", report);
         return parseStringify(report);
     } catch (error) {
         throw error;
