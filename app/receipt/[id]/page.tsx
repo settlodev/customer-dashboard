@@ -31,8 +31,6 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
         {orderData.paidAmount === orderData.amount ? (
           <>
             
-
-
             <div
               id="receipt-content"
               className="bg-white shadow-lg print:shadow-none relative w-full"
@@ -46,9 +44,10 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
               <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white p-6">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-4">
-                    <div>
-                      <h1 className="text-2xl font-bold">{orderData.locationName}</h1>
-                      <div className="text-xs text-white">
+                    <div className='flex flex-col gap-2'>
+                      <h1 className="text-2xl font-bold">{orderData.businessName}</h1>
+                      <p className="text-xs font-semibold">{orderData.locationName}</p>
+                      <div className="flex flex-col gap-1 text-xs text-white">
 
                         <p>{orderData.locationAddress ? (
                           `${orderData.locationAddress}, ${orderData.locationCity}`
@@ -175,9 +174,10 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
             <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white p-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-4">
-                  <div>
-                    <h1 className="text-2xl font-bold">{orderData.locationName}</h1>
-                    <div className="text-xs text-white">
+                  <div className='flex flex-col gap-2'>
+                    <h1 className="text-2xl font-bold">{orderData.businessName}</h1>
+                    <h1 className="text-xs font-semibold">{orderData.locationName}</h1>
+                    <div className="flex flex-col gap-1 text-xs text-white">
 
                       <p>{orderData.locationAddress ? (
                         `${orderData.locationAddress}, ${orderData.locationCity}`
