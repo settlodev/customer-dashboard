@@ -34,6 +34,20 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
       <div className="max-w-6xl mx-auto">
         <ScrollArea className="w-full whitespace-nowrap">
           <div className="flex space-x-2 py-2 px-4">
+            {/* All Products Button */}
+            <Button
+              onClick={() => handleCategoryClick('all')}
+              variant={selectedCategory === null ? "default" : "outline"}
+              className={`px-5 py-2 min-w-24 flex items-center justify-center ${
+                selectedCategory === null 
+                  ? `${businessType.primary} text-white`
+                  : "hover:bg-gray-100"
+              }`}
+            >
+              All Items
+            </Button>
+            
+            {/* Category Buttons */}
             {Object.keys(categorizedProducts).map(category => (
               <Button
                 key={category}

@@ -21,9 +21,6 @@ interface ProductMenuProps {
 
 const ProductMenu = ({ params }: ProductMenuProps) => {
 
-  
-
-  // State Management
   const [products, setProducts] = useState<ExtendedProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
@@ -32,7 +29,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [hasMore, setHasMore] = useState(true);
   const [pageLimit] = useState(50);
   const [categorizedProducts, setCategorizedProducts] = useState<CategorizedProducts>({});
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Start with null to show all products
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [productsInitialLoad, setProductsInitialLoad] = useState(true);
@@ -46,22 +43,18 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   // Separate location/business loading states
   const [locationLoading, setLocationLoading] = useState(true);
   const [, setLocation] = useState<LocationDetails | null>(null);
-  const [businessInfo, setBusinessInfo] = useState<any>(null); // Start with null instead of default
+  const [businessInfo, setBusinessInfo] = useState<any>(null); 
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isBusinessDataReady, setIsBusinessDataReady] = useState(false);
 
   useEffect(() => {
-   
-    
     if (params?.id) {
-      
       setLocationId(params.id);
     } else {
       console.log("No locationId found in params");
       setLocationError("Missing location or business ID");
       setLocationLoading(false);
     }
-    
   }, [params]);
 
   // Fetch location data first - this is critical for business info
@@ -77,9 +70,6 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
         setLocationError(null); // Clear previous errors
         
         const locationData = await locationMenuDetails(locationId);
-       
-      
-       
         setLocation(locationData);
         
         // Map API response to business info structure
@@ -91,7 +81,6 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
           email: locationData.businessEmailAddress || "",
           address: locationData.locationAddress || "",
           hours: `${locationData.locationOpeningHours || ""} - ${locationData.locationClosingHours || ""}`.trim(),
-         
           socials: {
             instagram: locationData.locationSocials?.instagram || "#",
             facebook: locationData.locationSocials?.facebook || "#",
@@ -189,7 +178,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   }, [searchQuery, locationId, isBusinessDataReady]);
 
   const fetchProducts = async (isReset: boolean) => {
-    if (!isBusinessDataReady) return; // Don't fetch products until business info is loaded
+    if (!isBusinessDataReady) return; 
     
     try {
       setProductsLoading(true);
@@ -250,24 +239,28 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     });
     
     setCategorizedProducts(grouped);
-    if (!selectedCategory && Object.keys(grouped).length > 0) {
-      setSelectedCategory(Object.keys(grouped)[0]);
-    }
+    // Don't automatically set a selected category - keep it null to show all products
   };
 
   const handleSearch = () => {
     if (!isBusinessDataReady) return;
     setCurrentPage(1);
+    // Reset selected category when searching to show all results
+    setSelectedCategory(null);
     fetchProducts(true);
   };
 
   const handleCategoryClick = (category: string) => {
-    setSelectedCategory(category);
-    setIsMenuOpen(false);
-    const element = document.getElementById(category.toLowerCase().replace(/\s+/g, '-'));
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Toggle category selection: if same category is clicked, show all products
+    if (selectedCategory === category) {
+      setSelectedCategory(null); // Show all products
+    } else {
+      setSelectedCategory(category); // Show specific category
     }
+    setIsMenuOpen(false);
+    
+    // Scroll to top when category changes
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleScrollToTop = () => {
@@ -288,7 +281,6 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   if (locationLoading || !businessInfo) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        
         <Loading/>
       </div>
     );
