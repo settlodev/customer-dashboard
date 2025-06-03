@@ -231,19 +231,11 @@ export const register = async (
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
         // console.log("regData is: ", regData)
         if(regData){
-            const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
+            // const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
 
-            if(response) {
-                await sendVerificationEmail(regData.name, response as string, regData.email);
-            }
-
-            //Disable login until email is verified
-            // await signIn("credentials", {
-            //     email: credentials.email,
-            //     password: credentials.password,
-            //     redirect: false,
-            // });
-
+            // if(response) {
+            //     await sendVerificationEmail(regData.name, response as string, regData.email);
+            // }
             redirect("user-verification");
         }
 
