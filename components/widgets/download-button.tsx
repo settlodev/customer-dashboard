@@ -1,15 +1,24 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 
 interface DownloadButtonProps {
   orderNumber: string;
+  isDownloadable?: boolean;
 }
 
 const DownloadButton = ({ orderNumber }: DownloadButtonProps) => {
+
+useEffect(() => {
+    const downloadFile= async()=> {
+      handleDownload()
+    }
+    downloadFile()
+  }, [isDownloadable])
+  
   const handleDownload = async () => {
     const receipt = document.getElementById('receipt-content');
     if (receipt) {
@@ -62,8 +71,20 @@ const DownloadButton = ({ orderNumber }: DownloadButtonProps) => {
         // Add the image maintaining aspect ratio
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
 
+        const fileName = `receipt-${orderNumber}.pdf`
+
+        if(isDownloadable){
+          return new Response(fileName, {
+            headers: {
+              "Content-Type": "application/pdf",
+              "Content-Disposition": `attachment; filename=${fileName}`,
+            },
+          });
+        }
+        else{
         // Save the PDF
-        pdf.save(`receipt-${orderNumber}.pdf`);
+          pdf.save(fileName);
+        }
 
       } catch (error) {
         console.error('Error generating PDF:', error);
