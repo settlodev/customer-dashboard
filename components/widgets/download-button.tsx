@@ -11,13 +11,6 @@ interface DownloadButtonProps {
 }
 
 const DownloadButton = ({ orderNumber }: DownloadButtonProps) => {
-
-useEffect(() => {
-    const downloadFile= async()=> {
-      handleDownload()
-    }
-    downloadFile()
-  }, [isDownloadable])
   
   const handleDownload = async () => {
     const receipt = document.getElementById('receipt-content');
@@ -92,6 +85,12 @@ useEffect(() => {
       }
     }
   };
+
+   useEffect(() => {
+    if (isDownloadable) {
+      handleDownload();
+    }
+  }, [isDownloadable, handleDownload]);
 
   return (
 
