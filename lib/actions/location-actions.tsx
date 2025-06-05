@@ -10,9 +10,10 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {ApiResponse, FormResponse} from "@/types/types";
-import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
+import {getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {Location} from "@/types/location/type";
 import {LocationSchema} from "@/types/location/schema";
+import { refreshLocation } from "./business/refresh";
 
 export const fetchAllLocations = async (): Promise<Location[] | null> => {
     try {
@@ -54,6 +55,12 @@ export const searchLocations = async (
                     field_type: "UUID_STRING",
                     value: q,
                 },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
+                }
             ],
             sorts: [
                 {
@@ -71,7 +78,6 @@ export const searchLocations = async (
             query,
         );
 
-        console.log(data)
         return parseStringify(data);
 
     } catch (error) {
@@ -112,7 +118,10 @@ export const createLocation = async (
 
         // Get current business
         const currentBusiness = await getCurrentBusiness();
-        const business = multiStep ? location.business : currentBusiness?.id;
+
+        //currentLocation?.business
+        const currentLocation = await getCurrentLocation();
+        const business = multiStep ? currentLocation?.business : currentBusiness?.id;
 
         if (!business) {
             console.error('Business not found', {
@@ -136,7 +145,7 @@ export const createLocation = async (
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                 };
-            console.log("payload: ", payload);
+            // console.log("payload: ", payload);
 
        
 
@@ -147,7 +156,7 @@ export const createLocation = async (
             payload,
         );
 
-        console.log("response: ", response);
+        // console.log("response: ", response);
 
         formResponse = parseStringify({
             responseType: "success",
@@ -156,11 +165,11 @@ export const createLocation = async (
         });
 
     } catch (error: unknown) {
-        console.error('Error creating location', {
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined,
-            location
-        });
+        // console.error('Error creating location', {
+        //     error: error instanceof Error ? error.message : String(error),
+        //     stack: error instanceof Error ? error.stack : undefined,
+        //     location
+        // });
 
         return parseStringify({
             responseType: "error",
@@ -192,56 +201,80 @@ export const createLocation = async (
 export const updateLocation = async (
     id: UUID,
     location: z.infer<typeof LocationSchema>,
-): Promise<FormResponse | void> => {
+  ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-    const authenticatedUser = await getAuthenticatedUser();
-
-    if ("responseType" in authenticatedUser)
-        return parseStringify(authenticatedUser);
-
-    const validatedData = LocationSchema.safeParse(location);
-
-    if (!validatedData.success) {
-        formResponse = {
-            responseType: "error",
-            message: "Please fill in all the fields marked with * before proceeding",
-            error: new Error(validatedData.error.message),
-        };
-
-        return parseStringify(formResponse);
-    }
-
+     // Validate location data
+     const validatedData = LocationSchema.safeParse(location);
+     if (!validatedData.success) {
+       return parseStringify({
+         responseType: "error",
+         message: "Please fill in all the fields marked with * before proceeding",
+         error: new Error(validatedData.error.message),
+       });
+     }
+ 
+    
     try {
-        const apiClient = new ApiClient();
-        const business = await getCurrentBusiness();
+     
+      const apiClient = new ApiClient();
+      const business = await getCurrentBusiness();
+      const currentLocation = await getCurrentLocation();
+  
+      if (!business?.id) {
+        return parseStringify({
+          responseType: "error",
+          message: "Business information not found",
+          error: new Error("Missing business ID"),
+        });
+      }
+  
+      const payload = {
+        ...validatedData.data,
+        business: business.id,
+      };
 
-        const payload = {
-            ...validatedData.data,
-            business: business?.id,
+
+      // Make the API call to update location
+      await apiClient.put(
+        `/api/locations/${business.id}/${id}`,
+        payload
+      );
+     
+  
+      // Refresh location data if we're updating the current location
+      if (currentLocation?.id === id) {
+        
+        const updatedLocation = {
+          ...currentLocation,
+         
         };
-
-        await apiClient.put(
-            `/api/locations/${business?.id}/${id}`,
-            payload
-        );
+        
+        await refreshLocation(updatedLocation);
+        
+      }
+  
+      
+      
+      
     } catch (error: unknown) {
-        formResponse = {
-            responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error)),
-        };
+      formResponse = {
+        responseType: "error",
+        message: "Something went wrong while processing your request, please try again",
+        error: error instanceof Error ? error : new Error(String(error)),
+      };
     }
-
+  
     if (formResponse) {
-        return parseStringify(formResponse);
+      return formResponse;
     }
+  
+    
+    revalidatePath("/select-location");
+      redirect("/select-location");
+  };
 
-    revalidatePath("/locations");
-    redirect("/locations");
-};
 
-export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
+  export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
     const apiClient = new ApiClient();
 
     const query = {
@@ -265,10 +298,31 @@ export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
         query,
     );
 
-    console.log(data)
+    // console.log(data)
     return parseStringify(data);
 };
 
+
+export const getLocationById = async (businessId: string, locationId: string): Promise<Location> => {
+    await getAuthenticatedUser();
+
+  
+
+    try {
+        const apiClient = new ApiClient();
+        
+        // Use the actual parameters in the URL
+        const data: Location = await apiClient.get<Location>(
+            `/api/locations/${businessId}/${locationId}`
+        );
+        
+        // console.log("The location data is:", data);
+        return parseStringify(data);
+    } catch (error) {
+        console.error("Error fetching location:", error);
+        throw error;
+    }
+}
 export const deleteLocation = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Location ID is required to perform this request");
     await getAuthenticatedUser();

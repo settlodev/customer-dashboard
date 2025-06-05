@@ -1,6 +1,5 @@
-'use client';
-import { UUID } from "node:crypto";
 
+import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import { isNotFoundError } from "next/dist/client/components/not-found";
 
@@ -12,14 +11,14 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { getLocation } from "@/lib/actions/location-actions";
-import {ApiResponse} from "@/types/types";
-import {Location} from "@/types/location/type";
+import { ApiResponse } from "@/types/types";
+import { Location } from "@/types/location/type";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import LocationForm from "@/components/forms/location_form";
+import LocationClientForm from "@/components/forms/location_client_form";
 
 export default async function LocationPage({
-                                               params,
-                                           }: {
+    params,
+}: {
     params: { id: string };
 }) {
     const isNewItem = params.id === "new";
@@ -54,15 +53,18 @@ export default async function LocationPage({
                 </div>
             </div>
 
-            <LocationCard isNewItem={isNewItem} item={item?.content[0]} />
+            <LocationCard 
+                isNewItem={isNewItem} 
+                item={item?.content[0]} 
+            />
         </div>
     );
 }
 
 const LocationCard = ({
-                        isNewItem,
-                        item,
-                    }: {
+    isNewItem,
+    item,
+}: {
     isNewItem: boolean;
     item: Location | null | undefined;
 }) => (
@@ -76,7 +78,7 @@ const LocationCard = ({
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <LocationForm item={item} multipleStep onSubmit={() => {}} />
+            <LocationClientForm item={item} />
         </CardContent>
     </Card>
 );

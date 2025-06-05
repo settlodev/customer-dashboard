@@ -48,6 +48,12 @@ export const searchSuppliers = async (
               field_type: "STRING",
               value: q,
           },
+          {
+            key:"isArchived",
+            operator:"EQUAL",
+            field_type:"BOOLEAN",
+            value:false
+        }
       ],
       sorts: [
         {

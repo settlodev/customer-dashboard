@@ -6,32 +6,35 @@ import NoItems from "@/components/layouts/no-items";
 import {DataTable} from "@/components/tables/data-table";
 import {columns} from '@/components/tables/product/column'
 import { Product } from "@/types/product/type";
-import {searchProducts} from "@/lib/actions/product-actions";
+import {productSummary, searchProducts} from "@/lib/actions/product-actions";
 import { ProductCSVDialog } from "@/components/csv/CSVImport";
 import { Plus } from "lucide-react";
+import ProductSummary from "@/components/widgets/products/product-summary";
 
 const breadCrumbItems = [{title: "Products", link: "/products"}];
 
-type ParamsProps ={
-    searchParams:{
-        [key:string]:string | undefined
+type ParamsProps = {
+    searchParams: {
+        [key: string]: string | undefined
     }
 };
 
-async function Page({searchParams}:ParamsProps) {
+async function Page({searchParams}: ParamsProps) {
     const q = searchParams.search || "";
     const page = Number(searchParams.page) || 0;
     const pageLimit = Number(searchParams.limit);
 
-    const responseData = await searchProducts(q,page,pageLimit);
+    // Fetch both data sets in parallel
+    const [responseData, summaryData] = await Promise.all([
+        searchProducts(q, page, pageLimit),
+        productSummary()
+    ]);
     
     // Filter out archived products
     const filteredData: Product[] = responseData.content.filter(product => !product.isArchived);
     
-    
-    const total =responseData.totalElements;
-     const pageCount = responseData.totalPages
-
+    const total = responseData.totalElements;
+    const pageCount = responseData.totalPages;
 
     return (
         <div className="flex-1 space-y-4 md:p-8 pt-6 mt-10">
@@ -50,6 +53,10 @@ async function Page({searchParams}:ParamsProps) {
                     </div>
                     }
                 </div>
+            </div>
+            <div className="flex flex-col gap-2 p-3 border border-stroke bg-white shadow-default dark:border-strokedark dark:bg-boxdark">
+                <h2 className="text-lg font-semibold">Product Summary</h2>
+                <ProductSummary data={summaryData}/>
             </div>
             {
                 total > 0 || q != "" ? (

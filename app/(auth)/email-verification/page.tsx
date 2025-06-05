@@ -47,7 +47,7 @@ const VerificationPage = () => {
             try {
                 const data: FormResponse = await verifyToken(token);
 
-                console.log("verification data", data);
+                // console.log("verification data", data);
 
                 if (data?.responseType === "error") {
                     setVerificationState({

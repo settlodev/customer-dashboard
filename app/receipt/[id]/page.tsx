@@ -1,13 +1,15 @@
 import React from 'react';
-import { UUID } from 'crypto';
+// import { UUID } from 'crypto';
 import { getOrderReceipt } from '@/lib/actions/order-actions';
 import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
 
-const OrderReceipt = async ({ params }: { params: { id: string } }) => {
-  const orderData = await getOrderReceipt(params.id as UUID);
-  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/receipt/${orderData.id}`;
+const OrderReceipt = async ({ params }: { params: { id: string ,download?: string} }) => {
+  const orderData = await getOrderReceipt(params.id);
+  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${orderData.orderNumber}`;
+
+   const isDownloadable=params?.download
 
 
   const formatDate = (dateStr: string | number | Date) => {
@@ -31,8 +33,6 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
         {orderData.paidAmount === orderData.amount ? (
           <>
             
-
-
             <div
               id="receipt-content"
               className="bg-white shadow-lg print:shadow-none relative w-full"
@@ -46,9 +46,10 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
               <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white p-6">
                 <div className="flex justify-between items-center">
                   <div className="flex items-center space-x-4">
-                    <div>
-                      <h1 className="text-2xl font-bold">{orderData.locationName}</h1>
-                      <div className="text-xs text-white">
+                    <div className='flex flex-col gap-2'>
+                      <h1 className="text-2xl font-bold">{orderData.businessName}</h1>
+                      <p className="text-xs font-semibold">{orderData.locationName}</p>
+                      <div className="flex flex-col gap-1 text-xs text-white">
 
                         <p>{orderData.locationAddress ? (
                           `${orderData.locationAddress}, ${orderData.locationCity}`
@@ -175,9 +176,10 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
             <div className="bg-gradient-to-r from-emerald-600 to-emerald-800 text-white p-6">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-4">
-                  <div>
-                    <h1 className="text-2xl font-bold">{orderData.locationName}</h1>
-                    <div className="text-xs text-white">
+                  <div className='flex flex-col gap-2'>
+                    <h1 className="text-2xl font-bold">{orderData.businessName}</h1>
+                    <h1 className="text-xs font-semibold">{orderData.locationName}</h1>
+                    <div className="flex flex-col gap-1 text-xs text-white">
 
                       <p>{orderData.locationAddress ? (
                         `${orderData.locationAddress}, ${orderData.locationCity}`
@@ -289,7 +291,7 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
           </div>
         )}
         <div className="grid  lg:flex lg:justify-center items-center mt-4 mb-4 gap-1 ">
-              <DownloadButton orderNumber={orderData.orderNumber} />
+              <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'} />
 
               <ShareButton url={orderUrl} />
             </div>

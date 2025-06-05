@@ -11,7 +11,6 @@ class ApiClient {
     public isPlain: boolean;
 
     constructor() {
-
         this.baseURL = process.env.SERVICE_URL || "";
         this.isPlain = false;
 
@@ -33,7 +32,10 @@ class ApiClient {
                 }
             }
 
-            config.headers["Content-Type"] = "application/json";
+            
+            if (!config.responseType || config.responseType !== 'blob') {
+                config.headers["Content-Type"] = "application/json";
+            }
 
             return config;
         });
@@ -42,7 +44,45 @@ class ApiClient {
     public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
         try {
             const response = await this.instance.get<T>(url, config);
+            
+            
+            if (config?.responseType === 'blob') {
+                return response as unknown as T;
+            }
+            
             return response.data;
+        } catch (error) {
+            throw await handleSettloApiError(error);
+        }
+    }
+
+    
+    public async downloadFile(url: string): Promise<{ 
+        data: Blob, 
+        filename: string 
+    }> {
+        try {
+            const response = await this.instance.get(url, {
+                responseType: 'blob',
+                headers: {
+                    'Accept': 'application/octet-stream, text/csv'
+                }
+            });
+            
+            
+            let filename = 'download.csv';
+            const contentDisposition = response.headers['content-disposition'];
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+                if (filenameMatch && filenameMatch[1]) {
+                    filename = filenameMatch[1].replace(/['"]/g, '');
+                }
+            }
+            
+            return {
+                data: response.data,
+                filename
+            };
         } catch (error) {
             throw await handleSettloApiError(error);
         }

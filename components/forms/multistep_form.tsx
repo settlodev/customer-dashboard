@@ -1,4 +1,8 @@
-'use client'
+
+
+
+  'use client';
+
 import React, { useState } from 'react';
 import { toast } from '@/hooks/use-toast';
 import BusinessForm from './business_form';
@@ -7,7 +11,7 @@ import { createBusiness } from '@/lib/actions/business-actions';
 import { createLocation } from '@/lib/actions/location-actions';
 import { Business } from '@/types/business/type';
 
-const MultiStepBusinessForm = ({item}: {item: Business | null | undefined}) => {
+const MultiStepBusinessForm = ({ item }: { item: Business | null | undefined }) => {
   console.log("item: ", item);
   const [step, setStep] = useState(1);
   const [businessData, setBusinessData] = useState<Business | null>(null);
@@ -34,10 +38,11 @@ const MultiStepBusinessForm = ({item}: {item: Business | null | undefined}) => {
     try {
       // First submit business data
       if (businessData) {
-        savedBusiness= await createBusiness(businessData);
+        savedBusiness = await createBusiness(businessData);
         // console.log("Saved Business:", savedBusiness );
       }
-      if (savedBusiness ) {
+      
+      if (savedBusiness) {
         // Then submit location data with the new business ID
         const businessId = (savedBusiness as unknown as Business).id; 
         const locationPayload = {
@@ -45,9 +50,10 @@ const MultiStepBusinessForm = ({item}: {item: Business | null | undefined}) => {
           business: businessId
         };
 
-        console.log("Location with Business ID:", locationPayload );
+        console.log("Location with Business ID:", locationPayload);
         
-        const savedLocation = await createLocation(locationPayload, true);
+        // Changed to use the imported function directly instead of passing a second parameter
+        const savedLocation = await createLocation(locationPayload);
         
         if (savedLocation) {
           toast({
@@ -56,7 +62,6 @@ const MultiStepBusinessForm = ({item}: {item: Business | null | undefined}) => {
           });
         }
       }
-      
     } catch (error) {
       console.error("Error saving business or location:", error);
       toast({
@@ -69,25 +74,23 @@ const MultiStepBusinessForm = ({item}: {item: Business | null | undefined}) => {
 
   return (
     <div className="space-y-6">
-      {/* {step === 1 && ( */}
+      {step === 1 && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
-            {
-              isNewItem && (
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  1
-                </div>
-              )
-            }
+            {isNewItem && (
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                1
+              </div>
+            )}
             <h2 className="text-lg font-semibold">Business Information</h2>
           </div>
           <BusinessForm 
             item={item} 
             onSubmit={handleBusinessSubmit}
-            submitButtonText= {isNewItem ? "Continue to Location Setup": "Update Business"}
+            submitButtonText={isNewItem ? "Continue to Location Setup" : "Update Business"}
           />
         </div>
-       
+      )}
       
       {step === 2 && isNewItem && (
         <div className="space-y-4">
@@ -104,21 +107,18 @@ const MultiStepBusinessForm = ({item}: {item: Business | null | undefined}) => {
           />
         </div>
       )}
-      {
-        isNewItem && (
-          <div className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <div className={`h-2 w-2 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-gray-200'}`} />
-          {isNewItem && (
+      
+      {isNewItem && (
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <div className={`h-2 w-2 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-gray-200'}`} />
             <div className={`h-2 w-2 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-gray-200'}`} />
-          )}
+          </div>
+          <p className="text-sm text-gray-500">
+            Step {step} of 2
+          </p>      
         </div>
-        <p className="text-sm text-gray-500">
-          Step {step} of {isNewItem ? "2" : "1"}
-        </p>      
-      </div>
-        )
-      }
+      )}
     </div>
   );
 };

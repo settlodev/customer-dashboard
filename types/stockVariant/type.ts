@@ -1,6 +1,7 @@
 import { UUID } from 'crypto';
 
 export declare interface StockVariant {
+    stockVariants: any;
     id: UUID,
     name: string,
     startingValue: number,
@@ -19,6 +20,7 @@ export declare interface StockVariant {
     stockAndStockVariantName: string,
     lastStockIntakeQuantity: number,
     lastStockIntakeTime: Date,
+    expiryDate: Date,
     isArchived: boolean,
     stockMovement: StockMovement[]
 }

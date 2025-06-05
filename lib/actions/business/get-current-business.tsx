@@ -22,7 +22,7 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
         if (businessCookie) {
             try {
                 const parsedBusiness = JSON.parse(businessCookie.value) as Business;
-                console.log('Successfully parsed business from cookie');
+                // console.log('Successfully parsed business from cookie');
                 
                 return parsedBusiness;
             } catch (error) {
@@ -66,6 +66,7 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
 
 export const getCurrentLocation = async (): Promise<Location | undefined> => {
     const locationCookie = cookies().get("currentLocation");
+   
     if (!locationCookie) return undefined;
 
     try {

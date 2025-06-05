@@ -11,8 +11,8 @@ import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import {Product, SoldItemsReport, TopSellingProduct} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
-// import {Variant} from "@/types/variant/type";
 import { GoogleGenAI } from "@google/genai";
+import { LocationDetails} from "@/types/menu/type";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
     await  getAuthenticatedUser();
@@ -33,10 +33,31 @@ export const fectchAllProducts = async () : Promise<Product[]> => {
         throw error;
     }
 }
+
+export const productSummary = async () : Promise<any> => {
+    await  getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+
+        const location = await getCurrentLocation();
+
+        const data = await  apiClient.get(
+            `/api/reports/${location?.id}/products/summary`,
+        );
+       
+        return parseStringify(data);
+
+    }
+    catch (error){
+        throw error;
+    }
+}
 export const searchProducts = async (
     q:string,
     page:number,
-    pageLimit:number
+    pageLimit:number,
+    locationId?:string
 ): Promise<ApiResponse<Product>> =>{
     await getAuthenticatedUser();
 
@@ -49,6 +70,12 @@ export const searchProducts = async (
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
+                },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
                 }
             ],
             sorts:[
@@ -60,12 +87,13 @@ export const searchProducts = async (
             page:page ? page - 1:0,
             size:pageLimit ? pageLimit : 10
         }
-        const location = await getCurrentLocation();
+        const location = await getCurrentLocation() || {id:locationId};
+        
         const data = await  apiClient.post(
             `/api/products/${location?.id}`,
             query
         );
-        console.log("Products are as follow:", data);
+        // console.log("Products are as follow:", data);
         return parseStringify(data);
     }
     catch (error){
@@ -287,10 +315,10 @@ export const updateProduct = async (
     console.log('🔄 Preparing redirect with pagination state:', paginationState);
     revalidatePath("/products");
 
-    if (paginationState && 
-        typeof paginationState.pageIndex === 'number' && 
+    if (paginationState &&
+        typeof paginationState.pageIndex === 'number' &&
         typeof paginationState.pageSize === 'number') {
-        
+
         const page = paginationState.pageIndex + 1;
         const limit = paginationState.pageSize;
         console.log('↪️ Redirecting to:', `/products?page=${page}&limit=${limit}`);
@@ -360,8 +388,8 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
     try {
         const apiClient = new ApiClient();
         const location = await getCurrentLocation();
-        await apiClient.post(
-            `/api/products/${location?.id}/upload-csv`,
+       await apiClient.post(
+             `/rust/csv-uploading/upload-products-csv?location_id=${location?.id}`,
             formattedCSVData,
             {
                 headers: {
@@ -371,14 +399,41 @@ export const uploadProductCSV = async ({ fileData, fileName }: { fileData: strin
             }
         );
 
+        // console.log("The uploading process",upload)
+
         revalidatePath("/products");
         redirect("/products");
 
-    } catch (error) {
-        console.error("Error uploading CSV file:", error);
-
-        return ;
-        // throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    } catch (error: any) {
+     
+        
+         // Handle subscription limit exceeded error
+         if (error.code === 'FORBIDDEN' && 
+            error.status === 403 && 
+            error.message?.includes('beyond the limit of the current subscription package')) {
+            
+            // Extract limit and wanted values from the message
+            const limitMatch = error.message.match(/limit is (\d+)/);
+            const wantedMatch = error.message.match(/total of (\d+)/);
+            
+            const limit = limitMatch ? limitMatch[1] : '100';
+            const wanted = wantedMatch ? wantedMatch[1] : 'too many';
+            
+            throw new Error(`Subscription limit exceeded. Your current plan allows up to ${limit} products, but you attempted to upload a total of ${wanted}. Please upgrade your subscription or reduce the number of products.`);
+        }
+        
+        // Handle other API errors with structured messages
+        if (error.message && typeof error.message === 'string') {
+            throw new Error(`Failed to upload CSV: ${error.message}`);
+        }
+        
+        // Handle generic errors - safely convert to string
+        if (error instanceof Error) {
+            throw new Error(`Failed to upload CSV file: ${error.message}`);
+        } else {
+            throw new Error(`Failed to upload CSV file: Please check your file and try again.`);
+        }
+    
     }
 };
 
@@ -396,7 +451,7 @@ export const topSellingProduct = async (startDate?: Date, endDate?: Date,limit?:
         const topSelling = await apiClient.get(`/api/reports/${location?.id}/products/top-selling`, {
             params
         });
-        console.log("The products sold",topSelling )
+        // console.log("The products sold",topSelling )
 
         return parseStringify(topSelling);
     }
@@ -419,7 +474,7 @@ export const SoldItemsReports = async (startDate?: Date, endDate?: Date): Promis
         const soldItems = await apiClient.get(`/api/reports/${location?.id}/products/sold-items`, {
             params
         });
-        console.log("List of  sold items",soldItems )
+        // console.log("List of  sold items",soldItems)
 
         return parseStringify(soldItems);
     }
@@ -446,3 +501,118 @@ export const generateAIDescription = async (name: string, category: string): Pro
 
     return response.text ?? "No description generated";
 };
+
+export const downloadProductsCSV = async (locationId?:string) => {
+
+    const location = await getCurrentLocation() || {id:locationId};
+  
+    
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/rust/csv-downloading/download-products-csv?location_id=${location?.id}`);
+
+        // console.log("CSV download response", response);
+       
+        return response;
+    } catch (error) {
+        console.error("Error downloading CSV file:", error);
+        throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
+    }
+};
+
+export const archiveProduct = async(ids: string | string[]) => {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+
+   
+    
+    try {
+        // Convert single ID to array for consistent handling
+        const productIds = Array.isArray(ids) ? ids : [ids];
+
+       
+        
+        // Process each product ID
+        await apiClient.put(`/api/products/${location?.id}/archive`, productIds);
+        
+        
+        revalidatePath("/products");
+    } catch (error) {
+        // console.error("Error archiving products:", error);
+        throw error;
+    }
+}
+
+export const menuProducts = async (
+    q: string,
+    page: number,
+    pageLimit: number,
+    locationId?: string
+): Promise<ApiResponse<Product>> => {
+    try {
+        const apiClient = new ApiClient();
+        const query = {
+            filters: [
+                {
+                    key: "name",
+                    operator: "LIKE",
+                    field_type: "STRING",
+                    value: q
+                },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
+                }
+            ],
+            sorts: [
+                {
+                    key: "name",
+                    direction: "ASC"
+                }
+            ],
+            page: page ? page - 1 : 0,
+            size: pageLimit ? pageLimit : 10
+        };
+
+        const location = await getCurrentLocation() || { id: locationId };
+        // console.log("The location passed is: ", location)
+
+        const data = await apiClient.post(
+            `/api/menu/${location?.id}`,
+            query,
+            {
+                headers: {
+                    "SETTLO-API-KEY": "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
+                }
+            }
+        );
+
+        return parseStringify(data);
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const locationMenuDetails = async (
+    locationId?: string
+  ): Promise<LocationDetails> => {
+    try {
+      const apiClient = new ApiClient();
+  
+      const data = await apiClient.get<LocationDetails>(
+        `/api/menu/${locationId}`,
+        {
+          headers: {
+            "SETTLO-API-KEY":
+              "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
+          }
+        }
+      );
+  
+      return parseStringify(data); // Should return LocationDetails
+    } catch (error) {
+      throw error;
+    }
+  };
