@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { Download } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -10,15 +10,13 @@ interface DownloadButtonProps {
   isDownloadable?: boolean;
 }
 
-const DownloadButton = ({ orderNumber }: DownloadButtonProps) => {
-  
-  const handleDownload = async () => {
+const DownloadButton = ({ orderNumber, isDownloadable }: DownloadButtonProps) => {
+  const handleDownload = useCallback(async () => {
     const receipt = document.getElementById('receipt-content');
     if (receipt) {
       try {
         // First, get the original dimensions
         const originalWidth = receipt.offsetWidth;
-        // const originalHeight = receipt.offsetHeight;
 
         // Temporarily modify the element for better capture
         receipt.style.width = '600px'; // Force a consistent width
@@ -63,37 +61,25 @@ const DownloadButton = ({ orderNumber }: DownloadButtonProps) => {
 
         // Add the image maintaining aspect ratio
         pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight, undefined, 'FAST');
-
-        const fileName = `receipt-${orderNumber}.pdf`
-
-        if(isDownloadable){
-          return new Response(fileName, {
-            headers: {
-              "Content-Type": "application/pdf",
-              "Content-Disposition": `attachment; filename=${fileName}`,
-            },
-          });
-        }
-        else{
-        // Save the PDF
-          pdf.save(fileName);
-        }
-
+        
+        const fileName = `receipt-${orderNumber}.pdf`;
+        
+        // Always save the PDF directly
+        pdf.save(fileName);
       } catch (error) {
         console.error('Error generating PDF:', error);
         alert('There was an error generating the PDF. Please try again.');
       }
     }
-  };
+  }, [orderNumber]);
 
-   useEffect(() => {
+  useEffect(() => {
     if (isDownloadable) {
       handleDownload();
     }
   }, [isDownloadable, handleDownload]);
 
   return (
-
     <button
       onClick={handleDownload}
       className="flex justify-center items-center gap-1 lg:w-[50%] w-full px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors "
