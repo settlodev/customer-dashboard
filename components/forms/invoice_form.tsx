@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback,useMemo,useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
@@ -24,32 +24,46 @@ import { FormSuccess } from "../widgets/form-success";
 import { useRouter } from "next/navigation";
 import { Invoice } from "@/types/invoice/type";
 import { InvoiceSchema } from "@/types/invoice/schema";
-import { createInvoice, updateInvoice } from "@/lib/actions/invoice-actions";
+import { createInvoice} from "@/lib/actions/invoice-actions";
 import SubscriptionPackageSelector from "../widgets/subscriptionPackageSelector";
 import { Plus, Trash2 } from "lucide-react";
 import { NumericFormat } from "react-number-format";
+import { sub } from "date-fns";
+import { Card, CardContent } from "../ui/card";
+import InvoicePreview from "../widgets/invoicePreview";
 
 function InvoiceForm({ item }: { item: Invoice | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
- 
+
   const { toast } = useToast();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof InvoiceSchema>>({
     resolver: zodResolver(InvoiceSchema),
-    defaultValues: item || {
-      subscriptions: [{ subscription: "", quantity: 1 }],
-      subscriptionDiscount: 0
+    defaultValues: {
+      locationSubscriptions: [{ subscription: "", quantity: 1, subscriptionDiscount: 0 }],
+      
     },
   });
+
+  const previewData = useMemo(() => {
+    const { locationSubscriptions } = form.watch();
+    return {
+      locationSubscriptions: locationSubscriptions.map((item) => ({
+        subscription: item.subscription,
+        quantity: item.quantity,
+        subscriptionDiscount: item.subscriptionDiscount,
+      })),
+    };
+  }, [form.watch()]);
 
   // Get the subscriptions fields array for rendering
   const { fields: subscriptionFields, append: appendSubscription, remove: removeSubscription } = useFieldArray({
     control: form.control,
-    name: "subscriptions"
+    name: "locationSubscriptions"
   });
 
   const onInvalid = useCallback(
@@ -66,12 +80,10 @@ function InvoiceForm({ item }: { item: Invoice | null | undefined }) {
   const submitData = (values: z.infer<typeof InvoiceSchema>) => {
     setError("");
     setSuccess("");
-    
+
+
     startTransition(() => {
-      const action = item ? updateInvoice : createInvoice;
-      const actionData = item ? { ...values, id: item.id } : values;
-      
-      action(actionData)
+      createInvoice(values)
         .then((data) => {
           if (data) {
             setResponse(data);
@@ -105,6 +117,9 @@ function InvoiceForm({ item }: { item: Invoice | null | undefined }) {
   };
 
   return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   <Card>
+    <CardContent className="space-y-4">
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
         <FormError message={error} />
@@ -138,11 +153,11 @@ function InvoiceForm({ item }: { item: Invoice | null | undefined }) {
                   <Trash2 className="h-4 w-4" />
                 </Button>
               )}
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name={`subscriptions.${index}.subscription`}
+                  name={`locationSubscriptions.${index}.subscription`}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Subscription Package</FormLabel>
@@ -158,10 +173,10 @@ function InvoiceForm({ item }: { item: Invoice | null | undefined }) {
                     </FormItem>
                   )}
                 />
-                
+
                 <FormField
                   control={form.control}
-                  name={`subscriptions.${index}.quantity`}
+                  name={`locationSubscriptions.${index}.quantity`}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Quantity</FormLabel>
@@ -182,44 +197,51 @@ function InvoiceForm({ item }: { item: Invoice | null | undefined }) {
                   )}
                 />
               </div>
+              <div>
+          <FormField
+            control={form.control}
+            name={`locationSubscriptions.${index}.subscriptionDiscount`}
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Subscription Discount</FormLabel>
+                <FormControl>
+                  <NumericFormat
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
+                    value={field.value ?? 0}
+                    onValueChange={(values) => {
+                      field.onChange(Number(values.value));
+                    }}
+                    thousandSeparator={true}
+                    placeholder="Enter purchase price"
+                    disabled={isPending}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
             </div>
           ))}
         </div>
-        <div>
-        <FormField
-                                                    control={form.control}
-                                                    name="subscriptionDiscount"
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Subscription Discount</FormLabel>
-                                                            <FormControl>
-                                                                <NumericFormat
-                                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                                                    value={field.value ?? 0}
-                                                                    onValueChange={(values) => {
-                                                                        field.onChange(Number(values.value));
-                                                                    }}
-                                                                    thousandSeparator={true}
-                                                                    placeholder="Enter purchase price"
-                                                                    disabled={isPending}
-                                                                />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
-        </div>
+       
 
         <div className="flex h-5 items-center space-x-4">
           <CancelButton />
           <Separator orientation="vertical" />
-          <SubmitButton 
-            label={item ? "Update Invoice" : "Create Invoice"} 
-            isPending={isPending} 
+          <SubmitButton
+            label="Create Invoice"
+            isPending={isPending}
           />
         </div>
       </form>
     </Form>
+    </CardContent>
+   </Card>
+   <div className="hidden lg:block">
+          <InvoicePreview formData={form.getValues()} />
+   </div>
+    </div>
   );
 }
 

@@ -23,6 +23,8 @@ interface CellActionProps {
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
+
+  console.log(data);
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 

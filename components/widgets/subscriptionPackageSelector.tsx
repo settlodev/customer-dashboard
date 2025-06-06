@@ -1,8 +1,6 @@
 'use client'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useEffect, useState } from "react";
-
-// import { Subscription } from "@/types/location/type";
 import { fetchSubscriptions } from "@/lib/actions/subscriptions";
 import { Subscriptions } from "@/types/subscription/type";
 
@@ -45,7 +43,7 @@ function SubscriptionPackageSelector({
         const selectedPackage = packages.find((subscriptionPackage) => subscriptionPackage.id === packageId);
        
         if (selectedPackage) {
-            onChange(selectedPackage as unknown as Subscription);
+            onChange(selectedPackage as unknown as any);
         } else {
             onChange(packageId);
         }

@@ -77,13 +77,14 @@ export const columns: ColumnDef<Invoice>[] = [
     enableHiding: false,
   },
    
-//   {
+  {
     
-//     accessorKey: "invoiceStatus",
-//     header: "Status",
-//     cell: ({ row }) => <StateColumn state={row.original.invoiceStatus} />,
-//     enableHiding: false,
-// },
+    accessorKey: "locationInvoiceStatus",
+    header: "Status",
+    cell: ({ row }) => {
+      return <StateColumn state={row.getValue("locationInvoiceStatus")} />;
+    },
+},
  
   // {
   //   id: "actions",

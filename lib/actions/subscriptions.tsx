@@ -63,12 +63,13 @@ export const validateDiscountCode = async (discountCode: string,locationId?:stri
     const location = await getCurrentLocation() || { id: locationId };
     const payload = {
         discountCode: discountCode,
-        location:location?.id
+        locationId:location?.id
     }
+    console.log("Payload:", payload );
   
     try {
         const apiClient = new ApiClient();
-        const response = await apiClient.post(`/api/subscription-payments/${location?.id}/validate-discount-code`,  payload );
+        const response = await apiClient.post(`/api/subscription-discounts/validate-discount-code`,  payload );
         return parseStringify(response);
     } catch (error: any) {
     
@@ -148,12 +149,12 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
 };
 
 
-export const verifyPayment = async (transactionId: string,locationId?:string) => {
-    const location = await getCurrentLocation() || {id:locationId};
+export const verifyPayment = async (transactionId: string,invoice?:string) => {
+    // const location = await getCurrentLocation() || {id:locationId};
     try {
         const apiClient = new ApiClient();
-        const response = await apiClient.get(`/api/subscription-payments/${location?.id}/verify/${transactionId}`);
-        // console.log("Payment verification response:", response);
+        const response = await apiClient.get(`/api/location-invoice-payments/${invoice}/${transactionId}`);
+        console.log("Payment verification response:", response);
         return parseStringify(response);
     } catch (error) {
         throw error;
