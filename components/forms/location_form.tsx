@@ -1,6 +1,3 @@
-
-
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -37,7 +34,7 @@ import { Separator } from "../ui/separator";
 
 const LocationForm = ({ 
   item, 
-  onSubmit, 
+  // onSubmit, 
   multipleStep = false 
 }: { 
   item: Location | null | undefined, 
@@ -80,31 +77,62 @@ const LocationForm = ({
     [],
   );
   
-  const submitData = (values: z.infer<typeof LocationSchema>) => {
+  // const submitData = (values: z.infer<typeof LocationSchema>) => {
+  //   setResponse(undefined);
+
+  //   startTransition(() => {
+  //     if (item) {
+  //       updateLocation(item.id, values).then((data) => {
+  //         if (data) {
+  //           setResponse(data);
+  //         }
+  //       });
+  //     } else {
+  //       if (multipleStep) {
+  //         // Call the parent's onSubmit function
+  //         onSubmit(values);
+  //       } else {
+  //         createLocation(values).then((data) => {
+  //           if (data) {
+  //             setResponse(data);
+  //             window.location.reload(); // Reload after successful create
+  //           }
+  //         });
+  //       }
+  //     }
+  //   });
+    
+  // };
+
+   const submitData = (values: z.infer<typeof LocationSchema>) => {
+    console.log("Submitting data:", values);
     setResponse(undefined);
 
-    startTransition(() => {
-      if (item) {
-        updateLocation(item.id, values).then((data) => {
-          if (data) {
-            setResponse(data);
+    startTransition(async () => {
+      try {
+        const operation = item ? 'update' : 'create';
+        console.log(`Performing ${operation} operation`);
+
+        const response = item
+          ? await updateLocation(item.id, values)
+          : await createLocation(values);
+
+        if (response) {
+          setResponse(response);
+          if (!item) {
+            // Only reload for create operations
+            window.location.reload();
           }
-        });
-      } else {
-        if (multipleStep) {
-          // Call the parent's onSubmit function
-          onSubmit(values);
-        } else {
-          createLocation(values).then((data) => {
-            if (data) {
-              setResponse(data);
-              window.location.reload(); // Reload after successful create
-            }
-          });
         }
+      } catch (error) {
+        console.error(`${item ? 'Update' : 'Create'} failed:`, error);
+        toast({
+          variant: "destructive",
+          title: `${item ? 'Update' : 'Create'} failed`,
+          description: error instanceof Error ? error.message : 'An unknown error occurred',
+        });
       }
     });
-    
   };
 
   return (
