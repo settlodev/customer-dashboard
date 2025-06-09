@@ -40,7 +40,7 @@ const InvoiceSubscriptionPage = () => {
   const [discountType] = useState<'percentage' | 'fixed'>('percentage');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
-  const [paymentStatus, setPaymentStatus] = useState<"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<"INITIATING"|"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Custom hooks
@@ -181,6 +181,7 @@ const InvoiceSubscriptionPage = () => {
   }, []);
 
   // Payment handling
+  // Payment handling
   const handlePendingPayment = useCallback((transactionId: string, invoice: string) => {
     // console.log("Payment verification started");
     
@@ -234,17 +235,6 @@ const InvoiceSubscriptionPage = () => {
     }, 20000);
   }, [toast]);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleSuccessfulPayment = useCallback((response: any) => {
-    setTimeout(() => {
-      setIsModalOpen(false);
-      window.location.href = `/renew-subscription`;
-    }, 2000);
-  }, []);
-
-  // Form submission
- 
-
   const handleCreateInvoice = useCallback(async (data: InvoiceFormData) => {
     if (invoiceItems.length === 0) {
       form.setError('locationSubscriptions', { 
@@ -254,6 +244,8 @@ const InvoiceSubscriptionPage = () => {
     }
   
     setIsLoading(true);
+    setIsModalOpen(true);
+    setPaymentStatus("INITIATING");
   
     try {
       const locationSubscriptions = invoiceItems
@@ -272,12 +264,15 @@ const InvoiceSubscriptionPage = () => {
         });
   
       const invoicePayload = { locationSubscriptions };
-      const response = await createInvoice(invoicePayload); // Make sure this returns correct type
+      const response = await createInvoice(invoicePayload);
   
       if (response && typeof response === 'object' && 'id' in response && data.email && data.phone) {
         const invoiceId = (response as { id: UUID }).id;
-        setIsModalOpen(true);
+        
         try {
+          // Update status to PENDING before making payment
+          setPaymentStatus("PENDING");
+          
           const paymentResponse = await payInvoice(invoiceId, data.email, data.phone);
           setPaymentStatus("PROCESSING");
           handlePendingPayment(paymentResponse.id, paymentResponse.invoice);
@@ -295,6 +290,17 @@ const InvoiceSubscriptionPage = () => {
       setIsLoading(false);
     }
   }, [invoiceItems, subscriptionData, form, handlePendingPayment]);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSuccessfulPayment = useCallback((response: any) => {
+    setTimeout(() => {
+      setIsModalOpen(false);
+      window.location.href = `/renew-subscription`;
+    }, 2000);
+  }, []);
+
+  
+
   
 
   const onFormError = useCallback((errors: any) => {

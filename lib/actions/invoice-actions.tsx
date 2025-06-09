@@ -66,7 +66,7 @@ export const createInvoice = async (
 
     const validatedInvoiceData = InvoiceSchema.safeParse(invoice);
 
-    console.log("The validated data",validatedInvoiceData)
+    
 
     if (!validatedInvoiceData.success) {
         formResponse = {
@@ -84,8 +84,7 @@ export const createInvoice = async (
         ...validatedInvoiceData.data,
     };
 
-    console.log("The payload",payload)
-    
+
 
     try {
         const apiClient = new ApiClient();
@@ -95,8 +94,7 @@ export const createInvoice = async (
             payload
         );
 
-        console.log("The response",response)
-
+    
         return parseStringify(response);
        
     } catch (error: unknown) {
@@ -123,12 +121,12 @@ export const payInvoice = async (id: UUID, email: string, phone: string)=> {
         
         const payload = {
             email: email,
-            phone: phone
+            phone: phone,
+            provider: "SELCOM"
         }
 
-        const response = await apiClient.post(`/api/location-invoice-payments/${id}/create-with-selcom`, payload);
+        const response = await apiClient.post(`/api/location-invoice-payments/${id}/create`, payload);
 
-        console.log("The payment response", response);
         return parseStringify(response);
     } catch (error) {
         throw error;
