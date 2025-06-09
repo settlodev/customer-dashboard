@@ -113,7 +113,6 @@ export const createLocation = async (
 
         // Get current business & current location
         const currentBusiness = await getCurrentBusiness();
-        
         const currentLocation = await getCurrentLocation();
         const business = multiStep ? currentLocation?.business : currentBusiness?.id;
         
