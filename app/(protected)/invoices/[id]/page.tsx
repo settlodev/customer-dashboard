@@ -12,11 +12,9 @@ import {
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {ApiResponse} from "@/types/types";
-import { Expense } from "@/types/expense/type";
-import ExpenseForm from "@/components/forms/expense_form";
 import { getInvoice } from "@/lib/actions/invoice-actions";
 import { Invoice } from "@/types/invoice/type";
-import InvoiceForm from "@/components/forms/invoice_form";
+// import InvoiceForm from "@/components/forms/invoice_form";
 
 export default async function InvoicePage({params}: {
     params: { id: string };
@@ -57,7 +55,7 @@ export default async function InvoicePage({params}: {
     );
 }
 
-const InvoiceCard = ({isNewItem, item}: {
+const InvoiceCard = ({isNewItem}: {
     isNewItem: boolean;
     item: Invoice | null | undefined;
 }) => (
@@ -69,7 +67,7 @@ const InvoiceCard = ({isNewItem, item}: {
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <InvoiceForm item={item} />
+            {/* <InvoiceForm item={item} /> */}
         </CardContent>
     </Card>
 );

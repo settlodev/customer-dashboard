@@ -20,3 +20,15 @@ declare interface locationSubscriptions {
     subscription:UUID;
     invoice:UUID
 }
+
+export interface InvoiceItem {
+    id: number;
+    type: 'subscription' | 'service';
+    itemId: string;
+    name: string;
+    unitPrice: number;
+    months: number;
+    totalPrice: number;
+    actionType?: 'upgrade' | 'downgrade' | 'renew' | 'switch' | 'subscribe';
+    isRenewal?: boolean;
+  }

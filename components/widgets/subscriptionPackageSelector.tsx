@@ -38,7 +38,7 @@ function SubscriptionPackageSelector({
         loadSubscriptionPackages();
     }, []);
 
-    const selectedValue = typeof value === 'object' && value !== null ? value.id : value;
+    const selectedValue = typeof value === 'object' && value !== null ? (value as any).id : value;
     const handleSelectionChange = (packageId: string) => {
         const selectedPackage = packages.find((subscriptionPackage) => subscriptionPackage.id === packageId);
        

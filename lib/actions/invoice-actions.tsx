@@ -1,4 +1,3 @@
-
 "use server";
 
 import { UUID } from "node:crypto";
@@ -114,7 +113,7 @@ export const createInvoice = async (
 };
 
 
-export const payInvoice = async (id: UUID,email: string,phone: string): Promise<void> => {
+export const payInvoice = async (id: UUID, email: string, phone: string)=> {
     if (!id) throw new Error("Invoice ID is required to perform this request");
 
     await getAuthenticatedUser();
@@ -122,16 +121,15 @@ export const payInvoice = async (id: UUID,email: string,phone: string): Promise<
     try {
         const apiClient = new ApiClient();
         
-        const payload={
-            email:email,
-            phone:phone
+        const payload = {
+            email: email,
+            phone: phone
         }
 
-       const response =  await apiClient.post(`/api/location-invoice-payments/${id}/create-with-selcom`, payload);
+        const response = await apiClient.post(`/api/location-invoice-payments/${id}/create-with-selcom`, payload);
 
-       console.log("The payment response",response) 
-       return parseStringify(response);
-        revalidatePath("/invoices");
+        console.log("The payment response", response);
+        return parseStringify(response);
     } catch (error) {
         throw error;
     }

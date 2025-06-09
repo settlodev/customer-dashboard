@@ -3,7 +3,7 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
-import { CellAction } from "@/components/tables/expense/cell-action";
+// import { CellAction } from "@/components/tables/expense/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { StateColumn } from "../state-column";

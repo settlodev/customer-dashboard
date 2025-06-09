@@ -1,9 +1,9 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash } from "lucide-react";
+import { Edit, MoreHorizontal} from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { useDisclosure } from "@nextui-org/react";
+// import { useDisclosure } from "@nextui-org/react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,8 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-import { toast } from "@/hooks/use-toast";
-import { deleteExpense } from "@/lib/actions/expense-actions";
+// import { toast } from "@/hooks/use-toast";
 import { Invoice } from "@/types/invoice/type";
 
 interface CellActionProps {
@@ -26,36 +25,36 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   console.log(data);
   const router = useRouter();
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  // const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  const onDelete = async () => {
-    try {
-      if (data) {
-        await deleteExpense(data.id);
-        toast({
-          variant: "default",
-          title: "Success",
-          description: "Invoice record deleted successfully!",
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Uh oh! Something went wrong.",
-          description:
-            "There was an issue with your request, please try again later",
-        });
-      }
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description:
-        (error as Error).message ||"There was an issue with your request, please try again later",
-      });
-    } finally {
-      onOpenChange();
-    }
-  };
+  // const onDelete = async () => {
+  //   try {
+  //     if (data) {
+  //       await deleteExpense(data.id);
+  //       toast({
+  //         variant: "default",
+  //         title: "Success",
+  //         description: "Invoice record deleted successfully!",
+  //       });
+  //     } else {
+  //       toast({
+  //         variant: "destructive",
+  //         title: "Uh oh! Something went wrong.",
+  //         description:
+  //           "There was an issue with your request, please try again later",
+  //       });
+  //     }
+  //   } catch (error) {
+  //     toast({
+  //       variant: "destructive",
+  //       title: "Uh oh! Something went wrong.",
+  //       description:
+  //       (error as Error).message ||"There was an issue with your request, please try again later",
+  //     });
+  //   } finally {
+  //     onOpenChange();
+  //   }
+  // };
 
   return (
     <>
