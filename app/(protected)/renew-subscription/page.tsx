@@ -320,8 +320,8 @@ const InvoiceSubscriptionPage = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="text-center mt-14">
-        <h1 className="font-bold text-2xl mb-2">Create Subscription Invoice</h1>
+      <div className="text-start mt-14">
+        {/* <h1 className="font-bold text-2xl mb-2">Create Subscription Invoice</h1> */}
         <p className="text-gray-600">
           {activeSubscription?.subscription 
             ? 'Manage your subscription or add additional services' 
