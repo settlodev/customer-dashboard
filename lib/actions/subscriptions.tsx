@@ -65,8 +65,7 @@ export const validateDiscountCode = async (discountCode: string,locationId?:stri
         discountCode: discountCode,
         locationId:location?.id
     }
-    console.log("Payload:", payload );
-  
+    
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.post(`/api/subscription-discounts/validate-discount-code`,  payload );

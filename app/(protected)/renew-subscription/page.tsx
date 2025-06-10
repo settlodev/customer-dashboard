@@ -37,7 +37,6 @@ const InvoiceSubscriptionPage = () => {
   // State management
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [discount, setDiscount] = useState(0);
-  const [discountType] = useState<'percentage' | 'fixed'>('percentage');
   const [isLoading, setIsLoading] = useState(false);
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<"INITIATING"|"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>(null);
@@ -45,13 +44,18 @@ const InvoiceSubscriptionPage = () => {
 
   // Custom hooks
   const { activeSubscription, subscriptionData, isLoading: subscriptionLoading } = useSubscriptionData();
-  const { subtotal, discountAmount, total } = useInvoiceCalculations(invoiceItems, discount, discountType);
   const { 
     isValidatingDiscount, 
     discountValid, 
-    // validatedDiscountCode, 
-    validateDiscount 
+    validatedDiscountCode, 
+    validateDiscount,
+    clearDiscount
   } = useDiscountValidation();
+
+    // Get discount type from validated discount code, default to 'percentage'
+    const discountType = (validatedDiscountCode?.discountType?.toLowerCase() as 'percentage' | 'fixed') || 'percentage';
+    const { subtotal, discountAmount, total } = useInvoiceCalculations(invoiceItems, discount, discountType);
+
 
   const { toast } = useToast();
 
@@ -101,6 +105,14 @@ const InvoiceSubscriptionPage = () => {
 
     return () => clearTimeout(timeoutId);
   }, [discountCode, validateDiscount]);
+
+  useEffect(() => {
+    if (validatedDiscountCode && discountValid) {
+      setDiscount(validatedDiscountCode.discountValue);
+    } else {
+      setDiscount(0);
+    }
+  }, [validatedDiscountCode, discountValid]);
 
 
   const getActionType = useCallback((plan: any): 'upgrade' | 'downgrade' | 'renew' | 'switch' | 'subscribe' => {
@@ -246,21 +258,30 @@ const InvoiceSubscriptionPage = () => {
     setIsLoading(true);
     setIsModalOpen(true);
     setPaymentStatus("INITIATING");
+
+   
   
     try {
       const locationSubscriptions = invoiceItems
         .filter(item => item.type === 'subscription')
         .map(item => {
-          const subscription = subscriptionData.find(sub => sub.id === item.itemId);
+          const subscription = subscriptionData.find((sub: { id: string }) => sub.id === item.itemId);
           
           if (!subscription) {
             throw new Error(`Subscription with ID ${item.itemId} not found`);
           }
   
-          return {
+          const subscriptionPayload = {
             subscription: subscription.id,
             numberOfMonths: item.months,
+            // Only include discount if it's valid and exists
+            ...(validatedDiscountCode?.discount && discountValid && {
+              subscriptionDiscount: validatedDiscountCode.discount
+            })
           };
+          
+        
+          return subscriptionPayload;
         });
   
       const invoicePayload = { locationSubscriptions };
@@ -284,12 +305,24 @@ const InvoiceSubscriptionPage = () => {
         throw new Error("Missing data required to initiate payment");
       }
     } catch (error) {
-      console.error('Error creating invoice:', error);
+      // console.error('Error creating invoice:', error);
+      toast({
+        title: "Error Creating Invoice",
+        description: (error as Error).message,
+        variant: "destructive"
+      })
       setPaymentStatus("FAILED");
     } finally {
       setIsLoading(false);
     }
-  }, [invoiceItems, subscriptionData, form, handlePendingPayment]);
+  }, [invoiceItems,
+     subscriptionData, 
+     form, handlePendingPayment,
+     validatedDiscountCode,
+    discountValid,
+    discount.toFixed,
+    discountType
+  ]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSuccessfulPayment = useCallback((response: any) => {
@@ -468,8 +501,10 @@ const InvoiceSubscriptionPage = () => {
                           isValidating={isValidatingDiscount}
                           isValid={discountValid}
                           onClear={() => {
-                            // Reset discount state when clearing
+                            
                             setDiscount(0);
+                            clearDiscount(); // Use the clearDiscount function from the hook
+                            form.setValue('discountCode', ''); // Clear the form field
                           }}
                         />
                       </div>
