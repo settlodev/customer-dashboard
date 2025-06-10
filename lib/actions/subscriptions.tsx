@@ -153,7 +153,6 @@ export const verifyPayment = async (transactionId: string,invoice?:string) => {
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/location-invoice-payments/${invoice}/${transactionId}`);
-        console.log("Payment verification response:", response);
         return parseStringify(response);
     } catch (error) {
         throw error;
