@@ -51,7 +51,7 @@ export const searchInvoices = async (
             query,
         );
 
-       
+       console.log("The invoice response is:", invoiceResponse);
 
         return parseStringify(invoiceResponse);
     } catch (error) {
@@ -153,12 +153,30 @@ export const getInvoice = async (id: UUID): Promise<ApiResponse<Invoice>> => {
     const location = await getCurrentLocation();
 
     const invoiceData = await apiClient.post(
-        `/api/invoices/${location?.id}`,
+        `/api/location-invoices/${location?.id}/${id}`,
         query,
     );
 
+    console.log("The invoice data is:", invoiceData);
+
     return parseStringify(invoiceData);
 };
+
+export const getInvoiceById = async (id: UUID) => {
+    const apiClient = new ApiClient();
+    
+    try {
+        const location = await getCurrentLocation();
+        const invoice = await apiClient.get(
+            `/api/location-invoices/${location?.id}/${id}`
+        );
+        
+        return parseStringify(invoice)
+
+    } catch (error) {
+        throw error
+    }
+}
 
 
 

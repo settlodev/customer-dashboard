@@ -61,3 +61,9 @@ export enum orderType {
     CREDIT = "CREDIT SALE",
 }
 
+export enum invoiceStatus{
+    PAID = "PAID",
+    NOT_PAID = "UNPAID",
+    PARTIALLY_PAID = "PARTIALLY PAID",
+}
+

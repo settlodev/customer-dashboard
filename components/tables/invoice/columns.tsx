@@ -3,11 +3,12 @@
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
-// import { CellAction } from "@/components/tables/expense/cell-action";
+import { CellAction } from "@/components/tables/invoice/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { StateColumn } from "../state-column";
 import { Invoice } from "@/types/invoice/type";
+
+import { invoiceStatus } from "@/types/enums";
 
 export const columns: ColumnDef<Invoice>[] = [
   {
@@ -49,17 +50,17 @@ export const columns: ColumnDef<Invoice>[] = [
     id: "totalAmount",
     accessorKey: "Total Amount",
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("totalAmount"));
-      const formattedAmount = Intl.NumberFormat().format(amount);
-      return <div>{formattedAmount}</div>;
-    },
-    enableHiding: false,
+      const amount = row.original.totalAmount; 
+      const formattedAmount = Intl.NumberFormat("en-US").format(amount); 
+      return <span>{formattedAmount}/=</span>;
+  }
+
   },
   {
     id: "unpaidAmount",
     accessorKey: "UnPaid Amount",
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("unpaidAmount"));
+      const amount = row.original.unpaidAmount; 
       const formattedAmount = Intl.NumberFormat().format(amount);
       return <div>{formattedAmount}</div>;
     },
@@ -70,7 +71,7 @@ export const columns: ColumnDef<Invoice>[] = [
     id: "paidAmount",
     accessorKey: "Paid Amount",
     cell: ({ row }) => {
-      const amount = parseFloat(row.getValue("paidAmount"));
+      const amount = row.original.paidAmount; 
       const formattedAmount = Intl.NumberFormat().format(amount);
       return <div>{formattedAmount}</div>;
     },
@@ -78,16 +79,24 @@ export const columns: ColumnDef<Invoice>[] = [
   },
    
   {
-    
     accessorKey: "locationInvoiceStatus",
     header: "Status",
     cell: ({ row }) => {
-      return <StateColumn state={row.getValue("locationInvoiceStatus")} />;
-    },
+      const status = row.original.locationInvoiceStatus;
+      if(status === invoiceStatus.PAID){
+        return <div className="bg-green-600 text-white p-1 text-center rounded-sm">Paid</div>
+      }
+      else if(status === invoiceStatus.PARTIALLY_PAID){
+        return <div className="bg-yellow-600 text-white p-1 text-center rounded-sm">Partially Paid</div>
+      }
+      else{
+        return <div className="bg-red-600 text-white p-1 text-center rounded-sm">Unpaid</div>
+      }
+    }
 },
  
-  // {
-  //   id: "actions",
-  //   cell: ({ row }) => <CellAction data={row.original} />,
-  // },
+  {
+    id: "actions",
+    cell: ({ row }) => <CellAction data={row.original} />,
+  },
 ];

@@ -1,4 +1,5 @@
 import { UUID } from "crypto";
+import { invoiceStatus } from "../enums";
 
 export declare interface Invoice  {
     id: UUID;
@@ -9,7 +10,10 @@ export declare interface Invoice  {
     invoiceStatus: string;
     location: UUID;
     isArchived: boolean;
-    locationSubscriptions:locationSubscriptions[]
+    locationInvoiceStatus: invoiceStatus;
+    locationSubscriptions:locationSubscriptions[];
+    dateCreated: string;
+    locationName:string
 }
 
 declare interface locationSubscriptions {
@@ -18,6 +22,7 @@ declare interface locationSubscriptions {
     amountPerSubscription: number;
     totalSubscriptionAmount: number;
     subscription:UUID;
+    subscriptionPackageName:string;
     invoice:UUID
 }
 
@@ -32,3 +37,5 @@ export interface InvoiceItem {
     actionType?: 'upgrade' | 'downgrade' | 'renew' | 'switch' | 'subscribe';
     isRenewal?: boolean;
   }
+
+ 
