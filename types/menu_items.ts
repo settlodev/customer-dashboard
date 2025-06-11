@@ -117,6 +117,7 @@ export const menuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscr
                 { title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart" },
                 { title: "QrCode", link: "/qrcode", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Invoices", link: "/invoices", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Devices", link: "/devices", current: args?.isCurrentItem, icon: "cart" },
             ]
         }
     ];
