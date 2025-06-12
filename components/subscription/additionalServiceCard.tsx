@@ -43,7 +43,7 @@ const AdditionalServiceCard: React.FC<AdditionalServiceCardProps> = ({
           ) : (
             <>
               <Plus className="w-4 h-4 mr-1" />
-              Add Service
+            Addon
             </>
           )}
         </Button>

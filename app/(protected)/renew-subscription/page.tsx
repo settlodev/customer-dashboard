@@ -11,7 +11,7 @@ import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { createInvoice, payInvoice } from '@/lib/actions/invoice-actions';
-import { verifyPayment } from '@/lib/actions/subscriptions';
+import { getSubscriptionAddons, verifyPayment } from '@/lib/actions/subscriptions';
 import PaymentStatusModal from '@/components/widgets/paymentStatusModal';
 import { InvoiceSchema } from '@/types/invoice/schema';
 import { useToast } from '@/hooks/use-toast';
@@ -19,11 +19,12 @@ import { InvoiceItem, useInvoiceCalculations } from '@/hooks/useInvoiceCalculati
 import { useDiscountValidation } from '@/hooks/useDiscountValidation';
 import CurrentSubscriptionStatus from '@/components/subscription/currentSubscriptionStatus';
 import SubscriptionPlanCard from '@/components/subscription/subscriptionPlanCard';
-// import AdditionalServiceCard from '@/components/subscription/additionalServiceCard';
+import AdditionalServiceCard from '@/components/subscription/additionalServiceCard';
 import InvoiceItemCard from '@/components/subscription/invoiceItemCard';
 import DiscountCodeInput from '@/components/widgets/discountCodeInput';
 import { useSubscriptionData } from '@/hooks/useSubscriptionData';
 import { UUID } from 'crypto';
+import { SubscriptionAddons } from '@/types/subscription/type';
 
 
 type InvoiceFormData = z.infer<typeof InvoiceSchema>;
@@ -41,6 +42,7 @@ const InvoiceSubscriptionPage = () => {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<"INITIATING"|"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [addons, setAddons] = useState<SubscriptionAddons[]>([]);
 
   // Custom hooks
   const { activeSubscription, subscriptionData, isLoading: subscriptionLoading } = useSubscriptionData();
@@ -69,6 +71,27 @@ const InvoiceSubscriptionPage = () => {
       discountCode: '',
     }
   });
+
+  useEffect(() => {
+    async function fetchSubscriptionAddon() {
+      let q='';
+      let page=1;
+      let pageLimit=100;
+
+      try {
+        const data = await getSubscriptionAddons(q,page,pageLimit);
+        setAddons(data.content);
+      } catch (error) {
+        console.error("Failed to fetch subscription addons", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load ",
+          description: "Please try refreshing the page",
+        });
+      }
+    }
+    fetchSubscriptionAddon();
+  }, []);
 
   // Auto-add current subscription on load
   useEffect(() => {
@@ -149,32 +172,32 @@ const InvoiceSubscriptionPage = () => {
     setInvoiceItems([...nonSubscriptionItems, subscriptionItem]);
   }, [invoiceItems, getActionType]);
 
-  // const addAdditionalService = useCallback((service: any) => {
-  //   const existingService = invoiceItems.find(item => 
-  //     item.type === 'service' && item.itemId === service.id.toString()
-  //   );
+  const addAdditionalService = useCallback((service: any) => {
+    const existingService = invoiceItems.find(item => 
+      item.type === 'service' && item.itemId === service.id.toString()
+    );
     
-  //   if (existingService) {
-  //     toast({
-  //       title: "Service Already Added",
-  //       description: "This service is already in your invoice",
-  //       variant: "destructive"
-  //     });
-  //     return;
-  //   }
+    if (existingService) {
+      toast({
+        title: "Service Already Added",
+        description: "This service is already in your invoice",
+        variant: "destructive"
+      });
+      return;
+    }
 
-  //   const newItem: InvoiceItem = {
-  //     id: Date.now(),
-  //     type: 'service',
-  //     itemId: service.id.toString(),
-  //     name: service.name,
-  //     unitPrice: service.amount,
-  //     months: 1,
-  //     totalPrice: service.amount
-  //   };
+    const newItem: InvoiceItem = {
+      id: Date.now(),
+      type: 'service',
+      itemId: service.id.toString(),
+      name: service.name,
+      unitPrice: service.amount,
+      months: 1,
+      totalPrice: service.amount
+    };
     
-  //   setInvoiceItems(prev => [...prev, newItem]);
-  // }, [invoiceItems, toast]);
+    setInvoiceItems(prev => [...prev, newItem]);
+  }, [invoiceItems, toast]);
 
   const removeInvoiceItem = useCallback((id: number) => {
     const item = invoiceItems.find(item => item.id === id);
@@ -192,8 +215,7 @@ const InvoiceSubscriptionPage = () => {
     ));
   }, []);
 
-  // Payment handling
-  // Payment handling
+ 
   const handlePendingPayment = useCallback((transactionId: string, invoice: string) => {
     // console.log("Payment verification started");
     
@@ -258,10 +280,9 @@ const InvoiceSubscriptionPage = () => {
     setIsLoading(true);
     setIsModalOpen(true);
     setPaymentStatus("INITIATING");
-
-   
   
     try {
+      // Process subscription items
       const locationSubscriptions = invoiceItems
         .filter(item => item.type === 'subscription')
         .map(item => {
@@ -280,11 +301,22 @@ const InvoiceSubscriptionPage = () => {
             })
           };
           
-        
           return subscriptionPayload;
         });
   
-      const invoicePayload = { locationSubscriptions };
+      // Process addon/service items
+      const locationAddons = invoiceItems
+        .filter(item => item.type === 'service')
+        .map(item => ({
+          subscriptionAddon: item.itemId
+        }));
+  
+      // Build invoice payload - only include locationAddons if there are any
+      const invoicePayload: any = { locationSubscriptions };
+      if (locationAddons.length > 0) {
+        invoicePayload.locationAddons = locationAddons;
+      }
+  
       const response = await createInvoice(invoicePayload);
   
       if (response && typeof response === 'object' && 'id' in response && data.email && data.phone) {
@@ -305,23 +337,24 @@ const InvoiceSubscriptionPage = () => {
         throw new Error("Missing data required to initiate payment");
       }
     } catch (error) {
-      // console.error('Error creating invoice:', error);
+      console.error('Error creating invoice:', error);
       toast({
         title: "Error Creating Invoice",
         description: (error as Error).message,
         variant: "destructive"
-      })
+      });
       setPaymentStatus("FAILED");
     } finally {
       setIsLoading(false);
     }
-  }, [invoiceItems,
-     subscriptionData, 
-     form, handlePendingPayment,
-     validatedDiscountCode,
+  }, [
+    invoiceItems,
+    subscriptionData, 
+    form, 
+    handlePendingPayment,
+    validatedDiscountCode,
     discountValid,
-    discount.toFixed,
-    discountType
+    toast
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -401,10 +434,10 @@ const InvoiceSubscriptionPage = () => {
           </div>
 
           {/* Additional Services */}
-          {/* <div>
+          <div>
             <h2 className="text-xl font-semibold mb-4">Additional Services</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {additionalServices.map((service) => {
+              {addons.map((service) => {
                 const isAdded = invoiceItems.some(item => 
                   item.type === 'service' && item.itemId === service.id.toString()
                 );
@@ -419,7 +452,7 @@ const InvoiceSubscriptionPage = () => {
                 );
               })}
             </div>
-          </div> */}
+          </div>
         </div>
 
         {/* Invoice Summary */}
