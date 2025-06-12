@@ -26,7 +26,6 @@ import 'jspdf-autotable';
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 
-// Extend jsPDF type to include autoTable
 declare module 'jspdf' {
   interface jsPDF {
     autoTable: (options: any) => jsPDF;
@@ -44,7 +43,7 @@ interface FormValues {
   endDate: Date;
 }
 
-// Helper functions
+
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -69,16 +68,18 @@ export default function ExpenseReportPage() {
   });
 const [location , setLocation] = useState<Location>();
 
+
   // Form validation state
   const [formErrors, setFormErrors] = useState<{
     startDate?: string;
     endDate?: string;
     general?: string;
   }>({});
+
+
   useEffect(() => {
     const fetchLocation = async () => {
       const location = await getCurrentLocation();
-      console.log("Current Location:", location);
       setLocation(location);
     };
     fetchLocation();
@@ -212,7 +213,7 @@ if (finalY > pageHeight - 60) {
 
 // Add the disclaimer text
 doc.setFontSize(8);
-doc.setTextColor(128, 128, 128);
+doc.setTextColor(32, 32, 32);
 const disclaimerText = 'This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.';
 
 // Split disclaimer into multiple lines if needed

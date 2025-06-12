@@ -1,10 +1,9 @@
-
 'use client';
 import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarIcon} from 'lucide-react';
+import { CalendarIcon, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -21,6 +20,10 @@ import { Credit } from '@/types/orders/type';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { getCurrentLocation } from '@/lib/actions/business/get-current-business';
+import { Location } from '@/types/location/type';
 
 interface DatePickerProps {
     value: Date;
@@ -36,6 +39,8 @@ const FormSchema = z.object({
 const CreditReportDashboard = () => {
     const [creditData, setCreditData] = useState<Credit | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [location, setLocation] = useState<Location>();
     const router = useRouter();
 
     const form = useForm({
@@ -50,13 +55,21 @@ const CreditReportDashboard = () => {
         },
     });
 
+    useEffect(() => {
+        const fetchLocation = async () => {
+            const location = await getCurrentLocation();
+            setLocation(location);
+        };
+        fetchLocation();
+    }, []);
+
     const fetchCreditReport = async (startDate: Date, endDate: Date) => {
         setIsLoading(true);
         try {
             const response = await creditReport(startDate, endDate);
             setCreditData(response);
-            
-            // Calculate total unpaid amount
+
+
 
         } catch (error) {
             console.error("Error fetching credit report:", error);
@@ -79,44 +92,219 @@ const CreditReportDashboard = () => {
     };
 
     const formatCurrency = (value: number) => {
-        return new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
-            currency: 'TSH', 
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'TSH',
             minimumFractionDigits: 0,
             maximumFractionDigits: 0
         }).format(value);
     };
 
-    // const exportToCsv = () => {
-    //     if (!creditData || !creditData.unpaidOrders) return;
-        
-    //     const headers = ["Order Number","Order Name", "Open Date","Customer", "Paid", "Unpaid",];
-    //     const rows = creditData.unpaidOrders.map(order => [
-    //         order.orderNumber,
-    //         order.orderName,
-    //         format(new Date(order.openedDate), 'PPp'),
-    //         order.customerName || 'N/A',
-    //         formatCurrency(order.paidAmount),
-    //         formatCurrency(order.unpaidAmount),
-            
-    //     ]);
-        
-    //     const csvContent = [
-    //         headers.join(','),
-    //         ...rows.map(row => row.join(','))
-    //     ].join('\n');
-        
-    //     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    //     const url = URL.createObjectURL(blob);
-    //     const link = document.createElement('a');
-    //     link.href = url;
-    //     link.setAttribute('download', `credit-report-${format(new Date(), 'yyyy-MM-dd')}.csv`);
-    //     document.body.appendChild(link);
-    //     link.click();
-    //     document.body.removeChild(link);
-    // };
+    
+    const generatePDF = async () => {
+        if (!creditData) {
+            toast({
+                variant: "destructive",
+                title: "No data to export",
+                description: "Please generate a report first before downloading PDF.",
+            });
+            return;
+        }
 
-    const DateTimePicker = ({ value, onChange}: DatePickerProps) => {
+        setDownloadingPdf(true);
+
+        try {
+            const doc = new jsPDF();
+
+            // Set up document styling
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 20;
+
+            // Title
+            doc.setFontSize(10);
+            doc.setFont('Arial', 'bold');
+            doc.text('CREDIT REPORT', margin, 30);
+
+            doc.setFontSize(10);
+            doc.setFont('Arial', 'normal');
+            const dateRange = `${format(new Date(creditData.startDate), 'MMM dd, yyyy HH:mm')} - ${format(new Date(creditData.endDate), 'MMM dd, yyyy HH:mm')}`;
+            doc.text(`Period: ${dateRange}`, margin, 40);
+            doc.text(`Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')}`, margin, 45);
+
+
+
+            if (location) {
+                doc.setFontSize(10);
+                doc.setFont('Arial', 'normal');
+                const rightMargin = pageWidth - margin;
+                let yPos = 30;
+
+                // Location Name
+                doc.setFont('Arial', 'bold');
+                doc.text(location.name, rightMargin, yPos, { align: 'right' });
+                yPos += 5;
+
+                // Address
+                doc.setFont('Arial', 'normal');
+                const addressLines = doc.splitTextToSize(location.address || '', 150);
+                addressLines.forEach((line: string) => {
+                    doc.text(line, rightMargin, yPos, { align: 'right' });
+                    yPos += 5;
+                });
+
+                // Phone
+                if (location.phone) {
+                    doc.text(`Phone: ${location.phone}`, rightMargin, yPos, { align: 'right' });
+                    yPos += 5;
+                }
+
+                // Email
+                if (location.email) {
+                    doc.text(`Email: ${location.email}`, rightMargin, yPos, { align: 'right' });
+                }
+            }
+
+
+
+
+            // Summary Box
+            doc.setFillColor(240, 248, 255);
+            doc.rect(margin, 70, pageWidth - 2 * margin, 45, 'F');
+
+            doc.setFontSize(14);
+            doc.setFont('Arial', 'bold');
+            doc.text('SUMMARY', margin + 5, 85);
+
+            doc.setFontSize(12);
+            doc.setFont('Arial', 'normal');
+            doc.text(`Total Unpaid Orders: ${creditData.total}`, margin + 5, 92);
+            doc.text(`Total Unpaid Amount: ${formatCurrency(creditData.totalUnpaidAmount)}`, margin + 5, 99);
+            doc.text(`Total Paid Amount: ${formatCurrency(creditData.totalPaidAmount)}`, margin + 5, 106);
+
+            // Unpaid Orders Table
+            let yPosition = 130;
+
+            doc.setFontSize(10);
+            doc.setFont('Arial', 'bold');
+            doc.text('Unpaid Orders', margin, yPosition);
+            yPosition += 5;
+
+            // Prepare table data
+            const tableData = creditData.unpaidOrders.map(order => [
+                order.orderNumber,
+                order.orderName || 'N/A',
+                format(new Date(order.openedDate), 'MMM dd, yyyy'),
+                order.customerName || 'N/A',
+                formatCurrency(order.paidAmount),
+                formatCurrency(order.unpaidAmount)
+            ]);
+
+            // Create table
+            doc.autoTable({
+                startY: yPosition,
+                head: [['Order Number', 'Order Name', 'Date', 'Customer', 'Paid Amount', 'Unpaid Amount']],
+                body: tableData,
+                margin: { left: margin, right: margin },
+                styles: {
+                    fontSize: 9,
+                    cellPadding: 3,
+                },
+                headStyles: {
+                    fillColor: [239, 68, 68], // Red color for unpaid theme
+                    textColor: 255,
+                    fontStyle: 'bold',
+                },
+                alternateRowStyles: {
+                    fillColor: [254, 242, 242], // Light red background
+                },
+                columnStyles: {
+                    4: { halign: 'right' }, // Paid Amount
+                    5: { halign: 'right' }, // Unpaid Amount
+                }
+            });
+
+            const finalY = (doc as any).lastAutoTable?.finalY || yPosition + 50;
+            const pageHeight = doc.internal.pageSize.height;
+            const footerY = pageHeight - 20;
+
+            // If there's not enough space, add a new page
+            if (finalY > pageHeight - 60) {
+                doc.addPage();
+            }
+
+            // Add the disclaimer text with border
+            doc.setFontSize(8);
+            doc.setTextColor(32, 32, 32);
+            const disclaimerText = 'This report is confidential and intended solely for the recipient. Any discrepancies must be reported to support@setilo.co.tz within 14 days of issuance';
+
+            // Split disclaimer into multiple lines if needed
+            const maxWidth = pageWidth - 2 * margin;
+            const disclaimerLines = doc.splitTextToSize(disclaimerText, maxWidth);
+
+            // Calculate positions
+            const lineHeight = 3;
+            const disclaimerHeight = disclaimerLines.length * lineHeight;
+            const poweredByHeight = lineHeight;
+            const totalFooterHeight = disclaimerHeight + poweredByHeight + 2; // 2px gap
+
+            const disclaimerStartY = footerY - totalFooterHeight + lineHeight;
+
+            // Calculate border dimensions
+            const borderPadding = 3; // Padding inside the border
+            const borderX = margin - borderPadding;
+            const borderY = disclaimerStartY - lineHeight - borderPadding;
+            const borderWidth = pageWidth - 2 * margin + 2 * borderPadding;
+            const borderHeight = totalFooterHeight + 2 * borderPadding;
+
+            // Draw border rectangle
+            doc.setDrawColor(32, 32, 32); // Gray border color
+            doc.setLineWidth(0.3); // Border thickness
+            doc.rect(borderX, borderY, borderWidth, borderHeight, 'S'); // 'S' for stroke only
+
+            // Optional: Add background color to the bordered area
+            // Uncomment the lines below if you want a background color
+            // doc.setFillColor(248, 249, 250); // Light gray background
+            // doc.rect(borderX, borderY, borderWidth, borderHeight, 'FD'); // 'FD' for fill and draw
+
+            // Add disclaimer lines centered
+            disclaimerLines.forEach((line: string, index: number) => {
+                const textWidth = doc.getTextWidth(line);
+                const centerX = (pageWidth - textWidth) / 2;
+                doc.text(line, centerX, disclaimerStartY + (index * lineHeight));
+            });
+
+            // Add "Powered by Settlo" below the disclaimer
+            const poweredByText = 'Powered by Settlo';
+            const poweredByWidth = doc.getTextWidth(poweredByText);
+            const poweredByCenterX = (pageWidth - poweredByWidth) / 2;
+            const poweredByY = disclaimerStartY + disclaimerHeight + 2; // 2px gap
+
+            doc.text(poweredByText, poweredByCenterX, poweredByY);
+
+            // Generate filename
+            const filename = `credit-report-${format(new Date(creditData.startDate), 'yyyy-MM-dd')}-to-${format(new Date(creditData.endDate), 'yyyy-MM-dd')}.pdf`;
+
+            // Save the PDF
+            doc.save(filename);
+
+            toast({
+                title: "PDF Downloaded",
+                description: `Report saved as ${filename}`,
+            });
+
+        } catch (error) {
+            console.error("Error generating PDF:", error);
+            toast({
+                variant: "destructive",
+                title: "PDF Generation Failed",
+                description: "There was an error generating the PDF. Please try again.",
+            });
+        } finally {
+            setDownloadingPdf(false);
+        }
+    };
+
+    const DateTimePicker = ({ value, onChange }: DatePickerProps) => {
         function handleDateSelect(date: Date | undefined) {
             if (date) {
                 const newDate = new Date(date);
@@ -214,12 +402,12 @@ const CreditReportDashboard = () => {
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Credit Report</h1>
                     <p className="text-gray-500 mt-1">
-                        Report from {creditData && format(new Date(creditData.startDate), 'PPp')} 
+                        Report from {creditData && format(new Date(creditData.startDate), 'PPp')}
                         {' to '}
                         {creditData && format(new Date(creditData.endDate), 'PPp')}
                     </p>
                 </div>
-                
+
                 <Card className="w-full md:w-auto shadow-sm">
                     <CardContent className="p-4">
                         <Form {...form}>
@@ -251,10 +439,10 @@ const CreditReportDashboard = () => {
                                         </FormItem>
                                     )}
                                 />
-                                
-                                <SubmitButton 
-                                    isPending={form.formState.isSubmitting} 
-                                    label='Apply Filter' 
+
+                                <SubmitButton
+                                    isPending={form.formState.isSubmitting}
+                                    label='Apply Filter'
                                 />
                             </form>
                         </Form>
@@ -264,17 +452,17 @@ const CreditReportDashboard = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
 
-            <Card className="shadow-sm">
+                <Card className="shadow-sm">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-lg font-medium text-gray-700">
-                        Total unpaid orders
+                            Total unpaid orders
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-3xl font-bold text-amber-600">
                             {creditData?.total || 0}
                         </div>
-                       
+
                     </CardContent>
                 </Card>
                 <Card className="shadow-sm">
@@ -287,12 +475,12 @@ const CreditReportDashboard = () => {
                         <div className="text-3xl font-bold text-red-600">
                             {formatCurrency(creditData?.totalUnpaidAmount || 0)}
                         </div>
-                       
+
                     </CardContent>
                 </Card>
-                
-              
-                
+
+
+
                 <Card className="shadow-sm">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-lg font-medium text-gray-700">
@@ -303,24 +491,27 @@ const CreditReportDashboard = () => {
                         <div className="text-3xl font-bold text-emerald-600">
                             {formatCurrency(creditData?.totalPaidAmount || 0)}
                         </div>
-                        
+
                     </CardContent>
                 </Card>
             </div>
 
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-gray-800">Unpaid Orders</h2>
-                {/* <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={exportToCsv}
-                    className="flex items-center gap-2"
-                >
-                    <Download className="h-4 w-4" />
-                    Export Report
-                </Button> */}
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={generatePDF}
+                        disabled={downloadingPdf}
+                        className="flex items-center gap-2"
+                    >
+                        <Download className="h-4 w-4" />
+                        {downloadingPdf ? 'Generating PDF...' : 'Export PDF'}
+                    </Button>
+                </div>
             </div>
-            
+
             <Card className="shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <Table>
@@ -339,8 +530,8 @@ const CreditReportDashboard = () => {
                             {creditData?.unpaidOrders && creditData.unpaidOrders.length > 0 ? (
                                 creditData.unpaidOrders.map((order) => (
                                     <TableRow key={order.orderId}
-                                    onClick={() => router.push(`/orders/${order.orderId}`)}
-                                    className="cursor-pointer hover:bg-muted">
+                                        onClick={() => router.push(`/orders/${order.orderId}`)}
+                                        className="cursor-pointer hover:bg-muted">
                                         <TableCell className="font-medium">{order.orderNumber}</TableCell>
                                         <TableCell>{order.orderName || 'N/A'}</TableCell>
                                         <TableCell>{format(new Date(order.openedDate), 'PP')}</TableCell>
@@ -354,7 +545,7 @@ const CreditReportDashboard = () => {
                                                 Unpaid
                                             </Badge>
                                         </TableCell>
-    
+
                                     </TableRow>
                                 ))
                             ) : (
@@ -370,6 +561,6 @@ const CreditReportDashboard = () => {
             </Card>
         </div>
     );
-};   
+};
 
 export default CreditReportDashboard;
