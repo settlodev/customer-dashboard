@@ -22,7 +22,8 @@ const createMinimalBusiness = (business: Business): MinimalBusiness => {
 
 export const switchBusiness = async (data: Business): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
-    cookies().set({
+    const cookieStore = await cookies();
+    cookieStore.set({
         name: "currentBusiness",
         value: JSON.stringify(data)
     });
@@ -35,7 +36,7 @@ export const refreshBusiness = async (data: Business): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
 
     const minimalBusiness = createMinimalBusiness(data);
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     // Delete existing cookie first
     cookieStore.delete('currentBusiness');
@@ -60,7 +61,7 @@ export const refreshBusiness = async (data: Business): Promise<void> => {
 export const switchLocation = async (data: Location): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
 
-    const cookieStore = cookies();
+    const cookieStore =await cookies();
 
     // Delete existing cookie first
     cookieStore.delete('currentLocation');
@@ -81,7 +82,8 @@ export const switchLocation = async (data: Location): Promise<void> => {
 
 export const refreshLocation = async (data: Location): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
-    cookies().set({
+    const cookieStore =await cookies();
+    cookieStore.set({
         name: "currentLocation",
         value: JSON.stringify(data),
         sameSite: "strict"
