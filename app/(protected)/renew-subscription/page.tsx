@@ -1,371 +1,599 @@
-// 'use client';
-// import React, { useEffect, useState } from 'react';
-// import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-// import { Badge, Calendar, CheckCircle2, DollarSign, Tag } from 'lucide-react';
-// import RenewSubscriptionForm from '@/components/forms/renew_subscription_form';
-// import { ActiveSubscription, Subscriptions } from '@/types/subscription/type';
-// import { getActiveSubscription } from '@/lib/actions/subscriptions';
-// import Loading from '../loading';
-// import { getAllSubscriptions } from '@/lib/actions/subscription';
-// import { Button } from '@/components/ui/button';
-
-// const SubscriptionRenewal = () => {
-//   const [activeSubscription, setActiveSubscription] = useState<ActiveSubscription>();
-//   const [subscriptionData, setSubscriptionData] = useState<Subscriptions[]>([]);
-//   const [isLoading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     const fetchActiveSubscription = async () => {
-//       try {
-
-//       const activeSubs = await getActiveSubscription();
-//       const subscriptions = await getAllSubscriptions();
-//       setActiveSubscription(activeSubs);
-//       setSubscriptionData(subscriptions);
-//       setLoading(false);
-//       } catch (error) {
-//         console.error("Error fetching active subscription", error);
-        
-//       }
-//       finally{
-//         setLoading(false);
-//       }
-//     }
-
-//     fetchActiveSubscription();
-//   }, []);
-
-//   // Calculate days until expiration
-//   const daysUntilExpiration = () => {
-//     if (!activeSubscription?.endDate) return 0;
-//     const end = new Date(activeSubscription.endDate);
-//     const today = new Date();
-//     const diffTime = end.getTime() - today.getTime();
-//     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-//     return diffDays;
-//   };
-
-//   if (isLoading) {
-//     return (
-//       <div className="flex items-center justify-center min-h-screen">
-//         <div className="text-lg">
-//             <Loading />
-//         </div>
-//       </div>
-//     );
-//   }
-
-//   return (
-//     <div className="max-w-6xl mx-auto p-4 space-y-6 ">
-//       <div className='flex flex-col gap-4 lg:flex-row mt-16'>
-//         <div className='w-full lg:w-1/2'>
-//           <Card>
-//             <CardHeader>
-//               <CardTitle>Current Subscription</CardTitle>
-//               <CardDescription>Your subscription details</CardDescription>
-//             </CardHeader>
-//             <CardContent className="space-y-4">
-//               <div className="flex items-center gap-2 text-lg">
-//                 <Tag className="text-emerald-500" />
-//                 <span>Plan: {activeSubscription?.subscription?.packageName || 'N/A'}</span>
-//               </div>
-            
-//               <div className="flex items-center gap-2 text-lg">
-//                 <DollarSign className="text-emerald-500" />
-//                 <span>Price: {Intl.NumberFormat().format(activeSubscription?.subscription?.amount || 0)}</span>
-//               </div>
-
-//               <div className="flex items-center gap-2">
-//                 <Calendar className="text-emerald-500" />
-//                 <span>Expires: {activeSubscription?.endDate ? new Date(activeSubscription.endDate).toLocaleDateString() : 'N/A'}</span>
-//                 <span className="ml-2 text-sm text-orange-500">
-//                   ({daysUntilExpiration()} days remaining)
-//                 </span>
-//               </div>
-//             </CardContent>
-//             <CardFooter>
-//               <div className="text-sm text-gray-500">
-//                 Subscription Status: {activeSubscription?.subscriptionStatus}
-//               </div>
-//             </CardFooter>
-//           </Card>
-//           <div className="grid grid-cols-1 gap-3 md:grid-cols-3 lg:grid-cols-3">
-//       {subscriptionData.map((plan, index) => (
-//         <Card
-//           key={index}
-//           className={`w-full relative transform hover:scale-105 transition-transform duration-300 ${
-//             index === 1 ? "border-2 border-emerald-500" : ""
-//           }`}
-//         >
-//           {index === 1 && (
-//             <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-//               <Badge className="bg-emerald-500 text-white px-3 py-1">
-//                 <Star className="w-4 h-4 mr-1 inline" />
-//                 <span className="hidden sm:inline">Most Popular</span>
-//               </Badge>
-//             </div>
-//           )}
-
-//           <CardHeader className="p-4 sm:p-6">
-//             <CardTitle className="text-xl sm:text-2xl font-bold">{plan.packageName}</CardTitle>
-//             <div className="mt-2 sm:mt-4">
-//               <span className="text-2xl sm:text-3xl font-bold">TZS {Intl.NumberFormat().format(plan.amount)}</span>
-//               <span className="text-gray-500 ml-2">/month</span>
-//             </div>
-//             <CardDescription className="mt-2 sm:mt-4 text-gray-600">
-//               {/* Plan description */}
-//             </CardDescription>
-//           </CardHeader>
-
-//           <CardContent className="p-4 sm:p-6 pt-0 sm:pt-0">
-//             <ul className="space-y-2 sm:space-y-4">
-//               {plan.subscriptionFeatures.slice(0, 10).map((feature) => (
-//                 <li key={feature.id} className="flex items-start space-x-2 sm:space-x-3">
-//                   <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0 mt-1" />
-//                   <span className="text-sm sm:text-base text-gray-700">{feature.name}</span>
-//                 </li>
-//               ))}
-//             </ul>
-//           </CardContent>
-
-//           <CardFooter className="p-4 sm:p-6">
-//             <Button
-//               onClick={() => console.log("Pay Now")}
-//               className={`w-full py-3 sm:py-4 lg:py-6 text-base sm:text-lg font-semibold ${
-//                 index === 1
-//                   ? "bg-emerald-500 hover:bg-emerald-200"
-//                   : "bg-gray-900 hover:bg-gray-800"
-//               }`}
-//             >
-//               Subscribe Now
-//             </Button>
-//           </CardFooter>
-//         </Card>
-//       ))}
-//     </div>
-//         </div>
-
-//         <div className=''>
-//         <RenewSubscriptionForm activeSubscription={activeSubscription ?? undefined} />
-//         </div>
-//       </div>
-//     </div>
-//   );
-// };
-
-// export default SubscriptionRenewal;
-
-
 'use client';
-import React, { useEffect, useState } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2,Tag, Clock, AlertCircle } from 'lucide-react';
-import RenewSubscriptionForm from '@/components/forms/renew_subscription_form';
-import { ActiveSubscription, Subscriptions } from '@/types/subscription/type';
-import { getActiveSubscription, getAllSubscriptions } from '@/lib/actions/subscriptions';
-import Loading from '../loading';
-import { Button } from '@/components/ui/button';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Receipt, Loader2, DollarSign } from 'lucide-react';
+import { Separator } from "@/components/ui/separator";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { PhoneInput } from '@/components/ui/phone-input';
+import { useForm, useWatch } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { createInvoice, payInvoice } from '@/lib/actions/invoice-actions';
+import { getSubscriptionAddons, verifyPayment } from '@/lib/actions/subscriptions';
+import PaymentStatusModal from '@/components/widgets/paymentStatusModal';
+import { InvoiceSchema } from '@/types/invoice/schema';
+import { useToast } from '@/hooks/use-toast';
+import { InvoiceItem, useInvoiceCalculations } from '@/hooks/useInvoiceCalculation';
+import { useDiscountValidation } from '@/hooks/useDiscountValidation';
+import CurrentSubscriptionStatus from '@/components/subscription/currentSubscriptionStatus';
+import SubscriptionPlanCard from '@/components/subscription/subscriptionPlanCard';
+import AdditionalServiceCard from '@/components/subscription/additionalServiceCard';
+import InvoiceItemCard from '@/components/subscription/invoiceItemCard';
+import DiscountCodeInput from '@/components/widgets/discountCodeInput';
+import { useSubscriptionData } from '@/hooks/useSubscriptionData';
+import { UUID } from 'crypto';
+import { SubscriptionAddons } from '@/types/subscription/type';
 
-const SubscriptionRenewal = () => {
-  const [activeSubscription, setActiveSubscription] = useState<ActiveSubscription>();
-  const [subscriptionData, setSubscriptionData] = useState<Subscriptions[]>([]);
-  const [isLoading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
+
+type InvoiceFormData = z.infer<typeof InvoiceSchema>;
+
+// const additionalServices = [
+//   { id: 1, name: "Premium Support", amount: 10000 },
+//   { id: 2, name: "Data Migration", amount: 15000 },
+// ];
+
+const InvoiceSubscriptionPage = () => {
+  // State management
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
+  const [discount, setDiscount] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<"INITIATING"|"PENDING" | "PROCESSING" | "FAILED" | "SUCCESS" | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [addons, setAddons] = useState<SubscriptionAddons[]>([]);
+
+  // Custom hooks
+  const { activeSubscription, subscriptionData, isLoading: subscriptionLoading } = useSubscriptionData();
+  const { 
+    isValidatingDiscount, 
+    discountValid, 
+    validatedDiscountCode, 
+    validateDiscount,
+    clearDiscount
+  } = useDiscountValidation();
+
+    // Get discount type from validated discount code, default to 'percentage'
+    const discountType = (validatedDiscountCode?.discountType?.toLowerCase() as 'percentage' | 'fixed') || 'percentage';
+    const { subtotal, discountAmount, total } = useInvoiceCalculations(invoiceItems, discount, discountType);
+
+
+  const { toast } = useToast();
+
+  // Form setup
+  const form = useForm<InvoiceFormData>({
+    resolver: zodResolver(InvoiceSchema),
+    defaultValues: {
+      email: '',
+      phone: '',
+      locationSubscriptions: [],
+      discountCode: '',
+    }
+  });
 
   useEffect(() => {
-    const fetchActiveSubscription = async () => {
-      try {
-        const activeSubs = await getActiveSubscription();
-        const subscriptions = await getAllSubscriptions();
-        setActiveSubscription(activeSubs);
-        setSubscriptionData(subscriptions);
-        
-        // Pre-select current plan if it exists
-        if (activeSubs?.subscription?.id) {
-          const currentPlanIndex = subscriptions.findIndex(
-            plan => plan.id === activeSubs.subscription.id
-          );
-          if (currentPlanIndex !== -1) {
-            setSelectedPlan(currentPlanIndex);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching subscription data", error);
-      }
-      finally {
-        setLoading(false);
-      }
-    };
+    async function fetchSubscriptionAddon() {
+      let q='';
+      let page=1;
+      let pageLimit=100;
 
-    fetchActiveSubscription();
+      try {
+        const data = await getSubscriptionAddons(q,page,pageLimit);
+        setAddons(data.content);
+      } catch (error) {
+        console.error("Failed to fetch subscription addons", error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load ",
+          description: "Please try refreshing the page",
+        });
+      }
+    }
+    fetchSubscriptionAddon();
   }, []);
 
-  // Calculate days until expiration
-  const daysUntilExpiration = () => {
-    if (!activeSubscription?.endDate) return 0;
-    const end = new Date(activeSubscription.endDate);
-    const today = new Date();
-    const diffTime = end.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
+  // Auto-add current subscription on load
+  useEffect(() => {
+    if (activeSubscription?.subscription && subscriptionData.length > 0) {
+      const currentPlan = subscriptionData.find(plan => plan.id === activeSubscription.subscription.id);
+      if (currentPlan) {
+        setSelectedPlanId(currentPlan.id);
+        const renewalItem: InvoiceItem = {
+          id: Date.now(),
+          type: 'subscription',
+          itemId: currentPlan.id,
+          name: currentPlan.packageName,
+          unitPrice: currentPlan.amount,
+          months: 1,
+          totalPrice: currentPlan.amount,
+          isRenewal: true,
+          actionType: 'renew'
+        };
+        setInvoiceItems([renewalItem]);
+      }
+    }
+  }, [activeSubscription, subscriptionData]);
 
-  // Get status color based on days remaining
-  const getStatusColor = () => {
-    const days = daysUntilExpiration();
-    if (days <= 7) return "text-red-500";
-    if (days <= 30) return "text-amber-500";
-    return "text-emerald-500";
-  };
+  // Watch discount code changes
+  const discountCode = useWatch({
+    control: form.control,
+    name: "discountCode",
+  });
 
-  const handleSelectPlan = (index: number) => {
-    setSelectedPlan(index);
-  };
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      validateDiscount(discountCode || '');
+    }, 500);
 
-  if (isLoading) {
+    return () => clearTimeout(timeoutId);
+  }, [discountCode, validateDiscount]);
+
+  useEffect(() => {
+    if (validatedDiscountCode && discountValid) {
+      setDiscount(validatedDiscountCode.discountValue);
+    } else {
+      setDiscount(0);
+    }
+  }, [validatedDiscountCode, discountValid]);
+
+
+  const getActionType = useCallback((plan: any): 'upgrade' | 'downgrade' | 'renew' | 'switch' | 'subscribe' => {
+    if (!activeSubscription?.subscription) return 'subscribe';
+    
+    const currentPlan = activeSubscription.subscription;
+    if (plan.id === currentPlan.id) return 'renew';
+    if (plan.amount > currentPlan.amount) return 'upgrade';
+    if (plan.amount < currentPlan.amount) return 'downgrade';
+    return 'switch';
+  }, [activeSubscription]);
+
+  // Event handlers
+  const handlePlanSelection = useCallback((plan: any) => {
+    const actionType = getActionType(plan);
+    
+    // Remove existing subscription items
+    const nonSubscriptionItems = invoiceItems.filter(item => item.type !== 'subscription');
+    
+    // Add new subscription item
+    const subscriptionItem: InvoiceItem = {
+      id: Date.now(),
+      type: 'subscription',
+      itemId: plan.id,
+      name: plan.packageName,
+      unitPrice: plan.amount,
+      months: 1,
+      totalPrice: plan.amount,
+      actionType: actionType,
+      isRenewal: actionType === 'renew'
+    };
+    
+    setSelectedPlanId(plan.id);
+    setInvoiceItems([...nonSubscriptionItems, subscriptionItem]);
+  }, [invoiceItems, getActionType]);
+
+  const addAdditionalService = useCallback((service: any) => {
+    const existingService = invoiceItems.find(item => 
+      item.type === 'service' && item.itemId === service.id.toString()
+    );
+    
+    if (existingService) {
+      toast({
+        title: "Service Already Added",
+        description: "This service is already in your invoice",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newItem: InvoiceItem = {
+      id: Date.now(),
+      type: 'service',
+      itemId: service.id.toString(),
+      name: service.name,
+      unitPrice: service.amount,
+      months: 1,
+      totalPrice: service.amount
+    };
+    
+    setInvoiceItems(prev => [...prev, newItem]);
+  }, [invoiceItems, toast]);
+
+  const removeInvoiceItem = useCallback((id: number) => {
+    const item = invoiceItems.find(item => item.id === id);
+    if (item?.type === 'subscription') {
+      setSelectedPlanId(null);
+    }
+    setInvoiceItems(prev => prev.filter(item => item.id !== id));
+  }, [invoiceItems]);
+
+  const updateItemMonths = useCallback((id: number, months: number) => {
+    setInvoiceItems(prev => prev.map(item => 
+      item.id === id 
+        ? { ...item, months: months, totalPrice: item.unitPrice * months }
+        : item
+    ));
+  }, []);
+
+ 
+  const handlePendingPayment = useCallback((transactionId: string, invoice: string) => {
+    // console.log("Payment verification started");
+    
+    setTimeout(() => {
+      let attemptCount = 0;
+      const maxAttempts = 12;
+      const pollingInterval = 5000;
+      const maxDuration = 300000;
+      const startTime = Date.now();
+      
+      const verificationInterval = setInterval(async () => {
+        attemptCount++;
+
+        if (Date.now() - startTime > maxDuration) {
+          clearInterval(verificationInterval);
+          setPaymentStatus("FAILED");
+          toast({
+            title: "Payment Timeout",
+            description: "Payment verification timed out. Please check your payment status.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
+        try {
+          // console.log("Verification attempt:", attemptCount);
+          const verificationResult = await verifyPayment(transactionId, invoice);
+          setPaymentStatus(verificationResult.status);
+          
+          if (verificationResult.status === "SUCCESS") {
+            clearInterval(verificationInterval);
+            handleSuccessfulPayment(verificationResult);
+          } else if (verificationResult.status === "PROCESSING") {
+            setPaymentStatus("PROCESSING");
+          } else if (verificationResult.status === "FAILED") {
+            clearInterval(verificationInterval);
+            setPaymentStatus("FAILED");
+            setTimeout(() => {
+              setIsModalOpen(false);
+            }, 2000);
+          } else if (attemptCount >= maxAttempts) {
+            clearInterval(verificationInterval);
+            setPaymentStatus("FAILED");
+          }
+        } catch (error) {
+          console.error("Payment verification error:", error);
+          clearInterval(verificationInterval);
+          setPaymentStatus("FAILED");
+        }
+      }, pollingInterval);
+    }, 20000);
+  }, [toast]);
+
+  const handleCreateInvoice = useCallback(async (data: InvoiceFormData) => {
+    if (invoiceItems.length === 0) {
+      form.setError('locationSubscriptions', { 
+        message: 'Please add at least one item to the invoice' 
+      });
+      return;
+    }
+  
+    setIsLoading(true);
+    setIsModalOpen(true);
+    setPaymentStatus("INITIATING");
+  
+    try {
+      // Process subscription items
+      const locationSubscriptions = invoiceItems
+        .filter(item => item.type === 'subscription')
+        .map(item => {
+          const subscription = subscriptionData.find((sub: { id: string }) => sub.id === item.itemId);
+          
+          if (!subscription) {
+            throw new Error(`Subscription with ID ${item.itemId} not found`);
+          }
+  
+          const subscriptionPayload = {
+            subscription: subscription.id,
+            numberOfMonths: item.months,
+            // Only include discount if it's valid and exists
+            ...(validatedDiscountCode?.discount && discountValid && {
+              subscriptionDiscount: validatedDiscountCode.discount
+            })
+          };
+          
+          return subscriptionPayload;
+        });
+  
+      // Process addon/service items
+      const locationAddons = invoiceItems
+        .filter(item => item.type === 'service')
+        .map(item => ({
+          subscriptionAddon: item.itemId
+        }));
+  
+      // Build invoice payload - only include locationAddons if there are any
+      const invoicePayload: any = { locationSubscriptions };
+      if (locationAddons.length > 0) {
+        invoicePayload.locationAddons = locationAddons;
+      }
+  
+      const response = await createInvoice(invoicePayload);
+  
+      if (response && typeof response === 'object' && 'id' in response && data.email && data.phone) {
+        const invoiceId = (response as { id: UUID }).id;
+        
+        try {
+          // Update status to PENDING before making payment
+          setPaymentStatus("PENDING");
+          
+          const paymentResponse = await payInvoice(invoiceId, data.email, data.phone);
+          setPaymentStatus("PROCESSING");
+          handlePendingPayment(paymentResponse.id, paymentResponse.invoice);
+        } catch (error) {
+          console.error('Error making payment:', error);
+          setPaymentStatus("FAILED");
+        }
+      } else {
+        throw new Error("Missing data required to initiate payment");
+      }
+    } catch (error) {
+      toast({
+        title: "Error Creating Invoice",
+        description: (error as Error).message,
+        variant: "destructive"
+      });
+      setPaymentStatus("FAILED");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    invoiceItems,
+    subscriptionData, 
+    form, 
+    handlePendingPayment,
+    validatedDiscountCode,
+    discountValid,
+    toast
+  ]);
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const handleSuccessfulPayment = useCallback((response: any) => {
+    setTimeout(() => {
+      setIsModalOpen(false);
+      window.location.href = `/renew-subscription`;
+    }, 2000);
+  }, []);
+
+  
+
+  
+
+  const onFormError = useCallback((errors: any) => {
+    console.log('Form validation errors:', errors);
+    const firstError = Object.values(errors)[0] as any;
+    if (firstError?.message) {
+      toast({
+        title: "Validation Error",
+        description: firstError.message,
+        variant: "destructive"
+      });
+    }
+  }, [toast]);
+
+  // Loading state
+  if (subscriptionLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">
-            <Loading />
-        </div>
+      <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="text-start lg:text-center mt-14">
-        <p className="font-bold text-2xl">Manage your current subscription or choose a new plan</p>
+      <div className="text-start mt-14">
+        {/* <h1 className="font-bold text-2xl mb-2">Create Subscription Invoice</h1> */}
+        <p className="text-gray-600">
+          {activeSubscription?.subscription 
+            ? 'Manage your subscription or add additional services' 
+            : 'Choose a subscription plan and add services'
+          }
+        </p>
       </div>
-      
+
       {/* Current Subscription Status */}
-      {activeSubscription && (
-        <div className="bg-gray-50 rounded-lg p-6 mb-8 border border-gray-200">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div>
-              <h2 className="text-xl font-semibold flex items-center mb-2">
-                <Tag className="text-emerald-500 mr-2" size={20} />
-                Current Plan: <span className="ml-2 font-bold text-emerald-600">{activeSubscription?.subscription?.packageName || 'N/A'}</span>
-              </h2>
-              <p className="text-gray-600 mb-4">Your subscription will {daysUntilExpiration() < 0 ? 'expired' : 'expire'} on {activeSubscription?.endDate ? new Date(activeSubscription.endDate).toLocaleDateString() : 'N/A'}</p>
-            </div>
-            
-            <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-200">
-              <Clock className={getStatusColor()} size={18} />
-              <span className={`font-medium ${getStatusColor()}`}>
-                {daysUntilExpiration() < 0 
-                  ? 'Expired'
-                  : daysUntilExpiration() <= 0 
-                    ? 'Expires today' 
-                    : `${daysUntilExpiration()} days remaining`
-                }
-              </span>
-            </div>
-          </div>
-          
-          {daysUntilExpiration() <= 14 && (
-            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md flex items-start gap-3">
-              <AlertCircle className="text-amber-500 flex-shrink-0 mt-0.5" size={20} />
-              <div>
-                <p className="font-medium text-amber-800">
-                  {daysUntilExpiration() < 0 
-                    ? 'Your subscription has expired.' 
-                    : 'Your subscription is ending soon.'}
-                </p>
-                <p className="text-amber-700 text-sm mt-1">
-                  Renew now to avoid service interruption and continue enjoying all features.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
+      {activeSubscription?.subscription && (
+        <CurrentSubscriptionStatus activeSubscription={activeSubscription} />
       )}
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        {/* Plan Selection */}
-        <div className="w-full lg:w-2/3">
-          <h2 className="text-xl font-semibold mb-4">Select a Plan</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {subscriptionData.map((plan, index) => (
-              <Card
-                key={index}
-                className={`w-full relative transform transition-all duration-300 hover:shadow-lg cursor-pointer ${
-                  selectedPlan === index 
-                    ? "border-2 border-emerald-500 shadow-md scale-[1.02]" 
-                    : "border border-gray-200 hover:border-gray-300"
-                }`}
-                onClick={() => handleSelectPlan(index)}
-              >
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Available Plans */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Subscription Plans */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Subscription Plans</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {subscriptionData.map((plan :any) => {
+                const actionType = getActionType(plan);
+                const isSelected = selectedPlanId === plan.id;
+                const isCurrent = activeSubscription?.subscription?.id === plan.id;
                 
+                return (
+                  <SubscriptionPlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isSelected={isSelected}
+                    isCurrent={isCurrent}
+                    actionType={actionType}
+                    onSelect={handlePlanSelection}
+                  />
+                );
+              })}
+            </div>
+          </div>
 
-                <CardHeader className="p-5">
-                  <CardTitle className="text-xl font-bold">{plan.packageName}</CardTitle>
-                  <div className="mt-3">
-                    <span className="text-xl font-bold">TZS {Intl.NumberFormat().format(plan.amount)}</span>
-                    <span className="text-gray-500 ml-1">/month</span>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="px-5 pb-2 pt-0">
-                  <ul className="space-y-3">
-                    {plan.subscriptionFeatures.slice(0, 7).map((feature) => (
-                      <li key={feature.id} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-emerald-500 flex-shrink-0 mt-0.5" />
-                        <span className="text-gray-700">{feature.name}</span>
-                      </li>
-                    ))}
-                    {plan.subscriptionFeatures.length > 5 && (
-                      <li className="text-sm text-gray-600 italic pl-7">
-                        +{plan.subscriptionFeatures.length - 5} more features
-                      </li>
-                    )}
-                  </ul>
-                </CardContent>
-
-                <CardFooter className="p-5">
-                  {selectedPlan === index ? (
-                    <div className="w-full flex items-center justify-center py-2 bg-emerald-50 text-emerald-700 rounded-md font-medium">
-                      <CheckCircle2 className="w-5 h-5 mr-2" /> Selected
-                    </div>
-                  ) : (
-                    <Button
-                      variant="outline"
-                      className="w-full border-emerald-500 text-emerald-700 hover:bg-emerald-50"
-                      onClick={() => handleSelectPlan(index)}
-                    >
-                      Select Plan
-                    </Button>
-                  )}
-                </CardFooter>
-              </Card>
-            ))}
+          {/* Additional Services */}
+          <div>
+            <h2 className="text-xl font-semibold mb-4">Additional Services</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {addons.map((service) => {
+                const isAdded = invoiceItems.some(item => 
+                  item.type === 'service' && item.itemId === service.id.toString()
+                );
+                
+                return (
+                  <AdditionalServiceCard
+                    key={service.id}
+                    service={service}
+                    isAdded={isAdded}
+                    onAdd={addAdditionalService}
+                  />
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Renewal Form */}
-        <div className="w-full lg:w-1/3">
+        {/* Invoice Summary */}
+        <div>
           <Card className="sticky top-6 border-t-4 border-t-emerald-500">
             <CardHeader>
-              <CardTitle>Complete Your Renewal</CardTitle>
-              <CardDescription>
-                {selectedPlan !== null && subscriptionData[selectedPlan] 
-                  ? `You are subscribing to the ${subscriptionData[selectedPlan].packageName} plan`
-                  : 'Select a plan to continue'}
-              </CardDescription>
+              <CardTitle className="flex items-center">
+                <Receipt className="mr-2" size={20} />
+                Payment Summary
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-             
-              
-              <RenewSubscriptionForm 
-                activeSubscription={activeSubscription} 
-                selectedPlan={selectedPlan !== null ? subscriptionData[selectedPlan] : undefined}
-              />
+            <CardContent className="space-y-4">
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(handleCreateInvoice, onFormError)} className="space-y-4">
+                  {/* Customer Details */}
+                  <div className="space-y-3">
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Customer Email *</FormLabel>
+                          <FormControl>
+                            <Input {...field} placeholder="customer@example.com" required />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Customer Phone *</FormLabel>
+                          <FormControl>
+                            <PhoneInput
+                              placeholder="Enter phone number"
+                              {...field}
+                              required
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <Separator />
+
+                  {/* Invoice Items */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold">Items</h4>
+                    {invoiceItems.length === 0 ? (
+                      <p className="text-gray-500 text-sm">No items added yet</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {invoiceItems.map((item) => (
+                          <InvoiceItemCard
+                            key={item.id}
+                            item={item}
+                            onRemove={removeInvoiceItem}
+                            onUpdateMonths={updateItemMonths}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {invoiceItems.length > 0 && (
+                    <>
+                      <Separator />
+                      
+                      {/* Discount */}
+                      <div className="space-y-3">
+                        <DiscountCodeInput
+                          control={form.control}
+                          isValidating={isValidatingDiscount}
+                          isValid={discountValid}
+                          onClear={() => {
+                            
+                            setDiscount(0);
+                            clearDiscount(); // Use the clearDiscount function from the hook
+                            form.setValue('discountCode', ''); // Clear the form field
+                          }}
+                        />
+                      </div>
+
+                      <Separator />
+
+                      {/* Totals */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Subtotal:</span>
+                          <span>TZS {subtotal.toLocaleString()}</span>
+                        </div>
+                        {discountAmount > 0 && (
+                          <div className="flex justify-between text-sm text-green-600">
+                            <span>Discount:</span>
+                            <span>-TZS {discountAmount.toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between font-bold text-lg border-t pt-2">
+                          <span>Total:</span>
+                          <span>TZS {total.toLocaleString()}</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        type="submit"
+                        disabled={isLoading || invoiceItems.length === 0}
+                        className="w-full"
+                      >
+                        {isLoading ? (
+                          <div className="flex items-center space-x-2">
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            <span>Processing</span>
+                          </div>
+                        ) : (
+                          <>
+                            <DollarSign className="h-4 w-4 mr-2" />
+                            Pay Now
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
+                </form>
+              </Form>
             </CardContent>
           </Card>
+
+          <PaymentStatusModal
+            isOpen={isModalOpen}
+            status={paymentStatus}
+            onClose={() => setIsModalOpen(false)}
+          />
         </div>
       </div>
     </div>
   );
 };
 
-export default SubscriptionRenewal;
+export default InvoiceSubscriptionPage;

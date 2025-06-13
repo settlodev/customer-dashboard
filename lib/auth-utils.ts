@@ -19,7 +19,7 @@ export const getUser = async () => {
 };
 
 export const getAuthToken = async (): Promise<AuthToken | null> => {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     const tokens = cookieStore.get("authToken")?.value;
 
@@ -31,7 +31,7 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
 };
 
 export const updateAuthToken = async (token: AuthToken) => {
-    const cookieStore = cookies();
+    const cookieStore =await cookies();
 
     cookieStore.set({
         name: "authToken",
@@ -43,7 +43,7 @@ export const updateAuthToken = async (token: AuthToken) => {
 };
 
 export const createAuthToken = async (user: ExtendedUser) => {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const authTokenData: AuthToken = {
         firstName: user.firstName,
         lastName: user.lastName,
@@ -79,7 +79,7 @@ export const createAuthToken = async (user: ExtendedUser) => {
 };
 
 export const createActiveBusiness = async (user: ExtendedUser) => {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
 
     const businessActive: activeBusiness = {
         businessId: user.businessId,
@@ -107,13 +107,15 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 
 export const deleteAuthCookie = async () => {
     try{
+        const cookieStore = await cookies();
+
         console.log("Deleting auth cookie");
-        cookies().delete("authToken");
-        cookies().delete("next-auth.session-token");
-        cookies().delete("next-auth.csrf-token");
-        cookies().delete("activeBusiness");
-        cookies().delete("currentBusiness");
-        cookies().delete("currentLocation");
+        cookieStore.delete("authToken");
+        cookieStore.delete("next-auth.session-token");
+        cookieStore.delete("next-auth.csrf-token");
+        cookieStore.delete("activeBusiness");
+        cookieStore.delete("currentBusiness");
+        cookieStore.delete("currentLocation");
     } catch(e) {
         // Do not throw error
         console.log("Error deleting auth cookie", e);
@@ -122,11 +124,12 @@ export const deleteAuthCookie = async () => {
 };
 
 export const deleteActiveBusinessCookie = async () => {
-    cookies().delete("activeBusiness");
+    const cookieStore = await cookies();
+    cookieStore.delete("activeBusiness");
 };
 
 export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
-    const cookieStore = cookies();
+    const cookieStore =await cookies();
 
     const activeBusiness = cookieStore.get("activeBusiness")?.value;
 
@@ -134,7 +137,8 @@ export const getActiveBusiness = async (): Promise<activeBusiness | null> => {
 };
 
 export const deleteActiveLocationCookie = async () => {
-    cookies().delete("activeLocation");
+    const cookieStore = await cookies();
+    cookieStore.delete("activeLocation");
 };
 
 // export const getActiveLocation = async (): Promise<activeLocation | null> => {

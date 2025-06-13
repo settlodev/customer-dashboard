@@ -9,8 +9,7 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
   const orderData = await getOrderReceipt(params.id);
   const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${orderData.orderNumber}`;
 
-   const isDownloadable=params?.download
-
+  const isDownloadable=params?.download
 
   const formatDate = (dateStr: string | number | Date) => {
     const date = new Date(dateStr);
@@ -291,8 +290,7 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
           </div>
         )}
         <div className="grid  lg:flex lg:justify-center items-center mt-4 mb-4 gap-1 ">
-              <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'} />
-
+              <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'}/>
               <ShareButton url={orderUrl} />
             </div>
       </div>

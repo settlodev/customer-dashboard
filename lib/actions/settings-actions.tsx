@@ -12,7 +12,7 @@ import {getCurrentLocation } from "./business/get-current-business";
 import { LocationSettings} from "@/types/locationSettings/type";
 import { LocationSettingsSchema } from "@/types/locationSettings/schema";
 
-export const fectchLocationSettings = async () : Promise<LocationSettings> => {
+export const fetchLocationSettings = async () : Promise<LocationSettings> => {
     await  getAuthenticatedUser();
 
 

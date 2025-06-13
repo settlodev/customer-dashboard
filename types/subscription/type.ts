@@ -82,3 +82,10 @@ export declare interface ValidDiscountCode {
     errorCode: string
     errorDescription: string
 }
+
+export declare interface SubscriptionAddons{
+    id: UUID
+    name: string
+    subscription: number
+    amount: number
+}
