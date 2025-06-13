@@ -74,9 +74,9 @@ const InvoiceSubscriptionPage = () => {
 
   useEffect(() => {
     async function fetchSubscriptionAddon() {
-      let q='';
-      let page=1;
-      let pageLimit=100;
+      const q='';
+      const page=1;
+      const pageLimit=100;
 
       try {
         const data = await getSubscriptionAddons(q,page,pageLimit);
