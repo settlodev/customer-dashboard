@@ -11,7 +11,6 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
 
   const isDownloadable=params?.download
 
-
   const formatDate = (dateStr: string | number | Date) => {
     const date = new Date(dateStr);
     return date.toLocaleDateString('en-US', {
@@ -292,7 +291,6 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
         )}
         <div className="grid  lg:flex lg:justify-center items-center mt-4 mb-4 gap-1 ">
               <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'}/>
-
               <ShareButton url={orderUrl} />
             </div>
       </div>
