@@ -337,7 +337,6 @@ const InvoiceSubscriptionPage = () => {
         throw new Error("Missing data required to initiate payment");
       }
     } catch (error) {
-      console.error('Error creating invoice:', error);
       toast({
         title: "Error Creating Invoice",
         description: (error as Error).message,

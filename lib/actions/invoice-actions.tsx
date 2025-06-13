@@ -36,8 +36,8 @@ export const searchInvoices = async (
             ],
             sorts: [
                 {
-                    key: "invoiceNumber",
-                    direction: "ASC",
+                    key: "dateCreated",
+                    direction: "DESC",
                 },
             ],
             page: page ? page - 1 : 0,
@@ -50,8 +50,6 @@ export const searchInvoices = async (
             `/api/location-invoices/${location?.id}`,
             query,
         );
-
-       console.log("The invoice response is:", invoiceResponse);
 
         return parseStringify(invoiceResponse);
     } catch (error) {

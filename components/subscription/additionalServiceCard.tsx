@@ -2,17 +2,14 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Plus } from 'lucide-react';
+import { SubscriptionAddons } from '@/types/subscription/type';
 
-interface AdditionalService {
-  id: number;
-  name: string;
-  amount: number;
-}
+
 
 interface AdditionalServiceCardProps {
-  service: AdditionalService;
+  service: SubscriptionAddons;
   isAdded: boolean;
-  onAdd: (service: AdditionalService) => void;
+  onAdd: (service: SubscriptionAddons) => void;
 }
 
 const AdditionalServiceCard: React.FC<AdditionalServiceCardProps> = ({
