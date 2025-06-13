@@ -5,9 +5,11 @@ import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
 
-const OrderReceipt = async ({ params }: { params: { id: string } }) => {
+const OrderReceipt = async ({ params }: { params: { id: string ,download?: string} }) => {
   const orderData = await getOrderReceipt(params.id);
   const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${orderData.orderNumber}`;
+
+   const isDownloadable=params?.download
 
 
   const formatDate = (dateStr: string | number | Date) => {
@@ -289,7 +291,7 @@ const OrderReceipt = async ({ params }: { params: { id: string } }) => {
           </div>
         )}
         <div className="grid  lg:flex lg:justify-center items-center mt-4 mb-4 gap-1 ">
-              <DownloadButton orderNumber={orderData.orderNumber} />
+              <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'} />
 
               <ShareButton url={orderUrl} />
             </div>
