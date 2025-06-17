@@ -199,7 +199,7 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
                     )}
                 >
                     <CreditCard className="mr-2 h-4 w-4"/>
-                    <span>Renew Subscription</span>
+                    <span>Billing</span>
                 </Link>
                 <Link
                     href="/settings"

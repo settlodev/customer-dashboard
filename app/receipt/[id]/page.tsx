@@ -83,7 +83,7 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
                     <h2 className="text-sm font-semibold text-gray-600 mb-2">Order Details</h2>
                     <p className="text-sm">Order #: <span className='font-semibold'>{orderData.orderNumber}</span></p>
                     <p className="text-sm">Open Date: <span className='font-semibold'>{formatDate(orderData.openedDate)}</span></p>
-                    <p className="text-sm">Closed Date: <span className='font-semibold'>{formatDate(orderData.closedDate)}</span></p>
+                    <p className="text-sm">Closed Date: <span className='font-semibold'>{orderData.closedDate ? formatDate(orderData.closedDate) : '-'}</span></p>
                   </div>
                   <div>
                     <h2 className="text-sm font-semibold text-gray-600 mb-2">Payment Info</h2>
@@ -97,7 +97,16 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
                       <p className="text-sm">Customer Name: <span className='font-semibold'>{orderData.customerName}</span></p>
                     </div>
                   )}
+                  {orderData.customerPhone && (
+                      <p className="text-sm">Customer Phone: <span className='font-semibold'>{orderData.customerPhoneNumber}</span></p>
+                  )}
                 </div>
+
+                
+                {/* <div className="mb-6">
+                  <h2 className="text-sm font-semibold text-gray-600 mb-2">Description</h2>
+                  <p className="text-sm">{orderData.comment ? orderData.comment : 'N/A'}</p>
+                </div> */}
 
                 {/* Items Table */}
                 <div className="border rounded-lg overflow-hidden mb-6">
@@ -213,7 +222,7 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
                   <h2 className="text-sm font-semibold text-gray-600 mb-2">Order Details</h2>
                   <p className="text-sm">Order #: <span className='font-semibold'>{orderData.orderNumber}</span></p>
                   <p className="text-sm">Order start date: <span className='font-semibold'>{formatDate(orderData.openedDate)}</span></p>
-                  <p className="text-sm">Order closed date: <span className='font-semibold'>{formatDate(orderData.closedDate)}</span></p>
+                  <p className="text-sm">Order closed date: <span className='font-semibold'>{orderData.closedDate ? formatDate(orderData.closedDate) : '-'}</span></p>
                 </div>
                 <div className='gap-6'>
                   <h2 className="text-sm font-semibold text-gray-600 mb-2">Payment Info</h2>

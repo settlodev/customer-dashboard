@@ -31,11 +31,11 @@ async function BusinessPageContent() {
         
         const data = await getBusinessDropDown();
         
-        console.log("Business fetch result:", { 
-            dataExists: !!data, 
-            dataLength: data?.length,
-            sessionUserId: session?.user?.id
-        });
+        // console.log("Business fetch result:", { 
+        //     dataExists: !!data, 
+        //     dataLength: data?.length,
+        //     sessionUserId: session?.user?.id
+        // });
 
         if (data === null) {
             

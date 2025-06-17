@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Receipt, Loader2, DollarSign } from 'lucide-react';
+import { Receipt, Loader2, DollarSign, CreditCard} from 'lucide-react';
 import { Separator } from "@/components/ui/separator";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { PhoneInput } from '@/components/ui/phone-input';
@@ -17,7 +17,7 @@ import { InvoiceSchema } from '@/types/invoice/schema';
 import { useToast } from '@/hooks/use-toast';
 import { InvoiceItem, useInvoiceCalculations } from '@/hooks/useInvoiceCalculation';
 import { useDiscountValidation } from '@/hooks/useDiscountValidation';
-import CurrentSubscriptionStatus from '@/components/subscription/currentSubscriptionStatus';
+
 import SubscriptionPlanCard from '@/components/subscription/subscriptionPlanCard';
 import AdditionalServiceCard from '@/components/subscription/additionalServiceCard';
 import InvoiceItemCard from '@/components/subscription/invoiceItemCard';
@@ -25,17 +25,14 @@ import DiscountCodeInput from '@/components/widgets/discountCodeInput';
 import { useSubscriptionData } from '@/hooks/useSubscriptionData';
 import { UUID } from 'crypto';
 import { SubscriptionAddons } from '@/types/subscription/type';
+import BillingHistoryTable from '@/components/subscription/billingTable';
+
 
 
 type InvoiceFormData = z.infer<typeof InvoiceSchema>;
 
-// const additionalServices = [
-//   { id: 1, name: "Premium Support", amount: 10000 },
-//   { id: 2, name: "Data Migration", amount: 15000 },
-// ];
-
 const InvoiceSubscriptionPage = () => {
-  // State management
+
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
   const [discount, setDiscount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,7 +41,6 @@ const InvoiceSubscriptionPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [addons, setAddons] = useState<SubscriptionAddons[]>([]);
 
-  // Custom hooks
   const { activeSubscription, subscriptionData, isLoading: subscriptionLoading } = useSubscriptionData();
   const { 
     isValidatingDiscount, 
@@ -53,6 +49,7 @@ const InvoiceSubscriptionPage = () => {
     validateDiscount,
     clearDiscount
   } = useDiscountValidation();
+  
 
     // Get discount type from validated discount code, default to 'percentage'
     const discountType = (validatedDiscountCode?.discountType?.toLowerCase() as 'percentage' | 'fixed') || 'percentage';
@@ -114,6 +111,8 @@ const InvoiceSubscriptionPage = () => {
       }
     }
   }, [activeSubscription, subscriptionData]);
+
+  
 
   // Watch discount code changes
   const discountCode = useWatch({
@@ -243,14 +242,14 @@ const InvoiceSubscriptionPage = () => {
         try {
           // console.log("Verification attempt:", attemptCount);
           const verificationResult = await verifyPayment(transactionId, invoice);
-          setPaymentStatus(verificationResult.status);
+          setPaymentStatus(verificationResult.invoicePaymentStatus);
           
-          if (verificationResult.status === "SUCCESS") {
+          if (verificationResult.invoicePaymentStatus === "SUCCESS") {
             clearInterval(verificationInterval);
             handleSuccessfulPayment(verificationResult);
-          } else if (verificationResult.status === "PROCESSING") {
+          } else if (verificationResult.invoicePaymentStatus === "PROCESSING") {
             setPaymentStatus("PROCESSING");
-          } else if (verificationResult.status === "FAILED") {
+          } else if (verificationResult.invoicePaymentStatus === "FAILED") {
             clearInterval(verificationInterval);
             setPaymentStatus("FAILED");
             setTimeout(() => {
@@ -365,9 +364,6 @@ const InvoiceSubscriptionPage = () => {
   }, []);
 
   
-
-  
-
   const onFormError = useCallback((errors: any) => {
     console.log('Form validation errors:', errors);
     const firstError = Object.values(errors)[0] as any;
@@ -388,31 +384,31 @@ const InvoiceSubscriptionPage = () => {
       </div>
     );
   }
-
+  
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="text-start mt-14">
-        {/* <h1 className="font-bold text-2xl mb-2">Create Subscription Invoice</h1> */}
-        <p className="text-gray-600">
-          {activeSubscription?.subscription 
-            ? 'Manage your subscription or add additional services' 
-            : 'Choose a subscription plan and add services'
-          }
-        </p>
+    <div className="max-w-7xl mx-auto px-6 space-y-8">
+      {/* Header Section */}
+      <div className='mt-18'>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Billing & Subscription Management</h1>
+          <p className="text-gray-600">Manage your subscriptions, view payment history, and handle billing operations.</p>
+        </div>
       </div>
 
-      {/* Current Subscription Status */}
-      {activeSubscription?.subscription && (
-        <CurrentSubscriptionStatus activeSubscription={activeSubscription} />
-      )}
-
+      {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Available Plans */}
+        {/* Available Plans & Services */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Subscription Plans */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Subscription Plans</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Subscription Plans Section */}
+          <Card className="border-l-4 border-l-blue-500">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CreditCard className="mr-2" size={20} />
+                Available Subscription Plans
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {subscriptionData.map((plan :any) => {
                 const actionType = getActionType(plan);
                 const isSelected = selectedPlanId === plan.id;
@@ -429,14 +425,18 @@ const InvoiceSubscriptionPage = () => {
                   />
                 );
               })}
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Additional Services */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Additional Services</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {addons.map((service) => {
+          <Card className="border-l-4 border-l-green-500">
+            <CardHeader>
+              <CardTitle>Additional Services</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {addons.map((service) => {
                 const isAdded = invoiceItems.some(item => 
                   item.type === 'service' && item.itemId === service.id.toString()
                 );
@@ -450,11 +450,12 @@ const InvoiceSubscriptionPage = () => {
                   />
                 );
               })}
-            </div>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
-        {/* Invoice Summary */}
+        {/* Payment Summary Sidebar */}
         <div>
           <Card className="sticky top-6 border-t-4 border-t-emerald-500">
             <CardHeader>
@@ -592,6 +593,9 @@ const InvoiceSubscriptionPage = () => {
           />
         </div>
       </div>
+
+      {/* Bills History Section */}
+      <BillingHistoryTable/>
     </div>
   );
 };
