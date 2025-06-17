@@ -1,6 +1,5 @@
 import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 import {
     Card,
     CardContent,
@@ -13,16 +12,19 @@ import { Business } from "@/types/business/type";
 import { getSingleBusiness } from "@/lib/actions/business-actions";
 import MultiStepBusinessForm from "@/components/forms/multistep_form";
 
-export default async function Page({params}: { params: { id: string }; }) {
-    const isNewItem = params.id === "new";
+type Params = Promise<{ id: string }>;
+export default async function Page({params}: {params: Params}) {
+
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: Business | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getSingleBusiness(params.id as UUID);
+            item = await getSingleBusiness(resolvedParams.id as UUID);
             if (!item) notFound();
         } catch (error) {
-            if (isNotFoundError(error)) throw error;
+            console.log(error)
             throw new Error("Failed to load business data");
         }
     }

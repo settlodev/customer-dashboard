@@ -1,27 +1,26 @@
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
-import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { Modifier } from "@/types/modifiers/type";
 import { getModifier } from "@/lib/actions/modifier-actions";
 import ModifierForm from "@/components/forms/modifier_form";
 
+type Params = Promise<{ id: string}>
+export default async function ModifierPage({params}: {params: Params}){
 
-export default async function ModifierPage({params}:{params:{id:string}}){
-
-    const isNewItem = params.id === "new";
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Modifier> | null = null;
 
     if(!isNewItem){
         try{
-            item = await  getModifier(params.id as UUID);
+            item = await  getModifier(resolvedParams.id as UUID);
             if(item.totalElements == 0) notFound();
         }
         catch (error){
-            if(isNotFoundError(error)) throw error;
-
+            console.log(error)
             throw new Error("Failed to load modifiers details");
         }
     }

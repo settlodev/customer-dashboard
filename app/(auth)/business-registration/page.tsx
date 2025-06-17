@@ -24,6 +24,10 @@ export default async function BusinessRegistrationPage() {
       </Suspense>
     );
   } catch (error) {
+
+    if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+      throw error;
+    }
     console.error('Error fetching business data:', error);
     // Redirect to login on error
     redirect('/login');

@@ -1,7 +1,6 @@
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
-import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { Recipe } from "@/types/recipe/type";
@@ -9,19 +8,20 @@ import { getRecipe } from "@/lib/actions/recipe-actions";
 import RecipeForm from "@/components/forms/recipe_form";
 
 
-export default async function RecipePage({params}:{params:{id:string}}){
+type Params = Promise<{ id: string }>;
+export default async function RecipePage({params}: {params: Params}){
 
-    const isNewItem = params.id === "new";
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Recipe> | null = null;
 
     if(!isNewItem){
         try{
-            item = await  getRecipe(params.id as UUID);
+            item = await  getRecipe(resolvedParams.id as UUID);
             if(item.totalElements == 0) notFound();
         }
         catch (error){
-            if(isNotFoundError(error)) throw error;
-
+            console.log(error)
             throw new Error("Failed to load recipe details");
         }
     }

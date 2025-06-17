@@ -8,15 +8,29 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Loading from "@/app/(protected)/loading";
 
+type Params = Promise<{
+    id: string;
+}>
 
-export default function StockIntakePage({params}:{params:{id:string}}) {
-    const [item, setItem] = useState<StockIntake >({} as StockIntake);
+export default function StockIntakePage({ params }: { params: Params }) {
+    const [item, setItem] = useState<StockIntake>({} as StockIntake);
     const [loading, setLoading] = useState<boolean>(true);
-    const {id} = params;
+    const [id, setId] = useState<string>("");
     const stockVariant = useSearchParams().get("stockVariant");
     
+    // Resolve params first
+    useEffect(() => {
+        const resolveParams = async () => {
+            const resolvedParams = await params;
+            setId(resolvedParams.id);
+        };
+        
+        resolveParams();
+    }, [params]);
     
     useEffect(() => {
+        if (!id) return; // Don't fetch until we have the id
+        
         const fetchData = async () => {
             setLoading(true);
             try {
@@ -37,7 +51,7 @@ export default function StockIntakePage({params}:{params:{id:string}}) {
     if (loading) {
         return <div>
             <Loading/>
-        </div>; // Optional loading state
+        </div>;
     }
 
     return (

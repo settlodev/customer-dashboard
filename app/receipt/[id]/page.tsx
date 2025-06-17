@@ -5,11 +5,20 @@ import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
 
-const OrderReceipt = async ({ params }: { params: { id: string ,download?: string} }) => {
-  const orderData = await getOrderReceipt(params.id);
+type Params = Promise<{
+  id: string;
+  download?: string;
+}>;
+
+const OrderReceipt = async ({ params }: { params: Params }) => {
+  // Await the params to resolve them
+  const resolvedParams = await params;
+  const { id, download } = resolvedParams;
+
+  const orderData = await getOrderReceipt(id);
   const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${orderData.orderNumber}`;
 
-  const isDownloadable=params?.download
+  const isDownloadable = download;
 
   const formatDate = (dateStr: string | number | Date) => {
     const date = new Date(dateStr);
@@ -289,10 +298,12 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
             </div>
           </div>
         )}
-        <div className="grid  lg:flex lg:justify-center items-center mt-4 mb-4 gap-1 ">
-              <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'}/>
-              <ShareButton url={orderUrl} />
-            </div>
+        {!download && (
+          <div className="grid lg:flex lg:justify-center items-center mt-4 mb-4 gap-1">
+            <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'}/>
+            <ShareButton url={orderUrl} />
+          </div>
+        )}
       </div>
     </div>
   );

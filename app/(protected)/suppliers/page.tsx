@@ -17,16 +17,21 @@ import { Supplier } from "@/types/supplier/type";
 
 const breadcrumbItems = [{ title: "Suppliers", link: "/suppliers" }];
 
-type ParamsProps = {
-    searchParams: {
-        [key: string]: string | undefined;
-    };
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
 };
 
-export default async function Page({ searchParams }: ParamsProps) {
-    const q = searchParams.search || "";
-    const page = Number(searchParams.page) || 0;
-    const pageLimit = Number(searchParams.limit);
+export default async function Page({ searchParams }: Params) {
+    
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
     const responseData = await searchSuppliers(q, page, pageLimit);
 

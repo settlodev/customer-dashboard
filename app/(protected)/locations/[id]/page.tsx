@@ -1,7 +1,6 @@
 
 import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import {
     Card,
@@ -16,23 +15,19 @@ import { Location } from "@/types/location/type";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import LocationClientForm from "@/components/forms/location_client_form";
 
-export default async function LocationPage({
-    params,
-}: {
-    params: { id: string };
-}) {
-    const isNewItem = params.id === "new";
+type Params = Promise<{id: string}>
+export default async function LocationPage({params}: {params: Params}) {
+
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Location> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getLocation(params.id as UUID);
+            item = await getLocation(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            console.log(error);
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
+            console.log(error)
             throw new Error("Failed to load location data");
         }
     }
