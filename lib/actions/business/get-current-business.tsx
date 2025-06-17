@@ -108,7 +108,7 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
             return null;
         }
 
-        console.log(`Fetching business for userId: ${userId}`);
+        // console.log(`Fetching business for userId: ${userId}`);
         
         const myEndpoints = endpoints({userId: userId});
         const apiClient = new ApiClient();

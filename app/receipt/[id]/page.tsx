@@ -16,6 +16,7 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
   const { id, download } = resolvedParams;
 
   const orderData = await getOrderReceipt(id);
+  console.log("Order Data:", orderData);
   const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${orderData.orderNumber}`;
 
   const isDownloadable = download;

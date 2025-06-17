@@ -56,7 +56,7 @@ export const getSubscriptionAddons = async (
             sorts:[
                 {
                     key:"dateCreated",
-                    direction:"DESC"
+                    direction:"ASC"
                 }
             ],
             page:page ? page - 1:0,
@@ -79,7 +79,6 @@ export const getAllSubscriptions = async (): Promise<Subscriptions[]> => {
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get("/api/subscriptions/");
-        // console.log("All subscriptions response:", response);
         
         return parseStringify(response);
     } catch (error) {
@@ -90,12 +89,12 @@ export const getAllSubscriptions = async (): Promise<Subscriptions[]> => {
 export const getActiveSubscription = async (): Promise<ActiveSubscription> => {
     const location = await getCurrentLocation();
     try {
-        const apiClient = new ApiClient();
+      const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/location-subscriptions/${location?.id}/active`);
         // console.log("Active subscription response:", response);
-        return parseStringify(response);
+      return parseStringify(response);
     } catch (error) {
-        throw error;
+      throw error;
     }
 }
 
@@ -148,7 +147,7 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
     };
 
 
-    // console.log("Payload:", payload );
+    console.log("Payload:", payload );
 
     try {
         const apiClient = new ApiClient();
@@ -163,12 +162,12 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
             return parseStringify(formResponse);
         }
 
-        // console.log("Payment successful:", response);s
+        console.log("Payment successful:", response);
 
         return parseStringify(response);
 
     } catch (error: any) {
-        // console.error("Payment error:", error);
+        console.error("Payment error:", error);
 
         if (error.response?.data) {
             
@@ -192,10 +191,12 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
 
 
 export const verifyPayment = async (transactionId: string,invoice?:string) => {
-    // const location = await getCurrentLocation() || {id:locationId};
+    console.log("Transaction ID", transactionId);
+    console.log("Invoice", invoice);
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/location-invoice-payments/${invoice}/${transactionId}`);
+        console.log("Payment verification response:", response);
         return parseStringify(response);
     } catch (error) {
         throw error;
