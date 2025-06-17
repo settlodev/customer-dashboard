@@ -1,7 +1,6 @@
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import {
     Card,
@@ -16,19 +15,19 @@ import { Salary } from "@/types/salary/type";
 import { getSalary } from "@/lib/actions/salary-actions";
 import SalaryForm from "@/components/forms/salary_form";
 
-export default async function SalaryPage({params}: {
-    params: { id: string };
-}) {
-    const isNewItem = params.id === "new";
+type Params = Promise<{ id: string}>
+export default async function SalaryPage ({params}: {params: Params}) {
+
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Salary> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getSalary(params.id as UUID);
+            item = await getSalary(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
+            console.log(error)
 
             throw new Error("Failed to load salary data");
         }

@@ -1,7 +1,6 @@
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import {
     Card,
@@ -16,19 +15,20 @@ import { Campaign} from "@/types/campaign/type";
 import { getCampaign} from "@/lib/actions/campaign_action";
 import CampaignForm from "@/components/forms/campaign_form";
 
-export default async function SMSMarketingPage({params}: {params: { id: string }}) {
+type Params = Promise<{ id: string }>;
+export default async function SMSMarketingPage({params}: {params: Params}) {
 
-    const isNewItem = params.id === "new";
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Campaign> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getCampaign(params.id as UUID);
+            item = await getCampaign(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
+            
+            console.log(error)
             throw new Error("Failed to load template data");
         }
     }

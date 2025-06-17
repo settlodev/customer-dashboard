@@ -11,7 +11,7 @@ import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { Department,Report } from "@/types/department/type";
 import { DepartmentSchema } from "@/types/department/schema";
-import { isRedirectError } from "next/dist/client/components/redirect";
+// import { isRedirectError } from "next/dist/client/components/redirect";
 
 export const fectchAllDepartments = async () : Promise<Department[]> => {
     await  getAuthenticatedUser();
@@ -127,7 +127,7 @@ export const createDepartment = async (
 
     } catch (error: any) {
         // Ignore redirect error
-        if (isRedirectError(error)) throw error;
+        // if (isRedirectError(error)) throw error;
 
         return parseStringify({
             responseType: "error",

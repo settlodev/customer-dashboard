@@ -14,22 +14,41 @@ import { useRouter } from "next/navigation";
 
 const breadCrumbItems = [{title: "Stock Transfer", link: "/stock-transfers"}];
 
-type ParamsProps = {
-    searchParams: {
-        [key: string]: string | undefined
-    }
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
 };
 
-function Page({searchParams}: ParamsProps) {
-    const [totalLocations, setTotalLocations] = useState<number | undefined>(undefined); // State for total locations
-    const {toast} = useToast();
-    const router = useRouter();
-    const q = searchParams.search || "";
-    const page = Number(searchParams.page) || 0;
-    const pageLimit = Number(searchParams.limit);
+function Page({searchParams}: Params) {
+    const [totalLocations, setTotalLocations] = useState<number | undefined>(undefined);
     const [data, setData] = useState<StockTransfer[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [pageCount, setPageCount] = useState<number>(0);
+    const [resolvedParams, setResolvedParams] = useState<{
+        search?: string;
+        page?: string;
+        limit?: string;
+    } | null>(null);
+    
+    const {toast} = useToast();
+    const router = useRouter();
+
+    // Resolve search params
+    useEffect(() => {
+        const resolveParams = async () => {
+            const params = await searchParams;
+            setResolvedParams(params);
+        };
+        resolveParams();
+    }, [searchParams]);
+
+    // Extract values from resolved params
+    const q = resolvedParams?.search || "";
+    const page = Number(resolvedParams?.page) || 0;
+    const pageLimit = Number(resolvedParams?.limit);
 
     useEffect(() => {
         const fetchBusinessData = async () => {
@@ -41,6 +60,8 @@ function Page({searchParams}: ParamsProps) {
     }, []);
 
     useEffect(() => {
+        if (resolvedParams === null) return; // Wait for params to be resolved
+        
         const fetchStockTransfers = async () => {
             const responseData = await searchStockTransfers(q, page, pageLimit);
             setData(responseData.content);
@@ -49,7 +70,7 @@ function Page({searchParams}: ParamsProps) {
         };
 
         fetchStockTransfers();
-    }, [q, page, pageLimit]); 
+    }, [q, page, pageLimit, resolvedParams]); 
 
     const handleStockTransfer = async () => {
         if (totalLocations && totalLocations <= 1) {
@@ -62,6 +83,11 @@ function Page({searchParams}: ParamsProps) {
             await router.push(`/stock-transfers/new`);
         }
     };
+
+    // Show loading state while params are being resolved
+    if (resolvedParams === null) {
+        return <div>Loading...</div>;
+    }
 
     return (
         <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>

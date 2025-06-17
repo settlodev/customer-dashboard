@@ -10,13 +10,17 @@ const OrderReceipt = async ({
   params,
   searchParams 
 }: { 
-  params: { id: string };
-  searchParams: { startDate?: string; endDate?: string };
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ startDate?: string; endDate?: string }>;
 }) => {
+    // Await both params and searchParams since they're now Promises
+    const resolvedParams = await params;
+    const resolvedSearchParams = await searchParams;
+    
     const report = await DepartmentReport(
-      params.id as UUID,
-      searchParams.startDate,
-      searchParams.endDate
+      resolvedParams.id as UUID,
+      resolvedSearchParams.startDate,
+      resolvedSearchParams.endDate
     );
 
     return (

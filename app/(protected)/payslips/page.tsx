@@ -9,16 +9,20 @@ import { Payslip } from "@/types/payslip/type";
 
 
 const breadCrumbItems = [{title:"Payslips",link:"/payslips"}];
- type ParamsProps ={
-     searchParams:{
-         [key:string]:string | undefined
-     }
- };
- async function Page({searchParams}:ParamsProps) {
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
+};
+ async function Page({searchParams}:Params) {
 
-     const q = searchParams.search || "";
-     const page = Number(searchParams.page) || 0;
-     const pageLimit = Number(searchParams.limit);
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
      const responseData = await searchPayslip(q,page,pageLimit);
 

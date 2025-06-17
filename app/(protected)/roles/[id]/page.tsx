@@ -1,7 +1,6 @@
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import {
     Card,
@@ -16,20 +15,20 @@ import {ApiResponse} from "@/types/types";
 import {getRole} from "@/lib/actions/role-actions";
 import RoleForm from "@/components/forms/role_form";
 
-export default async function RolesPage({params}: {
-    params: { id: string };
-}) {
-    const isNewItem = params.id === "new";
+type Params = Promise<{ id: string }>;
+export default async function RolesPage({params}: {params: Params}) {
+
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Role> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getRole(params.id as UUID);
+            item = await getRole(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
+            
+            console.log(error)
             throw new Error("Failed to load role data");
         }
     }

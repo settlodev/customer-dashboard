@@ -6,16 +6,22 @@ import { searchOrder } from "@/lib/actions/order-actions";
 import OrdersSummary from "@/components/widgets/order/orders-list-summary";
 
 const breadCrumbItems = [{title:"Orders",link:"/orders"}];
- type ParamsProps ={
-     searchParams:{
-         [key:string]:string | undefined
-     }
- };
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
+};
 
- async function Page({searchParams}:ParamsProps) {
-     const q = searchParams.search || "";
-     const page = Number(searchParams.page) || 0;
-     const pageLimit = Number(searchParams.limit);
+ async function Page({searchParams}:Params) {
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
+
+
      const responseData = await searchOrder(q, page, pageLimit);
      const total = responseData.totalElements;
      const pageCount = responseData.totalPages;

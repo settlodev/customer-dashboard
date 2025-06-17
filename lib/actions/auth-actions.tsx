@@ -1,7 +1,7 @@
 "use server";
 
 import * as z from "zod";
-import { isRedirectError } from "next/dist/client/components/redirect";
+// import { isRedirectError } from "next/dist/client/components/redirect";
 import { AuthError } from "next-auth";
 import {
     LoginSchema,
@@ -13,12 +13,12 @@ import {
 import {signIn, signOut} from "@/auth";
 import {ExtendedUser, FormResponse} from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import {deleteAuthCookie, getUser} from "@/lib/auth-utils";
+import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
-import {DEFAULT_LOGIN_REDIRECT_URL} from "@/routes";
+
 
 export async function logout() {
     try {
@@ -49,6 +49,8 @@ export const login = async (
 
     //Make sure token does not exist
     await deleteAuthCookie();
+    await deleteActiveBusinessCookie();
+    await deleteActiveLocationCookie();
 
     try {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -66,6 +68,10 @@ export const login = async (
                 error: new Error("Wrong credentials"),
             });
         }
+        return parseStringify({
+            responseType: "success",
+            message: "Login successful",
+        });
 
     } catch (error) {
         if (error instanceof AuthError) {
@@ -93,8 +99,8 @@ export const login = async (
         });
     }
 
-    revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
-    redirect(DEFAULT_LOGIN_REDIRECT_URL);
+    // revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
+    // redirect(DEFAULT_LOGIN_REDIRECT_URL);
 };
 
 export const getUserById = async (userId: string|undefined): Promise<ExtendedUser> => {
@@ -110,7 +116,7 @@ export const getUserById = async (userId: string|undefined): Promise<ExtendedUse
         return parseStringify(userDetails);
     } catch (error) {
         // Ignore redirect error
-        if (isRedirectError(error)) throw error;
+        // if (isRedirectError(error)) throw error;
         throw error;
     }
 };
@@ -246,7 +252,7 @@ export const register = async (
     } catch (error : any) {
 
         // Ignore redirect error
-        if (isRedirectError(error)) throw error;
+        // if (isRedirectError(error)) throw error;
 
         return parseStringify({
             responseType: "error",
@@ -319,7 +325,7 @@ export const resetPassword = async (
     } catch (error: any) {
 
         // Ignore redirect error
-        if (isRedirectError(error)) throw error;
+        // if (isRedirectError(error)) throw error;
 
         return parseStringify({
             responseType: "error",

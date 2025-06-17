@@ -10,16 +10,20 @@ import { CSVStockDialog } from "@/components/csv/stockCsvImport";
 import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
 
 const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
- type ParamsProps ={
-     searchParams:{
-         [key:string]:string | undefined
-     }
- };
- async function StockVariantPage({searchParams}:ParamsProps) {
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
+};
+ async function StockVariantPage({searchParams}:Params) {
 
-     const q = searchParams.search || "";
-     const page = Number(searchParams.page) || 0;
-     const pageLimit = Number(searchParams.limit);
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
      const responseData = await searchStockVariants(q,page,pageLimit);
 

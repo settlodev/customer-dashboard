@@ -1,92 +1,88 @@
-'use client';
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {DataTable} from "@/components/tables/data-table";
+import {columns} from '@/components/tables/stock-variants/column'
+import { searchStockVariants } from "@/lib/actions/stock-variant-actions";
+import { StockVariant } from "@/types/stockVariant/type";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { CSVStockDialog } from "@/components/csv/stockCsvImport";
+import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
 
-import { getStockVariantMovement, getStockVariantSummary } from '@/lib/actions/stock-variant-actions';
-import { UUID } from 'crypto';
-import React, { useState, useEffect, useMemo } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import StockMovementDashboard from '@/components/widgets/stock-movement';
-import { StockMovement, stockVariantSummary } from '@/types/stockVariant/type';
-import Loading from '@/app/loading';
-// import { BoxIcon } from '@/components/icons/box';
+const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
 
-import BreadcrumbsNav from '@/components/layouts/breadcrumbs-nav';
-import { useSearchParams } from 'next/navigation';
+type Params = { 
+  searchParams: Promise<{ 
+      search?: string; 
+      page?: string; 
+      limit?: string; 
+  }> 
+};
 
-export default function StockVariantDetails({ params }: { params: { id: string } }) {
-  // console.log("The id is: ", params);
-  const [variant, setVariant] = useState<StockMovement[]>([]);
-  const [filteredMovements, setFilteredMovements] = useState<StockMovement[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const searchParams = useSearchParams();
-  const stock = searchParams.get("stock");
-  const [summary, setSummary] = useState<stockVariantSummary>({} as stockVariantSummary);
-  const [error, setError] = useState<Error | null>(null);
-
-
-  const breadCrumbItems = useMemo(() => [{title: "Stock Items", link: "/stock-variants"},
-    {title: `${variant[0]?.stockName}-${variant[0]?.stockVariantName}`, link: ""}],[]);
-
-    useEffect(() => {
-      const fetchData = async () => {
-        setIsLoading(true);
-        try {
-          const [movementData, summaryData] = await Promise.all([
-            getStockVariantMovement(params.id as UUID),
-            getStockVariantSummary(params.id as UUID, stock as UUID)
-          ]);
-          
-          setVariant(movementData);
-          setFilteredMovements(movementData);
-          setSummary(summaryData);
-        } catch (error) {
-          setError(error instanceof Error ? error : new Error('Unknown error occurred'));
-        } finally {
-          setIsLoading(false);
-        }
-      };
+async function StockVariantPage({searchParams}: Params) {
     
-      fetchData();
-    }, [params.id, stock]);
+  const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
+    const responseData = await searchStockVariants(q, page, pageLimit);
+    const data: StockVariant[] = responseData.content;
+    const total = responseData.totalElements;
+    const pageCount = responseData.totalPages;
 
-  if (isLoading) {
+    const hasData = total > 0 || q !== "";
+    const showCsvDialogs = total === 0;
+
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">
-          <Loading />
-        </div>
-      </div>
-    );
-  }
-  if (error) {
-    return <div>Error loading data: {error.message}</div>;
-  }
-
-  return (
-    <div className="p-4 space-y-4 mt-6">
-    <BreadcrumbsNav items={breadCrumbItems} />
-      <Card>
-        <CardContent className="pt-6">
-          <div className="space-y-2">
-            <div className='space-y-2'>
-            <h3 className='font-bold text-lg'>Stock Movements History</h3>
-              <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
-              
-                <div className='flex items-center gap-2'>
-                  <h2 className='text-[32px] font-bold capitalize'>
-                    {/* <BoxIcon className="w-4 h-4" /> */}
-                    {variant[0]?.stockName}
-                    <span className="text-black">-</span>
-                    {variant[0]?.stockVariantName}
-                  </h2>
+        <div className="flex-1 space-y-4 md:p-8 pt-6 mt-12">
+            <div className="flex items-center justify-between mb-2 p-2">
+                <div className="relative flex-1 md:max-w-md">
+                    <BreadcrumbsNav items={breadCrumbItems} />
                 </div>
-              </div>
+                <div className="flex items-center space-x-2">
+                    <Button>
+                        <Link href="/stocks/new">Add Stock</Link>
+                    </Button>
+                    <div className="flex space-x-2">
+                        {showCsvDialogs && <CSVStockDialog />}
+                        {showCsvDialogs && <ProductWithStockCSVDialog />}
+                    </div>
+                </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <StockMovementDashboard movements={filteredMovements} summary={summary} />
-    </div>
-  );
+            
+            {hasData ? (
+                <Card x-chunk="data-table">
+                    <CardHeader>
+                        <CardTitle>Stock Items</CardTitle>
+                        <CardDescription>A list of all stock items</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <DataTable 
+                            columns={columns}
+                            data={data}
+                            searchKey="stockAndStockVariantName"
+                            pageNo={page}
+                            total={total}
+                            pageCount={pageCount}
+                        />
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="h-[calc(100vh-240px)] border border-dashed">
+                    <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
+                        <h1 className="text-[1.5rem] font-bold leading-tight">
+                            No stock variant data found
+                        </h1>
+                        <p className="text-sm text-center text-muted-foreground">
+                            There are no stock variant records found at the moment.
+                        </p>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
 }
+
+export default StockVariantPage;

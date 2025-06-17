@@ -1,7 +1,6 @@
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import {
     Card,
@@ -16,18 +15,20 @@ import {Category} from "@/types/category/type";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import CategoryForm from "@/components/forms/category_form";
 
-export default async function CategoryPage({params}: { params: { id: string }; }) {
-    const isNewItem = params.id === "new";
+type Params = Promise<{ id: string }>;
+export default async function CategoryPage({params}: {params: Params}) {
+
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Category> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getCategory(params.id as UUID);
+            item = await getCategory(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
+            console.log(error)
             // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
             throw new Error("Failed to load category data");
         }
     }

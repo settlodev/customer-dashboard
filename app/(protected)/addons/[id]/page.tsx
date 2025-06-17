@@ -1,27 +1,26 @@
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
-import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { Addon } from "@/types/addon/type";
 import { getAddon } from "@/lib/actions/addon-actions";
 import AddonForm from "@/components/forms/addon_form";
 
+type Params = Promise<{id: string}>
+export default async function AddonPage({params}: {params: Params}){
 
-export default async function AddonPage({params}:{params:{id:string}}){
-
-    const isNewItem = params.id === "new";
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Addon> | null = null;
 
     if(!isNewItem){
         try{
-            item = await  getAddon(params.id as UUID);
+            item = await getAddon(resolvedParams.id as UUID);
             if(item.totalElements == 0) notFound();
         }
         catch (error){
-            if(isNotFoundError(error)) throw error;
-
+            console.log(error)
             throw new Error("Failed to load addon details");
         }
     }
