@@ -11,7 +11,7 @@ import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import {Product, SoldItemsReport, TopSellingProduct} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
-import { GoogleGenAI} from "@google/genai";
+import { GoogleGenAI, Modality} from "@google/genai";
 import { LocationDetails} from "@/types/menu/type";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
@@ -517,30 +517,41 @@ export const generateAIDescription = async (name: string, category: string): Pro
     }
 };
 
-// export const generateAIImage = async (description: string, name: string): Promise<string> => {
-//     const ai = new GoogleGenAI({
-//         apiKey: process.env.GEMINI_API_KEY,
-//     });
+export const generateAIImage = async (description: string, name: string): Promise<string> => {
+    const ai = new GoogleGenAI({
+        apiKey: process.env.GEMINI_API_KEY,
+    });
 
-//     const prompt = `Generate an image for "${name}" based on the following description: "${description}"`;
+    const prompt = `Generate an image for "${name}" based on the following description: "${description}"`;
 
-//     try {
-//         const response = await ai.models.generateContent({
-//             model: "gemini-2.0-flash-preview-image-generation",
-//             contents: prompt,
-//             config: {
-//                 responseModalities: [Modality.TEXT, Modality.IMAGE],
-//               },
-//         });
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.0-flash-preview-image-generation",
+            contents: prompt,
+            config: {
+                responseModalities: [Modality.TEXT, Modality.IMAGE],
+            },
+        });
+
+        if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.text) {
+                    console.log(part.text);
+                }
+                else if (part.inlineData?.data) {
+                    const imageData = part.inlineData.data;
+                    const imageBuffer = Buffer.from(imageData, 'base64');
+                    return `data:image/png;base64,${imageBuffer.toString('base64')}`;
+                }
+            }
+        }
         
-//         console.log("Generated image URL:", response.url);
-        
-//         return response.url ?? "No image generated";
-//     } catch (error) {
-//         console.error("Error generating image:", error);
-//         return "No image generated";
-//     }
-// }
+        return "No image generated";
+    } catch (error) {
+        console.error("Error generating image:", error);
+        return "Error generating image";
+    }
+}
 
 export const downloadProductsCSV = async (locationId?:string) => {
 

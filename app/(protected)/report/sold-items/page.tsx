@@ -77,8 +77,7 @@ const SoldItemsDashboard = () => {
 
     fetchingSoldItems();
   }, []);
-
-  // Update paginated items whenever soldData changes or pagination settings change
+  
   useEffect(() => {
     if (soldData && soldData.items) {
       const startIndex = (currentPage - 1) * itemsPerPage;
