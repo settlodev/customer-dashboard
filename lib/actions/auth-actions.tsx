@@ -75,7 +75,6 @@ export const login = async (
 
     } catch (error) {
         if (error instanceof AuthError) {
-            console.log("error during login: ", error);
             switch (error.name) {
                 case "CredentialsSignin":
                     return parseStringify({
