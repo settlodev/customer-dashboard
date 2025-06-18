@@ -137,15 +137,13 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
     } catch (error) {
         console.error("Failed to get business list:", error);
 
-        // If it's not the final retry, try again
+        
         if (retryCount < MAX_RETRIES) {
             // console.log(`General error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
             return getBusinessDropDown(retryCount + 1);
         }
 
-        // Final failure
-        // console.error("Max retries exceeded, returning null");
         return null;
     }
 }
