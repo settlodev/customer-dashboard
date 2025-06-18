@@ -230,10 +230,11 @@ export default function ProductForm({ item }: ProductFormProps) {
                 description: "AI description and image generated successfully!"
             });
         } catch (error) {
+            console.error("Error generating AI description and image:", error);
             toast({
                 variant: "destructive",
                 title: "Generation Failed",
-                description: "Unable to generate content. Please try again."
+                description: "Failed to generate AI description and image"
             });
         } finally {
             setIsGeneratingDescription(false);
