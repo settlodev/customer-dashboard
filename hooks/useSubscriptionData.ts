@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getActiveSubscription, getAllSubscriptions } from '@/lib/actions/subscriptions';
 import { ActiveSubscription, Subscriptions } from '@/types/subscription/type';
 
-export const useSubscriptionData = () => {
+export const useSubscriptionData = (locationId?: string | null) => {
   const [activeSubscription, setActiveSubscription] = useState<ActiveSubscription>();
   const [subscriptionData, setSubscriptionData] = useState<Subscriptions[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -11,7 +11,7 @@ export const useSubscriptionData = () => {
     const fetchSubscriptionData = async () => {
       try {
         const [activeSubs, subscriptions] = await Promise.all([
-          getActiveSubscription(),
+          getActiveSubscription(locationId), 
           getAllSubscriptions()
         ]);
         
@@ -25,7 +25,7 @@ export const useSubscriptionData = () => {
     };
 
     fetchSubscriptionData();
-  }, []);
+  }, [locationId]); 
 
   return { activeSubscription, subscriptionData, isLoading };
 };

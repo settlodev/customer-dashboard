@@ -19,9 +19,17 @@ export const searchInvoices = async (
     q: string,
     page: number,
     pageLimit: number,
+    locationId?: string
 ): Promise<ApiResponse<Invoice>> => {
     await getAuthenticatedUser();
 
+    let location;
+    
+    if (locationId) {
+        location = { id: locationId };
+    } else {
+        location = await getCurrentLocation();
+    }
     try {
         const apiClient = new ApiClient();
 
@@ -44,8 +52,6 @@ export const searchInvoices = async (
             size: pageLimit ? pageLimit : 10,
         };
 
-        const location = await getCurrentLocation();
-
         const invoiceResponse = await apiClient.post(
             `/api/location-invoices/${location?.id}`,
             query,
@@ -59,12 +65,12 @@ export const searchInvoices = async (
 
 export const createInvoice = async (
     invoice: z.infer<typeof InvoiceSchema>,
+    locationQueryParam?: string
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
-
-    const validatedInvoiceData = InvoiceSchema.safeParse(invoice);
-
+    let location;
     
+    const validatedInvoiceData = InvoiceSchema.safeParse(invoice);
 
     if (!validatedInvoiceData.success) {
         formResponse = {
@@ -76,15 +82,16 @@ export const createInvoice = async (
         return parseStringify(formResponse);
     }
 
-    const location = await getCurrentLocation();
+    if (locationQueryParam) {
+        location = { id: locationQueryParam };
+    } else {
+        
+        location = await getCurrentLocation();
+    }
     
     const payload = {
         ...validatedInvoiceData.data,
     };
-
-   
-
-
 
     try {
         const apiClient = new ApiClient();
@@ -107,7 +114,6 @@ export const createInvoice = async (
     }
 
     revalidatePath("/invoices");
-    
 };
 
 
@@ -157,7 +163,7 @@ export const getInvoice = async (id: UUID): Promise<ApiResponse<Invoice>> => {
         query,
     );
 
-    console.log("The invoice data is:", invoiceData);
+  
 
     return parseStringify(invoiceData);
 };
