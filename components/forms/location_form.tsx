@@ -1,6 +1,3 @@
-
-
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -35,14 +32,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import CancelButton from "../widgets/cancel-button";
 import { Separator } from "../ui/separator";
 
-const LocationForm = ({
-  item,
+const LocationForm = ({ 
+  item, 
   // onSubmit, 
-  multipleStep = false
-}: {
-  item: Location | null | undefined,
-  onSubmit: (values: z.infer<typeof LocationSchema>) => void,
-  multipleStep?: boolean
+  multipleStep = false 
+}: { 
+  item: Location | null | undefined, 
+  onSubmit: (values: z.infer<typeof LocationSchema>) => void, 
+  multipleStep?: boolean 
 }) => {
 
   const [isPending, startTransition] = useTransition();
@@ -80,9 +77,8 @@ const LocationForm = ({
   );
 
 
-
-  const submitData = (values: z.infer<typeof LocationSchema>) => {
-    console.log("Submitting data:", values);
+   const submitData = (values: z.infer<typeof LocationSchema>) => {
+//     console.log("Submitting data:", values);
     setResponse(undefined);
 
     startTransition(async () => {
