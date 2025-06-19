@@ -1,7 +1,6 @@
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import {
     Card,
@@ -16,19 +15,19 @@ import { Reservation } from "@/types/reservation/type";
 import ReservationForm from "@/components/forms/reservation_form";
 import { getReservation } from "@/lib/actions/reservation-actions";
 
-export default async function ReservationPage({params}: {params: { id: string }}) {
+type Params = Promise<{ id: string}>
+export default async function ReservationPage({params}: {params: Params}) {
 
-    const isNewItem = params.id === "new";
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Reservation> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getReservation(params.id as UUID);
+            item = await getReservation(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
+            console.log(error)
             throw new Error("Failed to load reservation data");
         }
     }

@@ -57,6 +57,12 @@ export const searchStaff = async (
                     field_type: "STRING",
                     value: q,
                 },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
+                }
             ],
             sorts: [
                 {
@@ -110,22 +116,24 @@ export const createStaff = async (
             business: business?.id
         }
 
-       const staff = await apiClient.post(
+        const staff = await apiClient.post(
             `/api/staff/${location?.id}/create`,
             payload,
         ) as Staff;
-
-        // console.log("The staff created is", staff);
 
         if (staff && staff.dashboardAccess === true) {
             const staffId = staff.id;
             const businessId = business?.id;
 
             if (staffId && businessId) {
-                // console.log("Inviting staff");
                 await inviteStaff(staffId, businessId);
             } else {
-                throw new Error("Invalid staff or business id");
+                
+                return parseStringify({
+                    responseType: "error",
+                    message: "Staff created but invitation failed due to invalid IDs",
+                    error: new Error("Invalid staff or business id"),
+                });
             }
         }
 
@@ -133,24 +141,41 @@ export const createStaff = async (
             responseType: "success",
             message: "Staff created successfully",
         }
-    } catch (error: unknown) {
-        // Extract the actual error message from the API response if possible
-        let errorMessage = "Something went wrong while processing your request, please try again";
+
         
-        if (error && typeof error === 'object') {
-            if ('message' in error && typeof error.message === 'string') {
-                errorMessage = error.message;
-            } else if ('data' in error && typeof error.data === 'object' && error.data && 'message' in error.data) {
-                errorMessage = String(error.data.message);
-            }
+        revalidatePath("/staff");
+        redirect("/staff");
+
+    } catch (error: any) {
+        // console.error("Error creating staff:", error);
+        
+        let errorMessage = "An unexpected error occurred. Please try again.";
+        
+        // Try to extract meaningful error messages
+        if (error.message) {
+            errorMessage = error.message;
+        } else if (error.details?.message) {
+            errorMessage = error.details.message;
+        } else if (error.response?.data?.message) {
+            errorMessage = error.response.data.message;
+        } else if (error.response?.data?.error) {
+            errorMessage = error.response.data.error;
         }
-        
-        // Throw the error instead of returning it
-        throw new Error(errorMessage);
+
+       
+        if (errorMessage.includes('beyond the limit') || errorMessage.includes('subscription')) {
+            
+            errorMessage = errorMessage; 
+        }
+
+        return parseStringify({
+            responseType: "error",
+            message: errorMessage,
+            error: new Error(errorMessage),
+        });
     }
 
-    revalidatePath("/staff");
-    redirect("/staff");
+    return parseStringify(formResponse);
 };
 
 export const updateStaff = async (

@@ -13,6 +13,10 @@ export declare type LocationSettings = {
     useDepartments: boolean
     useCustomerPrice: boolean
     useWarehouse: boolean
+    enableEmailNotifications: boolean,
+    enableSmsNotifications: boolean,
+    enablePushNotifications: boolean,
+    enableOrdersPrintsCount: boolean,
     useShifts: boolean
     useKds: boolean
     isActive: boolean

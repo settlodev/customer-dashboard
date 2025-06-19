@@ -9,7 +9,7 @@ import { z } from "zod";
 import { Location } from "@/types/location/type";
 import {switchLocation} from "../business/refresh";
 import {signOut} from "@/auth";
-import {isRedirectError} from "next/dist/client/components/redirect";
+// import {isRedirectError} from "next/dist/client/components/redirect";
 import { console } from "inspector";
 import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 
@@ -17,7 +17,8 @@ export const createBusinessLocation = async (
     businessLocation: z.infer<typeof LocationSchema>
 ): Promise<FormResponse> => {
     // Handle authentication
-    const token = cookies().get('authToken')?.value;
+    const cookieStore = await cookies();
+    const token = cookieStore.get('authToken')?.value;
     if (!token) {
         await signOut();
         throw new Error('Authentication token not found');
@@ -61,7 +62,7 @@ export const createBusinessLocation = async (
         // Update auth token and refresh location
         const authToken = JSON.parse(token) as AuthToken;
         authToken.locationComplete = true;
-        cookies().set('authToken', JSON.stringify(authToken), {
+        cookieStore.set('authToken', JSON.stringify(authToken), {
             path: '/',
             httpOnly: true
         });
@@ -75,7 +76,7 @@ export const createBusinessLocation = async (
 
     } catch (error: any) {
         // Ignore redirect error
-        if (isRedirectError(error)) throw error;
+        // if (isRedirectError(error)) throw error;
 
         console.error('Location creation error:', error);
         return parseStringify({

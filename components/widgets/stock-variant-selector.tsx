@@ -75,7 +75,7 @@ const StockVariantSelector: React.FC<Props> = ({
       clearTimeout(debounceTimeout);
     }
 
-    if (hasInitialized && searchTerm !== "") {
+    if (hasInitialized) {
       const timeout = setTimeout(() => {
         setPage(1);
         setStocks([]);
@@ -90,7 +90,7 @@ const StockVariantSelector: React.FC<Props> = ({
         clearTimeout(debounceTimeout);
       }
     };
-  }, [searchTerm]);
+  }, [searchTerm, hasInitialized]);
 
   async function loadSpecificVariant(variantId: string) {
     try {
@@ -206,14 +206,16 @@ const StockVariantSelector: React.FC<Props> = ({
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0">
-          <Command>
+          <Command shouldFilter={false}>
             <CommandInput 
               placeholder={`Search ${placeholder.toLowerCase()}...`} 
               value={searchTerm}
               onValueChange={setSearchTerm}
             />
             <CommandList onScroll={handleScroll} className="max-h-[300px]">
-              <CommandEmpty>No stock items found.</CommandEmpty>
+              <CommandEmpty>
+                {isLoading ? "Searching..." : "No stock items found."}
+              </CommandEmpty>
               <CommandGroup>
                 {allVariantOptions.length === 0 && isLoading ? (
                   <div className="py-6 text-center">
@@ -224,10 +226,10 @@ const StockVariantSelector: React.FC<Props> = ({
                   allVariantOptions.map((option) => (
                     <CommandItem
                       key={option.id}
-                      value={option.id}
+                      value={option.searchString}
                       disabled={option.disabled}
-                      onSelect={(currentValue) => {
-                        onChange(currentValue === value ? "" : currentValue);
+                      onSelect={() => {
+                        onChange(option.id === value ? "" : option.id);
                         setOpen(false);
                       }}
                     >

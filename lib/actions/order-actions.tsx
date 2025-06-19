@@ -94,12 +94,12 @@ export const getOrder= async (id:UUID) : Promise<ApiResponse<Orders>> => {
     return parseStringify(order)
 }
 
-export const getOrderReceipt= async (id:UUID)=> {
+export const getOrderReceipt = async (identifier: string | UUID) => {
     const apiClient = new ApiClient();
     
     try {
-        const order= await apiClient.get(
-            `/api/order-receipts/${id}`
+        const order = await apiClient.get(
+            `/api/order-receipts/${identifier}`
         );
         
         return parseStringify(order)
@@ -107,7 +107,6 @@ export const getOrderReceipt= async (id:UUID)=> {
     } catch (error) {
         throw error
     }
-   
 }
 
 export const getOrderLogs = async (id:UUID)=>{
@@ -165,8 +164,6 @@ export const creditReport = async (startDate?: Date, endDate?: Date): Promise<Cr
         const report = await apiClient.get(`/api/reports/${location?.id}/credit/unpaid-orders`, {
             params
         });
-
-        // console.log ("The cashflow report with filter is: ", report );
 
         return parseStringify(report);
     }

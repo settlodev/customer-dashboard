@@ -11,7 +11,8 @@ import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import {Product, SoldItemsReport, TopSellingProduct} from "@/types/product/type";
 import {ProductSchema} from "@/types/product/schema";
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI} from "@google/genai";
+import { LocationDetails} from "@/types/menu/type";
 
 export const fectchAllProducts = async () : Promise<Product[]> => {
     await  getAuthenticatedUser();
@@ -69,6 +70,12 @@ export const searchProducts = async (
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
+                },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
                 }
             ],
             sorts:[
@@ -477,23 +484,63 @@ export const SoldItemsReports = async (startDate?: Date, endDate?: Date): Promis
     }
 }
 
+
 export const generateAIDescription = async (name: string, category: string): Promise<string> => {
     const ai = new GoogleGenAI({
         apiKey: process.env.GEMINI_API_KEY,
     });
 
-    const prompt = `Generate a product description for a ${name} in the ${category} category.`;
-    const response = await ai.models.generateContent({
-        model: "text-bison@001",
-        contents:prompt,
-        // maxOutputTokens: 100,
-        // temperature: 0.5,
-        // topP: 0.9
-    });
-    console.log("The generated description", response.text ?? "No description generated")
+    const prompt = `Generate a concise product description for "${name}" in the ${category} category.
 
-    return response.text ?? "No description generated";
+        Requirements:
+        - Maximum 3-4 sentences
+        - Focus on 2-3 key benefits/features only
+        - Use simple, clear language
+        - Avoid marketing fluff and excessive adjectives
+        - Start with what the product does, not emotional language
+        - Include practical value proposition
+        - No bullet points or formatting
+        - Keep it under 150 words
+
+        Example format: "[Product] is a [category] that [main function]. It features [key benefit 1] and [key benefit 2]. Perfect for [target use case]."`
+
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: prompt,
+        });
+        
+        return response.text ?? "No description generated";
+    } catch (error) {
+        console.error("Error generating description:", error);
+        return "No description generated";
+    }
 };
+
+// export const generateAIImage = async (description: string, name: string): Promise<string> => {
+//     const ai = new GoogleGenAI({
+//         apiKey: process.env.GEMINI_API_KEY,
+//     });
+
+//     const prompt = `Generate an image for "${name}" based on the following description: "${description}"`;
+
+//     try {
+//         const response = await ai.models.generateContent({
+//             model: "gemini-2.0-flash-preview-image-generation",
+//             contents: prompt,
+//             config: {
+//                 responseModalities: [Modality.TEXT, Modality.IMAGE],
+//               },
+//         });
+        
+//         console.log("Generated image URL:", response.url);
+        
+//         return response.url ?? "No image generated";
+//     } catch (error) {
+//         console.error("Error generating image:", error);
+//         return "No image generated";
+//     }
+// }
 
 export const downloadProductsCSV = async (locationId?:string) => {
 
@@ -551,6 +598,12 @@ export const menuProducts = async (
                     operator: "LIKE",
                     field_type: "STRING",
                     value: q
+                },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
                 }
             ],
             sorts: [
@@ -564,7 +617,7 @@ export const menuProducts = async (
         };
 
         const location = await getCurrentLocation() || { id: locationId };
-        console.log("The location passed is: ", location)
+        // console.log("The location passed is: ", location)
 
         const data = await apiClient.post(
             `/api/menu/${location?.id}`,
@@ -581,3 +634,25 @@ export const menuProducts = async (
         throw error;
     }
 };
+
+export const locationMenuDetails = async (
+    locationId?: string
+  ): Promise<LocationDetails> => {
+    try {
+      const apiClient = new ApiClient();
+  
+      const data = await apiClient.get<LocationDetails>(
+        `/api/menu/${locationId}`,
+        {
+          headers: {
+            "SETTLO-API-KEY":
+              "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
+          }
+        }
+      );
+  
+      return parseStringify(data); // Should return LocationDetails
+    } catch (error) {
+      throw error;
+    }
+  };

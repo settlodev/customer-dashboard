@@ -82,24 +82,7 @@ const pageSpecificComponents = {
     exportComponent: null,
     entityNames: { singular: "Staff Member", plural: "Staff Members" }
   },
-  "/locations": {
-    entityType: "location" as const,
-    importComponent: null,
-    exportComponent: null,
-    entityNames: { singular: "Location", plural: "Locations" }
-  },
-  "/suppliers": {
-    entityType: "supplier" as const,
-    importComponent: null,
-    exportComponent: null,
-    entityNames: { singular: "Supplier", plural: "Suppliers" }
-  },
-  "/customers": {
-    entityType: "customer" as const,
-    importComponent: null,
-    exportComponent: null,
-    entityNames: { singular: "Customer", plural: "Customers" }
-  }
+  
 };
 
 interface DataTableProps<TData, TValue> {
@@ -113,9 +96,9 @@ interface DataTableProps<TData, TValue> {
   searchParams?: {
     [key: string]: string | string[] | undefined;
   };
-  filterKey?: string; // Optional: Key to filter by (e.g., "orderStatus")
-  filterOptions?: { label: string; value: string }[]; // Optional: Filter options (e.g., "CLOSED", "OPEN")
-  disableArchive?: boolean; // Optional: Disable archive functionality
+  filterKey?: string; 
+  filterOptions?: { label: string; value: string }[]; 
+  disableArchive?: boolean; 
 }
 
 export function DataTable<TData, TValue>({
@@ -133,10 +116,10 @@ export function DataTable<TData, TValue>({
   const searchParams = useSearchParams();
 
   const { initializePaginationState, savePaginationState } = usePaginationState({
-    key: pathname.replace('/', '') // Use the route as the key, e.g., 'products'
+    key: pathname.replace('/', '') 
   });
 
-  // Initialize state on component mount
+  
   React.useEffect(() => {
     const timer = setTimeout(() => {
       initializePaginationState();
@@ -145,7 +128,7 @@ export function DataTable<TData, TValue>({
     return () => clearTimeout(timer);
   }, [searchParams]);
 
-  // Search params
+  
   const page = searchParams?.get("page") ?? "1";
   const pageAsNumber = Number(page);
   const fallbackPage = isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
@@ -173,22 +156,22 @@ export function DataTable<TData, TValue>({
     }
   }, [fallbackPage, fallbackPerPage]);
   
-  // Loading state
+  
   const [loading, setLoading] = React.useState<boolean>(false);
 
-  // Handle status filter change
+  
   const handleStatusFilterChange = (newStatus: string) => {
-    console.log("Selected Status:", newStatus);
+  
     setStatusFilter(newStatus); 
   };
 
-  // Filter data based on status (if filterKey is provided)
+  
   const filteredData = React.useMemo(() => {
-    if (!filterKey || !statusFilter) return data; // If no filter is selected, return all data
-    return data.filter((item) => (item as any)[filterKey] === statusFilter); // Use filterKey to filter data
+    if (!filterKey || !statusFilter) return data; 
+    return data.filter((item) => (item as any)[filterKey] === statusFilter); 
   }, [data, statusFilter, filterKey]);
 
-  // Create query string
+  
   const createQueryString = React.useCallback(
     (params: Record<string, string | number | null>) => {
       const newSearchParams = new URLSearchParams(searchParams?.toString());
@@ -212,7 +195,7 @@ export function DataTable<TData, TValue>({
     pageSize: fallbackPerPage,
   });
 
-  // Update URL when pagination changes
+ 
   React.useEffect(() => {
     const newPage = pageIndex + 1;
     const queryString = createQueryString({
@@ -227,15 +210,15 @@ export function DataTable<TData, TValue>({
     router.replace(`${pathname}?${queryString}`, { scroll: false });
   }, [pageIndex, pageSize]);
 
-  // Reset loading state after data is fetched
+  
   React.useEffect(() => {
-    // Simulate data fetching delay
+    
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 500); // Adjust the delay as needed
+    }, 500); 
 
-    return () => clearTimeout(timer); // Cleanup timer on unmount
-  }, [data]); // This effect runs when data changes
+    return () => clearTimeout(timer); 
+  }, [data]); 
 
   const table = useReactTable({
     data: filteredData,
@@ -256,13 +239,13 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  // Handle search
+  
   const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
 
   React.useEffect(() => {
     if (searchValue?.length > 0) {
       const queryString = createQueryString({
-        page: 1, // Reset to first page on search
+        page: 1, 
         limit: pageSize,
         search: searchValue,
       });
@@ -313,7 +296,7 @@ export function DataTable<TData, TValue>({
           />
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="hidden lg:flex items-center space-x-2">
           {/* Archive Button - Only show when rows are selected and archive is enabled */}
           {!disableArchive && selectedRowIds.length > 0 && (
             <BulkArchive 

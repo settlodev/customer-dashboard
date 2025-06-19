@@ -13,3 +13,17 @@ export declare interface Expense {
     status: boolean
     isArchived: boolean
 }
+
+export interface ExpenseReport{
+    startDate: Date
+    endDate: Date
+    totalExpenses: number
+    totalExpensesAmount: number
+    categorySummaries: categorySummaries[]
+}
+
+export interface categorySummaries{
+    categoryName: string
+    amount: number
+    percentage: number
+}

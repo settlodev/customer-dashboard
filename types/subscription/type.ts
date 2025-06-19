@@ -17,13 +17,14 @@ export declare interface Subscriptions {
     isArchived: boolean
 }
 
-export declare interface SubscriptionFeature {
-    id: UUID
-    name: string
-    code: string
-    status: boolean
-    canDelete: boolean
-    isArchived: boolean
+export  interface SubscriptionFeature {
+    id: string;
+    name: string;
+    code: string;
+    itemsMaxCount: number | null;
+    status: boolean;
+    canDelete: boolean;
+    isArchived: boolean;
 }
 
 export declare interface IncludedSubscription {
@@ -47,8 +48,18 @@ export declare interface ActiveSubscription{
     endDate: Date
     subscriptionStatus: string
     active:boolean
+    discount: number;
+    packageName: string;
+    packageCode: string;
     location: UUID
+    isDefault: boolean;
     subscription: Subscriptions
+    subscriptionFeatures: SubscriptionFeature[],
+    includedSubscriptions: Array<{
+        packageName: string;
+        packageCode: string;
+    }>;
+    extraFeatures: SubscriptionFeature[];
     status: boolean
     canDelete: boolean
     isArchived: boolean
@@ -70,4 +81,11 @@ export declare interface ValidDiscountCode {
     restrictedToLocation: string
     errorCode: string
     errorDescription: string
+}
+
+export declare interface SubscriptionAddons{
+    id: UUID
+    name: string
+    subscription: number
+    amount: number
 }

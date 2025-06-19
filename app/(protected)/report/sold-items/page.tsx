@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarDaysIcon, CalendarIcon, ChevronLeftIcon, ChevronRightIcon, DollarSignIcon, PackageIcon, TrendingUpIcon, UserIcon } from 'lucide-react';
+import { CalendarDaysIcon, CalendarIcon, ChevronLeftIcon, ChevronRightIcon, DollarSignIcon, DownloadIcon, PackageIcon, TrendingUpIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,6 +16,10 @@ import { FieldErrors, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { SoldItem, SoldItemsReport } from '@/types/product/type';
 import SubmitButton from '@/components/widgets/submit-button';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import { getCurrentLocation } from '@/lib/actions/business/get-current-business';
+import { Location } from '@/types/location/type';
 import { toast } from '@/hooks/use-toast';
 
 import Loading from '../../loading';
@@ -47,6 +51,16 @@ const SoldItemsDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [paginatedItems, setPaginatedItems] = useState<SoldItem[]>([]);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [location, setLocation] = useState<Location>();
+
+  useEffect(() => {
+    const fetchLocation = async () => {
+        const location = await getCurrentLocation();
+        setLocation(location);
+    };
+    fetchLocation();
+}, []);
 
   useEffect(() => {
     const fetchingSoldItems = async () => {
@@ -84,6 +98,226 @@ const SoldItemsDashboard = () => {
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  const generatePDF = async () => {
+    if (!soldData) {
+      toast({
+        variant: "destructive",
+        title: "No data to export",
+        description: "Please generate a report first before downloading PDF.",
+      });
+      return;
+    }
+
+    setDownloadingPdf(true);
+
+    try {
+      const doc = new jsPDF();
+
+      // Set up document styling
+      const pageWidth = doc.internal.pageSize.width;
+      const margin = 20;
+
+      // Title
+      doc.setFontSize(10);
+      doc.setFont('Arial', 'bold');
+      doc.text('SOLD ITEMS REPORT', margin, 30);
+
+      // Date range and generation info
+      doc.setFontSize(10);
+      doc.setFont('Arial', 'normal');
+      const startDateFormatted = format(form.getValues('startDate'), 'MMM dd, yyyy HH:mm');
+      const endDateFormatted = format(form.getValues('endDate'), 'MMM dd, yyyy HH:mm');
+      const dateRange = `${startDateFormatted} - ${endDateFormatted}`;
+      doc.text(`Period: ${dateRange}`, margin, 40);
+      doc.text(`Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')}`, margin, 45);
+
+    
+      
+      if (location) {
+        doc.setFontSize(10);
+        doc.setFont('Arial', 'normal');
+        const rightMargin = pageWidth - margin;
+        let yPos = 30;
+
+        doc.setFont('Arial', 'bold');
+        doc.text(location.name, rightMargin, yPos, { align: 'right' });
+        yPos += 5;
+
+        doc.setFont('Arial', 'normal');
+        const addressLines = doc.splitTextToSize(location.address || '', 150);
+        addressLines.forEach((line: string) => {
+          doc.text(line, rightMargin, yPos, { align: 'right' });
+          yPos += 5;
+        });
+
+        if (location.phone) {
+          doc.text(`Phone: ${location.phone}`, rightMargin, yPos, { align: 'right' });
+          yPos += 5;
+        }
+
+        if (location.email) {
+          doc.text(`Email: ${location.email}`, rightMargin, yPos, { align: 'right' });
+        }
+      }
+      
+
+      // Summary Box
+      doc.setFillColor(240, 248, 255);
+      doc.rect(margin, 60, pageWidth - 2 * margin, 65, 'F');
+
+      doc.setFontSize(14);
+      doc.setFont('Arial', 'bold');
+      doc.text('SUMMARY', margin + 5, 75);
+
+      doc.setFontSize(12);
+      doc.setFont('Arial', 'normal');
+      doc.text(`Total Items Sold: ${soldData.totalQuantity} units`, margin + 5, 85);
+      doc.text(`Total Revenue: ${formatCurrency(soldData.totalRevenue || 0)}`, margin + 5, 95);
+      doc.text(`Total Cost: ${formatCurrency(soldData.totalCost || 0)}`, margin + 5, 105);
+      
+      const profitColor = soldData.totalProfit >= 0 ? [34, 197, 94] : [239, 68, 68]; // Green for profit, red for loss
+      doc.setTextColor(profitColor[0], profitColor[1], profitColor[2]);
+      doc.text(`Total ${soldData.totalProfit >= 0 ? 'Profit' : 'Loss'}: ${formatCurrency(soldData.totalProfit || 0)}`, margin + 5, 115);
+      doc.setTextColor(0, 0, 0); // Reset to black
+
+      // Sold Items Table
+      let yPosition = 135;
+
+      doc.setFontSize(12);
+      doc.setFont('Arial', 'bold');
+      doc.text('Sold Items Details', margin, yPosition);
+      yPosition += 10;
+
+      // Prepare table data
+      const tableData = soldData.items.map(item => [
+        item.productName,
+        item.variantName || 'N/A',
+        item.categoryName || 'N/A',
+        `${item.quantity}`,
+        formatCurrency(item.price),
+        formatCurrency(item.cost),
+        formatCurrency(item.profit),
+        format(new Date(item.latestSoldDate), 'MMM dd HH:mm')
+      ]);
+
+      // Create table
+      doc.autoTable({
+        startY: yPosition,
+        head: [['Product', 'Variant', 'Category', 'Qty', 'Price', 'Cost', 'Profit', 'Latest Sold']],
+        body: tableData,
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 8,
+          cellPadding: 2,
+        },
+        headStyles: {
+          fillColor: [20, 184, 166], // Teal color
+          textColor: 255,
+          fontStyle: 'bold',
+        },
+        alternateRowStyles: {
+          fillColor: [240, 253, 250], // Light teal background
+        },
+        columnStyles: {
+          0: { cellWidth: 35 }, // Product name
+          1: { cellWidth: 25 }, // Variant
+          2: { cellWidth: 20 }, // Category
+          3: { cellWidth: 12, halign: 'center' }, // Quantity
+          4: { cellWidth: 18, halign: 'right' }, // Price
+          5: { cellWidth: 18, halign: 'right' }, // Cost
+          6: { cellWidth: 18, halign: 'right' }, // Profit
+          7: { cellWidth: 22 }, // Latest Sold
+        },
+        didParseCell: function(data: any) {
+          // Color profit/loss column based on value
+          if (data.column.index === 6 && data.section === 'body') {
+            const profitValue = soldData.items[data.row.index]?.profit || 0;
+            if (profitValue < 0) {
+              data.cell.styles.textColor = [239, 68, 68]; // Red for loss
+            } else {
+              data.cell.styles.textColor = [34, 197, 94]; // Green for profit
+            }
+          }
+        }
+      });
+
+      // Footer with disclaimer
+      const finalY = (doc as any).lastAutoTable?.finalY || yPosition + 50;
+      const pageHeight = doc.internal.pageSize.height;
+      const footerY = pageHeight - 20;
+
+      // If there's not enough space, add a new page
+      if (finalY > pageHeight - 60) {
+        doc.addPage();
+      }
+
+      // Add the disclaimer text with border
+      doc.setFontSize(8);
+      doc.setTextColor(32, 32, 32);
+      const disclaimerText = 'This report is confidential and intended solely for the recipient. Any discrepancies must be reported to support@setilo.co.tz within 14 days of issuance';
+
+      // Split disclaimer into multiple lines if needed
+      const maxWidth = pageWidth - 2 * margin;
+      const disclaimerLines = doc.splitTextToSize(disclaimerText, maxWidth);
+
+      // Calculate positions
+      const lineHeight = 3;
+      const disclaimerHeight = disclaimerLines.length * lineHeight;
+      const poweredByHeight = lineHeight;
+      const totalFooterHeight = disclaimerHeight + poweredByHeight + 2; // 2px gap
+
+      const disclaimerStartY = footerY - totalFooterHeight + lineHeight;
+
+      // Calculate border dimensions
+      const borderPadding = 3; // Padding inside the border
+      const borderX = margin - borderPadding;
+      const borderY = disclaimerStartY - lineHeight - borderPadding;
+      const borderWidth = pageWidth - 2 * margin + 2 * borderPadding;
+      const borderHeight = totalFooterHeight + 2 * borderPadding;
+
+      // Draw border rectangle
+      doc.setDrawColor(32, 32, 32); // Gray border color
+      doc.setLineWidth(0.3); // Border thickness
+      doc.rect(borderX, borderY, borderWidth, borderHeight, 'S'); // 'S' for stroke only
+
+      // Add disclaimer lines centered
+      disclaimerLines.forEach((line: string, index: number) => {
+        const textWidth = doc.getTextWidth(line);
+        const centerX = (pageWidth - textWidth) / 2;
+        doc.text(line, centerX, disclaimerStartY + (index * lineHeight));
+      });
+
+      // Add "Powered by Settlo" below the disclaimer
+      const poweredByText = 'Powered by Settlo';
+      const poweredByWidth = doc.getTextWidth(poweredByText);
+      const poweredByCenterX = (pageWidth - poweredByWidth) / 2;
+      const poweredByY = disclaimerStartY + disclaimerHeight + 2; // 2px gap
+
+      doc.text(poweredByText, poweredByCenterX, poweredByY);
+
+      // Generate filename
+      const filename = `sold-items-report-${format(form.getValues('startDate'), 'yyyy-MM-dd')}-to-${format(form.getValues('endDate'), 'yyyy-MM-dd')}.pdf`;
+
+      // Save the PDF
+      doc.save(filename);
+
+      toast({
+        title: "PDF Downloaded",
+        description: `Report saved as ${filename}`,
+      });
+
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast({
+        variant: "destructive",
+        title: "PDF Generation Failed",
+        description: "There was an error generating the PDF. Please try again.",
+      });
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -277,9 +511,22 @@ const SoldItemsDashboard = () => {
 
       <Card className="shadow-md w-full">
         <CardHeader className="bg-slate-50 border-b">
-          <CardTitle className="flex items-center">
+          <CardTitle className="flex items-center justify-between">
+            <div className='flex'>
             <TrendingUpIcon className="mr-2 h-5 w-5 text-teal-600" />
             Sold Items Summary
+            </div>
+            <div className="">
+          <Button
+            onClick={generatePDF}
+            disabled={downloadingPdf || !soldData}
+            variant="outline"
+            className="flex items-center gap-2"
+          >
+            <DownloadIcon className="h-4 w-4" />
+            {downloadingPdf ? "Generating..." : "Download PDF"}
+          </Button>
+        </div>
           </CardTitle>
         </CardHeader>
 
@@ -390,10 +637,6 @@ const SoldItemsDashboard = () => {
                   </div>
 
                   <div className="flex justify-between items-center mt-3 text-sm text-slate-500">
-                    <div className="flex items-center">
-                      <UserIcon className="h-3 w-3 mr-1" />
-                      <span>Sold by: {item.staffName}</span>
-                    </div>
                     <div>Price: {formatCurrency(item.price)}</div>
                   </div>
                 </div>

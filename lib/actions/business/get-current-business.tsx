@@ -16,7 +16,8 @@ import { signOut } from "next-auth/react";
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {
     try {
         // Check for existing business cookie
-        const businessCookie = cookies().get("currentBusiness");
+        const cookieStore = await cookies();
+        const businessCookie = cookieStore.get("currentBusiness");
 
         // If cookie exists, try to parse it
         if (businessCookie) {
@@ -27,7 +28,7 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
                 return parsedBusiness;
             } catch (error) {
                 console.error('Failed to parse business cookie:', error);
-                cookies().delete("currentBusiness");
+                cookieStore.delete("currentBusiness");
             }
         }
 
@@ -65,8 +66,9 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
 };
 
 export const getCurrentLocation = async (): Promise<Location | undefined> => {
-    const locationCookie = cookies().get("currentLocation");
-    // console.log("locationCookie", locationCookie);
+    const cookieStore = await cookies();
+    const locationCookie = cookieStore.get("currentLocation");
+   
     if (!locationCookie) return undefined;
 
     try {
@@ -77,17 +79,43 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
     }
 };
 
-export const getBusinessDropDown = async (): Promise<Business[] | null> => {
+
+
+export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | null> => {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 500; 
+
     try {
         const authToken = await getAuthToken();
 
-        const userId = authToken?.id as UUID;
-        const myEndpoints = endpoints({userId: userId});
+        // If no auth token and we haven't exceeded retries, wait and try again
+        if (!authToken && retryCount < MAX_RETRIES) {
+            console.log(`Auth token not found, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            return getBusinessDropDown(retryCount + 1);
+        }
 
+        if (!authToken) {
+            console.error("No auth token found after max retries");
+            return null;
+        }
+
+        const userId = authToken?.id as UUID;
+        
+        // Additional validation
+        if (!userId) {
+            console.error("User ID not found in auth token");
+            return null;
+        }
+
+        // console.log(`Fetching business for userId: ${userId}`);
+        
+        const myEndpoints = endpoints({userId: userId});
         const apiClient = new ApiClient();
 
         try {
             const data = await apiClient.get(myEndpoints.business.list.endpoint);
+            // console.log(`Successfully fetched ${data?.length || 0} businesses`);
             return parseStringify(data);
         } catch (apiError: any) {
             // Check for specific API errors
@@ -96,13 +124,26 @@ export const getBusinessDropDown = async (): Promise<Business[] | null> => {
                 return null;
             }
 
-            console.error("API request failed:", apiError);
+            // If it's a temporary error and we haven't exceeded retries, try again
+            if (retryCount < MAX_RETRIES && (apiError.status >= 500 || apiError.code === 'NETWORK_ERROR')) {
+                // console.log(`API error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                return getBusinessDropDown(retryCount + 1);
+            }
+
+            // console.error("API request failed:", apiError);
             throw apiError;
         }
     } catch (error) {
         console.error("Failed to get business list:", error);
 
-        // await signOut();
+        
+        if (retryCount < MAX_RETRIES) {
+            // console.log(`General error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            return getBusinessDropDown(retryCount + 1);
+        }
+
         return null;
     }
 }

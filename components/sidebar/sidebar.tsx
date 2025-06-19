@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { CompaniesDropdown } from "./companies-dropdown";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { menuItems } from "@/types/menu_items";
@@ -16,7 +16,8 @@ import {
     ChevronDown,
     X,
     CreditCard,
-    MenuIcon
+    MenuIcon,
+    AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,11 @@ import {
     SheetContent,
     SheetTrigger
 } from "@/components/ui/sheet";
+
 import VersionDisplay from "../widgets/versioning";
+import { ActiveSubscription } from "@/types/subscription/type";
+import { getActiveSubscription } from "@/lib/actions/subscriptions";
+import { UrlObject } from "url";
 
 interface SidebarProps {
     data: BusinessPropsType;
@@ -35,7 +40,36 @@ interface SidebarProps {
 
 const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
     const [visibleIndex, setVisibleIndex] = useState<number>(0);
-    const myMenuItems = menuItems();
+    const [subscription, setSubscription] = useState<ActiveSubscription | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [, setError] = useState<string | null>(null);
+
+    // Fetch subscription on component mount
+    useEffect(() => {
+        const fetchSubscription = async () => {
+            try {
+                setIsLoading(true);
+                const activeSubscription = await getActiveSubscription();
+                // console.log("Active subscription:", activeSubscription);
+                setSubscription(activeSubscription);
+                setError(null);
+            } catch (err) {
+                console.error('Failed to fetch subscription:', err);
+                setError('Failed to load subscription data');
+                setSubscription(null);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchSubscription();
+    }, []);
+
+    // Get filtered menu items based on subscription
+    const myMenuItems = menuItems({
+        subscription,
+        isCurrentItem: false
+    });
 
     const getIcon = (iconName: string) => {
         const size = 20;
@@ -73,55 +107,90 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
             </div>
 
             <div className="flex-1 overflow-y-auto">
-                <nav className="flex-1 space-y-1 px-2 py-4">
-                    {myMenuItems.map((section, sectionIndex) => (
-                        <div key={sectionIndex} className="py-2">
-                            <button
-                                onClick={() => setVisibleIndex(visibleIndex === sectionIndex ? -1 : sectionIndex)}
-                                className={cn(
-                                    "flex w-full items-center justify-between rounded-lg p-2",
-                                    "text-gray-100 hover:bg-gray-700",
-                                    "transition-colors duration-200"
-                                )}
-                            >
-                                <div className="flex items-center">
-                                    <span className="text-xs">{getIcon(section.icon)}</span>
-                                    <span className="ml-2 text-sm font-medium">{section.label}</span>
-                                </div>
-                                <ChevronDown
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-32">
+                        <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
+                    </div>
+                ) : myMenuItems.length === 0 ? (
+                    <div className="p-4 text-center">
+                        <AlertTriangle className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
+                        <p className="text-sm text-gray-400">
+                            No menu items available for your subscription
+                        </p>
+                        <Link
+                            href="/renew-subscription"
+                            className="text-blue-400 hover:text-blue-300 text-sm underline"
+                        >
+                            Upgrade your plan
+                        </Link>
+                    </div>
+                ) : (
+                    <nav className="flex-1 space-y-1 px-2 py-4">
+                        {myMenuItems.map((section, sectionIndex) => (
+                            <div key={sectionIndex} className="py-2">
+                                <button
+                                    onClick={() => setVisibleIndex(visibleIndex === sectionIndex ? -1 : sectionIndex)}
                                     className={cn(
-                                        "h-4 w-4 transition-transform duration-200",
-                                        visibleIndex === sectionIndex && "rotate-180"
+                                        "flex w-full items-center justify-between rounded-lg p-2",
+                                        "text-gray-100 hover:bg-gray-700",
+                                        "transition-colors duration-200"
                                     )}
-                                />
-                            </button>
+                                >
+                                    <div className="flex items-center">
+                                        <span className="text-xs">{getIcon(section.icon)}</span>
+                                        <span className="ml-2 text-sm font-medium">{section.label}</span>
+                                        {section.items.length === 0 && (
+                                            <span className="ml-2 text-xs text-yellow-400">(Limited)</span>
+                                        )}
+                                    </div>
+                                    <ChevronDown
+                                        className={cn(
+                                            "h-4 w-4 transition-transform duration-200",
+                                            visibleIndex === sectionIndex && "rotate-180"
+                                        )}
+                                    />
+                                </button>
 
-                            {visibleIndex === sectionIndex && (
-                                <div className="mt-2 space-y-1">
-                                    {section.items.map((item, index) => (
-                                        <Link
-                                            key={index}
-                                            href={item.link}
-                                            onClick={isMobile ? onClose : undefined}
-                                            className={cn(
-                                                "block w-full rounded-lg px-2 py-1.5 pl-10",
-                                                "text-sm text-gray-200 hover:bg-gray-700",
-                                                "transition-colors duration-200"
-                                            )}
-                                        >
-                                            {item.title}
-                                        </Link>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </nav>
+                                {visibleIndex === sectionIndex && (
+                                    <div className="mt-2 space-y-1">
+                                        {section.items.length === 0 ? (
+                                            <div className="px-2 py-1.5 pl-10">
+                                                <p className="text-xs text-gray-500">
+                                                    No features available in your plan
+                                                </p>
+                                                <Link
+                                                    href="/renew-subscription"
+                                                    className="text-blue-400 hover:text-blue-300 text-xs underline"
+                                                >
+                                                    Upgrade to unlock
+                                                </Link>
+                                            </div>
+                                        ) : (
+                                            section.items.map((item: { link: string | UrlObject; title: string | number | bigint | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<React.AwaitedReactNode> | null | undefined; }, index: React.Key | null | undefined) => (
+                                                <Link
+                                                    key={index}
+                                                    href={item.link}
+                                                    onClick={isMobile ? onClose : undefined}
+                                                    className={cn(
+                                                        "block w-full rounded-lg px-2 py-1.5 pl-10",
+                                                        "text-sm text-gray-200 hover:bg-gray-700",
+                                                        "transition-colors duration-200"
+                                                    )}
+                                                >
+                                                    {item.title}
+                                                </Link>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </nav>
+                )}
             </div>
 
             <div className="border-t border-gray-700 p-4">
-
-            <Link
+                <Link
                     href="/renew-subscription"
                     className={cn(
                         "flex items-center rounded-lg px-2 py-1.5",
@@ -130,7 +199,7 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
                     )}
                 >
                     <CreditCard className="mr-2 h-4 w-4"/>
-                    <span>Renew Subscription</span>
+                    <span>Billing</span>
                 </Link>
                 <Link
                     href="/settings"

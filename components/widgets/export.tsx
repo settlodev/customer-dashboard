@@ -28,8 +28,8 @@ interface TableExportProps {
   useEndpoint?: boolean;
 }
 
-const TableExport: React.FC<TableExportProps> = ({ 
-  data = [], 
+const TableExport: React.FC<TableExportProps> = ({
+  data = [],
   filename = 'exported-data',
   locationId,
   useEndpoint = true
@@ -39,16 +39,16 @@ const TableExport: React.FC<TableExportProps> = ({
   // Convert data to CSV format with specific columns and variant handling
   const convertToCSV = (data: Product[]): string => {
     if (data.length === 0) return '';
-    
+
     // Specific columns to export matching the endpoint format
     const headers = [
-      'Product Name', 
-      'Category Name', 
-      'Variant Name', 
-      'Price', 
-      'SKU', 
-      'Unit', 
-      'Barcode', 
+      'Product Name',
+      'Category Name',
+      'Variant Name',
+      'Price',
+      'SKU',
+      'Unit',
+      'Barcode',
       'Department'
     ];
 
@@ -87,22 +87,22 @@ const TableExport: React.FC<TableExportProps> = ({
         });
       })
     ];
-    
+
     return csvRows.join('\n');
   };
 
   // Escape CSV values
   const escapeCSVValue = (value: any): string => {
     // Convert to string
-    const stringValue = value !== null && value !== undefined 
-      ? String(value) 
+    const stringValue = value !== null && value !== undefined
+      ? String(value)
       : '';
-    
+
     // Escape quotes and wrap in quotes if value contains comma
     if (stringValue.includes(',') || stringValue.includes('"')) {
       return `"${stringValue.replace(/"/g, '""')}"`;
     }
-    
+
     return stringValue;
   };
 
@@ -118,13 +118,13 @@ const TableExport: React.FC<TableExportProps> = ({
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-  
+
   // Improved endpoint download handler
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
       const response = await downloadProductsCSV(locationId);
-      
+
       if (response) {
         if (response instanceof Blob) {
           const url = URL.createObjectURL(response);

@@ -6,9 +6,11 @@ import { getRefund } from '@/lib/actions/refund-actions';
 import { OrderItemRefunds } from '@/types/refunds/type';
 import RefundDetails from '@/components/widgets/refund-details';
 
+type Params = Promise<{ id: string }>;
+const RefundDetailsPage = async ({params}: {params: Params}) => {
 
-const RefundDetailsPage = async ({ params }: { params: { id: string } }) => {
-    const refund = await getRefund(params.id as UUID);
+    const resolvedParams = await params;
+    const refund = await getRefund(resolvedParams.id as UUID);
     const refundData: OrderItemRefunds | null = refund?.content[0];
 
     if (!refundData) {

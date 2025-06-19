@@ -1,7 +1,6 @@
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import StaffForm from "@/components/forms/staff_form";
 import {
@@ -16,20 +15,19 @@ import { getStaff } from "@/lib/actions/staff-actions";
 import {Staff} from "@/types/staff";
 import {ApiResponse} from "@/types/types";
 
-export default async function StaffPage({params}: {
-    params: { id: string };
-}) {
-    const isNewItem = params.id === "new";
+type Params = Promise<{ id: string }>;
+export default async function StaffPage({params}: {params: Params}) {
+
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Staff> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getStaff(params.id as UUID);
+            item = await getStaff(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
+            console.log(error)
             throw new Error("Failed to load staff data");
         }
     }

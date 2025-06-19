@@ -20,9 +20,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
-import {Building2, Clock, Loader2Icon, Mail, MapPin} from "lucide-react";
+import { Building2, Clock, Loader2Icon, Mail, MapPin } from "lucide-react";
 import { Location } from "@/types/location/type";
-import {createLocation, updateLocation } from "@/lib/actions/location-actions";
+import { createLocation, updateLocation } from "@/lib/actions/location-actions";
 import { toast } from "@/hooks/use-toast";
 import { PhoneInput } from "../ui/phone-input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
@@ -41,17 +41,16 @@ const LocationForm = ({
   onSubmit: (values: z.infer<typeof LocationSchema>) => void, 
   multipleStep?: boolean 
 }) => {
+
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
 
-  // Convert time format from backend to businessTimes format
+
   const formatTimeForSelect = (timeString: string | null | undefined) => {
     if (!timeString) return undefined;
-    
-    // Extract hour from time string (e.g., "05:00:00" -> "05:00")
+
     const hourAndMinutes = timeString.substring(0, 5);
-    
-    // Return the format that matches businessTimes "name" values
+
     return hourAndMinutes;
   };
 
@@ -67,7 +66,7 @@ const LocationForm = ({
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log("Errors:", errors);
+      console.log("The errors are:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
@@ -76,36 +75,10 @@ const LocationForm = ({
     },
     [],
   );
-  
-  // const submitData = (values: z.infer<typeof LocationSchema>) => {
-  //   setResponse(undefined);
 
-  //   startTransition(() => {
-  //     if (item) {
-  //       updateLocation(item.id, values).then((data) => {
-  //         if (data) {
-  //           setResponse(data);
-  //         }
-  //       });
-  //     } else {
-  //       if (multipleStep) {
-  //         // Call the parent's onSubmit function
-  //         onSubmit(values);
-  //       } else {
-  //         createLocation(values).then((data) => {
-  //           if (data) {
-  //             setResponse(data);
-  //             window.location.reload(); // Reload after successful create
-  //           }
-  //         });
-  //       }
-  //     }
-  //   });
-    
-  // };
 
    const submitData = (values: z.infer<typeof LocationSchema>) => {
-    console.log("Submitting data:", values);
+//     console.log("Submitting data:", values);
     setResponse(undefined);
 
     startTransition(async () => {
@@ -179,6 +152,7 @@ const LocationForm = ({
                       <PhoneInput
                         {...field}
                         disabled={isPending}
+                        onChange={(value) => field.onChange(value)}
                         placeholder="Enter business location phone number"
                       />
                     </FormControl>
@@ -348,7 +322,7 @@ const LocationForm = ({
                 name="street"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full business address</FormLabel>
+                    <FormLabel>Street</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
@@ -357,7 +331,7 @@ const LocationForm = ({
                           {...field}
                           value={field.value || ""}
                           disabled={isPending}
-                          placeholder="Enter business location address"
+                          placeholder="Enter business location street"
                         />
                       </div>
                     </FormControl>

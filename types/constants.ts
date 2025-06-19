@@ -1,3 +1,5 @@
+import { Bell, Bolt } from "lucide-react";
+
 export const taxClasses=
     [
         {
@@ -71,4 +73,32 @@ export const DefaultCountry = "02981a7e-f714-40d5-b132-5762c066e12c";
 export const ItemStatuses = [
     {"name": "Active", "value": true},
     {"name": "In-Active", "value": false}
+];
+
+export const settingsNavItems = [
+    // {
+    //     id: 'general',
+    //     label: 'General',
+    //     icon: Settings,
+    //     description: 'Location and basic settings'
+    // },
+    {
+        id: 'preferences',
+        label: 'Preferences',
+        icon: Bolt,
+        description: 'Personal preferences'
+    },
+    {
+        id: 'notifications',
+        label: 'Notifications',
+        icon: Bell,
+        description: 'Email and push notifications'
+    },
+    // {
+    //     id: 'account',
+    //     label: 'Account',
+    //     icon: Shield,
+    //     description: 'Account security settings'
+    // },
+   
 ];

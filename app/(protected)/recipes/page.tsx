@@ -7,18 +7,23 @@ import {DataTable} from "@/components/tables/data-table";
 import {columns} from '@/components/tables/recipe/column'
 import { searchRecipe } from "@/lib/actions/recipe-actions";
 import { Recipe } from "@/types/recipe/type";
+import { SubscriptionGuard } from "@/components/subscription/SubscriptionGuard";
 
 const breadCrumbItems = [{title:"Recipes",link:"/recipes"}];
- type ParamsProps ={
-     searchParams:{
-         [key:string]:string | undefined
-     }
- };
- async function Page({searchParams}:ParamsProps) {
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
+};
+ async function Page({searchParams}:Params) {
 
-     const q = searchParams.search || "";
-     const page = Number(searchParams.page) || 0;
-     const pageLimit = Number(searchParams.limit);
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
      const responseData = await searchRecipe(q,page,pageLimit);
 
@@ -27,7 +32,10 @@ const breadCrumbItems = [{title:"Recipes",link:"/recipes"}];
      const pageCount = responseData.totalPages
 
     return (
-        <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
+       
+
+<SubscriptionGuard requiredFeatures={['recipes']} featureName="Recipe Management">
+<div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
             <div className={`flex items-center justify-between mb-2`}>
                 <div className={`relative flex-1 md:max-w-md`}>
                     <BreadcrumbsNav items={breadCrumbItems} />
@@ -63,6 +71,7 @@ const breadCrumbItems = [{title:"Recipes",link:"/recipes"}];
                 )
             }
         </div>
+</SubscriptionGuard>
     );
 }
 

@@ -271,6 +271,7 @@ export default function DepartmentReportPage() {
     try {
       const data = await DepartmentReport(id, formValues.startDate.toISOString(), formValues.endDate.toISOString());
       
+      
       // Transform Report data into ExtendedReport format
       const extendedReport: ExtendedReport = {
         totalGrossProfit: data.totalGrossProfit,
@@ -490,8 +491,8 @@ export default function DepartmentReportPage() {
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-3 md:mt-0">
                         <div className="flex flex-col items-center p-2 bg-slate-50 rounded-md">
                           <DollarSign className="h-4 w-4 text-emerald-500 mb-1" aria-hidden="true" />
-                          <p className="text-xs text-slate-500">Revenue</p>
-                          <p className="font-semibold">{formatCurrency(item.revenue || item.price * item.quantity)}</p>
+                          <p className="text-xs text-slate-500">Price</p>
+                          <p className="font-semibold">{formatCurrency(item.price)}</p>
                         </div>
 
                         <div className="flex flex-col items-center p-2 bg-slate-50 rounded-md">
@@ -525,7 +526,7 @@ export default function DepartmentReportPage() {
                         <User className="h-3 w-3 mr-1" aria-hidden="true" />
                         <span>Sold by: {item.staffName || "Staff"}</span>
                       </div>
-                      <div>Avg. price: {formatCurrency(item.averagePrice || item.price)}</div>
+                      
                     </div>
                   </div>
                 ))}

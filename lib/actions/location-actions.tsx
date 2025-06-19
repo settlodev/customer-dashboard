@@ -55,6 +55,12 @@ export const searchLocations = async (
                     field_type: "UUID_STRING",
                     value: q,
                 },
+                {
+                    key:"isArchived",
+                    operator:"EQUAL",
+                    field_type:"BOOLEAN",
+                    value:false
+                }
             ],
             sorts: [
                 {
@@ -72,7 +78,6 @@ export const searchLocations = async (
             query,
         );
 
-       
         return parseStringify(data);
 
     } catch (error) {
@@ -87,7 +92,7 @@ export const createLocation = async (
 ): Promise<FormResponse> => {
     let formResponse: FormResponse | null = null;
 
-    // console.log('Starting createLocation with data:', location );
+    console.log('Starting createLocation with data:', location );
 
     try {
         // Authentication check
@@ -109,10 +114,11 @@ export const createLocation = async (
                 error: new Error(validatedData.error.message),
             });
         }
-        // console.log("validatedData: ", validatedData);
+        console.log("validatedData: ", validatedData);
 
         // Get current business & current location
         const currentBusiness = await getCurrentBusiness();
+
         const currentLocation = await getCurrentLocation();
         const business = multiStep ? currentLocation?.business : currentBusiness?.id;
         
@@ -209,7 +215,6 @@ export const updateLocation = async (
     
     try {
      
-      // Get current business and location
       const apiClient = new ApiClient();
       const business = await getCurrentBusiness();
       const currentLocation = await getCurrentLocation();
@@ -222,17 +227,18 @@ export const updateLocation = async (
         });
       }
   
-      // Create payload for API call
       const payload = {
         ...validatedData.data,
         business: business.id,
       };
-  
+
+
       // Make the API call to update location
       await apiClient.put(
         `/api/locations/${business.id}/${id}`,
         payload
       );
+     
   
       // Refresh location data if we're updating the current location
       if (currentLocation?.id === id) {
@@ -267,7 +273,7 @@ export const updateLocation = async (
   };
 
 
-export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
+  export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
     const apiClient = new ApiClient();
 
     const query = {
@@ -295,6 +301,27 @@ export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
     return parseStringify(data);
 };
 
+
+export const getLocationById = async (businessId: string, locationId: string): Promise<Location> => {
+    await getAuthenticatedUser();
+
+  
+
+    try {
+        const apiClient = new ApiClient();
+        
+        // Use the actual parameters in the URL
+        const data: Location = await apiClient.get<Location>(
+            `/api/locations/${businessId}/${locationId}`
+        );
+        
+        // console.log("The location data is:", data);
+        return parseStringify(data);
+    } catch (error) {
+        console.error("Error fetching location:", error);
+        throw error;
+    }
+}
 export const deleteLocation = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Location ID is required to perform this request");
     await getAuthenticatedUser();
