@@ -8,8 +8,7 @@ import MetricCard from './stock-item/metric-card';
 
 
 const StockMovementDashboard = ({ movements, summary }: { movements: StockMovement[]; summary: stockVariantSummary }) => {
-  // console.log("The movements are: ", movements);
-  // Sort movements by date (newest first)
+  
   const sortedMovements = useMemo(() => [...movements].sort((a, b) =>
     new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime()
   ), [movements]);
