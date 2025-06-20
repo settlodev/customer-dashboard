@@ -103,7 +103,6 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
         const order = await apiClient.get(
             `/api/order-receipts/${identifier}`
         );
-        console.log("The order receipt is: ", order);
         return parseStringify(order)
 
     } catch (error) {
