@@ -40,7 +40,7 @@ const LocationList = ({ locations, businessName }: { locations: Location[], busi
             });
             setIsRedirecting(true);
             setTimeout(() => {
-                window.location.href = `/subscription?location=${location.id}`;
+                window.location.href = `/renew-subscription?location=${location.id}`;
             }, 3000);
         } else {
             setIsRedirecting(true);

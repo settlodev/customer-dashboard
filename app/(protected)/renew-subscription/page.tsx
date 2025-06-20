@@ -26,6 +26,7 @@ import { useSubscriptionData } from '@/hooks/useSubscriptionData';
 import { UUID } from 'crypto';
 import { SubscriptionAddons } from '@/types/subscription/type';
 import BillingHistoryTable from '@/components/subscription/billingTable';
+import { useSearchParams } from 'next/navigation';
 
 
 
@@ -41,7 +42,10 @@ const InvoiceSubscriptionPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [addons, setAddons] = useState<SubscriptionAddons[]>([]);
 
-  const { activeSubscription, subscriptionData, isLoading: subscriptionLoading } = useSubscriptionData();
+  const queryParam = useSearchParams();
+  const locationId = queryParam.get('location');
+
+  const { activeSubscription, subscriptionData, isLoading: subscriptionLoading } = useSubscriptionData(locationId);
   const { 
     isValidatingDiscount, 
     discountValid, 
@@ -316,7 +320,8 @@ const InvoiceSubscriptionPage = () => {
         invoicePayload.locationAddons = locationAddons;
       }
   
-      const response = await createInvoice(invoicePayload);
+      const locationQueryParam = locationId ? locationId : undefined;
+      const response = await createInvoice(invoicePayload,locationQueryParam);
   
       if (response && typeof response === 'object' && 'id' in response && data.email && data.phone) {
         const invoiceId = (response as { id: UUID }).id;
@@ -389,9 +394,9 @@ const InvoiceSubscriptionPage = () => {
     <div className="max-w-7xl mx-auto px-6 space-y-8">
       {/* Header Section */}
       <div className='mt-18'>
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Billing & Subscription Management</h1>
-          <p className="text-gray-600">Manage your subscriptions, view payment history, and handle billing operations.</p>
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 lg:p-6 border border-blue-200">
+          <h1 className="text-lg lg:text-2xl font-bold text-gray-900 mb-2">Billing & Subscription Management</h1>
+          <p className="text-sm lg:text-lg text-gray-600">Manage your subscriptions, view payment history, and handle billing operations.</p>
         </div>
       </div>
 
@@ -400,9 +405,9 @@ const InvoiceSubscriptionPage = () => {
         {/* Available Plans & Services */}
         <div className="lg:col-span-2 space-y-6">
           {/* Subscription Plans Section */}
-          <Card className="border-l-4 border-l-blue-500">
+          <Card className="border-l-4 border-l-emerald-500">
             <CardHeader>
-              <CardTitle className="flex items-center">
+              <CardTitle className="flex items-center text-sm lg:text-lg">
                 <CreditCard className="mr-2" size={20} />
                 Available Subscription Plans
               </CardTitle>
@@ -431,7 +436,7 @@ const InvoiceSubscriptionPage = () => {
 
           {/* Additional Services */}
           <Card className="border-l-4 border-l-green-500">
-            <CardHeader>
+            <CardHeader className='text-sm lg:text-lg'>
               <CardTitle>Additional Services</CardTitle>
             </CardHeader>
             <CardContent>
@@ -459,7 +464,7 @@ const InvoiceSubscriptionPage = () => {
         <div>
           <Card className="sticky top-6 border-t-4 border-t-emerald-500">
             <CardHeader>
-              <CardTitle className="flex items-center">
+              <CardTitle className="flex items-center text-sm lg:text-lg">
                 <Receipt className="mr-2" size={20} />
                 Payment Summary
               </CardTitle>
@@ -474,9 +479,9 @@ const InvoiceSubscriptionPage = () => {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Customer Email *</FormLabel>
+                          <FormLabel>Email *</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="customer@example.com" required />
+                            <Input {...field} placeholder="customer@gmail.com" required />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -488,7 +493,7 @@ const InvoiceSubscriptionPage = () => {
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Customer Phone *</FormLabel>
+                          <FormLabel>Phone Number *</FormLabel>
                           <FormControl>
                             <PhoneInput
                               placeholder="Enter phone number"
@@ -593,9 +598,7 @@ const InvoiceSubscriptionPage = () => {
           />
         </div>
       </div>
-
-      {/* Bills History Section */}
-      <BillingHistoryTable/>
+      <BillingHistoryTable locationId={locationId ? locationId : undefined}/>
     </div>
   );
 };

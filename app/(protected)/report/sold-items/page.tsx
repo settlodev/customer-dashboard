@@ -256,7 +256,7 @@ const SoldItemsDashboard = () => {
       // Add the disclaimer text with border
       doc.setFontSize(8);
       doc.setTextColor(32, 32, 32);
-      const disclaimerText = 'This report is confidential and intended solely for the recipient. Any discrepancies must be reported to support@setilo.co.tz within 14 days of issuance';
+      const disclaimerText = 'This report is confidential and intended solely for the recipient. Any discrepancies must be reported to support@setllo.co.tz within 14 days of issuance';
 
       // Split disclaimer into multiple lines if needed
       const maxWidth = pageWidth - 2 * margin;
