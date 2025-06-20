@@ -140,7 +140,7 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Discount:</span>
-                    <span>{formatCurrency(orderData.discountAmount)}</span>
+                    <span>{formatCurrency(orderData.totalDiscount)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-2 mt-2">
                     <span>Total:</span>
@@ -152,14 +152,14 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>Balance:</span>
-                    <span>{formatCurrency(0)}</span>
+                    <span>{formatCurrency(orderData.netAmount - orderData.paidAmount)}</span>
                   </div>
-                </div>
 
                 <div className="bg-gray-50 px-6 py-4 text-center">
                   <div className="mt-4">
                     <div className="inline-block px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg">
-                      <p className="text-sm font-semibold text-gray-600">Thank you for your business!</p>
+  
+                </div>                    <p className="text-sm font-semibold text-gray-600">Thank you for your business!</p>
                       <p className="text-xs text-gray-500">Receipt generated on {formatDate(new Date().toISOString())}</p>
                     </div>
                   </div>
@@ -270,7 +270,7 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Discount:</span>
-                  <span>{formatCurrency(orderData.discountAmount)}</span>
+                  <span>{formatCurrency(orderData.totalDiscount)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-2 mt-2">
                   <span>Total:</span>
