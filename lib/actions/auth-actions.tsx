@@ -35,6 +35,8 @@ export async function logout() {
     }
 }
 
+
+
 export const login = async (
     credentials: z.infer<typeof LoginSchema>,
 ): Promise<FormResponse> => {
@@ -47,48 +49,52 @@ export const login = async (
         });
     }
 
-    //Make sure token does not exist
     await deleteAuthCookie();
     await deleteActiveBusinessCookie();
     await deleteActiveLocationCookie();
 
     try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const result = await signIn("credentials", {
             email: validatedData.data.email,
             password: validatedData.data.password,
             redirect: false,
         });
 
-        if (result?.error) {
-            console.log("result.error: ", result.error);
+        // Handle both development and production scenarios
+        if (result?.error || !result?.ok) {
+            console.log("Authentication failed:", result?.error);
             return parseStringify({
                 responseType: "error",
                 message: "Wrong credentials! Invalid email address and/or password",
                 error: new Error("Wrong credentials"),
             });
         }
+
         return parseStringify({
             responseType: "success",
             message: "Login successful",
         });
 
-    } catch (error) {
-        if (error instanceof AuthError) {
-            switch (error.name) {
-                case "CredentialsSignin":
-                    return parseStringify({
-                        responseType: "error",
-                        message: "Wrong credentials! Invalid email address and/or password",
-                        error: new Error("Wrong credentials"),
-                    });
-                default:
-                    return parseStringify({
-                        responseType: "error",
-                        message: error.message ?? "Something about your credentials is not right, please try again.",
-                        error: new Error("Unexpected"),
-                    });
-            }
+    } catch (error: any) {
+        // console.log("Caught error:", error);
+        
+        // Handle Auth.js specific errors
+        if (error?.type === 'CredentialsSignin' || error?.name === 'CredentialsSignin') {
+            return parseStringify({
+                responseType: "error",
+                message: "Wrong credentials! Invalid email address and/or password",
+                error: new Error("Wrong credentials"),
+            });
+        }
+        
+        // Handle other Auth.js errors
+        if (error?.message?.includes('CredentialsSignin') || 
+            error?.toString?.().includes('CredentialsSignin')) {
+            return parseStringify({
+                responseType: "error",
+                message: "Wrong credentials! Invalid email address and/or password",
+                error: new Error("Wrong credentials"),
+            });
         }
 
         return parseStringify({
@@ -97,11 +103,7 @@ export const login = async (
             error: new Error("Unexpected"),
         });
     }
-
-    // revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
-    // redirect(DEFAULT_LOGIN_REDIRECT_URL);
 };
-
 export const getUserById = async (userId: string|undefined): Promise<ExtendedUser> => {
     if (!userId) throw new Error("User data is required");
 
