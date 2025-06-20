@@ -96,26 +96,21 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
         }
 
         if (!authToken) {
-            console.error("No auth token found after max retries");
             return null;
         }
 
         const userId = authToken?.id as UUID;
         
-        // Additional validation
         if (!userId) {
-            console.error("User ID not found in auth token");
             return null;
         }
 
-        // console.log(`Fetching business for userId: ${userId}`);
-        
+     
         const myEndpoints = endpoints({userId: userId});
         const apiClient = new ApiClient();
 
         try {
             const data = await apiClient.get(myEndpoints.business.list.endpoint);
-            // console.log(`Successfully fetched ${data?.length || 0} businesses`);
             return parseStringify(data);
         } catch (apiError: any) {
             // Check for specific API errors
@@ -126,7 +121,6 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
 
             // If it's a temporary error and we haven't exceeded retries, try again
             if (retryCount < MAX_RETRIES && (apiError.status >= 500 || apiError.code === 'NETWORK_ERROR')) {
-                // console.log(`API error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                 return getBusinessDropDown(retryCount + 1);
             }

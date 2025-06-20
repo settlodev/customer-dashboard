@@ -90,9 +90,6 @@ export const getOrder= async (id:UUID) : Promise<ApiResponse<Orders>> => {
         `/api/orders/${location?.id}?dashboard=true`,
         query,
     );
-
-    
-    
     return parseStringify(order)
 }
 
@@ -103,7 +100,6 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
         const order = await apiClient.get(
             `/api/order-receipts/${identifier}`
         );
-        
         return parseStringify(order)
 
     } catch (error) {
