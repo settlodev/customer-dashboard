@@ -60,13 +60,35 @@ export const login = async (
             redirect: false,
         });
 
-        // Handle both development and production scenarios
-        if (result?.error || !result?.ok) {
-            console.log("Authentication failed:", result?.error);
+        console.log("SignIn result:", result); // Debug log
+
+        // Only handle specific credential errors
+        if (result?.error === "CredentialsSignin") {
+            console.log("Credentials sign-in error detected");
             return parseStringify({
                 responseType: "error",
                 message: "Wrong credentials! Invalid email address and/or password",
                 error: new Error("Wrong credentials"),
+            });
+        }
+
+        // Handle other specific errors
+        if (result?.error) {
+            console.log("Other authentication error:", result.error);
+            return parseStringify({
+                responseType: "error",
+                message: "Authentication failed. Please try again.",
+                error: new Error("Authentication failed"),
+            });
+        }
+
+        // Check if authentication was successful
+        if (result?.ok === false) {
+            console.log("Authentication not OK, but no specific error");
+            return parseStringify({
+                responseType: "error",
+                message: "Authentication failed. Please try again.",
+                error: new Error("Authentication failed"),
             });
         }
 
@@ -76,7 +98,6 @@ export const login = async (
         });
 
     } catch (error: any) {
-        // console.log("Caught error:", error);
         
         // Handle Auth.js specific errors
         if (error?.type === 'CredentialsSignin' || error?.name === 'CredentialsSignin') {
