@@ -90,9 +90,6 @@ export const getOrder= async (id:UUID) : Promise<ApiResponse<Orders>> => {
         `/api/orders/${location?.id}?dashboard=true`,
         query,
     );
-
-    
-    
     return parseStringify(order)
 }
 
