@@ -170,7 +170,6 @@ function RegisterForm({ step }: { step: string }) {
         },
     });
 
-    // Set the initial phone number value when the component mounts
     useEffect(() => {
         if (session?.data?.user.phoneNumber) {
             locationForm.setValue("phone", session.data.user.phoneNumber);

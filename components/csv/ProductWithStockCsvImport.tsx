@@ -37,7 +37,7 @@ const CSV_CONFIG = {
     "Starting Quantity",
     "Starting Value",
     "Alert Level",
-     // "Expiry Date"
+    "Expiry Date"
   ],
   requiredFields: [
     "Product Name", 
@@ -80,7 +80,10 @@ const validateNumericField = (
   config: { min: number; allowZero: boolean },
   rowIndex: number
 ): string | null => {
-  const num = parseFloat(value);
+
+
+   const trimmedValue = value.trim();
+  const num = parseFloat(trimmedValue);
   
   if (isNaN(num)) {
     return `Row ${rowIndex}: "${fieldName}" must be a valid number.`;
@@ -97,6 +100,29 @@ const validateNumericField = (
   return null;
 };
 
+const validateDateField = (
+  value: string,
+  fieldName: string,
+  rowIndex: number
+): string | null => {
+  const trimmedValue = value.trim(); 
+  if (!trimmedValue) return null; 
+  
+  // Check if the date matches YYYY-MM-DD format
+  const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!isoDateRegex.test(trimmedValue)) {
+    return `Row ${rowIndex}: "${fieldName}" should be in YYYY-MM-DD format if filled.`;
+  }
+  
+  // Additional check to ensure it's a valid date
+  const date = new Date(trimmedValue);
+  if (isNaN(date.getTime())) {
+    return `Row ${rowIndex}: "${fieldName}" is not a valid date.`;
+  }
+  
+  return null;
+};
+
 
 const validateCSV = (
   fileContent: string,
@@ -105,7 +131,7 @@ const validateCSV = (
   // Parse the CSV
   const lines = fileContent.trim().split("\n").filter(Boolean);
   const rows: string[][] = lines.map(line => 
-    line.split(",").map(cell => cell.trim().replace(/\s+/g, ' '))
+    line.split(",").map(cell => cell.trim())
   );
 
   const errors: string[] = [];
@@ -144,8 +170,8 @@ const validateCSV = (
     const rowIndex = i + 2; // +2 to account for headers + 0-index
 
     // Product Section Duplicate Check (Product Name + Variant Name)
-    const productName = row[productNameIndex]?.toLowerCase().trim();
-    const variantName = row[variantNameIndex]?.toLowerCase().trim();
+    const productName = row[productNameIndex]?.trim().toLowerCase();
+    const variantName = row[variantNameIndex]?.trim().toLowerCase();
     const productKey = `${productName}|||${variantName}`; // Using ||| as separator to avoid conflicts
 
     if (!productDuplicates.has(productKey)) {
@@ -155,8 +181,8 @@ const validateCSV = (
     }
 
     // Stock Section Duplicate Check (Stock Name + Stock Variant Name)
-    const stockName = row[stockNameIndex]?.toLowerCase().trim();
-    const stockVariantName = row[stockVariantNameIndex]?.toLowerCase().trim();
+    const stockName = row[stockNameIndex]?.trim().toLowerCase();
+    const stockVariantName = row[stockVariantNameIndex]?.trim().toLowerCase();
     const stockKey = `${stockName}|||${stockVariantName}`;
 
     if (!stockDuplicates.has(stockKey)) {
@@ -200,7 +226,8 @@ const validateCSV = (
     config.textFields.forEach((field) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && row[fieldIndex]) {
-        if (emojiRegex.test(row[fieldIndex])) {
+        const trimmedValue = row[fieldIndex].trim();
+        if (emojiRegex.test(trimmedValue)) {
           rowErrors.push(`Row ${currentRowIndex}: "${field}" contains emojis which are not allowed.`);
         }
       }
@@ -228,6 +255,16 @@ const validateCSV = (
       }
     });
 
+    const expiryDateIndex = headers.indexOf("Expiry Date");
+    if (expiryDateIndex !== -1 && row[expiryDateIndex]) {
+      const dateError = validateDateField(
+        row[expiryDateIndex],
+        "Expiry Date",
+        currentRowIndex
+      );
+      if (dateError) rowErrors.push(dateError);
+    }
+
     if (rowErrors.length > 0) {
       errors.push(...rowErrors);
     }
@@ -236,80 +273,6 @@ const validateCSV = (
   return { isValid: errors.length === 0, errors, rows };
 };
 
-
-
-// Helper function for comprehensive duplicate analysis
-// const analyzeDuplicates = (rows: string[][], headers: string[]) => {
-//   const errors: string[] = [];
-  
-//   // Get header indices
-//   const indices = {
-//     productName: headers.indexOf("Product Name"),
-//     variantName: headers.indexOf("Variant Name"),
-//     stockName: headers.indexOf("Stock Name"),
-//     stockVariantName: headers.indexOf("Stock Variant Name")
-//   };
-
-//   // Maps to track duplicates
-//   const productMap = new Map<string, Array<{row: number, data: string[]}>>();
-//   const stockMap = new Map<string, Array<{row: number, data: string[]}>>();
-
-//   // Analyze each row
-//   rows.slice(1).forEach((row, i) => {
-//     const rowIndex = i + 2;
-
-//     // Product analysis
-//     const productKey = `${row[indices.productName]?.toLowerCase().trim()}|||${row[indices.variantName]?.toLowerCase().trim()}`;
-//     if (!productMap.has(productKey)) {
-//       productMap.set(productKey, []);
-//     }
-//     productMap.get(productKey)!.push({ 
-//       row: rowIndex, 
-//       data: [row[indices.productName], row[indices.variantName]]
-//     });
-
-//     // Stock analysis
-//     const stockKey = `${row[indices.stockName]?.toLowerCase().trim()}|||${row[indices.stockVariantName]?.toLowerCase().trim()}`;
-//     if (!stockMap.has(stockKey)) {
-//       stockMap.set(stockKey, []);
-//     }
-//     stockMap.get(stockKey)!.push({ 
-//       row: rowIndex, 
-//       data: [row[indices.stockName], row[indices.stockVariantName]]
-//     });
-//   });
-
-//   // Report Product duplicates
-//   productMap.forEach((entries, key) => {
-//     if (entries.length > 1) {
-//       const [productName, variantName] = key.split('|||');
-//       const rowNumbers = entries.map(e => e.row);
-//       errors.push(
-//         `🔄 PRODUCT DUPLICATE: Rows ${rowNumbers.join(", ")} have the same Product Name "${productName}" + Variant Name "${variantName}"`
-//       );
-//     }
-//   });
-
-//   // Report Stock duplicates
-//   stockMap.forEach((entries, key) => {
-//     if (entries.length > 1) {
-//       const [stockName, stockVariantName] = key.split('|||');
-//       const rowNumbers = entries.map(e => e.row);
-      
-//       // Get the product names for these stock duplicates to provide context
-//       const productContext = entries.map(e => {
-//         const originalRow = rows[e.row - 2 + 1]; // Adjust for header offset
-//         return `"${originalRow[indices.productName]}" (Row ${e.row})`;
-//       });
-      
-//       errors.push(
-//         `📦 STOCK DUPLICATE: Rows ${rowNumbers.join(", ")} have the same Stock Name "${stockName}" + Stock Variant "${stockVariantName}". Found in products: ${productContext.join(", ")}`
-//       );
-//     }
-//   });
-
-//   return { errors };
-// };
 
 type TaskStatus = 'idle' | 'processing' | 'complete' | 'failed' | 'error';
 
@@ -546,7 +509,7 @@ export function ProductWithStockCSVDialog() {
       });
   };
 
-  // Dialog close handling
+  
   const handleClose = () => {
     // If we're in the middle of processing, show confirmation
     if (taskStatus === 'processing' && !backgroundProcessing) {

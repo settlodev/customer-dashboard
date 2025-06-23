@@ -257,13 +257,9 @@ export const register = async (
         await deleteAuthCookie();
 
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
-        // console.log("regData is: ", regData)
+        
         if(regData){
-            // const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
-
-            // if(response) {
-            //     await sendVerificationEmail(regData.name, response as string, regData.email);
-            // }
+            
             redirect("user-verification");
         }
 
@@ -272,7 +268,7 @@ export const register = async (
             message: "Registration successful, redirecting to login...",
         });
     } catch (error : any) {
-
+        console.log("error is: ", error);
         // Ignore redirect error
         // if (isRedirectError(error)) throw error;
 
