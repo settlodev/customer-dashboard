@@ -10,13 +10,11 @@ interface ArchiveEntityProps {
   locationId?: string;
 }
 
-
 export async function archiveEntity({ 
   ids, 
   entityType,
   locationId
 }: ArchiveEntityProps): Promise<{ success: boolean; message: string }> {
-
     
   try {
     if (!ids || ids.length === 0) {
@@ -35,7 +33,6 @@ if (!actualLocationId) {
   return { success: false, message: "Location ID is required but not available" };
 }
 
-
     try {
       
       switch (entityType) {
@@ -44,8 +41,7 @@ if (!actualLocationId) {
           
           break;
         case 'stock':
-          const response = await apiClient.put(`/api/stock-variants/${actualLocationId}/archive`, ids);
-          console.log("Archive response:", response);
+          await apiClient.put(`/api/stock-variants/${actualLocationId}/archive`, ids);
           break;
         case 'staff':
           await apiClient.put(`/api/staff/${actualLocationId}/archive`, ids);
