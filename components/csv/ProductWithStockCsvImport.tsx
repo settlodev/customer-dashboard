@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useRef, useEffect } from "react";
@@ -20,7 +19,6 @@ import { useCSVUpload } from "@/hooks/upload";
 import { checkTaskStatus } from "@/lib/actions/stock-actions";
 import SubmitButton from "../widgets/submit-button";
 import { useToast } from "@/hooks/use-toast";
-
 
 // CSV Header and Validation Configuration
 const CSV_CONFIG = {
@@ -73,6 +71,11 @@ type ValidationResult = {
   rows: string[][];
 };
 
+type TaskStatus = 'idle' | 'processing' | 'complete' | 'failed' | 'error';
+
+// Dialog view states
+type DialogView = 'upload' | 'processing' | 'success' | 'error' | 'confirm-close';
+
 // Helper to validate numeric fields
 const validateNumericField = (
   value: string, 
@@ -80,9 +83,7 @@ const validateNumericField = (
   config: { min: number; allowZero: boolean },
   rowIndex: number
 ): string | null => {
-
-
-   const trimmedValue = value.trim();
+  const trimmedValue = value.trim();
   const num = parseFloat(trimmedValue);
   
   if (isNaN(num)) {
@@ -108,13 +109,11 @@ const validateDateField = (
   const trimmedValue = value.trim(); 
   if (!trimmedValue) return null; 
   
-  // Check if the date matches YYYY-MM-DD format
   const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/;
   if (!isoDateRegex.test(trimmedValue)) {
     return `Row ${rowIndex}: "${fieldName}" should be in YYYY-MM-DD format if filled.`;
   }
   
-  // Additional check to ensure it's a valid date
   const date = new Date(trimmedValue);
   if (isNaN(date.getTime())) {
     return `Row ${rowIndex}: "${fieldName}" is not a valid date.`;
@@ -123,12 +122,10 @@ const validateDateField = (
   return null;
 };
 
-
 const validateCSV = (
   fileContent: string,
   config = CSV_CONFIG
 ): ValidationResult => {
-  // Parse the CSV
   const lines = fileContent.trim().split("\n").filter(Boolean);
   const rows: string[][] = lines.map(line => 
     line.split(",").map(cell => cell.trim())
@@ -156,23 +153,21 @@ const validateCSV = (
     };
   }
 
-  // IMPROVED DUPLICATE CHECKING - Section-wise validation
+  // Duplicate checking
   const productDuplicates = new Map<string, number[]>();
   const stockDuplicates = new Map<string, number[]>();
 
-  // Get header indices
   const productNameIndex = headers.indexOf("Product Name");
   const variantNameIndex = headers.indexOf("Variant Name");
   const stockNameIndex = headers.indexOf("Stock Name");
   const stockVariantNameIndex = headers.indexOf("Stock Variant Name");
 
   rows.slice(1).forEach((row, i) => {
-    const rowIndex = i + 2; // +2 to account for headers + 0-index
+    const rowIndex = i + 2;
 
-    // Product Section Duplicate Check (Product Name + Variant Name)
     const productName = row[productNameIndex]?.trim().toLowerCase();
     const variantName = row[variantNameIndex]?.trim().toLowerCase();
-    const productKey = `${productName}|||${variantName}`; // Using ||| as separator to avoid conflicts
+    const productKey = `${productName}|||${variantName}`;
 
     if (!productDuplicates.has(productKey)) {
       productDuplicates.set(productKey, [rowIndex]);
@@ -180,7 +175,6 @@ const validateCSV = (
       productDuplicates.get(productKey)!.push(rowIndex);
     }
 
-    // Stock Section Duplicate Check (Stock Name + Stock Variant Name)
     const stockName = row[stockNameIndex]?.trim().toLowerCase();
     const stockVariantName = row[stockVariantNameIndex]?.trim().toLowerCase();
     const stockKey = `${stockName}|||${stockVariantName}`;
@@ -192,7 +186,6 @@ const validateCSV = (
     }
   });
 
-  // Collect Product Section duplicates
   productDuplicates.forEach((indexes, key) => {
     if (indexes.length > 1) {
       const [productName, variantName] = key.split('|||');
@@ -202,7 +195,6 @@ const validateCSV = (
     }
   });
 
-  // Collect Stock Section duplicates
   stockDuplicates.forEach((indexes, key) => {
     if (indexes.length > 1) {
       const [stockName, stockVariantName] = key.split('|||');
@@ -212,17 +204,14 @@ const validateCSV = (
     }
   });
 
-  // Rest of the validation logic (field validation, etc.)
   rows.slice(1).forEach((row, rowIndex) => {
     const rowErrors: string[] = [];
     const currentRowIndex = rowIndex + 2; 
     
-    // Column count validation
     if (row.length !== headers.length) {
       rowErrors.push(`Row ${currentRowIndex}: Column count mismatch. Expected ${headers.length} columns, found ${row.length}.`);
     }
 
-    // Emoji validation for text fields
     config.textFields.forEach((field) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && row[fieldIndex]) {
@@ -233,7 +222,6 @@ const validateCSV = (
       }
     });
 
-    // Required field validation
     config.requiredFields.forEach((field) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && (!row[fieldIndex] || row[fieldIndex].trim() === "")) {
@@ -241,7 +229,6 @@ const validateCSV = (
       }
     });
 
-    // Numeric field validation
     Object.entries(config.numericFields).forEach(([field, validationConfig]) => {
       const fieldIndex = headers.indexOf(field);
       if (fieldIndex !== -1 && row[fieldIndex]) {
@@ -273,34 +260,29 @@ const validateCSV = (
   return { isValid: errors.length === 0, errors, rows };
 };
 
-
-type TaskStatus = 'idle' | 'processing' | 'complete' | 'failed' | 'error';
-
 export function ProductWithStockCSVDialog() {
-  // State Management
   const { toast } = useToast();
+  
+  // Core state
   const [isOpen, setIsOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<DialogView>('upload');
+  
+  // File state
   const [file, setFile] = useState<File | null>(null);
   const [fileContent, setFileContent] = useState<string | null>(null);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showConfirmClose, setShowConfirmClose] = useState(false);
 
-  // Task status states
+  // Task state
   const [taskId, setTaskId] = useState<string | null>(null);
   const [taskStatus, setTaskStatus] = useState<TaskStatus>('idle');
   const [taskMessage, setTaskMessage] = useState<string | null>(null);
   const [isPolling, setIsPolling] = useState(false);
-  const [shouldRedirect, setShouldRedirect] = useState(false);
-  const [backgroundProcessing, setBackgroundProcessing] = useState(false);
 
-  const [, setUploadStarted] = useState(false);
-  const [, setUploadError] = useState<string | null>(null);
-
-  // Hook for CSV upload
-  const {uploadProgress, error, uploadCSV, isUploading } = useCSVUpload();
+  // Upload hook
+  const { uploadProgress, error, uploadCSV, isUploading } = useCSVUpload();
   
-  // Reset form function
+  // Reset function
   const resetForm = () => {
     setFile(null);
     setFileContent(null);
@@ -309,88 +291,76 @@ export function ProductWithStockCSVDialog() {
     setTaskStatus('idle');
     setTaskMessage(null);
     setIsPolling(false);
-    setShouldRedirect(false);
-    setBackgroundProcessing(false);
+    setCurrentView('upload');
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Handle successful upload and refresh
-  const handleSuccessfulUpload = () => {
+  // Close handler with smart logic
+  const handleClose = () => {
+    if (taskStatus === 'processing') {
+      setCurrentView('confirm-close');
+      return;
+    }
+    
     setIsOpen(false);
     resetForm();
-    window.location.reload();
   };
 
-  // Effect for task status polling
+  // Continue in background
+  const handleBackgroundProcessing = () => {
+    toast({
+      title: "Processing in Background",
+      description: "Your upload will continue processing. You can continue working.",
+    });
+    
+    resetForm();
+    setIsOpen(false);
+    setTimeout(() => window.location.reload(), 300);
+  };
+
+  // Task status polling effect
   useEffect(() => {
     let pollingInterval: NodeJS.Timeout | null = null;
-
+  
     const pollTaskStatus = async () => {
       if (!taskId || !isPolling) return;
-
+  
       try {
         const status = await checkTaskStatus(taskId);
         
         setTaskStatus(status.csv_upload_status as TaskStatus);
         setTaskMessage(status.message);
-
-        if (status.csv_upload_status === "complete" || status.csv_upload_status === "failed") {
+  
+        if (status.csv_upload_status === "complete") {
           setIsPolling(false);
+          setCurrentView('success');
           if (pollingInterval) clearInterval(pollingInterval);
-          
-          // Handle completion scenarios
-          if (status.csv_upload_status === "complete") {
-            toast({
-              title: "Upload Successful",
-              description: "Your products and stock have been successfully uploaded.",
-              variant: "default",
-            });
-            
-            if (shouldRedirect) {
-              window.location.href = "/stocks";
-            } else if (backgroundProcessing) {
-              // Just notify, don't navigate
-            } else {
-              handleSuccessfulUpload();
-            }
-          } else {
-            toast({
-              title: "Upload Failed",
-              description: status.message || "There was an error processing your upload.",
-              variant: "destructive",
-            });
-          }
+        } else if (status.csv_upload_status === "failed") {
+          setIsPolling(false);
+          setCurrentView('error');
+          if (pollingInterval) clearInterval(pollingInterval);
         }
-      } catch (error : any) {
+      } catch (error: any) {
         console.error("Error checking task status:", error);
         setTaskStatus("error");
         setTaskMessage("Failed to check task status");
         setIsPolling(false);
+        setCurrentView('error');
         if (pollingInterval) clearInterval(pollingInterval);
-        
-        toast({
-          title: "Error",
-          description: "Failed to check task status. Please try again.",
-          variant: "destructive",
-        });
       }
     };
-
+  
     if (taskId && isPolling) {
-      // Initial check
       pollTaskStatus();
-      
-      // Set up polling interval (every 2.5 seconds)
-      pollingInterval = setInterval(pollTaskStatus, 2500);
+      pollingInterval = setInterval(pollTaskStatus, 2000);
     }
-
-    // Cleanup function
+  
     return () => {
       if (pollingInterval) clearInterval(pollingInterval);
     };
-  }, [taskId, isPolling, shouldRedirect, backgroundProcessing, toast]);
+  }, [taskId, isPolling]);
 
-  // File handling
+  // File change handler
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
 
@@ -437,11 +407,9 @@ export function ProductWithStockCSVDialog() {
     }
   };
 
-  // Upload handling
+  // Upload handler
   const handleUpload = async () => {
-    if (file && fileContent && validationResult?.isValid) {
-      setUploadStarted(true);
-      setUploadError(null);
+    if (file && fileContent && validationResult?.isValid) {      
       try {
         const response = await uploadCSV({ fileData: fileContent, fileName: file.name });
       
@@ -449,29 +417,20 @@ export function ProductWithStockCSVDialog() {
           setTaskId(response.task_id);
           setIsPolling(true);
           setTaskStatus("processing");
+          setCurrentView('processing');
           
           toast({
             title: "Upload Started",
             description: "Your file is being processed. This may take a moment.",
           });
         } else {
-          console.error("No task ID returned from upload");
-          setTaskStatus("error");
-          setTaskMessage("Failed to start task");
-          
-          toast({
-            title: "Upload Error",
-            description: "Failed to start the upload process. Please try again.",
-            variant: "destructive",
-          });
+          throw new Error("No task ID returned from upload");
         }
       } catch (error) {
         console.error("Error uploading file:", error);
         setTaskStatus("error");
         setTaskMessage("Upload failed");
-
-        setUploadError("Upload failed. Please try again.");
-        setUploadStarted(false);
+        setCurrentView('error');
         
         toast({
           title: "Upload Failed",
@@ -509,52 +468,35 @@ export function ProductWithStockCSVDialog() {
       });
   };
 
-  
-  const handleClose = () => {
-    // If we're in the middle of processing, show confirmation
-    if (taskStatus === 'processing' && !backgroundProcessing) {
-      setShowConfirmClose(true);
-      return;
-    }
+  // Success handlers
+  const handleSuccessClose = () => {
+    toast({
+      title: "Upload Successful",
+      description: "Your products and stock have been successfully uploaded.",
+    });
     
     resetForm();
     setIsOpen(false);
+    setTimeout(() => window.location.reload(), 300);
   };
 
-  // Background processing
-  const handleBackgroundProcessing = () => {
-    setBackgroundProcessing(true);
-    setIsOpen(false);
-    
-    toast({
-      title: "Processing in Background",
-      description: "Your upload will continue processing. You can continue working.",
-    });
-    
-    window.location.reload();
-  };
-
-  // Redirect handling
   const handleRedirectToStocks = () => {
-    if (taskStatus === "complete") {
+    toast({
+      title: "Upload Successful",
+      description: "Redirecting to stocks page...",
+    });
+    setTimeout(() => {
       window.location.href = "/stocks";
-    } else {
-      setShouldRedirect(true);
-      
-      if (taskStatus === 'processing') {
-        handleBackgroundProcessing();
-      }
-    }
+    }, 1000);
   };
 
-  // Product count for display
+  // Product count
   const productCount = validationResult?.rows?.length ? validationResult.rows.length - 1 : 0;
 
   // Error display component
   const ErrorList = ({ errors }: { errors: string[] }) => {
     if (errors.length === 0) return null;
     
-    // Group errors by row for better display
     const rowRegex = /Row (\d+):/;
     const errorsByRow: { [key: string]: string[] } = {};
     
@@ -586,269 +528,276 @@ export function ProductWithStockCSVDialog() {
     );
   };
 
-  return (
-    <>
-      <Dialog open={isOpen} onOpenChange={(open) => {
-        if (!open) {
-          handleClose();
-        } else {
-          setIsOpen(true);
-        }
-      }}>
-        <DialogTrigger asChild>
-          <Button
-            className="h-10 gap-1 dark:bg-white dark:text-black-2"
-            size="sm"
-            variant="outline"
-            onClick={() => setIsOpen(true)}
-          >
-            <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
-            <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-black-2 dark:bg-white dark:text-black-2">
-              Import CSV (Stock & Product)
-            </span>
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="w-[90vw] lg:max-w-[1000px]">
-          <DialogHeader>
-            <DialogTitle>Import Stock with Products</DialogTitle>
-            <DialogDescription>
-              Select a CSV file to upload. Please ensure that the file matches the expected format.
-            </DialogDescription>
-          </DialogHeader>
+  // Render different views based on current state
+  const renderDialogContent = () => {
+    switch (currentView) {
+      case 'processing':
+        return (
+          <>
+            <DialogHeader>
+              <DialogTitle>Processing Upload</DialogTitle>
+              <DialogDescription>
+                Your file is being processed. This may take a few moments.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-6">
+              <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="flex items-center justify-center mb-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                </div>
+                <p className="text-center text-blue-700 mb-3">
+                  Processing your stock upload. This may take a few moments...
+                </p>
+                <p className="text-center text-sm text-gray-500">
+                  You can close this dialog and continue working. Your stock will be available shortly.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleBackgroundProcessing} variant="outline">
+                Continue in Background
+              </Button>
+              <Button onClick={() => {
+                handleBackgroundProcessing();
+                setTimeout(() => {
+                  window.location.href = "/stocks";
+                }, 1000);
+              }}>
+                Process and Go to Stocks
+              </Button>
+            </DialogFooter>
+          </>
+        );
 
-          {taskStatus === "complete" ? (
+      case 'success':
+        return (
+          <>
+            <DialogHeader>
+              <DialogTitle>Upload Successful!</DialogTitle>
+              <DialogDescription>
+                Your products and stock have been successfully uploaded.
+              </DialogDescription>
+            </DialogHeader>
             <div className="py-4 text-center">
               <div className="flex justify-center mb-4">
                 <div className="h-16 w-16 bg-green-100 rounded-full flex items-center justify-center">
                   <Icon icon="mdi:check-circle" className="h-12 w-12 text-green-500" />
                 </div>
               </div>
-              <h3 className="text-lg font-medium text-green-600 mb-2">Upload Successful!</h3>
+              <h3 className="text-lg font-medium text-green-600 mb-2">Upload Complete!</h3>
               <p className="text-gray-600 mb-4">
-                Your products and stock have been successfully uploaded. You can close this dialog or go to the stocks page.
+                You can close this dialog or navigate to the stocks page to view your uploaded items.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button onClick={() => {
-                  handleClose();
-                  window.location.reload(); // Refresh the page
-                }} variant="outline">
-                  Close & Refresh
-                </Button>
-                <Button onClick={handleRedirectToStocks}>
-                  Go to Stocks
-                </Button>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSuccessClose} variant="outline">
+                Close & Refresh
+              </Button>
+              <Button onClick={handleRedirectToStocks}>
+                Go to Stocks
+              </Button>
+            </DialogFooter>
+          </>
+        );
+
+      case 'error':
+        return (
+          <>
+            <DialogHeader>
+              <DialogTitle>Upload Failed</DialogTitle>
+              <DialogDescription>
+                There was an error processing your upload.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <div className="p-4 rounded-lg bg-red-50 border border-red-200">
+                <div className="flex items-center justify-center mb-4">
+                  <Icon icon="mdi:alert-circle" className="h-8 w-8 text-red-500" />
+                </div>
+                <p className="text-center text-red-700">
+                  {taskMessage || "Failed to process stock upload. Please try again."}
+                </p>
               </div>
             </div>
-          ) : (
-            <>
-              <div className="grid gap-4 py-4">
-                {taskStatus === "processing" ? (
-                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                    <div className="flex items-center justify-center mb-4">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                    </div>
-                    <p className="text-center text-blue-700 mb-3">
-                      Processing your stock upload. This may take a few moments...
-                    </p>
-                    <p className="text-center text-sm text-gray-500">
-                      You can close this dialog and continue working. Your stock will be available shortly.
-                    </p>
-                    <div className="mt-4 flex justify-center gap-3">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={handleBackgroundProcessing}
-                      >
-                        Continue in background
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setShouldRedirect(true);
-                          handleBackgroundProcessing();
-                        }}
-                      >
-                        Process and go to Stocks
-                      </Button>
-                    </div>
-                  </div>
-                ) : taskStatus === "failed" || taskStatus === "error" ? (
-                  <div className="p-4 rounded-lg bg-red-50 border border-red-200">
-                    <div className="flex items-center justify-center mb-4">
-                      <Icon icon="mdi:alert-circle" className="h-8 w-8 text-red-500" />
-                    </div>
-                    <p className="text-center text-red-700">
-                      {taskMessage || "Failed to process stock upload. Please try again."}
-                    </p>
-                    <div className="mt-4 flex justify-center">
-                      <Button onClick={resetForm} variant="outline">
-                        Try Again
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center justify-between">
-                        <label htmlFor="csv" className="text-sm font-medium">
-                          CSV File
-                        </label>
-                        <Button 
-                          onClick={handleTemplateDownload} 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-8 gap-1 text-xs"
-                        >
-                          <Icon icon="mdi:file-download" className="h-3.5 w-3.5" />
-                          Download Template
-                        </Button>
-                      </div>
-                      <Input
-                        ref={fileInputRef}
-                        id="csv"
-                        type="file"
-                        accept=".csv"
-                        onChange={handleFileChange}
-                        className="w-full"
-                      />
-                      <p className="text-xs text-gray-500">
-                        The CSV file should include columns for Product Name, Category, Variants, Price, and Stock information.
-                      </p>
-                    </div>
-                    
-                    {validationResult && !validationResult.isValid && (
-                      <ErrorList errors={validationResult.errors} />
-                    )}
-                    
-                    {validationResult?.rows && validationResult.rows.length > 0 && (
-                      <div className="overflow-auto max-h-60 rounded-md border border-gray-200">
-                        <table className="min-w-full border-collapse">
-                          <thead>
-                            <tr className="bg-gray-50">
-                              {validationResult.rows[0]?.map((header, index) => (
-                                <th key={index} className="border-b border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                  {header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody className="bg-white divide-y divide-gray-200">
-                            {validationResult.rows.slice(1, 6).map((row, rowIndex) => (
-                              <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                {row.map((cell, cellIndex) => (
-                                  <td key={cellIndex} className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">
-                                    {cell}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                            {validationResult.rows.length > 6 && (
-                              <tr>
-                                <td colSpan={validationResult.rows[0].length} className="px-3 py-2 text-sm text-gray-500 italic text-center">
-                                  {validationResult.rows.length - 6} more rows not shown
-                                </td>
-                              </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
-                    )}
+            <DialogFooter>
+              <Button onClick={() => setCurrentView('upload')} variant="outline">
+                Try Again
+              </Button>
+            </DialogFooter>
+          </>
+        );
 
-                    {uploadProgress > 0 && (
-                      <div className="mt-4 space-y-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-700">Uploading...</span>
-                          <span className="text-sm font-medium text-gray-700">{uploadProgress}%</span>
-                        </div>
-                        <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                        {uploadProgress < 100 ? (
-                          <p className="text-xs text-gray-500">Please wait while your file uploads...</p>
-                        ) : (
-                          <p className="text-xs text-emerald-600">Upload complete! Processing data...</p>
-                        )}
-                      </div>
-                    )}
-                    
-                    {error && (
-                      <div className="p-2 rounded-md bg-red-50 border border-red-200">
-                        <p className="text-red-600 text-sm">{error}</p>
-                      </div>
-                    )}
-                  </>
-                )}
+      case 'confirm-close':
+        return (
+          <>
+            <DialogHeader>
+              <DialogTitle>Processing in Progress</DialogTitle>
+              <DialogDescription>
+                Your upload is still being processed. What would you like to do?
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-4">
+              <p className="text-gray-600">
+                If you close this dialog, processing will continue in the background and you&apos;ll be able to see your uploaded stock shortly.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button onClick={() => setCurrentView('processing')} variant="outline">
+                Keep Dialog Open
+              </Button>
+              <Button onClick={handleBackgroundProcessing}>
+                Continue in Background
+              </Button>
+            </DialogFooter>
+          </>
+        );
+
+      default: // 'upload'
+        return (
+          <>
+            <DialogHeader>
+              <DialogTitle>Import Stock with Products</DialogTitle>
+              <DialogDescription>
+                Select a CSV file to upload. Please ensure that the file matches the expected format.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <label htmlFor="csv" className="text-sm font-medium">
+                    CSV File
+                  </label>
+                  <Button 
+                    onClick={handleTemplateDownload} 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 gap-1 text-xs"
+                  >
+                    <Icon icon="mdi:file-download" className="h-3.5 w-3.5" />
+                    Download Template
+                  </Button>
+                </div>
+                <Input
+                  ref={fileInputRef}
+                  id="csv"
+                  type="file"
+                  accept=".csv"
+                  onChange={handleFileChange}
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500">
+                  The CSV file should include columns for Product Name, Category, Variants, Price, and Stock information.
+                </p>
               </div>
+              
+              {validationResult && !validationResult.isValid && (
+                <ErrorList errors={validationResult.errors} />
+              )}
+              
+              {validationResult?.rows && validationResult.rows.length > 0 && (
+                <div className="overflow-auto max-h-60 rounded-md border border-gray-200">
+                  <table className="min-w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        {validationResult.rows[0]?.map((header, index) => (
+                          <th key={index} className="border-b border-gray-200 px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {validationResult.rows.slice(1, 6).map((row, rowIndex) => (
+                        <tr key={rowIndex} className={rowIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                          {row.map((cell, cellIndex) => (
+                            <td key={cellIndex} className="px-3 py-2 text-sm text-gray-700 whitespace-nowrap">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                      {validationResult.rows.length > 6 && (
+                        <tr>
+                          <td colSpan={validationResult.rows[0].length} className="px-3 py-2 text-sm text-gray-500 italic text-center">
+                            {validationResult.rows.length - 6} more rows not shown
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-              {validationResult?.isValid && productCount > 0 && taskStatus === 'idle' && (
+              {uploadProgress > 0 && (
+                <div className="mt-4 space-y-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium text-gray-700">Uploading...</span>
+                    <span className="text-sm font-medium text-gray-700">{uploadProgress}%</span>
+                  </div>
+                  <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                  {uploadProgress < 100 ? (
+                    <p className="text-xs text-gray-500">Please wait while your file uploads...</p>
+                  ) : (
+                    <p className="text-xs text-emerald-600">Upload complete! Processing data...</p>
+                  )}
+                </div>
+              )}
+              
+              {error && (
+                <div className="p-2 rounded-md bg-red-50 border border-red-200">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
+
+              {validationResult?.isValid && productCount > 0 && (
                 <div className="text-sm text-green-600 font-medium pt-2 flex items-center">
                   <Icon icon="mdi:check-circle" className="h-4 w-4 mr-1 text-green-500" />
                   You&rsquo;re uploading a total of <strong className="mx-1">{productCount}</strong> products with stock.
                 </div>
               )}
+            </div>
+            <DialogFooter>
+              <SubmitButton
+                label="Upload CSV"
+                isPending={isUploading}
+                isDisabled={!file || !(validationResult?.isValid) || isUploading}
+                onClick={handleUpload}
+              />
+            </DialogFooter>
+          </>
+        );
+    }
+  };
 
-              <DialogFooter>
-                {taskStatus === "processing" ? (
-                  <div className="flex gap-2">
-                    <Button 
-                      onClick={handleBackgroundProcessing} 
-                      variant="outline"
-                    >
-                      Continue in background
-                    </Button>
-                    <Button disabled>
-                      <span className="mr-2">
-                        <span className="animate-spin inline-block h-4 w-4 border-b-2 border-white rounded-full"></span>
-                      </span>
-                      Processing...
-                    </Button>
-                  </div>
-                ) : taskStatus === "failed" || taskStatus === "error" ? (
-                  <Button onClick={resetForm} variant="outline">
-                    Try Again
-                  </Button>
-                ) : (
-                  <>
-                    <SubmitButton
-                      label="Upload CSV"
-                      isPending={isUploading}
-                      isDisabled={!file || !(validationResult?.isValid) || isUploading}
-                      onClick={handleUpload}
-                    />
-                  </>
-                )}
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-      
-      {/* Confirmation Dialog for closing during processing */}
-      <Dialog open={showConfirmClose} onOpenChange={setShowConfirmClose}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Are you sure?</DialogTitle>
-            <DialogDescription>
-              Your upload is still processing. If you close this dialog, processing will continue in the background.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setShowConfirmClose(false)} variant="outline">
-              Cancel
-            </Button>
-            <Button onClick={() => {
-              setShowConfirmClose(false);
-              handleBackgroundProcessing();
-            }}>
-              Continue in Background
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => {
+      if (!open) {
+        handleClose();
+      } else {
+        setIsOpen(true);
+      }
+    }}>
+      <DialogTrigger asChild>
+        <Button
+          className="h-10 gap-1 dark:bg-white dark:text-black-2"
+          size="sm"
+          variant="outline"
+          onClick={() => setIsOpen(true)}
+        >
+          <Icon className="h-3.5 w-3.5" icon="mdi:file-import" />
+          <span className="sr-only sm:not-sr-only sm:whitespace-nowrap text-black-2 dark:bg-white dark:text-black-2">
+            Import CSV (Stock & Product)
+          </span>
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="w-[90vw] lg:max-w-[1000px]">
+        {renderDialogContent()}
+      </DialogContent>
+    </Dialog>
   );
 }
