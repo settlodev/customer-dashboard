@@ -86,7 +86,7 @@ export default auth(async (req: NextRequest) => {
     return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
   }
 
-  // IMPORTANT: Add a grace period for newly authenticated users
+  
   // If we have a session but no authToken, give the system time to sync
   if (isLoggedIn && !authToken) {
     // Allow a brief window for the auth token to be set
