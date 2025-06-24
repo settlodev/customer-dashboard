@@ -58,8 +58,7 @@ export const login = async (
             redirect: false,
         });
 
-        console.log("SignIn result:", result); // Debug log
-
+    
         // Only handle specific credential errors
         if (result?.error === "CredentialsSignin") {
             console.log("Credentials sign-in error detected");

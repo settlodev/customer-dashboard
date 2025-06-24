@@ -13,6 +13,13 @@ import {getBusiness} from "@/lib/actions/business/get";
 import {redirect} from "next/navigation";
 import { signOut } from "next-auth/react";
 
+const isAuthError = (error: any): boolean => {
+    return error?.status === 401 || 
+           error?.status === 403 || 
+           error?.message?.toLowerCase().includes('auth') ||
+           error?.message?.toLowerCase().includes('token');
+};
+
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {
     try {
         // Check for existing business cookie
@@ -80,64 +87,64 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
 };
 
 
-
 export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | null> => {
     const MAX_RETRIES = 3;
-    const RETRY_DELAY = 500; 
+    const RETRY_DELAY = 500;
 
     try {
         const authToken = await getAuthToken();
 
-        // If no auth token and we haven't exceeded retries, wait and try again
-        if (!authToken && retryCount < MAX_RETRIES) {
-            console.log(`Auth token not found, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-            return getBusinessDropDown(retryCount + 1);
-        }
-
+       
         if (!authToken) {
-            return null;
+            console.log("No auth token found, redirecting to login");
+            redirect('/login');
         }
 
         const userId = authToken?.id as UUID;
         
         if (!userId) {
-            return null;
+            console.log("Invalid user ID in auth token, redirecting to login");
+            redirect('/login');
         }
 
-     
-        const myEndpoints = endpoints({userId: userId});
+        const myEndpoints = endpoints({ userId: userId });
         const apiClient = new ApiClient();
 
         try {
             const data = await apiClient.get(myEndpoints.business.list.endpoint);
             return parseStringify(data);
         } catch (apiError: any) {
-            // Check for specific API errors
-            if (apiError.status === 403 && apiError.code === 'FORBIDDEN') {
-                console.error("API authentication failed:", apiError.message);
-                return null;
+            
+            if (apiError.status === 401 || apiError.status === 403) {
+                console.error("Authentication/authorization failed, redirecting to login");
+                redirect('/login');
             }
 
-            // If it's a temporary error and we haven't exceeded retries, try again
-            if (retryCount < MAX_RETRIES && (apiError.status >= 500 || apiError.code === 'NETWORK_ERROR')) {
+            
+            if (retryCount < MAX_RETRIES && (
+                apiError.status >= 500 || 
+                apiError.code === 'NETWORK_ERROR' ||
+                apiError.name === 'NetworkError'
+            )) {
+                console.log(`Server/network error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                 return getBusinessDropDown(retryCount + 1);
             }
 
-            // console.error("API request failed:", apiError);
+            // For other client errors (4xx), don't retry
+            console.error("API request failed:", apiError);
             throw apiError;
         }
     } catch (error) {
         console.error("Failed to get business list:", error);
 
-        
-        if (retryCount < MAX_RETRIES) {
-            // console.log(`General error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+        // Only retry on unexpected errors, not auth-related ones
+        if (retryCount < MAX_RETRIES && !isAuthError(error)) {
+            console.log(`Unexpected error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
             return getBusinessDropDown(retryCount + 1);
         }
 
         return null;
     }
-}
+};
