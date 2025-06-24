@@ -1,64 +1,52 @@
 
 import * as Sentry from "@sentry/nextjs";
-import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
-
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
 import BusinessSelector from "@/app/(auth)/select-business/business_list";
-import { auth } from "@/auth";
-import { Loader2Icon } from "lucide-react";
+// import { Loader2Icon } from "lucide-react";
+import Loading from "@/app/(protected)/loading";
 
-// Loading component for suspense
 function BusinessPageLoading() {
     return (
         <div className="flex items-center justify-center min-h-screen">
-            <div className="text-center">
-                <Loader2Icon className="w-8 h-8 text-emerald-600 animate-spin mx-auto mb-4" />
-                <p className="text-gray-600">Loading your businesses...</p>
-            </div>
+           <Loading />
         </div>
     );
 }
 
-
 async function BusinessPageContent() {
     try {
-        const session = await auth();
-        if (!session) {
-            redirect('/login');
-        }
-
-        
+        // Middleware ensures auth, just fetch data
         const data = await getBusinessDropDown();
         
-        // console.log("Business fetch result:", { 
-        //     dataExists: !!data, 
-        //     dataLength: data?.length,
-        //     sessionUserId: session?.user?.id
-        // });
-
-        if (data === null) {
-            
-            redirect('/login');
-        }
-
-        if (data.length === 0) {
-            
-            redirect('/business-registration');
+        // Handle the case where data might be null or empty
+        if (!data || data.length === 0) {
+            return (
+                <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center">
+                        <p className="text-gray-600 mb-4">No businesses found.</p>
+                        <a href="/business-registration" className="text-white bg-emerald-500 px-4 py-2 rounded-full hover:underline">
+                            Create your first business
+                        </a>
+                    </div>
+                </div>
+            );
         }
 
         return <BusinessSelector businesses={data} />;
     } catch (error) {
-        // console.error('Error in BusinessPageContent:', error);
         Sentry.captureException(error);
         
-        // More specific error handling
-        if (error instanceof Error && error.message.includes('REDIRECT')) {
-            // Re-throw redirect errors
-            throw error;
-        }
-        
-        redirect('/login');
+        return (
+            <div className="flex items-center justify-center min-h-screen">
+                <div className="text-center">
+                    <p className="text-red-600 mb-4">Something went wrong.</p>
+                    <a href="/login" className="text-emerald-600 hover:underline">
+                        Go to login
+                    </a>
+                </div>
+            </div>
+        );
     }
 }
 

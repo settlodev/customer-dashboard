@@ -13,6 +13,9 @@ import {getBusiness} from "@/lib/actions/business/get";
 import {redirect} from "next/navigation";
 import { signOut } from "next-auth/react";
 
+const isRedirectError = (error: any) => {
+    return error?.digest?.startsWith('NEXT_REDIRECT');
+  };
 const isAuthError = (error: any): boolean => {
     return error?.status === 401 || 
            error?.status === 403 || 
@@ -86,7 +89,6 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
     }
 };
 
-
 export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | null> => {
     const MAX_RETRIES = 3;
     const RETRY_DELAY = 500;
@@ -97,14 +99,14 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
        
         if (!authToken) {
             console.log("No auth token found, redirecting to login");
-            redirect('/login');
+            return null;
         }
 
         const userId = authToken?.id as UUID;
         
         if (!userId) {
             console.log("Invalid user ID in auth token, redirecting to login");
-            redirect('/login');
+            return null;
         }
 
         const myEndpoints = endpoints({ userId: userId });
@@ -117,7 +119,7 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
             
             if (apiError.status === 401 || apiError.status === 403) {
                 console.error("Authentication/authorization failed, redirecting to login");
-                redirect('/login');
+                return null;
             }
 
             
@@ -136,6 +138,11 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
             throw apiError;
         }
     } catch (error) {
+
+        if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+            throw error;
+          }
+
         console.error("Failed to get business list:", error);
 
         // Only retry on unexpected errors, not auth-related ones

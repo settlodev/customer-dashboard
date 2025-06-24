@@ -49,7 +49,8 @@ if (!actualLocationId) {
           break;
          
           case 'stock-intake':
-            await apiClient.put(`/api/stock-intakes/${actualLocationId}/archive`, ids);
+           const response = await apiClient.put(`/api/stock-intakes/${actualLocationId}/all/archive`, ids);
+           console.log("The response is",response)
             break;  
        
         default:
