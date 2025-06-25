@@ -13,9 +13,7 @@ import {getBusiness} from "@/lib/actions/business/get";
 import {redirect} from "next/navigation";
 import { signOut } from "next-auth/react";
 
-const isRedirectError = (error: any) => {
-    return error?.digest?.startsWith('NEXT_REDIRECT');
-  };
+
 const isAuthError = (error: any): boolean => {
     return error?.status === 401 || 
            error?.status === 403 || 
@@ -52,16 +50,13 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
         }
 
         if (!currentLocation.business) {
-            // console.warn('No business ID found in current location');
+            
             return undefined;
         }
 
-        // console.log('Attempting to get business with ID:', currentLocation.business);
         const currentBusiness = await getBusiness(currentLocation.business);
-        console.log('getBusiness returned data');
 
         if (!currentBusiness) {
-            // console.warn('No business found for ID:', currentLocation.business);
             return undefined;
         }
 
@@ -78,6 +73,8 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
 export const getCurrentLocation = async (): Promise<Location | undefined> => {
     const cookieStore = await cookies();
     const locationCookie = cookieStore.get("currentLocation");
+
+    console.log("locationCookie: ", locationCookie);
    
     if (!locationCookie) return undefined;
 
@@ -98,6 +95,10 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
 
        
         if (!authToken) {
+            if (retryCount < MAX_RETRIES) {
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                return getBusinessDropDown(retryCount + 1);
+            }
             console.log("No auth token found, redirecting to login");
             return null;
         }
@@ -145,7 +146,7 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
 
         console.error("Failed to get business list:", error);
 
-        // Only retry on unexpected errors, not auth-related ones
+        
         if (retryCount < MAX_RETRIES && !isAuthError(error)) {
             console.log(`Unexpected error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
             await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));

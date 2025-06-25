@@ -1,9 +1,8 @@
-
 import * as Sentry from "@sentry/nextjs";
 import { Suspense } from 'react';
+import { redirect } from 'next/navigation';
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
 import BusinessSelector from "@/app/(auth)/select-business/business_list";
-// import { Loader2Icon } from "lucide-react";
 import Loading from "@/app/(protected)/loading";
 
 function BusinessPageLoading() {
@@ -16,37 +15,39 @@ function BusinessPageLoading() {
 
 async function BusinessPageContent() {
     try {
+
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // Middleware ensures auth, just fetch data
         const data = await getBusinessDropDown();
-        
-        // Handle the case where data might be null or empty
-        if (!data || data.length === 0) {
-            return (
-                <div className="flex items-center justify-center min-h-screen">
-                    <div className="text-center">
-                        <p className="text-gray-600 mb-4">No businesses found.</p>
-                        <a href="/business-registration" className="text-white bg-emerald-500 px-4 py-2 rounded-full hover:underline">
-                            Create your first business
-                        </a>
-                    </div>
-                </div>
-            );
-        }
 
-        return <BusinessSelector businesses={data} />;
+        console.log(data);
+        
+        // Handle redirects properly in server component
+        if (!data) {
+            // redirect('/login');
+            redirect('/login');
+        }
+        
+        if (Array.isArray(data) && data.length > 0) {
+            return <BusinessSelector businesses={data} />;
+        }
+            redirect('/business-registration');
+        
+        
     } catch (error) {
         Sentry.captureException(error);
         
-        return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <p className="text-red-600 mb-4">Something went wrong.</p>
-                    <a href="/login" className="text-emerald-600 hover:underline">
-                        Go to login
-                    </a>
-                </div>
-            </div>
-        );
+        // Re-throw redirect errors
+        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
+            throw error;
+        }
+
+       
+        
+        // For other errors, redirect to login
+        redirect('/login');
     }
 }
 
@@ -56,4 +57,5 @@ export default async function SelectBusinessPage() {
             <BusinessPageContent />
         </Suspense>
     );
-}
+}  
+
