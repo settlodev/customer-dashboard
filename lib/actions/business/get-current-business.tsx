@@ -74,7 +74,7 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
     const cookieStore = await cookies();
     const locationCookie = cookieStore.get("currentLocation");
 
-    console.log("locationCookie: ", locationCookie);
+    // console.log("locationCookie: ", locationCookie);
    
     if (!locationCookie) return undefined;
 
@@ -99,14 +99,14 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                 return getBusinessDropDown(retryCount + 1);
             }
-            console.log("No auth token found, redirecting to login");
+            // console.log("No auth token found, redirecting to login");
             return null;
         }
 
         const userId = authToken?.id as UUID;
         
         if (!userId) {
-            console.log("Invalid user ID in auth token, redirecting to login");
+            // console.log("Invalid user ID in auth token, redirecting to login");
             return null;
         }
 
@@ -119,7 +119,7 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
         } catch (apiError: any) {
             
             if (apiError.status === 401 || apiError.status === 403) {
-                console.error("Authentication/authorization failed, redirecting to login");
+                // console.error("Authentication/authorization failed, redirecting to login");
                 return null;
             }
 
@@ -129,7 +129,7 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
                 apiError.code === 'NETWORK_ERROR' ||
                 apiError.name === 'NetworkError'
             )) {
-                console.log(`Server/network error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+                // console.log(`Server/network error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
                 await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
                 return getBusinessDropDown(retryCount + 1);
             }
@@ -144,7 +144,7 @@ export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | 
             throw error;
           }
 
-        console.error("Failed to get business list:", error);
+        
 
         
         if (retryCount < MAX_RETRIES && !isAuthError(error)) {

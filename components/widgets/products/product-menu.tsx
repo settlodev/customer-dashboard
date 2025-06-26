@@ -9,9 +9,14 @@ import ProductGrid from '@/components/site/ProductGrid';
 import Footer from '@/components/site/Footer';
 import MobileMenu from '@/components/site/MobileMenu';
 import ScrollToTop from '@/components/site/ScrollToTop';
+
+
 import { businessTypes, CategorizedProducts, ExtendedProduct,} from '@/types/site/type';
 import { LocationDetails } from '@/types/menu/type';
 import Loading from '@/app/loading';
+import { useCart } from '@/context/cartProvider';
+import CartPage from '@/app/cart/page';
+
 
 interface ProductMenuProps {
   params: {
@@ -19,7 +24,8 @@ interface ProductMenuProps {
   };
 }
 
-const ProductMenu = ({ params }: ProductMenuProps) => {
+const ProductMenuContent = ({ params }: ProductMenuProps) => {
+  const { cartCount, addToCart } = useCart();
 
   const [products, setProducts] = useState<ExtendedProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
@@ -29,15 +35,15 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [hasMore, setHasMore] = useState(true);
   const [pageLimit] = useState(50);
   const [categorizedProducts, setCategorizedProducts] = useState<CategorizedProducts>({});
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Start with null to show all products
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [productsInitialLoad, setProductsInitialLoad] = useState(true);
   const [locationId, setLocationId] = useState<string | null>(null);
-  const [cartCount, setCartCount] = useState(0);
   const [wishlistCount, setWishlistCount] = useState(0);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [businessType, setBusinessType] = useState(businessTypes.default);
+  const [showCart, setShowCart] = useState(false);
   const loaderRef = useRef<HTMLDivElement>(null);
   
   // Separate location/business loading states
@@ -239,27 +245,22 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     });
     
     setCategorizedProducts(grouped);
-    // Don't automatically set a selected category - keep it null to show all products
   };
 
   const handleSearch = () => {
     if (!isBusinessDataReady) return;
     setCurrentPage(1);
-    // Reset selected category when searching to show all results
     setSelectedCategory(null);
     fetchProducts(true);
   };
 
   const handleCategoryClick = (category: string) => {
-    // Toggle category selection: if same category is clicked, show all products
     if (selectedCategory === category) {
-      setSelectedCategory(null); // Show all products
+      setSelectedCategory(null);
     } else {
-      setSelectedCategory(category); // Show specific category
+      setSelectedCategory(category);
     }
     setIsMenuOpen(false);
-    
-    // Scroll to top when category changes
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -268,13 +269,21 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   };
 
   const handleAddToCart = (product: ExtendedProduct) => {
-    setCartCount(prev => prev + 1);
-    alert(`Added ${product.name} to cart`);
+    addToCart(product);
   };
 
   const handleAddToWishlist = (product: ExtendedProduct) => {
     setWishlistCount(prev => prev + 1);
     alert(`Added ${product.name} to wishlist`);
+  };
+
+  const handleCartClick = () => {
+    console.log('Cart clicked');
+    setShowCart(true);
+  };
+
+  const handleBackToMenu = () => {
+    setShowCart(false);
   };
 
   // Show loading screen while fetching critical business data
@@ -305,6 +314,17 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     );
   }
 
+  // Show cart page
+  if (showCart) {
+    return (
+      <CartPage 
+        businessType={businessType} 
+        onBack={handleBackToMenu}
+        location={locationId}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header
@@ -318,6 +338,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
         wishlistCount={wishlistCount}
         setIsMenuOpen={setIsMenuOpen}
         isMenuOpen={isMenuOpen}
+        onCartClick={handleCartClick}
       />
 
       <main className="flex-grow">
@@ -329,7 +350,6 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
         />
 
         <div className="max-w-6xl mx-auto p-4 pt-6">
-          {/* Show products loading state while business info is already displayed */}
           <LoadingStates
             initialLoad={productsInitialLoad}
             loading={productsLoading}
@@ -386,4 +406,5 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   );
 };
 
-export default ProductMenu;
+
+export default ProductMenuContent;

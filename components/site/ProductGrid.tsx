@@ -1,9 +1,9 @@
-
 'use client';
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { ShoppingCartIcon, X } from 'lucide-react';
+import { ShoppingCartIcon, X, Plus } from 'lucide-react';
 import { BusinessType, CategorizedProducts, ExtendedProduct } from '@/types/site/type';
+import { Button } from '../ui/button';
 
 interface ProductGridProps {
   categorizedProducts: CategorizedProducts;
@@ -16,6 +16,8 @@ interface ProductGridProps {
 const ProductGrid: React.FC<ProductGridProps> = ({
   categorizedProducts,
   selectedCategory,
+  businessType,
+  onAddToCart,
 }) => {
   const [selectedProduct, setSelectedProduct] = useState<ExtendedProduct | null>(null);
 
@@ -43,6 +45,13 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
   const closeModal = () => {
     setSelectedProduct(null);
+  };
+
+  const handleAddToCart = (product: ExtendedProduct, event?: React.MouseEvent) => {
+    if (event) {
+      event.stopPropagation(); // Prevent modal from opening when clicking add to cart
+    }
+    onAddToCart(product);
   };
 
   return (
@@ -84,6 +93,18 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                     Info
                   </div>
                 )}
+
+                {/* Add to Cart Button - Floating */}
+                <div className="absolute bottom-2 right-2">
+                  <Button
+                    size="sm"
+                    onClick={(e) => handleAddToCart(extendedProduct, e)}
+                    className={`${businessType.primary} hover:opacity-90 text-white rounded-full w-8 h-8 p-0 shadow-lg`}
+                    title="Add to Cart"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
               
               <CardHeader className="p-3 pb-0">
@@ -132,11 +153,18 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                 </p>
               </div>
               
-              <div>
+              <div className='flex flex-col gap-2'>
                 <h3 className="font-semibold mb-2">Description</h3>
                 <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
                   {selectedProduct.description}
                 </p>
+
+                <Button 
+                  className={`mt-4 ${businessType.primary} hover:opacity-90 text-white rounded-md p-2`}
+                  onClick={() => handleAddToCart(selectedProduct)}
+                >
+                  Add to Cart
+                </Button>
               </div>
             </div>
           </div>

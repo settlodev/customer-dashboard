@@ -170,3 +170,33 @@ export const creditReport = async (startDate?: Date, endDate?: Date): Promise<Cr
         throw error
     }
 }
+
+export const requestOrder = async (location: any,cartItems: any) => {
+
+    console.log("The cart items", cartItems);
+   return ;
+   try {
+    const apiClient = new ApiClient();
+
+    const payload = {
+        ...cartItems,
+    }
+
+    console.log("The payload to create order", payload);
+
+    const response = await apiClient.post(
+        `/api/orders/${location?.id}/create`,
+        payload,
+        {
+            headers: {
+                "SETTLO-API-KEY": "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a"
+            }
+        }
+    )
+
+    return parseStringify(response)
+   } catch (error) {
+    throw error
+    
+   }
+}

@@ -7,8 +7,12 @@ import {
   Clock, 
   Search,
   ShoppingCartIcon,
+  User,
+  Heart,
+  ShoppingCart,
 } from 'lucide-react';
 import { BusinessInfo, BusinessType } from '@/types/site/type';
+import { Button } from '../ui/button';
 
 
 interface HeaderProps {
@@ -22,6 +26,7 @@ interface HeaderProps {
   wishlistCount: number;
   setIsMenuOpen: (open: boolean) => void;
   isMenuOpen: boolean;
+  onCartClick: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -30,6 +35,9 @@ const Header: React.FC<HeaderProps> = ({
   searchQuery,
   setSearchQuery,
   handleSearch,
+  cartCount,
+  wishlistCount,
+  onCartClick
 
 }) => {
   return (
@@ -109,7 +117,7 @@ const Header: React.FC<HeaderProps> = ({
             </div>
             
             {/* Action Icons */}
-            {/* <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
               <Button variant="ghost" size="icon" onClick={() => alert('Account')}>
                 <User className="h-5 w-5" />
               </Button>
@@ -121,7 +129,7 @@ const Header: React.FC<HeaderProps> = ({
                   </span>
                 )}
               </Button>
-              <Button variant="ghost" size="icon" className="relative" onClick={() => alert('Cart')}>
+              <Button variant="ghost" size="icon" className="relative" onClick={() => onCartClick()}>
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
                   <span className={`absolute -top-1 -right-1 ${businessType.primary} text-white rounded-full text-xs w-4 h-4 flex items-center justify-center`}>
@@ -129,7 +137,7 @@ const Header: React.FC<HeaderProps> = ({
                   </span>
                 )}
               </Button>
-            </div> */}
+            </div>
           </div>
           
           {/* Mobile Search */}
