@@ -204,6 +204,7 @@ export default auth(async (req: NextRequest) => {
   // Parse auth token and current business with better error handling
   let authToken: AuthToken | null = null;
   let currentBusiness: Business | null = null;
+  let currentWarehouse: Business | null = null;
   let cookieParseError = false;
 
   try {
@@ -214,6 +215,12 @@ export default auth(async (req: NextRequest) => {
       const currentBusinessToken = cookieStore.get("currentBusiness");
       if (currentBusinessToken?.value) {
         currentBusiness = JSON.parse(currentBusinessToken.value);
+      }
+
+      // Get current warehouse from cookies
+      const currentWarehouseToken = cookieStore.get("currentWarehouse");
+      if (currentWarehouseToken?.value) {
+        currentWarehouse = JSON.parse(currentWarehouseToken.value);
       }
     }
   } catch (error) {
@@ -239,7 +246,15 @@ export default auth(async (req: NextRequest) => {
     return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
   }
 
-  // FIXED: Handle case where user is logged in but authToken is missing
+
+  const isWarehouseRoute = nextUrl.pathname.startsWith('/warehouse');
+  // const isLocationRoute = nextUrl.pathname.startsWith('/(location)');
+
+  // Redirect warehouse routes if no warehouse is selected
+  if (isWarehouseRoute && !currentWarehouse) {
+    return NextResponse.redirect(new URL("/select-location", nextUrl));
+  }
+
   if (isLoggedIn && !authToken) {
     // Define routes that are safe to access without authToken
     const safeWithoutToken = [
@@ -301,6 +316,8 @@ export default auth(async (req: NextRequest) => {
       }
     }
   }
+
+  
 
   return NextResponse.next();
 });

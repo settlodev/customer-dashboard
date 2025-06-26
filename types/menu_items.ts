@@ -3,9 +3,22 @@ import { MenuItemArgType } from "@/types/menu-item-type";
 import { ActiveSubscription } from "./subscription/type";
 import { getFilteredMenuItems } from "@/lib/subscription-utils";
 
+
+
 export const menuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscription | null }) => {
+    // Default to normal menu if not specified
+    const menuType = args?.menuType || 'normal';
     
-    const baseMenuItems = [
+    if (menuType === 'warehouse') {
+        return getWarehouseMenuItems(args);
+    }
+    
+    return getNormalMenuItems(args);
+};
+
+const getNormalMenuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscription | null }) => {
+    return [
+
         // Analytics & Reporting
         {
             label: "Analytics",
@@ -35,11 +48,11 @@ export const menuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscr
             current: args?.isCurrentItem,
             icon: 'inventory',
             items: [
-                { title: "Departments", link: "/departments", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Categories", link: "/categories", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Products", link: "/products", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Brands", link: "/brands", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Suppliers", link: "/suppliers", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Departments", link: "/departments", current: args?.isCurrentItem, icon: "folder" },
+                { title: "Categories", link: "/categories", current: args?.isCurrentItem, icon: "tag" },
+                { title: "Products", link: "/products", current: args?.isCurrentItem, icon: "package" },
+                { title: "Brands", link: "/brands", current: args?.isCurrentItem, icon: "tag" },
+                { title: "Suppliers", link: "/suppliers", current: args?.isCurrentItem, icon: "truck" },
             ]
         },
 
@@ -69,8 +82,8 @@ export const menuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscr
             current: args?.isCurrentItem,
             icon: 'sales',
             items: [
-                { title: "Orders", link: "/orders", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Refunds", link: "/refunds", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Orders", link: "/orders", current: args?.isCurrentItem, icon: "shopping-cart" },
+                { title: "Refunds", link: "/refunds", current: args?.isCurrentItem, icon: "rotate-ccw" },
             ]
         },
 
@@ -82,8 +95,8 @@ export const menuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscr
             current: args?.isCurrentItem,
             icon: 'customers',
             items: [
-                { title: "Customers", link: "/customers", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Discounts", link: "/discounts", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Customers", link: "/customers", current: args?.isCurrentItem, icon: "users" },
+                { title: "Discounts", link: "/discounts", current: args?.isCurrentItem, icon: "percent" },
             ]
         },
 
@@ -109,6 +122,7 @@ export const menuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscr
             current: args?.isCurrentItem,
             icon: 'general',
             items: [
+
                 { title: "Businesses", link: "/business", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Expenses", link: "/expenses", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Tables & Spaces", link: "/spaces", current: args?.isCurrentItem, icon: "cart" },
@@ -121,11 +135,97 @@ export const menuItems = (args?: MenuItemArgType & { subscription?: ActiveSubscr
         }
     ];
 
-    // If subscription is provided, filter the menu items
-    if (args?.subscription) {
-        return getFilteredMenuItems(args.subscription, baseMenuItems);
-    }
+    // if (args?.subscription) {
+    //     return getFilteredMenuItems(args.subscription, baseMenuItems);
+    // }
+};
 
-    // Return all items if no subscription filtering
-    return baseMenuItems;
+const getWarehouseMenuItems = (args?: MenuItemArgType) => {
+    return [
+        // Warehouse Dashboard
+        {
+            label: "Analytics",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'dashboard',
+            items: [
+                { title: "Reports", link: "/warehouse", current: args?.isCurrentItem, icon: "chart" },
+            ]
+        },
+
+         // Stocks
+        {
+            label: "Stock Management",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'inventory',
+            items: [
+                { title: "Stock Items", link: "/store-stocks", current: args?.isCurrentItem, icon: "home" },
+                { title: "Stock Intake", link: "/store-stock-intakes", current: args?.isCurrentItem, icon: "grid" },
+                { title: "Stock Modification", link: "/store-stock-modifications", current: args?.isCurrentItem, icon: "layers" },
+                { title: "Stock Transfer", link: "/store-stock-transfers", current: args?.isCurrentItem, icon: "truck" },
+            ]
+        },
+        
+        // Stock Purchase
+        {
+            label: "Purchases",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'sales',
+            items: [
+                { title: "Purchase Orders", link: "/purchases", current: args?.isCurrentItem, icon: "shopping-bag" },
+                { title: "Suppliers", link: "/vendors", current: args?.isCurrentItem, icon: "users" },
+            ]
+        },
+
+        // Request
+        {
+            label: "Request",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'general',
+            items: [
+                { title: "Inventory Requests", link: "/requests", current: args?.isCurrentItem, icon: "file-text" },
+                // { title: "Request Status", link: "/warehouse/request-status", current: args?.isCurrentItem, icon: "activity" },
+            ]
+        },
+        
+       
+        
+        // Inventory Shop
+        // {
+        //     label: "Inventory Shop",
+        //     showSeparator: true,
+        //     collapsible: false,
+        //     current: args?.isCurrentItem,
+        //     icon: 'stock',
+        //     items: [
+        //         { title: "Stock Items", link: "/warehouse/stock-items", current: args?.isCurrentItem, icon: "box" },
+        //         { title: "Stock Transfer", link: "/warehouse/transfers", current: args?.isCurrentItem, icon: "repeat" },
+        //         { title: "Stocktaking", link: "/warehouse/stocktaking", current: args?.isCurrentItem, icon: "clipboard-check" },
+        //     ]
+        // },
+        
+        
+        
+        // Reports
+        // {
+        //     label: "Report",
+        //     showSeparator: false,
+        //     collapsible: false,
+        //     current: args?.isCurrentItem,
+        //     icon: 'dashboard',
+        //     items: [
+        //         { title: "Inventory Report", link: "/warehouse/report/inventory", current: args?.isCurrentItem, icon: "file-text" },
+        //         { title: "Movement Report", link: "/warehouse/report/movement", current: args?.isCurrentItem, icon: "trending-up" },
+        //         { title: "Purchase Report", link: "/warehouse/report/purchase", current: args?.isCurrentItem, icon: "dollar-sign" },
+        //     ]
+        // }
+    ];
+
 };
