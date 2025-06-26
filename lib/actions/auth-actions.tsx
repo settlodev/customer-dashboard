@@ -1,7 +1,6 @@
 "use server";
 
 import * as z from "zod";
-// import { isRedirectError } from "next/dist/client/components/redirect";
 import { AuthError } from "next-auth";
 import {
     LoginSchema,
@@ -17,7 +16,7 @@ import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie
 import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
+
 
 
 export async function logout() {
@@ -30,10 +29,11 @@ export async function logout() {
         if (error instanceof AuthError) {
             throw error;
         }
-        // Handle or log other types of errors
-        // console.error("Logout error:", error);
+       
     }
 }
+
+
 
 export const login = async (
     credentials: z.infer<typeof LoginSchema>,
@@ -47,49 +47,72 @@ export const login = async (
         });
     }
 
-    //Make sure token does not exist
     await deleteAuthCookie();
     await deleteActiveBusinessCookie();
     await deleteActiveLocationCookie();
 
     try {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const result = await signIn("credentials", {
             email: validatedData.data.email,
             password: validatedData.data.password,
             redirect: false,
         });
 
-        if (result?.error) {
-            console.log("result.error: ", result.error);
+    
+        // Only handle specific credential errors
+        if (result?.error === "CredentialsSignin") {
+            console.log("Credentials sign-in error detected");
             return parseStringify({
                 responseType: "error",
                 message: "Wrong credentials! Invalid email address and/or password",
                 error: new Error("Wrong credentials"),
             });
         }
+
+        // Handle other specific errors
+        if (result?.error) {
+            console.log("Other authentication error:", result.error);
+            return parseStringify({
+                responseType: "error",
+                message: "Authentication failed. Please try again.",
+                error: new Error("Authentication failed"),
+            });
+        }
+
+        // Check if authentication was successful
+        if (result?.ok === false) {
+            console.log("Authentication not OK, but no specific error");
+            return parseStringify({
+                responseType: "error",
+                message: "Authentication failed. Please try again.",
+                error: new Error("Authentication failed"),
+            });
+        }
+
         return parseStringify({
             responseType: "success",
             message: "Login successful",
         });
 
-    } catch (error) {
-        if (error instanceof AuthError) {
-            console.log("error during login: ", error);
-            switch (error.name) {
-                case "CredentialsSignin":
-                    return parseStringify({
-                        responseType: "error",
-                        message: "Wrong credentials! Invalid email address and/or password",
-                        error: new Error("Wrong credentials"),
-                    });
-                default:
-                    return parseStringify({
-                        responseType: "error",
-                        message: error.message ?? "Something about your credentials is not right, please try again.",
-                        error: new Error("Unexpected"),
-                    });
-            }
+    } catch (error: any) {
+        
+        // Handle Auth.js specific errors
+        if (error?.type === 'CredentialsSignin' || error?.name === 'CredentialsSignin') {
+            return parseStringify({
+                responseType: "error",
+                message: "Wrong credentials! Invalid email address and/or password",
+                error: new Error("Wrong credentials"),
+            });
+        }
+        
+        // Handle other Auth.js errors
+        if (error?.message?.includes('CredentialsSignin') || 
+            error?.toString?.().includes('CredentialsSignin')) {
+            return parseStringify({
+                responseType: "error",
+                message: "Wrong credentials! Invalid email address and/or password",
+                error: new Error("Wrong credentials"),
+            });
         }
 
         return parseStringify({
@@ -98,11 +121,7 @@ export const login = async (
             error: new Error("Unexpected"),
         });
     }
-
-    // revalidatePath(DEFAULT_LOGIN_REDIRECT_URL);
-    // redirect(DEFAULT_LOGIN_REDIRECT_URL);
 };
-
 export const getUserById = async (userId: string|undefined): Promise<ExtendedUser> => {
     if (!userId) throw new Error("User data is required");
 
@@ -134,7 +153,7 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
             `/api/auth/verify-token/${token}`,
         );
 
-        // console.log("tokenResponse is: ", tokenResponse)
+       
 
         if (tokenResponse == token) {
             revalidatePath("/user-verification");
@@ -235,24 +254,21 @@ export const register = async (
         await deleteAuthCookie();
 
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
-        // console.log("regData is: ", regData)
+        
         if(regData){
-            // const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
-
-            // if(response) {
-            //     await sendVerificationEmail(regData.name, response as string, regData.email);
-            // }
-            redirect("user-verification");
+            return parseStringify({
+                responseType: "success",
+                message: "Registration successful! Please check your email for verification instructions.",
+                // data: regData,
+            });
         }
 
         return parseStringify({
             responseType: "success",
-            message: "Registration successful, redirecting to login...",
+            message: "Registration successful! Please check your email for verification instructions.",
         });
     } catch (error : any) {
-
-        // Ignore redirect error
-        // if (isRedirectError(error)) throw error;
+        
 
         return parseStringify({
             responseType: "error",

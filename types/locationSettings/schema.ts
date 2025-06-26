@@ -15,5 +15,8 @@ export const LocationSettingsSchema = object({
    useShifts:boolean().optional(),
    isActive:boolean().optional(),
    useKds:boolean().optional(),
+   enableOrdersPrintsCount:boolean().optional(),
+   showPosProductQuantity:boolean().optional(),
+   showPosProductPrice:boolean().optional(),
    status:boolean().optional(),
 })

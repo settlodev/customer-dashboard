@@ -8,9 +8,10 @@ import {FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
 import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
-import {getCurrentLocation } from "./business/get-current-business";
+import {getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { LocationSettings} from "@/types/locationSettings/type";
 import { LocationSettingsSchema } from "@/types/locationSettings/schema";
+import { NotificationSettingsSchema } from "@/types/notification/shema";
 
 export const fetchLocationSettings = async () : Promise<LocationSettings> => {
     await  getAuthenticatedUser();
@@ -24,7 +25,7 @@ export const fetchLocationSettings = async () : Promise<LocationSettings> => {
         const settingsData = await  apiClient.get(
             `/api/location-settings/${location?.id}`,
         );
-
+        
         return parseStringify(settingsData);
 
     }
@@ -41,8 +42,7 @@ export const updateLocationSettings = async (
     let formResponse: FormResponse | null = null;
     const validSettingsData = LocationSettingsSchema.safeParse(setting);
 
-    console.log("Valid settings are:", validSettingsData);
-    console.log("location settings id:", id);
+   
 
     if (!validSettingsData.success) {
         formResponse = {
@@ -62,13 +62,15 @@ export const updateLocationSettings = async (
     try {
         const apiClient = new ApiClient();
 
-        await apiClient.put(
+       await apiClient.put(
             `/api/location-settings/${locationId?.id}/${id}`, 
             payload
         );
 
+       
+        
     } catch (error) {
-        console.error("Error updating location settings", error); 
+        
         formResponse = {
             responseType: "error",
             message:
@@ -83,5 +85,55 @@ export const updateLocationSettings = async (
     revalidatePath("/settings");
     redirect("/settings");
 };
+
+export const updateNotificationSetting = async(
+    notifications:z.infer<typeof NotificationSettingsSchema>
+): Promise<FormResponse | void>=>{
+    let formResponse: FormResponse | null = null;
+    const validNotificationSetting = NotificationSettingsSchema.safeParse(notifications);
+
+    
+
+    if (!validNotificationSetting.success) {
+        formResponse = {
+            responseType: "error",
+            message: "Please fill all the required fields",
+            error: new Error(validNotificationSetting.error.message),
+        };
+        return parseStringify(formResponse);
+    }
+
+    const locationId = await getCurrentLocation();
+    const businessId = await getCurrentBusiness();
+    const payload = {
+        ...validNotificationSetting.data,
+    };
+
+    console.log("The payload", payload);
+
+    try {
+        const apiClient = new ApiClient();
+
+       await apiClient.put(
+            `/api/locations/${businessId?.id}/update-notifications/${locationId?.id}`, 
+            payload
+        );
+
+        
+    } catch (error) {
+         
+        formResponse = {
+            responseType: "error",
+            message:
+                "Something went wrong while processing your request, please try again",
+            error: error instanceof Error ? error : new Error(String(error)),
+        };
+    }
+
+    if (formResponse) {
+        return parseStringify(formResponse);
+    }
+
+}
 
 

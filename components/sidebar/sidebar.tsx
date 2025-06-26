@@ -1,3 +1,5 @@
+
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -53,7 +55,6 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             try {
                 setIsLoading(true);
                 const activeSubscription = await getActiveSubscription();
-                // console.log("Active subscription:", activeSubscription);
                 setSubscription(activeSubscription);
                 setError(null);
             } catch (err) {
@@ -67,6 +68,12 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
 
         fetchSubscription();
     }, []);
+
+    // Check if subscription is expired, null, or empty
+    const isSubscriptionInactive = !subscription || 
+                                   subscription.subscriptionStatus === 'EXPIRED' || 
+                                   subscription.subscriptionStatus === null || 
+                                   subscription.subscriptionStatus === '';
 
     // Get filtered menu items based on subscription
     const myMenuItems = menuItems({
@@ -125,6 +132,21 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                     <div className="flex items-center justify-center h-32">
                         <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
                     </div>
+                ) : isSubscriptionInactive ? (
+                    // Show only subscription warning and billing link when subscription is inactive
+                    <div className="p-4">
+                        <div className="text-center mb-6">
+                            <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-3" />
+                            <h3 className="text-lg font-semibold text-white mb-2">
+                                Subscription Required
+                            </h3>
+                            <p className="text-sm text-gray-400 mb-4">
+                                Your subscription has expired or is inactive. Please renew to access all features.
+                            </p>
+                           
+                        </div>
+                        
+                    </div>
                 ) : myMenuItems.length === 0 ? (
                     <div className="p-4 text-center">
                         <AlertTriangle className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
@@ -139,6 +161,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                         </Link>
                     </div>
                 ) : (
+                    // Show full navigation when subscription is active
                     <nav className="flex-1 space-y-1 px-2 py-4">
                         {myMenuItems.map((section, sectionIndex) => (
                             <div key={sectionIndex} className="py-2">
@@ -204,6 +227,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             </div>
 
             <div className="border-t border-gray-700 p-4">
+                {/* Always show billing and settings links at the bottom */}
                 {/* Menu type toggle button */}
                 {/* <Button
                     variant="outline"
@@ -221,6 +245,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
 
                 <Link
                     href="/renew-subscription"
+                    onClick={isMobile ? onClose : undefined}
                     className={cn(
                         "flex items-center rounded-lg px-2 py-1.5",
                         "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
@@ -230,17 +255,22 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                     <CreditCard className="mr-2 h-4 w-4"/>
                     <span>Billing</span>
                 </Link>
-                <Link
-                    href="/settings"
-                    className={cn(
-                        "flex items-center rounded-lg px-2 py-1.5",
-                        "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
-                        "transition-colors duration-200"
-                    )}
-                >
-                    <Settings className="mr-2 h-4 w-4"/>
-                    <span>Settings</span>
-                </Link>
+                
+                {/* Only show settings if subscription is active */}
+                {!isSubscriptionInactive && (
+                    <Link
+                        href="/settings"
+                        onClick={isMobile ? onClose : undefined}
+                        className={cn(
+                            "flex items-center rounded-lg px-2 py-1.5",
+                            "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
+                            "transition-colors duration-200"
+                        )}
+                    >
+                        <Settings className="mr-2 h-4 w-4"/>
+                        <span>Settings</span>
+                    </Link>
+                )}
 
                 <VersionDisplay />
 

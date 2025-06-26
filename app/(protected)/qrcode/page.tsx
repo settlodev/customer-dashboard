@@ -8,14 +8,14 @@ import {
   Printer,
   Download,
   Info,
-  Smartphone,
-  TrendingUp,
-  Clock,
-  Utensils,
-  Zap,
-  FileText,
-  CheckCircle,
-  Icon,
+  // Smartphone,
+  // TrendingUp,
+  // Clock,
+  // Utensils,
+  // Zap,
+  // FileText,
+  // CheckCircle,
+  // Icon,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getCurrentLocation } from '@/lib/actions/business/get-current-business';
@@ -182,27 +182,27 @@ const QRCodeModal = ({ isOpen, onClose, url, restaurantName, qrCodeOptions }: { 
 };
 
 // Feature Card Component
-const FeatureCard = ({title, description }: { icon: React.ComponentType<any>, title: string, description: string }) => {
-  return (
-    <div className="bg-white rounded-lg shadow-md p-6 transition-all hover:shadow-lg hover:translate-y-[-2px]">
-      <div className="flex items-center mb-4">
-        <div className="bg-emerald-100 p-3 rounded-full mr-4">
-        <Icon size={24} className="text-emerald-600" iconNode={[]} />
-        </div>
-        <h3 className="font-semibold text-lg">{title}</h3>
-      </div>
-      <p className="text-gray-600">{description}</p>
-    </div>
-  );
-};
+// const FeatureCard = ({title, description }: { icon: React.ComponentType<any>, title: string, description: string }) => {
+//   return (
+//     <div className="bg-white rounded-lg shadow-md p-6 transition-all hover:shadow-lg hover:translate-y-[-2px]">
+//       <div className="flex items-center mb-4">
+//         <div className="bg-emerald-100 p-3 rounded-full mr-4">
+//         <Icon size={24} className="text-emerald-600" iconNode={[]} />
+//         </div>
+//         <h3 className="font-semibold text-lg">{title}</h3>
+//       </div>
+//       <p className="text-gray-600">{description}</p>
+//     </div>
+//   );
+// };
 
 // Main QR Code Generator Component
 const QRCodeGenerator = () => {
   const [showQRModal, setShowQRModal] = useState(false);
   const [location, setLocation] = useState<Location | undefined>(undefined);
-  const [activeTab, setActiveTab] = useState("about");
+  // const [activeTab, setActiveTab] = useState("about");
   const [error, setError] = useState<string | null>(null);
-  const [qrCodeOptions, setQrCodeOptions] = useState({
+  const [qrCodeOptions,] = useState({
     purpose: "Menu",
     fgColor: "#10b981",
     bgColor: "#ffffff",
@@ -265,45 +265,45 @@ const QRCodeGenerator = () => {
     setShowQRModal(false);
   };
 
-  const updateQROption = (option: string, value: string) => {
-    setQrCodeOptions({
-      ...qrCodeOptions,
-      [option]: value
-    });
-  };
+  // const updateQROption = (option: string, value: string) => {
+  //   setQrCodeOptions({
+  //     ...qrCodeOptions,
+  //     [option]: value
+  //   });
+  // };
 
-  const features = [
-    {
-      icon: Smartphone,
-      title: "Contactless Experience",
-      description: "Provide a hygienic, modern experience with digital menus, eliminating the need for physical menus."
-    },
-    {
-      icon: TrendingUp,
-      title: "Increased Efficiency",
-      description: "Reduce wait times and staff workload by allowing customers to browse menus on their own devices."
-    },
-    {
-      icon: Clock,
-      title: "Real-time Updates",
-      description: "Update your menu instantly without reprinting. Change prices, add specials, or remove unavailable items."
-    },
-    {
-      icon: Utensils,
-      title: "Enhanced Customer Experience",
-      description: "Include detailed descriptions, photos, and dietary information to help customers make informed choices."
-    },
-    {
-      icon: Zap,
-      title: "Quick Implementation",
-      description: "Generate, customize, and deploy QR codes in minutes. No complex setup or technical knowledge required."
-    },
-    {
-      icon: FileText,
-      title: "Beyond Menus",
-      description: "Use QR codes for reservations, customer feedback, loyalty programs, and promotional content."
-    }
-  ];
+  // const features = [
+  //   {
+  //     icon: Smartphone,
+  //     title: "Contactless Experience",
+  //     description: "Provide a hygienic, modern experience with digital menus, eliminating the need for physical menus."
+  //   },
+  //   {
+  //     icon: TrendingUp,
+  //     title: "Increased Efficiency",
+  //     description: "Reduce wait times and staff workload by allowing customers to browse menus on their own devices."
+  //   },
+  //   {
+  //     icon: Clock,
+  //     title: "Real-time Updates",
+  //     description: "Update your menu instantly without reprinting. Change prices, add specials, or remove unavailable items."
+  //   },
+  //   {
+  //     icon: Utensils,
+  //     title: "Enhanced Customer Experience",
+  //     description: "Include detailed descriptions, photos, and dietary information to help customers make informed choices."
+  //   },
+  //   {
+  //     icon: Zap,
+  //     title: "Quick Implementation",
+  //     description: "Generate, customize, and deploy QR codes in minutes. No complex setup or technical knowledge required."
+  //   },
+  //   {
+  //     icon: FileText,
+  //     title: "Beyond Menus",
+  //     description: "Use QR codes for reservations, customer feedback, loyalty programs, and promotional content."
+  //   }
+  // ];
 
   return (
     <div className="max-w-6xl mx-auto p-4 mt-8">
@@ -329,7 +329,7 @@ const QRCodeGenerator = () => {
       <div className="bg-gradient-to-r from-emerald-700 to-emerald-900 text-white rounded-lg shadow-md overflow-hidden">
         <div className="flex flex-col md:flex-row">
           <div className="p-8 md:w-3/5">
-            <h1 className="text-3xl md:text-4xl font-bold mb-4">QR Code Solutions for Modern Business</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mb-4">QR Code Solutions for Your Business</h1>
             <p className="text-emerald-100 text-lg mb-6">Enhance your customer experience with instantly scannable QR codes for menus, specials, and more.</p>
             <Button 
               onClick={openQRModal} 
@@ -360,7 +360,7 @@ const QRCodeGenerator = () => {
       </div>
 
       {/* Tab Navigation */}
-      <div className="mt-10 mb-6 border-b border-gray-200">
+      {/* <div className="mt-10 mb-6 border-b border-gray-200">
         <div className="flex space-x-8">
           <button
             onClick={() => setActiveTab("about")}
@@ -383,10 +383,10 @@ const QRCodeGenerator = () => {
             QR Code Generator
           </button>
         </div>
-      </div>
+      </div> */}
 
       {/* Tab Content */}
-      <div className="mt-6">
+      {/* <div className="mt-6">
         {activeTab === "about" && (
           <div>
             <div className="mb-10">
@@ -571,7 +571,7 @@ const QRCodeGenerator = () => {
             </div>
           </div>
         )}
-      </div>
+      </div> */}
 
       {/* QR Code Modal */}
       <QRCodeModal 

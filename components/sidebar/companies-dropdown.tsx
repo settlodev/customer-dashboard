@@ -138,9 +138,14 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                                         <p className="text-sm font-medium text-gray-900 truncate">
                                             {location.name}
                                         </p>
-                                        <p className="text-xs text-gray-500 truncate">
-                                            {location.region}
+                                        <div className="flex items-center gap-2">
+                                        <p className=" text-xs text-gray-500 truncate">
+                                            {location.region ? location.region : " "}
                                         </p>
+                                        <p className=" text-xs text-gray-500 truncate bg-gray-100 px-2 py-1 rounded">
+                                        {location.subscriptionStatus === "EXPIRED" || location.subscriptionStatus === null ? "Expired" : "Active"}
+                                        </p>
+                                        </div>
                                     </div>
                                     {isLoading ? (
                                         <Loader2 className="h-4 w-4 text-emerald-500 animate-spin shrink-0" />

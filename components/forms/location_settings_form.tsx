@@ -8,9 +8,7 @@ import * as z from "zod";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Form,
@@ -24,29 +22,86 @@ import {
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
+import { Switch } from "../ui/switch";
+import { Separator } from "../ui/separator";
 import { Loader2Icon } from "lucide-react";
 import { LocationSettings } from "@/types/locationSettings/type";
 import { LocationSettingsSchema } from "@/types/locationSettings/schema";
 import { updateLocationSettings } from "@/lib/actions/settings-actions";
-import { Checkbox } from "../ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 
+// Loading skeleton component
+const LoadingSkeleton = () => (
+  <Card>
+    <CardHeader>
+      <div className="animate-pulse">
+        <div className="h-6 bg-gray-200 rounded w-1/3 mb-2"></div>
+        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-6">
+      {/* Input fields skeleton */}
+      <div className="space-y-4">
+        <div className="animate-pulse">
+          <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+          <div className="h-10 bg-gray-200 rounded w-full"></div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
+              <div className="h-10 bg-gray-200 rounded w-full"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+      
+      {/* Switch fields skeleton */}
+      <div className="space-y-4">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <div key={i} className="grid grid-cols-2 gap-4">
+            {[1, 2].map((j) => (
+              <div key={j} className="animate-pulse border rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-6 bg-gray-200 rounded-full w-12"></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+      
+      {/* Button skeleton */}
+      <div className="animate-pulse">
+        <div className="h-10 bg-gray-200 rounded w-full"></div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefined }) => {
   const [isPending, startTransition] = useTransition();
+  const [isLoading, setIsLoading] = useState(true);
   const [, setResponse] = useState<FormResponse | undefined>();
 
   const form = useForm<z.infer<typeof LocationSettingsSchema>>({
     resolver: zodResolver(LocationSettingsSchema),
-    defaultValues:item ||{ status: true },
+    defaultValues: { 
+      ...item,
+      status: true },
   });
 
-   useEffect(() => {
+  useEffect(() => {
     if (item) {
-      form.reset(item); 
+      form.reset(item);
+      setIsLoading(false);
+    } else {
+      // Simulate loading if no item is provided initially
+      const timer = setTimeout(() => setIsLoading(false), 1000);
+      return () => clearTimeout(timer);
     }
   }, [item, form]);
-
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -54,7 +109,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
-        description:typeof errors.message === 'string'
+        description: typeof errors.message === 'string'
           ? errors.message
           : "There was an issue submitting your form, please try later",
       });
@@ -63,32 +118,39 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
   );
 
   const submitData = (values: z.infer<typeof LocationSettingsSchema>) => {
-
     setResponse(undefined);
 
     startTransition(() => {
       if (item) {
         updateLocationSettings(item.id, values).then((data) => {
-          if (data) setResponse(data);
+          if (data) {
+            setResponse(data);
+            toast({
+              title: "Settings Updated",
+              description: "Your location settings have been updated successfully.",
+            });
+          }
         });
-      } 
+      }
     });
   };
 
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
+
   return (
-    <Card >
-      <CardHeader>
-        <CardTitle>Location Settings</CardTitle>
-        <CardDescription>
-          Set up your business location settings
-        </CardDescription>
-      </CardHeader>
+    <Card>
+      
       <CardContent>
-
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
+          <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
+            {/* Basic Settings */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Basic Settings</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-            <div className="grid gap-2">
               <FormField
                 control={form.control}
                 name="minimumSettlementAmount"
@@ -97,9 +159,8 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                     <FormLabel>Minimum Settlement Amount</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="Enter minimum settlement amount "
+                        placeholder="Enter minimum settlement amount"
                         {...field}
-                        required
                         disabled={isPending}
                         value={field.value}
                       />
@@ -108,9 +169,6 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                   </FormItem>
                 )}
               />
-            </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
                 <FormField
                   control={form.control}
                   name="systemPasscode"
@@ -120,10 +178,8 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                       <FormControl>
                         <Input
                           {...field}
-                          required
-                          // type="password"
                           disabled={isPending}
-                          value={field.value }
+                          value={field.value}
                           placeholder="Enter system passcode"
                         />
                       </FormControl>
@@ -131,8 +187,7 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                     </FormItem>
                   )}
                 />
-              </div>
-              <div className="grid gap-2">
+
                 <FormField
                   control={form.control}
                   name="reportsPasscode"
@@ -142,9 +197,8 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                       <FormControl>
                         <Input
                           {...field}
-                          required
                           disabled={isPending}
-                          value={field.value }
+                          value={field.value}
                           placeholder="Enter report passcode"
                         />
                       </FormControl>
@@ -154,287 +208,300 @@ const LocationSettingsForm = ({ item }: { item: LocationSettings | null | undefi
                 />
               </div>
             </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
+
+            <Separator />
+
+            {/* Feature Settings */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Feature Settings</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="trackInventory"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Track Inventory
+                      </FormLabel>
                       <FormControl>
-                        <Checkbox
+                        <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          disabled={isPending}
                         />
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Track Inventory for this location
-                        </FormLabel>
-                      </div>
-                      <FormMessage />
-
                     </FormItem>
                   )}
                 />
-              </div>
-              <div className="grid gap-2">
+
                 <FormField
                   control={form.control}
                   name="enableNotifications"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
                         Enable Notifications
                       </FormLabel>
-                    </div>
-                    <FormMessage />
-
-                  </FormItem>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
                   )}
                 />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
+
                 <FormField
                   control={form.control}
                   name="ecommerceEnabled"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Enable Ecommerce
+                      </FormLabel>
                       <FormControl>
-                        <Checkbox
+                        <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          disabled={isPending}
                         />
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Enable Ecommerce
-                        </FormLabel>
-                      </div>
-                      <FormMessage />
-
                     </FormItem>
                   )}
                 />
-              </div>
-              <div className="grid gap-2">
+
                 <FormField
                   control={form.control}
                   name="useCustomPrice"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Use custom price
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Use Custom Price
                       </FormLabel>
-                    </div>
-                    <FormMessage />
-
-                  </FormItem>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
                   )}
                 />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
+
                 <FormField
                   control={form.control}
                   name="useDepartments"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Use Departments
+                      </FormLabel>
                       <FormControl>
-                        <Checkbox
+                        <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          disabled={isPending}
                         />
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Use Department
-                        </FormLabel>
-                      </div>
-                      <FormMessage />
-
                     </FormItem>
                   )}
                 />
-              </div>
-              <div className="grid gap-2">
+
                 <FormField
                   control={form.control}
                   name="useShifts"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Use Shift
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Use Shifts
                       </FormLabel>
-                    </div>
-                    <FormMessage />
-
-                  </FormItem>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
                   )}
                 />
-              </div>
-            </div>
 
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
                 <FormField
                   control={form.control}
                   name="useWarehouse"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Use Warehouse
+                      </FormLabel>
                       <FormControl>
-                        <Checkbox
+                        <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          disabled={isPending}
                         />
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Use Warehouse
-                        </FormLabel>
-                      </div>
-                      <FormMessage />
-
                     </FormItem>
                   )}
                 />
-              </div>
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="isDefault"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
-                        Set as Main Location
-                      </FormLabel>
-                    </div>
-                    <FormMessage />
 
-                  </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
                 <FormField
                   control={form.control}
                   name="useKds"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Use KDS
+                      </FormLabel>
                       <FormControl>
-                        <Checkbox
+                        <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          disabled={isPending}
                         />
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Use KDS
-                        </FormLabel>
-                      </div>
-                      <FormMessage />
-
                     </FormItem>
                   )}
                 />
-              </div>
-              <div className="grid gap-2">
+
                 <FormField
                   control={form.control}
                   name="useRecipe"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <FormLabel>
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
                         Use Recipe
                       </FormLabel>
-                    </div>
-                    <FormMessage />
-
-                  </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="isActive"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                       <FormControl>
-                        <Checkbox
+                        <Switch
                           checked={field.value}
                           onCheckedChange={field.onChange}
+                          disabled={isPending}
                         />
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Is Active
-                        </FormLabel>
-                      </div>
-                      <FormMessage />
-
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="enableOrdersPrintsCount"
+                  render={({ field }) => (
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Enable Orders Prints Count
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="showPosProductQuantity"
+                  render={({ field }) => (
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Show Product Quantity on POS
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="showPosProductPrice"
+                  render={({ field }) => (
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Show Product Price on POS
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
-           
             </div>
-         
-            {isPending ? (
-              <div className="flex justify-center items-center bg-black rounded p-2 text-white">
-                <Loader2Icon className="w-6 h-6 animate-spin" />
+
+            <Separator />
+
+            {/* System Settings */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">System Settings</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="isDefault"
+                  render={({ field }) => (
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Set as Main Location
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <FormLabel className="text-sm font-medium">
+                        Is Active
+                      </FormLabel>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
               </div>
-            ) : (
-              <Button
-                type="submit"
-                disabled={isPending}
-                className={`mt-4 w-full capitalize`}
-              >
-                update settings
-              </Button>
-            )}
+            </div>
+
+            <div className="flex justify-end pt-6">
+              {isPending ? (
+                <Button disabled className="w-full md:w-auto">
+                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                  Updating Settings...
+                </Button>
+              ) : (
+                <Button type="submit" className="w-full md:w-auto">
+                  Update Settings
+                </Button>
+              )}
+            </div>
           </form>
         </Form>
       </CardContent>

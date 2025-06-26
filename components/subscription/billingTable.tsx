@@ -1,10 +1,9 @@
 // components/billing/BillingHistoryTable.tsx
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Search, Filter, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FileText, Search, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { searchInvoices } from '@/lib/actions/invoice-actions';
 
 import { useToast } from '@/hooks/use-toast';
@@ -12,13 +11,14 @@ import { Invoice } from '@/types/invoice/type';
 
 interface BillingHistoryTableProps {
   className?: string;
+  locationId?: string 
 }
 
-const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className }) => {
+const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, locationId }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
+
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
@@ -26,11 +26,10 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className }) 
   
   const { toast } = useToast();
 
-  // Fetch invoices
   const fetchInvoices = async (page: number = 1, search: string = '') => {
     setLoading(true);
     try {
-      const response = await searchInvoices(search, page, itemsPerPage);
+      const response = await searchInvoices(search, page, itemsPerPage, locationId);
       setInvoices(response.content);
       setTotalPages(response.totalPages || 1);
       setTotalItems(response.totalElements || 0);
@@ -68,20 +67,11 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className }) 
     }
   }, [currentPage]);
 
-  // Filter invoices by status
-  const filteredInvoices = useMemo(() => {
-    if (statusFilter === 'all') return invoices;
-    return invoices.filter(invoice => 
-      invoice.locationInvoiceStatus === statusFilter
-    );
-  }, [invoices, statusFilter]);
-
   const getStatusColor = (status: string) => {
-    console.log("Status:", status);
     switch (status) {
-      case 'paid': return 'bg-green-100 text-green-800 hover:bg-green-200';
+      case 'PAID': return 'bg-green-100 text-green-800 hover:bg-green-200';
       case 'pending': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
-      case 'failed': return 'bg-red-100 text-red-800 hover:bg-red-200';
+      case 'FAILED': return 'bg-red-100 text-red-800 hover:bg-red-200';
       case 'overdue': return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
       default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
     }
@@ -128,7 +118,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className }) 
             </p>
           </div>
           
-          {/* Search and Filter Controls */}
+          {/* Search Controls */}
           <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
@@ -139,20 +129,6 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className }) 
                 className="pl-10 w-full sm:w-64"
               />
             </div>
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-40">
-                <Filter size={16} className="mr-2" />
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="failed">Failed</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
       </CardHeader>
@@ -182,7 +158,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className }) 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {filteredInvoices.length === 0 ? (
+                  {invoices.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="text-center py-8 text-gray-500">
                         <FileText className="mx-auto mb-2" size={48} />
@@ -190,7 +166,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className }) 
                       </td>
                     </tr>
                   ) : (
-                    filteredInvoices.map((invoice) => (
+                    invoices.map((invoice) => (
                       <tr key={invoice.id} className="hover:bg-gray-50">
                         <td className="px-4 py-4 font-mono text-sm font-medium">
                           {invoice.invoiceNumber}

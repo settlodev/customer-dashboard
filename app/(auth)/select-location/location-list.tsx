@@ -72,7 +72,7 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
             await refreshWarehouse(item);
             
             setTimeout(() => {
-                // window.location.href = '/dashboard';
+
                 window.location.href = '/warehouse';
             }, 1500);
         } else {
@@ -85,7 +85,7 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
                 });
                 setIsRedirecting(true);
                 setTimeout(() => {
-                    window.location.href = `/subscription?location=${item.id}`;
+                    window.location.href = `/renew-subscription?location=${location.id}`;
                 }, 3000);
             } else {
                 setIsRedirecting(true);

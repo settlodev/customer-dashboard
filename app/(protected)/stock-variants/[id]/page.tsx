@@ -1,88 +1,68 @@
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-import {DataTable} from "@/components/tables/data-table";
-import {columns} from '@/components/tables/stock-variants/column'
-import { searchStockVariants } from "@/lib/actions/stock-variant-actions";
-import { StockVariant } from "@/types/stockVariant/type";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { CSVStockDialog } from "@/components/csv/stockCsvImport";
-import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
+import { getStockVariantMovement, getStockVariantSummary } from '@/lib/actions/stock-variant-actions';
+import { UUID } from 'crypto';
+import React from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import StockMovementDashboard from '@/components/widgets/stock-movement';
 
-const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
+import BreadcrumbsNav from '@/components/layouts/breadcrumbs-nav';
 
-type Params = { 
-  searchParams: Promise<{ 
-      search?: string; 
-      page?: string; 
-      limit?: string; 
-  }> 
-};
+type Params = Promise<{id: string}>
+type SearchParams = Promise<{stock?: string}>
 
-async function StockVariantPage({searchParams}: Params) {
-    
+export default async function StockVariantDetails({
+  params,
+  searchParams
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
+  const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
-    
-    const q = resolvedSearchParams.search || "";
-    const page = Number(resolvedSearchParams.page) || 0;
-    const pageLimit = Number(resolvedSearchParams.limit);
+  const stock = resolvedSearchParams.stock;
 
-    const responseData = await searchStockVariants(q, page, pageLimit);
-    const data: StockVariant[] = responseData.content;
-    const total = responseData.totalElements;
-    const pageCount = responseData.totalPages;
+  try {
+    const [movementData, summaryData] = await Promise.all([
+      getStockVariantMovement(resolvedParams.id as UUID),
+      getStockVariantSummary(resolvedParams.id as UUID, stock as UUID)
+    ]);
 
-    const hasData = total > 0 || q !== "";
-    const showCsvDialogs = total === 0;
+    const breadCrumbItems = [
+      {title: "Stock Items", link: "/stock-variants"},
+      {title: `${movementData[0]?.stockName}-${movementData[0]?.stockVariantName}`, link: ""}
+    ];
 
     return (
-        <div className="flex-1 space-y-4 md:p-8 pt-6 mt-12">
-            <div className="flex items-center justify-between mb-2 p-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadCrumbItems} />
+      <div className="p-4 space-y-4 mt-6">
+        <BreadcrumbsNav items={breadCrumbItems} />
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className='space-y-2'>
+                <h3 className='font-bold text-lg'>Stock Movements History</h3>
+                <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
+                  <div className='flex items-center gap-2'>
+                    <h2 className='text-[32px] font-bold capitalize'>
+                      {movementData[0]?.stockName}
+                      <span className="text-black">-</span>
+                      {movementData[0]?.stockVariantName}
+                    </h2>
+                  </div>
                 </div>
-                <div className="flex items-center space-x-2">
-                    <Button>
-                        <Link href="/stocks/new">Add Stock</Link>
-                    </Button>
-                    <div className="flex space-x-2">
-                        {showCsvDialogs && <CSVStockDialog />}
-                        {showCsvDialogs && <ProductWithStockCSVDialog />}
-                    </div>
-                </div>
+              </div>
             </div>
-            
-            {hasData ? (
-                <Card x-chunk="data-table">
-                    <CardHeader>
-                        <CardTitle>Stock Items</CardTitle>
-                        <CardDescription>A list of all stock items</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <DataTable 
-                            columns={columns}
-                            data={data}
-                            searchKey="stockAndStockVariantName"
-                            pageNo={page}
-                            total={total}
-                            pageCount={pageCount}
-                        />
-                    </CardContent>
-                </Card>
-            ) : (
-                <div className="h-[calc(100vh-240px)] border border-dashed">
-                    <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
-                        <h1 className="text-[1.5rem] font-bold leading-tight">
-                            No stock variant data found
-                        </h1>
-                        <p className="text-sm text-center text-muted-foreground">
-                            There are no stock variant records found at the moment.
-                        </p>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
+          </CardContent>
+        </Card>
 
-export default StockVariantPage;
+        <StockMovementDashboard movements={movementData} summary={summaryData} />
+      </div>
+    );
+  } catch (error) {
+    return (
+      <div className="p-4">
+        <div className="text-red-500">
+          Error loading data: {error instanceof Error ? error.message : 'Unknown error occurred'}
+        </div>
+      </div>
+    );
+  }
+}

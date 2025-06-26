@@ -130,7 +130,6 @@ const getNormalMenuItems = (args?: MenuItemArgType & { subscription?: ActiveSubs
                 { title: "Kitchen Display System (KDS)", link: "/kds", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Locations", link: "/locations", current: args?.isCurrentItem, icon: "cart" },
                 { title: "QrCode", link: "/qrcode", current: args?.isCurrentItem, icon: "cart" },
-                { title: "Invoices", link: "/invoices", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Devices", link: "/devices", current: args?.isCurrentItem, icon: "cart" },
             ]
         }

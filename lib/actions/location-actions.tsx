@@ -31,6 +31,7 @@ export const fetchAllLocations = async (): Promise<Location[] | null> => {
 
         return parseStringify(locationsData);
     } catch (error) {
+        
         console.error('Error in fetchAllLocations:', error);
         throw error;
     }
@@ -116,13 +117,12 @@ export const createLocation = async (
         }
         console.log("validatedData: ", validatedData);
 
-        // Get current business
+        // Get current business & current location
         const currentBusiness = await getCurrentBusiness();
 
-        //currentLocation?.business
         const currentLocation = await getCurrentLocation();
         const business = multiStep ? currentLocation?.business : currentBusiness?.id;
-
+        
         if (!business) {
             console.error('Business not found', {
                 authenticatedUser,

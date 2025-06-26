@@ -1,12 +1,82 @@
 'use client'
-import { useState } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader} from "../ui/card";
-import { Label } from "../ui/label";
 import { Separator } from "../ui/separator";
 import { Switch } from "../ui/switch";
+import { useForm } from "react-hook-form";
+import { NotificationSettingsSchema } from "@/types/notification/shema";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel } from "../ui/form";
+import SubmitButton from "../widgets/submit-button";
+import { updateNotificationSetting } from "@/lib/actions/settings-actions";
+import { fetchLocationSettings } from "@/lib/actions/settings-actions"; // Import your server action
 
 const NotificationSettings = () => {
-    const [emailNotifications, setEmailNotifications] = useState(true);
+    const [isPending, startTransition] = useTransition();
+    const [isLoading, setIsLoading] = useState(true);
+
+    const form = useForm<z.infer<typeof NotificationSettingsSchema>>({
+        resolver: zodResolver(NotificationSettingsSchema),
+        defaultValues: {
+            enableEmailNotification: false,
+            enablePushNotification: false,
+            enableSmsNotification: false,
+        },
+    });
+
+    // Fetch location settings on component mount
+    useEffect(() => {
+        const loadSettings = async () => {
+            try {
+                setIsLoading(true);
+                const locationSettings = await fetchLocationSettings();
+                
+                // Update form with fetched values
+                form.reset({
+                    enableEmailNotification: locationSettings.enableEmailNotifications,
+                    enablePushNotification: locationSettings.enablePushNotifications,
+                    enableSmsNotification: locationSettings.enableSmsNotifications,
+                });
+            } catch (error) {
+                console.error("Failed to fetch location settings:", error);
+                // Keep default values if fetch fails
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadSettings();
+    }, [form]);
+
+    const onSubmit = (values: z.infer<typeof NotificationSettingsSchema>) => {
+        console.log("values are:", values);
+        startTransition(() => {
+            updateNotificationSetting(values);
+        });
+    }
+    
+    if (isLoading) {
+        return (
+            <div className="space-y-6">
+                <div>
+                    <h2 className="text-2xl font-semibold">Notifications</h2>
+                    <p className="text-muted-foreground mt-1">
+                        Loading notification settings...
+                    </p>
+                </div>
+                <Card>
+                    <CardContent className="p-6">
+                        <div className="animate-pulse space-y-4">
+                            <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                            <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+                            <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
     
     return (
         <div className="space-y-6">
@@ -17,125 +87,77 @@ const NotificationSettings = () => {
                 </p>
             </div>
 
-            <Card>
-                <CardHeader>
-                    {/* <CardTitle>Email Notifications</CardTitle> */}
-                    <CardDescription className="text-base font-medium text-black">
-                        Substance can send you email, SMS, and push notifications for any new direct messages
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-medium">Email Notifications</Label>
-                        </div>
-                        <Switch
-                            checked={emailNotifications}
-                            onCheckedChange={setEmailNotifications}
-                        />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-medium">SMS Notifications</Label>
-                        </div>
-                        <Switch
-                            checked={emailNotifications}
-                            onCheckedChange={setEmailNotifications}
-                        />
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <Label className="text-sm font-medium">Push Notifications</Label>
-                        </div>
-                        <Switch
-                            checked={emailNotifications}
-                            onCheckedChange={setEmailNotifications}
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* <Card>
-                <CardHeader>
-                    <CardTitle>More Activity</CardTitle>
-                    <CardDescription>
-                        Substance can send you email notifications for any new direct messages
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                            <Label className="text-base font-medium">More Activity</Label>
-                        </div>
-                        <Switch
-                            checked={moreActivity}
-                            onCheckedChange={setMoreActivity}
-                        />
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-4">
-                        <div className="flex items-center space-x-2">
-                            <input
-                                type="radio"
-                                id="all-reminders"
-                                name="activity-type"
-                                className="text-emerald-600 focus:ring-emerald-500"
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <Card>
+                        <CardHeader>
+                            <CardDescription className="text-base font-medium text-black">
+                                We can send you email, SMS, and push notifications for any new direct messages
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="enableEmailNotification"
+                                render={({ field }) => (
+                                    <FormItem className="flex justify-between items-center space-x-3 space-y-0">
+                                        <FormLabel className="text-sm font-medium">Email Notifications</FormLabel>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
                             />
-                            <div className="grid gap-1.5 leading-none">
-                                <Label htmlFor="all-reminders" className="font-medium">
-                                    All Reminders & Activity
-                                </Label>
-                                <p className="text-sm text-muted-foreground">
-                                    Notify me all system activities and reminders that have been created
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="flex items-center space-x-2">
-                            <input
-                                type="radio"
-                                id="activity-only"
-                                name="activity-type"
-                                className="text-emerald-600 focus:ring-emerald-500"
-                            />
-                            <div className="grid gap-1.5 leading-none">
-                                <Label htmlFor="activity-only" className="font-medium">
-                                    Activity only
-                                </Label>
-                                <p className="text-sm text-muted-foreground">
-                                    Only notify me we have the latest activity updates about increasing or decreasing data
-                                </p>
-                            </div>
-                        </div>
+                            <Separator />
 
-                        <div className="flex items-center space-x-2">
-                            <input
-                                type="radio"
-                                id="important-only"
-                                name="activity-type"
-                                defaultChecked
-                                className="text-emerald-600 focus:ring-emerald-500"
+                            <FormField
+                                control={form.control}
+                                name="enableSmsNotification"
+                                render={({ field }) => (
+                                    <FormItem className="flex justify-between items-center space-x-3 space-y-0">
+                                        <FormLabel className="text-sm font-medium">SMS Notifications</FormLabel>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
                             />
-                            <div className="grid gap-1.5 leading-none">
-                                <Label htmlFor="important-only" className="font-medium">
-                                    Important Reminder only
-                                </Label>
-                                <p className="text-sm text-muted-foreground">
-                                    Only notify me all the reminders that have been made
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card> */}
+                            
+                            <Separator />
+                            
+                            <FormField
+                                control={form.control}
+                                name="enablePushNotification"
+                                render={({ field }) => (
+                                    <FormItem className="flex justify-between items-center space-x-3 space-y-0">
+                                        <FormLabel className="text-sm font-medium">Push Notifications</FormLabel>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            
+                            <div className="flex items-center justify-end space-x-2 pt-6">
+                                <SubmitButton
+                                    isPending={isPending}
+                                    label="Save Changes"
+                                />
+                            </div> 
+                        </CardContent>
+                    </Card>
+                </form>
+            </Form>
         </div>
     );
 };

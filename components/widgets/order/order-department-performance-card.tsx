@@ -14,9 +14,30 @@ interface DepartmentPerformanceProps {
 }
 
 export const CompactDepartmentPerformance: React.FC<DepartmentPerformanceProps> = ({
-                                                                                       departmentData,
-                                                                                       colors
-                                                                                   }) => {
+    departmentData = [], // Add default empty array
+    colors
+}) => {
+    // Early return if no data
+    if (!departmentData || departmentData.length === 0) {
+        return (
+            <Card>
+                <CardHeader className="border-b">
+                    <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold flex items-center gap-2">
+                            <BriefcaseBusinessIcon className="text-purple-600" size={20} />
+                            Department Analysis
+                        </h2>
+                    </div>
+                </CardHeader>
+                <CardContent className="pt-4">
+                    <div className="text-center text-gray-500 py-8">
+                        No department data available
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
     // Calculate totals and metrics
     const totalRevenue = departmentData.reduce((sum, dept) => sum + dept.value, 0);
     const totalProfit = departmentData.reduce((sum, dept) => sum + dept.profit, 0);
@@ -28,7 +49,7 @@ export const CompactDepartmentPerformance: React.FC<DepartmentPerformanceProps> 
         isLoss: dept.profit < 0
     })).sort((a, b) => b.value - a.value);
 
-    // Find top and bottom performing departments
+    // Find top and bottom performing departments - now safe since we know array has data
     const topDepartment = departmentMetrics.reduce((prev, current) =>
         (current.profit > prev.profit) ? current : prev
     );
