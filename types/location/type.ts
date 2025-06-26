@@ -2,6 +2,7 @@ import { UUID } from "crypto"
 import { subscriptionStatus } from "../enums"
 
 export interface Location {
+    type: any;
     id: UUID;
     name: string;
     phone: string;
