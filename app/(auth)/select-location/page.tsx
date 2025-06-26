@@ -5,36 +5,28 @@ import {fetchAllLocations} from "@/lib/actions/location-actions";
 
 import { cookies } from 'next/headers';
 import { headers } from 'next/headers';
+import { searchWarehouses } from '@/lib/actions/warehouse/list-warehouse';
+import { Warehouses } from '@/types/warehouse/warehouse/type';
 
 // Mark the page as dynamic to prevent static generation
 export const dynamic = 'force-dynamic';
 
 // Add error boundary for better error handling
 export const fetchCache = 'force-no-store';
-
-const warehouses = [
-    {
-      id: "a1b2c3d4-e5f6-7890-abcd-1234567890ab",
-      name: "Central Warehouse",
-      address: "123 Main Street",
-      city: "Dar es Salaam"
-    },
-    // {
-    //   id: "b2c3d4e5-f6a7-8901-bcde-2345678901bc",
-    //   name: "North Hub",
-    //   address: "45 Industrial Road",
-    //   city: "Arusha"
-    // },
-    // {
-    //   id: "c3d4e5f6-a7b8-9012-cdef-3456789012cd",
-    //   name: "Southern Depot",
-    //   address: "789 Logistics Avenue",
-    //   city: "Mbeya"
-    // }
-  ];
   
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
+};
 
-export default async function SelectLocationPage() {
+export default async function SelectLocationPage({searchParams}: Params) {
+    const resolvedSearchParams = await searchParams;
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit) || 1000;
     try {
         // Force dynamic behavior by reading headers and cookies
         headers();
@@ -52,15 +44,18 @@ export default async function SelectLocationPage() {
 
         const businessLocations = await fetchAllLocations();
 
+        const warehouseList = await searchWarehouses(q, page, pageLimit);
+        const data: Warehouses[] = warehouseList.content;
+
         if (!businessLocations) {
             redirect('/select-business');
         }
 
         return (
             <LocationList
-                locations={businessLocations}
+                locations={businessLocations || []}
                 businessName={business.name}
-                warehouses={warehouses}
+                warehouses={data}
             />
         );
     } catch (error) {

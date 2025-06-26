@@ -104,7 +104,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     if (!business) return null;
 
     // Added menu type indicator for UX clarity
-    const menuTypeLabel = menuType === 'warehouse' ? 'Warehouse' : 'Shop';
+    const menuTypeLabel = menuType === 'warehouse' ? 'Warehouse' : 'Location';
 
     return (
         <div className="flex h-full flex-col">
