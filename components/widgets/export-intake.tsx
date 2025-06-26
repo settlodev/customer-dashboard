@@ -99,7 +99,7 @@ const StockIntakeExport: React.FC<TableExportProps> = ({
       
       if (response) {
         if (typeof response === 'string') {
-          // Add a header note to the CSV data about the identifier column
+          
           csvData = '# IMPORTANT: The "identifier" column contains system IDs and should not be modified.\n' + response;
           downloadFile(csvData, 'text/csv', 'csv');
         } else if (response instanceof Blob) {

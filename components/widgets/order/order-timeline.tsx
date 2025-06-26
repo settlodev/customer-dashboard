@@ -1,5 +1,4 @@
 import React from 'react';
-import { format } from 'date-fns';
 import { Clock, Tag, CreditCard, PackagePlus, Receipt, Plus, RefreshCcw, Minus, CircleX } from 'lucide-react';
 import { Card, CardContent, CardHeader} from '@/components/ui/card';
 import { OrderLogs } from '@/types/orders/type';
@@ -207,10 +206,9 @@ const OrderTimeline = ({ data }: { data: OrderLogs }) => {
                                     </div>
                                     <time className="text-sm text-gray-500 mb-2 flex items-center">
                                         <Clock className="h-3 w-3 mr-1" />
-                                        {format(new Date(item.dateCreated), 'MMM d, yyyy h:mm a')}
+                                        {Intl.DateTimeFormat('en', { dateStyle: 'medium', timeStyle: 'medium', hour12: false }).format(new Date(item.dateCreated))}
                                     </time>
 
-                                    {/* Additional details if available */}
                                     {(item.modifierName || item.addonName || item.discountIdName) && (
                                         <div className="text-sm mt-1 text-gray-600">
                                             <ul className="list-disc list-inside">

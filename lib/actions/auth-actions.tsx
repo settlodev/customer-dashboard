@@ -1,7 +1,6 @@
 "use server";
 
 import * as z from "zod";
-// import { isRedirectError } from "next/dist/client/components/redirect";
 import { AuthError } from "next-auth";
 import {
     LoginSchema,
@@ -17,7 +16,7 @@ import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie
 import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
+
 
 
 export async function logout() {
@@ -30,8 +29,7 @@ export async function logout() {
         if (error instanceof AuthError) {
             throw error;
         }
-        // Handle or log other types of errors
-        // console.error("Logout error:", error);
+       
     }
 }
 
@@ -60,8 +58,7 @@ export const login = async (
             redirect: false,
         });
 
-        console.log("SignIn result:", result); // Debug log
-
+    
         // Only handle specific credential errors
         if (result?.error === "CredentialsSignin") {
             console.log("Credentials sign-in error detected");
@@ -156,7 +153,7 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
             `/api/auth/verify-token/${token}`,
         );
 
-        // console.log("tokenResponse is: ", tokenResponse)
+       
 
         if (tokenResponse == token) {
             revalidatePath("/user-verification");
@@ -257,24 +254,21 @@ export const register = async (
         await deleteAuthCookie();
 
         const regData: ExtendedUser = await apiClient.post("/api/auth/register", validatedData.data);
-        // console.log("regData is: ", regData)
+        
         if(regData){
-            // const response = await apiClient.put(`/api/auth/generate-verification-token/${regData.email}`, {});
-
-            // if(response) {
-            //     await sendVerificationEmail(regData.name, response as string, regData.email);
-            // }
-            redirect("user-verification");
+            return parseStringify({
+                responseType: "success",
+                message: "Registration successful! Please check your email for verification instructions.",
+                // data: regData,
+            });
         }
 
         return parseStringify({
             responseType: "success",
-            message: "Registration successful, redirecting to login...",
+            message: "Registration successful! Please check your email for verification instructions.",
         });
     } catch (error : any) {
-
-        // Ignore redirect error
-        // if (isRedirectError(error)) throw error;
+        
 
         return parseStringify({
             responseType: "error",

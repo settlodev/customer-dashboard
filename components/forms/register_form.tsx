@@ -75,7 +75,7 @@ const signUpSteps = [
     {
         id: "step2",
         label: "02",
-        title: "Verification",
+        title: "Business Info",
     },
     {
         id: "step3",
@@ -92,7 +92,8 @@ const signUpSteps = [
 function RegisterForm({ step }: { step: string }) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
-    const [success] = useState<string | undefined>("");
+    const [success, setSuccess] = useState<string | undefined>("");
+    const [, setIsRegistrationComplete] = useState<boolean>(false);
     const [stepsDone, setStepsDone] = useState<SignUpStepItemType[]>(() => {
         const currentStepIndex = signUpSteps.findIndex(s => s.id === step);
         if (currentStepIndex <= 0) return [];
@@ -112,6 +113,7 @@ function RegisterForm({ step }: { step: string }) {
     const searchParams = useSearchParams();
     const subscription = searchParams.get('package');
     const referredByCode = searchParams.get("referredByCode");
+
 
     useEffect(() => {
         if (subscription) {
@@ -170,7 +172,6 @@ function RegisterForm({ step }: { step: string }) {
         },
     });
 
-    // Set the initial phone number value when the component mounts
     useEffect(() => {
         if (session?.data?.user.phoneNumber) {
             locationForm.setValue("phone", session.data.user.phoneNumber);
@@ -209,6 +210,8 @@ function RegisterForm({ step }: { step: string }) {
     }, [currentStep.id]);
 
     const submitData = async (values: z.infer<typeof RegisterSchema>) => {
+        setError("");
+        setSuccess(""); 
         startTransition(() => {
             register(values)
                 .then((data: FormResponse) => {
@@ -216,10 +219,18 @@ function RegisterForm({ step }: { step: string }) {
                     if (data.responseType === "error") {
                         setError(data.message);
                     }
+                    else if (data.responseType === "success") {
+                        setSuccess(data.message);
+                        setIsRegistrationComplete(true);
+
+                        setTimeout(() => {
+                            window.location.href = "/login";
+                        }, 3000);
+                    }
                 })
                 .catch((error) => {
-                    setError(error.data?.message);
-                    // console.error(error);
+                    setError(error.data?.message || "An unexpected error occurred. Please try again.");
+                    setIsRegistrationComplete(false);
                 });
         });
     }
@@ -252,7 +263,6 @@ function RegisterForm({ step }: { step: string }) {
 
     const submitLocationData = useCallback(
         async (values: z.infer<typeof LocationSchema>) => {
-            console.log("The location data are:", values);
             try {
                 startTransition(async () => {
                     const formData = locationImageUrl
@@ -268,7 +278,9 @@ function RegisterForm({ step }: { step: string }) {
                     if (response.responseType === 'error') {
                         setError(response.message);
 
-                        console.error("Error occurred on response", response);
+                    }
+                    else if (response.responseType === 'success') {
+                        router.push('/dashboard');
                     }
                 });
             } catch (error: any) {
@@ -794,7 +806,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                         disabled={isPending}
                                                                         value={field.value || ""}
                                                                         onChange={(value) => {
-                                                                            console.log("Phone number:", value);
+                                                                            
                                                                             field.onChange(value);
                                                                         }}
                                                                     />

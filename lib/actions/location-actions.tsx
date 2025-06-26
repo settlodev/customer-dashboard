@@ -31,6 +31,7 @@ export const fetchAllLocations = async (): Promise<Location[] | null> => {
 
         return parseStringify(locationsData);
     } catch (error) {
+        
         console.error('Error in fetchAllLocations:', error);
         throw error;
     }

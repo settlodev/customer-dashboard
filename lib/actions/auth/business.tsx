@@ -64,8 +64,6 @@ export const createBusiness = async (
               JSON.stringify({ Business: response }),
               { path: "/", httpOnly: true }
             );
-
-            console.log("Active business is:", cookieStore.get("activeBusiness"));
           }
 
           await refreshBusiness(response as Business);
