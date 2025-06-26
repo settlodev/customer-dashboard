@@ -550,21 +550,28 @@ function RegisterForm({ step }: { step: string }) {
                                 </CardHeader>
                                 <CardContent>
                                     <FormError message={error ? `${error}. Please log in to resend the email for verification.` : ""} />
-                                    <CardDescription className="font-normal">
-                                        We have sent a link with activation instruction to your email address.
-                                        Please check your email and click on the link to verify your email address.
-                                    </CardDescription>
-                                    {emailSent ?
-                                        <CardDescription className="text-green-500 py-4 flex">
-                                            <FormSuccess message="Email sent successfully" />
+                                        <CardDescription className="font-normal">
+                                            We've sent an activation link to your email address. Please check your email and click the link to verify your account.
                                         </CardDescription>
-                                        : <Button type="submit" className="mt-4" disabled={isPending}>
-                                            {isPending ?
-                                                <Loader2Icon className="w-6 h-6 animate-spin" /> :
-                                                "Resend verification email"
-                                            }
-                                        </Button>}
+    
+                                        <CardDescription className="font-normal text-sm text-muted-foreground mt-2">
+                                            <strong>Haven't received the email?</strong> Check your spam/junk folder, or click the button below to resend it. 
+                                            Make sure the email address is correct and try adding our domain to your safe sender list.
+                                        </CardDescription>
 
+                                        {emailSent ? (
+                                            <CardDescription className="text-green-500 py-4 flex">
+                                                <FormSuccess message="Verification email sent successfully! Please check your inbox and spam folder." />
+                                            </CardDescription>
+                                        ) : (
+                                            <Button type="submit" className="mt-4" disabled={isPending}>
+                                                {isPending ? (
+                                                    <Loader2Icon className="w-6 h-6 animate-spin" />
+                                                ) : (
+                                                    "Resend verification email"
+                                                )}
+                                            </Button>
+                                        )}
                                 </CardContent>
                             </Card>
                             <div className="hidden">

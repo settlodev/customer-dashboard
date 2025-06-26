@@ -395,10 +395,10 @@ export const resendVerificationEmail = async (name: any, email: any): Promise<Fo
     const apiClient = new ApiClient();
 
     try {
-        const response = await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
-        if(response) {
-            await sendVerificationEmail(name, response as string, email);
-        }
+       await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
+        // if(response) {
+        //     await sendVerificationEmail(name, response as string, email);
+        // }
         return parseStringify({
             responseType: "success",
             message: "Verification email sent successfully",
