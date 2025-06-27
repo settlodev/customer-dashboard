@@ -6,7 +6,6 @@ import {parseStringify} from "@/lib/utils";
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
-import { console } from "node:inspector";
 import { StockMovement } from "@/types/stock-movement/type";
 
 export const fetchStockMovements = async () : Promise<StockMovement[]> => {
@@ -20,7 +19,6 @@ export const fetchStockMovements = async () : Promise<StockMovement[]> => {
         const data = await  apiClient.get(
             `/api/stock-movements/${location?.id}/all`,
         );
-        console.log("The list of Stock movement in this location: ", data)
         return parseStringify(data);
     }
     catch (error){
@@ -59,7 +57,7 @@ export const searchStockMovement = async (
             `/api/stock-movements/${location?.id}`,
             query
         );
-        console.log("The list of Stock movement in this location: ", data)
+        
         return parseStringify(data);
     }
     catch (error){

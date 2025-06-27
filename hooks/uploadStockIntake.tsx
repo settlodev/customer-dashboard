@@ -1,6 +1,7 @@
 
 "use client";
 import { useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { uploadStockIntakeCSV } from "@/lib/actions/stock-intake-actions";
 
 interface CSVUploadOptions {
@@ -27,6 +28,7 @@ export const useCSVUpload = (): UseCSVUploadResult => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const resetUpload = useCallback(() => {
     setIsUploading(false);
@@ -38,7 +40,6 @@ export const useCSVUpload = (): UseCSVUploadResult => {
     resetUpload();
     setIsUploading(true);
 
-    // Validation phase
     try {
       // First phase: Validation (simulated)
       for (let i = 0; i < 2; i++) {
@@ -47,7 +48,7 @@ export const useCSVUpload = (): UseCSVUploadResult => {
       }
 
       // Second phase: Processing (simulated)
-      const processingSteps = UPLOAD_SIMULATION_STEPS - 2; // Subtract validation steps
+      const processingSteps = UPLOAD_SIMULATION_STEPS - 2;
       const progressPerStep = (PROCESSING_PROGRESS - VALIDATION_PROGRESS) / processingSteps;
 
       for (let i = 0; i < processingSteps; i++) {
@@ -57,23 +58,23 @@ export const useCSVUpload = (): UseCSVUploadResult => {
         );
       }
 
-      // Final phase: Actual upload
+      // Actual upload
       const response = await uploadStockIntakeCSV({ fileData, fileName });
       
       // Complete the progress
       setUploadProgress(COMPLETION_PROGRESS);
       
+      // Handle navigation on client side
+      router.push("/stock-intakes");
+      
       return response;
     } catch (err: any) {
       const errorMessage = err.message || "An unknown error occurred during upload.";
       setError(errorMessage);
-      
-      // Reset progress on error
       setUploadProgress(0);
       throw err;
     } finally {
-      // Keep isUploading true until the component handles completion
-      // This will be reset when the component calls resetUpload
+      setIsUploading(false);
     }
   };
 

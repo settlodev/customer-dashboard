@@ -11,7 +11,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { StaffSchema } from "@/types/staff";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
-import {redirect} from "next/navigation";
+// import {redirect} from "next/navigation";
 import { inviteStaffToBusiness} from "./emails/send";
 
 type invitedStaff = {
@@ -144,7 +144,9 @@ export const createStaff = async (
 
         
         revalidatePath("/staff");
-        redirect("/staff");
+        // redirect("/staff");
+
+        
 
     } catch (error: any) {
         // console.error("Error creating staff:", error);
@@ -227,7 +229,7 @@ export const updateStaff = async (
     if( formResponse.responseType === "error" ) return parseStringify(formResponse);
 
     revalidatePath("/staff");
-    redirect("/staff");
+    // redirect("/staff");
 
 };
 

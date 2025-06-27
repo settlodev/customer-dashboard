@@ -75,7 +75,7 @@ const signUpSteps = [
     {
         id: "step2",
         label: "02",
-        title: "Verification",
+        title: "Business Info",
     },
     {
         id: "step3",
@@ -92,7 +92,8 @@ const signUpSteps = [
 function RegisterForm({ step }: { step: string }) {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
-    const [success] = useState<string | undefined>("");
+    const [success, setSuccess] = useState<string | undefined>("");
+    const [, setIsRegistrationComplete] = useState<boolean>(false);
     const [stepsDone, setStepsDone] = useState<SignUpStepItemType[]>(() => {
         const currentStepIndex = signUpSteps.findIndex(s => s.id === step);
         if (currentStepIndex <= 0) return [];
@@ -112,6 +113,7 @@ function RegisterForm({ step }: { step: string }) {
     const searchParams = useSearchParams();
     const subscription = searchParams.get('package');
     const referredByCode = searchParams.get("referredByCode");
+
 
     useEffect(() => {
         if (subscription) {
@@ -170,7 +172,6 @@ function RegisterForm({ step }: { step: string }) {
         },
     });
 
-    // Set the initial phone number value when the component mounts
     useEffect(() => {
         if (session?.data?.user.phoneNumber) {
             locationForm.setValue("phone", session.data.user.phoneNumber);
@@ -209,6 +210,8 @@ function RegisterForm({ step }: { step: string }) {
     }, [currentStep.id]);
 
     const submitData = async (values: z.infer<typeof RegisterSchema>) => {
+        setError("");
+        setSuccess(""); 
         startTransition(() => {
             register(values)
                 .then((data: FormResponse) => {
@@ -216,10 +219,18 @@ function RegisterForm({ step }: { step: string }) {
                     if (data.responseType === "error") {
                         setError(data.message);
                     }
+                    else if (data.responseType === "success") {
+                        setSuccess(data.message);
+                        setIsRegistrationComplete(true);
+
+                        setTimeout(() => {
+                            window.location.href = "/login";
+                        }, 3000);
+                    }
                 })
                 .catch((error) => {
-                    setError(error.data?.message);
-                    // console.error(error);
+                    setError(error.data?.message || "An unexpected error occurred. Please try again.");
+                    setIsRegistrationComplete(false);
                 });
         });
     }
@@ -252,7 +263,6 @@ function RegisterForm({ step }: { step: string }) {
 
     const submitLocationData = useCallback(
         async (values: z.infer<typeof LocationSchema>) => {
-            console.log("The location data are:", values);
             try {
                 startTransition(async () => {
                     const formData = locationImageUrl
@@ -268,7 +278,9 @@ function RegisterForm({ step }: { step: string }) {
                     if (response.responseType === 'error') {
                         setError(response.message);
 
-                        console.error("Error occurred on response", response);
+                    }
+                    else if (response.responseType === 'success') {
+                        router.push('/dashboard');
                     }
                 });
             } catch (error: any) {
@@ -538,21 +550,28 @@ function RegisterForm({ step }: { step: string }) {
                                 </CardHeader>
                                 <CardContent>
                                     <FormError message={error ? `${error}. Please log in to resend the email for verification.` : ""} />
-                                    <CardDescription className="font-normal">
-                                        We have sent a link with activation instruction to your email address.
-                                        Please check your email and click on the link to verify your email address.
-                                    </CardDescription>
-                                    {emailSent ?
-                                        <CardDescription className="text-green-500 py-4 flex">
-                                            <FormSuccess message="Email sent successfully" />
+                                        <CardDescription className="font-normal">
+                                            We&apos;ve sent an activation link to your email address. Please check your email and click the link to verify your account.
                                         </CardDescription>
-                                        : <Button type="submit" className="mt-4" disabled={isPending}>
-                                            {isPending ?
-                                                <Loader2Icon className="w-6 h-6 animate-spin" /> :
-                                                "Resend verification email"
-                                            }
-                                        </Button>}
+    
+                                        <CardDescription className="font-normal text-sm text-muted-foreground mt-2">
+                                            <strong>Haven&apos;t received the email?</strong> Check your spam/junk folder, or click the button below to resend it. 
+                                            Make sure the email address is correct and try adding our domain to your safe sender list.
+                                        </CardDescription>
 
+                                        {emailSent ? (
+                                            <CardDescription className="text-green-500 py-4 flex">
+                                                <FormSuccess message="Verification email sent successfully! Please check your inbox and spam folder." />
+                                            </CardDescription>
+                                        ) : (
+                                            <Button type="submit" className="mt-4" disabled={isPending}>
+                                                {isPending ? (
+                                                    <Loader2Icon className="w-6 h-6 animate-spin" />
+                                                ) : (
+                                                    "Resend verification email"
+                                                )}
+                                            </Button>
+                                        )}
                                 </CardContent>
                             </Card>
                             <div className="hidden">
@@ -794,7 +813,7 @@ function RegisterForm({ step }: { step: string }) {
                                                                         disabled={isPending}
                                                                         value={field.value || ""}
                                                                         onChange={(value) => {
-                                                                            console.log("Phone number:", value);
+                                                                            
                                                                             field.onChange(value);
                                                                         }}
                                                                     />

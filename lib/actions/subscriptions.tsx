@@ -1,11 +1,11 @@
 'use server'
-import { ActiveSubscription, Subscriptions, ValidDiscountCode } from "@/types/subscription/type";
+import { ActiveSubscription, SubscriptionAddons, Subscriptions, ValidDiscountCode } from "@/types/subscription/type";
 import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
 import { z } from "zod";
 // import { RenewSubscription } from "@/types/renew-subscription/type";
-import { FormResponse } from "@/types/types";
+import { ApiResponse, FormResponse } from "@/types/types";
 import { getCurrentLocation } from "./business/get-current-business";
 import { getAuthenticatedUser } from "../auth-utils";
 
@@ -25,18 +25,59 @@ export const fetchSubscriptions = async (): Promise<Subscriptions[]> => {
         const apiClient = new ApiClient();
         const response = await apiClient.get<Subscriptions[]>("/api/subscriptions/");
         const sortedSubscriptions = response.sort((a, b) => a.amount - b.amount);
-        // console.log("Sorted subscriptions:", sortedSubscriptions);
         return parseStringify(sortedSubscriptions);
     } catch (error) {
         throw error;
     }
 }
 
+
+
+export const getSubscriptionAddons = async (
+    q:string,
+    page:number,
+    pageLimit:number
+): Promise<ApiResponse<SubscriptionAddons>> =>{
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+        const query ={
+            filters: [
+                {
+                    key:"name",
+                    operator:"LIKE",
+                    field_type:"STRING",
+                    value:q,
+                    isArchived:false
+                },
+            ],
+            sorts:[
+                {
+                    key:"dateCreated",
+                    direction:"ASC"
+                }
+            ],
+            page:page ? page - 1:0,
+            size:pageLimit ? pageLimit : 10
+        }
+        const data = await  apiClient.post(
+            `/api/subscription-addons`,
+            query
+        );
+
+        return parseStringify(data);
+    }
+    catch (error){
+        throw error;
+    }
+
+}
+
 export const getAllSubscriptions = async (): Promise<Subscriptions[]> => {
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get("/api/subscriptions/");
-        // console.log("All subscriptions response:", response);
         
         return parseStringify(response);
     } catch (error) {
@@ -44,12 +85,19 @@ export const getAllSubscriptions = async (): Promise<Subscriptions[]> => {
     }
 };
 
-export const getActiveSubscription = async (): Promise<ActiveSubscription> => {
-    const location = await getCurrentLocation();
+
+export const getActiveSubscription = async (locationId?: string | null): Promise<ActiveSubscription> => {
+    let location;
+    
+    if (locationId) {
+        location = { id: locationId };
+    } else {
+        location = await getCurrentLocation();
+    }
+    
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/location-subscriptions/${location?.id}/active`);
-        // console.log("Active subscription response:", response);
         return parseStringify(response);
     } catch (error) {
         throw error;
@@ -63,12 +111,12 @@ export const validateDiscountCode = async (discountCode: string,locationId?:stri
     const location = await getCurrentLocation() || { id: locationId };
     const payload = {
         discountCode: discountCode,
-        location:location?.id
+        locationId:location?.id
     }
-  
+    
     try {
         const apiClient = new ApiClient();
-        const response = await apiClient.post(`/api/subscription-payments/${location?.id}/validate-discount-code`,  payload );
+        const response = await apiClient.post(`/api/subscription-discounts/validate-discount-code`,  payload );
         return parseStringify(response);
     } catch (error: any) {
     
@@ -105,7 +153,7 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
     };
 
 
-    // console.log("Payload:", payload );
+    console.log("Payload:", payload );
 
     try {
         const apiClient = new ApiClient();
@@ -120,12 +168,12 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
             return parseStringify(formResponse);
         }
 
-        // console.log("Payment successful:", response);s
+        console.log("Payment successful:", response);
 
         return parseStringify(response);
 
     } catch (error: any) {
-        // console.error("Payment error:", error);
+        console.error("Payment error:", error);
 
         if (error.response?.data) {
             
@@ -148,12 +196,11 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
 };
 
 
-export const verifyPayment = async (transactionId: string,locationId?:string) => {
-    const location = await getCurrentLocation() || {id:locationId};
+export const verifyPayment = async (transactionId: string,invoice?:string) => {
     try {
         const apiClient = new ApiClient();
-        const response = await apiClient.get(`/api/subscription-payments/${location?.id}/verify/${transactionId}`);
-        // console.log("Payment verification response:", response);
+        const response = await apiClient.get(`/api/location-invoice-payments/${invoice}/${transactionId}`);
+        
         return parseStringify(response);
     } catch (error) {
         throw error;

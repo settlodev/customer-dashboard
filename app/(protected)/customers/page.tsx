@@ -12,16 +12,20 @@ import {columns} from '@/components/tables/customer/column'
 
 
 const breadCrumbItems = [{title:"Customers",link:"/customers"}];
- type ParamsProps ={
-     searchParams:{
-         [key:string]:string | undefined
-     }
- };
- async function CustomersPage({searchParams}:ParamsProps) {
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
+};
+ async function CustomersPage({searchParams}:Params) {
 
-     const q = searchParams.search || "";
-     const page = Number(searchParams.page) || 0;
-     const pageLimit = Number(searchParams.limit);
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
      const responseData = await searchCustomer(q,page,pageLimit);
 

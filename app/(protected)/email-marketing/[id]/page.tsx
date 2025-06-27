@@ -1,7 +1,6 @@
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import {
     Card,
@@ -16,19 +15,19 @@ import EmailForm from "@/components/forms/email_form";
 import { Email } from "@/types/email/type";
 import { getEmail } from "@/lib/actions/broadcast-email-action";
 
-export default async function EmailMarketingPage({params}: {params: { id: string }}) {
+type Params = Promise<{ id: string}>
+export default async function EmailMarketingPage({params}: {params: Params}) {
 
-    const isNewItem = params.id === "new";
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Email> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getEmail(params.id as UUID);
+            item = await getEmail(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
+            console.log(error)
             throw new Error("Failed to load template data");
         }
     }

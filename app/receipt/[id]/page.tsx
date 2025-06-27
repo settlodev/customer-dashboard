@@ -5,12 +5,20 @@ import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
 
-const OrderReceipt = async ({ params }: { params: { id: string ,download?: string} }) => {
-  const orderData = await getOrderReceipt(params.id);
-  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/r/${orderData.orderNumber}`;
+type Params = Promise<{
+  id: string;
+  download?: string;
+}>;
 
-   const isDownloadable=params?.download
+const OrderReceipt = async ({ params }: { params: Params }) => {
+  // Await the params to resolve them
+  const resolvedParams = await params;
+  const { id, download } = resolvedParams;
 
+  const orderData = await getOrderReceipt(id);
+  const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/receipt/${orderData.id}`;
+
+  const isDownloadable = download;
 
   const formatDate = (dateStr: string | number | Date) => {
     const date = new Date(dateStr);
@@ -75,7 +83,7 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
                     <h2 className="text-sm font-semibold text-gray-600 mb-2">Order Details</h2>
                     <p className="text-sm">Order #: <span className='font-semibold'>{orderData.orderNumber}</span></p>
                     <p className="text-sm">Open Date: <span className='font-semibold'>{formatDate(orderData.openedDate)}</span></p>
-                    <p className="text-sm">Closed Date: <span className='font-semibold'>{formatDate(orderData.closedDate)}</span></p>
+                    <p className="text-sm">Closed Date: <span className='font-semibold'>{orderData.closedDate ? formatDate(orderData.closedDate) : '-'}</span></p>
                   </div>
                   <div>
                     <h2 className="text-sm font-semibold text-gray-600 mb-2">Payment Info</h2>
@@ -89,7 +97,16 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
                       <p className="text-sm">Customer Name: <span className='font-semibold'>{orderData.customerName}</span></p>
                     </div>
                   )}
+                  {orderData.customerPhone && (
+                      <p className="text-sm">Customer Phone: <span className='font-semibold'>{orderData.customerPhoneNumber}</span></p>
+                  )}
                 </div>
+
+                
+                {/* <div className="mb-6">
+                  <h2 className="text-sm font-semibold text-gray-600 mb-2">Description</h2>
+                  <p className="text-sm">{orderData.comment ? orderData.comment : 'N/A'}</p>
+                </div> */}
 
                 {/* Items Table */}
                 <div className="border rounded-lg overflow-hidden mb-6">
@@ -123,7 +140,7 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Discount:</span>
-                    <span>{formatCurrency(orderData.discountAmount)}</span>
+                    <span>{formatCurrency(orderData.totalDiscount)}</span>
                   </div>
                   <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-2 mt-2">
                     <span>Total:</span>
@@ -135,14 +152,14 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
                   </div>
                   <div className="flex justify-between text-sm text-gray-600">
                     <span>Balance:</span>
-                    <span>{formatCurrency(0)}</span>
+                    <span>{formatCurrency(orderData.netAmount - orderData.paidAmount)}</span>
                   </div>
-                </div>
 
                 <div className="bg-gray-50 px-6 py-4 text-center">
                   <div className="mt-4">
                     <div className="inline-block px-4 py-2 border-2 border-dashed border-gray-300 rounded-lg">
-                      <p className="text-sm font-semibold text-gray-600">Thank you for your business!</p>
+  
+                </div>                    <p className="text-sm font-semibold text-gray-600">Thank you for your business!</p>
                       <p className="text-xs text-gray-500">Receipt generated on {formatDate(new Date().toISOString())}</p>
                     </div>
                   </div>
@@ -205,7 +222,7 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
                   <h2 className="text-sm font-semibold text-gray-600 mb-2">Order Details</h2>
                   <p className="text-sm">Order #: <span className='font-semibold'>{orderData.orderNumber}</span></p>
                   <p className="text-sm">Order start date: <span className='font-semibold'>{formatDate(orderData.openedDate)}</span></p>
-                  <p className="text-sm">Order closed date: <span className='font-semibold'>{formatDate(orderData.closedDate)}</span></p>
+                  <p className="text-sm">Order closed date: <span className='font-semibold'>{orderData.closedDate ? formatDate(orderData.closedDate) : '-'}</span></p>
                 </div>
                 <div className='gap-6'>
                   <h2 className="text-sm font-semibold text-gray-600 mb-2">Payment Info</h2>
@@ -253,7 +270,7 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Discount:</span>
-                  <span>{formatCurrency(orderData.discountAmount)}</span>
+                  <span>{formatCurrency(orderData.totalDiscount)}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t border-gray-200 pt-2 mt-2">
                   <span>Total:</span>
@@ -290,11 +307,14 @@ const OrderReceipt = async ({ params }: { params: { id: string ,download?: strin
             </div>
           </div>
         )}
-        <div className="grid  lg:flex lg:justify-center items-center mt-4 mb-4 gap-1 ">
-              <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'} />
-
-              <ShareButton url={orderUrl} />
-            </div>
+       <div className='hidden lg:block'>
+       {!isDownloadable && (
+          <div className="grid lg:flex lg:justify-center items-center mt-4 mb-4 gap-1">
+            <DownloadButton orderNumber={orderData.orderNumber} isDownloadable={isDownloadable==='1'}/>
+            <ShareButton url={orderUrl} />
+          </div>
+        )}
+       </div>
       </div>
     </div>
   );

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Subscriptions, ValidDiscountCode } from "@/types/subscription/type";
 import { AlertCircle, Calendar, Check, CheckCircle2, Loader2, Mail, Phone, Star, Tag, X } from "lucide-react";
 import Loading from "../loading";
-import { getAllSubscriptions, paySubscription, User, validateDiscountCode, verifyPayment } from "@/lib/actions/subscriptions";
+import { getAllSubscriptions,paySubscription,User, validateDiscountCode, verifyPayment } from "@/lib/actions/subscriptions";
 import { useSearchParams } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import PaymentStatusModal from "@/components/widgets/paymentStatusModal";

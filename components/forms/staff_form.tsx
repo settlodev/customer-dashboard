@@ -84,6 +84,10 @@ const StaffForm: React.FC<StaffFormProps> = ({
                             description: result.message,
                         });
                         onFormSubmitted?.(result);
+                        form.reset();
+                        setIsDashboardEnabled(false);
+                        form.setValue("status", false);
+                        window.location.href = "/staff";
                     } else if (result.responseType === "error") {
                         // Handle error from server action
                         toast({

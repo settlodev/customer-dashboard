@@ -1,7 +1,6 @@
 "use client"
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import React, {useCallback, useState, useTransition} from "react";
-const breadcrumbItems = [{ title: "Profile", link: "/profile" }];
+
 import Image from "next/image";
 import {Loader2Icon, PhoneCallIcon, UploadIcon, UserIcon, VerifiedIcon} from "lucide-react";
 import {EnvelopeClosedIcon} from "@radix-ui/react-icons";
@@ -82,12 +81,7 @@ export default function UpdateProfileForm() {
         });
     }
 
-    return (<div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-            <div className="flex items-center justify-between mb-2">
-                <div className="relative flex-1 md:max-w-md">
-                    <BreadcrumbsNav items={breadcrumbItems}/>
-                </div>
-            </div>
+    return (<div>
             <FormError message={error}/>
             <FormSuccess message={success}/>
             <Form {...form}>
@@ -333,6 +327,7 @@ export default function UpdateProfileForm() {
                     </div>
                 </form>
             </Form>
-        </div>
+            </div>
+        
     )
 }

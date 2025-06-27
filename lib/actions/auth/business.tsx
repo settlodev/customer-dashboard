@@ -6,7 +6,7 @@ import { AuthToken, FormResponse } from "@/types/types";
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import { redirect } from "next/navigation";
-import { isRedirectError } from "next/dist/client/components/redirect";
+// import { isRedirectError } from "next/dist/client/components/redirect";
 import { cookies } from "next/headers";
 import { User } from "next-auth";
 import { Business } from "@/types/business/type";
@@ -45,11 +45,12 @@ export const createBusiness = async (
       );
 
       if (response) {
-        const token = cookies().get("authToken")?.value;
+        const cookieStore = await cookies();
+        const token = cookieStore.get("authToken")?.value;
         if (token) {
           const authToken = JSON.parse(token) as AuthToken;
           authToken.businessComplete = true;
-          cookies().set("authToken", JSON.stringify(authToken), {
+          cookieStore.set("authToken", JSON.stringify(authToken), {
             path: "/",
             httpOnly: true,
           });
@@ -57,14 +58,12 @@ export const createBusiness = async (
           success = true;
 
           if (success) {
-            cookies().delete("activeBusiness");
-            cookies().set(
+            cookieStore.delete("activeBusiness");
+            cookieStore.set(
               "activeBusiness",
               JSON.stringify({ Business: response }),
               { path: "/", httpOnly: true }
             );
-
-            console.log("Active business is:", cookies().get("activeBusiness"));
           }
 
           await refreshBusiness(response as Business);
@@ -76,7 +75,7 @@ export const createBusiness = async (
         console.log("Unexpected response:", response);
       }
     } catch (error) {
-      if (isRedirectError(error)) throw error;
+      // if (isRedirectError(error)) throw error;
 
       console.error("Error creating business", error);
       formResponse = {

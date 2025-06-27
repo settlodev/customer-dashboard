@@ -17,17 +17,15 @@ import OrderDepartmentPerformanceCard from "@/components/widgets/order/order-dep
 import {Orders} from "@/types/orders/type";
 import OrderTimeline from '@/components/widgets/order/order-timeline';
 
-interface OrderDetailsPageProps {
-    params: {
-        id: string;
-    };
-}
+
 
 type StatusType = 'OPEN' | 'PAID' | 'NOT_PAID';
+type Params = Promise<{id: string}>
 
-const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => {
-    const order = await getOrder(params.id as UUID);
-    const orderLogs = await getOrderLogs(params.id as UUID);
+const OrderDetailsPage = async ({params}: {params: Params}) => {
+    const resolvedParams = await params;
+    const order = await getOrder(resolvedParams.id as UUID);
+    const orderLogs = await getOrderLogs(resolvedParams.id as UUID);
     const orderData: Orders = order?.content[0];
 
     if (!orderData) {
@@ -111,7 +109,7 @@ const OrderDetailsPage: React.FC<OrderDetailsPageProps> = async ({ params }) => 
         <div className="min-h-screen bg-gray-50 p-4 md:p-8 mt-3">
             <div className="max-w-7xl mx-auto space-y-6">
                 {/* Breadcrumbs */}
-                <BreadcrumbsNav items={[{ title: "Order Details", link: `/orders/${params.id}` }]} />
+                <BreadcrumbsNav items={[{ title: "Order Details", link: `/orders/${resolvedParams.id}` }]} />
 
                 <OrderQuickStatsCard metrics={metrics} />
 

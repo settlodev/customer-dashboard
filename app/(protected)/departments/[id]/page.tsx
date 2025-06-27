@@ -1,7 +1,6 @@
 import { UUID } from "node:crypto";
 
 import { notFound } from "next/navigation";
-import { isNotFoundError } from "next/dist/client/components/not-found";
 
 import {
     Card,
@@ -16,20 +15,19 @@ import { Department } from "@/types/department/type";
 import { getDepartment } from "@/lib/actions/department-actions";
 import DepartmentForm from "@/components/forms/department_form";
 
-export default async function DepartmentPage({params}: {
-    params: { id: string };
-}) {
-    const isNewItem = params.id === "new";
+
+type Params = Promise<{id: string}>
+export default async function DepartmentPage({params}: {params: Params}) {
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Department> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getDepartment(params.id as UUID);
+            item = await getDepartment(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
-            // Ignore redirect error
-            if (isNotFoundError(error)) throw error;
-
+            console.log(error)
             throw new Error("Failed to load department data");
         }
     }

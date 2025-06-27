@@ -1,15 +1,17 @@
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
-import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { StockTransfer } from "@/types/stock-transfer/type";
 import { getStockTransferred } from "@/lib/actions/stock-transfer-actions";
 import StockTransferForm from "@/components/forms/stock_transfer_form";
 
-export default async function StockTransferPage({params}:{params:{stockVariant:string,id:string}}){
-    const {stockVariant, id} = params
+type Params = Promise<{stockVariant:string,id:string}>
+export default async function StockTransferPage({params}: {params: Params}){
+
+    const paramsData = await params
+    const {stockVariant, id} = paramsData
     const isNewItem = id === "new";
     let item: ApiResponse<StockTransfer> | null = null;
 
@@ -19,8 +21,8 @@ export default async function StockTransferPage({params}:{params:{stockVariant:s
             if(item.totalElements == 0) notFound();
         }
         catch (error){
-            if(isNotFoundError(error)) throw error;
-
+            console.log(error)
+            throw new Error("Failed to load stock transfer details");
         }
     }
 

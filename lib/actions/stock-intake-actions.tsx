@@ -11,8 +11,17 @@ import {getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema, UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
-import { redirect } from "next/navigation";
 
+
+function isNextRedirect(error: any): boolean {
+    return (
+        error &&
+        typeof error === 'object' &&
+        (error.digest?.startsWith('NEXT_REDIRECT') || 
+         error.__NEXT_REDIRECT_ERROR__ === true ||
+         error.message?.includes('NEXT_REDIRECT'))
+    );
+}
 export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
     await  getAuthenticatedUser();
 
@@ -219,7 +228,6 @@ export const uploadStockIntakeCSV = async ({ fileData, fileName }: { fileData: s
     if (!isCSVContent) {
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
     }
-
     // console.log("CSV content to be sent:", fileData);
 
     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
@@ -241,14 +249,17 @@ export const uploadStockIntakeCSV = async ({ fileData, fileName }: { fileData: s
             }
         );
 
-        // console.log("CSV upload response", response);
-
-      
+        revalidatePath("/stock-intakes");
+        
     } catch (error: any) {
+
+        if (isNextRedirect(error)) {
+            throw error;
+        }
+
         console.error("Error uploading CSV file:", error);
         throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
-      // Revalidate or redirect after successful upload
-      revalidatePath("/stock-intakes");
-      redirect("/stock-intakes");
+     
+      
 };

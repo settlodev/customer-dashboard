@@ -7,34 +7,34 @@ import { AuthToken, FormResponse } from "@/types/types";
 import { cookies } from "next/headers";
 import { z } from "zod";
 import { Location } from "@/types/location/type";
-import {switchLocation} from "../business/refresh";
-import {signOut} from "@/auth";
-import {isRedirectError} from "next/dist/client/components/redirect";
-import { console } from "inspector";
-import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
+import { switchLocation } from "../business/refresh";
+import { signOut } from "@/auth";
+import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+
 
 export const createBusinessLocation = async (
     businessLocation: z.infer<typeof LocationSchema>
 ): Promise<FormResponse> => {
-    // Handle authentication
-    const token = cookies().get('authToken')?.value;
-    if (!token) {
-        await signOut();
-        throw new Error('Authentication token not found');
-    }
-
-    // Validate input data
-    const validationResult = LocationSchema.safeParse(businessLocation);
-
-    if (!validationResult.success) {
-        return parseStringify({
-            responseType: 'error',
-            message: 'Please fill all the required fields',
-            error: new Error(validationResult.error.message)
-        });
-    }
-
     try {
+        // Handle authentication
+        const cookieStore = await cookies();
+        const token = cookieStore.get('authToken')?.value;
+        if (!token) {
+            await signOut();
+            throw new Error('Authentication token not found');
+        }
+
+        // Validate input data
+        const validationResult = LocationSchema.safeParse(businessLocation);
+
+        if (!validationResult.success) {
+            return parseStringify({
+                responseType: 'error',
+                message: 'Please fill all the required fields',
+                error: new Error(validationResult.error.message)
+            });
+        }
+
         // Get business ID from cookies
         const currentBusiness = await getCurrentBusiness();
         if (!currentBusiness) {
@@ -54,6 +54,8 @@ export const createBusinessLocation = async (
             payload
         );
 
+        // console.log('Location creation response:', response);
+
         if (!response) {
             throw new Error('No response received from server');
         }
@@ -61,22 +63,24 @@ export const createBusinessLocation = async (
         // Update auth token and refresh location
         const authToken = JSON.parse(token) as AuthToken;
         authToken.locationComplete = true;
-        cookies().set('authToken', JSON.stringify(authToken), {
+        
+        cookieStore.set({
+            name: 'authToken',
+            value: JSON.stringify(authToken),
             path: '/',
-            httpOnly: true
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production'
         });
 
         await switchLocation(response as Location);
 
-        return parseStringify({
-            responseType: 'success',
-            message: 'Location created successfully, redirecting to dashboard...'
-        });
+       
 
     } catch (error: any) {
-        // Ignore redirect error
-        if (isRedirectError(error)) throw error;
-
+        if (error?.digest?.startsWith('NEXT_REDIRECT')) {
+            throw error; 
+        }
         console.error('Location creation error:', error);
         return parseStringify({
             responseType: 'error',
@@ -84,4 +88,9 @@ export const createBusinessLocation = async (
             error: error instanceof Error ? error : new Error(String(error.message ?? error))
         });
     }
+    return parseStringify({
+        responseType: 'success',
+        message: 'Location created successfully',
+        
+    });
 };

@@ -28,11 +28,14 @@ import { FormError } from "@/components/widgets/form-error";
 import Link from "next/link";
 import {EyeOffIcon, EyeIcon} from "lucide-react";
 import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie} from "@/lib/auth-utils";
+import { useRouter } from "next/navigation";
+import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string>("");
     const [showPassword, setShowPassword] = useState<boolean>(false);
+    const router = useRouter();
 
     const form = useForm<z.infer<typeof LoginSchema>>({
         resolver: zodResolver(LoginSchema),
@@ -54,26 +57,33 @@ function LoginForm() {
                             console.log("Error 1", data.error);
                             setError("Something went wrong while processing your credentials. Try again.");
                             clearUserData();
-
                             return;
                         }
 
-                        // console.log("Error 2 Data", data.error);
-                        // console.log("Error 2 Message", data.message);
-                        setError(data.message);
+                        if (data.responseType === "error") {
+                            setError(data.message);
+                            return;
+                        }
+
+                        // SUCCESS: Add delay to ensure session is properly set
+                        if (data.responseType === "success") {
+                            setTimeout(() => {
+                                // Force a hard refresh to ensure middleware picks up the new session
+                                window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
+                            }, 100);
+                            return;
+                        }
                     }
                 })
                 .catch((err: any) => {
                     //Sentry.captureException(err);
                     console.log("Error 3", err.message);
-
-                    setError("2 Something went wrong while processing your credentials. Try again.");
+                    setError("Wrong credentials! Invalid email address and/or password");
                     clearUserData();
-
                     return;
                 });
         });
-    }, []);
+    }, [router]);
 
     return (
         <section>
@@ -132,7 +142,9 @@ function LoginForm() {
                                 />
                             </div>
 
-                            <Button type="submit" disabled={isPending} className="w-full">Login</Button>
+                            <Button type="submit" disabled={isPending} className="w-full">
+                                {isPending ? "Signing in..." : "Login"}
+                            </Button>
                         </div>
                     </form>
                 </Form>

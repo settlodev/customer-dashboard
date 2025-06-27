@@ -13,16 +13,21 @@ import ProductSummary from "@/components/widgets/products/product-summary";
 
 const breadCrumbItems = [{title: "Products", link: "/products"}];
 
-type ParamsProps = {
-    searchParams: {
-        [key: string]: string | undefined
-    }
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
 };
 
-async function Page({searchParams}: ParamsProps) {
-    const q = searchParams.search || "";
-    const page = Number(searchParams.page) || 0;
-    const pageLimit = Number(searchParams.limit);
+async function Page({searchParams}: Params) {
+    
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
     // Fetch both data sets in parallel
     const [responseData, summaryData] = await Promise.all([

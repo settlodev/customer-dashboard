@@ -63,11 +63,11 @@ export const FEATURE_MAPPING = {
     
     // Staff Management
     staff: {
-        requiredFeatures: ['staff_2', 'staff_10', 'staff_unlimited'],
+        requiredFeatures: ['staff_2', 'staff_10', 'staff_25'],
         items: {
-            staff: ['staff_2', 'staff_10', 'staff_unlimited'],
-            shifts: ['staff_2', 'staff_10', 'staff_unlimited'],
-            roles: ['staff_2', 'staff_10', 'staff_unlimited']
+            staff: ['staff_2', 'staff_10', 'staff_25'],
+            shifts: ['staff_2', 'staff_10', 'staff_25'],
+            roles: ['staff_2', 'staff_10', 'staff_25']
         }
     },
     

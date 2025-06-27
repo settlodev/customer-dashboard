@@ -4,7 +4,7 @@ import React, { useCallback, useState, useTransition } from "react";
 import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Trash2, Plus, ListPlus, Settings, Building2, Info} from "lucide-react";
+import { Trash2, Plus, ListPlus, Settings, Building2, Info, Sparkles} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast";
 import { FormError } from "../widgets/form-error";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
-import { createProduct,updateProduct } from "@/lib/actions/product-actions";
+import { createProduct, generateAIDescription,updateProduct } from "@/lib/actions/product-actions";
 import {
     Dialog,
     DialogContent,
@@ -56,7 +56,8 @@ export default function ProductForm({ item }: ProductFormProps) {
     const [showTrackingModal, setShowTrackingModal] = useState(false);
     const [imageUrl, setImageUrl] = useState(item?.image || '');
     const { toast } = useToast();
-    // const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+    const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+    // const [isGeneratingImage, setIsGeneratingImage] = useState(false);
 
 
 
@@ -160,7 +161,7 @@ export default function ProductForm({ item }: ProductFormProps) {
 
         const stored = localStorage.getItem('pagination-products');
         const paginationState = stored ? JSON.parse(stored) : null;
-        console.log('Pagination state:', paginationState);
+        // console.log('Pagination state:', paginationState);
 
         setResponse(undefined);
         const productData = {
@@ -196,7 +197,37 @@ export default function ProductForm({ item }: ProductFormProps) {
             }
         });
     };
-    // const handleGenerateDescription = async () => {
+    const handleGenerateDescription = async () => {
+        const name = form.getValues('name');
+        const category = form.getValues('category');
+
+        if (!name || !category) {
+            toast({
+                variant: "destructive",
+                title: "Missing Information",
+                description: "Please enter a product name and select a category first."
+            });
+            return;
+        }
+
+        setIsGeneratingDescription(true);
+        try {
+            const aiDescription = await generateAIDescription(name, category);
+            form.setValue('description', aiDescription);
+        } catch (error) {
+            console.error("Error generating description:", error);
+            toast({
+                variant: "destructive",
+                title: "Description Generation Failed",
+                description: "Unable to generate description. Please try again."
+            });
+        } finally {
+            setIsGeneratingDescription(false);
+        }
+    };
+
+
+    // const handleGenerateDescriptionAndImage = async () => {
     //     const name = form.getValues('name');
     //     const category = form.getValues('category');
 
@@ -210,17 +241,30 @@ export default function ProductForm({ item }: ProductFormProps) {
     //     }
 
     //     setIsGeneratingDescription(true);
+    //     setIsGeneratingImage(true);
+
     //     try {
+    //         // Generate description first
     //         const aiDescription = await generateAIDescription(name, category);
     //         form.setValue('description', aiDescription);
+
+    //         // Then generate image based on the description
+    //         const generatedImageUrl = await generateAIImage(aiDescription, name);
+    //         setImageUrl(generatedImageUrl);
+
+    //         toast({
+    //             title: "Success",
+    //             description: "AI description and image generated successfully!"
+    //         });
     //     } catch (error) {
     //         toast({
     //             variant: "destructive",
-    //             title: "Description Generation Failed",
-    //             description: "Unable to generate description. Please try again."
+    //             title: "Generation Failed",
+    //             description: "Unable to generate content. Please try again."
     //         });
     //     } finally {
     //         setIsGeneratingDescription(false);
+    //         setIsGeneratingImage(false);
     //     }
     // };
 
@@ -279,7 +323,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             <FormItem>
                                                 <div className="flex items-center justify-between">
                                                     <FormLabel>Description</FormLabel>
-                                                    {/* <Button
+                                                    <Button
                                                         type="button"
                                                         variant="default"
                                                         size="sm"
@@ -288,7 +332,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                     >
                                                         <Sparkles className="w-4 h-4 mr-2" />
                                                         Generate AI Description
-                                                    </Button> */}
+                                                    </Button>
                                                 </div>
                                                 <FormControl>
                                                     <Textarea
@@ -303,6 +347,49 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             </FormItem>
                                         )}
                                     />
+                                    {/* <FormField
+                                        control={form.control}
+                                        name="description"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <div className="flex items-center justify-between">
+                                                    <FormLabel>Description</FormLabel>
+                                                    <div className="flex gap-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            size="sm"
+                                                            onClick={handleGenerateDescription}
+                                                            disabled={isGeneratingDescription || isPending}
+                                                        >
+                                                            <Sparkles className="w-4 h-4 mr-2" />
+                                                            Generate Description
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="default"
+                                                            size="sm"
+                                                            onClick={handleGenerateDescriptionAndImage}
+                                                            disabled={isGeneratingDescription || isGeneratingImage || isPending}
+                                                        >
+                                                            <Wand2 className="w-4 h-4 mr-2" />
+                                                            Generate Both
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                <FormControl>
+                                                    <Textarea
+                                                        {...field}
+                                                        value={field.value ?? ""}
+                                                        placeholder="Enter product description"
+                                                        disabled={isPending}
+                                                        className="resize-none h-32"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    /> */}
                                 </div>
                             </div>
 

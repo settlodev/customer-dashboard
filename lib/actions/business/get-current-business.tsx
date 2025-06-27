@@ -13,21 +13,30 @@ import {getBusiness} from "@/lib/actions/business/get";
 import {redirect} from "next/navigation";
 import { signOut } from "next-auth/react";
 
+
+const isAuthError = (error: any): boolean => {
+    return error?.status === 401 || 
+           error?.status === 403 || 
+           error?.message?.toLowerCase().includes('auth') ||
+           error?.message?.toLowerCase().includes('token');
+};
+
 export const getCurrentBusiness = async (): Promise<Business | undefined> => {
     try {
         // Check for existing business cookie
-        const businessCookie = cookies().get("currentBusiness");
+        const cookieStore = await cookies();
+        const businessCookie = cookieStore.get("currentBusiness");
 
         // If cookie exists, try to parse it
         if (businessCookie) {
             try {
                 const parsedBusiness = JSON.parse(businessCookie.value) as Business;
-                // console.log('Successfully parsed business from cookie');
+                
                 
                 return parsedBusiness;
             } catch (error) {
                 console.error('Failed to parse business cookie:', error);
-                cookies().delete("currentBusiness");
+                cookieStore.delete("currentBusiness");
             }
         }
 
@@ -41,16 +50,13 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
         }
 
         if (!currentLocation.business) {
-            // console.warn('No business ID found in current location');
+            
             return undefined;
         }
 
-        // console.log('Attempting to get business with ID:', currentLocation.business);
         const currentBusiness = await getBusiness(currentLocation.business);
-        console.log('getBusiness returned data');
 
         if (!currentBusiness) {
-            // console.warn('No business found for ID:', currentLocation.business);
             return undefined;
         }
 
@@ -65,8 +71,9 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
 };
 
 export const getCurrentLocation = async (): Promise<Location | undefined> => {
-    const locationCookie = cookies().get("currentLocation");
-   
+    const cookieStore = await cookies();
+    const locationCookie = cookieStore.get("currentLocation");
+
     if (!locationCookie) return undefined;
 
     try {
@@ -77,32 +84,73 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
     }
 };
 
-export const getBusinessDropDown = async (): Promise<Business[] | null> => {
+export const getBusinessDropDown = async (retryCount = 0): Promise<Business[] | null> => {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 500;
+
     try {
         const authToken = await getAuthToken();
 
-        const userId = authToken?.id as UUID;
-        const myEndpoints = endpoints({userId: userId});
+       
+        if (!authToken) {
+            if (retryCount < MAX_RETRIES) {
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                return getBusinessDropDown(retryCount + 1);
+            }
+            console.log("No auth token found, redirecting to login");
+            return null;
+        }
 
+        const userId = authToken?.id as UUID;
+        
+        if (!userId) {
+            console.log("Invalid user ID in auth token, redirecting to login");
+            return null;
+        }
+
+        const myEndpoints = endpoints({ userId: userId });
         const apiClient = new ApiClient();
 
         try {
             const data = await apiClient.get(myEndpoints.business.list.endpoint);
             return parseStringify(data);
         } catch (apiError: any) {
-            // Check for specific API errors
-            if (apiError.status === 403 && apiError.code === 'FORBIDDEN') {
-                console.error("API authentication failed:", apiError.message);
+            
+            if (apiError.status === 401 || apiError.status === 403) {
+                console.error("Authentication/authorization failed, redirecting to login");
                 return null;
             }
 
+            
+            if (retryCount < MAX_RETRIES && (
+                apiError.status >= 500 || 
+                apiError.code === 'NETWORK_ERROR' ||
+                apiError.name === 'NetworkError'
+            )) {
+                console.log(`Server/network error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+                return getBusinessDropDown(retryCount + 1);
+            }
+
+            // For other client errors (4xx), don't retry
             console.error("API request failed:", apiError);
             throw apiError;
         }
     } catch (error) {
+
+        if (error instanceof Error && error.message === 'NEXT_REDIRECT') {
+            throw error;
+          }
+
         console.error("Failed to get business list:", error);
 
-        // await signOut();
+        
+        if (retryCount < MAX_RETRIES && !isAuthError(error)) {
+            console.log(`Unexpected error, retrying... (${retryCount + 1}/${MAX_RETRIES})`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            return getBusinessDropDown(retryCount + 1);
+        }
+
         return null;
     }
-}
+};
