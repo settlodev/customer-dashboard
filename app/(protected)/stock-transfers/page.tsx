@@ -60,7 +60,7 @@ function Page({searchParams}: Params) {
     }, []);
 
     useEffect(() => {
-        if (resolvedParams === null) return; // Wait for params to be resolved
+        if (resolvedParams === null) return; 
         
         const fetchStockTransfers = async () => {
             const responseData = await searchStockTransfers(q, page, pageLimit);

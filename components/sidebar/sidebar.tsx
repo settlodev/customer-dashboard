@@ -1,11 +1,9 @@
-
-
 "use client";
 
 import React, { useState, useEffect } from "react";
 import { CompaniesDropdown } from "./companies-dropdown";
 import { BusinessPropsType } from "@/types/business/business-props-type";
-import { menuItems } from "@/types/menu_items";
+import { menuItems} from "@/types/menu_items";
 import Link from "next/link";
 import {
     UsersIcon,
@@ -19,7 +17,8 @@ import {
     X,
     CreditCard,
     MenuIcon,
-    AlertTriangle
+    AlertTriangle,
+    Warehouse
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,29 +32,41 @@ import VersionDisplay from "../widgets/versioning";
 import { ActiveSubscription } from "@/types/subscription/type";
 import { getActiveSubscription } from "@/lib/actions/subscriptions";
 import { UrlObject } from "url";
+import { MenuType } from "@/types/menu-item-type";
+import { getActiveSubscriptionForWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 
 interface SidebarProps {
     data: BusinessPropsType;
     isMobile?: boolean;
     onClose?: () => void;
+    menuType?: MenuType;
 }
 
-const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
+const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: SidebarProps) => {
     const [visibleIndex, setVisibleIndex] = useState<number>(0);
     const [subscription, setSubscription] = useState<ActiveSubscription | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [, setError] = useState<string | null>(null);
 
-    // Fetch subscription on component mount
+    // Fetch subscription based on menu type
     useEffect(() => {
         const fetchSubscription = async () => {
             try {
                 setIsLoading(true);
-                const activeSubscription = await getActiveSubscription();
-                setSubscription(activeSubscription);
                 setError(null);
+                
+                let activeSubscription: ActiveSubscription | null = null;
+                
+                if (menuType === 'warehouse') {
+                    activeSubscription = await getActiveSubscriptionForWarehouse();
+                } else {
+                    // Default to normal/location subscription
+                    activeSubscription = await getActiveSubscription();
+                }
+                
+                setSubscription(activeSubscription);
             } catch (err) {
-                console.error('Failed to fetch subscription:', err);
+                console.error(`Failed to fetch ${menuType} subscription:`, err);
                 setError('Failed to load subscription data');
                 setSubscription(null);
             } finally {
@@ -64,9 +75,9 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
         };
 
         fetchSubscription();
-    }, []);
+    }, [menuType]); // Re-run when menuType changes
 
-    // Check if subscription is expired, null, or empty
+    //Check if subscription is expired, null, or empty
     const isSubscriptionInactive = !subscription || 
                                    subscription.subscriptionStatus === 'EXPIRED' || 
                                    subscription.subscriptionStatus === null || 
@@ -75,6 +86,7 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
     // Get filtered menu items based on subscription
     const myMenuItems = menuItems({
         subscription,
+        menuType,
         isCurrentItem: false
     });
 
@@ -84,6 +96,7 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
         const icons = {
             dashboard: <ChartNoAxesColumn size={size} color={color} />,
             inventory: <Package2 size={size} color={color} />,
+            stock: <Warehouse size={size} color={color} />,
             sales: <ReceiptText size={size} color={color} />,
             customers: <ContactIcon size={size} color={color} />,
             users: <UsersIcon size={size} color={color} />,
@@ -97,10 +110,18 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
 
     if (!business) return null;
 
+    // Added menu type indicator for UX clarity
+    const menuTypeLabel = menuType === 'warehouse' ? 'Warehouse' : 'Location';
+
     return (
         <div className="flex h-full flex-col">
             <div className="flex items-center justify-between border-b border-gray-700 p-4">
-                <CompaniesDropdown data={data}/>
+                <div className="flex items-center">
+                    <CompaniesDropdown data={data}/>
+                    <span className="ml-2 text-xs px-2 py-1 bg-gray-700 rounded-md text-gray-200">
+                        {menuTypeLabel}
+                    </span>
+                </div>
                 {isMobile && (
                     <Button
                         variant="ghost"
@@ -118,7 +139,8 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
                     <div className="flex items-center justify-center h-32">
                         <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                ) : isSubscriptionInactive ? (
+                ) 
+                : isSubscriptionInactive ? (
                     // Show only subscription warning and billing link when subscription is inactive
                     <div className="p-4">
                         <div className="text-center mb-6">
@@ -127,17 +149,18 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
                                 Subscription Required
                             </h3>
                             <p className="text-sm text-gray-400 mb-4">
-                                Your subscription has expired or is inactive. Please renew to access all features.
+                                Your {menuTypeLabel.toLowerCase()} subscription has expired or is inactive. Please renew to access all features.
                             </p>
                            
                         </div>
                         
                     </div>
-                ) : myMenuItems.length === 0 ? (
+                ) 
+                : myMenuItems.length === 0 ? (
                     <div className="p-4 text-center">
                         <AlertTriangle className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-400">
-                            No menu items available for your subscription
+                            No menu items available for your {menuTypeLabel.toLowerCase()} subscription
                         </p>
                         <Link
                             href="/renew-subscription"
@@ -213,7 +236,7 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
             </div>
 
             <div className="border-t border-gray-700 p-4">
-                {/* Always show billing and settings links at the bottom */}
+                
                 <Link
                     href="/renew-subscription"
                     onClick={isMobile ? onClose : undefined}
@@ -253,14 +276,14 @@ const SidebarContent = ({ data, isMobile, onClose }: SidebarProps) => {
     );
 };
 
-export const SidebarWrapper = ({ data }: { data: BusinessPropsType }) => {
+export const SidebarWrapper = ({ data, menuType = 'normal' }: { data: BusinessPropsType, menuType?: MenuType }) => {
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
         <>
             {/* Desktop Sidebar */}
             <aside className="hidden lg:block left-0 top-0 h-screen w-80 bg-gray-800">
-                <SidebarContent data={data} />
+                <SidebarContent data={data} menuType={menuType} />
             </aside>
 
             {/* Mobile Sidebar */}
@@ -280,6 +303,7 @@ export const SidebarWrapper = ({ data }: { data: BusinessPropsType }) => {
                         data={data}
                         isMobile={true}
                         onClose={() => setIsSidebarOpen(false)}
+                        menuType={menuType}
                     />
                 </SheetContent>
             </Sheet>
