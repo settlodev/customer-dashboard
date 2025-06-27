@@ -1,15 +1,17 @@
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
-import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { StockModification } from "@/types/stock-modification/type";
 import { getStockModified } from "@/lib/actions/stock-modification-actions";
 import StockModificationForm from "@/components/forms/stock_modification_form";
 
-export default async function StockModificationPage({params}:{params:{stockVariant:string,id:string}}){
-    const {stockVariant, id} = params
+type  Params = Promise<{ stockVariant:string,id:string}>
+export default async function StockModificationPage({params}: {params: Params}){
+
+    const paramsData = await params
+    const {stockVariant, id} = paramsData
     const isNewItem = id === "new";
     let item: ApiResponse<StockModification> | null = null;
 
@@ -19,7 +21,9 @@ export default async function StockModificationPage({params}:{params:{stockVaria
             if(item.totalElements == 0) notFound();
         }
         catch (error){
-            if(isNotFoundError(error)) throw error;
+            
+                
+            throw error;
 
         }
     }

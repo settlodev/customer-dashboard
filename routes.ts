@@ -20,7 +20,7 @@ export const publicRoutes = [
   
   export const apiAuthPrefix = "/api/auth";
   export const UPDATE_PASSWORD_URL = "/update-password";
-  export const VERIFICATION_REDIRECT_URL = "/user-verification"; // This should NOT be in authRoutes
+  export const VERIFICATION_REDIRECT_URL = "/user-verification";
   export const VERIFICATION_PAGE = "/email-verification";
   export const DEFAULT_LOGIN_REDIRECT_URL = "/business-registration";
   export const COMPLETE_ACCOUNT_REGISTRATION_URL = "/business-registration";

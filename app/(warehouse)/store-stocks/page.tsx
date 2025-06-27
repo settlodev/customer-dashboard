@@ -11,16 +11,20 @@ import { CSVStockDialog } from "@/components/csv/stockCsvImport";
 import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
 
 const breadCrumbItems = [{title: "Stock", link: "/stocks"}];
- type ParamsProps ={
-     searchParams:{
-         [key:string]:string | undefined
-     }
- };
- async function StockPage({searchParams}:ParamsProps) {
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
+};
+ async function StockPage({searchParams}:Params) {
 
-     const q = searchParams.search || "";
-     const page = Number(searchParams.page) || 0;
-     const pageLimit = Number(searchParams.limit);
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
      const responseData = await searchStock(q,page,pageLimit);
 

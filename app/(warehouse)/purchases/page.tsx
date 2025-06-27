@@ -16,16 +16,20 @@ import { Plus } from "lucide-react";
 
 const breadcrumbItems = [{ title: "Purchase", link: "/purchases" }];
 
-type ParamsProps = {
-    searchParams: {
-        [key: string]: string | undefined;
-    };
+type Params = { 
+    searchParams: Promise<{ 
+        search?: string; 
+        page?: string; 
+        limit?: string; 
+    }> 
 };
 
-export default async function Page({ searchParams }: ParamsProps) {
-    const q = searchParams.search || "";
-    // const page = Number(searchParams.page) || 0;
-    // const pageLimit = Number(searchParams.limit);
+export default async function Page({searchParams}:Params) {
+    const resolvedSearchParams = await searchParams;
+    
+    const q = resolvedSearchParams.search || "";
+    // const page = Number(resolvedSearchParams.page) || 0;
+    // const pageLimit = Number(resolvedSearchParams.limit);
 
     // const responseData = await searchPurchases(q, page, pageLimit);
     // const data = responseData.content;

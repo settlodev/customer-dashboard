@@ -14,11 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
-import { FormError } from "../widgets/form-error";
-import { FormSuccess } from "../widgets/form-success";
 import { fetchStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { fetchAllStaff } from "@/lib/actions/staff-actions";
@@ -26,13 +22,18 @@ import { NumericFormat } from "react-number-format";
 import { StockModification } from "@/types/stock-modification/type";
 import { StockModificationSchema } from "@/types/stock-modification/schema";
 import { createStockModification } from "@/lib/actions/stock-modification-actions";
-import { Textarea } from "../ui/textarea";
 import { reasonForStockModification } from "@/types/enums";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import { FormResponse } from "@/types/types";
 import { useRouter, useSearchParams } from "next/navigation";
-import StockVariantSelector from "../widgets/stock-variant-selector";
+import SubmitButton from "@/components/widgets/submit-button";
+import CancelButton from "@/components/widgets/cancel-button";
+import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import StaffSelectorWidget from "@/components/widgets/staff_selector_widget";
+import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import { FormError } from "@/components/widgets/form-error";
+import { FormSuccess } from "@/components/widgets/form-success";
+
 
 function StockModificationForm({ item }: { item: StockModification | null | undefined }) {
     const [isPending, startTransition] = useTransition();

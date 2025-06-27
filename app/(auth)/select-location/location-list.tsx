@@ -47,7 +47,7 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
                 address: warehouse.address,
                 city: warehouse.city,
                 type: "warehouse",
-                subscriptionStatus: "ACTIVE" // Assuming all warehouses are active
+                subscriptionStatus: "ACTIVE" 
             }));
         } else {
             // Only show regular locations
@@ -85,7 +85,7 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
                 });
                 setIsRedirecting(true);
                 setTimeout(() => {
-                    window.location.href = `/renew-subscription?location=${location.id}`;
+                    window.location.href = `/renew-subscription?location=${item.id}`;
                 }, 3000);
             } else {
                 setIsRedirecting(true);

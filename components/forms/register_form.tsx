@@ -551,11 +551,11 @@ function RegisterForm({ step }: { step: string }) {
                                 <CardContent>
                                     <FormError message={error ? `${error}. Please log in to resend the email for verification.` : ""} />
                                         <CardDescription className="font-normal">
-                                            We've sent an activation link to your email address. Please check your email and click the link to verify your account.
+                                            We&apos;ve sent an activation link to your email address. Please check your email and click the link to verify your account.
                                         </CardDescription>
     
                                         <CardDescription className="font-normal text-sm text-muted-foreground mt-2">
-                                            <strong>Haven't received the email?</strong> Check your spam/junk folder, or click the button below to resend it. 
+                                            <strong>Haven&apos;t received the email?</strong> Check your spam/junk folder, or click the button below to resend it. 
                                             Make sure the email address is correct and try adding our domain to your safe sender list.
                                         </CardDescription>
 

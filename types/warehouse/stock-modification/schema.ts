@@ -1,5 +1,6 @@
+import { reasonForStockModification } from "@/types/enums";
 import {boolean, object, string, preprocess, number, nativeEnum} from "zod";
-import { reasonForStockModification } from "../enums";
+
 
 export const StockModificationSchema = object({
     stockVariant:string({message:"Please select a stock variant"}).uuid(),
