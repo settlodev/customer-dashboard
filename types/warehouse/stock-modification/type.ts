@@ -1,5 +1,5 @@
+import { reasonForStockModification } from "@/types/enums"
 import { UUID } from "crypto"
-import { reasonForStockModification } from "../enums"
 
 export declare interface StockModification {
     id: UUID,

@@ -14,7 +14,7 @@ import {ExtendedUser, FormResponse} from "@/types/types";
 import { parseStringify } from "@/lib/utils";
 import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie, getUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
-import {sendPasswordResetEmail, sendVerificationEmail} from "./emails/send";
+import {sendPasswordResetEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
 
 
@@ -395,10 +395,10 @@ export const resendVerificationEmail = async (name: any, email: any): Promise<Fo
     const apiClient = new ApiClient();
 
     try {
-        const response = await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
-        if(response) {
-            await sendVerificationEmail(name, response as string, email);
-        }
+       await apiClient.put(`/api/auth/generate-verification-token/${email}`, {});
+        // if(response) {
+        //     await sendVerificationEmail(name, response as string, email);
+        // }
         return parseStringify({
             responseType: "success",
             message: "Verification email sent successfully",

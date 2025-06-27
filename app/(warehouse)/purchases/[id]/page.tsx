@@ -13,13 +13,17 @@ import { Purchase } from "@/types/warehouse/purchase/type";
 import { getPurchase } from "@/lib/actions/warehouse/purchases-action";
 import PurchaseForm from "@/components/forms/warehouse/purchase_form";
 
-export default async function PurchasePage({params}: { params: { id: string }; }) {
-    const isNewItem = params.id === "new";
+type Params = Promise<{id:string}>
+export default async function PurchasePage({params}: {params: Params}) {
+
+
+    const resolvedParams = await params;
+    const isNewItem = resolvedParams.id === "new";
     let item: ApiResponse<Purchase> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getPurchase(params.id as UUID);
+            item = await getPurchase(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
             console.log(error)

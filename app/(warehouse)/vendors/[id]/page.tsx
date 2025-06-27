@@ -1,27 +1,27 @@
 import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
-import {isNotFoundError} from "next/dist/client/components/not-found";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { Supplier } from "@/types/supplier/type";
 import { getSupplier } from "@/lib/actions/supplier-actions";
 import SupplierForm from "@/components/forms/supplier_form";
 
+type Params = Promise<{ id: string }>;
+export default async function SupplierPage({params}: {params: Params}){
 
-export default async function SupplierPage({params}:{params:{id:string}}){
-
-    const isNewItem = params.id === "new";
+    const paramsData = await params
+    const isNewItem = paramsData.id === "new";
     let item: ApiResponse<Supplier> | null = null;
 
     if(!isNewItem){
         try{
-            item = await  getSupplier(params.id as UUID);
+            item = await  getSupplier(paramsData.id as UUID);
             if(item.totalElements == 0) notFound();
         }
         catch (error){
-            if(isNotFoundError(error)) throw error;
-
+            
+            console.log(error)
             throw new Error("Failed to load supplier details");
         }
     }

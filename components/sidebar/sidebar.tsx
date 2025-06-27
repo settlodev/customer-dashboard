@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -35,6 +33,7 @@ import { ActiveSubscription } from "@/types/subscription/type";
 import { getActiveSubscription } from "@/lib/actions/subscriptions";
 import { UrlObject } from "url";
 import { MenuType } from "@/types/menu-item-type";
+import { getActiveSubscriptionForWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 
 interface SidebarProps {
     data: BusinessPropsType;
@@ -49,16 +48,25 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     const [isLoading, setIsLoading] = useState(true);
     const [, setError] = useState<string | null>(null);
 
-    // Fetch subscription on component mount
+    // Fetch subscription based on menu type
     useEffect(() => {
         const fetchSubscription = async () => {
             try {
                 setIsLoading(true);
-                const activeSubscription = await getActiveSubscription();
-                setSubscription(activeSubscription);
                 setError(null);
+                
+                let activeSubscription: ActiveSubscription | null = null;
+                
+                if (menuType === 'warehouse') {
+                    activeSubscription = await getActiveSubscriptionForWarehouse();
+                } else {
+                    // Default to normal/location subscription
+                    activeSubscription = await getActiveSubscription();
+                }
+                
+                setSubscription(activeSubscription);
             } catch (err) {
-                console.error('Failed to fetch subscription:', err);
+                console.error(`Failed to fetch ${menuType} subscription:`, err);
                 setError('Failed to load subscription data');
                 setSubscription(null);
             } finally {
@@ -67,9 +75,9 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
         };
 
         fetchSubscription();
-    }, []);
+    }, [menuType]); // Re-run when menuType changes
 
-    // Check if subscription is expired, null, or empty
+    //Check if subscription is expired, null, or empty
     const isSubscriptionInactive = !subscription || 
                                    subscription.subscriptionStatus === 'EXPIRED' || 
                                    subscription.subscriptionStatus === null || 
@@ -78,7 +86,6 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     // Get filtered menu items based on subscription
     const myMenuItems = menuItems({
         subscription,
- 
         menuType,
         isCurrentItem: false
     });
@@ -104,7 +111,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     if (!business) return null;
 
     // Added menu type indicator for UX clarity
-    const menuTypeLabel = menuType === 'warehouse' ? 'Warehouse' : 'Shop';
+    const menuTypeLabel = menuType === 'warehouse' ? 'Warehouse' : 'Location';
 
     return (
         <div className="flex h-full flex-col">
@@ -132,7 +139,8 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                     <div className="flex items-center justify-center h-32">
                         <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
                     </div>
-                ) : isSubscriptionInactive ? (
+                ) 
+                : isSubscriptionInactive ? (
                     // Show only subscription warning and billing link when subscription is inactive
                     <div className="p-4">
                         <div className="text-center mb-6">
@@ -141,17 +149,18 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                 Subscription Required
                             </h3>
                             <p className="text-sm text-gray-400 mb-4">
-                                Your subscription has expired or is inactive. Please renew to access all features.
+                                Your {menuTypeLabel.toLowerCase()} subscription has expired or is inactive. Please renew to access all features.
                             </p>
                            
                         </div>
                         
                     </div>
-                ) : myMenuItems.length === 0 ? (
+                ) 
+                : myMenuItems.length === 0 ? (
                     <div className="p-4 text-center">
                         <AlertTriangle className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-400">
-                            No menu items available for your subscription
+                            No menu items available for your {menuTypeLabel.toLowerCase()} subscription
                         </p>
                         <Link
                             href="/renew-subscription"
@@ -227,22 +236,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             </div>
 
             <div className="border-t border-gray-700 p-4">
-                {/* Always show billing and settings links at the bottom */}
-                {/* Menu type toggle button */}
-                {/* <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                        // This would need to be connected to state management
-                        window.location.href = menuType === 'warehouse' 
-                            ? '/' 
-                            : '/warehouse';
-                    }}
-                    className="w-full mb-2 text-gray-300 border-gray-600 hover:bg-gray-700"
-                >
-                    Switch to {menuType === 'warehouse' ? 'Shop' : 'Warehouse'} View
-                </Button> */}
-
+                
                 <Link
                     href="/renew-subscription"
                     onClick={isMobile ? onClose : undefined}

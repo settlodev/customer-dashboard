@@ -13,22 +13,23 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
-import CancelButton from "../widgets/cancel-button";
-import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
-import { FormError } from "../widgets/form-error";
 import { Switch } from "@/components/ui/switch";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema } from "@/types/stock-intake/schema";
 import { createStockIntake, updateStockIntake } from "@/lib/actions/stock-intake-actions";
-import SupplierSelector from "../widgets/supplier-selector";
-import DateTimePicker from "../widgets/datetimepicker";
-import StaffSelectorWidget from "../widgets/staff_selector_widget";
-import StockVariantSelector from "../widgets/stock-variant-selector";
+
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
 import { Calendar, Clock } from "lucide-react";
 import { useSearchParams } from 'next/navigation'
+import { FormError } from "@/components/widgets/form-error";
+import StockVariantSelector from "@/components/widgets/stock-variant-selector";
+import StaffSelectorWidget from "@/components/widgets/staff_selector_widget";
+import DateTimePicker from "@/components/widgets/datetimepicker";
+import SupplierSelector from "@/components/widgets/supplier-selector";
+import CancelButton from "@/components/widgets/cancel-button";
+import SubmitButton from "@/components/widgets/submit-button";
 function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
     const [isPending, startTransition] = useTransition();
