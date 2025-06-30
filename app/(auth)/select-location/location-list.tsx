@@ -189,7 +189,7 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
         
         if (isWarehouse) {
             // Check warehouse subscription status
-            if (item.subscriptionStatus === "PAST_DUE" || 
+            if (item.subscriptionStatus === "EXPIRED" || 
                 item.subscriptionStatus === null || 
                 item.subscriptionStatus === "" || 
                 item.subscriptionStatus === undefined) {
@@ -438,15 +438,6 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
                                             <div className="flex flex-col justify-start gap-2">
                                                 <div className="flex items-center">
                                                     <h3 className="font-medium text-gray-900">{item.name}</h3>
-                                                    <Badge 
-                                                        variant="outline" 
-                                                        className={cn(
-                                                            "ml-2 text-xs",
-                                                            getLocationBadgeStyle(item.type)
-                                                        )}
-                                                    >
-                                                        {item.type || (locationType === "warehouse" ? "Warehouse" : "Location")}
-                                                    </Badge>
                                                 </div>
                                                 {item.city && (
                                                     <div className="flex items-center text-sm text-gray-500">

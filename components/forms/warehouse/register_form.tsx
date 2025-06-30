@@ -106,7 +106,7 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
                     title: "Success",
                     description: "Redirecting to warehouse page...",
                 });
-                router.push('/warehouse');
+                router.push('/select-location');
             } catch (error) {
                 console.error("Error creating warehouse:", error);
                 toast({

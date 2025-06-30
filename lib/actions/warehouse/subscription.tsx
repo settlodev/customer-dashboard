@@ -30,8 +30,6 @@ export const searchWarehousesSubscriptionPackages = async (
             query
         );
 
-        console.log("The warehouses subscription packages are: ", data)
-
         return parseStringify(data);
 
     } catch (error) {
@@ -77,8 +75,6 @@ export const createWarehouseInvoice = async (
             `/api/warehouse-invoices/${warehouse?.id}/create`,
             payload
         );
-
-        console.log("The invoice response is", response)
     
         return parseStringify(response);
        
@@ -110,7 +106,6 @@ export const payWarehouseInvoice = async (id: UUID, email: string, phone: string
         }
 
         const response = await apiClient.post(`/api/warehouse-invoice-payments/${id}/create`, payload);
-        console.log("The payment response is", response)
 
         return parseStringify(response);
     } catch (error) {
@@ -119,12 +114,10 @@ export const payWarehouseInvoice = async (id: UUID, email: string, phone: string
 };
 
 export const verifyWarehousePayment = async (transactionId: string,invoice?:string) => {
-    console.log("The transaction id is", transactionId)
-    console.log("The invoice id is", invoice)
+ 
     try {
         const apiClient = new ApiClient();
         const response = await apiClient.get(`/api/warehouse-invoice-payments/${invoice}/${transactionId}`);
-        
         return parseStringify(response);
     } catch (error) {
         throw error;
