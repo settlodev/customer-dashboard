@@ -24,7 +24,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import WareHouseRegisterForm from "@/components/forms/warehouse/register_form";
 import { refreshWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 import WarehouseSubscriptionModal from "@/components/widgets/warehouse/warehouse-subscription-modal";
@@ -263,15 +262,7 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
         }
     };
 
-    const getLocationBadgeStyle = (type: string) => {
-        switch(type?.toLowerCase()) {
-            case "warehouse":
-                return "border-blue-200 text-blue-700";
-            default:
-                return "border-emerald-200 text-emerald-700";
-        }
-    };
-
+    
     const getButtonStyle = (item: any, index: number) => {
         if (pendingIndex === index) {
             return "bg-gray-100 text-gray-400";
