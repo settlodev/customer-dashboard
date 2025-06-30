@@ -18,6 +18,7 @@ import { Business } from "@/types/business/type";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import type { Session } from "next-auth";
+import { Warehouses } from "./types/warehouse/warehouse/type";
 
 // Extend NextRequest to include auth property
 interface RequestWithAuth extends NextRequest {
@@ -51,7 +52,7 @@ export default auth(async (req: NextRequest) => {
   // Parse auth token and current business with better error handling
   let authToken: AuthToken | null = null;
   let currentBusiness: Business | null = null;
-  let currentWarehouse: Business | null = null;
+  let currentWarehouse: Warehouses | null = null;
   let cookieParseError = false;
 
   try {
@@ -75,24 +76,19 @@ export default auth(async (req: NextRequest) => {
     cookieParseError = true;
   }
 
-  // console.log("  AuthToken exists:", !!authToken);
-  // console.log("  Email verified:", authToken?.emailVerified);
-  // console.log("  Business complete:", authToken?.businessComplete);
-  // console.log("  Current business exists:", !!currentBusiness);
-
+ 
   // Handle unauthenticated users or cookie parse errors
   if (!isLoggedIn || cookieParseError) {
-    // console.log("  🚫 User not logged in or cookie error");
+
     
     // Allow access to auth routes (including user-verification)
     if (authRoutes.includes(nextUrl.pathname)) {
-      // console.log("  ✅ Allowing auth route for unauthenticated user");
       return NextResponse.next();
     }
     
     // Only redirect to login if we're not already there
     if (nextUrl.pathname !== "/login") {
-      // console.log("  🔄 Redirecting to login");
+      
       return NextResponse.redirect(new URL("/login", nextUrl));
     }
     return NextResponse.next();
@@ -101,14 +97,12 @@ export default auth(async (req: NextRequest) => {
   // CRITICAL: Check if current path is user-verification - allow it immediately if email not verified
   if (nextUrl.pathname === VERIFICATION_REDIRECT_URL && authToken?.emailVerified === null) {
 
-    // console.log("  ✅ Allowing access to user-verification page");
     return NextResponse.next();
   }
 
   // Handle authenticated users trying to access other auth routes
   if (authRoutes.includes(nextUrl.pathname) && nextUrl.pathname !== VERIFICATION_REDIRECT_URL) {
 
-    // console.log("  🔄 Redirecting authenticated user away from auth route");
     return NextResponse.redirect(new URL(DEFAULT_LOGIN_REDIRECT_URL, nextUrl));
   }
 
@@ -181,7 +175,6 @@ export default auth(async (req: NextRequest) => {
     // Check redirect chain
     for (const { name, condition, destination, allowedPath } of redirectChain) {
       if (condition()) {
-        console.log(`  🎯 ${name} condition met`);
         // Only redirect if we're not already at the allowed path
         if (nextUrl.pathname !== allowedPath) {
           // console.log(`  🔄 Redirecting to ${destination}`);

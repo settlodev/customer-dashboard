@@ -54,8 +54,7 @@ export const createBusinessLocation = async (
             payload
         );
 
-        // console.log('Location creation response:', response);
-
+        
         if (!response) {
             throw new Error('No response received from server');
         }
@@ -81,7 +80,7 @@ export const createBusinessLocation = async (
         if (error?.digest?.startsWith('NEXT_REDIRECT')) {
             throw error; 
         }
-        console.error('Location creation error:', error);
+        
         return parseStringify({
             responseType: 'error',
             message: error.message ?? 'Something went wrong while processing your request, please try again',

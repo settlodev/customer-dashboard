@@ -1,0 +1,132 @@
+'use server'
+import ApiClient from "@/lib/settlo-api-client";
+import { parseStringify } from "@/lib/utils";
+import { ApiResponse, FormResponse } from "@/types/types";
+import { warehouseInvoiceSchema } from "@/types/warehouse/invoice/schema";
+import { z } from "zod";
+import { getCurrentWarehouse } from "./register-action";
+import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { UUID } from "crypto";
+
+export const searchWarehousesSubscriptionPackages = async (
+): Promise<ApiResponse<any>> => {
+
+    
+        const q = "";
+        const page = 0;
+        const pageLimit = 10;
+    try {
+        
+        const query = {
+            q,
+            page: page ? page - 1 : 0,
+            size: pageLimit ? pageLimit : 10,
+        };
+
+
+        const apiClient = new ApiClient();
+        const data = await apiClient.post(
+            `/api/warehouse-subscription-packages`,
+            query
+        );
+
+        console.log("The warehouses subscription packages are: ", data)
+
+        return parseStringify(data);
+
+    } catch (error) {
+        console.error('Error in search warehouses:', error);
+        throw error;
+    }
+};
+
+export const createWarehouseInvoice = async (
+    invoice: z.infer<typeof warehouseInvoiceSchema>
+    
+): Promise<FormResponse | void> => {
+    let formResponse: FormResponse | null = null;
+    
+    
+    const validatedInvoiceData = warehouseInvoiceSchema.safeParse(invoice);
+
+    if (!validatedInvoiceData.success) {
+        formResponse = {
+            responseType: "error",
+            message: "Please fill in all the fields marked with * before proceeding",
+            error: new Error(validatedInvoiceData.error.message),
+        };
+
+        return parseStringify(formResponse);
+    }
+
+   
+        
+        const warehouse = await getCurrentWarehouse();
+    
+    
+    const payload = {
+        ...validatedInvoiceData.data,
+    };
+
+    // console.log("The payload is",payload)
+
+    try {
+        const apiClient = new ApiClient();
+
+       const response = await apiClient.post(
+            `/api/warehouse-invoices/${warehouse?.id}/create`,
+            payload
+        );
+
+        console.log("The invoice response is", response)
+    
+        return parseStringify(response);
+       
+    } catch (error: unknown) {
+        formResponse = {
+            responseType: "error",
+            message:
+                "Something went wrong while processing your request, please try again",
+            error: error instanceof Error ? error : new Error(String(error)),
+        };
+    }
+
+   
+};
+
+
+export const payWarehouseInvoice = async (id: UUID, email: string, phone: string)=> {
+    if (!id) throw new Error("Invoice ID is required to perform this request");
+
+    await getAuthenticatedUser();
+
+    try {
+        const apiClient = new ApiClient();
+        
+        const payload = {
+            email: email,
+            phone: phone,
+            provider: "SELCOM"
+        }
+
+        const response = await apiClient.post(`/api/warehouse-invoice-payments/${id}/create`, payload);
+        console.log("The payment response is", response)
+
+        return parseStringify(response);
+    } catch (error) {
+        throw error;
+    }
+};
+
+export const verifyWarehousePayment = async (transactionId: string,invoice?:string) => {
+    console.log("The transaction id is", transactionId)
+    console.log("The invoice id is", invoice)
+    try {
+        const apiClient = new ApiClient();
+        const response = await apiClient.get(`/api/warehouse-invoice-payments/${invoice}/${transactionId}`);
+        
+        return parseStringify(response);
+    } catch (error) {
+        throw error;
+    }
+}

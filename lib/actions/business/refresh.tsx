@@ -51,9 +51,7 @@ export const refreshBusiness = async (data: Business): Promise<void> => {
         maxAge: 60 * 60 * 24
     });
 
-    // const verificationCookie = cookieStore.get("currentBusiness");
-    // console.log("Verification - Cookie set:", verificationCookie?.value);
-
+    
     revalidatePath("/", "layout");
 };
 
