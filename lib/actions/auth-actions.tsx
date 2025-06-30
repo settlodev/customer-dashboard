@@ -16,7 +16,6 @@ import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie
 import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
-import { cookies } from "next/headers";
 
 
 
