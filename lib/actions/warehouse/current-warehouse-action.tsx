@@ -13,7 +13,6 @@ export const getCurrentWarehouse = async (): Promise<any | undefined> => {
 
     try {
         return JSON.parse(warehouseCookie.value) as any;
-        // console.log("The cookie is: ", warehouseCookie?.value)
     } catch (error) {
         console.error("Failed to parse Warehouse cookie:", error);
         return undefined;
@@ -28,7 +27,6 @@ export const refreshWarehouse = async (data: any): Promise<void> => {
         sameSite: "strict"
     });
 
-    console.log("The cookie is: ", cookieStore.get("currentWarehouse"))
     revalidatePath("/warehouse");
 };
 
