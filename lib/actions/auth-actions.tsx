@@ -16,6 +16,7 @@ import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie
 import ApiClient from "@/lib/settlo-api-client";
 import {sendPasswordResetEmail} from "./emails/send";
 import {revalidatePath} from "next/cache";
+import { cookies } from "next/headers";
 
 
 
@@ -156,6 +157,9 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
        
 
         if (tokenResponse == token) {
+
+            await deleteAuthCookie();
+        
             revalidatePath("/user-verification");
             revalidatePath("/business-registration");
             revalidatePath("/login");
