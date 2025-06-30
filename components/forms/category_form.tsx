@@ -1,221 +1,239 @@
-"use server";
+"use client";
 
-import { UUID } from "node:crypto";
-
-import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import React, {useCallback, useEffect, useState, useTransition} from "react";
+import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
+import { Separator } from "../ui/separator";
 
-import { getAuthenticatedUser } from "@/lib/auth-utils";
-import { parseStringify } from "@/lib/utils";
-import ApiClient from "@/lib/settlo-api-client";
-import {ApiResponse, FormResponse} from "@/types/types";
+import {
+    Form,
+    FormControl,
+    FormField,
+    FormItem, FormLabel,
+    FormMessage,
+} from "@/components/ui/form";
+import {createCategory, fetchAllCategories, updateCategory} from "@/lib/actions/category-actions";
+import CancelButton from "@/components/widgets/cancel-button";
+import { SubmitButton } from "@/components/widgets/submit-button";
 import {Category} from "@/types/category/type";
+import {FormResponse} from "@/types/types";
 import {CategorySchema} from "@/types/category/schema";
-import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
+import {FormError} from "@/components/widgets/form-error";
+import {Input} from "@/components/ui/input";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
+import ProductCategorySelector from "@/components/widgets/product-category-selector";
+import ItemStatusSelector from "@/components/widgets/item-status-selector";
+import {ItemStatuses} from "@/types/constants";
+import {useToast } from "@/hooks/use-toast";
+import {Tag} from "lucide-react";
+import {Card, CardContent, CardHeader, CardTitle} from "../ui/card";
+import { useRouter } from "next/navigation";
+
+const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
+
+    const [isPending, startTransition] = useTransition();
+    const [,setResponse] = useState<FormResponse | undefined>();
+    const [imageUrl, setImageUrl] = useState<string>(item && item.image?item.image: "");
+    const [categories, setCategories] = useState<Category[] | null>([]);
+    const [error,] = useState<string | undefined>("");
+
+    const [status, setStatus] = useState<boolean>(item?item.status: ItemStatuses[0].value);
+    const { toast } = useToast();
+    const router = useRouter();
+
+    useEffect(() => {
+        const getData = async () => {
+            const categories = await fetchAllCategories();
+            setCategories(categories);
+        }
+        getData();
+    }, []);
 
 
-export const fetchAllCategories = async (): Promise<Category[] | null> => {
-    await getAuthenticatedUser();
-
-    try {
-        const location = await getCurrentLocation();
-
-        const apiClient = new ApiClient();
-
-        const categoriesData = await apiClient.get(
-            `/api/categories/${location?.id}`,
-        );
-
-        return parseStringify(categoriesData);
-    } catch (error) {
-        throw error;
-    }
-};
-
-export const searchCategories = async (
-    q: string,
-    page: number,
-    pageLimit: number,
-): Promise<ApiResponse<Category>> => {
-    await getAuthenticatedUser();
-
-    try {
-        const location = await getCurrentLocation();
-        const apiClient = new ApiClient();
-
-        const query = {
-            filters: [
-                {
-                    key: "name",
-                    operator: "LIKE",
-                    field_type: "STRING",
-                    value: q,
-                },
-            ],
-            sorts: [
-                {
-                    key: "name",
-                    direction: "ASC",
-                },
-            ],
-            page: page ? page - 1 : 0,
-            size: pageLimit ? pageLimit : 10,
-        };
-
-
-        const data = await apiClient.post(
-            `/api/categories/${location?.id}`,
-            query,
-        );
-
-        return parseStringify(data);
-
-    } catch (error) {
-        throw error;
-    }
-};
-
-export const createCategory = async (
-    category: z.infer<typeof CategorySchema>,
-    path: string
-): Promise<FormResponse<Category>> => {
-    const authenticatedUser = await getAuthenticatedUser();
-    if ("responseType" in authenticatedUser) {
-        return parseStringify(authenticatedUser);
-    }
-
-    const validatedData = CategorySchema.safeParse(category);
-    if (!validatedData.success) {
-        return parseStringify({
-            responseType: "error",
-            message: "Please fill in all the required fields",
-            error: new Error(validatedData.error.message),
-        });
-    }
-
-    try {
-        const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
-
-        const response = await apiClient.post(
-            `/api/categories/${location?.id}/create`,
-            validatedData.data
-        );
-
-        // Handle revalidation
-        revalidatePath(path);
-
-        return parseStringify({
-            responseType: "success",
-            message: "Category created successfully",
-            data: parseStringify(response)
-        });
-
-    } catch (error: any) {
-        return parseStringify({
-            responseType: "error",
-            message: error.message ?? "Failed to create category. Please try again.",
-            error: error instanceof Error ? error : new Error(String(error)),
-        });
-    }
-};
-
-export const updateCategory = async (
-    id: UUID,
-    category: z.infer<typeof CategorySchema>,
-    context: "product" | "category",
-): Promise<FormResponse | void> => {
-    let formResponse: FormResponse | null = null;
-    const authenticatedUser = await getAuthenticatedUser();
-
-    if ("responseType" in authenticatedUser)
-        return parseStringify(authenticatedUser);
-
-    const validatedData = CategorySchema.safeParse(category);
-
-    if (!validatedData.success) {
-        formResponse = {
-            responseType: "error",
-            message: "Please fill in all the fields marked with * before proceeding",
-            error: new Error(validatedData.error.message),
-        };
-
-        return parseStringify(formResponse);
-    }
-
-    try {
-        const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
-
-        await apiClient.put(
-            `/api/categories/${location?.id}/${id}`,
-            validatedData.data,
-        );
-    } catch (error: unknown) {
-        formResponse = {
-            responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error)),
-        };
-    }
-
-    if (context === "category") {
-        revalidatePath("/categories");
-        redirect("/categories");
-    }
-
-    return parseStringify({
-        responseType: "success",
-        message: "Category created successfully",
+    const form = useForm<z.infer<typeof CategorySchema>>({
+        resolver: zodResolver(CategorySchema),
+        defaultValues: {
+            ...item,
+            image: imageUrl ? imageUrl : (item && item.image?item.image: ""),
+            parentCategory: item?.parentCategory || "",
+            status: item ? item.status : false,
+        }
     });
+    const onInvalid = useCallback(
+        (errors: FieldErrors) => {
+          toast({
+            variant: "destructive",
+            title: "Uh oh! something went wrong",
+            description:typeof errors.message === 'string' && errors.message
+              ? errors.message
+              : "There was an issue submitting your form, please try later",
+          });
+        },
+        [toast]
+      );
 
-};
+    const submitData = (values: z.infer<typeof CategorySchema>) => {
+        setResponse(undefined);
 
-export const getCategory = async (id: UUID): Promise<ApiResponse<Category>> => {
-    const apiClient = new ApiClient();
+        if(imageUrl) values.image = imageUrl;
 
-    const query = {
-        filters: [
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            },
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
+        values.status = status;
+
+        startTransition(() => {
+            if (item) {
+                const updatedValues = {
+                    ...values,
+                    parentCategory: values.parentCategory || item.parentCategory || "",
+                };
+
+                updateCategory(item.id, updatedValues,'category').then((data) => {
+                    if (data) setResponse(data);
+
+                    if(data?.responseType === "success") {
+                        toast({
+                            variant: "default",
+                            title: "Category updated successfully",
+                            description: "Category has been updated successfully",
+                            duration:5000
+                        });
+                    }
+                });
+            } else {
+                createCategory(values, 'category').then((data) => {
+                    if (data) setResponse(data);
+
+                    if(data?.responseType === "success") {
+                        toast({
+                            variant: "default",
+                            title: "Category created successfully",
+                            description: "Category has been created successfully",
+                            duration:5000
+                        });
+                        router.push("/categories");
+                    }
+                });
+            }
+        });
     };
 
-    const location = await getCurrentLocation();
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
+                <FormError message={error} />
 
-    const data = await apiClient.post(
-        `/api/categories/${location?.id}`,
-        query,
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Tag className="w-5 h-5" />
+                            Category Details
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-[110px_1fr] gap-6 items-start">
+                            <div className="space-y-4">
+                                <FormLabel className="block mb-2">Category Image</FormLabel>
+                                <div className="bg-gray-50 rounded-lg p-4 content-center">
+                                    <UploadImageWidget
+                                        imagePath={'categories'}
+                                        displayStyle={'default'}
+                                        displayImage={true}
+                                        showLabel={false}
+                                        label="Image"
+                                        setImage={setImageUrl}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="name"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Category Name</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Tag className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                                    <Input
+                                                        className="pl-10"
+                                                        placeholder="Enter category name"
+                                                        {...field}
+                                                        disabled={isPending}
+                                                    />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="parentCategory"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Parent Category</FormLabel>
+                                                <FormControl>
+                                                    <ProductCategorySelector
+                                                        onChange={field.onChange}
+                                                        onBlur={field.onBlur}
+                                                        isRequired
+                                                        isDisabled={isPending}
+                                                        label="Category"
+                                                        placeholder="Select parent category"
+                                                        categories={categories}
+                                                        value={field.value || ""}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="status"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Category Status</FormLabel>
+                                                <FormControl>
+                                                    <ItemStatusSelector
+                                                        onChange={(newStatus) => {
+                                                            const booleanValue = newStatus === "true";
+                                                            field.onChange(booleanValue);
+                                                            setStatus(booleanValue);
+                                                        }}
+                                                        onBlur={field.onBlur}
+                                                        isRequired
+                                                        isDisabled={isPending}
+                                                        label="Status"
+                                                        value={String(status)}
+                                                        placeholder="Select Status"
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="flex items-center space-x-4 pt-6">
+                    <CancelButton />
+                    <Separator orientation="vertical" className="h-8" />
+                    <SubmitButton
+                        isPending={isPending}
+                        label={item ? "Update category" : "Create category"}
+                    />
+                </div>
+            </form>
+        </Form>
     );
-
-    console.log(data)
-    return parseStringify(data);
 };
 
-export const deleteCategory = async (id: UUID): Promise<void> => {
-    if (!id) throw new Error("Category ID is required to perform this request");
-    await getAuthenticatedUser();
-
-    try {
-        const apiClient = new ApiClient();
-
-        const location = await getCurrentLocation();
-
-        await apiClient.delete(`/api/categories/${location?.id}/${id}`);
-        revalidatePath("/categories");
-    } catch (error: any) {
-        const formattedError = await error;
-        console.error("Error deleting stock", formattedError );
-
-        throw new Error(formattedError.message);
-    }
-};
+export default CategoryForm;

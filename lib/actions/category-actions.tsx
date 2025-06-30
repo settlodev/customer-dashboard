@@ -14,6 +14,7 @@ import {Category} from "@/types/category/type";
 import {CategorySchema} from "@/types/category/schema";
 import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
 
+
 export const fetchAllCategories = async (): Promise<Category[] | null> => {
     await getAuthenticatedUser();
 
@@ -77,23 +78,20 @@ export const searchCategories = async (
 
 export const createCategory = async (
     category: z.infer<typeof CategorySchema>,
-): Promise<FormResponse> => {
-    let formResponse: FormResponse | null = null;
+    path: string
+): Promise<FormResponse<Category>> => {
     const authenticatedUser = await getAuthenticatedUser();
-
-    if ("responseType" in authenticatedUser)
+    if ("responseType" in authenticatedUser) {
         return parseStringify(authenticatedUser);
+    }
 
     const validatedData = CategorySchema.safeParse(category);
-
     if (!validatedData.success) {
-        formResponse = {
+        return parseStringify({
             responseType: "error",
-            message: "Please fill in all the fields marked with * before proceeding",
+            message: "Please fill in all the required fields",
             error: new Error(validatedData.error.message),
-        };
-
-        return parseStringify(formResponse);
+        });
     }
 
     try {
@@ -102,30 +100,31 @@ export const createCategory = async (
 
         const response = await apiClient.post(
             `/api/categories/${location?.id}/create`,
-            validatedData.data,
+            validatedData.data
         );
 
-        return parseStringify(response);
+        // Handle revalidation
+        revalidatePath(path);
 
-    } catch (error: unknown) {
-        formResponse = {
+        return parseStringify({
+            responseType: "success",
+            message: "Category created successfully",
+            data: parseStringify(response)
+        });
+
+    } catch (error: any) {
+        return parseStringify({
             responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
+            message: error.message ?? "Failed to create category. Please try again.",
             error: error instanceof Error ? error : new Error(String(error)),
-        };
+        });
     }
-
-    if (formResponse) {
-        return parseStringify(formResponse);
-    }
-
-    revalidatePath("/categories");
-    redirect("/categories");
 };
 
 export const updateCategory = async (
     id: UUID,
     category: z.infer<typeof CategorySchema>,
+    context: "product" | "category",
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
     const authenticatedUser = await getAuthenticatedUser();
@@ -162,12 +161,16 @@ export const updateCategory = async (
         };
     }
 
-    if (formResponse) {
-        return parseStringify(formResponse);
+    if (context === "category") {
+        revalidatePath("/categories");
+        redirect("/categories");
     }
 
-    revalidatePath("/categories");
-    redirect("/categories");
+    return parseStringify({
+        responseType: "success",
+        message: "Category created successfully",
+    });
+
 };
 
 export const getCategory = async (id: UUID): Promise<ApiResponse<Category>> => {
