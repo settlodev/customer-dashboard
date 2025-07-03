@@ -156,6 +156,9 @@ export const verifyToken = async (token: string): Promise<FormResponse> => {
        
 
         if (tokenResponse == token) {
+
+            await deleteAuthCookie();
+        
             revalidatePath("/user-verification");
             revalidatePath("/business-registration");
             revalidatePath("/login");

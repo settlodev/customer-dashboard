@@ -45,6 +45,19 @@ export const columns: ColumnDef<Recipe>[] = [
         },
     },
     {
+        accessorKey:"cost",
+        enableHiding:false,
+        header: "Cost",
+        cell: ({ row }) => {
+            const cost = row.original.cost;
+            const formattedCost = Intl.NumberFormat().format(cost);
+            return <div className="text-black p-0 text-center ">
+                {formattedCost}
+                <span className="text-black text-sm ml-1">TSH</span>
+                </div>;
+        },
+    },
+    {
         id: "status",
         accessorKey: "status",
         header: ({ column }) => {
