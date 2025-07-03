@@ -153,6 +153,8 @@ export const getRecipe= async (id:UUID) : Promise<ApiResponse<Recipe>> => {
         query,
     );
 
+    console.log("The recipe is: ", recipe)
+
     return parseStringify(recipe)
 }
 
