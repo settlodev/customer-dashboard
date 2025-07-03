@@ -76,7 +76,7 @@ export default auth(async (req: NextRequest) => {
     cookieParseError = true;
   }
 
- 
+
   // Handle unauthenticated users or cookie parse errors
   if (!isLoggedIn || cookieParseError) {
 
@@ -114,6 +114,18 @@ export default auth(async (req: NextRequest) => {
     return NextResponse.redirect(new URL("/select-location", nextUrl));
   }
 
+  // In your middleware, after the warehouse route check:
+if (isWarehouseRoute && !currentWarehouse) {
+  // If accessing warehouse routes without a current warehouse, redirect to select-location
+  return NextResponse.redirect(new URL("/select-location", nextUrl));
+}
+
+// Add this check for select-location page
+if (nextUrl.pathname === "/select-location" && authToken?.locationComplete && !currentBusiness) {
+  // If on select-location but no business selected, redirect to select business
+  return NextResponse.redirect(new URL(SELECT_BUSINESS_URL, nextUrl));
+}
+  
   // Handle case where user is logged in but no authToken in cookies
   if (isLoggedIn && !authToken) {
     // console.log("  ⚠️ Logged in but no authToken");

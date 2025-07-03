@@ -17,7 +17,6 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema } from "@/types/stock-intake/schema";
-import { createStockIntake, updateStockIntake } from "@/lib/actions/stock-intake-actions";
 
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
@@ -30,7 +29,8 @@ import DateTimePicker from "@/components/widgets/datetimepicker";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import CancelButton from "@/components/widgets/cancel-button";
 import SubmitButton from "@/components/widgets/submit-button";
-function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
+import { createStockIntakeForWarehouse, updateStockIntakeFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
+function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
@@ -89,18 +89,18 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
         };
         startTransition(() => {
             if (item) {
-                updateStockIntake(item.id, updatedValues).then((data) => {
+                updateStockIntakeFromWarehouse(item.id, updatedValues).then((data) => {
                     if (data) setResponse(data);
                     if (data && data.responseType === "success") {
                         toast({
                             title: "Success",
                             description: data.message,
                         });
-                        router.push("/stock-intakes");
+                        router.push("/warehouse-stock-intakes");
                     }
                 });
             } else {
-                createStockIntake(values,)
+                createStockIntakeForWarehouse(values,)
                     .then((data) => {
                         if (data) setResponse(data);
                         if (data && data.responseType === "success") {
@@ -108,7 +108,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                 title: "Success",
                                 description: data.message,
                             });
-                            router.push("/stock-intakes");
+                            router.push("warehouse-stock-intakes");
                         }
                     })
                     .catch((err) => {
@@ -400,4 +400,4 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     );
 }
 
-export default StockIntakeForm;
+export default WarehouseStockIntakeForm;

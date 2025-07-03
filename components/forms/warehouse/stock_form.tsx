@@ -31,12 +31,13 @@ import { FormError } from "@/components/widgets/form-error";
 import UnitSelector from "@/components/widgets/unit-selector";
 import CancelButton from "@/components/widgets/cancel-button";
 import SubmitButton from "@/components/widgets/submit-button";
+import { createStockFromWarehouse, updateStockFromWarehouse } from "@/lib/actions/warehouse/stock-actions";
 
 type StockFormProps = {
     item: Stock | null | undefined;
 };
 
-export default function StockForm({ item }: StockFormProps) {
+export default function WarehouseStockForm({ item }: StockFormProps) {
     console.log("The stock is", item)
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
@@ -124,7 +125,7 @@ export default function StockForm({ item }: StockFormProps) {
 
             if (item) {
                 console.log('Updating existing stock with ID:', updatedValues);
-                updateStock(item.id, updatedValues, paginationState)
+                updateStockFromWarehouse(item.id, updatedValues, paginationState)
                     .then((data) => {
                         console.log('Update stock response:', data);
                         if (data) setResponse(data);
@@ -134,9 +135,9 @@ export default function StockForm({ item }: StockFormProps) {
                     });
             } else {
                 // console.log('Creating new stock');
-                createStock(updatedValues)
+                createStockFromWarehouse(updatedValues)
                     .then((data) => {
-                        // console.log('Create stock response:', data);
+                        console.log('Create stock response:', data);
                         if (data) setResponse(data);
                     })
                     .catch((error) => {

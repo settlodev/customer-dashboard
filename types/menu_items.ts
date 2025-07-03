@@ -162,10 +162,10 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             current: args?.isCurrentItem,
             icon: 'inventory',
             items: [
-                { title: "Stock Items", link: "/store-stocks", current: args?.isCurrentItem, icon: "home" },
-                { title: "Stock Intake", link: "/store-stock-intakes", current: args?.isCurrentItem, icon: "grid" },
-                { title: "Stock Modification", link: "/store-stock-modifications", current: args?.isCurrentItem, icon: "layers" },
-                { title: "Stock Transfer", link: "/store-stock-transfers", current: args?.isCurrentItem, icon: "truck" },
+                { title: "Stock Items", link: "/warehouse-stock-variants", current: args?.isCurrentItem, icon: "home" },
+                { title: "Stock Intake", link: "/warehouse-stock-intakes", current: args?.isCurrentItem, icon: "grid" },
+                { title: "Stock Modification", link: "/warehouse-stock-modifications", current: args?.isCurrentItem, icon: "layers" },
+                { title: "Stock Transfer", link: "/warehouse-stock-transfers", current: args?.isCurrentItem, icon: "truck" },
             ]
         },
         

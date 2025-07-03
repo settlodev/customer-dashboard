@@ -10,27 +10,9 @@ import {UUID} from "node:crypto";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema, UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
-import { getCurrentLocation } from "../business/get-current-business";
+import { getCurrentWarehouse } from "./current-warehouse-action";
 
-export const fetchStockIntakes = async () : Promise<StockIntake[]> => {
-    await  getAuthenticatedUser();
-
-    try {
-        const apiClient = new ApiClient();
-
-        const location = await getCurrentLocation();
-
-        const data = await  apiClient.get(
-            `/api/stock-intakes/${location?.id}/all`,
-        );
-        // console.log("The list of Stock Intakes in this location: ", data)
-        return parseStringify(data);
-    }
-    catch (error){
-        throw error;
-    }
-}
-export const searchStockIntakes = async (
+export const searchStockIntakesFromWarehouse = async (
     q:string,
     page:number,
     pageLimit:number
@@ -57,13 +39,13 @@ export const searchStockIntakes = async (
             page:page ? page - 1:0,
             size:pageLimit ? pageLimit : 10
         }
-        const location = await getCurrentLocation();
-        // console.log("The location passed is: ", location)
+        const warehouse = await getCurrentWarehouse();
+        console.log("The warehouse is",warehouse)
         const data = await  apiClient.post(
-            `/api/stock-intakes/${location?.id}/all`,
+            `/api/stock-intakes/${warehouse?.id}/all-with-warehouse`,
             query
         );
-        // console.log("The list of Stock Intakes in this location: ", data)
+        
         return parseStringify(data);
     }
     catch (error){
@@ -71,7 +53,7 @@ export const searchStockIntakes = async (
     }
 
 }
-export const createStockIntake = async (
+export const createStockIntakeForWarehouse = async (
     stockIntake: z.infer<typeof StockIntakeSchema>
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
@@ -114,7 +96,7 @@ export const createStockIntake = async (
 };
 
 
-export const getStockIntake= async (id:UUID, effectiveStockVariant:UUID) => {
+export const getStockIntakeFromWarehouse = async (id:UUID, effectiveStockVariant:UUID) => {
     const apiClient = new ApiClient();
     
     try {
@@ -131,7 +113,7 @@ export const getStockIntake= async (id:UUID, effectiveStockVariant:UUID) => {
 }
 
 
-export const updateStockIntake = async (
+export const updateStockIntakeFromWarehouse = async (
     id: UUID,
     stockIntake: z.infer<typeof UpdatedStockIntakeSchema>
 ): Promise<FormResponse | void> => {

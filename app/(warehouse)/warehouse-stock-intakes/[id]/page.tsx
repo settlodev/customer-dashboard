@@ -5,7 +5,8 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { StockIntake } from "@/types/stock-intake/type";
 import { getStockIntake } from "@/lib/actions/stock-intake-actions";
-import StockIntakeForm from "@/components/forms/stock_intake_form";
+import WarehouseStockIntakeForm from "@/components/forms/warehouse/stock_intake_form";
+import { getStockIntakeFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
 
 type Params = Promise<{ stockVariant:string,id:string}>
 export default async function StockIntakePage({params}: {params: Params}){
@@ -17,7 +18,7 @@ export default async function StockIntakePage({params}: {params: Params}){
 
     if(!isNewItem){
         try{
-            item = await getStockIntake(id as UUID, stockVariant as UUID);
+            item = await getStockIntakeFromWarehouse(id as UUID, stockVariant as UUID);
             if(item && item.totalElements === 0) notFound();
         }
         catch (error){
@@ -52,11 +53,11 @@ const StockIntakeCard =({isNewItem, item}:{
                {isNewItem ? "Record Stock Intake" : "Edit stock intake"}
            </CardTitle>
            <CardDescription>
-               {isNewItem ? "Record stock intake to your business location": "Edit stock intake details"}
+               {isNewItem ? "Record stock intake to your warehouse": "Edit stock intake details"}
            </CardDescription>
        </CardHeader>
         <CardContent>
-            <StockIntakeForm item={item}/>
+           <WarehouseStockIntakeForm item={item}/>
         </CardContent>
     </Card>
 )

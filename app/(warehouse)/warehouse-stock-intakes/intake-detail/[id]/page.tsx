@@ -7,6 +7,7 @@ import StockIntakeDetails from "@/components/widgets/stock-intake-details";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Loading from "@/app/(protected)/loading";
+import { getStockIntakeFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
 
 type Params = Promise<{
     id: string;
@@ -34,7 +35,7 @@ export default function StockIntakePage({ params }: { params: Params }) {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const fetchedItem = await getStockIntake(id as UUID, stockVariant as UUID);
+                const fetchedItem = await getStockIntakeFromWarehouse(id as UUID, stockVariant as UUID);
                 setItem(fetchedItem); 
             } catch (error) {
                 console.error("Error fetching stock intake:", error);

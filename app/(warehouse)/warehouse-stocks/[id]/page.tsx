@@ -4,8 +4,8 @@ import {notFound} from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { Stock } from "@/types/stock/type";
-import { getStock } from "@/lib/actions/stock-actions";
-import StockForm from "@/components/forms/stock_form";
+import WarehouseStockForm from "@/components/forms/warehouse/stock_form";
+import { getStockFromWarehouse } from "@/lib/actions/warehouse/stock-actions";
 
 type Params = Promise<{id: string}>
 export default async function StockItemPage({params}: {params: Params}){
@@ -16,21 +16,21 @@ export default async function StockItemPage({params}: {params: Params}){
 
     if(!isNewItem){
         try{
-            item = await  getStock(paramsData.id as UUID);
+            item = await  getStockFromWarehouse(paramsData.id as UUID);
             if(item.totalElements == 0) notFound();
         }
         catch (error){
             
             console.log(error)
-            throw new Error("Failed to load product details");
+            throw new Error("Failed to load stock details");
         }
     }
 
-    const breadCrumbItems=[{title:"Stocks",link:"/stock-variants"},
+    const breadCrumbItems=[{title:"Stocks",link:"/warehouse-stock-variants"},
         {title: isNewItem ? "New":item?.content[0].name || "Edit",link:""}]
 
     return(
-        <div className={`flex-1 space-y-4 p-4 md:p-8 pt-6`}>
+        <div className="flex-1 space-y-12 p-4 md:p-8 pt-12">
             <div className={`flex items-center justify-between mb-2`}>
                 <div className={`relative flex-1 `}>
                     <BreadcrumbsNav items={breadCrumbItems}/>
@@ -51,11 +51,11 @@ const StockCard =({isNewItem, item}:{
                {isNewItem ? "Create Stock Item" : "Edit Stock Item"}
            </CardTitle>
            <CardDescription>
-               {isNewItem ? "Create stock items to your business location": "Edit stock item details"}
+               {isNewItem ? "Create stock items for your warehouse": "Edit stock item details"}
            </CardDescription>
        </CardHeader>
         <CardContent>
-            <StockForm item={item}/>
+            <WarehouseStockForm item={item}/>
         </CardContent>
     </Card>
 )

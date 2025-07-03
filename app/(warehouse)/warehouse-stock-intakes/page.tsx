@@ -4,11 +4,11 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import {DataTable} from "@/components/tables/data-table";
-import {columns} from '@/components/tables/stock-intake/column'
-import { searchStockIntakes } from "@/lib/actions/stock-intake-actions";
+import {columns} from '@/components/tables/warehouse/stock-intake/column'
 import { StockIntake } from "@/types/stock-intake/type";
+import { searchStockIntakesFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
 
-const breadCrumbItems = [{title: "Stock Intake", link: "/stock-intakes"}];
+const breadCrumbItems = [{title: "Stock Intake", link: "/warehouse-stock-intakes"}];
 type Params = { 
     searchParams: Promise<{ 
         search?: string; 
@@ -24,7 +24,7 @@ type Params = {
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit)
 
-     const responseData = await searchStockIntakes(q,page,pageLimit);
+     const responseData = await searchStockIntakesFromWarehouse(q,page,pageLimit);
    
      
 
@@ -40,7 +40,7 @@ type Params = {
                 </div>
                 <div className={`flex items-center space-x-2`}>
                     <Button>
-                        <Link href={`/stock-intakes/new`}>Record Stock Intake</Link>
+                        <Link href={`/warehouse-stock-intakes/new`}>Record Stock Intake</Link>
                     </Button>
                 </div>
             </div>
@@ -63,7 +63,7 @@ type Params = {
                     </Card>
                 ):
                     (
-                        <NoItems newItemUrl={`/stock-intakes/new`} itemName={`Stock intakes`}/>
+                        <NoItems newItemUrl={`/warehouse-stock-intakes/new`} itemName={`Stock intakes`}/>
                     )
             }
         </div>
