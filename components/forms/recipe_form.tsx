@@ -37,8 +37,6 @@ type RecipeFormProps = {
 
 export default function RecipeForm({ item, onFormSubmitted }: RecipeFormProps) {
 
-  console.log("The item found is:", item);
-
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [isPending, startTransition] = useTransition();
 
