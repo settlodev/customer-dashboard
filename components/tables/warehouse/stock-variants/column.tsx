@@ -3,7 +3,7 @@ import {ColumnDef} from "@tanstack/react-table";
 import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
-import {CellAction} from "@/components/tables/stock-variants/cell-action";
+import {CellAction} from "@/components/tables/warehouse/stock-variants/cell-action";
 import { StockVariant } from "@/types/stockVariant/type";
 
 

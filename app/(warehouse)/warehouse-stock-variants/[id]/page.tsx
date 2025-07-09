@@ -28,7 +28,7 @@ export default async function StockVariantDetails({
     ]);
 
     const breadCrumbItems = [
-      {title: "Stock Items", link: "/stock-variants"},
+      {title: "Stock Items", link: "/warehouse-stock-variants"},
       {title: `${movementData[0]?.stockName}-${movementData[0]?.stockVariantName}`, link: ""}
     ];
 

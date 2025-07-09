@@ -6,40 +6,39 @@ import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
-import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
-import { Staff, StaffSchema } from "@/types/staff";
+import { Form, FormControl,FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
+import { Staff} from "@/types/staff";
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
 import GenderSelector from "@/components/widgets/gender-selector";
 import { useToast } from "@/hooks/use-toast"
-import { PhoneInput } from "../ui/phone-input";
-import { Switch } from "../ui/switch";
 import { DefaultCountry } from "@/types/constants";
-import DepartmentSelector from "@/components/widgets/department-selector";
-import RoleSelector from "@/components/widgets/role-selector";
-import CountrySelector from "@/components/widgets/country-selector";
-import { Separator } from "../ui/separator";
+import { PhoneInput } from "@/components/ui/phone-input";
+import { Separator } from "@/components/ui/separator";
+import { createStaffFromWarehouse, updateStaffFomWarehouse } from "@/lib/actions/warehouse/staff-actions";
+import { StaffWarehouseSchema } from "@/types/warehouse/staff/schema";
+import WarehouseRoleSelector from "@/components/widgets/warehouse/role-selector";
 
 interface StaffFormProps {
     item: Staff | null | undefined;
     onFormSubmitted?: (response: FormResponse) => void;
 }
 
-const StaffForm: React.FC<StaffFormProps> = ({
+const WarehouseStaffForm: React.FC<StaffFormProps> = ({
     item,
     onFormSubmitted,
 }) => {
+
+    console.log("item is ", item);
+
     const { toast } = useToast();
     const [isSubmitting, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
-    const [isDashboardEnabled, setIsDashboardEnabled] = useState(item?.dashboardAccess ?? false);
 
-    const form = useForm<z.infer<typeof StaffSchema>>({
-        resolver: zodResolver(StaffSchema),
+    const form = useForm<z.infer<typeof StaffWarehouseSchema>>({
+        resolver: zodResolver(StaffWarehouseSchema),
         defaultValues: {
             ...item,
             nationality: item?.nationality || DefaultCountry,
@@ -61,7 +60,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
         [toast],
     );
 
-    const submitData = async (values: z.infer<typeof StaffSchema>) => {
+    const submitData = async (values: z.infer<typeof StaffWarehouseSchema>) => {
         setResponse(undefined);
     
         startTransition(async () => {
@@ -69,25 +68,25 @@ const StaffForm: React.FC<StaffFormProps> = ({
                 let result: FormResponse | void;
                 
                 if (item) {
-                    result = await updateStaff(item.id, values);
+                    result = await updateStaffFomWarehouse(item.id, values);
                 } else {
-                    result = await createStaff(values);
+                    result = await createStaffFromWarehouse(values);
                 }
     
                 if (result) {
                     setResponse(result);
                     
                     if (result.responseType === "success") {
-                        // Handle success
+
                         toast({
                             title: "Success!",
                             description: result.message,
                         });
                         onFormSubmitted?.(result);
                         form.reset();
-                        setIsDashboardEnabled(false);
+                        
                         form.setValue("status", false);
-                        window.location.href = "/staff";
+                        window.location.href = "/warehouse-staff";
                     } else if (result.responseType === "error") {
                         // Handle error from server action
                         toast({
@@ -213,24 +212,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                 )}
                             />
 
-                            <FormField
-                                control={form.control}
-                                name="nationality"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Nationality</FormLabel>
-                                        <FormControl>
-                                            <CountrySelector
-                                                {...field}
-                                                isDisabled={isSubmitting}
-                                                label="Select staff nationality"
-                                                placeholder="Select nationality"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                           
 
                         </CardContent>
                     </Card>
@@ -264,30 +246,12 @@ const StaffForm: React.FC<StaffFormProps> = ({
 
                             <FormField
                                 control={form.control}
-                                name="department"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Department</FormLabel>
-                                        <FormControl>
-                                            <DepartmentSelector
-                                                {...field}
-                                                isDisabled={isSubmitting}
-                                                placeholder="Select department"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="role"
+                                name="warehouseRole"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Role</FormLabel>
                                         <FormControl>
-                                            <RoleSelector
+                                            <WarehouseRoleSelector
                                                 {...field}
                                                 isDisabled={isSubmitting}
                                                 placeholder="Select role"
@@ -297,189 +261,12 @@ const StaffForm: React.FC<StaffFormProps> = ({
                                     </FormItem>
                                 )}
                             />
+
+                           
                         </CardContent>
                     </Card>
 
-                    {/* System Access */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>System Access</CardTitle>
-                            <CardDescription>
-                                Manage staff access permissions
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-6">
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <FormField
-                                    control={form.control}
-                                    name="dashboardAccess"
-                                    render={({ field }) => (
-                                        <FormItem
-                                            className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                            <div className="space-y-0.5">
-                                                <FormLabel className="text-base">Dashboard Access</FormLabel>
-                                                <FormDescription>
-                                                    Allow access to admin dashboard
-                                                </FormDescription>
-                                            </div>
-                                            <FormControl>
-                                                <Switch
-                                                    checked={field.value}
-                                                    onCheckedChange={(checked) => {
-                                                        field.onChange(checked);
-                                                        setIsDashboardEnabled(checked);
-                                                    }}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <FormField
-                                    control={form.control}
-                                    name="posAccess"
-                                    render={({ field }) => (
-                                        <FormItem
-                                            className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                            <div className="space-y-0.5">
-                                                <FormLabel className="text-base">POS Access</FormLabel>
-                                                <FormDescription>
-                                                    Allow access to POS system
-                                                </FormDescription>
-                                            </div>
-                                            <FormControl>
-                                                <Switch
-                                                    checked={field.value}
-                                                    onCheckedChange={field.onChange}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-
-                            {isDashboardEnabled && (
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Email Address</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    {...field}
-                                                    disabled={isSubmitting}
-                                                    type="email"
-                                                    value={field.value ?? ''}
-                                                    placeholder="Enter email address"
-                                                />
-                                            </FormControl>
-                                            <FormDescription>
-                                                Required for dashboard login
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Emergency Contact */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Emergency Contact</CardTitle>
-                            <CardDescription>
-                                Contact person in case of emergency
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            <FormField
-                                control={form.control}
-                                name="emergencyName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Contact Name</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter contact name"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="emergencyNumber"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Contact Phone</FormLabel>
-                                        <FormControl>
-                                            <PhoneInput
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter contact number"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="emergencyRelationship"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Relationship</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter relationship"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    {/* Notes */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Additional Notes</CardTitle>
-                            <CardDescription>
-                                Any other relevant information about the staff member
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <FormField
-                                control={form.control}
-                                name="notes"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <Textarea
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter any additional notes"
-                                                className="min-h-[100px]"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
+                   
                 </div>
 
                 <div className="flex h-5 items-center space-x-4">
@@ -495,4 +282,4 @@ const StaffForm: React.FC<StaffFormProps> = ({
     );
 };
 
-export default StaffForm;
+export default WarehouseStaffForm;

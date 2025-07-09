@@ -111,7 +111,7 @@ const UnimplementedTabContent = ({ tabName }: { tabName: string }) => {
         <div className="text-center">
           <h3 className="font-semibold text-gray-900 mb-2">{tabName} Coming Soon</h3>
           <p className="text-gray-600 mb-4 max-w-md">
-            We're working hard to bring you comprehensive {tabName.toLowerCase()} analytics. 
+            We&apos;re working hard to bring you comprehensive {tabName.toLowerCase()} analytics. 
             This feature will be available in an upcoming release.
           </p>
           <Button size="sm" variant="outline" className="gap-2">

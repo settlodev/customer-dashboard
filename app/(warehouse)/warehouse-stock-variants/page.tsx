@@ -5,8 +5,6 @@ import {columns} from '@/components/tables/warehouse/stock-variants/column'
 import { StockVariant } from "@/types/stockVariant/type";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CSVStockDialog } from "@/components/csv/stockCsvImport";
-import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
 import { searchStockVariantsInWarehouse } from "@/lib/actions/warehouse/stock-variant-actions";
 
 const breadCrumbItems = [{title: "Stock Items", link: "/stock-variants"}];
@@ -54,10 +52,11 @@ type Params = {
                     <Card x-chunk="data-table">
                         <CardHeader>
                             <CardTitle>Stock Items</CardTitle>
-                            <CardDescription>A list of all stock items</CardDescription>
+                            <CardDescription>A list of all stock items in your warehouse</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            <DataTable columns={columns}
+                            <DataTable 
+                               columns={columns}
                                data={data}
                                searchKey="stockAndStockVariantName"
                                pageNo={page}

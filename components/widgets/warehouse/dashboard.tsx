@@ -43,7 +43,7 @@ type TabData = {
 function DashboardLayout() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
   const [isLoading, setIsLoading] = useState<boolean>(false)
-  const [hasError, setHasError] = useState<boolean>(false)
+  const [hasError,] = useState<boolean>(false)
   
   const tabs: TabData[] = [
     {

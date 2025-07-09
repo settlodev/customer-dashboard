@@ -24,7 +24,7 @@ export const searchStockIntakesFromWarehouse = async (
         const query ={
             filters: [
                 {
-                    key:"stockVariantName",
+                    key:"stockVariant.stock.name",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
@@ -33,14 +33,14 @@ export const searchStockIntakesFromWarehouse = async (
             sorts:[
                 {
                     key:"orderDate",
-                    direction:"ASC"
+                    direction:"DESC"
                 }
             ],
             page:page ? page - 1:0,
             size:pageLimit ? pageLimit : 10
         }
         const warehouse = await getCurrentWarehouse();
-        console.log("The warehouse is",warehouse)
+       
         const data = await  apiClient.post(
             `/api/stock-intakes/${warehouse?.id}/all-with-warehouse`,
             query
@@ -60,6 +60,8 @@ export const createStockIntakeForWarehouse = async (
 
     const validData = StockIntakeSchema.safeParse(stockIntake);
 
+    console.log("The validated data",validData)
+
     if (!validData.success) {
         formResponse = {
             responseType: "error",
@@ -70,13 +72,20 @@ export const createStockIntakeForWarehouse = async (
     }
 
     const stockVariantId = validData.data.stockVariant;
+
+    const warehouse = await getCurrentWarehouse();
+    
+
     const payload = {
         ...validData.data,
+        stockVariant: stockVariantId
     };
+
+
     try {
         const apiClient = new ApiClient();
        await apiClient.post(
-            `/api/stock-intakes/${stockVariantId}/create`,
+            `/api/stock-intakes/${warehouse?.id}/all-with-warehouse/create`,
             payload
         );
         formResponse = {
@@ -84,14 +93,14 @@ export const createStockIntakeForWarehouse = async (
             message: "Stock Intake recorded successfully",
         }
     } catch (error) {
-        console.error("Error creating product", error);
+        console.error("Error creating stock intake:", error);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-    revalidatePath("/stock-intakes");
+    revalidatePath("/warehouse-stock-intakes");
     return parseStringify(formResponse);
 };
 

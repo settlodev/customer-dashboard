@@ -9,7 +9,8 @@ import {DeleteIcon, EditIcon, EyeIcon} from "@nextui-org/shared-icons";
 
 import { Stock } from "@/types/stock/type";
 import { deleteStock } from "@/lib/actions/stock-actions";
-import StockModal from "../stock-modal";
+import StockModal from "../../stock-modal";
+
 
 interface CellActionProps {
     data: Stock;

@@ -22,7 +22,6 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
-import { createStock, updateStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { useTransition } from "react";
@@ -38,7 +37,7 @@ type StockFormProps = {
 };
 
 export default function WarehouseStockForm({ item }: StockFormProps) {
-    console.log("The stock is", item)
+    
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
 

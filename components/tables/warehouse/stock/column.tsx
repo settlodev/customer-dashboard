@@ -5,7 +5,7 @@ import {Checkbox} from "@/components/ui/checkbox";
 import {Button} from "@/components/ui/button";
 import {CellAction} from "@/components/tables/stock/cell-action";
 import { Stock } from "@/types/stock/type";
-import { StateColumn } from "../state-column";
+import { StateColumn } from "../../state-column";
 
 
 export const columns: ColumnDef<Stock>[] = [

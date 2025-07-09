@@ -14,15 +14,12 @@ import {
   BarChart3,
   Copy,
   RefreshCw,
-  ChevronDown,
-  ChevronUp
 } from 'lucide-react'
 import { LowStockItem, OutOfStockItem, StockHistory } from './dashboard'
 import { stockReportFromWarehouse } from '@/lib/actions/warehouse/stock-actions'
 import Loading from '@/app/loading'
 
 
-// Enhanced SummaryCard with icons and better styling
 const SummaryCard = ({ 
   title, 
   value, 

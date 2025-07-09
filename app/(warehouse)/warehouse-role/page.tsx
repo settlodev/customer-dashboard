@@ -9,13 +9,13 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/warehouse/staff/columns";
+import { columns } from "@/components/tables/warehouse/roles/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Staff} from "@/types/staff";
+import {Role} from "@/types/roles/type";
 import NoItems from "@/components/layouts/no-items";
-import { searchStaffFromWarehouse } from "@/lib/actions/warehouse/staff-actions";
+import { searchWarehouseRoles } from "@/lib/actions/warehouse/roles-action";
 
-const breadcrumbItems = [{ title: "Staff", link: "/warehouse-staff" }];
+const breadcrumbItems = [{ title: "Roles", link: "/warehouse-role" }];
 
 type Params = { 
     searchParams: Promise<{ 
@@ -32,9 +32,9 @@ export default async function Page({ searchParams }: Params) {
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit)
 
-    const responseData = await searchStaffFromWarehouse(q, page, pageLimit);
+    const responseData = await searchWarehouseRoles(q, page, pageLimit);
 
-    const data: Staff[] = responseData.content;
+    const data: Role[] = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
 
@@ -47,19 +47,18 @@ export default async function Page({ searchParams }: Params) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/warehouse-staff/new`}>
-                            Add staff
+                        <Link key="add-space" href={`/warehouse-role/new`}>
+                            Add role
                         </Link>
                     </Button>
                 </div>
             </div>
 
-            {total > 0 || q != "" ?
-            (
+            {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Staff</CardTitle>
-                        <CardDescription>Manage staff on your warehouse</CardDescription>
+                        <CardTitle>Role</CardTitle>
+                        <CardDescription>Manage roles in your business location</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -67,13 +66,13 @@ export default async function Page({ searchParams }: Params) {
                             data={data}
                             pageCount={pageCount}
                             pageNo={page}
-                            searchKey="firstName"
+                            searchKey="name"
                             total={total}
                         />
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`staff`} newItemUrl={`/staff/new`} />
+                <NoItems itemName={`role`} newItemUrl={`/roles/new`} />
             )}
         </div>
     );

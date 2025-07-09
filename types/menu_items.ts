@@ -182,6 +182,19 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             ]
         },
 
+         // Warehouse staff
+         {
+            label: "Staff",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'sales',
+            items: [
+                { title: "Staff", link: "/warehouse-staff", current: args?.isCurrentItem, icon: "shopping-bag" },
+                { title: "Role", link: "/warehouse-role", current: args?.isCurrentItem, icon: "shopping-bag" },
+            ]
+        },
+
         // Request
         {
             label: "Request",

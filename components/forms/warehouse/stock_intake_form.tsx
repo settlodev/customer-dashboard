@@ -23,13 +23,12 @@ import { useRouter } from "next/navigation";
 import { Calendar, Clock } from "lucide-react";
 import { useSearchParams } from 'next/navigation'
 import { FormError } from "@/components/widgets/form-error";
-import StockVariantSelector from "@/components/widgets/stock-variant-selector";
-import StaffSelectorWidget from "@/components/widgets/staff_selector_widget";
 import DateTimePicker from "@/components/widgets/datetimepicker";
-import SupplierSelector from "@/components/widgets/supplier-selector";
 import CancelButton from "@/components/widgets/cancel-button";
 import SubmitButton from "@/components/widgets/submit-button";
 import { createStockIntakeForWarehouse, updateStockIntakeFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
+import WarehouseStockVariantSelector from "@/components/widgets/warehouse-stock-variant-selector";
+import WarehouseStaffSelectorWidget from "@/components/widgets/warehouse/staff-selector";
 function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
     const [isPending, startTransition] = useTransition();
@@ -87,6 +86,9 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
         const updatedValues = {
             value: values.value
         };
+
+        console.log("Starting submitData with values:", values);
+
         startTransition(() => {
             if (item) {
                 updateStockIntakeFromWarehouse(item.id, updatedValues).then((data) => {
@@ -108,7 +110,7 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                 title: "Success",
                                 description: data.message,
                             });
-                            router.push("warehouse-stock-intakes");
+                            router.push("/warehouse-stock-intakes");
                         }
                     })
                     .catch((err) => {
@@ -182,7 +184,7 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                 <FormItem>
                                     <FormLabel className="font-medium">Stock Item</FormLabel>
                                     <FormControl>
-                                        <StockVariantSelector
+                                        <WarehouseStockVariantSelector
                                             {...field}
                                             isRequired
                                             isDisabled={!!item || isPending}
@@ -260,7 +262,7 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                 <FormItem>
                                     <FormLabel className="font-medium">Staff Member</FormLabel>
                                     <FormControl>
-                                        <StaffSelectorWidget
+                                        <WarehouseStaffSelectorWidget
                                             {...field}
                                             isRequired
                                             isDisabled={!!item || isPending}
@@ -342,7 +344,7 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                             )}
                         />
 
-                        <FormField
+                        {/* <FormField
                             control={form.control}
                             name="supplier"
                             render={({ field }) => (
@@ -361,7 +363,7 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                     <FormMessage />
                                 </FormItem>
                             )}
-                        />
+                        /> */}
 
                         {item && (
                             <FormField

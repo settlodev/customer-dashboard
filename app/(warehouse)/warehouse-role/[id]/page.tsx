@@ -10,32 +10,33 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Staff} from "@/types/staff";
+import {Role} from "@/types/roles/type";
 import {ApiResponse} from "@/types/types";
-import WarehouseStaffForm from "@/components/forms/warehouse/staff_form";
-import { getWarehouseStaff } from "@/lib/actions/warehouse/staff-actions";
+import { getWarehouseRole } from "@/lib/actions/warehouse/roles-action";
+import WarehouseRoleForm from "@/components/forms/warehouse/role_form";
 
 type Params = Promise<{ id: string }>;
-export default async function StaffPage({params}: {params: Params}) {
+export default async function WarehouseRolePage({params}: {params: Params}) {
 
     const resolvedParams = await params;
     const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Staff> | null = null;
+    let item: ApiResponse<Role> | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getWarehouseStaff(resolvedParams.id as UUID);
+            item = await getWarehouseRole(resolvedParams.id as UUID);
             if (item.totalElements == 0) notFound();
         } catch (error) {
+            
             console.log(error)
-            throw new Error("Failed to load staff data");
+            throw new Error("Failed to load role data");
         }
     }
 
     const breadcrumbItems = [
-        { title: "Staff", link: "/warehouse-staff" },
+        { title: "Roles", link: "/warehouse-role" },
         {
-            title: isNewItem ? "New" : item?.content[0]?.firstName || "Edit",
+            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
             link: "",
         },
     ];
@@ -48,24 +49,24 @@ export default async function StaffPage({params}: {params: Params}) {
                 </div>
             </div>
 
-            <StaffCard isNewItem={isNewItem} item={item?.content[0]} />
+            <RoleCard isNewItem={isNewItem} item={item?.content[0]} />
         </div>
     );
 }
 
-const StaffCard = ({isNewItem, item}: {
+const RoleCard = ({isNewItem, item}: {
     isNewItem: boolean;
-    item: Staff | null | undefined;
+    item: Role | null | undefined;
 }) => (
     <Card>
         <CardHeader>
-            <CardTitle>{isNewItem ? "Add staff" : "Edit staff details"}</CardTitle>
+            <CardTitle>{isNewItem ? "Add role" : "Edit role details"}</CardTitle>
             <CardDescription>
-                {isNewItem ? "Add staff to your business" : "Edit staff details"}
+                {isNewItem ? "Add roles to your business" : "Edit role details"}
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <WarehouseStaffForm item={item} />
+            <WarehouseRoleForm item={item} />
         </CardContent>
     </Card>
 );

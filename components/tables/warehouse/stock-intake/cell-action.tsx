@@ -7,7 +7,6 @@ import { Calculator, EditIcon, Info} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import ItemModal from "../item-modal";
 import { StockIntake } from "@/types/stock-intake/type";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +29,7 @@ import { updateStockIntake } from "@/lib/actions/stock-intake-actions";
 import { z } from "zod";
 import { UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import ItemModal from "../../item-modal";
 
 interface CellActionProps {
     data: StockIntake & { stockVariant: string };

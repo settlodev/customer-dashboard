@@ -2,7 +2,6 @@
 import {UUID} from "node:crypto";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { StockIntake } from "@/types/stock-intake/type";
-import { getStockIntake } from "@/lib/actions/stock-intake-actions";
 import StockIntakeDetails from "@/components/widgets/stock-intake-details";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";

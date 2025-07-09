@@ -11,10 +11,48 @@ import {UUID} from "node:crypto";
 import { Stock, StockHistory } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { console } from "node:inspector";
-import { getCurrentBusiness, getCurrentLocation } from "../business/get-current-business";
+import { getCurrentBusiness} from "../business/get-current-business";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
-
+export const searchStockFromWarehouse = async (
+    q: string, 
+    page: number, 
+    pageLimit: number
+    ): Promise<ApiResponse<Stock>> =>{
+        await getAuthenticatedUser();
+    
+        try {
+            const apiClient = new ApiClient();
+            const query ={
+                filters: [
+                    {
+                        key:"name",
+                        operator:"LIKE",
+                        field_type:"STRING",
+                        value:q
+                    }
+                ],
+                sorts:[
+                    {
+                        key:"name",
+                        direction:"ASC"
+                    }
+                ],
+                page:page ? page - 1:0,
+                size:pageLimit ? pageLimit : 10
+            }
+            const warehouse = await getCurrentWarehouse();
+            const data = await  apiClient.post(
+                `/api/warehouse-stock/${warehouse?.id}`,
+                query
+            );
+            return parseStringify(data);
+        }
+        catch (error){
+            throw error;
+        }
+    
+    }
 export const createStockFromWarehouse = async (
     stock: z.infer<typeof StockSchema>
 ): Promise<FormResponse | void> => {
@@ -143,7 +181,7 @@ export const updateStockFromWarehouse = async (
             id: variantIds[index]  
         }))
     };
-    // console.log("The payload",payload)
+    console.log("The payload",payload)
 
     try {
 
@@ -168,8 +206,10 @@ export const updateStockFromWarehouse = async (
         existingStockVariants.forEach(variant => {
             existingStockVariantMap.set(variant.id, variant);
         });
-        // console.log('Existing stock variant map:', existingStockVariantMap);
-        // console.log('Stock variants:', stock.stockVariants);
+
+
+        console.log('Existing stock variant map:', existingStockVariantMap);
+        console.log('Stock variants:', stock.stockVariants);
 
        
         payload.stockVariants.forEach((newVariant)=>{
@@ -191,7 +231,7 @@ export const updateStockFromWarehouse = async (
             ...payload,
             stockVariants:stockVariantPayload
         }
-        // console.log("The final payload",finalPayload )
+        console.log("The final payload",finalPayload )
 
         await apiClient.put(
             `/api/warehouse-stock/${warehouse?.id}/${id}`,
@@ -296,7 +336,36 @@ export const uploadStockCSVForWarehouse = async ({ fileData, fileName }: { fileD
     }
 };
 
-
+export const getStockVariantFromWarehouse = async (variantId: string) => {
+    if (!variantId) return null;
+    
+    try {
+        // // Try to get from cache first
+        // if (!stockCache) {
+        //     stockCache = await fetchStock();
+        // }
+        
+        // if (stockCache && stockCache.length > 0) {
+        //     for (const stock of stockCache) {
+        //         const variant = stock.stockVariants.find((v: StockVariant) => v.id === variantId);
+        //         if (variant) {
+        //             return {
+        //                 stockName: stock.name,
+        //                 variant
+        //             };
+        //         }
+        //     }
+        // }
+        
+        // If not in cache or cache doesn't exist, fetch directly
+        const apiClient = new ApiClient();
+        const data = await apiClient.get(`/api/warehouse-stock-variants/${variantId}`);
+        return parseStringify(data);
+    } catch (error) {
+        console.error("Error fetching stock variant:", error);
+        return null;
+    }
+}
 
 export const stockReportFromWarehouse = async (): Promise<StockHistory | null> => {
 
@@ -313,3 +382,5 @@ export const stockReportFromWarehouse = async (): Promise<StockHistory | null> =
         throw error;
     }
 };
+
+

@@ -4,7 +4,6 @@ import {notFound} from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { StockIntake } from "@/types/stock-intake/type";
-import { getStockIntake } from "@/lib/actions/stock-intake-actions";
 import WarehouseStockIntakeForm from "@/components/forms/warehouse/stock_intake_form";
 import { getStockIntakeFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
 
