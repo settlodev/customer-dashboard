@@ -19,6 +19,7 @@ export declare interface LoginResponse {
 }
 
 export type ApiResponse<T> = {
+    warehouseStockRequestStatus: string;
     data: any;
     totalPages: number;
     totalElements: number;

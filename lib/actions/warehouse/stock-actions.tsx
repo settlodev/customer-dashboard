@@ -17,7 +17,8 @@ import { getCurrentWarehouse } from "./current-warehouse-action";
 export const searchStockFromWarehouse = async (
     q: string, 
     page: number, 
-    pageLimit: number
+    pageLimit: number,
+    warehouseId?:string
     ): Promise<ApiResponse<Stock>> =>{
         await getAuthenticatedUser();
     
@@ -41,11 +42,15 @@ export const searchStockFromWarehouse = async (
                 page:page ? page - 1:0,
                 size:pageLimit ? pageLimit : 10
             }
-            const warehouse = await getCurrentWarehouse();
+            const warehouse = warehouseId ? { id: warehouseId } : await getCurrentWarehouse();
+
+            console.log('Retrieved warehouse:', warehouse);
+
             const data = await  apiClient.post(
                 `/api/warehouse-stock/${warehouse?.id}`,
                 query
             );
+            console.log('Received data:', data);
             return parseStringify(data);
         }
         catch (error){
@@ -340,24 +345,7 @@ export const getStockVariantFromWarehouse = async (variantId: string) => {
     if (!variantId) return null;
     
     try {
-        // // Try to get from cache first
-        // if (!stockCache) {
-        //     stockCache = await fetchStock();
-        // }
         
-        // if (stockCache && stockCache.length > 0) {
-        //     for (const stock of stockCache) {
-        //         const variant = stock.stockVariants.find((v: StockVariant) => v.id === variantId);
-        //         if (variant) {
-        //             return {
-        //                 stockName: stock.name,
-        //                 variant
-        //             };
-        //         }
-        //     }
-        // }
-        
-        // If not in cache or cache doesn't exist, fetch directly
         const apiClient = new ApiClient();
         const data = await apiClient.get(`/api/warehouse-stock-variants/${variantId}`);
         return parseStringify(data);

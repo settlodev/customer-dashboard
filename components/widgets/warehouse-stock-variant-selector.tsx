@@ -1,5 +1,3 @@
-
-
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
@@ -33,6 +31,7 @@ interface Props {
   description?: string;
   onChange: (value: string) => void;
   disabledValues?: string[];
+  warehouseId?: string; // New prop for warehouse ID
 }
 
 const WarehouseStockVariantSelector: React.FC<Props> = ({
@@ -42,6 +41,7 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
   description,
   onChange,
   disabledValues = [],
+  warehouseId, // New prop
 }) => {
   const [open, setOpen] = useState(false);
   const [stocks, setStocks] = useState<Stock[]>([]);
@@ -62,9 +62,22 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
     return `${stock.name} - ${variant.name}`;
   };
 
-  // Initialize data loading on component mount
+  // Reset component state when warehouse changes
   useEffect(() => {
-    if (!hasInitialized) {
+    if (warehouseId) {
+      setStocks([]);
+      setSelectedVariantInfo(null);
+      setSearchTerm("");
+      setPage(1);
+      setHasMore(true);
+      setHasInitialized(false);
+      setIsLoading(true);
+    }
+  }, [warehouseId]);
+
+  // Initialize data loading on component mount or when warehouse changes
+  useEffect(() => {
+    if (!hasInitialized && warehouseId) {
       if (value) {
         // For a preselected value, fetch that specific variant first for immediate display
         loadSpecificVariant(value);
@@ -74,11 +87,11 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
       }
       setHasInitialized(true);
     }
-  }, [hasInitialized, value]);
+  }, [hasInitialized, value, warehouseId]);
 
   // Handle value changes (when form updates the value)
   useEffect(() => {
-    if (value && hasInitialized) {
+    if (value && hasInitialized && warehouseId) {
       // Check if we already have this variant in our stocks
       const existingVariant = allVariantOptions.find(option => option.id === value);
       if (existingVariant) {
@@ -93,7 +106,7 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
     } else if (!value) {
       setSelectedVariantInfo(null);
     }
-  }, [value, hasInitialized]);
+  }, [value, hasInitialized, warehouseId]);
 
   // Handle search with debounce
   useEffect(() => {
@@ -101,7 +114,7 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
       clearTimeout(debounceTimeout);
     }
 
-    if (hasInitialized) {
+    if (hasInitialized && warehouseId) {
       const timeout = setTimeout(() => {
         setPage(1);
         setStocks([]);
@@ -116,9 +129,11 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
         clearTimeout(debounceTimeout);
       }
     };
-  }, [searchTerm, hasInitialized]);
+  }, [searchTerm, hasInitialized, warehouseId]);
 
   async function loadSpecificVariant(variantId: string) {
+    if (!warehouseId) return;
+
     try {
       setIsLoadingSelectedVariant(true);
       const variantInfo = await getStockVariantFromWarehouse(variantId);
@@ -161,12 +176,19 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
   }
 
   async function loadStocks(query: string, currentPage: number, showLoading = true) {
+    if (!warehouseId) return;
+
     try {
       if (showLoading) {
         setIsLoading(true);
       }
       
-      const response: ApiResponse<Stock> = await searchStockFromWarehouse(query, currentPage, ITEMS_PER_PAGE);
+      const response: ApiResponse<Stock> = await searchStockFromWarehouse(
+        query, 
+        currentPage, 
+        ITEMS_PER_PAGE, 
+        warehouseId 
+      );
       
       // Check if it's the first page or appending more results
       if (currentPage === 1) {
@@ -224,11 +246,49 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
     
-    if (isNearBottom && !isLoading && hasMore) {
+    if (isNearBottom && !isLoading && hasMore && warehouseId) {
       const nextPage = page + 1;
       setPage(nextPage);
       loadStocks(searchTerm, nextPage, false);
     }
+  };
+
+  // Show different states based on warehouse selection
+  const getButtonContent = () => {
+    if (!warehouseId) {
+      return "Select warehouse first";
+    }
+    
+    if (isLoadingSelectedVariant) {
+      return (
+        <div className="flex items-center">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Loading...
+        </div>
+      );
+    }
+    
+    if (selectedOption) {
+      return selectedOption.displayName;
+    }
+    
+    if (isLoading) {
+      return (
+        <div className="flex items-center">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Loading...
+        </div>
+      );
+    }
+    
+    return placeholder;
+  };
+
+  const getEmptyMessage = () => {
+    if (!warehouseId) {
+      return "Please select a warehouse first";
+    }
+    return isLoading ? "Searching..." : "No stock items found.";
   };
 
   return (
@@ -240,23 +300,9 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
-            disabled={isDisabled || (isLoading && !selectedOption) || isLoadingSelectedVariant}
+            disabled={isDisabled || !warehouseId || (isLoading && !selectedOption) || isLoadingSelectedVariant}
           >
-            {isLoadingSelectedVariant ? (
-              <div className="flex items-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </div>
-            ) : selectedOption ? (
-              selectedOption.displayName 
-            ) : isLoading ? (
-              <div className="flex items-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </div>
-            ) : (
-              placeholder
-            )}
+            {getButtonContent()}
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
@@ -266,13 +312,14 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
               placeholder={`Search ${placeholder.toLowerCase()}...`} 
               value={searchTerm}
               onValueChange={setSearchTerm}
+              disabled={!warehouseId}
             />
             <CommandList onScroll={handleScroll} className="max-h-[300px]">
               <CommandEmpty>
-                {isLoading ? "Searching..." : "No stock items found."}
+                {getEmptyMessage()}
               </CommandEmpty>
               <CommandGroup>
-                {allVariantOptions.length === 0 && isLoading ? (
+                {allVariantOptions.length === 0 && isLoading && warehouseId ? (
                   <div className="py-6 text-center">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin opacity-50" />
                     <p className="mt-2 text-sm text-muted-foreground">Loading stock items...</p>
@@ -299,13 +346,13 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
                     </CommandItem>
                   ))
                 )}
-                {isLoading && allVariantOptions.length > 0 && (
+                {isLoading && allVariantOptions.length > 0 && warehouseId && (
                   <div className="py-2 text-center">
                     <Loader2 className="mx-auto h-4 w-4 animate-spin opacity-50" />
                     <p className="text-sm text-muted-foreground">Loading more...</p>
                   </div>
                 )}
-                {!isLoading && hasMore && allVariantOptions.length > 0 && (
+                {!isLoading && hasMore && allVariantOptions.length > 0 && warehouseId && (
                   <div className="py-2 text-center text-sm text-muted-foreground">
                     Scroll down to load more
                   </div>

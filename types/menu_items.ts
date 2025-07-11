@@ -71,6 +71,7 @@ const getNormalMenuItems = (args?: MenuItemArgType & { subscription?: ActiveSubs
                 { title: "Recipes", link: "/recipes", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Modifiers", link: "/modifiers", current: args?.isCurrentItem, icon: "cart" },
                 { title: "Addons", link: "/addons", current: args?.isCurrentItem, icon: "cart" },
+                { title: "Stock Request", link: "/stock-requests", current: args?.isCurrentItem, icon: "truck-return" },
             ]
         },
 
@@ -164,8 +165,7 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             items: [
                 { title: "Stock Items", link: "/warehouse-stock-variants", current: args?.isCurrentItem, icon: "home" },
                 { title: "Stock Intake", link: "/warehouse-stock-intakes", current: args?.isCurrentItem, icon: "grid" },
-                { title: "Stock Modification", link: "/warehouse-stock-modifications", current: args?.isCurrentItem, icon: "layers" },
-                { title: "Stock Transfer", link: "/warehouse-stock-transfers", current: args?.isCurrentItem, icon: "truck" },
+                
             ]
         },
         
@@ -203,7 +203,7 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             current: args?.isCurrentItem,
             icon: 'general',
             items: [
-                { title: "Inventory Requests", link: "/requests", current: args?.isCurrentItem, icon: "file-text" },
+                { title: "Inventory Requests", link: "/warehouse-requests", current: args?.isCurrentItem, icon: "file-text" },
                 // { title: "Request Status", link: "/warehouse/request-status", current: args?.isCurrentItem, icon: "activity" },
             ]
         },
