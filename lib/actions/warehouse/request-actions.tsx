@@ -111,9 +111,11 @@ export const stockRequestReportForWarehouse = async (): Promise<StockRequestRepo
     try {
 
         const apiClient = new ApiClient();
-        const warehouse = '8049b23e-ff7b-40db-86a6-17d0448bf510';
-        console.log("The warehouse is",warehouse)
-        const report=await apiClient.get(`/api/reports/${warehouse}/stock-requests/summary`);
+        const warehouse = await getCurrentWarehouse();
+        
+        const report=await apiClient.get(`/api/reports/${warehouse?.id}/stock-requests/summary`);
+
+
         return parseStringify(report);
         
     } catch (error) {

@@ -48,8 +48,7 @@ export default async function SelectLocationPage({searchParams}: Params) {
         const warehouseList = await searchWarehouses(q, page, pageLimit);
         const data: Warehouses[] = warehouseList.content;
 
-        // console.log("The list of warehouses:", data);
-
+       
         if (!businessLocations) {
             redirect('/select-business');
         }

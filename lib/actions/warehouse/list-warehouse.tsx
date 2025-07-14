@@ -74,7 +74,7 @@ export const searchWarehouses = async (
             `/api/warehouses/${business?.id}`,
             query,
         );
-        console.log("The list of warehouses: ", data)
+       
         return parseStringify(data);
 
     } catch (error) {

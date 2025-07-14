@@ -5,7 +5,7 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
 import { Supplier } from "@/types/supplier/type";
 import { getSupplier } from "@/lib/actions/supplier-actions";
-import SupplierForm from "@/components/forms/supplier_form";
+import WarehouseSupplierForm from "@/components/forms/warehouse/supplier_form";
 
 type Params = Promise<{ id: string }>;
 export default async function SupplierPage({params}: {params: Params}){
@@ -26,7 +26,7 @@ export default async function SupplierPage({params}: {params: Params}){
         }
     }
 
-    const breadCrumbItems=[{title:"Supplier",link:"/suppliers"},
+    const breadCrumbItems=[{title:"Supplier",link:"/warehouse-suppliers"},
         {title: isNewItem ? "New":item?.content[0].name || "Edit",link:""}]
 
     return(
@@ -55,7 +55,7 @@ const SupplierCard =({isNewItem,item}:{
            </CardDescription>
        </CardHeader>
         <CardContent>
-            <SupplierForm item={item}/>
+            <WarehouseSupplierForm  item={item}/>
         </CardContent>
     </Card>
 )

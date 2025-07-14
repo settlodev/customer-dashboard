@@ -12,10 +12,10 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/supplier/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import { searchSuppliers } from "@/lib/actions/supplier-actions";
 import { Supplier } from "@/types/supplier/type";
+import { searchSuppliers } from "@/lib/actions/warehouse/supplier-actions";
 
-const breadcrumbItems = [{ title: "Suppliers", link: "/suppliers" }];
+const breadcrumbItems = [{ title: "Suppliers", link: "/warehouse-suppliers" }];
 
 type Params = { 
     searchParams: Promise<{ 
@@ -48,7 +48,7 @@ export default async function Page({ searchParams }: Params) {
 
                 <div className="flex items-center space-x-2">
                     <Button>
-                        <Link key="add-space" href={`/suppliers/new`}>
+                        <Link key="add-space" href={`/warehouse-suppliers/new`}>
                             Add supplier
                         </Link>
                     </Button>
@@ -60,7 +60,7 @@ export default async function Page({ searchParams }: Params) {
                 <Card x-chunk="data-table">
                     <CardHeader>
                         <CardTitle>Supplier</CardTitle>
-                        <CardDescription>Manage supplier in your business location</CardDescription>
+                        <CardDescription>Manage supplier within your warehouse</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <DataTable
@@ -74,7 +74,7 @@ export default async function Page({ searchParams }: Params) {
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`suppliers`} newItemUrl={`/suppliers/new`} />
+                <NoItems itemName={`suppliers`} newItemUrl={`/warehouse-suppliers/new`} />
             )}
         </div>
     );

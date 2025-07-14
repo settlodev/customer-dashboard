@@ -1,18 +1,17 @@
 "use server";
 
 import { Supplier } from "@/types/supplier/type";
-import { getAuthenticatedUser} from "../auth-utils";
-import ApiClient from "../settlo-api-client";
-import { parseStringify } from "../utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { SupplierSchema } from "@/types/supplier/schema";
 import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCurrentBusiness} from "./business/get-current-business";
+import { getCurrentBusiness } from "../business/get-current-business";
+import { getAuthenticatedUser } from "@/lib/auth-utils";
+import ApiClient from "@/lib/settlo-api-client";
+import { parseStringify } from "@/lib/utils";
 
-
-export const searchSuppliers = async (
+export const searchSupplierCredits = async (
   q: string,
   page: number,
   pageLimit: number
@@ -108,7 +107,7 @@ export const createSupplier = async (
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
-  revalidatePath("/suppliers");
+  revalidatePath("/warehouse-suppliers");
   return parseStringify(formResponse);
 };
 
@@ -190,7 +189,7 @@ export const updateSupplier = async (
       };
   }
 
-  revalidatePath("/suppliers");
+  revalidatePath("/warehouse-suppliers");
   return parseStringify(formResponse);
 };
 
@@ -204,7 +203,7 @@ export const deleteSupplier = async (id: UUID): Promise<void> => {
       const business = await getCurrentBusiness();
 
       await apiClient.delete(`/api/suppliers/${business?.id}/${id}`);
-      revalidatePath("/suppliers");
+      revalidatePath("/warehouse-suppliers");
   } catch (error) {
       throw error;
   }

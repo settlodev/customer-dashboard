@@ -1,18 +1,13 @@
 'use client'
-import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Download } from 'lucide-react'
 import React, { useState } from 'react'
-import DatePicker from '../datepicker'
-// import PurchaseReportComponent from './reports/PurchaseReportComponent'
-// import RequestReportComponent from './reports/RequestReportComponent'
+
 
 import WarehouseStockReport from './stock-report'
 import UnimplementedTabContent from './helper'
-// import LoadingCard from './reports/LoadingCard'
-// import ErrorCard from './reports/ErrorCard'
+import StockRequestReport from './stock-request-report'
+import Loading from '@/app/(protected)/loading'
 
-// Types for API response
 export interface StockHistory {
   totalStockIntakes: number
   totalStockRemaining: number
@@ -41,8 +36,7 @@ type TabData = {
 }
 
 function DashboardLayout() {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [isLoading,] = useState<boolean>(false)
   const [hasError,] = useState<boolean>(false)
   
   const tabs: TabData[] = [
@@ -52,40 +46,21 @@ function DashboardLayout() {
       implemented: true
     },
     {
-      name: "Purchase Report", 
+      name: "Request Report",
+      value: "request", 
+      implemented: true
+    },
+    {
+      name: "Purchase Order Report", 
       value: 'purchase',
       implemented: false
     },
-    {
-      name: "Request Report",
-      value: "request", 
-      implemented: false
-    },
-    {
-      name: "Consumption",
-      value: "consumption",
-      implemented: false
-    },
-    {
-      name: "Valuation",
-      value: "valuation", 
-      implemented: false
-    }
+    
   ]
 
-  const handleDateChange = (date: Date) => {
-    setSelectedDate(date)
-    setIsLoading(true)
-    setTimeout(() => {
-      setIsLoading(false)
-    }, 1000)
-  }
 
-  const handleExport = () => {
-    const currentDate = new Date().toISOString().split('T')[0]
-    const filename = `inventory-report-${currentDate}.csv`
-    alert(`Exporting report as ${filename}`)
-  }
+
+  
   if (hasError) {
     return <div>Error occurred. Please try again.</div>
   }
@@ -94,20 +69,6 @@ function DashboardLayout() {
     <div className='flex flex-col gap-6'>
       <div className='flex justify-between items-center'>
         <h2 className='text-2xl font-bold'>Reports Dashboard</h2>
-        <div className='hidden lg:flex gap-4 '>
-          <DatePicker 
-            selectedDate={selectedDate} 
-            onDateChange={handleDateChange}
-          />
-          <Button 
-            className='flex gap-2' 
-            variant="outline"
-            onClick={handleExport}
-          >
-            <Download className='w-4 h-4'/>
-            Export Report
-          </Button>
-        </div>
       </div>
       
       <Tabs defaultValue={tabs[0].value} className="w-full">
@@ -122,15 +83,17 @@ function DashboardLayout() {
           ))}
         </TabsList>
         {isLoading ? (
-          <div>Loading...</div>
+          <div>
+            <Loading />
+          </div>
         ) : (
           tabs.map((tab) => (
             <TabsContent key={tab.value} value={tab.value}>
               {tab.implemented ? (
                 <>
                   {tab.value === "stock" && <WarehouseStockReport />}
-                  {/* {tab.value === "purchase" && <PurchaseReportComponent />}
-                  {tab.value === "request" && <RequestReportComponent />} */}
+                  {/* {tab.value === "purchase" && <PurchaseReportComponent />} */}
+                  {tab.value === "request" && <StockRequestReport />}
                 </>
               ) : (
                 <UnimplementedTabContent tabName={tab.name} />

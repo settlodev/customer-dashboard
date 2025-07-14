@@ -18,7 +18,6 @@ import { FormResponse } from "@/types/types";
 import { Separator } from "@/components/ui/separator";
 import { Supplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
-import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 import {Building2, Loader2Icon, Mail, MapPin, Phone, User} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormError } from "@/components/widgets/form-error";
@@ -28,8 +27,9 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { Switch } from "@/components/ui/switch";
 import CancelButton from "@/components/widgets/cancel-button";
 import SubmitButton from "@/components/widgets/submit-button";
+import { createSupplier, updateSupplier } from "@/lib/actions/warehouse/supplier-actions";
 
-function SupplierForm({ item }: { item: Supplier | null | undefined }) {
+function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [error,] = useState<string | undefined>("");
@@ -324,4 +324,4 @@ return (
     );
 }
 
-export default SupplierForm;
+export default WarehouseSupplierForm;

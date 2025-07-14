@@ -177,8 +177,23 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             current: args?.isCurrentItem,
             icon: 'sales',
             items: [
+                { title: "Suppliers", link: "/warehouse-suppliers", current: args?.isCurrentItem, icon: "users" },
                 { title: "Purchase Orders", link: "/purchases", current: args?.isCurrentItem, icon: "shopping-bag" },
-                { title: "Suppliers", link: "/vendors", current: args?.isCurrentItem, icon: "users" },
+                
+            ]
+        },
+
+         // Supplier
+         {
+            label: "Suppliers",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'sales',
+            items: [
+                { title: "Suppliers", link: "/warehouse-suppliers", current: args?.isCurrentItem, icon: "users" },
+                // { title: "Supplier Credits", link: "/warehouse-supplier-credits", current: args?.isCurrentItem, icon: "shopping-bag" },
+                
             ]
         },
 
