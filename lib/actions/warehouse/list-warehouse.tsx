@@ -8,8 +8,9 @@ import ApiClient from "@/lib/settlo-api-client";
 import {ApiResponse} from "@/types/types";
 import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
+import { getCurrentWarehouse } from "./current-warehouse-action";
 
-export const getWarehouses = async (): Promise<Warehouses[] | null> => {
+export const getWarehouse = async (): Promise<Warehouses | null> => {
     try {
         const business = await getCurrentBusiness();
 
@@ -18,9 +19,10 @@ export const getWarehouses = async (): Promise<Warehouses[] | null> => {
         }
 
         const apiClient = new ApiClient();
+        const warehouse = await getCurrentWarehouse();
 
         const warehousesData = await apiClient.get(
-            `/api/warehouses/${business.id}`,
+            `/api/warehouses/${business.id}/${warehouse?.id}`,
         );
 
         return parseStringify(warehousesData);
@@ -72,7 +74,7 @@ export const searchWarehouses = async (
             `/api/warehouses/${business?.id}`,
             query,
         );
-        // console.log("The list of warehouses: ", data)
+        console.log("The list of warehouses: ", data)
         return parseStringify(data);
 
     } catch (error) {

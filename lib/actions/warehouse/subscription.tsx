@@ -33,7 +33,7 @@ export const searchWarehousesSubscriptionPackages = async (
         return parseStringify(data);
 
     } catch (error) {
-        console.error('Error in search warehouses:', error);
+        console.error('Error in search warehouses packages:', error);
         throw error;
     }
 };
@@ -66,7 +66,7 @@ export const createWarehouseInvoice = async (
         ...validatedInvoiceData.data,
     };
 
-    // console.log("The payload is",payload)
+    
 
     try {
         const apiClient = new ApiClient();
@@ -123,3 +123,43 @@ export const verifyWarehousePayment = async (transactionId: string,invoice?:stri
         throw error;
     }
 }
+
+export const warehouseInvoices = async (
+    page: number = 1,
+    pageSize: number = 10,
+    searchQuery: string = ""
+  ): Promise<ApiResponse<any>> => {
+    const apiClient = new ApiClient();
+    const warehouse = await getCurrentWarehouse();
+    
+    try {
+      const query = {
+        filters: [
+          {
+            key: "invoiceNumber",
+            operator: "LIKE",
+            field_type: "STRING",
+            value: searchQuery,
+          },
+        ],
+        sorts: [
+          {
+            key: "dateCreated",
+            direction: "DESC",
+          },
+        ],
+        page: page - 1, // Convert to 0-based indexing
+        size: pageSize,
+      };
+      
+      const data = await apiClient.post(
+        `/api/warehouse-invoices/${warehouse?.id}`,
+        query
+      );
+  
+      return parseStringify(data);
+    } catch (error) {
+      console.error('Error in search warehouses invoices:', error);
+      throw error;
+    }
+  };

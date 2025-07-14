@@ -19,3 +19,10 @@ export interface StockRequests{
     warehouseStockVariant:UUID
     warehouseStockVariantName:string
 }
+
+export interface StockRequestReport{
+    totalStockRequests: number
+    approvedStockRequests: number
+    pendingStockRequests: number
+    cancelledStockRequests: number
+}

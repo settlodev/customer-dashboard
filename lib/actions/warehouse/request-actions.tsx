@@ -6,7 +6,7 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { getCurrentWarehouse } from "./current-warehouse-action";
-import { StockRequests } from "@/types/warehouse/purchase/request/type";
+import { StockRequestReport, StockRequests } from "@/types/warehouse/purchase/request/type";
 
 
 export const searchWarehouseStockRequests = async (
@@ -102,4 +102,22 @@ export const CancelStockRequest = async (id: UUID,warehouseStaffApproved: UUID):
     );
 
     return parseStringify(cancelledRequest);
+};
+
+export const stockRequestReportForWarehouse = async (): Promise<StockRequestReport | null> => {
+
+    await getAuthenticatedUser();
+
+    try {
+
+        const apiClient = new ApiClient();
+        const warehouse = '8049b23e-ff7b-40db-86a6-17d0448bf510';
+        console.log("The warehouse is",warehouse)
+        const report=await apiClient.get(`/api/reports/${warehouse}/stock-requests/summary`);
+        return parseStringify(report);
+        
+    } catch (error) {
+        console.error("Error fetching stock request report:", error);
+        throw error;
+    }
 };

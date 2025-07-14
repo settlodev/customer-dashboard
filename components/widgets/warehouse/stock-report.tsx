@@ -12,7 +12,6 @@ import {
   Package, 
   DollarSign, 
   BarChart3,
-  Copy,
   RefreshCw,
 } from 'lucide-react'
 import { LowStockItem, OutOfStockItem, StockHistory } from './dashboard'
@@ -228,22 +227,7 @@ const WarehouseStockReport = () => {
     await fetchStockData()
   }
 
-  const handleCopy = () => {
-    if (!stockData) return
-    
-    const reportText = `Stock Report Summary
-    
-Total Stock Intakes: ${stockData.totalStockIntakes}
-Total Stock Value: $${stockData.totalStockValue.toLocaleString()}
-Total Stock Remaining: ${stockData.totalStockRemaining}
-Low Stock Items: ${stockData.lowStockItems.length}
-Out of Stock Items: ${stockData.outOfStockItems.length}
-
-Generated on: ${new Date().toLocaleDateString()}`
-
-    navigator.clipboard.writeText(reportText)
-    alert('Report summary copied to clipboard!')
-  }
+ 
 
   useEffect(() => {
     fetchStockData()
@@ -300,7 +284,7 @@ Generated on: ${new Date().toLocaleDateString()}`
     <div className="space-y-6">
       {/* Header with actions */}
       <div className="flex justify-between items-center">
-        <div>
+        <div className='space-y-1'>
           <h3 className="text-lg font-semibold text-gray-900">Stock Overview</h3>
           <p className="text-sm text-gray-600">Current warehouse stock status and alerts</p>
         </div>
@@ -313,10 +297,6 @@ Generated on: ${new Date().toLocaleDateString()}`
           >
             <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleCopy}>
-            <Copy className="h-4 w-4 mr-2" />
-            Copy Report
           </Button>
         </div>
       </div>
@@ -331,7 +311,7 @@ Generated on: ${new Date().toLocaleDateString()}`
         />
         <SummaryCard 
           title="Stock Value" 
-          value={`$${stockData.totalStockValue.toLocaleString()}`}
+          value={stockData.totalStockValue.toLocaleString()}
           icon={DollarSign}
           subtitle="Total inventory value"
         />
@@ -343,7 +323,7 @@ Generated on: ${new Date().toLocaleDateString()}`
         />
         <SummaryCard 
           title="Estimated Profit" 
-          value={`$${stockData.totalEstimatedProfit?.toLocaleString() || '0'}`}
+          value={stockData.totalEstimatedProfit?.toLocaleString() || '0'}
           icon={BarChart3}
           subtitle="Potential earnings"
           colorClass="text-green-600"

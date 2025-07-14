@@ -11,48 +11,12 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/warehouse/requests/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { searchWarehouseStockRequests } from "@/lib/actions/warehouse/request-actions";
+import { stockRequestReportForWarehouse } from "@/lib/actions/warehouse/request-actions"; // Add this import
 import { StockRequests } from "@/types/warehouse/purchase/request/type";
-import { BarChart, Clock, CheckCircle,Package } from "lucide-react";
+import { StockRequestReport } from "@/types/warehouse/purchase/request/type"; // Add this import
+import { BarChart, Clock, CheckCircle, Package, XCircle } from "lucide-react";
 
 const breadcrumbItems = [{ title: "Stock Requests", link: "/warehouse-requests" }];
-
-// Summary data - you can replace this with actual calculations from your data
-const getSummaryData = (data: StockRequests[]) => {
-    const totalRequests = data.length;
-    const pendingRequests = data.filter(req => req.warehouseRequestStatus === 'Pending').length;
-    const approvedRequests = data.filter(req => req.warehouseRequestStatus === 'Approved').length;
-    const completedRequests = data.filter(req => req.warehouseRequestStatus === 'Completed').length;
-    
-    // Calculate approval rate
-    const approvalRate = totalRequests > 0 ? Math.round((approvedRequests + completedRequests) / totalRequests * 100) : 0;
-    
-    return [
-        {
-            title: "Total Requests",
-            value: totalRequests.toString(),
-            unit: "",
-            change: "+5", // You can calculate this from historical data
-            trend: "positive",
-            icon: Package
-        },
-        {
-            title: "Pending Requests",
-            value: pendingRequests.toString(),
-            unit: "",
-            change: "-2",
-            trend: "positive",
-            icon: Clock
-        },
-        {
-            title: "Approval Rate",
-            value: approvalRate.toString(),
-            unit: "%",
-            change: "+3.2",
-            trend: "positive",
-            icon: CheckCircle
-        }
-    ];
-};
 
 type Params = { 
     searchParams: Promise<{ 
@@ -69,13 +33,16 @@ export default async function Page({ searchParams }: Params) {
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit)
 
-    const responseData = await searchWarehouseStockRequests(q, page, pageLimit);
+    // Fetch both the data and the report
+    const [responseData, reportData] = await Promise.all([
+        searchWarehouseStockRequests(q, page, pageLimit),
+        stockRequestReportForWarehouse()
+    ]);
 
     const data: StockRequests[] = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
-
-    const summaryData = getSummaryData(data);
+    const report: StockRequestReport | null = reportData;
 
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-10">
@@ -85,51 +52,79 @@ export default async function Page({ searchParams }: Params) {
                 </div>
             </div>
 
-            {/* Summary Analytics Card */}
-            <Card className="mb-6">
-                <CardHeader>
-                    <div className="flex justify-between items-center">
-                        <div>
-                            <CardTitle className="text-xl flex items-center gap-2">
-                                <BarChart size={20} />
-                                Request Analytics
+            {/* Summary Report Cards */}
+            {report && (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                Total Requests
                             </CardTitle>
-                            <CardDescription>
-                                Overview of stock request performance
-                            </CardDescription>
-                        </div>
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {summaryData.map((item, index) => {
-                            const IconComponent = item.icon;
-                            return (
-                                <Card key={index} className="shadow-sm">
-                                    <CardContent className="pt-6">
-                                        <div className="flex justify-between items-start">
-                                            <div className="flex items-center gap-3">
-                                                <div className="p-2 bg-blue-100 rounded-lg">
-                                                    <IconComponent size={20} className="text-blue-600" />
-                                                </div>
-                                                <div>
-                                                    <p className="text-sm text-gray-500">{item.title}</p>
-                                                    <p className="text-2xl font-bold mt-1">
-                                                        {item.value}{item.unit}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div className={`px-2 py-1 rounded-full text-xs ${item.trend === 'positive' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                                                {item.change}
-                                            </div>
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            );
-                        })}
-                    </div>
-                </CardContent>
-            </Card>
+                            <BarChart className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{report.totalStockRequests}</div>
+                            <p className="text-xs text-muted-foreground">
+                                All stock requests
+                            </p>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                Approved
+                            </CardTitle>
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-green-600">{report.approvedStockRequests}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {report.totalStockRequests > 0 
+                                    ? `${Math.round((report.approvedStockRequests / report.totalStockRequests) * 100)}% of total`
+                                    : "0% of total"
+                                }
+                            </p>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                Pending
+                            </CardTitle>
+                            <Clock className="h-4 w-4 text-yellow-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-yellow-600">{report.pendingStockRequests}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {report.totalStockRequests > 0 
+                                    ? `${Math.round((report.pendingStockRequests / report.totalStockRequests) * 100)}% of total`
+                                    : "0% of total"
+                                }
+                            </p>
+                        </CardContent>
+                    </Card>
+                    
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">
+                                Cancelled
+                            </CardTitle>
+                            <XCircle className="h-4 w-4 text-red-600" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold text-red-600">{report.cancelledStockRequests}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {report.totalStockRequests > 0 
+                                    ? `${Math.round((report.cancelledStockRequests / report.totalStockRequests) * 100)}% of total`
+                                    : "0% of total"
+                                }
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
 
             {/* Data Table or No Data State */}
             {total > 0 || q !== "" ? (

@@ -68,7 +68,6 @@ export const getStockRequest = async (id: UUID) => {
     const stockRequest = await apiClient.get(
         `/api/location/${location?.id}/warehouse-stock-requests/${id}`,
     );
-    console.log("stockRequest: ", stockRequest);
     return parseStringify(stockRequest);
 };
 

@@ -94,7 +94,7 @@ function DashboardLayout() {
     <div className='flex flex-col gap-6'>
       <div className='flex justify-between items-center'>
         <h2 className='text-2xl font-bold'>Reports Dashboard</h2>
-        <div className='flex gap-4'>
+        <div className='hidden lg:flex gap-4 '>
           <DatePicker 
             selectedDate={selectedDate} 
             onDateChange={handleDateChange}

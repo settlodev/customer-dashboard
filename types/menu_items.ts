@@ -204,41 +204,21 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             icon: 'general',
             items: [
                 { title: "Inventory Requests", link: "/warehouse-requests", current: args?.isCurrentItem, icon: "file-text" },
-                // { title: "Request Status", link: "/warehouse/request-status", current: args?.isCurrentItem, icon: "activity" },
+                
+            ]
+        },
+        {
+            label: "Warehouse",
+            showSeparator: true,
+            collapsible: false,
+            current: args?.isCurrentItem,
+            icon: 'warehouse',
+            items: [
+                { title: "Profile", link: "/warehouse-profile", current: args?.isCurrentItem, icon: "file-text" },
+                
             ]
         },
         
-       
-        
-        // Inventory Shop
-        // {
-        //     label: "Inventory Shop",
-        //     showSeparator: true,
-        //     collapsible: false,
-        //     current: args?.isCurrentItem,
-        //     icon: 'stock',
-        //     items: [
-        //         { title: "Stock Items", link: "/warehouse/stock-items", current: args?.isCurrentItem, icon: "box" },
-        //         { title: "Stock Transfer", link: "/warehouse/transfers", current: args?.isCurrentItem, icon: "repeat" },
-        //         { title: "Stocktaking", link: "/warehouse/stocktaking", current: args?.isCurrentItem, icon: "clipboard-check" },
-        //     ]
-        // },
-        
-        
-        
-        // Reports
-        // {
-        //     label: "Report",
-        //     showSeparator: false,
-        //     collapsible: false,
-        //     current: args?.isCurrentItem,
-        //     icon: 'dashboard',
-        //     items: [
-        //         { title: "Inventory Report", link: "/warehouse/report/inventory", current: args?.isCurrentItem, icon: "file-text" },
-        //         { title: "Movement Report", link: "/warehouse/report/movement", current: args?.isCurrentItem, icon: "trending-up" },
-        //         { title: "Purchase Report", link: "/warehouse/report/purchase", current: args?.isCurrentItem, icon: "dollar-sign" },
-        //     ]
-        // }
     ];
 
 };

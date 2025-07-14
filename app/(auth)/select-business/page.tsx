@@ -21,9 +21,7 @@ async function BusinessPageContent() {
 
         // Middleware ensures auth, just fetch data
         const data = await getBusinessDropDown();
-
-        console.log(data);
-        
+    
         // Handle redirects properly in server component
         if (!data) {
             // redirect('/login');
