@@ -60,6 +60,8 @@ export const createWarehouseInvoice = async (
    
         
         const warehouse = await getCurrentWarehouse();
+
+        console.log('Retrieved warehouse:', warehouse);
     
     
     const payload = {
@@ -76,6 +78,7 @@ export const createWarehouseInvoice = async (
             payload
         );
     
+        console.log('Invoice created successfully:', response);
         return parseStringify(response);
        
     } catch (error: unknown) {

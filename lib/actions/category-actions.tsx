@@ -27,6 +27,7 @@ export const fetchAllCategories = async (): Promise<Category[] | null> => {
             `/api/categories/${location?.id}`,
         );
 
+        // console.log("The categories found are:", categoriesData);
         return parseStringify(categoriesData);
     } catch (error) {
         throw error;
@@ -86,6 +87,7 @@ export const createCategory = async (
     }
 
     const validatedData = CategorySchema.safeParse(category);
+
     if (!validatedData.success) {
         return parseStringify({
             responseType: "error",
@@ -197,7 +199,6 @@ export const getCategory = async (id: UUID): Promise<ApiResponse<Category>> => {
         query,
     );
 
-    console.log(data)
     return parseStringify(data);
 };
 
