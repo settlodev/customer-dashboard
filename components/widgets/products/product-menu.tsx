@@ -1,17 +1,25 @@
-'use client';
-import React, { useState, useEffect, useRef } from 'react';
-import { locationMenuDetails, menuProducts } from '@/lib/actions/product-actions';
-import { Product } from '@/types/product/type';
-import Header from '@/components/site/Header';
-import CategoryMenu from '@/components/site/CategoryMenu';
-import LoadingStates from '@/components/site/LoadingStates';
-import ProductGrid from '@/components/site/ProductGrid';
-import Footer from '@/components/site/Footer';
-import MobileMenu from '@/components/site/MobileMenu';
-import ScrollToTop from '@/components/site/ScrollToTop';
-import { businessTypes, CategorizedProducts, ExtendedProduct,} from '@/types/site/type';
-import { LocationDetails } from '@/types/menu/type';
-import Loading from '@/app/loading';
+"use client";
+
+import React, { useState, useEffect, useRef } from "react";
+import {
+  locationMenuDetails,
+  menuProducts,
+} from "@/lib/actions/product-actions";
+import { Product } from "@/types/product/type";
+import Header from "@/components/site/Header";
+import CategoryMenu from "@/components/site/CategoryMenu";
+import LoadingStates from "@/components/site/LoadingStates";
+import ProductGrid from "@/components/site/ProductGrid";
+import Footer from "@/components/site/Footer";
+import MobileMenu from "@/components/site/MobileMenu";
+import ScrollToTop from "@/components/site/ScrollToTop";
+import {
+  businessTypes,
+  CategorizedProducts,
+  ExtendedProduct,
+} from "@/types/site/type";
+import { LocationDetails } from "@/types/menu/type";
+import Loading from "@/app/loading";
 
 interface ProductMenuProps {
   params: {
@@ -20,15 +28,15 @@ interface ProductMenuProps {
 }
 
 const ProductMenu = ({ params }: ProductMenuProps) => {
-
   const [products, setProducts] = useState<ExtendedProduct[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
   const [productsError, setProductsError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [pageLimit] = useState(50);
-  const [categorizedProducts, setCategorizedProducts] = useState<CategorizedProducts>({});
+  const [categorizedProducts, setCategorizedProducts] =
+    useState<CategorizedProducts>({});
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Start with null to show all products
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -39,11 +47,11 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [businessType, setBusinessType] = useState(businessTypes.default);
   const loaderRef = useRef<HTMLDivElement>(null);
-  
+
   // Separate location/business loading states
   const [locationLoading, setLocationLoading] = useState(true);
   const [, setLocation] = useState<LocationDetails | null>(null);
-  const [businessInfo, setBusinessInfo] = useState<any>(null); 
+  const [businessInfo, setBusinessInfo] = useState<any>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isBusinessDataReady, setIsBusinessDataReady] = useState(false);
 
@@ -51,7 +59,6 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     if (params?.id) {
       setLocationId(params.id);
     } else {
-      console.log("No locationId found in params");
       setLocationError("Missing location or business ID");
       setLocationLoading(false);
     }
@@ -68,10 +75,10 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
       try {
         setLocationLoading(true);
         setLocationError(null); // Clear previous errors
-        
+
         const locationData = await locationMenuDetails(locationId);
         setLocation(locationData);
-        
+
         // Map API response to business info structure
         const updatedBusinessInfo = {
           name: locationData.businessName || "",
@@ -80,27 +87,39 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
           phone: locationData.businessPhone || "",
           email: locationData.businessEmailAddress || "",
           address: locationData.locationAddress || "",
-          hours: `${locationData.locationOpeningHours || ""} - ${locationData.locationClosingHours || ""}`.trim(),
+          hours:
+            `${locationData.locationOpeningHours || ""} - ${locationData.locationClosingHours || ""}`.trim(),
           socials: {
             instagram: locationData.locationSocials?.instagram || "#",
             facebook: locationData.locationSocials?.facebook || "#",
-            twitter: locationData.locationSocials?.twitter || "#"
+            twitter: locationData.locationSocials?.twitter || "#",
           },
-          businessType: locationData.businessType || "default"
+          businessType: locationData.businessType || "default",
         };
-        
+
         setBusinessInfo(updatedBusinessInfo);
-        
+
         // Set business type if it exists in your enum
-        if (locationData.businessType && businessTypes[locationData.businessType as unknown as keyof typeof businessTypes]) {
-          setBusinessType(businessTypes[locationData.businessType as unknown as keyof typeof businessTypes]);
+        if (
+          locationData.businessType &&
+          businessTypes[
+            locationData.businessType as unknown as keyof typeof businessTypes
+          ]
+        ) {
+          setBusinessType(
+            businessTypes[
+              locationData.businessType as unknown as keyof typeof businessTypes
+            ],
+          );
         }
-        
+
         setIsBusinessDataReady(true);
-        
       } catch (err) {
         console.error("Error fetching location data:", err);
-        const errorMessage = err instanceof Error ? err.message : "Failed to fetch location details";
+        const errorMessage =
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch location details";
         setLocationError(errorMessage);
         setIsBusinessDataReady(false);
       } finally {
@@ -124,10 +143,10 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     const checkIfMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkIfMobile();
-    window.addEventListener('resize', checkIfMobile);
-    return () => window.removeEventListener('resize', checkIfMobile);
+    window.addEventListener("resize", checkIfMobile);
+    return () => window.removeEventListener("resize", checkIfMobile);
   }, []);
 
   // Handle scroll to show/hide scroll-to-top button
@@ -135,21 +154,26 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     const handleScroll = () => {
       setShowScrollToTop(window.scrollY > 300);
     };
-    
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // Set up intersection observer for infinite scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
-      entries => {
+      (entries) => {
         const [entry] = entries;
-        if (entry.isIntersecting && hasMore && !productsLoading && isBusinessDataReady) {
-          setCurrentPage(prevPage => prevPage + 1);
+        if (
+          entry.isIntersecting &&
+          hasMore &&
+          !productsLoading &&
+          isBusinessDataReady
+        ) {
+          setCurrentPage((prevPage) => prevPage + 1);
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.1 },
     );
 
     if (loaderRef.current) {
@@ -178,18 +202,25 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   }, [searchQuery, locationId, isBusinessDataReady]);
 
   const fetchProducts = async (isReset: boolean) => {
-    if (!isBusinessDataReady) return; 
-    
+    if (!isBusinessDataReady) return;
+
     try {
       setProductsLoading(true);
       setProductsError(null);
       const pageToFetch = isReset ? 1 : currentPage;
-      
-      const response = await menuProducts(searchQuery, pageToFetch, pageLimit, locationId ?? '');
-      
+
+      const response = await menuProducts(
+        searchQuery,
+        pageToFetch,
+        pageLimit,
+        locationId ?? "",
+      );
+
       if (response && response.content) {
-        const typedContent = response.content.map((product: Product) => product as ExtendedProduct);
-        
+        const typedContent = response.content.map(
+          (product: Product) => product as ExtendedProduct,
+        );
+
         let hasMoreItems = false;
         if (response.pageable) {
           hasMoreItems = response.pageable.pageNumber < response.totalPages - 1;
@@ -199,45 +230,51 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
           hasMoreItems = typedContent.length === pageLimit;
         }
         setHasMore(hasMoreItems);
-        
+
         if (isReset) {
           setProducts(typedContent);
         } else {
-          setProducts(prev => [...prev, ...typedContent]);
+          setProducts((prev) => [...prev, ...typedContent]);
         }
-        
-        updateProductCategories(isReset ? typedContent : [...products, ...typedContent]);
+
+        updateProductCategories(
+          isReset ? typedContent : [...products, ...typedContent],
+        );
       } else if (response && response.data) {
         if (isReset) {
           setProducts(response.data);
         } else {
-          setProducts(prev => [...prev, ...response.data]);
+          setProducts((prev) => [...prev, ...response.data]);
         }
-        
-        const hasMoreItems = response.totalPages ? pageToFetch < response.totalPages : response.data.length === pageLimit;
+
+        const hasMoreItems = response.totalPages
+          ? pageToFetch < response.totalPages
+          : response.data.length === pageLimit;
         setHasMore(hasMoreItems);
-        
-        updateProductCategories(isReset ? response.data : [...products, ...response.data]);
+
+        updateProductCategories(
+          isReset ? response.data : [...products, ...response.data],
+        );
       }
-      
+
       setProductsLoading(false);
     } catch (err) {
-      setProductsError('Failed to fetch products');
+      setProductsError("Failed to fetch products");
       setProductsLoading(false);
-      console.error('Error fetching products:', err);
+      console.error("Error fetching products:", err);
     }
   };
 
   const updateProductCategories = (productsList: ExtendedProduct[]) => {
     const grouped: { [key: string]: Product[] } = {};
-    productsList.forEach(product => {
-      const categoryName = product.categoryName || 'Uncategorized';
+    productsList.forEach((product) => {
+      const categoryName = product.categoryName || "Uncategorized";
       if (!grouped[categoryName]) {
         grouped[categoryName] = [];
       }
       grouped[categoryName].push(product as Product);
     });
-    
+
     setCategorizedProducts(grouped);
     // Don't automatically set a selected category - keep it null to show all products
   };
@@ -258,22 +295,22 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
       setSelectedCategory(category); // Show specific category
     }
     setIsMenuOpen(false);
-    
+
     // Scroll to top when category changes
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleScrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleAddToCart = (product: ExtendedProduct) => {
-    setCartCount(prev => prev + 1);
+    setCartCount((prev) => prev + 1);
     alert(`Added ${product.name} to cart`);
   };
 
   const handleAddToWishlist = (product: ExtendedProduct) => {
-    setWishlistCount(prev => prev + 1);
+    setWishlistCount((prev) => prev + 1);
     alert(`Added ${product.name} to wishlist`);
   };
 
@@ -281,7 +318,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   if (locationLoading || !businessInfo) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <Loading/>
+        <Loading />
       </div>
     );
   }
@@ -292,10 +329,12 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
         <div className="text-center max-w-md mx-auto p-6">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">Unable to Load Business</h2>
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            Unable to Load Business
+          </h2>
           <p className="text-gray-600 mb-4">{locationError}</p>
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
           >
             Try Again
@@ -352,13 +391,17 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
           <div ref={loaderRef} className="w-full py-8 flex justify-center">
             {!productsInitialLoad && productsLoading && (
               <div className="flex flex-col items-center">
-                <div className={`animate-spin rounded-full h-8 w-8 border-b-2 ${businessType.accent} mb-2`}></div>
+                <div
+                  className={`animate-spin rounded-full h-8 w-8 border-b-2 ${businessType.accent} mb-2`}
+                ></div>
                 <p className="text-gray-500 text-sm">Loading more items...</p>
               </div>
             )}
-            
+
             {!productsLoading && !hasMore && products.length > 0 && (
-              <div className="text-gray-500 text-sm py-2">You&apos;ve reached the end</div>
+              <div className="text-gray-500 text-sm py-2">
+                You&apos;ve reached the end
+              </div>
             )}
           </div>
         </div>

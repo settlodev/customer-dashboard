@@ -1,61 +1,43 @@
 import * as Sentry from "@sentry/nextjs";
-import { Suspense } from 'react';
-import { redirect } from 'next/navigation';
-import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import BusinessSelector from "@/app/(auth)/select-business/business_list";
-import Loading from "@/app/(protected)/loading";
+import { fetchAllBusinesses } from "@/lib/actions/business-actions";
+import Loading from "@/app/loading";
 
 function BusinessPageLoading() {
-    return (
-        <div className="flex items-center justify-center min-h-screen">
-           <Loading />
-        </div>
-    );
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <Loading />
+    </div>
+  );
 }
 
 async function BusinessPageContent() {
-    try {
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
+    const data = await fetchAllBusinesses();
 
-        // Middleware ensures auth, just fetch data
-        const data = await getBusinessDropDown();
-
-        console.log(data);
-        
-        // Handle redirects properly in server component
-        if (!data) {
-            // redirect('/login');
-            redirect('/login');
-        }
-        
-        if (Array.isArray(data) && data.length > 0) {
-            return <BusinessSelector businesses={data} />;
-        }
-            redirect('/business-registration');
-        
-        
-    } catch (error) {
-        Sentry.captureException(error);
-        
-        // Re-throw redirect errors
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-            throw error;
-        }
-
-       
-        
-        // For other errors, redirect to login
-        redirect('/login');
+    if (Array.isArray(data) && data.length > 0) {
+      return <BusinessSelector businesses={data} />;
     }
+
+    redirect("/business-registration");
+  } catch (error) {
+    Sentry.captureException(error);
+
+    // Re-throw redirect errors
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
+  }
 }
 
 export default async function SelectBusinessPage() {
-    return (
-        <Suspense fallback={<BusinessPageLoading />}>
-            <BusinessPageContent />
-        </Suspense>
-    );
-}  
-
+  return (
+    <Suspense fallback={<BusinessPageLoading />}>
+      <BusinessPageContent />
+    </Suspense>
+  );
+}
