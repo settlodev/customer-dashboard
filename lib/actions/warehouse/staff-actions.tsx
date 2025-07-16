@@ -172,11 +172,14 @@ export const updateStaffFomWarehouse = async (
             `/api/warehouse-staffs/${warehouse?.id}/${id}`,
             payload,
         );
-        // console.log("Updated staff:", staff);
+       
+        revalidatePath("/warehouse-staff");
         formResponse = {
             responseType: "success",
             message: "Staff updated successfully",
         }
+        return parseStringify(formResponse);
+
     } catch (error: unknown) {
         // console.error("Error updating staff:", error);
         formResponse = {
@@ -188,9 +191,6 @@ export const updateStaffFomWarehouse = async (
     }
 
     if( formResponse.responseType === "error" ) return parseStringify(formResponse);
-
-    revalidatePath("/warehouse-staff");
-    // redirect("/staff");
 
 };
 

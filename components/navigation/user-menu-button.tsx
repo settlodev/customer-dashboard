@@ -25,6 +25,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Location } from "@/types/location/type";
 import { getAuthToken } from "@/lib/auth-utils";
+import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { Warehouses } from "@/types/warehouse/warehouse/type";
 
 interface UserDropdownProps {
     user: ExtendedUser;
@@ -36,15 +38,19 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
     const router = useRouter();
 
     const [currentLocation, setCurrentLocation] = useState<Location | undefined>(undefined);
+    const [currentWarehouse, setCurrentWarehouse] = useState<Warehouses | undefined>(undefined);
     const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
 
     useEffect(() => {
-        const fetchCurrentLocation = async () => {
-            const location = await getCurrentLocation();
+        const fetchData = async () => {
+            const [location, warehouse] = await Promise.all([
+                getCurrentLocation(),
+                getCurrentWarehouse()
+            ]);
             setCurrentLocation(location as Location | undefined);
+            setCurrentWarehouse(warehouse as Warehouses | undefined);
         };
-
-        fetchCurrentLocation();
+        fetchData();
     }, []);
 
     const checkCurrentLocation = async () => {
@@ -53,13 +59,13 @@ export const UserDropdown = ({ user }: UserDropdownProps) =>  {
             const authToken = await getAuthToken();
             
             if (!authToken) {
-                // If no auth token, show session expired modal
                 setShowSessionExpiredModal(true);
                 return;
             }
 
-            // If auth token exists, proceed with location check
-            if (currentLocation) {
+            if (currentWarehouse) {
+                router.push('/warehouse');
+            } else if (currentLocation) {
                 router.push('/dashboard');
             } else {
                 router.push('/select-business');

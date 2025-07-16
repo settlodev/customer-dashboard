@@ -1,7 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback,useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/form";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
-import { FormResponse} from "@/types/types";
+import { FormResponse } from "@/types/types";
 import { RoleSchema } from "@/types/roles/schema";
 import { FormError } from "@/components/widgets/form-error";
 import { Role } from "@/types/roles/type";
@@ -29,21 +29,22 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { createWarehouseRole, updateWarehouseRole } from "@/lib/actions/warehouse/roles-action";
 
-
 const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
-    const [isActive, setIsActive] = useState(item ? item.status : true);
-   
- 
-    // const [role] = useState<Role | null>(item ? item : null);
+
     const { toast } = useToast();
     const router = useRouter();
 
     const form = useForm<z.infer<typeof RoleSchema>>({
         resolver: zodResolver(RoleSchema),
-        defaultValues: item ? item : { status: true },
+        defaultValues: {
+            ...item,
+            status: item ? item.status : true,
+
+        },
     });
+
 
     const submitData = (values: z.infer<typeof RoleSchema>) => {
         setResponse(undefined);
@@ -57,7 +58,14 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
                             title: "Success",
                             description: data.message,
                         });
-                        router.push("/roles");
+                        form.reset();
+                        router.push("/warehouse-role");
+                    } else if (data && data.responseType === "error") {
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: data.message,
+                        });
                     }
                 });
             } else {
@@ -68,24 +76,26 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
                             title: "Success",
                             description: data.message,
                         });
-                        router.push("/roles");
+                        form.reset();
+                        router.push("/warehouse-role");
+                    } else if (data && data.responseType === "error") {
+                        toast({
+                            variant: "destructive",
+                            title: "Error",
+                            description: data.message,
+                        });
                     }
                 });
             }
         });
     }
-
-   
-
     const onInvalid = useCallback(
         (errors: any) => {
-
+            const firstError = Object.values(errors)[0] as any;
             toast({
                 variant: "destructive",
-                title: "Uh oh! something went wrong",
-                description: errors.message
-                    ? errors.message
-                    : "There was an issue submitting your form, please try later",
+                title: "Validation Error",
+                description: firstError?.message || "Please fix the form errors and try again",
             });
         },
         [toast]
@@ -140,9 +150,9 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
                                         }}
                                         color="success"
                                         isDisabled={isPending}
-                                        isSelected={isActive}
+                                        isSelected={field.value}
                                         value={String(field.value)}
-                                        onValueChange={setIsActive}
+                                        onValueChange={field.onChange}
                                     >
                                         <div className="flex flex-col gap-1">
                                             <p className="text-sm">Role status</p>
@@ -156,11 +166,14 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
                             </FormItem>
                         )}
                     />
+
+
+
                 </div>
-                  <FormField
+                <FormField
                     control={form.control}
                     name="description"
-                    render={({field}) => (
+                    render={({ field }) => (
                         <FormItem>
                             <FormLabel>Role Description</FormLabel>
                             <FormControl>
@@ -172,12 +185,12 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
                                     placeholder="Describe the role"
                                 />
                             </FormControl>
-                            <FormMessage/>
+                            <FormMessage />
                         </FormItem>
                     )}
                 />
 
-               
+
 
                 <div className="flex h-5 items-center space-x-4">
                     <CancelButton />

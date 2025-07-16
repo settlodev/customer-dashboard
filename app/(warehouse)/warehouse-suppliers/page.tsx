@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/supplier/columns";
+import { columns } from "@/components/tables/warehouse/supplier/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
 import { Supplier } from "@/types/supplier/type";

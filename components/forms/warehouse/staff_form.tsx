@@ -14,7 +14,6 @@ import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
 import GenderSelector from "@/components/widgets/gender-selector";
 import { useToast } from "@/hooks/use-toast"
-import { DefaultCountry } from "@/types/constants";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Separator } from "@/components/ui/separator";
 import { createStaffFromWarehouse, updateStaffFomWarehouse } from "@/lib/actions/warehouse/staff-actions";
@@ -31,8 +30,7 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
     onFormSubmitted,
 }) => {
 
-    console.log("item is ", item);
-
+    
     const { toast } = useToast();
     const [isSubmitting, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
@@ -41,8 +39,8 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
         resolver: zodResolver(StaffWarehouseSchema),
         defaultValues: {
             ...item,
-            nationality: item?.nationality || DefaultCountry,
             status: item ? item.status : true,
+            // warehouseRole: item ? item.warehouseRole : null
         },
     });
 
@@ -138,7 +136,7 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
                                 Enter the staff members basic details
                             </CardDescription>
                         </CardHeader>
-                        <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                        <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
                             <FormField
                                 control={form.control}
                                 name="firstName"
@@ -186,6 +184,7 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
                                                 {...field}
                                                 disabled={isSubmitting}
                                                 placeholder="Enter phone number"
+                                                className="w-full border border-gray-300 rounded-md"
                                             />
                                         </FormControl>
                                         <FormMessage />
@@ -205,6 +204,7 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
                                                 isDisabled={isSubmitting}
                                                 label="Select staff gender"
                                                 placeholder="Select gender"
+                                                
                                             />
                                         </FormControl>
                                         <FormMessage />

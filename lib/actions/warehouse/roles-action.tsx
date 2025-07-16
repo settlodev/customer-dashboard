@@ -11,7 +11,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { RoleSchema } from "@/types/roles/schema";
-import {getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
 
@@ -141,6 +140,7 @@ export const updateWarehouseRole = async (
             responseType: "success",
             message: "Role updated successfully",
         }
+        
     } catch (error: unknown) {
         formResponse = {
             responseType: "error",
@@ -154,31 +154,24 @@ export const updateWarehouseRole = async (
     return parseStringify(formResponse);
 };
 
-export const getWarehouseRole = async (id: UUID): Promise<ApiResponse<Role>> => {
+export const getWarehouseRole = async (id: UUID) => {
+
     const apiClient = new ApiClient();
 
-    const query = {
-        filters: [
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            },
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
-    };
+    const warehouse = await getCurrentWarehouse();
+    
+    try {
+        
+        const roleData = await apiClient.get(
+            `/api/warehouse-roles/${warehouse?.id}/${id}`,
+        );
+        console.log("The role data is:", roleData);
+        return parseStringify(roleData);
 
-    const warehouse = await getCurrentLocation();
+    } catch (error) {
 
-    const roleData = await apiClient.post(
-        `/api/warehouse-roles/${warehouse?.id}`,
-        query,
-    );
-
-    return parseStringify(roleData);
+        throw error;
+    }
 };
 
 

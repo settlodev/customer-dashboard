@@ -170,18 +170,18 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
         },
         
         // Stock Purchase
-        {
-            label: "Purchases",
-            showSeparator: true,
-            collapsible: false,
-            current: args?.isCurrentItem,
-            icon: 'sales',
-            items: [
-                { title: "Suppliers", link: "/warehouse-suppliers", current: args?.isCurrentItem, icon: "users" },
-                { title: "Purchase Orders", link: "/purchases", current: args?.isCurrentItem, icon: "shopping-bag" },
+        // {
+        //     label: "Purchases",
+        //     showSeparator: true,
+        //     collapsible: false,
+        //     current: args?.isCurrentItem,
+        //     icon: 'sales',
+        //     items: [
+        //         { title: "Suppliers", link: "/warehouse-suppliers", current: args?.isCurrentItem, icon: "users" },
+        //         { title: "Purchase Orders", link: "/purchases", current: args?.isCurrentItem, icon: "shopping-bag" },
                 
-            ]
-        },
+        //     ]
+        // },
 
          // Supplier
          {
@@ -189,7 +189,7 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
-            icon: 'sales',
+            icon: 'users',
             items: [
                 { title: "Suppliers", link: "/warehouse-suppliers", current: args?.isCurrentItem, icon: "users" },
                 // { title: "Supplier Credits", link: "/warehouse-supplier-credits", current: args?.isCurrentItem, icon: "shopping-bag" },
@@ -203,7 +203,7 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
-            icon: 'sales',
+            icon: 'users',
             items: [
                 { title: "Staff", link: "/warehouse-staff", current: args?.isCurrentItem, icon: "shopping-bag" },
                 { title: "Role", link: "/warehouse-role", current: args?.isCurrentItem, icon: "shopping-bag" },
@@ -216,7 +216,7 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             showSeparator: true,
             collapsible: false,
             current: args?.isCurrentItem,
-            icon: 'general',
+            icon: 'git',
             items: [
                 { title: "Inventory Requests", link: "/warehouse-requests", current: args?.isCurrentItem, icon: "file-text" },
                 

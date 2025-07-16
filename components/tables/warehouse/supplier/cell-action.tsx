@@ -68,7 +68,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem onClick={() => router.push(`/suppliers/${data.id}`)}>
+            <DropdownMenuItem onClick={() => router.push(`/warehouse-suppliers/${data.id}`)}>
               <Edit className="mr-2 h-4 w-4" /> Update
             </DropdownMenuItem>
             {data.canDelete && (

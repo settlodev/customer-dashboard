@@ -1,7 +1,4 @@
 import { UUID } from "node:crypto";
-
-import { notFound } from "next/navigation";
-
 import {
     Card,
     CardContent,
@@ -11,7 +8,6 @@ import {
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Role} from "@/types/roles/type";
-import {ApiResponse} from "@/types/types";
 import { getWarehouseRole } from "@/lib/actions/warehouse/roles-action";
 import WarehouseRoleForm from "@/components/forms/warehouse/role_form";
 
@@ -20,12 +16,12 @@ export default async function WarehouseRolePage({params}: {params: Params}) {
 
     const resolvedParams = await params;
     const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Role> | null = null;
+    let item: Role| null = null;
 
     if (!isNewItem) {
         try {
             item = await getWarehouseRole(resolvedParams.id as UUID);
-            if (item.totalElements == 0) notFound();
+            
         } catch (error) {
             
             console.log(error)
@@ -36,7 +32,7 @@ export default async function WarehouseRolePage({params}: {params: Params}) {
     const breadcrumbItems = [
         { title: "Roles", link: "/warehouse-role" },
         {
-            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
+            title: isNewItem ? "New" : item?.name || "Edit",
             link: "",
         },
     ];
@@ -49,7 +45,7 @@ export default async function WarehouseRolePage({params}: {params: Params}) {
                 </div>
             </div>
 
-            <RoleCard isNewItem={isNewItem} item={item?.content[0]} />
+            <RoleCard isNewItem={isNewItem} item={item} />
         </div>
     );
 }

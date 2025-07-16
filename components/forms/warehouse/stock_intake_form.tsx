@@ -27,8 +27,10 @@ import DateTimePicker from "@/components/widgets/datetimepicker";
 import CancelButton from "@/components/widgets/cancel-button";
 import SubmitButton from "@/components/widgets/submit-button";
 import { createStockIntakeForWarehouse, updateStockIntakeFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
-import WarehouseStockVariantSelector from "@/components/widgets/warehouse-stock-variant-selector";
 import WarehouseStaffSelectorWidget from "@/components/widgets/warehouse/staff-selector";
+import StockVariantSelectorForWarehouse from "@/components/widgets/warehouse/stock-variant-selector";
+import SupplierSelector from "@/components/widgets/supplier-selector";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
     const [isPending, startTransition] = useTransition();
@@ -176,7 +178,13 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                 <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-8">
                     <FormError message={error} />
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="flex flex-col gap-3">
+                       <Card className="shadow-md">
+                        <CardHeader>
+                            <CardTitle className="font-bold text-sm">Item Details</CardTitle>
+                            
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <FormField
                             control={form.control}
                             name="stockVariant"
@@ -184,7 +192,7 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                 <FormItem>
                                     <FormLabel className="font-medium">Stock Item</FormLabel>
                                     <FormControl>
-                                        <WarehouseStockVariantSelector
+                                        <StockVariantSelectorForWarehouse
                                             {...field}
                                             isRequired
                                             isDisabled={!!item || isPending}
@@ -255,26 +263,14 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                 </FormItem>
                             )}
                         />
-                        <FormField
-                            control={form.control}
-                            name="staff"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium">Staff Member</FormLabel>
-                                    <FormControl>
-                                        <WarehouseStaffSelectorWidget
-                                            {...field}
-                                            isRequired
-                                            isDisabled={!!item || isPending}
-                                            placeholder="Select staff member"
-                                            label="Select staff member"
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        </CardContent>
+                       </Card>
 
+                       <Card className="shadow-md">
+                        <CardHeader>
+                            <CardTitle className="font-bold text-sm">Order Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <FormField
                             control={form.control}
                             name="orderDate"
@@ -343,8 +339,35 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                 </FormItem>
                             )}
                         />
+                        </CardContent>
+                       </Card>
+                    
+                    <Card className="shadow-md">
+                        <CardHeader>
+                            <CardTitle className="font-bold text-sm">Personnel & Supplier</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="staff"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="font-medium">Staff Member</FormLabel>
+                                    <FormControl>
+                                        <WarehouseStaffSelectorWidget
+                                            {...field}
+                                            isRequired
+                                            isDisabled={!!item || isPending}
+                                            placeholder="Select staff member"
+                                            label="Select staff member"
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
 
-                        {/* <FormField
+                        <FormField
                             control={form.control}
                             name="supplier"
                             render={({ field }) => (
@@ -363,7 +386,9 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                     <FormMessage />
                                 </FormItem>
                             )}
-                        /> */}
+                        />
+                        </CardContent>
+                    </Card>
 
                         {item && (
                             <FormField

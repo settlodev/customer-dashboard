@@ -27,11 +27,11 @@ export default async function StockIntakePage({params}: {params: Params}){
         }
     }
 
-    const breadCrumbItems=[{title:"Stock Intake",link:"/stock-intakes"},
+    const breadCrumbItems=[{title:"Stock Intake",link:"/warehouse-stock-intakes"},
         {title: isNewItem ? "New":item?.content[0].id || "Edit",link:""}]
 
     return(
-        <div className={`flex-1 space-y-4 p-4 md:p-8 pt-6`}>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-12">
             <div className={`flex items-center justify-between mb-2`}>
                 <div className={`relative flex-1 `}>
                     <BreadcrumbsNav items={breadCrumbItems}/>

@@ -53,7 +53,7 @@ function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) 
               description: data.message,
               duration:5000
             });
-            router.push("/suppliers");
+            router.push("/warehouse-suppliers");
           }
         });
       } else {
@@ -67,7 +67,7 @@ function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) 
                 description: data.message,
                 duration:5000
               });
-              router.push("/suppliers");
+              router.push("/warehouse-suppliers");
             }
           })
           .catch((err) => {
@@ -138,7 +138,7 @@ return (
                                 <FormItem>
                                     <FormLabel>Phone Number</FormLabel>
                                     <FormControl>
-                                        <div className="relative">
+                                        <div className="relative border border-gray-200 rounded-md">
                                             <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                                             <PhoneInput
                                                 className="pl-10"
@@ -193,7 +193,7 @@ return (
                                 <FormItem>
                                     <FormLabel>Contact Person Name</FormLabel>
                                     <FormControl>
-                                        <div className="relative">
+                                        <div className="relative border-gray-200 rounded-md">
                                             <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                                             <Input
                                                 className="pl-10"
