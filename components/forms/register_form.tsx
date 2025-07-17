@@ -42,7 +42,6 @@ import {
   Loader2Icon,
   ArrowRight,
   Building2,
-  MapPin,
   User,
   Mail,
 } from "lucide-react";
@@ -63,6 +62,14 @@ import CountrySelector from "@/components/widgets/country-selector";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 const defaultCountry = process.env.DEFAULT_COUNTRY;
+
+// Combined schema for business and location
+const CombinedBusinessLocationSchema = BusinessSchema.merge(
+  LocationSchema.omit({ email: true }),
+).extend({
+  locationName: z.string().min(1, { message: "Location name is required" }),
+  locationImage: z.string().optional(),
+});
 
 interface SignUpStepItemType {
   id: string;
@@ -87,14 +94,8 @@ const signUpSteps = [
   {
     id: "step3",
     label: "03",
-    title: "Business Info",
+    title: "Business Setup",
     icon: <Building2 className="w-4 h-4" />,
-  },
-  {
-    id: "step4",
-    label: "04",
-    title: "Location Info",
-    icon: <MapPin className="w-4 h-4" />,
   },
 ];
 
@@ -114,7 +115,7 @@ function RegisterForm({ step }: { step: string }) {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [emailVerified] = useState<boolean>(false);
   const [emailSent, setEmailSent] = useState<boolean>(false);
-  const [imageUrl, setImageUrl] = useState<string>("");
+  const [businessImageUrl, setBusinessImageUrl] = useState<string>("");
   const [locationImageUrl, setLocationImageUrl] = useState<string>("");
   const router = useRouter();
   const session = useSession();
@@ -129,15 +130,6 @@ function RegisterForm({ step }: { step: string }) {
       localStorage.setItem("subscription", subscription);
     }
   }, [subscription]);
-
-  // useEffect(() => {
-  //   async function getBusiness() {
-  //     const myBusiness = await getCurrentBusiness();
-  //     setCurrentBusiness(myBusiness);
-  //   }
-  //
-  //   getBusiness();
-  // }, []);
 
   const form = useForm<z.infer<typeof RegisterSchema>>({
     resolver: zodResolver(RegisterSchema),
@@ -157,33 +149,21 @@ function RegisterForm({ step }: { step: string }) {
     },
   });
 
-  const businessForm = useForm<z.infer<typeof BusinessSchema>>({
-    resolver: zodResolver(BusinessSchema),
-    defaultValues: {
-      email: session?.data?.user.email,
-    },
-  });
-
   const storedSubscription =
     typeof window !== "undefined" ? localStorage.getItem("subscription") : null;
 
-  const locationForm = useForm<z.infer<typeof LocationSchema>>({
-    resolver: zodResolver(LocationSchema),
+  const combinedBusinessLocationForm = useForm<
+    z.infer<typeof CombinedBusinessLocationSchema>
+  >({
+    resolver: zodResolver(CombinedBusinessLocationSchema),
     defaultValues: {
       email: session?.data?.user.email,
-      //name: currentBusiness?.name,
       phone: session?.data?.user.phoneNumber,
       openingTime: "08:00",
       closingTime: "18:00",
       subscription: storedSubscription,
     },
   });
-
-  // useEffect(() => {
-  //   if (session?.data?.user.phoneNumber) {
-  //     locationForm.setValue("phone", session.data.user.phoneNumber);
-  //   }
-  // }, [session?.data?.user.phoneNumber]);
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
@@ -199,14 +179,6 @@ function RegisterForm({ step }: { step: string }) {
     },
     [toast],
   );
-
-  // useEffect(() => {
-  //   const getBusiness = async () => {
-  //     const myBusiness = await getCurrentBusiness();
-  //     setCurrentBusiness(myBusiness);
-  //   };
-  //   getBusiness();
-  // }, []);
 
   const setMyCurrentStep = useCallback(() => {
     const currentStepIndex = signUpSteps.findIndex(
@@ -227,19 +199,12 @@ function RegisterForm({ step }: { step: string }) {
 
         if (data.responseType === "error") {
           setError(data.message);
-          // Don't clear the error or redirect on error
           return;
         }
 
         if (data.responseType === "success") {
-          //          setSuccess(data.message);
           setIsRegistrationComplete(true);
-
           setMyCurrentStep();
-          // Only redirect on success
-          // setTimeout(() => {
-          //   window.location.href = "/login";
-          // }, 3000);
         }
       } catch (error: any) {
         console.error("Registration exception:", error);
@@ -253,71 +218,63 @@ function RegisterForm({ step }: { step: string }) {
     });
   };
 
-  const submitBusinessData = useCallback(
-    async (values: z.infer<typeof BusinessSchema>) => {
-      if (imageUrl) {
-        values.image = imageUrl;
-      }
-
+  const submitCombinedBusinessLocationData = useCallback(
+    async (values: z.infer<typeof CombinedBusinessLocationSchema>) => {
       setError("");
       setSuccess("");
 
       startTransition(async () => {
         try {
-          const data = await createBusiness(values);
+          const businessData = {
+            name: values.name,
+            businessType: values.businessType,
+            country: values.country,
+            description: values.description,
+            email: values.email,
+            image: businessImageUrl || undefined,
+          };
 
-          console.log("data from create business", data);
+          const businessResponse = await createBusiness(businessData);
 
-          if (data && data.responseType === "success") {
-            setStepsDone((prev) => [...prev, currentStep]);
-            setMyCurrentStep();
-            // Update URL to reflect the new step
-            router.push("/business-location");
-          } else if (data && data.responseType === "error") {
-            setError(data.message);
-            // Don't proceed or reload on error
+          if (businessResponse && businessResponse.responseType === "error") {
+            setError(businessResponse.message);
             return;
-          } else {
-            setError("An unexpected error occurred. Please try again.");
+          }
+
+          // Then create the location
+          const locationData = {
+            name: values.locationName,
+            phone: values.phone,
+            email: values.email!,
+            city: values.city,
+            address: values.address,
+            openingTime: values.openingTime,
+            closingTime: values.closingTime,
+            subscription: values.subscription,
+            image: businessImageUrl || undefined,
+          };
+
+          const locationResponse = await createBusinessLocation(locationData);
+
+          if (!locationResponse) {
+            setError(
+              "Something went wrong while processing your request, please try again",
+            );
+            return;
+          }
+
+          if (locationResponse.responseType === "error") {
+            setError(locationResponse.message);
+          } else if (locationResponse.responseType === "success") {
+            router.push("/dashboard");
           }
         } catch (error: any) {
-          const errorMessage =
-            error?.message || "An unexpected error occurred. Please try again.";
+          const errorMessage = error.message || "An unexpected error occurred";
           setError(errorMessage);
         }
       });
     },
-    [imageUrl, currentStep, setMyCurrentStep, router],
-  );
-
-  const submitLocationData = useCallback(
-    async (values: z.infer<typeof LocationSchema>) => {
-      try {
-        startTransition(async () => {
-          const formData = locationImageUrl
-            ? { ...values, image: locationImageUrl }
-            : values;
-
-          const response = await createBusinessLocation(formData);
-
-          if (!response) {
-            setError(
-              "Something went wrong while processing your request, please try again",
-            );
-          }
-
-          if (response.responseType === "error") {
-            setError(response.message);
-          } else if (response.responseType === "success") {
-            router.push("/dashboard");
-          }
-        });
-      } catch (error: any) {
-        const errorMessage = error.message || "An unexpected error occurred";
-        setError(errorMessage);
-      }
-    },
-    [locationImageUrl, router],
+    [businessImageUrl, locationImageUrl, router],
   );
 
   const submitEmailVerificationData = useCallback(
@@ -333,8 +290,6 @@ function RegisterForm({ step }: { step: string }) {
             console.error("Email verification error:", resp.message);
             setError(resp.message);
             setEmailSent(false);
-            // Don't automatically redirect on error
-            // Let the user read the error and decide what to do
           } else {
             setEmailSent(true);
           }
@@ -345,7 +300,7 @@ function RegisterForm({ step }: { step: string }) {
         }
       });
     },
-    [router],
+    [],
   );
 
   return (
@@ -767,228 +722,96 @@ function RegisterForm({ step }: { step: string }) {
                   <Building2 className="w-5 h-5 text-emerald-600" />
                 </div>
                 <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Business Information
+                  Business Setup
                 </CardTitle>
               </div>
               <CardDescription className="text-gray-600">
-                Tell us about your business
+                Tell us about your business and location
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <FormError message={error} />
               <FormSuccess message={success} />
-              <Form {...businessForm}>
+              <Form {...combinedBusinessLocationForm}>
                 <form
-                  className="space-y-6"
-                  onSubmit={businessForm.handleSubmit(
-                    submitBusinessData,
-                    onInvalid,
-                  )}
-                >
-                  <div className="flex flex-col lg:flex-row gap-6">
-                    <div className="lg:w-1/3">
-                      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-6 rounded-xl border border-emerald-200">
-                        <UploadImageWidget
-                          imagePath={"business"}
-                          displayStyle={"default"}
-                          displayImage={true}
-                          setImage={setImageUrl}
-                          label={"Upload Business Logo"}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex-1 space-y-4">
-                      <FormField
-                        control={businessForm.control}
-                        name="name"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Business Name
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter your business name"
-                                {...field}
-                                disabled={isPending}
-                                className="border-gray-200 focus:border-emerald-500 transition-colors"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        <FormField
-                          control={businessForm.control}
-                          name="businessType"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-gray-700">
-                                Business Type
-                              </FormLabel>
-                              <FormControl>
-                                <BusinessTypeSelector
-                                  value={field.value}
-                                  onChange={field.onChange}
-                                  onBlur={field.onBlur}
-                                  isRequired
-                                  isDisabled={isPending}
-                                  label="Business Type"
-                                  placeholder="Select business type"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={businessForm.control}
-                          name="country"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-gray-700">
-                                Country
-                              </FormLabel>
-                              <FormControl>
-                                <CountrySelector
-                                  {...field}
-                                  isDisabled={isPending}
-                                  placeholder="Select country"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <FormField
-                    control={businessForm.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-700">
-                          Business Description
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Tell us about your business..."
-                            {...field}
-                            disabled={isPending}
-                            className="min-h-[120px] resize-none border-gray-200 focus:border-emerald-500 transition-colors bg-gray-50/50"
-                            maxLength={200}
-                            value={field.value || ""}
-                          />
-                        </FormControl>
-                        <FormDescription className="text-xs text-gray-500">
-                          {field.value?.length || 0}/200 characters
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="pt-6">
-                    <Button
-                      type="submit"
-                      disabled={isPending}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/25"
-                    >
-                      {isPending ? (
-                        <Loader2Icon className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          Continue to Location Setup
-                          <ArrowRight className="w-5 h-5" />
-                        </span>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        ) : currentStep.id === "step4" || step === "step4" ? (
-          <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
-            <CardHeader className="space-y-1 pb-6">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <MapPin className="w-5 h-5 text-emerald-600" />
-                </div>
-                <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                  Location Setup
-                </CardTitle>
-              </div>
-              <CardDescription className="text-gray-600">
-                Configure your business location details
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <FormError message={error} />
-              <FormSuccess message={success} />
-              <Form {...locationForm}>
-                <form
-                  onSubmit={locationForm.handleSubmit(
-                    submitLocationData,
-                    onInvalid,
-                  )}
                   className="space-y-8"
+                  onSubmit={combinedBusinessLocationForm.handleSubmit(
+                    submitCombinedBusinessLocationData,
+                    onInvalid,
+                  )}
                 >
-                  {/* Location Information Section */}
+                  {/* Business Information Section */}
                   <div className="space-y-6">
                     <div className="flex flex-col lg:flex-row gap-6">
-                      <div className="lg:w-1/3">
+                      <div className="lg:w-1/4">
                         <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-6 rounded-xl border border-emerald-200">
                           <UploadImageWidget
-                            imagePath={"location"}
+                            imagePath={"business"}
                             displayStyle={"default"}
                             displayImage={true}
-                            setImage={setLocationImageUrl}
-                            label={"Upload Location Image"}
+                            setImage={setBusinessImageUrl}
+                            label={"Upload logo"}
                           />
                         </div>
                       </div>
 
                       <div className="flex-1 space-y-4">
-                        <FormField
-                          control={locationForm.control}
-                          name="name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-gray-700">
-                                Location Name
-                              </FormLabel>
-                              <FormControl>
-                                <Input
-                                  placeholder="Main Branch, Downtown Office, etc."
-                                  {...field}
-                                  disabled={isPending}
-                                  className="border-gray-200 focus:border-emerald-500 transition-colors"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <div className="grid lg:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           <FormField
-                            control={locationForm.control}
+                            control={combinedBusinessLocationForm.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700">
+                                  Business name *
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter your business name"
+                                    {...field}
+                                    disabled={isPending}
+                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={combinedBusinessLocationForm.control}
+                            name="locationName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700">
+                                  Location name *
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    placeholder="Enter location name"
+                                    {...field}
+                                    disabled={isPending}
+                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={combinedBusinessLocationForm.control}
                             name="phone"
                             render={({ field }) => (
                               <FormItem className="flex flex-col pt-2">
                                 <FormLabel className="text-gray-700">
-                                  Phone Number
+                                  Phone number ( business ) *
                                 </FormLabel>
                                 <FormControl>
                                   <PhoneInput
-                                    placeholder="Enter phone number"
+                                    placeholder="Enter the business phone number"
                                     {...field}
                                     disabled={isPending}
                                     value={field.value || ""}
@@ -1002,12 +825,12 @@ function RegisterForm({ step }: { step: string }) {
                           />
 
                           <FormField
-                            control={locationForm.control}
+                            control={combinedBusinessLocationForm.control}
                             name="email"
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-gray-700">
-                                  Email
+                                  Email address ( business ) *
                                 </FormLabel>
                                 <FormControl>
                                   <Input
@@ -1015,7 +838,7 @@ function RegisterForm({ step }: { step: string }) {
                                     disabled={isPending}
                                     type="email"
                                     value={field.value || ""}
-                                    placeholder="location@example.com"
+                                    placeholder="Enter your business email address"
                                     className="border-gray-200 focus:border-emerald-500 transition-colors"
                                   />
                                 </FormControl>
@@ -1024,139 +847,220 @@ function RegisterForm({ step }: { step: string }) {
                             )}
                           />
                         </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={combinedBusinessLocationForm.control}
+                            name="businessType"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700">
+                                  Business type *
+                                </FormLabel>
+                                <FormControl>
+                                  <BusinessTypeSelector
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                    onBlur={field.onBlur}
+                                    isRequired
+                                    isDisabled={isPending}
+                                    label="Business Type"
+                                    placeholder="Select business type"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={combinedBusinessLocationForm.control}
+                            name="country"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700">
+                                  Country of registration *
+                                </FormLabel>
+                                <FormControl>
+                                  <CountrySelector
+                                    {...field}
+                                    isDisabled={isPending}
+                                    placeholder="Select country"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={combinedBusinessLocationForm.control}
+                            name="city"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700">
+                                  City / Region *
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    disabled={isPending}
+                                    placeholder="Enter city name"
+                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={combinedBusinessLocationForm.control}
+                            name="address"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700">
+                                  Address *
+                                </FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    disabled={isPending}
+                                    placeholder="Enter address"
+                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          <FormField
+                            control={combinedBusinessLocationForm.control}
+                            name="openingTime"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700">
+                                  Opening time
+                                </FormLabel>
+                                <FormControl>
+                                  <Select
+                                    disabled={isPending}
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <SelectTrigger className="border-gray-200 focus:border-emerald-500 transition-colors">
+                                      <SelectValue placeholder="Select opening time" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {businessTimes.map(
+                                        (
+                                          item: BusinessTimeType,
+                                          index: number,
+                                        ) => (
+                                          <SelectItem
+                                            key={index}
+                                            value={item.name}
+                                          >
+                                            {item.label}
+                                          </SelectItem>
+                                        ),
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={combinedBusinessLocationForm.control}
+                            name="closingTime"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-700">
+                                  Closing time
+                                </FormLabel>
+                                <FormControl>
+                                  <Select
+                                    disabled={isPending}
+                                    onValueChange={field.onChange}
+                                    value={field.value}
+                                  >
+                                    <SelectTrigger className="border-gray-200 focus:border-emerald-500 transition-colors">
+                                      <SelectValue placeholder="Select closing time" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {businessTimes.map(
+                                        (
+                                          item: BusinessTimeType,
+                                          index: number,
+                                        ) => (
+                                          <SelectItem
+                                            key={index}
+                                            value={item.name}
+                                          >
+                                            {item.label}
+                                          </SelectItem>
+                                        ),
+                                      )}
+                                    </SelectContent>
+                                  </Select>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Business Address Section */}
-                  <div className="space-y-4">
-                    <div className="grid lg:grid-cols-2 gap-4">
-                      <FormField
-                        control={locationForm.control}
-                        name="city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              City / Region
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                disabled={isPending}
-                                placeholder="Enter city name"
-                                className="border-gray-200 focus:border-emerald-500 transition-colors"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={locationForm.control}
-                        name="address"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Full address
-                            </FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                disabled={isPending}
-                                placeholder="Enter address"
-                                className="border-gray-200 focus:border-emerald-500 transition-colors"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={locationForm.control}
-                        name="openingTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Opening Time
-                            </FormLabel>
-                            <FormControl>
-                              <Select
-                                disabled={isPending}
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <SelectTrigger className="border-gray-200 focus:border-emerald-500 transition-colors">
-                                  <SelectValue placeholder="Select opening time" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {businessTimes.map(
-                                    (item: BusinessTimeType, index: number) => (
-                                      <SelectItem key={index} value={item.name}>
-                                        {item.label}
-                                      </SelectItem>
-                                    ),
-                                  )}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={locationForm.control}
-                        name="closingTime"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-gray-700">
-                              Closing Time
-                            </FormLabel>
-                            <FormControl>
-                              <Select
-                                disabled={isPending}
-                                onValueChange={field.onChange}
-                                value={field.value}
-                              >
-                                <SelectTrigger className="border-gray-200 focus:border-emerald-500 transition-colors">
-                                  <SelectValue placeholder="Select closing time" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {businessTimes.map(
-                                    (item: BusinessTimeType, index: number) => (
-                                      <SelectItem key={index} value={item.name}>
-                                        {item.label}
-                                      </SelectItem>
-                                    ),
-                                  )}
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-6">
-                    <Button
-                      type="submit"
-                      disabled={isPending}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/25"
-                    >
-                      {isPending ? (
-                        <Loader2Icon className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <span className="flex items-center gap-2">
-                          Complete Registration
-                          <CheckIcon className="w-5 h-5" />
-                        </span>
+                    <FormField
+                      control={combinedBusinessLocationForm.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-gray-700">
+                            Business Description
+                          </FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Tell us about your business..."
+                              {...field}
+                              disabled={isPending}
+                              className="min-h-[120px] resize-none border-gray-200 focus:border-emerald-500 transition-colors bg-gray-50/50"
+                              maxLength={200}
+                              value={field.value || ""}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs text-gray-500">
+                            {field.value?.length || 0}/200 characters
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                    </Button>
+                    />
                   </div>
+
+                  <Button
+                    type="submit"
+                    disabled={isPending}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/25"
+                  >
+                    {isPending ? (
+                      <Loader2Icon className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        Complete Registration
+                        <CheckIcon className="w-5 h-5" />
+                      </span>
+                    )}
+                  </Button>
                 </form>
               </Form>
             </CardContent>

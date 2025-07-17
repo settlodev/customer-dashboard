@@ -92,11 +92,7 @@ function LoginForm() {
             // Clear errors
             setError("");
             setPersistentError("");
-
-            // Show success state briefly
-            setTimeout(() => {
-              window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
-            }, 100);
+            window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
             return;
           }
         }

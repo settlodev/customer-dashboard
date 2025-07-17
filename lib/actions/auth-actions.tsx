@@ -273,7 +273,7 @@ export const register = async (
         responseType: "success",
         message:
           "Registration successful! Please check your email for verification instructions.",
-        // data: regData,
+        data: regData,
       });
     }
 

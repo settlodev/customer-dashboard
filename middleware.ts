@@ -96,14 +96,23 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    // Business registration is not complete
+    // Business registration and location registration are now combined
+    // If not complete, redirect to business registration
     if (
-      !authToken.businessComplete &&
+      (!authToken.businessComplete || !authToken.locationComplete) &&
       pathname !== COMPLETE_BUSINESS_REGISTRATION_URL
     ) {
-      console.warn(
-        "Business registration is not complete, redirecting you to business registration page",
-      );
+      if (!authToken.businessComplete) {
+        console.warn(
+          "Business registration is not complete, redirecting you to BUSINESS registration page",
+        );
+      }
+
+      if (!authToken.locationComplete) {
+        console.warn(
+          "Location registration is not complete, redirecting you to LOCATION registration page",
+        );
+      }
 
       return NextResponse.redirect(
         new URL(COMPLETE_BUSINESS_REGISTRATION_URL, request.nextUrl),
@@ -111,19 +120,19 @@ export async function middleware(request: NextRequest) {
     }
 
     // Location registration is not complete
-    if (
-      authToken.businessComplete &&
-      !authToken.locationComplete &&
-      pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL
-    ) {
-      console.warn(
-        "Location registration is not complete, redirecting you to location registration page",
-      );
-
-      return NextResponse.redirect(
-        new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, request.nextUrl),
-      );
-    }
+    // if (
+    //   authToken.businessComplete &&
+    //   !authToken.locationComplete &&
+    //   pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL
+    // ) {
+    //   console.warn(
+    //     "Location registration is not complete, redirecting you to location registration page",
+    //   );
+    //
+    //   return NextResponse.redirect(
+    //     new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, request.nextUrl),
+    //   );
+    // }
 
     // You have completed all the authentication checks
     // Update redirect route
