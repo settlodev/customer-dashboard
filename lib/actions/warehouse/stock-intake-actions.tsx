@@ -81,6 +81,7 @@ export const createStockIntakeForWarehouse = async (
         stockVariant: stockVariantId
     };
 
+    console.log("The payload is",payload)
 
     try {
         const apiClient = new ApiClient();

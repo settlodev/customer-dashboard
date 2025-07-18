@@ -19,6 +19,7 @@ export declare interface StockIntake {
     staff: UUID
     staffName: string
     stock:UUID
+    purchasePaidAmount: number
 }
 
 

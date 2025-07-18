@@ -15,12 +15,13 @@ import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema } from "@/types/stock-intake/schema";
 
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, DollarSign } from "lucide-react";
 import { useSearchParams } from 'next/navigation'
 import { FormError } from "@/components/widgets/form-error";
 import DateTimePicker from "@/components/widgets/datetimepicker";
@@ -31,6 +32,12 @@ import WarehouseStaffSelectorWidget from "@/components/widgets/warehouse/staff-s
 import StockVariantSelectorForWarehouse from "@/components/widgets/warehouse/stock-variant-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { NumericFormat } from "react-number-format";
+// import {NumericFormat} from "react-number-format/types/numeric_format";
+
+// import { NumericFormat } from "react-number-format";
+
+
 function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
     const [isPending, startTransition] = useTransition();
@@ -44,6 +51,9 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
     const [batchExpiryDate, setBatchExpiryDate] = useState<Date | undefined>(
         item?.batchExpiryDate ? new Date(item.batchExpiryDate) : undefined
     );
+    const [showPurchaseAmount, setShowPurchaseAmount] = useState<boolean>(
+        item?.purchasePaidAmount !== undefined && item?.purchasePaidAmount !== null
+    );
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
@@ -52,7 +62,7 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
 
     const form = useForm<z.infer<typeof StockIntakeSchema>>({
         resolver: zodResolver(StockIntakeSchema),
-        defaultValues: item ? item : { 
+        defaultValues: item ? item : {
             status: true,
             // If stockVariantId exists, set it as the default stock variant
             ...(stockVariantId ? { stockVariant: stockVariantId } : {})
@@ -65,6 +75,12 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
         }
     }, [stockVariantId, form]);
 
+    // Clear purchase amount when checkbox is unchecked
+    useEffect(() => {
+        if (!showPurchaseAmount) {
+            form.setValue('purchasePaidAmount', undefined);
+        }
+    }, [showPurchaseAmount, form]);
 
     const onInvalid = useCallback(
         (errors: any) => {
@@ -86,7 +102,8 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
             return;
         }
         const updatedValues = {
-            value: values.value
+            value: values.value,
+            ...(showPurchaseAmount && values.purchasePaidAmount && { purchasePaidAmount: values.purchasePaidAmount })
         };
 
         console.log("Starting submitData with values:", values);
@@ -179,216 +196,262 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                     <FormError message={error} />
 
                     <div className="flex flex-col gap-3">
-                       <Card className="shadow-md">
-                        <CardHeader>
-                            <CardTitle className="font-bold text-sm">Item Details</CardTitle>
-                            
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <FormField
-                            control={form.control}
-                            name="stockVariant"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium">Stock Item</FormLabel>
-                                    <FormControl>
-                                        <StockVariantSelectorForWarehouse
-                                            {...field}
-                                            isRequired
-                                            isDisabled={!!item || isPending}
-                                            placeholder="Select stock item"
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        <Card className="shadow-md">
+                            <CardHeader>
+                                <CardTitle className="font-bold text-sm">Item Details</CardTitle>
 
-                        <FormField
-                            control={form.control}
-                            name="quantity"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium">Quantity</FormLabel>
-                                    <FormControl>
-                                        <input
-                                            type="text"
-                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                            value={field.value || ""}
-                                            disabled={!!item || isPending}
-                                            placeholder="Enter quantity"
-                                            onChange={(e) => {
-                                                const rawValue = e.target.value.replace(/,/g, ""); // Remove commas
-                                                if (/^\d*$/.test(rawValue)) {
-                                                    field.onChange(rawValue ? parseInt(rawValue) : "");
-                                                }
-                                            }}
-                                            onBlur={(e) => {
-                                                const formattedValue = Number(e.target.value).toLocaleString();
-                                                e.target.value = formattedValue;
-                                            }}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="stockVariant"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-medium">Stock Item</FormLabel>
+                                            <FormControl>
+                                                <StockVariantSelectorForWarehouse
+                                                    {...field}
+                                                    isRequired
+                                                    isDisabled={!!item || isPending}
+                                                    placeholder="Select stock item"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                        <FormField
-                            control={form.control}
-                            name="value"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium">Value</FormLabel>
-                                    <FormControl>
-                                        <input
-                                            type="text"
-                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                            value={field.value || ""}
-                                            disabled={isPending}
-                                            placeholder="Enter value"
-                                            onChange={(e) => {
-                                                const rawValue = e.target.value.replace(/,/g, "");
-                                                if (/^\d*$/.test(rawValue)) {
-                                                    field.onChange(rawValue ? parseInt(rawValue) : "");
-                                                }
-                                            }}
-                                            onBlur={(e) => {
-                                                const formattedValue = Number(e.target.value).toLocaleString();
-                                                e.target.value = formattedValue;
-                                            }}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        </CardContent>
-                       </Card>
+                                <FormField
+                                    control={form.control}
+                                    name="quantity"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-medium">Quantity</FormLabel>
+                                            <FormControl>
+                                                <input
+                                                    type="text"
+                                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                    value={field.value || ""}
+                                                    disabled={!!item || isPending}
+                                                    placeholder="Enter quantity"
+                                                    onChange={(e) => {
+                                                        const rawValue = e.target.value.replace(/,/g, ""); // Remove commas
+                                                        if (/^\d*$/.test(rawValue)) {
+                                                            field.onChange(rawValue ? parseInt(rawValue) : "");
+                                                        }
+                                                    }}
+                                                    onBlur={(e) => {
+                                                        const formattedValue = Number(e.target.value).toLocaleString();
+                                                        e.target.value = formattedValue;
+                                                    }}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                       <Card className="shadow-md">
-                        <CardHeader>
-                            <CardTitle className="font-bold text-sm">Order Details</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <FormField
-                            control={form.control}
-                            name="orderDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium flex items-center gap-2">
-                                        <Calendar className="h-4 w-4" />
-                                        Order Date
-                                    </FormLabel>
-                                    <DateTimePicker
-                                        field={field}
-                                        date={orderDate}
-                                        setDate={setOrderDate}
-                                        handleTimeChange={handleTimeChange}
-                                        onDateSelect={handleDateSelect}
-                                        maxDate={new Date()}
-                                        disabled={!!item}
+                                <FormField
+                                    control={form.control}
+                                    name="value"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-medium">Value</FormLabel>
+                                            <FormControl>
+                                                <NumericFormat
+
+                                                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
+                                                    value={field.value}
+                                                    onValueChange={(values) => {
+                                                        field.onChange(Number(values.value));
+                                                    }}
+                                                    thousandSeparator={true}
+                                                    placeholder="Enter value of item"
+                                                    disabled={isPending || !!item}
+                                                    readOnly={!!item}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+
+                        <Card className="shadow-md">
+                            <CardHeader>
+                                <CardTitle className="font-bold text-sm">Purchase Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="flex items-center space-x-2">
+                                    <Checkbox
+                                        id="showPurchaseAmount"
+                                        checked={showPurchaseAmount}
+                                        onCheckedChange={(checked) => setShowPurchaseAmount(checked === true)}
+                                        disabled={isPending}
                                     />
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                    <label
+                                        htmlFor="showPurchaseAmount"
+                                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                    >
+                                        Would you like to track the purchase for this item? The purchase amount records the amount paid to the supplier.
+                                    </label>
+                                </div>
 
-                        <FormField
-                            control={form.control}
-                            name="deliveryDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium flex items-center gap-2">
-                                        <Clock className="h-4 w-4" />
-                                        Delivery Date
-                                    </FormLabel>
-                                    <DateTimePicker
-                                        field={field}
-                                        date={deliveryDate}
-                                        setDate={setDeliveryDate}
-                                        handleTimeChange={handleTimeChange}
-                                        onDateSelect={handleDeliveryDateSelect}
-                                        minDate={orderDate}
-                                        maxDate={new Date()}
-                                        disabled={!!item}
+                                {showPurchaseAmount && (
+                                    <FormField
+                                        control={form.control}
+                                        name="purchasePaidAmount"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="font-medium flex items-center gap-2">
+                                                    <DollarSign className="h-4 w-4" />
+                                                    Purchase Amount
+                                                </FormLabel>
+                                                <FormControl>
+                                                    <NumericFormat
+                                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm disabled:bg-muted"
+                                                        value={field.value}
+                                                        onValueChange={(values) => {
+                                                            field.onChange(Number(values.value));
+                                                        }}
+                                                        thousandSeparator={true}
+                                                        placeholder="Enter quantity"
+                                                        disabled={isPending || !!item}
+                                                        readOnly={!!item}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
                                     />
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                                )}
+                            </CardContent>
+                        </Card>
 
-                        <FormField
-                            control={form.control}
-                            name="batchExpiryDate"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium flex items-center gap-2">
-                                        <Calendar className="h-4 w-4" />
-                                        Batch Expiry
-                                    </FormLabel>
-                                    <DateTimePicker
-                                        field={field}
-                                        date={batchExpiryDate}
-                                        setDate={setBatchExpiryDate}
-                                        handleTimeChange={handleTimeChange}
-                                        onDateSelect={handleDateSelect}
-                                        disabled={!!item}
-                                    />
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        </CardContent>
-                       </Card>
-                    
-                    <Card className="shadow-md">
-                        <CardHeader>
-                            <CardTitle className="font-bold text-sm">Personnel & Supplier</CardTitle>
-                        </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <FormField
-                            control={form.control}
-                            name="staff"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium">Staff Member</FormLabel>
-                                    <FormControl>
-                                        <WarehouseStaffSelectorWidget
-                                            {...field}
-                                            isRequired
-                                            isDisabled={!!item || isPending}
-                                            placeholder="Select staff member"
-                                            label="Select staff member"
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
+                        <Card className="shadow-md">
+                            <CardHeader>
+                                <CardTitle className="font-bold text-sm">Order Details</CardTitle>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="orderDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-medium flex items-center gap-2">
+                                                <Calendar className="h-4 w-4" />
+                                                Order Date
+                                            </FormLabel>
+                                            <DateTimePicker
+                                                field={field}
+                                                date={orderDate}
+                                                setDate={setOrderDate}
+                                                handleTimeChange={handleTimeChange}
+                                                onDateSelect={handleDateSelect}
+                                                maxDate={new Date()}
+                                                disabled={!!item}
+                                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
 
-                        <FormField
-                            control={form.control}
-                            name="supplier"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-medium">
-                                        Supplier <span className="text-sm text-gray-500">(optional)</span>
-                                    </FormLabel>
-                                    <FormControl>
-                                        <SupplierSelector
-                                            {...field}
-                                            isDisabled={!!item || isPending}
-                                            placeholder="Select supplier"
-                                            label="Select supplier"
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        </CardContent>
-                    </Card>
+                                <FormField
+                                    control={form.control}
+                                    name="deliveryDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-medium flex items-center gap-2">
+                                                <Clock className="h-4 w-4" />
+                                                Delivery Date
+                                            </FormLabel>
+                                            <DateTimePicker
+                                                field={field}
+                                                date={deliveryDate}
+                                                setDate={setDeliveryDate}
+                                                handleTimeChange={handleTimeChange}
+                                                onDateSelect={handleDeliveryDateSelect}
+                                                minDate={orderDate}
+                                                maxDate={new Date()}
+                                                disabled={!!item}
+                                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="batchExpiryDate"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-medium flex items-center gap-2">
+                                                <Calendar className="h-4 w-4" />
+                                                Batch Expiry
+                                            </FormLabel>
+                                            <DateTimePicker
+                                                field={field}
+                                                date={batchExpiryDate}
+                                                setDate={setBatchExpiryDate}
+                                                handleTimeChange={handleTimeChange}
+                                                onDateSelect={handleDateSelect}
+                                                disabled={!!item}
+                                            />
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
+
+                        <Card className="shadow-md">
+                            <CardHeader>
+                                <CardTitle className="font-bold text-sm">Personnel & Supplier</CardTitle>
+                            </CardHeader>
+                            <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="staff"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-medium">Staff Member</FormLabel>
+                                            <FormControl>
+                                                <WarehouseStaffSelectorWidget
+                                                    {...field}
+                                                    isRequired
+                                                    isDisabled={!!item || isPending}
+                                                    placeholder="Select staff member"
+                                                    label="Select staff member"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="supplier"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-medium">
+                                                Supplier <span className="text-sm text-gray-500">(optional)</span>
+                                            </FormLabel>
+                                            <FormControl>
+                                                <SupplierSelector
+                                                    {...field}
+                                                    isDisabled={!!item || isPending}
+                                                    placeholder="Select supplier"
+                                                    label="Select supplier"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </CardContent>
+                        </Card>
 
                         {item && (
                             <FormField

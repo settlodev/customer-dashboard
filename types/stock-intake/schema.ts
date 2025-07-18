@@ -26,6 +26,7 @@ export const StockIntakeSchema = object({
     status: boolean().optional(),
     supplier: string({message:"Please select a supplier"}).uuid().optional(),
     staff: string({message:"Please select a staff"}).uuid(),
+    purchasePaidAmount: number().optional(),
 });
 
 export const UpdatedStockIntakeSchema = object({

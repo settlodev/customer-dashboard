@@ -1,12 +1,10 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown} from "lucide-react";
 
 import { CellAction } from "@/components/tables/warehouse/purchase/cell-action";
-// import { StateColumn } from "@/components/tables/state-column";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { Purchase } from "@/types/warehouse/purchase/type";
 
 export const columns: ColumnDef<Purchase>[] = [
@@ -31,47 +29,37 @@ export const columns: ColumnDef<Purchase>[] = [
   },
   
   {
-    accessorKey: "orderId",
+    accessorKey: "stockIntakePurchaseNumber",
     enableHiding: false,
-    header: ({ column }) => {
-      return (
-        <Button
-          className="text-left p-0"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Order Id
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "Stock Intake Purchase Number",
   },
   {
-    accessorKey: "supplier",
+    accessorKey:"stockVariantName",
     enableHiding:false,
-    header:'Supplier'
+    header:'Item'
+  },
+  {
+    accessorKey: "totalPurchaseCost",
+    enableHiding:false,
+    header:'Total Cost'
   },
   
   {
-    accessorKey: "date",
+    accessorKey: "paidAmount",
     enableHiding: false,
-    header: 'Date'
+    header: 'Paid Amount'
   },
   {
-    accessorKey: "product",
+    accessorKey: "unpaidAmount",
     enableHiding: false,
-    header: 'Items'
+    header: 'Unpaid Amount'
   },
+  
   {
-    accessorKey: "amount",
-    enableHiding: false,
-    header: 'Amount'
+    accessorKey: "paymentStatus",
+    header: "Payment Status",
   },
-  {
-    id: "status",
-    accessorKey: "status",
-    header: "Status",
-  },
+  
   {
     id: "actions",
     cell: ({ row }) => <CellAction data={row.original} />,

@@ -70,7 +70,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     const handleOpenEditModal = () => {
         // Reset form with current data values when opening modal
         form.reset({ value: data.value || 0 });
-        // console.log("The data is",data)
         setShowEditModal(true);
     };
     const calculateCostPerItem = () => {

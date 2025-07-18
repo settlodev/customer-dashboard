@@ -48,7 +48,6 @@ export const searchStockVariantsInWarehouse = async (
             query
         );
 
-        // console.log("The data is",data)
         return parseStringify(data);
     }
     catch (error){

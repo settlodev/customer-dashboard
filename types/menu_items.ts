@@ -165,6 +165,7 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             items: [
                 { title: "Stock Items", link: "/warehouse-stock-variants", current: args?.isCurrentItem, icon: "home" },
                 { title: "Stock Intake", link: "/warehouse-stock-intakes", current: args?.isCurrentItem, icon: "grid" },
+                { title: "Stock Purchase", link: "/purchases", current: args?.isCurrentItem, icon: "grid" },
                 
             ]
         },
