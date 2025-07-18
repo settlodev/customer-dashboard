@@ -44,7 +44,6 @@ export const searchStockFromWarehouse = async (
             }
             const warehouse = warehouseId ? { id: warehouseId } : await getCurrentWarehouse();
 
-            console.log('Retrieved warehouse:', warehouse);
 
             const data = await  apiClient.post(
                 `/api/warehouse-stock/${warehouse?.id}`,

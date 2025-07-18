@@ -194,6 +194,7 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
                 item.subscriptionStatus === undefined) {
                 
                 setSelectedWarehouse(item);
+                console.log("Selected warehouse:", selectedWarehouse);
                 setShowSubscriptionModal(true);
                 setPendingIndex(null);
                 return;

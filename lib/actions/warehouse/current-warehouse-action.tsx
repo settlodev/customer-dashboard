@@ -9,6 +9,8 @@ export const getCurrentWarehouse = async (): Promise<any | undefined> => {
     const cookieStore =await cookies();
     const warehouseCookie = cookieStore.get("currentWarehouse");
 
+
+
     if (!warehouseCookie) return undefined;
 
     try {
