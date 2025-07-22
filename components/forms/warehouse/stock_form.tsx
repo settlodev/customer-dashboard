@@ -21,7 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
-import { useToast } from "@/hooks/use-toast";
 import { Stock } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { useTransition } from "react";
@@ -70,13 +69,11 @@ export default function WarehouseStockForm({ item }: StockFormProps) {
         name: "stockVariants"
     });
 
-    const { toast } = useToast();
-
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
             console.log("errors", errors);
         },
-        [toast]
+        []
     );
     const handleAddVariant = () => {
         append({
@@ -117,7 +114,7 @@ export default function WarehouseStockForm({ item }: StockFormProps) {
             })
         };
 
-        console.log('Starting submitData with values:', updatedValues);
+        
 
         startTransition(() => {
 

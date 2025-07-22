@@ -146,7 +146,7 @@ export function DataTable<TData, TValue>({
     }, 0);
     
     return () => clearTimeout(timer);
-  }, [searchParams]);
+  }, [searchParams, initializePaginationState]);
 
   const page = searchParams?.get("page") ?? "1";
   const pageAsNumber = Number(page);
@@ -173,7 +173,7 @@ export function DataTable<TData, TValue>({
     if (!searchParams?.has("_rsc")) {
       savePaginationState(String(fallbackPage), String(fallbackPerPage));
     }
-  }, [fallbackPage, fallbackPerPage]);
+  }, [fallbackPage, fallbackPerPage, searchParams, savePaginationState]);
   
   const [loading, setLoading] = React.useState<boolean>(false);
 
@@ -221,7 +221,7 @@ export function DataTable<TData, TValue>({
 
     // Use replace instead of push to avoid adding to history
     router.replace(`${pathname}?${queryString}`, { scroll: false });
-  }, [pageIndex, pageSize]);
+  }, [pageIndex, pageSize, createQueryString, pathname, router]);
 
   React.useEffect(() => {
     const timer = setTimeout(() => {
@@ -268,7 +268,7 @@ export function DataTable<TData, TValue>({
       });
       router.replace(`${pathname}?${queryString}`, { scroll: false });
     }
-  }, [searchValue]);
+  }, [searchValue, pageSize, searchKey, createQueryString, router, pathname]);
 
   // Get selected row IDs
   const selectedRowIds = table.getFilteredSelectedRowModel().rows.map(

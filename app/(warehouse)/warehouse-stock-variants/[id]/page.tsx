@@ -1,4 +1,4 @@
-'use client';
+
 import { getStockVariantMovement, getStockVariantSummary } from '@/lib/actions/stock-variant-actions';
 import { UUID } from 'crypto';
 import React from 'react';

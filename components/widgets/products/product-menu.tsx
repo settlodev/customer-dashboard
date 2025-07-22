@@ -168,14 +168,14 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     if (!productsInitialLoad && currentPage > 1 && isBusinessDataReady) {
       fetchProducts(false);
     }
-  }, [currentPage, isBusinessDataReady]);
+  }, [currentPage, isBusinessDataReady, productsInitialLoad]);
 
   // Handle search changes - only after business data is ready
   useEffect(() => {
     if (!productsInitialLoad && locationId && isBusinessDataReady) {
       handleSearch();
     }
-  }, [searchQuery, locationId, isBusinessDataReady]);
+  }, [searchQuery, locationId, isBusinessDataReady, productsInitialLoad]);
 
   const fetchProducts = async (isReset: boolean) => {
     if (!isBusinessDataReady) return; 

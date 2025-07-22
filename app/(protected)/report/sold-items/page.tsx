@@ -76,7 +76,7 @@ const SoldItemsDashboard = () => {
     };
 
     fetchingSoldItems();
-  }, []);
+  }, [startDate, endDate]);
 
   // Update paginated items whenever soldData changes or pagination settings change
   useEffect(() => {
@@ -344,7 +344,7 @@ const SoldItemsDashboard = () => {
           : "There was an issue submitting your form, please try later",
       });
     },
-    [toast]
+    []
   );
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {

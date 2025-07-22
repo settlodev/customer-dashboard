@@ -176,7 +176,7 @@ function RegisterForm({ step }: { step: string }) {
         if (session?.data?.user.phoneNumber) {
             locationForm.setValue("phone", session.data.user.phoneNumber);
         }
-    }, [session?.data?.user.phoneNumber]);
+    }, [session?.data?.user.phoneNumber, locationForm]);
 
     const onInvalid = useCallback(
 
@@ -310,7 +310,7 @@ function RegisterForm({ step }: { step: string }) {
                 });
             });
         },
-        [toast]
+        []
     );
 
     return (

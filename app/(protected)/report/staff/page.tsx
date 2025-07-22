@@ -58,7 +58,7 @@ const StaffReportDashboard = () => {
         };
 
         fetchingStaffReport();
-    }, []);
+    }, [endDate, startDate]);
 
     const form = useForm({
         resolver: zodResolver(FormSchema),
@@ -83,7 +83,7 @@ const StaffReportDashboard = () => {
                     : "There was an issue submitting your form, please try later",
             });
         },
-        [toast]
+        []
     );
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {

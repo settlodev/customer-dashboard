@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -90,9 +90,9 @@ const StockVariantSelector: React.FC<Props> = ({
         clearTimeout(debounceTimeout);
       }
     };
-  }, [searchTerm, hasInitialized]);
+  }, [searchTerm, hasInitialized, debounceTimeout]);
 
-  async function loadSpecificVariant(variantId: string) {
+  const loadSpecificVariant= useCallback(async (variantId: string) => {
     try {
       setIsLoading(true);
       const variantInfo = await getStockVariantById(variantId);
@@ -124,9 +124,9 @@ const StockVariantSelector: React.FC<Props> = ({
       console.error("Error loading specific variant:", error);
       loadStocks("", 1); // Fallback
     }
-  }
+  },[]);
 
-  async function loadStocks(query: string, currentPage: number, showLoading = true) {
+  const loadStocks = useCallback(async (query: string, currentPage: number, showLoading = true) => {
     try {
       if (showLoading) {
         setIsLoading(true);
@@ -149,7 +149,7 @@ const StockVariantSelector: React.FC<Props> = ({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   // Memoize option processing to prevent recalculations
   const allVariantOptions = useMemo(() => 

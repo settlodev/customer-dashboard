@@ -4,6 +4,7 @@ import { getOrderReceipt } from '@/lib/actions/order-actions';
 import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
+import Image from 'next/image';
 
 type Params = Promise<{
   id: string;
@@ -167,7 +168,7 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
 
                   {/* Powered by Settlo Image */}
                   <div className="mt-4">
-                    <img
+                    <Image
                       src="https://lporvjkotuidemnfvuzt.supabase.co/storage/v1/object/public/Images/others/powered-by-settlo.png"
                       alt="Powered by Settlo"
                       className="mx-auto h-8 object-contain"
@@ -297,7 +298,7 @@ const OrderReceipt = async ({ params }: { params: Params }) => {
 
                 {/* Powered by Settlo Image */}
                 <div className="mt-4">
-                  <img
+                  <Image
                     src="https://lporvjkotuidemnfvuzt.supabase.co/storage/v1/object/public/Images/others/powered-by-settlo.png"
                     alt="Powered by Settlo"
                     className="mx-auto h-8 object-contain"

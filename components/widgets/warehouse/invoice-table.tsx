@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   FileText, 
   Search, 
@@ -58,7 +58,7 @@ const WarehouseInvoiceTable: React.FC<WarehouseInvoiceTableProps> = ({
   const [totalElements, setTotalElements] = useState(0);
 
   
-  const loadInvoices = async (page: number = currentPage, search: string = searchQuery) => {
+  const loadInvoices = useCallback(async (page: number = currentPage, search: string = searchQuery) => {
     setLoading(true);
     try {
       const response = await fetchInvoices(page, pageSize, search);
@@ -71,11 +71,11 @@ const WarehouseInvoiceTable: React.FC<WarehouseInvoiceTableProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [fetchInvoices, currentPage, pageSize, searchQuery]);
 
   useEffect(() => {
     loadInvoices();
-  }, [currentPage]);
+  }, [currentPage,loadInvoices]);
 
  
   const handleSearch = (e?: React.FormEvent | React.KeyboardEvent) => {

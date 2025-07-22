@@ -28,14 +28,12 @@ import { FormError } from "@/components/widgets/form-error";
 import Link from "next/link";
 import {EyeOffIcon, EyeIcon} from "lucide-react";
 import {deleteActiveBusinessCookie, deleteActiveLocationCookie, deleteAuthCookie} from "@/lib/auth-utils";
-import { useRouter } from "next/navigation";
 import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 
 function LoginForm() {
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string>("");
     const [showPassword, setShowPassword] = useState<boolean>(false);
-    const router = useRouter();
 
     const form = useForm<z.infer<typeof LoginSchema>>({
         resolver: zodResolver(LoginSchema),
@@ -83,7 +81,7 @@ function LoginForm() {
                     return;
                 });
         });
-    }, [router]);
+    }, []);
 
     return (
         <section>

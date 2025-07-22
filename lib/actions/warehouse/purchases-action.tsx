@@ -9,7 +9,7 @@ import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import {ApiResponse, FormResponse} from "@/types/types";
 import { PurchaseSchema } from "@/types/warehouse/purchase/schema";
-import { Purchase } from "@/types/warehouse/purchase/type";
+import { Purchase, StockIntakePurchasesReport } from "@/types/warehouse/purchase/type";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
 export const searchStockIntakePurchases = async (
@@ -125,3 +125,23 @@ export const payStockIntakePurchase = async (stockPurchaseId: UUID, amount: numb
     revalidatePath("/purchases");
     return parseStringify(formResponse);
 }
+
+export const stockIntakePurchaseReportForWarehouse = async (): Promise<StockIntakePurchasesReport | null> => {
+
+    await getAuthenticatedUser();
+
+    try {
+
+        const apiClient = new ApiClient();
+        const warehouse = await getCurrentWarehouse();
+        
+        const report=await apiClient.get(`/api/reports/${warehouse?.id}/stock-intake-purchases/summary`);
+
+
+        return parseStringify(report);
+        
+    } catch (error) {
+        console.error("Error fetching stock intake purchases report:", error);
+        throw error;
+    }
+};

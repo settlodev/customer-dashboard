@@ -50,7 +50,7 @@ function ResetPasswordForm() {
                     console.error(err);
                 });
         });
-    }, []);
+    }, [reset]);
 
     return (
        <Card className="mx-auto max-w-sm">

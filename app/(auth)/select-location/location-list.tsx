@@ -179,7 +179,7 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
             await refreshWarehouse(selectedWarehouse);
             window.location.href = `/warehouse`;
         }, 2000);
-    }, [selectedWarehouse]);
+    }, [selectedWarehouse, toast]);
 
     const handleLocationSelect = async (item: any, index: number) => {
         setPendingIndex(index);
@@ -194,7 +194,6 @@ const LocationList = ({ locations, businessName, warehouses }: { locations: Loca
                 item.subscriptionStatus === undefined) {
                 
                 setSelectedWarehouse(item);
-                console.log("Selected warehouse:", selectedWarehouse);
                 setShowSubscriptionModal(true);
                 setPendingIndex(null);
                 return;

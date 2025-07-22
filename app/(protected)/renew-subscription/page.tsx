@@ -270,7 +270,7 @@ const InvoiceSubscriptionPage = () => {
         }
       }, pollingInterval);
     }, 20000);
-  }, [toast]);
+  }, []);
 
   const handleCreateInvoice = useCallback(async (data: InvoiceFormData) => {
     if (invoiceItems.length === 0) {
@@ -357,7 +357,7 @@ const InvoiceSubscriptionPage = () => {
     handlePendingPayment,
     validatedDiscountCode,
     discountValid,
-    toast
+    toast,locationId
   ]);
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars

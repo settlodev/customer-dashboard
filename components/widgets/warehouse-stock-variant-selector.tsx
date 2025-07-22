@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -129,99 +129,98 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
         clearTimeout(debounceTimeout);
       }
     };
-  }, [searchTerm, hasInitialized, warehouseId]);
+  }, [searchTerm, hasInitialized, warehouseId, debounceTimeout]);
 
-  async function loadSpecificVariant(variantId: string) {
-    if (!warehouseId) return;
+  const loadSpecificVariant = useCallback(
+    async (variantId: string) => {
+      if (!warehouseId) return;
 
-    try {
-      setIsLoadingSelectedVariant(true);
-      const variantInfo = await getStockVariantFromWarehouse(variantId);
-      
-      if (variantInfo && variantInfo.variant) {
-        // Set the selected variant info for immediate display
-        setSelectedVariantInfo({
-          id: variantInfo.variant.id,
-          displayName: `${variantInfo.stockName || ''} - ${variantInfo.variant.name}`
-        });
-
-        // Create a minimal stock structure with just the selected variant
-        const stockWithVariant = [{
-          id: variantInfo.stockId || 'temp-id',
-          name: variantInfo.stockName || '',
-          description: '',
-          unit: '',
-          status: true,
-          canDelete: false,
-          business: '' as UUID,
-          location: '' as UUID,
-          isArchived: false,
-          stockVariants: [variantInfo.variant]
-        }];
+      try {
+        setIsLoadingSelectedVariant(true);
+        const variantInfo = await getStockVariantFromWarehouse(variantId);
         
-        setStocks(stockWithVariant);
-        
-        // Load the initial page of stocks in the background for when user opens dropdown
-        loadStocks("", 1, false);
-      } else {
-        // Fallback to loading all stocks if specific variant can't be found
-        loadStocks("", 1);
-      }
-    } catch (error) {
-      console.error("Error loading specific variant:", error);
-      loadStocks("", 1); // Fallback
-    } finally {
-      setIsLoadingSelectedVariant(false);
-    }
-  }
+        if (variantInfo && variantInfo.variant) {
+          setSelectedVariantInfo({
+            id: variantInfo.variant.id,
+            displayName: `${variantInfo.stockName || ''} - ${variantInfo.variant.name}`
+          });
 
-  async function loadStocks(query: string, currentPage: number, showLoading = true) {
-    if (!warehouseId) return;
-
-    try {
-      if (showLoading) {
-        setIsLoading(true);
-      }
-      
-      const response: ApiResponse<Stock> = await searchStockFromWarehouse(
-        query, 
-        currentPage, 
-        ITEMS_PER_PAGE, 
-        warehouseId 
-      );
-      
-      // Check if it's the first page or appending more results
-      if (currentPage === 1) {
-        // If we have a selected variant that's not in the new results, preserve it
-        if (selectedVariantInfo && !response.content.some(stock => 
-          stock.stockVariants.some(variant => variant.id === selectedVariantInfo.id)
-        )) {
-          // Keep the existing stock with the selected variant
-          const existingSelectedStock = stocks.find(stock => 
-            stock.stockVariants.some(variant => variant.id === selectedVariantInfo.id)
-          );
+          const stockWithVariant = [{
+            id: variantInfo.stockId || 'temp-id',
+            name: variantInfo.stockName || '',
+            description: '',
+            unit: '',
+            status: true,
+            canDelete: false,
+            business: '' as UUID,
+            location: '' as UUID,
+            isArchived: false,
+            stockVariants: [variantInfo.variant]
+          }];
           
-          if (existingSelectedStock) {
-            setStocks([existingSelectedStock, ...response.content]);
+          setStocks(stockWithVariant);
+          loadStocks("", 1, false);
+        } else {
+          loadStocks("", 1);
+        }
+      } catch (error) {
+        console.error("Error loading specific variant:", error);
+        loadStocks("", 1);
+      } finally {
+        setIsLoadingSelectedVariant(false);
+      }
+    },
+    [warehouseId, setIsLoadingSelectedVariant, getStockVariantFromWarehouse, setSelectedVariantInfo, setStocks]
+  );
+
+  
+  const loadStocks = useCallback(
+    async (query: string, currentPage: number, showLoading = true) => {
+      if (!warehouseId) return;
+
+      try {
+        if (showLoading) {
+          setIsLoading(true);
+        }
+        
+        const response: ApiResponse<Stock> = await searchStockFromWarehouse(
+          query, 
+          currentPage, 
+          ITEMS_PER_PAGE, 
+          warehouseId 
+        );
+        
+        if (currentPage === 1) {
+          if (selectedVariantInfo && !response.content.some(stock => 
+            stock.stockVariants.some(variant => variant.id === selectedVariantInfo.id)
+          )) {
+            // Use functional update to avoid needing stocks in deps
+            setStocks(prevStocks => {
+              const existingSelectedStock = prevStocks.find(stock => 
+                stock.stockVariants.some(variant => variant.id === selectedVariantInfo.id)
+              );
+              if (existingSelectedStock) {
+                return [existingSelectedStock, ...response.content];
+              } else {
+                return response.content;
+              }
+            });
           } else {
             setStocks(response.content);
           }
         } else {
-          setStocks(response.content);
+          setStocks(prevStocks => [...prevStocks, ...response.content]);
         }
-      } else {
-        setStocks(prevStocks => [...prevStocks, ...response.content]);
+        
+        setHasMore(!response.last);
+      } catch (error: any) {
+        console.log("Error fetching stocks:", error);
+      } finally {
+        setIsLoading(false);
       }
-      
-      // Check if there are more pages
-      setHasMore(!response.last);
-      
-    } catch (error: any) {
-      console.log("Error fetching stocks:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }
+    },
+    [warehouseId, selectedVariantInfo]
+  );
 
   // Memoize option processing to prevent recalculations
   const allVariantOptions = useMemo(() => 

@@ -7,6 +7,7 @@ import WarehouseStockReport from './stock-report'
 import UnimplementedTabContent from './helper'
 import StockRequestReport from './stock-request-report'
 import Loading from '@/app/(protected)/loading'
+import StockIntakePurchaseReport from './stock-intake-purchase-report'
 
 export interface StockHistory {
   totalStockIntakes: number
@@ -51,9 +52,9 @@ function DashboardLayout() {
       implemented: true
     },
     {
-      name: "Purchase Order Report", 
+      name: "Stock Intake Purchase Report", 
       value: 'purchase',
-      implemented: false
+      implemented: true
     },
     
   ]
@@ -92,8 +93,8 @@ function DashboardLayout() {
               {tab.implemented ? (
                 <>
                   {tab.value === "stock" && <WarehouseStockReport />}
-                  {/* {tab.value === "purchase" && <PurchaseReportComponent />} */}
                   {tab.value === "request" && <StockRequestReport />}
+                  {tab.value === "purchase" && <StockIntakePurchaseReport/>}
                 </>
               ) : (
                 <UnimplementedTabContent tabName={tab.name} />

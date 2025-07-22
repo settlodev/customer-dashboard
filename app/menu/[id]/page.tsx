@@ -1,4 +1,3 @@
-'use client';
 
 import ProductMenu from "@/components/widgets/products/product-menu";
 
