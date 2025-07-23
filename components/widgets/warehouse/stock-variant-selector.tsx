@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,9 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // Use useRef to store the timeout reference
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const ITEMS_PER_PAGE = 20;
 
   const getDisplayName = (stock: Stock, variant: StockVariant) => {
@@ -66,35 +68,35 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
     }
   }, [hasInitialized, value]);
 
+  // Fixed useEffect with proper cleanup using useRef
   useEffect(() => {
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout);
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
 
     if (hasInitialized) {
-      const timeout = setTimeout(() => {
+      debounceTimeoutRef.current = setTimeout(() => {
         setPage(1);
         setStocks([]);
         loadStocks(searchTerm, 1);
       }, 300);
-      
-      setDebounceTimeout(timeout);
     }
 
+    // Cleanup function
     return () => {
-      if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [searchTerm, hasInitialized, debounceTimeout]);
+  }, [searchTerm, hasInitialized]); 
 
-  const loadSpecificVariant = useCallback(async (variantId: string) => {
+  async function loadSpecificVariant(variantId: string) {
     try {
       setIsLoading(true);
       const variantInfo = await getStockVariantFromWarehouse(variantId);
       
       if (variantInfo && variantInfo.variant) {
-
         const stockWithVariant = [{
           id: variantInfo.stockId || 'temp-id',
           name: variantInfo.stockName || '',
@@ -118,10 +120,9 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
       console.error("Error loading specific variant:", error);
       loadStocks("", 1); 
     }
-  }, [getStockVariantFromWarehouse]);
+  }
 
-  // async function loadStocks(query: string, currentPage: number, showLoading = true) {
-    const loadStocks = useCallback(async (query: string, currentPage: number, showLoading = true) => {
+  async function loadStocks(query: string, currentPage: number, showLoading = true) {
     try {
       if (showLoading) {
         setIsLoading(true);
@@ -142,7 +143,7 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [searchStockFromWarehouse]);
+  }
 
   const allVariantOptions = useMemo(() => 
     stocks.flatMap((stock) =>
@@ -161,7 +162,6 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
     [allVariantOptions, value]
   );
 
- 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
@@ -182,7 +182,7 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
-            disabled={isDisabled || isLoading && !selectedOption}
+            disabled={isDisabled || (isLoading && !selectedOption)}
           >
             {isLoading && !selectedOption ? (
               <div className="flex items-center">

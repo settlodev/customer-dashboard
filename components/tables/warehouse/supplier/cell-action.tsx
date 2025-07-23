@@ -16,7 +16,7 @@ import DeleteModal from "@/components/tables/delete-modal";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import { Supplier } from "@/types/supplier/type";
-import { deleteSupplier } from "@/lib/actions/supplier-actions";
+import { deleteSupplier } from "@/lib/actions/warehouse/supplier-actions";
 
 interface CellActionProps {
   data: Supplier;

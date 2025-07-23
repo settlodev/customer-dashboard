@@ -6,8 +6,8 @@ import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
-import { Form, FormControl,FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
-import { Staff} from "@/types/staff";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
+import { Staff } from "@/types/staff";
 import { FormResponse } from "@/types/types";
 import { Input } from "@/components/ui/input";
 import CancelButton from "@/components/widgets/cancel-button";
@@ -30,7 +30,6 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
     onFormSubmitted,
 }) => {
 
-    
     const { toast } = useToast();
     const [isSubmitting, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
@@ -60,20 +59,20 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
 
     const submitData = async (values: z.infer<typeof StaffWarehouseSchema>) => {
         setResponse(undefined);
-    
+
         startTransition(async () => {
             try {
                 let result: FormResponse | void;
-                
+
                 if (item) {
                     result = await updateStaffFomWarehouse(item.id, values);
                 } else {
                     result = await createStaffFromWarehouse(values);
                 }
-    
+
                 if (result) {
                     setResponse(result);
-                    
+
                     if (result.responseType === "success") {
 
                         toast({
@@ -82,7 +81,7 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
                         });
                         onFormSubmitted?.(result);
                         form.reset();
-                        
+
                         form.setValue("status", false);
                         window.location.href = "/warehouse-staff";
                     } else if (result.responseType === "error") {
@@ -96,10 +95,10 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
                 }
             } catch (error: any) {
                 console.error("Form submission error:", error);
-                
+
                 // This catch block handles any errors that weren't caught by the server action
                 let errorMessage = "There was an issue with your request, please try again later";
-                
+
                 // Try to extract error message
                 if (error?.message) {
                     errorMessage = error.message;
@@ -107,13 +106,13 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
                     // This is a Next.js production error with digest
                     errorMessage = "A server error occurred. Please try again later.";
                 }
-                
+
                 toast({
                     variant: "destructive",
                     title: "Uh oh! Something went wrong.",
                     description: errorMessage
                 });
-    
+
                 // Set error response for form state
                 const errorResponse: FormResponse = {
                     responseType: "error",
@@ -204,16 +203,13 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
                                                 isDisabled={isSubmitting}
                                                 label="Select staff gender"
                                                 placeholder="Select gender"
-                                                
+
                                             />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-
-                           
-
                         </CardContent>
                     </Card>
 
@@ -262,11 +258,11 @@ const WarehouseStaffForm: React.FC<StaffFormProps> = ({
                                 )}
                             />
 
-                           
+
                         </CardContent>
                     </Card>
 
-                   
+
                 </div>
 
                 <div className="flex h-5 items-center space-x-4">

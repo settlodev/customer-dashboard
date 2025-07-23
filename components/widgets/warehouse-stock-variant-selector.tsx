@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,12 +50,12 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
   const [selectedVariantInfo, setSelectedVariantInfo] = useState<{
     id: string;
     displayName: string;
   } | null>(null);
   const [isLoadingSelectedVariant, setIsLoadingSelectedVariant] = useState(false);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const ITEMS_PER_PAGE = 20;
 
   const getDisplayName = (stock: Stock, variant: StockVariant) => {
@@ -79,10 +79,9 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
   useEffect(() => {
     if (!hasInitialized && warehouseId) {
       if (value) {
-        // For a preselected value, fetch that specific variant first for immediate display
+        
         loadSpecificVariant(value);
       } else {
-        // For new records, start loading the first page of data immediately
         loadStocks("", 1);
       }
       setHasInitialized(true);
@@ -92,7 +91,7 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
   // Handle value changes (when form updates the value)
   useEffect(() => {
     if (value && hasInitialized && warehouseId) {
-      // Check if we already have this variant in our stocks
+      
       const existingVariant = allVariantOptions.find(option => option.id === value);
       if (existingVariant) {
         setSelectedVariantInfo({
@@ -100,7 +99,7 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
           displayName: existingVariant.displayName
         });
       } else {
-        // Load the specific variant info if we don't have it
+        
         loadSpecificVariant(value);
       }
     } else if (!value) {
@@ -110,26 +109,26 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
 
   // Handle search with debounce
   useEffect(() => {
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout);
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
 
-    if (hasInitialized && warehouseId) {
-      const timeout = setTimeout(() => {
+    if (hasInitialized) {
+      debounceTimeoutRef.current = setTimeout(() => {
         setPage(1);
         setStocks([]);
         loadStocks(searchTerm, 1);
       }, 300);
-      
-      setDebounceTimeout(timeout);
     }
 
+    // Cleanup function
     return () => {
-      if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [searchTerm, hasInitialized, warehouseId, debounceTimeout]);
+  }, [searchTerm, hasInitialized,warehouseId]); 
 
   const loadSpecificVariant = useCallback(
     async (variantId: string) => {
@@ -138,6 +137,8 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
       try {
         setIsLoadingSelectedVariant(true);
         const variantInfo = await getStockVariantFromWarehouse(variantId);
+
+        console.log("The stock with variant",variantInfo)
         
         if (variantInfo && variantInfo.variant) {
           setSelectedVariantInfo({
@@ -157,6 +158,8 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
             isArchived: false,
             stockVariants: [variantInfo.variant]
           }];
+
+          
           
           setStocks(stockWithVariant);
           loadStocks("", 1, false);
@@ -189,6 +192,8 @@ const WarehouseStockVariantSelector: React.FC<Props> = ({
           ITEMS_PER_PAGE, 
           warehouseId 
         );
+
+        
         
         if (currentPage === 1) {
           if (selectedVariantInfo && !response.content.some(stock => 

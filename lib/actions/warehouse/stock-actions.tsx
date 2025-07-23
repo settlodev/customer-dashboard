@@ -49,7 +49,7 @@ export const searchStockFromWarehouse = async (
                 `/api/warehouse-stock/${warehouse?.id}`,
                 query
             );
-            console.log('Received data:', data);
+            
             return parseStringify(data);
         }
         catch (error){

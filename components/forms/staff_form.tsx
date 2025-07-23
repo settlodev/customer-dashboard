@@ -33,6 +33,9 @@ const StaffForm: React.FC<StaffFormProps> = ({
     item,
     onFormSubmitted,
 }) => {
+
+    console.log("The item",item)
+
     const { toast } = useToast();
     const [isSubmitting, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
