@@ -104,6 +104,13 @@ const pageSpecificComponents = {
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
     isWarehouse: true
   },
+  "/warehouse-suppliers": {
+    entityType: "supplier" as const,
+    importComponent: "",
+    exportComponent: "",
+    entityNames: { singular: "Supplier", plural: "Suppliers" },
+    isWarehouse: true
+  },
 };
 
 interface DataTableProps<TData, TValue> {
@@ -290,32 +297,32 @@ export function DataTable<TData, TValue>({
   };
 
   // Render the appropriate archive component based on whether it's a warehouse page
-  const renderArchiveComponent = () => {
-    if (disableArchive || selectedRowIds.length === 0) return null;
+const renderArchiveComponent = () => {
+  if (disableArchive || selectedRowIds.length === 0) return null;
 
-    // Check if this is a warehouse page
-    if (pageConfig.isWarehouse) {
-      return (
-        <WarehouseBulkArchive 
-          selectedIds={selectedRowIds}
-          entityType={pageConfig.entityType as 'stock' | 'stock-intake'}
-          onSuccess={resetTableSelection}
-          entityNameSingular={pageConfig.entityNames.singular}
-          entityNamePlural={pageConfig.entityNames.plural}
-        />
-      );
-    } else {
-      return (
-        <BulkArchive 
-          selectedIds={selectedRowIds}
-          entityType={pageConfig.entityType}
-          onSuccess={resetTableSelection}
-          entityNameSingular={pageConfig.entityNames.singular}
-          entityNamePlural={pageConfig.entityNames.plural}
-        />
-      );
-    }
-  };
+  // Check if this is a warehouse page
+  if (pageConfig.isWarehouse) {
+    return (
+      <WarehouseBulkArchive 
+        selectedIds={selectedRowIds}
+        entityType={pageConfig.entityType as 'stock' | 'stock-intake' | 'supplier'}
+        onSuccess={resetTableSelection}
+        entityNameSingular={pageConfig.entityNames.singular}
+        entityNamePlural={pageConfig.entityNames.plural}
+      />
+    );
+  } else {
+    return (
+      <BulkArchive 
+        selectedIds={selectedRowIds}
+        entityType={pageConfig.entityType as 'product' | 'stock' | 'staff' | 'stock-intake'}
+        onSuccess={resetTableSelection}
+        entityNameSingular={pageConfig.entityNames.singular}
+        entityNamePlural={pageConfig.entityNames.plural}
+      />
+    );
+  }
+};
 
   return (
     <motion.div>

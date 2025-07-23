@@ -52,8 +52,7 @@ export const searchSuppliers = async (
       `/api/suppliers/${business?.id}`,
       query
     );
-
-    
+  // console.log("The supplier data",supplierData);
     return parseStringify(supplierData);
   } catch (error) {
     throw error;
@@ -208,3 +207,19 @@ export const deleteSupplier = async (id: UUID): Promise<void> => {
       throw error;
   }
 };
+
+export const archievSupplier = async (id: UUID): Promise<void> => {
+  if (!id) throw new Error("Supplier ID is required to perform this request");
+  await getAuthenticatedUser();
+
+  try {
+      const apiClient = new ApiClient();
+      const business = await getCurrentBusiness();
+
+      await apiClient.delete(`/api/suppliers/${business?.id}/update-archive-status`);
+      revalidatePath("/warehouse-suppliers");
+  } catch (error) {
+      console.error("Error archieving supplier", error);
+      throw error;
+  }
+}

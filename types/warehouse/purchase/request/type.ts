@@ -5,7 +5,6 @@ export interface StockRequests{
     comment:string
     quantity:number
     warehouseRequestStatus:string
-    approvedDate?:string
     fromLocation:UUID
     fromLocationName:string
     toWarehouse:UUID
@@ -18,6 +17,9 @@ export interface StockRequests{
     warehouseStockName:string
     warehouseStockVariant:UUID
     warehouseStockVariantName:string
+    approvedDate?:string,
+    cancelledDate?:string
+    requestedDate?:string
 }
 
 export interface StockRequestReport{

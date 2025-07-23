@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache";
 import ApiClient from "@/lib/settlo-api-client";
 import { getCurrentWarehouse } from "./current-warehouse-action";
+import { getCurrentBusiness } from "../business/get-current-business";
 
 
 
 interface ArchiveEntityProps {
   ids: string[];
-  entityType: 'stock' | 'stock-intake';
+  entityType: 'stock' | 'stock-intake' | 'supplier';
   warehouseId?: string;
 }
 
@@ -34,7 +35,12 @@ const warehouse = warehouseId ? { id: warehouseId } : await getCurrentWarehouse(
 
 const actualWarehouseId = warehouseId || warehouse?.id;
 
-// const actualLocationId = locationId || location?.id;
+const business = await getCurrentBusiness();
+
+const payload = {
+  archiveStatus: true,
+  ids: ids,
+}
  
 
 if (!actualWarehouseId) {
@@ -51,7 +57,11 @@ if (!actualWarehouseId) {
          
           case 'stock-intake':
            await apiClient.put(`/api/stock-intakes/${actualWarehouseId}/all-with-warehouse/archive`, ids);
-            break;  
+            break; 
+            
+          case 'supplier':
+            await apiClient.put(`/api/suppliers/${business?.id}/update-archival-status`, payload);
+            break;
        
         default:
           return { success: false, message: `Unsupported entity type: ${entityType}` };
@@ -67,7 +77,7 @@ if (!actualWarehouseId) {
     // Revalidate the appropriate path
     const paths: Record<string, string> = {
       stock: "/warehouse-stock-variants",
-      // staff: "/warehouse-staff",
+      supplier: "/warehouse-suppliers",
       stockIntake: "/warehouse-stock-intakes"
     };
     

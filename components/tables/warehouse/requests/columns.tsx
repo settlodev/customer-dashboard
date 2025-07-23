@@ -60,6 +60,11 @@ export const columns: ColumnDef<StockRequests>[] = [
       );
     },
   },
+
+  {
+    accessorKey: "warehouseStockVariantName",
+  }
+  ,
   
   {
     accessorKey: "quantity",
@@ -76,6 +81,21 @@ export const columns: ColumnDef<StockRequests>[] = [
     accessorKey: "warehouseStockRequestStatus",
     enableHiding: false,
     header: "Request Status",
+  },
+  {
+    accessorKey: "requestedDate",
+    enableHiding: false,
+    header: "Requested Date",
+  },
+  {
+    accessorKey: "approvedDate",
+    enableHiding: false,
+    header: "Approved Date",
+  },
+  {
+    accessorKey: "cancelledDate",
+    enableHiding: false,
+    header: "Cancelled Date",
   },
   {
     accessorKey: "warehouseStaffApprovedName",

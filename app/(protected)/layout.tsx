@@ -6,6 +6,7 @@ import {NavbarWrapper} from "@/components/navigation/navbar-wrapper";
 import {SidebarWrapper} from "@/components/sidebar/sidebar";
 import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {fetchAllLocations} from "@/lib/actions/location-actions";
+import Loading from "../loading";
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
@@ -33,7 +34,11 @@ export default async function RootLayout({children}: {
                 <main className="flex h-screen w-full flex-col overflow-hidden">
                     <div className="relative flex-1 overflow-y-auto">
                         <div className="flex min-h-full w-full flex-col gap-4">
-                            <Suspense fallback={"Loading"}>
+                            <Suspense fallback={
+                                <div className="flex justify-center items-center h-full">
+                                    <Loading/>
+                                </div>
+                            }>
                                 <NavbarWrapper session={session}>
                                     <div className="flex-1">{children}</div>
                                 </NavbarWrapper>

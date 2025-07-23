@@ -31,7 +31,7 @@ export const columns: ColumnDef<Purchase>[] = [
   {
     accessorKey: "stockIntakePurchaseNumber",
     enableHiding: false,
-    header: "Stock Intake Purchase Number",
+    header: "SIP Number",
   },
   {
     accessorKey:"stockVariantName",
@@ -39,9 +39,19 @@ export const columns: ColumnDef<Purchase>[] = [
     header:'Item'
   },
   {
+    accessorKey:"stockIntakeQuantity",
+    enableHiding:false,
+    header:'Quantity'
+  },
+  {
+    accessorKey:"supplierName",
+    enableHiding:false,
+    header:'Supplier'
+  },
+  {
     accessorKey: "totalPurchaseCost",
     enableHiding:false,
-    header:'Total Cost'
+    header:'Total Purchase Cost'
   },
   
   {
@@ -58,6 +68,15 @@ export const columns: ColumnDef<Purchase>[] = [
   {
     accessorKey: "paymentStatus",
     header: "Payment Status",
+  },
+  {
+    accessorKey:"dateCreated",
+    enableHiding:false,
+    header:'Date Created',
+    cell:(row)=>{
+      const date = new Date(row.getValue() as string)
+      return date.toLocaleDateString()
+    }
   },
   
   {

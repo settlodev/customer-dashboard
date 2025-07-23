@@ -15,9 +15,9 @@ import { toast } from "sonner";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 import { WarehouseArchiveEntity } from "@/lib/actions/warehouse/archive-service";
 
-interface BulkArchiveProps {
+interface WarehouseBulkArchiveProps  {
   selectedIds: string[];
-  entityType: 'stock' | 'stock-intake';
+  entityType: 'stock' | 'stock-intake' | 'supplier';
   onSuccess?: () => void;
   entityNameSingular?: string;
   entityNamePlural?: string;
@@ -29,11 +29,10 @@ export function WarehouseBulkArchive({
   onSuccess,
   entityNameSingular,
   entityNamePlural,
-}: BulkArchiveProps) {
+}: WarehouseBulkArchiveProps ) {
   const [openArchiveDialog, setOpenArchiveDialog] = React.useState(false);
   const [archiveInProgress, setArchiveInProgress] = React.useState(false);
 
-  // Format entity name for display (e.g., 'product' -> 'Product', 'stock' -> 'Stock')
   const displayName = {
     singular: entityNameSingular || entityType.charAt(0).toUpperCase() + entityType.slice(1),
     plural: entityNamePlural || entityType.charAt(0).toUpperCase() + entityType.slice(1) + 's'

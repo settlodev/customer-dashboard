@@ -1,6 +1,6 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash } from "lucide-react";
+import { Archive, Edit, MoreHorizontal} from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
 
@@ -12,11 +12,11 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import DeleteModal from "@/components/tables/delete-modal";
 import {useDisclosure} from "@nextui-org/modal";
 import {toast} from "@/hooks/use-toast";
 import { Supplier } from "@/types/supplier/type";
-import { deleteSupplier } from "@/lib/actions/warehouse/supplier-actions";
+import { archievSupplier} from "@/lib/actions/warehouse/supplier-actions";
+import ArchieveModal from "../../archieve-modal";
 
 interface CellActionProps {
   data: Supplier;
@@ -26,10 +26,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  const onDelete = async () => {
+  const onArchieve = async () => {
     try {
       if (data) {
-        await deleteSupplier(data.id);
+        await archievSupplier(data.id);
         toast({
           variant: "default",
           title: "Success",
@@ -74,7 +74,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             {data.canDelete && (
               <>
                 <DropdownMenuItem onClick={onOpen}>
-                  <Trash className="mr-2 h-4 w-4" /> Delete
+                  <Archive className="mr-2 h-4 w-4" /> Archieve
                 </DropdownMenuItem>
               </>
             )}
@@ -82,10 +82,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         </DropdownMenu>
       </div>
       {data.canDelete && (
-        <DeleteModal
+        <ArchieveModal
           isOpen={isOpen}
           itemName={data.name}
-          onDelete={onDelete}
+          onArchieve={onArchieve}
           onOpenChange={onOpenChange}
         />
       )}
