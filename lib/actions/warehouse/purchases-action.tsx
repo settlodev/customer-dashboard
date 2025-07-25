@@ -136,8 +136,6 @@ export const stockIntakePurchaseReportForWarehouse = async (): Promise<StockInta
         const warehouse = await getCurrentWarehouse();
         
         const report=await apiClient.get(`/api/reports/${warehouse?.id}/stock-intake-purchases/summary`);
-
-
         return parseStringify(report);
         
     } catch (error) {

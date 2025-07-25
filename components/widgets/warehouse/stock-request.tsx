@@ -59,6 +59,7 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
       if (modalAction === 'approve') {
        
         result = await ApproveStockRequest(request.id,warehouseStaffApproved);
+        console.log("The result after approving",result)
         toast({
           title: "Success",
           description: "Stock request approved successfully",
@@ -73,10 +74,13 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
       }
 
       if (result?.data) {
-        setRequest(result.data);
+        setRequest(result.data); 
       }
-      
       handleModalClose();
+      setTimeout(() => {
+        window.location.href = '/warehouse-requests';
+      }, 500); 
+
     } catch (error) {
       console.error('Error processing request:', error);
       toast({
@@ -86,6 +90,7 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
       });
     } finally {
       setIsSubmitting(false);
+      window.location.href = '/warehouse-requests';
     }
   };
 

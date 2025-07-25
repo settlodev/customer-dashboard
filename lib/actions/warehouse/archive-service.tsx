@@ -7,7 +7,7 @@ import { getCurrentBusiness } from "../business/get-current-business";
 
 
 
-interface ArchiveEntityProps {
+interface warehouseArchiveEntityProps {
   ids: string[];
   entityType: 'stock' | 'stock-intake' | 'supplier';
   warehouseId?: string;
@@ -17,11 +17,11 @@ export async function WarehouseArchiveEntity({
   ids, 
   entityType,
   warehouseId
-}: ArchiveEntityProps): Promise<{ success: boolean; message: string }> {
+}: warehouseArchiveEntityProps): Promise<{ success: boolean; message: string }> {
 
-  console.log('Starting archiveEntity with ids:', ids);
-  console.log('Starting archiveEntity with entityType:', entityType);
-  console.log('Starting archiveEntity with warehouseId:', warehouseId);
+  // console.log('Starting archiveEntity with ids:', ids);
+  // console.log('Starting archiveEntity with entityType:', entityType);
+  // console.log('Starting archiveEntity with warehouseId:', warehouseId);
     
   try {
     if (!ids || ids.length === 0) {

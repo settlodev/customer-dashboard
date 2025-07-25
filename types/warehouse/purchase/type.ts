@@ -9,7 +9,10 @@ import { UUID } from "crypto";
     stockIntake:UUID
     stockName:string
     stockVariantName:string
-  }
+    supplierName:string
+    stockIntakeQuantity:number
+    dateCreated:string
+    }
 
   export interface StockIntakePurchasesReport{
     totalStockIntakePurchases: number

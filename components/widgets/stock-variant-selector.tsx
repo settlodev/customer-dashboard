@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useCallback } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,10 @@ const StockVariantSelector: React.FC<Props> = ({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  // Use useRef to store the timeout instead of state
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const ITEMS_PER_PAGE = 20;
 
   const getDisplayName = (stock: Stock, variant: StockVariant) => {
@@ -69,10 +72,11 @@ const StockVariantSelector: React.FC<Props> = ({
     }
   }, [hasInitialized, value]);
 
-  // Handle search with debounce
+  // Handle search with debounce - FIXED: removed debounceTimeout from dependencies
   useEffect(() => {
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout);
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
 
     if (hasInitialized) {
@@ -82,17 +86,17 @@ const StockVariantSelector: React.FC<Props> = ({
         loadStocks(searchTerm, 1);
       }, 300);
       
-      setDebounceTimeout(timeout);
+      debounceTimeoutRef.current = timeout;
     }
 
     return () => {
-      if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [searchTerm, hasInitialized, debounceTimeout]);
+  }, [searchTerm, hasInitialized]); // Removed debounceTimeout from dependencies
 
-  const loadSpecificVariant= useCallback(async (variantId: string) => {
+  const loadSpecificVariant = useCallback(async (variantId: string) => {
     try {
       setIsLoading(true);
       const variantInfo = await getStockVariantById(variantId);
@@ -124,7 +128,7 @@ const StockVariantSelector: React.FC<Props> = ({
       console.error("Error loading specific variant:", error);
       loadStocks("", 1); // Fallback
     }
-  },[]);
+  }, []);
 
   const loadStocks = useCallback(async (query: string, currentPage: number, showLoading = true) => {
     try {

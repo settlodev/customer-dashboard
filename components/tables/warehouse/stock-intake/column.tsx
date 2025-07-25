@@ -6,6 +6,7 @@ import {Button} from "@/components/ui/button";
 // import {StateColumn} from "@/components/tables/state-column";
 // import {CellAction} from "@/components/tables/stock-intake/cell-action";
 import { StockIntake } from "@/types/stock-intake/type";
+import { CellAction } from "./cell-action";
 
 
 
@@ -147,11 +148,15 @@ export const columns: ColumnDef<StockIntake>[] = [
             );
         }
     },
-   
-    // {
-    //     id: "actions",
-    //     accessorKey: "actions",
-    //     enableHiding: false,
-    //     cell: ({ row }) => <CellAction data={row.original} />,
-    // },
+    {
+        accessorKey:"supplierName",
+        enableHiding:false,
+        header:"Supplier"
+    },
+    {
+        id: "actions",
+        accessorKey: "actions",
+        enableHiding: false,
+        cell: ({ row }) => <CellAction data={row.original} />,
+    },
 ];

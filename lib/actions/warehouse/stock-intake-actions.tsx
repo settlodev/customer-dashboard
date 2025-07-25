@@ -12,47 +12,115 @@ import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema, UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
+// export const searchStockIntakesFromWarehouse = async (
+//     q:string,
+//     page:number,
+//     pageLimit:number
+// ): Promise<ApiResponse<StockIntake>> =>{
+//     await getAuthenticatedUser();
+
+//     try {
+//         const apiClient = new ApiClient();
+//         const query ={
+//             filters: [
+//                 {
+//                     key:"stockVariant.stock.name",
+//                     operator:"LIKE",
+//                     field_type:"STRING",
+//                     value:q
+//                 },
+//                 {
+//                     "key": "dateCreated",
+//                     "operator": "BETWEEN",
+//                     "field_type": "DATE",
+//                     "value": {},
+//                     "value_to": {}
+//                 }
+                
+//             ],
+//             sorts:[
+//                 {
+//                     key:"orderDate",
+//                     direction:"DESC"
+//                 }
+//             ],
+//             page:page ? page - 1:0,
+//             size:pageLimit ? pageLimit : 10
+//         }
+//         const warehouse = await getCurrentWarehouse();
+       
+//         const data = await  apiClient.post(
+//             `/api/stock-intakes/${warehouse?.id}/all-with-warehouse`,
+//             query
+//         );
+        
+//         return parseStringify(data);
+//     }
+//     catch (error){
+//         throw error;
+//     }
+
+// }
 export const searchStockIntakesFromWarehouse = async (
-    q:string,
-    page:number,
-    pageLimit:number
-): Promise<ApiResponse<StockIntake>> =>{
+    q: string,
+    page: number,
+    pageLimit: number,
+    dateFrom?: string,
+    dateTo?: string
+): Promise<ApiResponse<StockIntake>> => {
     await getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
-        const query ={
-            filters: [
-                {
-                    key:"stockVariant.stock.name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
-            sorts:[
-                {
-                    key:"orderDate",
-                    direction:"DESC"
-                }
-            ],
-            page:page ? page - 1:0,
-            size:pageLimit ? pageLimit : 10
+        
+        // Build filters array
+        const filters: any[] = [
+            {
+                key: "stockVariant.stock.name",
+                operator: "LIKE",
+                field_type: "STRING",
+                value: q
+            }
+        ];
+
+        if (dateFrom && dateTo) {
+            filters.push({
+                key: "dateCreated",
+                operator: "BETWEEN",
+                field_type: "DATE",
+                value: dateFrom,
+                value_to: dateTo
+            });
         }
+       
+
+        const query = {
+            filters,
+            sorts: [
+                {
+                    key: "orderDate",
+                    direction: "DESC"
+                }
+            ],
+            page: page ? page - 1 : 0,
+            size: pageLimit ? pageLimit : 10
+        };
+
+        console.log("The query payload is",query)
+
         const warehouse = await getCurrentWarehouse();
        
-        const data = await  apiClient.post(
+        const data = await apiClient.post(
             `/api/stock-intakes/${warehouse?.id}/all-with-warehouse`,
             query
         );
         
         return parseStringify(data);
     }
-    catch (error){
+    catch (error) {
         throw error;
     }
-
-}
+};
 export const createStockIntakeForWarehouse = async (
     stockIntake: z.infer<typeof StockIntakeSchema>
 ): Promise<FormResponse | void> => {

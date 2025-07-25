@@ -74,7 +74,6 @@ export const ApproveStockRequest = async (
     warehouseStaffApproved: UUID
 ): Promise<ApiResponse<StockRequests>> => {
 
-    console.log("The id is",id)
 
     const apiClient = new ApiClient();
 
@@ -91,6 +90,10 @@ export const ApproveStockRequest = async (
 };
 
 export const CancelStockRequest = async (id: UUID,warehouseStaffApproved: UUID): Promise<ApiResponse<StockRequests>> => {
+
+    console.log("The id is",id)
+    console.log("The staff cancelled",warehouseStaffApproved)
+
     const apiClient = new ApiClient();
 
     const warehouse = await getCurrentWarehouse();

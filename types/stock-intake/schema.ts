@@ -34,4 +34,8 @@ export const UpdatedStockIntakeSchema = object({
     .refine((val) => !isNaN(val), {
       message: "Please enter a valid number",
     }),
+    quantity:number().min(0, { message: "Value must be a positive number" })
+    .refine((val) => !isNaN(val), {
+      message: "Please enter a valid number",
+    }).optional(),
 })

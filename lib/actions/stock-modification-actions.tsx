@@ -117,9 +117,6 @@ export const createStockModification = async (
 
 
 export const getStockModified= async (id:UUID, stockVariant:UUID) : Promise<ApiResponse<StockModification>> => {
-
-    console.log("The id  & stockVariant to get stock intake: ", id , stockVariant)
-
     const apiClient = new ApiClient();
     const query ={
         filters:[

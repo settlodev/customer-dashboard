@@ -33,11 +33,7 @@ const StockIntakePurchaseReport = () => {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      minimumFractionDigits: 2,
-    }).format(amount || 0);
+    return new Intl.NumberFormat().format(amount || 0);
   };
 
   const formatNumber = (num: number) => {

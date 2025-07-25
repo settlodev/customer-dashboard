@@ -118,8 +118,6 @@ export const createStockTransfer = async (
 
 export const getStockTransferred= async (id:UUID, stockVariant:UUID) : Promise<ApiResponse<StockTransfer>> => {
 
-    console.log("The id  & stockVariant to get stock intake: ", id , stockVariant)
-
     const apiClient = new ApiClient();
     const query ={
         filters:[

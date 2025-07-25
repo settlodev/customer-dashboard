@@ -92,7 +92,7 @@ export const createStockRequest = async (
     const payload = {
         ...validData.data,
     };
-    console.log("The payload to create stock request:", payload);
+    // console.log("The payload to create stock request:", payload);
 
     try {
         const apiClient = new ApiClient();

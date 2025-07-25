@@ -86,16 +86,34 @@ export const columns: ColumnDef<StockRequests>[] = [
     accessorKey: "requestedDate",
     enableHiding: false,
     header: "Requested Date",
+    cell:(row)=>{
+      const date = new Date(row.getValue() as string)
+      return date.toLocaleDateString()
+    }
   },
   {
     accessorKey: "approvedDate",
     enableHiding: false,
     header: "Approved Date",
+    cell: (row) => {
+      const dateValue = row.getValue() as string;
+      if (!dateValue) return "-";
+      
+      const formatted = new Date(dateValue).toLocaleDateString();
+      return formatted === "Invalid Date" ? "-" : formatted;
+    }
   },
   {
     accessorKey: "cancelledDate",
     enableHiding: false,
     header: "Cancelled Date",
+    cell: (row) => {
+      const dateValue = row.getValue() as string;
+      if (!dateValue) return "-";
+      
+      const formatted = new Date(dateValue).toLocaleDateString();
+      return formatted === "Invalid Date" ? "-" : formatted;
+    }
   },
   {
     accessorKey: "warehouseStaffApprovedName",

@@ -6,7 +6,7 @@ import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-b
 
 interface ArchiveEntityProps {
   ids: string[];
-  entityType: 'product' | 'stock' | 'staff' |'stock-intake'|'supplier';
+  entityType: 'product' | 'stock' | 'staff' |'stock-intake';
   locationId?: string;
 }
 
@@ -16,8 +16,7 @@ export async function archiveEntity({
   locationId
 }: ArchiveEntityProps): Promise<{ success: boolean; message: string }> {
 
-  console.log("The entity type",entityType);
-  console.log("The ids",ids);
+  
     
   try {
     if (!ids || ids.length === 0) {
@@ -55,11 +54,7 @@ if (!actualLocationId) {
           case 'stock-intake':
            await apiClient.put(`/api/stock-intakes/${actualLocationId}/all/archive`, ids);
             break;  
-
-            case 'supplier':
-              await apiClient.put(`/api/suppliers/${business?.id}/archive`, ids);
-              break;
-       
+   
         default:
           return { success: false, message: `Unsupported entity type: ${entityType}` };
       }
