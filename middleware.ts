@@ -75,7 +75,6 @@ export async function middleware(request: NextRequest) {
     const currentBusinessToken = cookieStore.get("currentBusiness");
     const currentWarehouseToken = cookieStore.get("currentWarehouse");
     const currentLocationToken = cookieStore.get("currentLocation");
-    let authenticatedUserRedirectRoute = DEFAULT_LOGIN_REDIRECT_URL;
 
     // Email is not verified, force user to verify email
     if (
@@ -119,74 +118,41 @@ export async function middleware(request: NextRequest) {
       );
     }
 
-    // Location registration is not complete
-    // if (
-    //   authToken.businessComplete &&
-    //   !authToken.locationComplete &&
-    //   pathname !== COMPLETE_BUSINESS_LOCATION_SETUP_URL
-    // ) {
-    //   console.warn(
-    //     "Location registration is not complete, redirecting you to location registration page",
-    //   );
-    //
-    //   return NextResponse.redirect(
-    //     new URL(COMPLETE_BUSINESS_LOCATION_SETUP_URL, request.nextUrl),
-    //   );
-    // }
-
-    // You have completed all the authentication checks
-    // Update redirect route
-    if (!currentBusinessToken?.value) {
-      console.warn(
-        "You do not have a business selected, changing the redirect route to select business page",
-      );
-
-      authenticatedUserRedirectRoute = SELECT_BUSINESS_URL;
-      return NextResponse.redirect(
-        new URL(authenticatedUserRedirectRoute, request.nextUrl),
-      );
-    }
-
-    // TODO: If no warehouse or location selected, redirect to select location page
-    if (
-      currentBusinessToken?.value &&
-      !currentWarehouseToken?.value &&
-      !currentLocationToken?.value
-    ) {
-      console.warn(
-        "You do not have a location selected, changing the redirect route to select location page",
-      );
-
-      authenticatedUserRedirectRoute = SELECT_BUSINESS_LOCATION_URL;
-      return NextResponse.redirect(
-        new URL(authenticatedUserRedirectRoute, request.nextUrl),
-      );
-    }
-
     // If accessing auth routes, redirect to the correct page
     if (isAuthRoute) {
       console.warn(
-        "You are already logged in, you can not access auth routes, redirecting you to the correct route",
+        "You are already logged in, you can not access auth routes, redirecting you to default route",
       );
 
       return NextResponse.redirect(
-        new URL(authenticatedUserRedirectRoute, request.nextUrl),
+        new URL(DEFAULT_LOGIN_REDIRECT_URL, request.nextUrl),
       );
     }
 
-    if (
-      !currentBusinessToken?.value &&
-      !currentWarehouseToken?.value &&
-      pathname !== authenticatedUserRedirectRoute
-    ) {
+    // Check if user has selected a business (avoid redirect loop)
+    if (!currentBusinessToken?.value && pathname !== SELECT_BUSINESS_URL) {
       console.warn(
-        "You do not have a business selected, redirecting you to " +
-          authenticatedUserRedirectRoute +
-          " page",
+        "You do not have a business selected, redirecting you to select business page",
       );
 
       return NextResponse.redirect(
-        new URL(authenticatedUserRedirectRoute, request.nextUrl),
+        new URL(SELECT_BUSINESS_URL, request.nextUrl),
+      );
+    }
+
+    // Check if user has selected a location/warehouse (avoid redirect loop)
+    if (
+      currentBusinessToken?.value &&
+      !currentWarehouseToken?.value &&
+      !currentLocationToken?.value &&
+      pathname !== SELECT_BUSINESS_LOCATION_URL
+    ) {
+      console.warn(
+        "You do not have a location selected, redirecting you to select location page",
+      );
+
+      return NextResponse.redirect(
+        new URL(SELECT_BUSINESS_LOCATION_URL, request.nextUrl),
       );
     }
   }

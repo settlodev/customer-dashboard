@@ -14,7 +14,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
-import Loading from '../../loading';
 import { creditReport } from '@/lib/actions/order-actions';
 import { Credit } from '@/types/orders/type';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,6 +23,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { getCurrentLocation } from '@/lib/actions/business/get-current-business';
 import { Location } from '@/types/location/type';
+import Loading from '@/app/loading';
 
 interface DatePickerProps {
     value: Date;
