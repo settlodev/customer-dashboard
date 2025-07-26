@@ -59,7 +59,8 @@ const pageSpecificComponents = {
     entityType: "product" as const,
     importComponent: <ProductCSVDialog />,
     exportComponent: <TableExport filename="products-csv"/>,
-    entityNames: { singular: "Product", plural: "Products" }
+    entityNames: { singular: "Product", plural: "Products" },
+    allowArchive: true 
   },
   "/stock-variants": {
     entityType: "stock" as const,
@@ -68,21 +69,45 @@ const pageSpecificComponents = {
       <ProductWithStockCSVDialog />
     </>,
     exportComponent: <StockExport filename="stock"/>,
-    entityNames: { singular: "Stock Variant", plural: "Stock Variants" }
+    entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
+    allowArchive: true 
   },
   "/stock-intakes": {
     entityType: "stock-intake" as const,
     importComponent: <CSVStockIntakeDialog/>,
     exportComponent: <StockIntakeExport filename="Stock Intake"/>,
-    entityNames: { singular: "Stock Intake", plural: "Stock Intakes" }
+    entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
+    allowArchive: true 
   },
   "/staff": {
     entityType: "staff" as const,
     importComponent: null,
     exportComponent: null,
-    entityNames: { singular: "Staff Member", plural: "Staff Members" }
+    entityNames: { singular: "Staff Member", plural: "Staff Members" },
+    allowArchive: true 
+  },
+  "/categories": {
+    entityType: "category" as const,
+    importComponent: null,
+    exportComponent: null,
+    entityNames: { singular: "Category", plural: "Categories" },
+    allowArchive: false 
   },
   
+  "/suppliers": {
+    entityType: "supplier" as const,
+    importComponent: null,
+    exportComponent: null,
+    entityNames: { singular: "Supplier", plural: "Suppliers" },
+    allowArchive: false
+  },
+  "/customers": {
+    entityType: "customer" as const,
+    importComponent: null,
+    exportComponent: null,
+    entityNames: { singular: "Customer", plural: "Customers" },
+    allowArchive: false
+  },
 };
 
 interface DataTableProps<TData, TValue> {
@@ -265,13 +290,13 @@ export function DataTable<TData, TValue>({
     (row) => (row.original as any).id
   );
 
-  // Get page-specific components and settings
   const pageConfig = pageSpecificComponents[pathname as keyof typeof pageSpecificComponents] || {
     entityType: "product",
     importComponent: null,
     exportComponent: null,
-    entityNames: { singular: "Item", plural: "Items" }
-  };
+    entityNames: { singular: "Item", plural: "Items" },
+    allowArchive: false
+  }
 
   // Reset table selection callback
   const resetTableSelection = () => {
@@ -298,15 +323,15 @@ export function DataTable<TData, TValue>({
 
         <div className="hidden lg:flex items-center space-x-2">
           {/* Archive Button - Only show when rows are selected and archive is enabled */}
-          {!disableArchive && selectedRowIds.length > 0 && (
-            <BulkArchive 
-              selectedIds={selectedRowIds}
-              entityType={pageConfig.entityType}
-              onSuccess={resetTableSelection}
-              entityNameSingular={pageConfig.entityNames.singular}
-              entityNamePlural={pageConfig.entityNames.plural}
-            />
-          )}
+          {!disableArchive && pageConfig.allowArchive && selectedRowIds.length > 0 && (
+    <BulkArchive 
+      selectedIds={selectedRowIds}
+      entityType={pageConfig.entityType}
+      onSuccess={resetTableSelection}
+      entityNameSingular={pageConfig.entityNames.singular}
+      entityNamePlural={pageConfig.entityNames.plural}
+    />
+  )}
 
           {/* <DataTableViewOptions table={table} /> */}
 
