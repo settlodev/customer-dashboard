@@ -184,7 +184,7 @@ export const createLocation = async (
                 redirect("/business"); 
             } else {
                 revalidatePath("/locations");
-                redirect("/locations");
+                // redirect("/locations");
             }
         }
         return formResponse;
@@ -201,7 +201,8 @@ export const createLocation = async (
 export const updateLocation = async (
     id: UUID,
     location: z.infer<typeof LocationSchema>,
-  ): Promise<FormResponse | void> => {
+  ): Promise<FormResponse> => {
+
     let formResponse: FormResponse | null = null;
      // Validate location data
      const validatedData = LocationSchema.safeParse(location);
@@ -252,9 +253,6 @@ export const updateLocation = async (
         await refreshLocation(updatedLocation);
         
       }
-  
-      
-      
       
     } catch (error: unknown) {
       formResponse = {
@@ -264,13 +262,13 @@ export const updateLocation = async (
       };
     }
   
-    if (formResponse) {
-      return formResponse;
-    }
-  
+   formResponse = parseStringify({
+      responseType: "success",
+      message: "Location updated successfully",
+    });
     
     revalidatePath("/select-location");
-      redirect("/select-location");
+    return parseStringify(formResponse)
   };
 
 
