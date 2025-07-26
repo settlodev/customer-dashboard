@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useFieldArray, useForm } from "react-hook-form";
 import {
     Form,
     FormControl,
@@ -35,6 +35,9 @@ import { StockRequestSchema } from "@/types/stock-request/schema";
 import { createStockRequest, updateStockRequest } from "@/lib/actions/request-actions";
 import WarehouseSelector from "../widgets/warehouse-selector";
 import WarehouseStockVariantSelector from "../widgets/warehouse-stock-variant-selector";
+import { Badge, Package, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
 
 function StockRequestForm({ item }: { item: StockRequests | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -44,16 +47,15 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
-    const [selectedVariant,] = useState<StockVariant>();
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
 
-    const searchParams = useSearchParams()
-    const stockVariantId = searchParams.get('stockItem')
+    const searchParams = useSearchParams();
+    const stockVariantId = searchParams.get('stockItem');
 
     useEffect(() => {
         const getData = async () => {
             try {
-                const locationResponse= await fetchAllLocations();
+                const locationResponse = await fetchAllLocations();
                 setLocations(locationResponse || []);
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -67,8 +69,15 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
         defaultValues: {
             ...item,
             status: true,
-            ...(stockVariantId ? { stockVariant: stockVariantId } : {})
+            stockRequested: stockVariantId 
+                ? [{ warehouseStockVariant: stockVariantId, quantity: 1 }]
+                : [{ warehouseStockVariant: "", quantity: 1 }]
         },
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "stockRequested",
     });
 
     // Watch for warehouse changes
@@ -77,18 +86,28 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
     useEffect(() => {
         if (watchedWarehouse && watchedWarehouse !== selectedWarehouseId) {
             setSelectedWarehouseId(watchedWarehouse);
-            // Reset the stock variant selection when warehouse changes
-            form.setValue("warehouseStockVariant", "");
+            // Reset all stock variant selections when warehouse changes
+            form.setValue("stockRequested", [{ warehouseStockVariant: "", quantity: 1 }]);
         }
     }, [watchedWarehouse, selectedWarehouseId, form]);
 
+    const addStockItem = () => {
+        append({ warehouseStockVariant: "", quantity: 1 });
+    };
+
+    const removeStockItem = (index: number) => {
+        if (fields.length > 1) {
+            remove(index);
+        }
+    };
+
     const onInvalid = useCallback(
         (errors: any) => {
-            console.error("Validation errors:", errors );
+            console.error("Validation errors:", errors);
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong",
-                description: errors.message || "Please try again later.",
+                description: "Please check all fields and try again.",
             });
         },
         [toast]
@@ -97,7 +116,6 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
     const submitData = (values: z.infer<typeof StockRequestSchema>) => {
         startTransition(() => {
             if (item) {
-                // console.log("Updating existing stock transfer with ID:", item);
                 updateStockRequest(item.id, values)
                     .then((data) => {
                         if (data) setResponse(data);
@@ -125,200 +143,255 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
                         }
                     })
                     .catch((err) => {
-                        console.error("Error creating stock transfer:", err);
+                        console.error("Error creating stock request:", err);
                     });
             }
         });
     };
 
+    const totalItems = fields.length;
+    const totalQuantity = form.watch("stockRequested")?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
+
     return (
-        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-            <div className="flex gap-10">
-                <div className="flex-1">
-                    <Form {...form}>
-                        <form
-                            onSubmit={form.handleSubmit(submitData, onInvalid)}
-                            className="gap-1"
-                        >
-                            <div>
-                                <FormError message={error} />
-                                <FormSuccess message={success} />
-                             
-                                <div className="lg:grid grid-cols-2  gap-4 mt-2">
-                                    <div className="mt-4 flex">
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="fromLocation"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>From Location </FormLabel>
-                                                        <FormControl>
-                                                            <LocationSelector
-                                                                value={field.value}
-                                                                onChange={field.onChange}
-                                                                onBlur={field.onBlur}
-                                                                isRequired
-                                                                isDisabled={isPending}
-                                                                label="Location"
-                                                                placeholder="Select location"
-                                                                locations={locations}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex">
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="toWarehouse"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Warehouse </FormLabel>
-                                                        <FormControl>
-                                                            <WarehouseSelector
-                                                                value={field.value}
-                                                                onChange={field.onChange}
-                                                                onBlur={field.onBlur}
-                                                                isRequired
-                                                                isDisabled={isPending}
-                                                                label="From Warehouse"
-                                                                placeholder="Select from warehouse"
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="lg:grid grid-cols-2  gap-4 mt-2">
-                                    <FormField
-                                        control={form.control}
-                                        name="warehouseStockVariant"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Stock Item</FormLabel>
-                                                <FormControl>
-                                                    <WarehouseStockVariantSelector
-                                                        {...field}
-                                                        value={field.value ?? ""}
-                                                        isDisabled={isPending || !selectedWarehouseId}
-                                                        warehouseId={selectedWarehouseId}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    {selectedVariant && (
-                                        <div className=" flex flex-col mt-2 border border-emerald-300 animate-bounce rounded-md py-2 px-3 cursor-pointer hover:animate-none">
-                                            <p className="text-sm"><span className=" uppercase font-bold text-emerald-500 mr-2">note:</span>The transfer can not exceed the current available quantity</p>
-                                            <p className="text-sm">Current Available Quantity: {Intl.NumberFormat().format(selectedVariant.currentAvailable)}</p>
-                                            <p className="text-sm">Current Average Value: {Intl.NumberFormat().format(selectedVariant.currentTotalValue)}</p>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="lg:grid grid-cols-2  gap-4 mt-2">
-                                    <div className="mt-4 flex">
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="quantity"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Quantity</FormLabel>
-                                                        <FormControl>
-                                                            <FormControl>
-                                                                <NumericFormat
-                                                                    className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                    value={field.value}
-                                                                    disabled={isPending}
-                                                                    placeholder="Enter stock quantity"
-                                                                    thousandSeparator={true}
-                                                                    allowNegative={false}
-                                                                    onValueChange={(values) => {
-                                                                        const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                        field.onChange(rawValue);
-                                                                    }}
-                                                                />
-                                                            </FormControl>
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                    <div className="mt-4 flex">
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="locationStaffRequested"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Staff Requesting</FormLabel>
-                                                        <FormControl>
-                                                            <StaffSelectorWidget
-                                                                value={field.value}
-                                                                onChange={field.onChange}
-                                                                onBlur={field.onBlur}
-                                                                isRequired
-                                                                isDisabled={isPending}
-                                                                label="staff"
-                                                                placeholder="Select staff"
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="mt-4 grid lg:grid-cols-1 gap-4">
-                                    <FormField
-                                        control={form.control}
-                                        name="comment"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Comment</FormLabel>
-                                                <FormControl>
-                                                    <Textarea
-                                                        placeholder="Your comment"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        maxLength={400}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-
-                                {/* Submit Button */}
-                                <div className="flex items-center space-x-4 mt-4">
-                                    <CancelButton />
-                                    <Separator orientation="vertical" />
-                                    <SubmitButton
-                                        isPending={isPending}
-                                        label={item ? "Update Stock Request" : "Request Stock"}
-                                    />
-                                </div>
-                            </div>
-                        </form>
-                    </Form>
+        <div className="max-w-6xl mx-auto p-6 space-y-6">
+            {/* Header Section */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">
+                        {item ? "Update Stock Request" : "New Stock Request"}
+                    </h1>
+                    <p className="text-gray-600 mt-1">
+                        Request stock items from warehouse to location
+                    </p>
+                </div>
+                <div className="flex items-center space-x-4">
+                    <Badge variant="outline" className="flex items-center space-x-2">
+                        <Package className="w-4 h-4" />
+                        <span>{totalItems} item{totalItems !== 1 ? 's' : ''}</span>
+                    </Badge>
+                    <Badge variant="outline" className="flex items-center space-x-2">
+                        <ShoppingCart className="w-4 h-4" />
+                        <span>{totalQuantity} total qty</span>
+                    </Badge>
                 </div>
             </div>
+
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
+                    <FormError message={error} />
+                    <FormSuccess message={success} />
+
+                    {/* Request Details Card */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg font-semibold">Request Details</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name="fromLocation"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>From Location *</FormLabel>
+                                            <FormControl>
+                                                <LocationSelector
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    onBlur={field.onBlur}
+                                                    isRequired
+                                                    isDisabled={isPending}
+                                                    label="Location"
+                                                    placeholder="Select location"
+                                                    locations={locations}
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="toWarehouse"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>To Warehouse *</FormLabel>
+                                            <FormControl>
+                                                <WarehouseSelector
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    onBlur={field.onBlur}
+                                                    isRequired
+                                                    isDisabled={isPending}
+                                                    label="Warehouse"
+                                                    placeholder="Select warehouse"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+
+                                <FormField
+                                    control={form.control}
+                                    name="locationStaffRequested"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Requesting Staff *</FormLabel>
+                                            <FormControl>
+                                                <StaffSelectorWidget
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    onBlur={field.onBlur}
+                                                    isRequired
+                                                    isDisabled={isPending}
+                                                    label="Staff"
+                                                    placeholder="Select staff"
+                                                />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Stock Items Card */}
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between">
+                            <CardTitle className="text-lg font-semibold">Stock Items</CardTitle>
+                            <Button
+                                type="button"
+                                onClick={addStockItem}
+                                disabled={isPending || !selectedWarehouseId}
+                                className="flex items-center space-x-2"
+                                size="sm"
+                            >
+                                <Plus className="w-4 h-4" />
+                                <span>Add Item</span>
+                            </Button>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            {!selectedWarehouseId && (
+                                <div className="text-center py-8 text-gray-500">
+                                    <Package className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                                    <p>Please select a warehouse first to add stock items</p>
+                                </div>
+                            )}
+
+                            {selectedWarehouseId && fields.map((field, index) => (
+                                <div
+                                    key={field.id}
+                                    className="border border-gray-200 rounded-lg p-4 space-y-4 bg-gray-50"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-medium text-gray-900">
+                                            Item #{index + 1}
+                                        </h4>
+                                        {fields.length > 1 && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => removeStockItem(index)}
+                                                disabled={isPending}
+                                                className="text-red-600 hover:text-red-700"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <FormField
+                                            control={form.control}
+                                            name={`stockRequested.${index}.warehouseStockVariant`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Stock Item *</FormLabel>
+                                                    <FormControl>
+                                                        <WarehouseStockVariantSelector
+                                                            {...field}
+                                                            value={field.value ?? ""}
+                                                            isDisabled={isPending}
+                                                            warehouseId={selectedWarehouseId}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+
+                                        <FormField
+                                            control={form.control}
+                                            name={`stockRequested.${index}.quantity`}
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Quantity *</FormLabel>
+                                                    <FormControl>
+                                                        <NumericFormat
+                                                            className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                                            value={field.value}
+                                                            disabled={isPending}
+                                                            placeholder="Enter quantity"
+                                                            thousandSeparator={true}
+                                                            allowNegative={false}
+                                                            onValueChange={(values) => {
+                                                                const rawValue = Number(values.value.replace(/,/g, ""));
+                                                                field.onChange(rawValue);
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+
+                    {/* Comment Card */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="text-lg font-semibold">Additional Information</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <FormField
+                                control={form.control}
+                                name="comment"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Comment</FormLabel>
+                                        <FormControl>
+                                            <Textarea
+                                                placeholder="Add any additional notes or comments about this request..."
+                                                {...field}
+                                                disabled={isPending}
+                                                maxLength={400}
+                                                className="min-h-[100px]"
+                                            />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </CardContent>
+                    </Card>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center justify-end space-x-4 pt-6 border-t">
+                        <CancelButton />
+                        <SubmitButton
+                            isPending={isPending}
+                            label={item ? "Update Stock Request" : "Submit Request"}
+                        />
+                    </div>
+                </form>
+            </Form>
         </div>
     );
 }

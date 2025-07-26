@@ -1,19 +1,25 @@
-import {boolean, object, string,preprocess, number} from "zod";
+import { z } from "zod";
 
-export const StockRequestSchema = object({
-    fromLocation:string({message:"Please select a business location "}).uuid(),
-    toWarehouse:string({message:"Please select a warehouse where stock will be requested"}).uuid(),
-    locationStaffRequested:string({message:"Please select a staff"}).uuid(),
-    warehouseStockVariant:string({message:"Please select a stock variant"}).uuid(),
-    quantity: preprocess(
-        (val)=>{
-            if(typeof val==="string" && val.trim()!==""){
-                return parseInt(val)
+const StockRequestItemSchema = z.object({
+    warehouseStockVariant: z.string({ message: "Please select a stock variant" }).uuid(),
+    quantity: z.preprocess(
+        (val) => {
+            if (typeof val === "string" && val.trim() !== "") {
+                return parseInt(val);
             }
-            return val
+            return val;
         },
-        number({message:"Quantity is required"}).nonnegative({message:"Quantity can not be negative"}).gt(0,{message:"Quantity can not be zero"})
+        z.number({ message: "Quantity is required" })
+            .nonnegative({ message: "Quantity cannot be negative" })
+            .gt(0, { message: "Quantity cannot be zero" })
     ),
-    status: boolean().optional(),
-    comment:string().optional()
+});
+
+export const StockRequestSchema = z.object({
+    fromLocation: z.string({ message: "Please select a business location" }).uuid(),
+    toWarehouse: z.string({ message: "Please select a warehouse where stock will be requested" }).uuid(),
+    locationStaffRequested: z.string({ message: "Please select a staff" }).uuid(),
+    stockRequested: z.array(StockRequestItemSchema).min(1, { message: "At least one item must be requested" }),
+    status: z.boolean().optional(),
+    comment: z.string().optional()
 });

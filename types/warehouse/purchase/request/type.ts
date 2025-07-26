@@ -1,10 +1,14 @@
 import { UUID } from "crypto"
 
+
+export interface StockRequestItem {
+    warehouseStockVariant: UUID;
+    quantity: number;
+}
 export interface StockRequests{
     id:UUID
     comment:string
-    quantity:number
-    warehouseRequestStatus:string
+    stockRequested:StockRequestItem[]
     fromLocation:UUID
     fromLocationName:string
     toWarehouse:UUID

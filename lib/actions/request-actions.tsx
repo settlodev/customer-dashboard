@@ -90,9 +90,16 @@ export const createStockRequest = async (
 
     const location= await getCurrentLocation();
     const payload = {
-        ...validData.data,
+        comment: validData.data.comment,
+        fromLocation: validData.data.fromLocation,
+        toWarehouse: validData.data.toWarehouse,
+        locationStaffRequested: validData.data.locationStaffRequested,
+        stockRequested: validData.data.stockRequested.map(item => ({
+            warehouseStockVariant: item.warehouseStockVariant,
+            quantity: item.quantity
+        }))
     };
-    // console.log("The payload to create stock request:", payload);
+    console.log("The payload to create stock request:", payload);
 
     try {
         const apiClient = new ApiClient();
