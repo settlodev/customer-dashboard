@@ -263,7 +263,7 @@ export default function RefundReportPage() {
             <div>
               <h1 className="text-2xl font-bold text-gray-800">Refund Report</h1>
               {!initialLoad && isShowingTodayData() && (
-                <p className="text-sm text-gray-600 mt-1">Showing today's data</p>
+                <p className="text-sm text-gray-600 mt-1">Showing today&apos;s data</p>
               )}
             </div>
             <div className="w-full md:w-auto">
