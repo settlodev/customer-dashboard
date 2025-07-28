@@ -10,7 +10,9 @@ import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
-export const getWarehouse = async (): Promise<Warehouses | null> => {
+export const getWarehouse = async (
+    id?:string
+): Promise<Warehouses | null> => {
     try {
         const business = await getCurrentBusiness();
 
@@ -19,7 +21,7 @@ export const getWarehouse = async (): Promise<Warehouses | null> => {
         }
 
         const apiClient = new ApiClient();
-        const warehouse = await getCurrentWarehouse();
+        const warehouse = id ? { id } : await getCurrentWarehouse();
 
         const warehousesData = await apiClient.get(
             `/api/warehouses/${business.id}/${warehouse?.id}`,

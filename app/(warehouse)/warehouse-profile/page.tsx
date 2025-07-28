@@ -7,6 +7,7 @@ import Loading from '@/app/(protected)/loading';
 import { Button } from '@/components/ui/button';
 import { warehouseInvoices } from '@/lib/actions/warehouse/subscription';
 import WarehouseInvoiceTable from '@/components/widgets/warehouse/invoice-table';
+import { useRouter } from 'next/navigation';
 
 
 
@@ -14,6 +15,7 @@ const WarehouseProfile = () => {
   const [warehouse, setWarehouse] = useState<Warehouses>();
  
   const [loading, setLoading] = useState(true);
+  const router = useRouter()
 
   useEffect(() => {
     const fetchWarehouses = async () => {
@@ -67,8 +69,7 @@ const fetchWarehouseInvoices = async (page: number, pageSize: number, searchQuer
   };
 
   const handleEditWarehouse = () => {
-    // console.log('Edit warehouse:', selectedWarehouse?.id);
-    // Add your edit logic here
+   router.push(`/warehouse-profile/${warehouse?.id}`)
   };
 
  

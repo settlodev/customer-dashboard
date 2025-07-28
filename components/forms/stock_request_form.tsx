@@ -15,7 +15,6 @@ import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
-import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { FormSuccess } from "../widgets/form-success";
 
@@ -28,16 +27,16 @@ import { Location } from "@/types/location/type";
 import LocationSelector from "../widgets/location-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter, useSearchParams } from "next/navigation";
-import { StockVariant } from "@/types/stockVariant/type";
 
 import { StockRequests } from "@/types/warehouse/purchase/request/type";
 import { StockRequestSchema } from "@/types/stock-request/schema";
 import { createStockRequest, updateStockRequest } from "@/lib/actions/request-actions";
 import WarehouseSelector from "../widgets/warehouse-selector";
 import WarehouseStockVariantSelector from "../widgets/warehouse-stock-variant-selector";
-import { Badge, Package, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Package, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 
 function StockRequestForm({ item }: { item: StockRequests | null | undefined }) {
     const [isPending, startTransition] = useTransition();

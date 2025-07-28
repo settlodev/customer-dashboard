@@ -72,6 +72,66 @@ export const createWarehouse = async (
 
 };
 
+export const updateWarehouse = async (
+    warehouse: z.infer<typeof RegisterWarehouseSchema>
+): Promise<FormResponse | void> => {
+
+    let formResponse: FormResponse | null = null;
+
+    await getAuthenticatedUser();
+    const validatedData = RegisterWarehouseSchema.safeParse(warehouse);
+
+
+    if (!validatedData.success) {
+        
+        formResponse = {
+            responseType:"error",
+            message: "Please fill in all the fields marked with * before proceeding",
+            error:new Error(validatedData.error.message)
+      }
+      return parseStringify(formResponse)
+    }
+
+    const business = await getCurrentBusiness();
+
+    const warehouseId= await getCurrentWarehouse()
+
+    const payload = {
+        ...validatedData.data,
+    }
+
+    try {
+        const apiClient = new ApiClient();
+        await apiClient.put(`/api/warehouses/${business?.id}/${warehouseId?.id}`, payload);
+
+        formResponse = {
+            responseType:"success",
+            message:"Warehouse updated successfully",
+        }
+        
+        return parseStringify(formResponse)
+        
+    } catch (error) {
+        console.error("Error is: ", error);
+        
+        let errorMessage = "Something went wrong";
+        
+        // Handle specific error codes
+        if (error instanceof Error && (error as any).status === 409 || (error as any).code === 'CONFLICT' || (error as any).code === 'DUPLICATE') {
+            // This is a duplicate warehouse name error
+            errorMessage = (Error as any).message || "A warehouse with this name already exists in your business";
+        }
+        formResponse = {
+            responseType:"error",
+            message: errorMessage,
+            error: new Error(errorMessage)
+        }
+        
+        return parseStringify(formResponse);
+}
+
+};
+
 export const refreshWarehouse = async (data: Warehouses): Promise<void> => {
 
     if (!data) throw new Error("Business ID is required to perform this request");

@@ -1,8 +1,8 @@
 import * as Sentry from "@sentry/nextjs";
 
-import { ChevronDown, Plus, Loader2 } from "lucide-react";
+import { ChevronDown, Plus, Loader2, Undo2 } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { Location } from "@/types/location/type";
 import { refreshLocation } from "@/lib/actions/business/refresh";
@@ -25,6 +25,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
+import { Warehouses } from "@/types/warehouse/warehouse/type";
+import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 
 export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
     const { business, currentLocation, locationList } = data;
@@ -33,6 +35,24 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [confirmationOpen, setConfirmationOpen] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
+    const [isWarehouse, setIsWarehouse]= useState<Warehouses | undefined>(undefined);
+    const [warehouseLoading, setWarehouseLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchWarehouse = async () => {
+            try {
+                setWarehouseLoading(true);
+                const warehouse = await getCurrentWarehouse()
+                setIsWarehouse(warehouse)
+            } catch (error) {
+                console.error('Error fetching warehouse:', error)
+            } finally {
+                setWarehouseLoading(false);
+            }
+        }
+        
+        fetchWarehouse()
+    }, [])
 
     const handleLocationSelect = (location: Location) => {
         const isActive = currentLocation?.id === location.id;
@@ -159,20 +179,39 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
 
                     <DropdownMenuSeparator />
 
-                    <DropdownMenuItem
-                        onClick={() => router.push("/locations/new")}
-                        className="p-2 cursor-pointer"
-                        disabled={loadingLocationId !== null}
-                    >
-                        <Button
-                            className="w-full bg-emerald-400 hover:bg-emerald-500 text-gray-800"
-                            size="sm"
-                            disabled={loadingLocationId !== null}
-                        >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add business location
-                        </Button>
-                    </DropdownMenuItem>
+                    {!warehouseLoading && (
+                        isWarehouse ? (
+                            <DropdownMenuItem
+                                onClick={() => router.push("/select-location")}
+                                className="p-2 cursor-pointer"
+                                disabled={loadingLocationId !== null}
+                            >
+                                <Button
+                                    className="w-full bg-emerald-400 hover:bg-emerald-500 text-gray-800"
+                                    size="sm"
+                                    disabled={loadingLocationId !== null}
+                                >
+                                    <Undo2 className="h-4 w-4 mr-2" />
+                                    Switch To location
+                                </Button>
+                            </DropdownMenuItem>
+                        ) : (
+                            <DropdownMenuItem
+                                onClick={() => router.push("/locations/new")}
+                                className="p-2 cursor-pointer"
+                                disabled={loadingLocationId !== null}
+                            >
+                                <Button
+                                    className="w-full bg-emerald-400 hover:bg-emerald-500 text-gray-800"
+                                    size="sm"
+                                    disabled={loadingLocationId !== null}
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Add business location
+                                </Button>
+                            </DropdownMenuItem>
+                        )
+                    )}
                 </DropdownMenuContent>
             </DropdownMenu>
 
