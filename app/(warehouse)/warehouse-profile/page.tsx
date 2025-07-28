@@ -213,13 +213,13 @@ const fetchWarehouseInvoices = async (page: number, pageSize: number, searchQuer
       </div>
 
       <div className="mt-8">
-      <WarehouseInvoiceTable
+      {/* <WarehouseInvoiceTable
         warehouseId={warehouse.id}
         fetchInvoices={fetchWarehouseInvoices}
         onInvoiceSelect={(invoice) => {
           console.log('Selected invoice:', invoice);
         }}
-      />
+      /> */}
     </div>
       
     </div>

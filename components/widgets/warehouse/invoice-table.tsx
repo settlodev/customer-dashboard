@@ -45,8 +45,8 @@ interface WarehouseInvoiceTableProps {
 }
 
 const WarehouseInvoiceTable: React.FC<WarehouseInvoiceTableProps> = ({ 
-  // warehouseId, 
-  // onInvoiceSelect,
+  warehouseId, 
+  onInvoiceSelect,
   fetchInvoices 
 }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -56,6 +56,7 @@ const WarehouseInvoiceTable: React.FC<WarehouseInvoiceTableProps> = ({
   const [pageSize] = useState(10);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  
 
   
   const loadInvoices = useCallback(async (page: number = currentPage, search: string = searchQuery) => {
@@ -357,3 +358,4 @@ const WarehouseInvoiceTable: React.FC<WarehouseInvoiceTableProps> = ({
 };
 
 export default WarehouseInvoiceTable;
+

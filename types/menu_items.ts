@@ -231,6 +231,7 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
             icon: 'warehouse',
             items: [
                 { title: "Profile", link: "/warehouse-profile", current: args?.isCurrentItem, icon: "file-text" },
+                { title: "Billings & Payments", link: "/warehouse-invoice", current: args?.isCurrentItem, icon: "file-text" },
                 
             ]
         },
