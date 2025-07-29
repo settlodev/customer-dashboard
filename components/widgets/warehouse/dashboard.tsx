@@ -53,7 +53,7 @@ function DashboardLayout() {
       implemented: true
     },
     {
-      name: "Stock Intake Purchase Report", 
+      name: "Stock Supplier Payable", 
       value: 'purchase',
       implemented: true
     },

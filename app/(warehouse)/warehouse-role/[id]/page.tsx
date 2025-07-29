@@ -55,12 +55,6 @@ const RoleCard = ({isNewItem, item}: {
     item: Role | null | undefined;
 }) => (
     <Card>
-        <CardHeader>
-            <CardTitle>{isNewItem ? "Add role" : "Edit role details"}</CardTitle>
-            <CardDescription>
-                {isNewItem ? "Add roles to your business" : "Edit role details"}
-            </CardDescription>
-        </CardHeader>
         <CardContent>
             <WarehouseRoleForm item={item} />
         </CardContent>

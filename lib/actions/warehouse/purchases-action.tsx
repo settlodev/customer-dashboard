@@ -32,12 +32,12 @@ export const searchStockIntakePurchases = async (
                     value: q,
                 },
             ],
-            // sorts: [
-            //     {
-            //         key: "name",
-            //         direction: "ASC",
-            //     },
-            // ],
+            sorts: [
+                {
+                    key: "dateCreated",
+                    direction: "DESC",
+                },
+            ],
             page: page ? page - 1 : 0,
             size: pageLimit ? pageLimit : 10,
         };

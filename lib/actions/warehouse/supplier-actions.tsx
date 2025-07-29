@@ -99,12 +99,11 @@ export const createSupplier = async (
       message: "Supplier created successfully",
     };
 
-  } catch (error) {
+  } catch (error:any) {
     console.error("Error creating supplier", error);
     formResponse = {
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message:error.message || "Something went wrong while processing your request, please try again",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
@@ -233,11 +232,11 @@ export const supplierCreditReportForWarehouse = async (): Promise<SupplierCredit
       const apiClient = new ApiClient();
       const warehouse = await getCurrentWarehouse();
       const report=await apiClient.get(`/api/reports/${warehouse?.id}/suppliers-credit/summary`);
-      console.log("The credit report is", report)
       return parseStringify(report);
       
   } catch (error) {
       console.error("Error fetching stock request report:", error);
       throw error;
   }
+  
 };

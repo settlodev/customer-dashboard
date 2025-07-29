@@ -99,7 +99,7 @@ export const searchStockIntakesFromWarehouse = async (
             sorts: [
                 {
                     key: "orderDate",
-                    direction: "DESC"
+                    direction: "ASC"
                 }
             ],
             page: page ? page - 1 : 0,

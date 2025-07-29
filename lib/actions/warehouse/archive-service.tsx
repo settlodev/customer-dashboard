@@ -19,9 +19,9 @@ export async function WarehouseArchiveEntity({
   warehouseId
 }: warehouseArchiveEntityProps): Promise<{ success: boolean; message: string }> {
 
-  // console.log('Starting archiveEntity with ids:', ids);
-  // console.log('Starting archiveEntity with entityType:', entityType);
-  // console.log('Starting archiveEntity with warehouseId:', warehouseId);
+  console.log('Starting archiveEntity with ids:', ids);
+  console.log('Starting archiveEntity with entityType:', entityType);
+  console.log('Starting archiveEntity with warehouseId:', warehouseId);
     
   try {
     if (!ids || ids.length === 0) {

@@ -30,6 +30,12 @@ export const refreshWarehouse = async (data: any): Promise<void> => {
     revalidatePath("/warehouse");
 };
 
+export const deleteActiveWarehouseCookie = async () => {
+    const cookieStore = await cookies();
+    cookieStore.delete("activeWarehouse");
+    console.log("Deleting current warehouse cookies")
+};
+
 export const getActiveSubscriptionForWarehouse = async (locationId?: string | null): Promise<ActiveSubscription> => {
     
     let warehouse;

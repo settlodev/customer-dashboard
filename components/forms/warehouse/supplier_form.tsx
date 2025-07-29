@@ -32,8 +32,8 @@ import { createSupplier, updateSupplier } from "@/lib/actions/warehouse/supplier
 function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error,] = useState<string | undefined>("");
-  const [success,] = useState<string | undefined>("");
+  const [error,setError] = useState<string | undefined>("");
+  const [success,setSuccess] = useState<string | undefined>("");
   const { toast } = useToast();
   const router = useRouter();
 
@@ -43,17 +43,30 @@ function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) 
   });
 
   const submitData = (values: z.infer<typeof SupplierSchema>) => {
+    // Clear previous messages
+    setError("");
+    setSuccess("");
+    
     startTransition(() => {
       if (item) {
         updateSupplier(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
+            setSuccess(data.message);
             toast({
               title: "Success",
               description: data.message,
-              duration:5000
+              duration: 5000
             });
             router.push("/warehouse-suppliers");
+          } else if (data && data.responseType === "error") {
+            setError(data.message);
+            toast({
+              title: "Error",
+              description: data.message,
+              variant: "destructive",
+              duration: 5000
+            });
           }
         });
       } else {
@@ -62,16 +75,33 @@ function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) 
             console.log(data);
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
+              setSuccess(data.message);
               toast({
                 title: "Success",
                 description: data.message,
-                duration:5000
+                duration: 5000
               });
               router.push("/warehouse-suppliers");
+            } else if (data && data.responseType === "error") {
+              setError(data.message);
+              toast({
+                title: "Error",
+                description: data.message,
+                variant: "destructive",
+                duration: 5000
+              });
             }
           })
           .catch((err) => {
             console.log(err);
+            const errorMessage = "An unexpected error occurred. Please try again.";
+            setError(errorMessage);
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+              duration: 5000
+            });
           });
       }
     });

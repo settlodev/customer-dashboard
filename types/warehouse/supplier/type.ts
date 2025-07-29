@@ -17,11 +17,15 @@ export declare interface Supplier  {
     isArchived: boolean
 }
 
-export interface SupplierCreditReports{
+interface SupplierCreditSummary{
     supplierId: UUID
     supplierName: string
-    totalPurchasePerformed: number
+    totalPurchasesPerformed: number
     totalPurchasedAmount: number
-    totalPaid: number
+    totalPaidAmount: number
     totalUnpaidAmount: number
+}
+
+export interface SupplierCreditReports{
+   suppliersCreditSummary:SupplierCreditSummary[]
 }

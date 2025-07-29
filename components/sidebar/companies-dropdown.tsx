@@ -26,7 +26,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
-import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { deleteActiveWarehouseCookie, getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 
 export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
     const { business, currentLocation, locationList } = data;
@@ -64,6 +64,11 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         setConfirmationOpen(true);
         setIsOpen(false); // Close the dropdown
     };
+
+    const handleSwitchLocation=()=>{
+        router.push("/select-location")
+        deleteActiveWarehouseCookie();
+    }
 
     const onRefreshLocation = async (location: Location) => {
         
@@ -182,7 +187,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                     {!warehouseLoading && (
                         isWarehouse ? (
                             <DropdownMenuItem
-                                onClick={() => router.push("/select-location")}
+                                onClick={() => handleSwitchLocation()}
                                 className="p-2 cursor-pointer"
                                 disabled={loadingLocationId !== null}
                             >

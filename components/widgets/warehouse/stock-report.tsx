@@ -45,21 +45,6 @@ const SummaryCard = ({
       <CardContent>
         <div className={`text-2xl font-bold ${colorClass}`}>{value}</div>
         {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
-        {progress !== null && (
-          <div className="mt-3">
-            <Progress 
-              value={progress} 
-              className={`h-2 ${
-                colorClass === "text-amber-500" 
-                  ? "[&>div]:bg-amber-500" 
-                  : colorClass === "text-red-500" 
-                  ? "[&>div]:bg-red-500" 
-                  : "[&>div]:bg-blue-500"
-              }`} 
-            />
-            <p className="text-xs text-gray-500 mt-1">{progress.toFixed(1)}% of total</p>
-          </div>
-        )}
       </CardContent>
       <div className={`absolute top-0 right-0 w-1 h-full ${
         colorClass === "text-amber-500" 
@@ -320,13 +305,6 @@ const WarehouseStockReport = () => {
           value={stockData.totalStockRemaining.toLocaleString()}
           icon={Package}
           subtitle="Available units"
-        />
-        <SummaryCard 
-          title="Estimated Profit" 
-          value={stockData.totalEstimatedProfit?.toLocaleString() || '0'}
-          icon={BarChart3}
-          subtitle="Potential earnings"
-          colorClass="text-green-600"
         />
       </div>
 

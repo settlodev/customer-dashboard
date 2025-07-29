@@ -68,6 +68,18 @@ export const columns: ColumnDef<Purchase>[] = [
   {
     accessorKey: "paymentStatus",
     header: "Payment Status",
+    cell: (row) => {
+      const status = row.getValue();
+      
+      switch (status) {
+        case "NOT_PAID":
+          return "NOT PAID";
+        case "PARTIAL":
+          return "PARTIAL PAID";
+        default:
+          return status;
+      }
+    }
   },
   {
     accessorKey:"dateCreated",

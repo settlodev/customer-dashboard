@@ -48,9 +48,9 @@ export default async function Page({searchParams}:Params) {
             {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Stock Intake Purchases</CardTitle>
+                        <CardTitle>Stock Supplier Payable</CardTitle>
                         <CardDescription>
-                            List of Stock Intake Purchases
+                            List of Stock Supplier Payable
                         </CardDescription>
                     </CardHeader>
                     <CardContent>

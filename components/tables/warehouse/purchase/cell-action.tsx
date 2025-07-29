@@ -1,6 +1,6 @@
 "use client";
 
-import {CreditCard } from "lucide-react";
+import { CreditCard } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 
@@ -63,7 +63,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
     const { amount } = validationResult.data;
 
-    
+
     if (amount <= 0) {
       toast({
         title: "Invalid Amount",
@@ -83,17 +83,17 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     }
 
     setIsProcessing(true);
-    
+
     try {
-     const response= await payStockIntakePurchase(data.id, amount);
-      
-       if(response){
+      const response = await payStockIntakePurchase(data.id, amount);
+
+      if (response) {
         setIsPaymentDialogOpen(false);
         setPaymentAmount("");
-        
+
         router.refresh();
-       }
-     
+      }
+
     } catch (error) {
       console.log("Error:", error);
       toast({
@@ -109,8 +109,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   return (
     <>
       <div className="relative flex items-center gap-2">
-
-        {data.paymentStatus === "PARTIAL" && (
+        {(data.paymentStatus === "NOT_PAID" || data.paymentStatus === "PARTIAL") && (
           <Button
             size="sm"
             variant="outline"
@@ -120,23 +119,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             Pay
           </Button>
         )}
-        
-        {/* <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button className="h-8 w-8 p-0" variant="ghost">
-              <span className="sr-only">Actions</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => router.push(`/purchases/${data.id}`)}
-            >
-              <Edit className="mr-2 h-4 w-4" /> Update
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu> */}
       </div>
 
       {/* Payment Dialog */}
@@ -175,9 +157,9 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             </div>
           </div>
           <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => {
                 setIsPaymentDialogOpen(false);
                 setPaymentAmount("");
@@ -186,8 +168,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             >
               Cancel
             </Button>
-            <Button 
-              type="button" 
+            <Button
+              type="button"
               onClick={handlePayment}
               disabled={isProcessing || !paymentAmount}
             >
