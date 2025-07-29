@@ -26,6 +26,7 @@ export declare interface Product {
     variants: Variant[],
     trackInventory: boolean,
     trackingType: "recipe" | "stock" | null,
+    quantity:number
 }
 
 export declare interface TopSellingProduct{
