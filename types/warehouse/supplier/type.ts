@@ -15,5 +15,13 @@ export declare interface Supplier  {
     status: boolean
     canDelete: boolean
     isArchived: boolean
-  
+}
+
+export interface SupplierCreditReports{
+    supplierId: UUID
+    supplierName: string
+    totalPurchasePerformed: number
+    totalPurchasedAmount: number
+    totalPaid: number
+    totalUnpaidAmount: number
 }

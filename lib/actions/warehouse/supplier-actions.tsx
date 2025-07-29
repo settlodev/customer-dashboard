@@ -10,6 +10,8 @@ import { getCurrentBusiness } from "../business/get-current-business";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
+import { getCurrentWarehouse } from "./current-warehouse-action";
+import { SupplierCreditReports } from "@/types/warehouse/supplier/type";
 
 export const searchSuppliers = async (
   q: string,
@@ -138,8 +140,6 @@ export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
   return parseStringify(supplierResponse);
 };
 
-
-
 export const updateSupplier = async (
   id: UUID,
   supplier: z.infer<typeof SupplierSchema>
@@ -223,3 +223,21 @@ export const archievSupplier = async (id: UUID): Promise<void> => {
       throw error;
   }
 }
+
+export const supplierCreditReportForWarehouse = async (): Promise<SupplierCreditReports | null> => {
+
+  await getAuthenticatedUser();
+
+  try {
+
+      const apiClient = new ApiClient();
+      const warehouse = await getCurrentWarehouse();
+      const report=await apiClient.get(`/api/reports/${warehouse?.id}/suppliers-credit/summary`);
+      console.log("The credit report is", report)
+      return parseStringify(report);
+      
+  } catch (error) {
+      console.error("Error fetching stock request report:", error);
+      throw error;
+  }
+};
