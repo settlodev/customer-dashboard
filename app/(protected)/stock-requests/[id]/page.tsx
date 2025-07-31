@@ -44,14 +44,6 @@ const StockRequestCard =({isNewItem,item}:{
     item: StockRequests
 }) =>(
     <Card>
-       <CardHeader>
-           <CardTitle>
-               {isNewItem ? "Request Stock" : "Edit stock request details"}
-           </CardTitle>
-           <CardDescription>
-               {isNewItem ? "Request stock to your business": "Edit stock request details"}
-           </CardDescription>
-       </CardHeader>
         <CardContent>
             <StockRequestForm item={item}/>
         </CardContent>

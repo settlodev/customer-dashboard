@@ -93,11 +93,13 @@ export const CancelStockRequest = async (id: UUID,warehouseStaffApproved: UUID):
 
     const apiClient = new ApiClient();
 
+    const warehouseStaffCancelled= warehouseStaffApproved
+
     const warehouse = await getCurrentWarehouse();
 
     const cancelledRequest = await apiClient.put(
         `/api/warehouse/${warehouse?.id}/warehouse-stock-requests/cancel/${id}`,{
-            warehouseStaffApproved
+            warehouseStaffCancelled
         }
     );
 

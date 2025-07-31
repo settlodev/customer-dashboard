@@ -138,7 +138,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
                                 description: data.message,
                                 duration: 5000
                             });
-                            router.push("/warehouse-suppliers");
+                            router.push("/warehouse-profile");
                         }
                     })
                     .catch((err) => {

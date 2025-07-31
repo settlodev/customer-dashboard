@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Edit, MapPin, Phone, Mail, Clock, Building, Calendar } from 'lucide-react';
+import { Edit, MapPin, Phone, Mail, Clock, Building, Calendar, Plus } from 'lucide-react';
 import { getWarehouse} from '@/lib/actions/warehouse/list-warehouse';
 import { Warehouses } from '@/types/warehouse/warehouse/type';
 import Loading from '@/app/(protected)/loading';
@@ -72,6 +72,9 @@ const fetchWarehouseInvoices = async (page: number, pageSize: number, searchQuer
    router.push(`/warehouse-profile/${warehouse?.id}`)
   };
 
+  const handleAddWarehouse = ()=>{
+    router.push('/warehouse-profile/new')
+  }
  
 
   if (loading) {
@@ -112,13 +115,21 @@ const fetchWarehouseInvoices = async (page: number, pageSize: number, searchQuer
                 
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col lg:flex-row gap-3">
               <Button
                 onClick={handleEditWarehouse}
                 className="inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
               >
                 <Edit className="w-4 h-4 mr-2" />
                 Edit Details
+              </Button>
+
+              <Button
+                onClick={handleAddWarehouse}
+                
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Warehouse
               </Button>
              
             </div>

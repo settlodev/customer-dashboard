@@ -25,34 +25,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
-import { Warehouses } from "@/types/warehouse/warehouse/type";
-import { deleteActiveWarehouseCookie, getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { deleteActiveWarehouseCookie} from "@/lib/actions/warehouse/current-warehouse-action";
 
 export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
-    const { business, currentLocation, locationList } = data;
+
+  
+
+    const { business, currentLocation, locationList,currentWarehouse } = data;
     const router = useRouter();
     const [loadingLocationId, setLoadingLocationId] = useState<string | null>(null);
     const [isOpen, setIsOpen] = useState(false);
     const [confirmationOpen, setConfirmationOpen] = useState(false);
     const [selectedLocation, setSelectedLocation] = useState<Location | null>(null);
-    const [isWarehouse, setIsWarehouse]= useState<Warehouses | undefined>(undefined);
-    const [warehouseLoading, setWarehouseLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchWarehouse = async () => {
-            try {
-                setWarehouseLoading(true);
-                const warehouse = await getCurrentWarehouse()
-                setIsWarehouse(warehouse)
-            } catch (error) {
-                console.error('Error fetching warehouse:', error)
-            } finally {
-                setWarehouseLoading(false);
-            }
-        }
-        
-        fetchWarehouse()
-    }, [])
+  
 
     const handleLocationSelect = (location: Location) => {
         const isActive = currentLocation?.id === location.id;
@@ -184,8 +170,8 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
 
                     <DropdownMenuSeparator />
 
-                    {!warehouseLoading && (
-                        isWarehouse ? (
+                    {currentWarehouse && (
+                        currentWarehouse ? (
                             <DropdownMenuItem
                                 onClick={() => handleSwitchLocation()}
                                 className="p-2 cursor-pointer"

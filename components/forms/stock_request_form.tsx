@@ -22,9 +22,7 @@ import { NumericFormat } from "react-number-format";
 import { Textarea } from "../ui/textarea";
 
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
-import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { Location } from "@/types/location/type";
-import LocationSelector from "../widgets/location-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -37,12 +35,13 @@ import { Package, Plus, ShoppingCart, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 
 function StockRequestForm({ item }: { item: StockRequests | null | undefined }) {
     const [isPending, startTransition] = useTransition();
     const [error] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
-    const [locations, setLocations] = useState<Location[]>([]);
+    const [currentLocation, setCurrentLocation] = useState<Location | undefined>(undefined);
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
@@ -50,18 +49,6 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
 
     const searchParams = useSearchParams();
     const stockVariantId = searchParams.get('stockItem');
-
-    useEffect(() => {
-        const getData = async () => {
-            try {
-                const locationResponse = await fetchAllLocations();
-                setLocations(locationResponse || []);
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            }
-        };
-        getData();
-    }, []);
 
     const form = useForm<z.infer<typeof StockRequestSchema>>({
         resolver: zodResolver(StockRequestSchema),
@@ -74,6 +61,28 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
         },
     });
 
+    
+    useEffect(() => {
+        const getData = async () => {
+            try {
+                const locationResponse = await getCurrentLocation();
+                setCurrentLocation(locationResponse);
+            
+                if (locationResponse && !item) {
+                    form.setValue("fromLocation", locationResponse.id);
+                }
+            } catch (error) {
+                console.error("Error fetching current location:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "Failed to fetch current location",
+                });
+            }
+        };
+        getData();
+    }, [form, item, toast]);
+
     const { fields, append, remove } = useFieldArray({
         control: form.control,
         name: "stockRequested",
@@ -85,7 +94,7 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
     useEffect(() => {
         if (watchedWarehouse && watchedWarehouse !== selectedWarehouseId) {
             setSelectedWarehouseId(watchedWarehouse);
-            // Reset all stock variant selections when warehouse changes
+            
             form.setValue("stockRequested", [{ warehouseStockVariant: "", quantity: 1 }]);
         }
     }, [watchedWarehouse, selectedWarehouseId, form]);
@@ -148,9 +157,6 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
         });
     };
 
-    const totalItems = fields.length;
-    const totalQuantity = form.watch("stockRequested")?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
-
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-6">
             {/* Header Section */}
@@ -163,16 +169,7 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
                         Request stock items from warehouse to location
                     </p>
                 </div>
-                <div className="flex items-center space-x-4">
-                    <Badge variant="outline" className="flex items-center space-x-2">
-                        <Package className="w-4 h-4" />
-                        <span>{totalItems} item{totalItems !== 1 ? 's' : ''}</span>
-                    </Badge>
-                    <Badge variant="outline" className="flex items-center space-x-2">
-                        <ShoppingCart className="w-4 h-4" />
-                        <span>{totalQuantity} total qty</span>
-                    </Badge>
-                </div>
+               
             </div>
 
             <Form {...form}>
@@ -187,28 +184,18 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="fromLocation"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>From Location *</FormLabel>
-                                            <FormControl>
-                                                <LocationSelector
-                                                    value={field.value}
-                                                    onChange={field.onChange}
-                                                    onBlur={field.onBlur}
-                                                    isRequired
-                                                    isDisabled={isPending}
-                                                    label="Location"
-                                                    placeholder="Select location"
-                                                    locations={locations}
-                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
+                                {/* Current Location Display (Read-only) */}
+                                <div className="space-y-2">
+                                    <FormLabel>From Location</FormLabel>
+                                    <div className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm bg-gray-50 text-gray-700">
+                                        {currentLocation ? currentLocation.name : "Loading current location..."}
+                                    </div>
+                                    {currentLocation && (
+                                        <p className="text-xs text-gray-500">
+                                            Current location is automatically selected
+                                        </p>
                                     )}
-                                />
+                                </div>
 
                                 <FormField
                                     control={form.control}
