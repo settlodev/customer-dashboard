@@ -95,6 +95,7 @@ export const CancelStockRequest = async (id: UUID,warehouseStaffApproved: UUID):
 
     const warehouseStaffCancelled= warehouseStaffApproved
 
+
     const warehouse = await getCurrentWarehouse();
 
     const cancelledRequest = await apiClient.put(
