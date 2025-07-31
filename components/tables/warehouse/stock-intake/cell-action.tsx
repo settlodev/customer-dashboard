@@ -150,7 +150,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                 <DialogContent className="w-full max-w-lg mx-auto space-y-4 p-6 rounded-lg shadow-xl">
                     <DialogHeader>
                         <DialogTitle className="text-xl font-bold text-gray-800">
-                            Edit Stock Intake Value & Quantity
+                            Edit Stock Intake Value
                         </DialogTitle>
                         
                         <Alert variant="destructive" className="mt-4 bg-red-50 border-red-200">
@@ -159,7 +159,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                                 Heads up!
                             </AlertTitle>
                             <AlertDescription className="text-red-600">
-                                Modifying this value or quantity may affect reports that use this data. 
+                                Modifying this value  may affect reports that use this data. 
                                 Please confirm your changes.
                             </AlertDescription>
                         </Alert>
@@ -167,44 +167,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Current Quantity */}
-                                <div className="flex flex-col space-y-2">
-                                    <FormLabel className="text-gray-700 font-medium">
-                                        Current Quantity
-                                    </FormLabel>
-                                    <Input
-                                        value={data.quantity?.toString() || ""}
-                                        className="w-full bg-gray-50"
-                                        disabled
-                                    />
-                                </div>
-
-                                {/* New Quantity */}
-                                <FormField
-                                    control={form.control}
-                                    name="quantity"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-col space-y-2">
-                                            <FormLabel className="text-gray-700 font-medium">
-                                                New Quantity
-                                            </FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    type="number"
-                                                    min="0"
-                                                    {...field}
-                                                    onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                                    className="w-full"
-                                                />
-                                            </FormControl>
-                                            <FormMessage className="text-red-500 text-sm" />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Current Value */}
                                 <div className="flex flex-col space-y-2">
                                     <FormLabel className="text-gray-700 font-medium">
