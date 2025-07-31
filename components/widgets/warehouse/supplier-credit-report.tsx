@@ -4,8 +4,6 @@ import { XCircle, RefreshCw, Search} from 'lucide-react';
 import { supplierCreditReportForWarehouse } from '@/lib/actions/warehouse/supplier-actions';
 import { SupplierCreditReports } from '@/types/warehouse/supplier/type';
 
-
-
 const SupplierCreditReport = () => {
   const [reportData, setReportData] = useState<SupplierCreditReports | null>(null);
   const [loading, setLoading] = useState(true);

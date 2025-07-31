@@ -2,12 +2,10 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import React, { useState } from 'react'
 
-
 import WarehouseStockReport from './stock-report'
 import UnimplementedTabContent from './helper'
 import StockRequestReport from './stock-request-report'
 import Loading from '@/app/(protected)/loading'
-import StockIntakePurchaseReport from './stock-intake-purchase-report'
 import SupplierCreditReport from './supplier-credit-report'
 
 export interface StockHistory {
@@ -52,11 +50,7 @@ function DashboardLayout() {
       value: "request", 
       implemented: true
     },
-    {
-      name: "Stock Supplier Payable", 
-      value: 'purchase',
-      implemented: true
-    },
+   
     {
       name:"Supplier credit Report",
       value:"credit",
@@ -100,7 +94,6 @@ function DashboardLayout() {
                 <>
                   {tab.value === "stock" && <WarehouseStockReport />}
                   {tab.value === "request" && <StockRequestReport />}
-                  {tab.value === "purchase" && <StockIntakePurchaseReport/>}
                   {tab.value === "credit" && <SupplierCreditReport/>}
                 </>
               ) : (

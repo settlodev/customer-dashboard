@@ -8,7 +8,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import {Role} from "@/types/roles/type";
+import {Role, WarehouseRole} from "@/types/roles/type";
 import { searchWarehouseRoles } from "@/lib/actions/warehouse/roles-action";
 
 interface Props {
@@ -29,7 +29,7 @@ const WarehouseRoleSelector: React.FC<Props> = ({
       description,
       onChange,
   }) => {
-    const [roles, setRoles] = useState<Role[]>([]);
+    const [roles, setRoles] = useState<WarehouseRole[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const q = "";
     const size = 10;

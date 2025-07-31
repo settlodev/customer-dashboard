@@ -16,10 +16,10 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import { useToast } from "@/hooks/use-toast"
 import { deleteRole } from "@/lib/actions/role-actions";
-import {Role} from "@/types/roles/type";
+import {WarehouseRole} from "@/types/roles/type";
 
 interface CellActionProps {
-  data: Role;
+  data: WarehouseRole;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {

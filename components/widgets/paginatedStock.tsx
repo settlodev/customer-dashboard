@@ -329,7 +329,7 @@ const PaginatedStockTable = ({ movements, itemsPerPage = 10 }: { movements: Stoc
                   </div>
                 </td>
                 <td className="p-2">{Intl.NumberFormat().format(movement.newTotalQuantity)}</td>
-                <td className="p-2 hidden md:table-cell">{movement.staffName}</td>
+                <td className="p-2 hidden md:table-cell">{movement.staffName !== '' ?movement.staffName :movement.warehouseStaffName }</td>
                 <td className="p-2 hidden md:table-cell">
                   {Intl.DateTimeFormat(undefined, {
                     year: 'numeric',

@@ -32,7 +32,7 @@ import {DollarSign, PlusCircle, Power,ToggleLeft} from "lucide-react";
 
 function AddonForm({item}: { item: Addon | null | undefined }) {
 
-console.log("The item is: ", item);
+
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
     const [addonTracking, setAddonTracking] = useState<boolean>(false);

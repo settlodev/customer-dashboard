@@ -27,6 +27,7 @@ export default async function StockVariantDetails({
       getStockVariantSummary(resolvedParams.id as UUID, stock as UUID)
     ]);
 
+   
     const breadCrumbItems = [
       {title: "Stock Items", link: "/warehouse-stock-variants"},
       {title: `${movementData[0]?.stockName}-${movementData[0]?.stockVariantName}`, link: ""}
@@ -39,14 +40,13 @@ export default async function StockVariantDetails({
           <CardContent className="pt-6">
             <div className="space-y-2">
               <div className='space-y-2'>
-                <h3 className='font-bold text-lg'>Stock Movements History</h3>
+                <h3 className='font-medium lg:font-bold lg:text-lg'>Stock Movements History</h3>
                 <div className='flex flex-col sm:flex-row items-start sm:items-center gap-2'>
                   <div className='flex items-center gap-2'>
-                    <h2 className='text-[32px] font-bold capitalize'>
+                    <h2 className='text-lg font-semibold lg:text-[32px] lg:font-bold capitalize'>
                       {movementData[0]?.stockName}
                       <span className="text-black">-</span>
-                      {movementData[0]?.stockVariantName}
-                    </h2>
+                      {movementData.length === 0 ? summaryData.stockVariantName : movementData[0]?.stockVariantName}                    </h2>
                   </div>
                 </div>
               </div>

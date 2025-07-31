@@ -2,7 +2,7 @@
 
 import ApiClient from "@/lib/settlo-api-client";
 import {parseStringify} from "@/lib/utils";
-import {PrivilegeItem} from "@/types/types";
+import {ApiResponse, PrivilegeItem, WarehousePrivilegeItem} from "@/types/types";
 
 export const fetchAllSections = async () : Promise<PrivilegeItem[]> => {
     try {
@@ -10,6 +10,26 @@ export const fetchAllSections = async () : Promise<PrivilegeItem[]> => {
 
         const data = await  apiClient.get(
             `/api/privilege-sections`,
+        );
+        return parseStringify(data);
+    }
+    catch (error){
+        throw error;
+    }
+}
+
+export const searchWarehousePrivilegesSection = async():Promise<ApiResponse<WarehousePrivilegeItem[]>>  =>{
+    const page =0;
+    const size = 10;
+    try {
+        const apiClient = new ApiClient();
+        const query ={
+            page,
+            size
+        }
+
+        const data = await  apiClient.post(
+            `/api/warehouse-privilege-sections`,query,
         );
         return parseStringify(data);
     }

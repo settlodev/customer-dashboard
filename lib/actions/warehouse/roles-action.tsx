@@ -5,12 +5,12 @@ import { UUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
 
-import { Role } from "@/types/roles/type";
+import { WarehouseRole } from "@/types/roles/type";
 import { ApiResponse, FormResponse } from "@/types/types";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { RoleSchema } from "@/types/roles/schema";
+import { RoleSchema, WarehouseRoleSchema } from "@/types/roles/schema";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
 
@@ -18,7 +18,7 @@ export const searchWarehouseRoles = async (
     q: string,
     page: number,
     pageLimit: number,
-): Promise<ApiResponse<Role>> => {
+): Promise<ApiResponse<WarehouseRole>> => {
     await getAuthenticatedUser();
 
     try {
@@ -57,11 +57,11 @@ export const searchWarehouseRoles = async (
 };
 
 export const createWarehouseRole = async (
-    role: z.infer<typeof RoleSchema>,
+    role: z.infer<typeof WarehouseRoleSchema>,
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
 
-    const validatedData = RoleSchema.safeParse(role);
+    const validatedData = WarehouseRoleSchema.safeParse(role);
 
     if (!validatedData.success) {
         formResponse = {
@@ -106,11 +106,13 @@ export const createWarehouseRole = async (
 
 export const updateWarehouseRole = async (
     id: UUID,
-    role: z.infer<typeof RoleSchema>,
+    role: z.infer<typeof WarehouseRoleSchema>,
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
 
-    const validatedData = RoleSchema.safeParse(role);
+    const validatedData = WarehouseRoleSchema.safeParse(role);
+
+    console.log("The validated data is",validatedData)
 
     if (!validatedData.success) {
         formResponse = {
@@ -130,6 +132,8 @@ export const updateWarehouseRole = async (
             ...validatedData.data,
             warehouse: warehouse?.id
         }
+
+        console.log("The payload passed",payload)
 
         await apiClient.put(
             `/api/warehouse-roles/${warehouse?.id}/${id}`,
@@ -165,7 +169,7 @@ export const getWarehouseRole = async (id: UUID) => {
         const roleData = await apiClient.get(
             `/api/warehouse-roles/${warehouse?.id}/${id}`,
         );
-        console.log("The role data is:", roleData);
+        
         return parseStringify(roleData);
 
     } catch (error) {

@@ -7,7 +7,7 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Role} from "@/types/roles/type";
+import {Role, WarehouseRole} from "@/types/roles/type";
 import { getWarehouseRole } from "@/lib/actions/warehouse/roles-action";
 import WarehouseRoleForm from "@/components/forms/warehouse/role_form";
 
@@ -16,7 +16,7 @@ export default async function WarehouseRolePage({params}: {params: Params}) {
 
     const resolvedParams = await params;
     const isNewItem = resolvedParams.id === "new";
-    let item: Role| null = null;
+    let item: WarehouseRole| null = null;
 
     if (!isNewItem) {
         try {
@@ -52,7 +52,7 @@ export default async function WarehouseRolePage({params}: {params: Params}) {
 
 const RoleCard = ({isNewItem, item}: {
     isNewItem: boolean;
-    item: Role | null | undefined;
+    item: WarehouseRole | null | undefined;
 }) => (
     <Card>
         <CardContent>

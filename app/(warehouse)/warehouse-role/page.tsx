@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/warehouse/roles/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Role} from "@/types/roles/type";
+import {Role, WarehouseRole} from "@/types/roles/type";
 import NoItems from "@/components/layouts/no-items";
 import { searchWarehouseRoles } from "@/lib/actions/warehouse/roles-action";
 
@@ -34,7 +34,7 @@ export default async function Page({ searchParams }: Params) {
 
     const responseData = await searchWarehouseRoles(q, page, pageLimit);
 
-    const data: Role[] = responseData.content;
+    const data: WarehouseRole[] = responseData.content;
     const total = responseData.totalElements;
     const pageCount = responseData.totalPages;
 

@@ -1,12 +1,9 @@
-
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
-
-import { Switch } from "@nextui-org/switch";
 import { cn } from "@nextui-org/react";
 
 import {
@@ -19,77 +16,148 @@ import {
 } from "@/components/ui/form";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
-import { FormResponse } from "@/types/types";
-import { RoleSchema } from "@/types/roles/schema";
+import { FormResponse, WarehousePrivilegeItem } from "@/types/types";
+import { WarehouseRoleSchema } from "@/types/roles/schema";
 import { FormError } from "@/components/widgets/form-error";
-import { Role } from "@/types/roles/type";
+import { WarehouseRole } from "@/types/roles/type";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { createWarehouseRole, updateWarehouseRole } from "@/lib/actions/warehouse/roles-action";
+import _ from "lodash";
+import { searchWarehousePrivilegesSection } from "@/lib/actions/privileges-actions";
 
-const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
+const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined }) => {
+
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
-
+    const [privileges, setPrivileges] = useState<string[]>([]);
+    const [sections, setSections] = useState<WarehousePrivilegeItem[]>([]);
+    const [isLoadingSections, setIsLoadingSections] = useState(true);
     const { toast } = useToast();
     const router = useRouter();
 
-    const form = useForm<z.infer<typeof RoleSchema>>({
-        resolver: zodResolver(RoleSchema),
+    // Initialize privileges from item - Fixed to handle the correct property name
+    useEffect(() => {
+        if (item && item.warehousePrivilegeActions) {
+            const myPrivs: string[] = [];
+            item.warehousePrivilegeActions.forEach(priv => {
+                if (priv.id) {
+                    myPrivs.push(priv.id);
+                }
+            });
+            
+            setPrivileges(myPrivs);
+        }
+    }, [item]);
+
+    const form = useForm<z.infer<typeof WarehouseRoleSchema>>({
+        resolver: zodResolver(WarehouseRoleSchema),
         defaultValues: {
-            ...item,
+            name: item?.name || "",
+            description: item?.description || "",
+            // Add other default values as needed
         },
     });
 
-    const submitData = (values: z.infer<typeof RoleSchema>) => {
+    const submitData = (values: z.infer<typeof WarehouseRoleSchema>) => {
         setResponse(undefined);
 
-        startTransition(() => {
-            if (item) {
-                updateWarehouseRole(item.id, values).then((data) => {
-                    if (data) setResponse(data);
-                    if (data && data.responseType === "success") {
-                        toast({
-                            title: "Success",
-                            description: data.message,
-                        });
-                        form.reset();
-                        router.push("/warehouse-role");
-                    } else if (data && data.responseType === "error") {
-                        toast({
-                            variant: "destructive",
-                            title: "Error",
-                            description: data.message,
-                        });
-                    }
-                });
-            } else {
-                createWarehouseRole(values).then((data) => {
-                    if (data) setResponse(data);
-                    if (data && data.responseType === "success") {
-                        toast({
-                            title: "Success",
-                            description: data.message,
-                        });
-                        form.reset();
-                        router.push("/warehouse-role");
-                    } else if (data && data.responseType === "error") {
-                        toast({
-                            variant: "destructive",
-                            title: "Error",
-                            description: data.message,
-                        });
-                    }
-                });
-            }
-        });
+        if (privileges.length > 0) {
+            values.privilegeActionsIds = _.compact(privileges);
+            console.log("Submitting values:", values);
+
+            startTransition(() => {
+                if (item) {
+                    updateWarehouseRole(item.id, values).then((data) => {
+                        if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            form.reset();
+                            router.push("/warehouse-role");
+                        } else if (data && data.responseType === "error") {
+                            toast({
+                                variant: "destructive",
+                                title: "Error",
+                                description: data.message,
+                            });
+                        }
+                    });
+                } else {
+                    createWarehouseRole(values).then((data) => {
+                        if (data) setResponse(data);
+                        if (data && data.responseType === "success") {
+                            toast({
+                                title: "Success",
+                                description: data.message,
+                            });
+                            form.reset();
+                            router.push("/warehouse-role");
+                        } else if (data && data.responseType === "error") {
+                            toast({
+                                variant: "destructive",
+                                title: "Error",
+                                description: data.message,
+                            });
+                        }
+                    });
+                }
+            });
+        } else {
+            toast({
+                variant: "destructive",
+                title: "Validation Error",
+                description: "Please select at least one privilege",
+            });
+        }
     }
+
+    const initialized = useRef(false);
+
+    useEffect(() => {
+        async function getData() {
+            if (!initialized.current) {
+                initialized.current = true;
+                setIsLoadingSections(true);
+                try {
+                    const result = await searchWarehousePrivilegesSection();
+                    
+                    // Handle different response structures - Fixed to handle your API response
+                    let sectionsData: WarehousePrivilegeItem[] = [];
+                    
+                    if (result && result.content && Array.isArray(result.content)) {
+                        // Handle paginated response structure
+                        // @ts-expect-error - `result.content` is a nested array, but we expect a flat array here
+                        sectionsData = result.content;
+                    } else if (Array.isArray(result)) {
+                        // If the response is directly an array
+                        sectionsData = result;
+                    }
+                    
+                    setSections(sectionsData);
+                } catch (error) {
+                    console.error("Error fetching sections:", error);
+                    toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: "Failed to load privilege sections",
+                    });
+                } finally {
+                    setIsLoadingSections(false);
+                }
+            }
+        }
+        getData();
+    }, [toast]);
 
     const onInvalid = useCallback(
         (errors: any) => {
+            console.log("The error received",errors)
             const firstError = Object.values(errors)[0] as any;
             toast({
                 variant: "destructive",
@@ -99,6 +167,15 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
         },
         [toast]
     );
+
+    const selectAction = (action_id: string) => {
+        setPrivileges(prevPrivileges => {
+            const newPrivileges = prevPrivileges.includes(action_id)
+                ? prevPrivileges.filter(id => id !== action_id)
+                : [...prevPrivileges, action_id];
+            return newPrivileges;
+        });
+    }
 
     return (
         <div className="max-w-4xl mx-auto p-6">
@@ -199,7 +276,7 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
                                                     <Textarea
                                                         {...field}
                                                         disabled={isPending}
-                                                        value={field.value}
+                                                        value={field.value || ""}
                                                         onChange={(e) => field.onChange(e.target.value)}
                                                         placeholder="Provide a comprehensive description of the role responsibilities, requirements, and key duties..."
                                                         className={cn(
@@ -229,6 +306,96 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
                                         </FormItem>
                                     )}
                                 />
+
+                                {/* Privileges Section */}
+                                <div className="space-y-4">
+                                    <div className="border-b border-gray-200 dark:border-gray-700 pb-4">
+                                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Select Privileges
+                                        </h3>
+                                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                            Choose the permissions this role should have ({privileges.length} selected)
+                                        </p>
+                                    </div>
+
+                                    {isLoadingSections ? (
+                                        <div className="flex items-center justify-center py-8">
+                                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                            <span className="ml-2 text-gray-500">Loading privileges...</span>
+                                        </div>
+                                    ) : sections.length === 0 ? (
+                                        <div className="text-center py-8 text-gray-500">
+                                            No privilege sections found
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-4">
+                                            {sections.map((section, index) => (
+                                                <div 
+                                                    key={section.id || index} 
+                                                    className="bg-white dark:bg-gray-900 border rounded-lg shadow-sm p-4"
+                                                >
+                                                    <h5 className="text-md font-bold text-gray-700 dark:text-gray-300 mb-3 border-b pb-2">
+                                                        {section.name}
+                                                    </h5>
+                                                    {section.warehousePrivilegeActions && section.warehousePrivilegeActions.length > 0 ? (
+                                                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                                                            {section.warehousePrivilegeActions.map((action, i) => {
+                                                                if (!action.action || !action.id) return null;
+                                                                
+                                                                // Check if this action is selected by comparing IDs
+                                                                const selected = privileges.includes(action.id);
+                                                                
+                                                                return (
+                                                                    <div 
+                                                                        key={action.id || i}
+                                                                        className={cn(
+                                                                            "flex items-center gap-2 p-2 rounded-md cursor-pointer transition-all duration-200",
+                                                                            selected 
+                                                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-700 border' 
+                                                                                : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'
+                                                                        )}
+                                                                        onClick={() => selectAction(action.id)}
+                                                                    >
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            checked={selected} 
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                selectAction(action.id);
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            className="form-checkbox h-4 w-4 text-emerald-600 rounded 
+                                                                                border-gray-300 dark:border-gray-600
+                                                                                focus:ring-emerald-500 focus:border-emerald-500
+                                                                                checked:bg-emerald-600 
+                                                                                checked:border-emerald-600"
+                                                                        />
+                                                                        <span 
+                                                                            className={cn(
+                                                                                "text-xs font-medium cursor-pointer",
+                                                                                selected ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-gray-300'
+                                                                            )}
+                                                                            onClick={() => selectAction(action.id)}
+                                                                        >
+                                                                            {action.action}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="text-sm text-gray-500 dark:text-gray-400 italic">
+                                                            No actions available for this section
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Action Buttons */}
@@ -245,7 +412,6 @@ const WarehouseRoleForm = ({ item }: { item: Role | null | undefined }) => {
                         </form>
                     </Form>
                 </div>
-
             </div>
         </div>
     );

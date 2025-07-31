@@ -47,14 +47,14 @@ const StockIntakeCard =({isNewItem, item}:{
     item: StockIntake | null | undefined
 }) =>(
     <Card className="mt-12" >
-       <CardHeader>
+       {/* <CardHeader>
            <CardTitle>
                {isNewItem ? "Record Stock Intake" : "Edit stock intake"}
            </CardTitle>
            <CardDescription>
                {isNewItem ? "Record stock intake to your warehouse": "Edit stock intake details"}
            </CardDescription>
-       </CardHeader>
+       </CardHeader> */}
         <CardContent>
            <WarehouseStockIntakeForm item={item}/>
         </CardContent>
