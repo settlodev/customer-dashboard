@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useForm, useFieldArray } from "react-hook-form";
@@ -241,57 +240,57 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
 
    
     return (
-        <div className="max-w-7xl mx-auto p-6 space-y-6">
+        <div className="w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6">
             {/* Header Section */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
                         {item ? "Update Stock Intake" : "New Stock Intake"}
                     </h1>
-                    <p className="text-gray-600 mt-1">
+                    <p className="text-sm sm:text-base text-gray-600 mt-1">
                         Record multiple stock items received into the warehouse
                     </p>
                 </div>
             </div>
 
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
+                <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-4 sm:space-y-6">
                     <FormError message={error} />
 
                     {/* Stock Intakes Card */}
                     <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <CardTitle className="text-lg font-semibold">Stock Intake Items</CardTitle>
+                        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 sm:pb-6">
+                            <CardTitle className="text-base sm:text-lg font-semibold">Stock Intake Items</CardTitle>
                             <Button
                                 type="button"
                                 onClick={addStockIntake}
                                 disabled={isPending}
-                                className="flex items-center space-x-2"
+                                className="flex items-center justify-center space-x-2 w-full sm:w-auto"
                                 size="sm"
                             >
                                 <Plus className="w-4 h-4" />
                                 <span>Add Item</span>
                             </Button>
                         </CardHeader>
-                        <CardContent className="space-y-6">
+                        <CardContent className="space-y-4 sm:space-y-6 px-3 sm:px-6">
                             {fields.map((field, index) => (
                                 <div
                                     key={field.id}
-                                    className="border border-gray-200 rounded-lg p-6 space-y-6 bg-gray-50"
+                                    className="border border-gray-200 rounded-lg p-3 sm:p-4 lg:p-6 space-y-4 sm:space-y-6 bg-gray-50"
                                 >
-                                    <div className="flex items-center justify-between">
+                                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                         <h4 className="font-medium text-gray-900 flex items-center space-x-2">
                                             <Package className="w-4 h-4" />
-                                            <span>Stock Intake #{index + 1}</span>
+                                            <span className="text-sm sm:text-base">Stock Intake #{index + 1}</span>
                                         </h4>
-                                        <div className="flex items-center space-x-2">
+                                        <div className="flex items-center justify-end space-x-2">
                                             <Button
                                                 type="button"
                                                 variant="outline"
                                                 size="sm"
                                                 onClick={() => duplicateStockIntake(index)}
                                                 disabled={isPending}
-                                                className="text-blue-600 hover:text-blue-700"
+                                                className="text-blue-600 hover:text-blue-700 p-2"
                                             >
                                                 <Copy className="w-4 h-4" />
                                             </Button>
@@ -302,7 +301,7 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                                     size="sm"
                                                     onClick={() => removeStockIntake(index)}
                                                     disabled={isPending}
-                                                    className="text-red-600 hover:text-red-700"
+                                                    className="text-red-600 hover:text-red-700 p-2"
                                                 >
                                                     <Trash2 className="w-4 h-4" />
                                                 </Button>
@@ -310,36 +309,38 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                         </div>
                                     </div>
 
-                                    {/* Item Details */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        <FormField
-                                            control={form.control}
-                                            name={`stockIntakes.${index}.stockVariant`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-medium">Stock Item *</FormLabel>
-                                                    <FormControl>
-                                                        <StockVariantSelectorForWarehouse
-                                                            {...field}
-                                                            isRequired
-                                                            isDisabled={isPending}
-                                                            placeholder="Select stock item"
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                    {/* Item Details - Responsive Grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                                        <div className="sm:col-span-2 lg:col-span-1">
+                                            <FormField
+                                                control={form.control}
+                                                name={`stockIntakes.${index}.stockVariant`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-sm font-medium">Stock Item *</FormLabel>
+                                                        <FormControl>
+                                                            <StockVariantSelectorForWarehouse
+                                                                {...field}
+                                                                isRequired
+                                                                isDisabled={isPending}
+                                                                placeholder="Select stock item"
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
 
                                         <FormField
                                             control={form.control}
                                             name={`stockIntakes.${index}.quantity`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="font-medium">Quantity *</FormLabel>
+                                                    <FormLabel className="text-sm font-medium">Quantity *</FormLabel>
                                                     <FormControl>
                                                         <NumericFormat
-                                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                            className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                                                             value={field.value}
                                                             disabled={isPending}
                                                             placeholder="Enter quantity"
@@ -361,10 +362,10 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                             name={`stockIntakes.${index}.value`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="font-medium">Value *</FormLabel>
+                                                    <FormLabel className="text-sm font-medium">Value *</FormLabel>
                                                     <FormControl>
                                                         <NumericFormat
-                                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                            className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                                                             value={field.value}
                                                             onValueChange={(values) => {
                                                                 field.onChange(Number(values.value));
@@ -381,20 +382,20 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                     </div>
 
                                     {/* Purchase Tracking */}
-                                    <div className="space-y-4">
+                                    <div className="space-y-3 sm:space-y-4">
                                         <FormField
                                             control={form.control}
                                             name={`stockIntakes.${index}.trackPurchase`}
                                             render={({ field }) => (
-                                                <FormItem className="flex items-center space-x-2">
-                                                    <FormControl>
+                                                <FormItem className="flex items-start space-x-3">
+                                                    <FormControl className="mt-1">
                                                         <Checkbox
                                                             checked={field.value}
                                                             onCheckedChange={field.onChange}
                                                             disabled={isPending}
                                                         />
                                                     </FormControl>
-                                                    <FormLabel className="text-sm font-medium">
+                                                    <FormLabel className="text-sm font-medium leading-5">
                                                         Track purchase amount for this item
                                                     </FormLabel>
                                                 </FormItem>
@@ -402,49 +403,51 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                         />
 
                                         {form.watch(`stockIntakes.${index}.trackPurchase`) && (
-                                            <FormField
-                                                control={form.control}
-                                                name={`stockIntakes.${index}.purchasePaidAmount`}
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel className="font-medium flex items-center gap-2">
-                                                            <DollarSign className="h-4 w-4" />
-                                                            Purchase Amount
-                                                        </FormLabel>
-                                                        <FormControl>
-                                                            <NumericFormat
-                                                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                                                value={field.value}
-                                                                onValueChange={(values) => {
-                                                                    field.onChange(Number(values.value));
-                                                                }}
-                                                                thousandSeparator={true}
-                                                                placeholder="Enter purchase amount"
-                                                                disabled={isPending}
-                                                            />
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
+                                            <div className="w-full sm:max-w-md">
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`stockIntakes.${index}.purchasePaidAmount`}
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel className="text-sm font-medium flex items-center gap-2">
+                                                                <DollarSign className="h-4 w-4" />
+                                                                Purchase Amount
+                                                            </FormLabel>
+                                                            <FormControl>
+                                                                <NumericFormat
+                                                                    className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                                    value={field.value}
+                                                                    onValueChange={(values) => {
+                                                                        field.onChange(Number(values.value));
+                                                                    }}
+                                                                    thousandSeparator={true}
+                                                                    placeholder="Enter purchase amount"
+                                                                    disabled={isPending}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                            </div>
                                         )}
                                     </div>
 
-                                    {/* Date Information */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* Date Information - Responsive Grid */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                                         <FormField
                                             control={form.control}
                                             name={`stockIntakes.${index}.orderDate`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="font-medium flex items-center gap-2">
+                                                    <FormLabel className="text-sm font-medium flex items-center gap-2">
                                                         <Calendar className="h-4 w-4" />
                                                         Order Date *
                                                     </FormLabel>
                                                     <FormControl>
                                                         <input
                                                             type="datetime-local"
-                                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                            className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                                                             {...field}
                                                             disabled={isPending}
                                                             max={new Date().toISOString().slice(0, 16)}
@@ -460,14 +463,14 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                             name={`stockIntakes.${index}.deliveryDate`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="font-medium flex items-center gap-2">
+                                                    <FormLabel className="text-sm font-medium flex items-center gap-2">
                                                         <Clock className="h-4 w-4" />
                                                         Delivery Date *
                                                     </FormLabel>
                                                     <FormControl>
                                                         <input
                                                             type="datetime-local"
-                                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                            className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                                                             {...field}
                                                             disabled={isPending}
                                                             min={form.watch(`stockIntakes.${index}.orderDate`)}
@@ -479,37 +482,39 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                             )}
                                         />
 
-                                        <FormField
-                                            control={form.control}
-                                            name={`stockIntakes.${index}.batchExpiryDate`}
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-medium flex items-center gap-2">
-                                                        <Calendar className="h-4 w-4" />
-                                                        Batch Expiry (Optional)
-                                                    </FormLabel>
-                                                    <FormControl>
-                                                        <input
-                                                            type="datetime-local"
-                                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                                            {...field}
-                                                            disabled={isPending}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <div className="sm:col-span-2 lg:col-span-1">
+                                            <FormField
+                                                control={form.control}
+                                                name={`stockIntakes.${index}.batchExpiryDate`}
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="text-sm font-medium flex items-center gap-2">
+                                                            <Calendar className="h-4 w-4" />
+                                                            Batch Expiry (Optional)
+                                                        </FormLabel>
+                                                        <FormControl>
+                                                            <input
+                                                                type="datetime-local"
+                                                                className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                                                                {...field}
+                                                                disabled={isPending}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        </div>
                                     </div>
 
-                                    {/* Personnel & Supplier */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Personnel & Supplier - Responsive Grid */}
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4">
                                         <FormField
                                             control={form.control}
                                             name={`stockIntakes.${index}.staff`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="font-medium">Staff Member *</FormLabel>
+                                                    <FormLabel className="text-sm font-medium">Staff Member *</FormLabel>
                                                     <FormControl>
                                                         <WarehouseStaffSelectorWidget
                                                             {...field}
@@ -529,8 +534,8 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                                             name={`stockIntakes.${index}.supplier`}
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel className="font-medium">
-                                                        Supplier <span className="text-sm text-gray-500">(optional)</span>
+                                                    <FormLabel className="text-sm font-medium">
+                                                        Supplier <span className="text-xs text-gray-500">(optional)</span>
                                                     </FormLabel>
                                                     <FormControl>
                                                         <SupplierSelector
@@ -553,15 +558,15 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                     {/* Status Toggle for Updates */}
                     {item && (
                         <Card>
-                            <CardContent className="pt-6">
+                            <CardContent className="pt-4 sm:pt-6">
                                 <FormField
                                     control={form.control}
                                     name="status"
                                     render={({ field }) => (
-                                        <FormItem className="flex items-center justify-between">
+                                        <FormItem className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                             <div>
-                                                <FormLabel className="font-medium">Status</FormLabel>
-                                                <p className="text-sm text-gray-500">
+                                                <FormLabel className="text-sm font-medium">Status</FormLabel>
+                                                <p className="text-xs sm:text-sm text-gray-500">
                                                     Toggle the current status of this stock intake
                                                 </p>
                                             </div>
@@ -579,13 +584,17 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
                         </Card>
                     )}
 
-                    {/* Action Buttons */}
-                    <div className="flex items-center justify-end space-x-4 pt-6 border-t">
-                        <CancelButton />
-                        <SubmitButton 
-                            label={item ? "Update stock intake" : "Record stock intakes"} 
-                            isPending={isPending} 
-                        />
+                    {/* Action Buttons - Mobile Responsive */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-3 sm:gap-4 pt-4 sm:pt-6 border-t">
+                        <div className="order-2 sm:order-1">
+                            <CancelButton />
+                        </div>
+                        <div className="order-1 sm:order-2">
+                            <SubmitButton 
+                                label={item ? "Update stock intake" : "Record stock intakes"} 
+                                isPending={isPending} 
+                            />
+                        </div>
                     </div>
                 </form>
             </Form>
