@@ -1,7 +1,6 @@
 'use client'
 import React, { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -11,7 +10,6 @@ import {
   TrendingUp, 
   Package, 
   DollarSign, 
-  BarChart3,
   RefreshCw,
 } from 'lucide-react'
 import { LowStockItem, OutOfStockItem, StockHistory } from './dashboard'
@@ -212,8 +210,6 @@ const WarehouseStockReport = () => {
     await fetchStockData()
   }
 
- 
-
   useEffect(() => {
     fetchStockData()
   }, [])
@@ -287,7 +283,7 @@ const WarehouseStockReport = () => {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <SummaryCard 
           title="Total Stock Intakes" 
           value={stockData.totalStockIntakes.toLocaleString()}

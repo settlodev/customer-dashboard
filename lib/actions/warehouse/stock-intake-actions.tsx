@@ -13,83 +13,21 @@ import { StockIntakeSchema, UpdatedStockIntakeSchema } from "@/types/stock-intak
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
 
-// export const createStockIntakeForWarehouse = async (
-//     stockIntakes: any[] // Array of stock intakes
-// ): Promise<FormResponse | void> => {
-//     let formResponse: FormResponse | null = null;
-
-//     // Validate each stock intake item
-//     const validationResults = stockIntakes.map(intake => StockIntakeSchema.safeParse(intake));
-//     const hasErrors = validationResults.some(result => !result.success);
-
-//     console.log("The stock intake is",stockIntakes)
-
-//     if (hasErrors) {
-//         const firstError = validationResults.find(result => !result.success);
-//         formResponse = {
-//             responseType: "error",
-//             message: "Please fill all the required fields",
-//             error: new Error(firstError?.error.message || "Validation failed")
-//         };
-//         return parseStringify(formResponse);
-//     }
-
-//     const warehouse = await getCurrentWarehouse();
-    
-//     // Transform the data to match the expected API format (array of stock intakes)
-//     const payload = stockIntakes.map(intake => ({
-//         quantity: intake.quantity,
-//         value: intake.value,
-//         batchExpiryDate: intake.batchExpiryDate,
-//         deliveryDate: intake.deliveryDate,
-//         orderDate: intake.orderDate,
-//         stockVariant: intake.stockVariant,
-//         staff: intake.staff,
-//         supplier: intake.supplier,
-//         ...(intake.purchasePaidAmount && { purchasePaidAmount: intake.purchasePaidAmount })
-//     }));
-
-//     console.log("The payload for multi stock intake:", payload);
-
-//     try {
-//         const apiClient = new ApiClient();
-//         await apiClient.post(
-//             `/api/stock-intakes/${warehouse?.id}/all-with-warehouse/create`,
-//             payload
-//         );
-//         formResponse = {
-//             responseType: "success",
-//             message: `${payload.length} Stock Intake${payload.length > 1 ? 's' : ''} recorded successfully`,
-//         };
-//     } catch (error) {
-//         console.error("Error creating stock intakes:", error);
-//         formResponse = {
-//             responseType: "error",
-//             message: "Something went wrong while processing your request, please try again",
-//             error: error instanceof Error ? error : new Error(String(error)),
-//         };
-//     }
-    
-//     revalidatePath("/warehouse-stock-intakes");
-//     return parseStringify(formResponse);
-// };
-
-// Updated createStockIntakeForWarehouse function with proper date formatting
 export const createStockIntakeForWarehouse = async (
     stockIntakes: any[] // Array of stock intakes
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
 
-    // Helper function to convert datetime-local string to ISO format
+    
     const formatDateForAPI = (dateString: string): string => {
         if (!dateString) return dateString;
         
-        // If it's already in ISO format, return as is
+        
         if (dateString.includes('T') && (dateString.includes('Z') || dateString.includes('+'))) {
             return dateString;
         }
         
-        // Convert datetime-local format to ISO
+        
         const date = new Date(dateString);
         return date.toISOString();
     };
@@ -106,7 +44,7 @@ export const createStockIntakeForWarehouse = async (
     const validationResults = transformedStockIntakes.map(intake => StockIntakeSchema.safeParse(intake));
     const hasErrors = validationResults.some(result => !result.success);
 
-    console.log("The transformed stock intake is", transformedStockIntakes);
+    
 
     if (hasErrors) {
         const firstError = validationResults.find(result => !result.success);
@@ -120,7 +58,7 @@ export const createStockIntakeForWarehouse = async (
 
     const warehouse = await getCurrentWarehouse();
     
-    // Transform the data to match the expected API format (array of stock intakes)
+    
     const payload = transformedStockIntakes.map(intake => ({
         quantity: intake.quantity,
         value: intake.value,
@@ -130,10 +68,13 @@ export const createStockIntakeForWarehouse = async (
         stockVariant: intake.stockVariant,
         staff: intake.staff,
         supplier: intake.supplier,
-        ...(intake.purchasePaidAmount && { purchasePaidAmount: intake.purchasePaidAmount })
+        // Fixed: Include purchasePaidAmount if it exists and is a number (including 0)
+        ...(typeof intake.purchasePaidAmount === 'number' && { 
+            purchasePaidAmount: intake.purchasePaidAmount 
+        })
     }));
 
-    console.log("The payload for multi stock intake:", payload);
+    
 
     try {
         const apiClient = new ApiClient();

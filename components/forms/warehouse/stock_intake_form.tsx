@@ -12,14 +12,12 @@ import {
 } from "@/components/ui/form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { StockIntake } from "@/types/stock-intake/type";
 
 import { FormResponse } from "@/types/types";
@@ -171,8 +169,8 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
     );
 
     const submitData = (values: z.infer<typeof MultiStockIntakeSchema>) => {
-        console.log("Starting submitData with values:", values);
-
+        
+    
         // Transform data to array format expected by API
         const payload = values.stockIntakes.map(intake => ({
             quantity: intake.quantity,
@@ -183,14 +181,18 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
             stockVariant: intake.stockVariant,
             staff: intake.staff,
             supplier: intake.supplier,
-            ...(intake.trackPurchase && intake.purchasePaidAmount && { 
+            trackPurchase: intake.trackPurchase,
+            // Fixed condition: check if trackPurchase is true AND purchasePaidAmount is not null/undefined
+            ...(intake.trackPurchase && intake.purchasePaidAmount !== null && intake.purchasePaidAmount !== undefined && { 
                 purchasePaidAmount: intake.purchasePaidAmount 
             })
         }));
-
+    
+        
+    
         startTransition(() => {
             if (item) {
-                // For updates, we'll need to handle this differently since it's now multiple items
+                
                 toast({
                     variant: "destructive",
                     title: "Update Not Supported",

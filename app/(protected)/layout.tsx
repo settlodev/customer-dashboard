@@ -7,24 +7,86 @@ import {SidebarWrapper} from "@/components/sidebar/sidebar";
 import {getBusinessDropDown, getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import {fetchAllLocations} from "@/lib/actions/location-actions";
 import Loading from "../loading";
+import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+
+
+// export default async function RootLayout({children}: {
+//     children: React.ReactNode;
+// }) {
+//     const q = "";
+//     const page = 0;
+//     const pageLimit= 10;
+    
+//     const session = await auth();
+//     const  currentBusiness = await getCurrentBusiness();
+//     const  currentLocation = await getCurrentLocation();
+//     const  businessList = await getBusinessDropDown();
+//     const locationList = await fetchAllLocations();
+//     const  warehouseList = await searchWarehouses(q,page,pageLimit)
+
+//     const businessData = {
+//         business: currentBusiness, 
+//         businessList: businessList || [],  
+//         locationList: locationList || [], 
+//         currentLocation: currentLocation, 
+//         warehouseList:warehouseList?.content || []
+//     }
+
+//     console.log("The business Data under layout:", businessData);
+
+//     return (
+//         <SessionProvider session={session}>
+//             <div className="flex h-screen w-full overflow-hidden">
+//                 <SidebarWrapper data={businessData}/>
+
+//                 <main className="flex h-screen w-full flex-col overflow-hidden">
+//                     <div className="relative flex-1 overflow-y-auto">
+//                         <div className="flex min-h-full w-full flex-col gap-4">
+//                             <Suspense fallback={
+//                                 <div className="flex justify-center items-center h-full">
+//                                     <Loading/>
+//                                 </div>
+//                             }>
+//                                 <NavbarWrapper session={session}>
+//                                     <div className="flex-1">{children}</div>
+//                                 </NavbarWrapper>
+//                             </Suspense>
+//                         </div>
+//                     </div>
+
+//                     <div className="sticky bottom-0 z-10 w-full">
+//                         <Toaster/>
+//                     </div>
+//                 </main>
+//             </div>
+//         </SessionProvider>
+//     );
+// } 
 
 export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
+    const q = "";
+    const page = 0;
+    const pageLimit = 10;
+    
     const session = await auth();
-    const  currentBusiness = await getCurrentBusiness();
-    const  currentLocation = await getCurrentLocation();
-    const  businessList = await getBusinessDropDown();
+    const currentBusiness = await getCurrentBusiness();
+    const currentLocation = await getCurrentLocation();
+    const businessList = await getBusinessDropDown();
     const locationList = await fetchAllLocations();
-
+    const currentWarehouse = await getCurrentWarehouse();
+    
+   
     const businessData = {
         business: currentBusiness, 
         businessList: businessList || [],  
         locationList: locationList || [], 
-        currentLocation: currentLocation 
+        currentLocation: currentLocation, 
+        currentWarehouse: currentWarehouse
     }
 
-    // console.log("Business Data:", businessData);
+    
 
     return (
         <SessionProvider session={session}>
@@ -53,5 +115,4 @@ export default async function RootLayout({children}: {
             </div>
         </SessionProvider>
     );
-} 
-
+}

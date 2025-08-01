@@ -277,6 +277,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
 };
 
 export const SidebarWrapper = ({ data, menuType = 'normal' }: { data: BusinessPropsType, menuType?: MenuType }) => {
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
     return (
