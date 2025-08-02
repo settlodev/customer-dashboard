@@ -77,18 +77,12 @@ const StockMovementDashboard = ({ movements, summary }: { movements: StockMoveme
       icon: <ArrowUpCircle className="h-6 w-6" />,
       colorTheme: "red" as const
     },
-    {
-      title: "Total Estimated Profit",
-      value: "--", // You can implement the calculation function here
-      icon: <Clock className="h-6 w-6" />,
-      colorTheme: "orange" as const
-    }
   ];
 
   return (
     <div className="space-y-4">
       {/* Primary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {metricCards.map((card, index) => (
           <MetricCard
             key={`metric-card-${index}`}

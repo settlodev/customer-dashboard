@@ -1,7 +1,7 @@
 import { Supplier } from "@/types/supplier/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useEffect, useState } from "react";
-import { fetchSuppliers } from "@/lib/actions/supplier-actions";
+import { searchSuppliers } from "@/lib/actions/supplier-actions";
 
 interface SupplierProps {
     label: string;
@@ -23,12 +23,16 @@ function SupplierSelector({
 
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
+    const q = "";
+    const size = 10;
+    const page = 0;
+
     useEffect(() => {
         async function loadSuppliers() {
             try {
                 setIsLoading(true);
-                const fetchedSuppliers = await fetchSuppliers();
-                setSuppliers(fetchedSuppliers);
+                const fetchedSuppliers = await searchSuppliers(q, page, size);
+                setSuppliers(fetchedSuppliers.content);
             } catch (error: any) {
                 console.log("Error fetching  suppliers:", error);
             } finally {

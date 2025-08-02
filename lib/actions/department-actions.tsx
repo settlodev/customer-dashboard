@@ -6,7 +6,6 @@ import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
-import {redirect} from "next/navigation";
 import {UUID} from "node:crypto";
 import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 import { Department,Report } from "@/types/department/type";
@@ -114,9 +113,9 @@ export const createDepartment = async (
         // Handle path revalidation
         revalidatePath(path);
 
-        if (path === "department") {
-            redirect("/departments");
-        }
+        // if (path === "department") {
+        //     redirect("/departments");
+        // }
 
         // Return success response with created department data
         return parseStringify({
@@ -126,9 +125,7 @@ export const createDepartment = async (
         });
 
     } catch (error: any) {
-        // Ignore redirect error
-        // if (isRedirectError(error)) throw error;
-
+        
         return parseStringify({
             responseType: "error",
             message: error.message ?? "Failed to create department. Please try again.",
@@ -169,8 +166,7 @@ export const updateDepartment = async (
     let formResponse: FormResponse | null = null;
     const departmentValidData = DepartmentSchema.safeParse(department);
 
-    console.log("departmentValidData", departmentValidData);
-
+   
     if (!departmentValidData.success) {
         formResponse = {
             responseType: "error",
@@ -189,7 +185,7 @@ export const updateDepartment = async (
         business: business?.id
     }
 
-    console.log("Updating department payload", payload);
+   
 
     try {
         const apiClient = new ApiClient();
@@ -198,6 +194,13 @@ export const updateDepartment = async (
             `/api/departments/${location?.id}/${id}`,
             payload
         );
+
+        revalidatePath("/departments");
+        formResponse = {
+            responseType: "success",
+            message: "Department updated successfully",
+        };
+        return parseStringify(formResponse);
 
     } catch (error) {
         console.error("Error updating department", error);
@@ -212,9 +215,9 @@ export const updateDepartment = async (
     if (formResponse) {
         return parseStringify(formResponse);
     }
-    revalidatePath("/departments");
-    redirect("/departments");
+    
 };
+
 
 export const deleteDepartment = async (id: UUID): Promise<void> => {
     if (!id) throw new Error("Department ID is required to perform this request");

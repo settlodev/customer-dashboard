@@ -9,24 +9,8 @@ import { SupplierSchema } from "@/types/supplier/schema";
 import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
-import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import { getCurrentBusiness} from "./business/get-current-business";
 
-export const fetchSuppliers = async (): Promise<Supplier[]> => {
-  await getAuthenticatedUser();
-  
-  try {
-    const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    const supplierData = await apiClient.get(
-      `/api/suppliers/${location?.id}`,
-    );
-    return parseStringify(supplierData);
-  } catch (error) {
-    throw error;
-  }
-};
 
 export const searchSuppliers = async (
   q: string,
@@ -38,7 +22,7 @@ export const searchSuppliers = async (
   try {
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
 
     const query = {
       filters: [
@@ -66,7 +50,7 @@ export const searchSuppliers = async (
     };
 
     const supplierData = await apiClient.post(
-      `/api/suppliers/${location?.id}`,
+      `/api/suppliers/${business?.id}`,
       query
     );
 
@@ -93,12 +77,11 @@ export const createSupplier = async (
     return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
+  
   const business = await getCurrentBusiness();
 
   const payload = {
     ...supplierValidData.data,
-    location: location?.id,
     business: business?.id,
   };
 
@@ -108,7 +91,7 @@ export const createSupplier = async (
     const apiClient = new ApiClient();
 
     await apiClient.post(
-      `/api/suppliers/${location?.id}/create`,
+      `/api/suppliers/${business?.id}/create`,
       payload
     );
     formResponse = {
@@ -147,13 +130,13 @@ export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
     size: 1,
   };
 
-  const location = await getCurrentLocation();
+  const business = await getCurrentBusiness();
 
   const supplierResponse = await apiClient.post(
-    `/api/suppliers/${location?.id}`,
+    `/api/suppliers/${business?.id}`,
     query
   );
-  console.log("Supplier Response", supplierResponse)
+  
   return parseStringify(supplierResponse);
 };
 
@@ -175,12 +158,12 @@ export const updateSupplier = async (
       return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
+  
   const business = await getCurrentBusiness();
 
   const payload = {
     ...supplierValidData.data,
-    location: location?.id,
+    
     business: business?.id,
   };
 
@@ -189,7 +172,7 @@ export const updateSupplier = async (
       const apiClient = new ApiClient();
 
       await apiClient.put(
-          `/api/suppliers/${location?.id}/${id}`, 
+          `/api/suppliers/${business?.id}/${id}`, 
           payload
       );
 
@@ -218,9 +201,9 @@ export const deleteSupplier = async (id: UUID): Promise<void> => {
 
   try {
       const apiClient = new ApiClient();
-      const location = await getCurrentLocation();
+      const business = await getCurrentBusiness();
 
-      await apiClient.delete(`/api/suppliers/${location?.id}/${id}`);
+      await apiClient.delete(`/api/suppliers/${business?.id}/${id}`);
       revalidatePath("/suppliers");
   } catch (error) {
       throw error;

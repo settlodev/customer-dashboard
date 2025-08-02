@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { ShoppingCartIcon, X } from 'lucide-react';
 import { BusinessType, CategorizedProducts, ExtendedProduct } from '@/types/site/type';
+import Image from 'next/image';
 
 interface ProductGridProps {
   categorizedProducts: CategorizedProducts;
@@ -67,7 +68,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             >
               <div className="relative">
                 {product.image ? (
-                  <img 
+                  <Image 
                     src={product.image} 
                     alt={product.name} 
                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
@@ -118,7 +119,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
             
             <div className="p-4">
               {selectedProduct.image && (
-                <img 
+                <Image
                   src={selectedProduct.image} 
                   alt={selectedProduct.name}
                   className="w-full h-48 object-cover rounded-lg mb-4"

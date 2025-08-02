@@ -5,12 +5,24 @@ export declare interface Category {
     "name": string,
     "image": string,
     "parentCategory": UUID,
-    "parentCategoryName":string
+    "parentCategoryName": string,
     "status": boolean,
     "canDelete": boolean,
     "location": UUID,
-    "locationName":string
-    "productCount":number
-    "productVariantsCount":number
-    "isArchived": boolean
+    "locationName": string,
+    "isArchived": boolean,
+    "subcats": SubCategory[]
+}
+
+export interface SubCategory {
+    id: UUID,
+    name: string,
+    image: string,
+    parentCategory: UUID,
+    "parentCategoryName": string,
+    "status": boolean,
+    "canDelete": boolean,
+    "location": UUID,
+    "locationName": string,
+    "isArchived": boolean,
 }

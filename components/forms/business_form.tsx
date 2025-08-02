@@ -33,7 +33,7 @@ import CountrySelector from "../widgets/country-selector";
 import { BusinessType } from "@/types/enums";
 // import UploadImageWidget from "../widgets/UploadImageWidget";
 const BusinessForm = ({ item, onSubmit, submitButtonText = 'Setup business' }: { item: Business | null | undefined; onSubmit: (values: z.infer<typeof BusinessSchema>) => void; submitButtonText?: string }) => {
-    console.log("The item is", item);
+ 
     const [isPending, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
     // const [businessLicense,setBusinessLicense,] = useState<string | undefined>(item ? item.businessLicense : '');

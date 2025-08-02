@@ -25,4 +25,5 @@ export interface Warehouses {
     subscriptionStatus: subscriptionStatus;
     subscription:UUID;
     isArchived: boolean;
+    dateCreated: string
 }

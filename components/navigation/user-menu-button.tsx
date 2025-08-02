@@ -31,6 +31,8 @@ import { useEffect, useState } from "react";
 import { Location } from "@/types/location/type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { signOut } from "next-auth/react";
+import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { Warehouses } from "@/types/warehouse/warehouse/type";
 
 interface UserDropdownProps {
   user: ExtendedUser;
@@ -44,19 +46,22 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
     .join("");
   const router = useRouter();
 
-  const [currentLocation, setCurrentLocation] = useState<Location | undefined>(
-    undefined,
-  );
-  const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
 
-  useEffect(() => {
-    const fetchCurrentLocation = async () => {
-      const location = await getCurrentLocation();
-      setCurrentLocation(location as Location | undefined);
-    };
+    const [currentLocation, setCurrentLocation] = useState<Location | undefined>(undefined);
+    const [currentWarehouse, setCurrentWarehouse] = useState<Warehouses | undefined>(undefined);
+    const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
 
-    fetchCurrentLocation();
-  }, []);
+    useEffect(() => {
+        const fetchData = async () => {
+            const [location, warehouse] = await Promise.all([
+                getCurrentLocation(),
+                getCurrentWarehouse()
+            ]);
+            setCurrentLocation(location as Location | undefined);
+            setCurrentWarehouse(warehouse as Warehouses | undefined);
+        };
+        fetchData();
+    }, []);
 
   const checkCurrentLocation = async () => {
     try {
@@ -70,11 +75,13 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
       }
 
       // If auth token exists, proceed with location check
-      if (currentLocation) {
-        router.push("/dashboard");
-      } else {
-        router.push("/select-business");
-      }
+      if (currentWarehouse) {
+        router.push('/warehouse');
+    } else if (currentLocation) {
+        router.push('/dashboard');
+    } else {
+        router.push('/select-business');
+    }
     } catch (error) {
       console.error("Error checking auth token:", error);
       // If there's an error checking the token, show session expired modal

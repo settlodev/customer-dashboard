@@ -15,6 +15,8 @@ import {
 } from "@/routes";
 import { cookies } from "next/headers";
 import { AuthToken } from "./types/types";
+import { Business } from "@/types/business/type";
+import { Warehouses } from "./types/warehouse/warehouse/type";
 
 // Extend NextRequest to include auth property
 interface RequestWithAuth extends NextRequest {

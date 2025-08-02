@@ -8,15 +8,12 @@ import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
-import { createWarehouse } from "@/lib/actions/warehouse/register-action";
+import { createWarehouse, refreshWarehouse } from "@/lib/actions/warehouse/register-action";
 import { Business } from "@/types/business/type";
 import { businessTimes } from "@/types/constants";
-// import { FormResponse } from "@/types/types";
-import { Location } from "@/types/location/type";
 import { BusinessTimeType } from "@/types/types";
 import { RegisterWarehouseSchema } from "@/types/warehouse/register-warehose-schema";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
-// import { Warehouse } from "@/types/warehouse/warehouse/type";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, X, Warehouse} from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -26,14 +23,13 @@ import { z } from "zod";
 
 interface Props {
     setShowCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
-    onSuccess?: (location: Location) => void;
+    onSuccess?: (warehouse: Warehouses) => void;
 }
 
 function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
     const [isPending, startTransition] = useTransition();
     const [business, setBusiness] = useState<Business | null>(null);
     const router = useRouter();
-    // const [response, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
 
     useEffect(() => {
@@ -89,24 +85,25 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
                     ...values,
                 });
                 
-                // Handle success
-                toast({
-                    title: "Success",
-                    description: "Warehouse created successfully",
-                });
                 
-                // If onSuccess callback exists, call it with the result
-                if (onSuccess && result) {
-                    onSuccess(result as unknown as Warehouses);
+                if (result ) {
+                    const createdWarehouse = result as unknown as Warehouses;
+                    
+                    // Set the created warehouse as current warehouse
+                    await refreshWarehouse(createdWarehouse);
+                    
+                    if (onSuccess) {
+                        onSuccess(createdWarehouse);
+                    }
+                    
+                    // Close the modal
+                    setShowCreateModal(false);
+                    
+                    router.push('/select-location');
+                } else {
+                    // Handle error case
+                    throw new Error("Failed to create warehouse");
                 }
-                
-                // Close the modal and navigate
-                setShowCreateModal(false);
-                toast({
-                    title: "Success",
-                    description: "Redirecting to warehouse page...",
-                });
-                router.push('/warehouse');
             } catch (error) {
                 console.error("Error creating warehouse:", error);
                 toast({

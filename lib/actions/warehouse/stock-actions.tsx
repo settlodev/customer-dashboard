@@ -11,69 +11,53 @@ import {UUID} from "node:crypto";
 import { Stock, StockHistory } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { console } from "node:inspector";
-import { getCurrentBusiness, getCurrentLocation } from "../business/get-current-business";
+import { getCurrentBusiness} from "../business/get-current-business";
+import { getCurrentWarehouse } from "./current-warehouse-action";
 
-export const fetchStock = async () : Promise<Stock[]> => {
-    await  getAuthenticatedUser();
+export const searchStockFromWarehouse = async (
+    q: string, 
+    page: number, 
+    pageLimit: number,
+    warehouseId?:string
+    ): Promise<ApiResponse<Stock>> =>{
+        await getAuthenticatedUser();
+    
+        try {
+            const apiClient = new ApiClient();
+            const query ={
+                filters: [
+                    {
+                        key:"name",
+                        operator:"LIKE",
+                        field_type:"STRING",
+                        value:q
+                    }
+                ],
+                sorts:[
+                    {
+                        key:"name",
+                        direction:"ASC"
+                    }
+                ],
+                page:page ? page - 1:0,
+                size:pageLimit ? pageLimit : 10
+            }
+            const warehouse = warehouseId ? { id: warehouseId } : await getCurrentWarehouse();
 
-    try {
-        const apiClient = new ApiClient();
 
-        const location = await getCurrentLocation();
-
-        const data = await  apiClient.get(
-            `/api/stock/${location?.id}`,
-        );
-
-        return parseStringify(data);
-
-    }
-    catch (error){
-        throw error;
-    }
-}
-
-export const searchStock = async (
-    q:string,
-    page:number,
-    pageLimit:number
-): Promise<ApiResponse<Stock>> =>{
-    await getAuthenticatedUser();
-
-    try {
-        const apiClient = new ApiClient();
-        const query ={
-            filters: [
-                {
-                    key:"name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
-            sorts:[
-                {
-                    key:"name",
-                    direction:"ASC"
-                }
-            ],
-            page:page ? page - 1:0,
-            size:pageLimit ? pageLimit : 10
+            const data = await  apiClient.post(
+                `/api/warehouse-stock/${warehouse?.id}`,
+                query
+            );
+            
+            return parseStringify(data);
         }
-        const location = await getCurrentLocation();
-        const data = await  apiClient.post(
-            `/api/stock/${location?.id}`,
-            query
-        );
-        return parseStringify(data);
+        catch (error){
+            throw error;
+        }
+    
     }
-    catch (error){
-        throw error;
-    }
-
-}
-
-export const createStock = async (
+export const createStockFromWarehouse = async (
     stock: z.infer<typeof StockSchema>
 ): Promise<FormResponse | void> => {
     // console.log('Starting createStock with data:', stock);
@@ -91,16 +75,16 @@ export const createStock = async (
         });
     }
 
-    const location = await getCurrentLocation();
+    const warehouse = await getCurrentWarehouse();
     const business = await getCurrentBusiness();
 
-    // console.log('Retrieved location and business:', {
-    //     locationId: location?.id,
-    //     businessId: business?.id
-    // });
+    console.log('Retrieved warehouse and business:', {
+        WarehouseId: warehouse?.id,
+        businessId: business?.id
+    });
 
-    if (!location || !business) {
-        console.error('Missing required data:', { location, business });
+    if (!warehouse || !business) {
+        console.error('Missing required data:', { warehouse, business });
         return parseStringify({
             responseType: "error",
             message: "Could not retrieve required business data",
@@ -110,15 +94,15 @@ export const createStock = async (
 
     const payload = {
         ...validData.data,
-        location: location?.id,
+        warehouse: warehouse?.id,
         business: business?.id
     }
-    // console.log("The payload is ",payload)
+    console.log("The payload is ",payload)
 
     try {
         const apiClient = new ApiClient();
         await apiClient.post(
-            `/api/stock/${location?.id}/create`,
+            `/api/warehouse-stock/${warehouse?.id}/create`,
             payload
         );
 
@@ -138,11 +122,11 @@ export const createStock = async (
 
     if (formResponse?.responseType === "error") return parseStringify(formResponse);
 
-    revalidatePath("/stocks")
-    redirect("/stocks");
+    revalidatePath("/warehouse-stock-variants");
+    redirect("/warehouse-stock-variants");
 }
 
-export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
+export const getStockFromWarehouse= async (id:UUID) : Promise<ApiResponse<Stock>> => {
     const apiClient = new ApiClient();
     const query ={
         filters:[
@@ -157,9 +141,9 @@ export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
         page: 0,
         size: 1,
     }
-    const location = await getCurrentLocation();
+    const warehouse = await getCurrentWarehouse();
     const response = await apiClient.post(
-        `/api/stock/${location?.id}`,
+        `/api/warehouse-stock/${warehouse?.id}`,
         query,
     );
 
@@ -168,7 +152,7 @@ export const getStock= async (id:UUID) : Promise<ApiResponse<Stock>> => {
 }
 
 
-export const updateStock = async (
+export const updateStockFromWarehouse = async (
     id: UUID,
     stock: z.infer<typeof StockSchema>,
     paginationState?: { pageIndex: number; pageSize: number } | null
@@ -190,25 +174,25 @@ export const updateStock = async (
         return parseStringify(formResponse);
     }
 
-    const location = await getCurrentLocation();
+    const warehouse = await getCurrentWarehouse();
     const business = await getCurrentBusiness();
     const payload = {
         ...validData.data,
-        location: location?.id,
+        warehouse: warehouse?.id,
         business: business?.id,
         stockVariants: validData.data.stockVariants.map((variant, index) => ({
             ...variant,
             id: variantIds[index]  
         }))
     };
-    // console.log("The payload",payload)
+    console.log("The payload",payload)
 
     try {
 
         const apiClient = new ApiClient();
 
         // First, fetch the stock by ID
-        const existingStock= await getStock(id);
+        const existingStock= await getStockFromWarehouse(id);
         if (!existingStock || existingStock.totalElements == 0) {
             formResponse = {
                 responseType: "error",
@@ -226,8 +210,10 @@ export const updateStock = async (
         existingStockVariants.forEach(variant => {
             existingStockVariantMap.set(variant.id, variant);
         });
-        // console.log('Existing stock variant map:', existingStockVariantMap);
-        // console.log('Stock variants:', stock.stockVariants);
+
+
+        console.log('Existing stock variant map:', existingStockVariantMap);
+        console.log('Stock variants:', stock.stockVariants);
 
        
         payload.stockVariants.forEach((newVariant)=>{
@@ -249,10 +235,10 @@ export const updateStock = async (
             ...payload,
             stockVariants:stockVariantPayload
         }
-        // console.log("The final payload",finalPayload )
+        console.log("The final payload",finalPayload )
 
         await apiClient.put(
-            `/api/stock/${location?.id}/${id}`,
+            `/api/warehouse-stock/${warehouse?.id}/${id}`,
             finalPayload
         );
 
@@ -271,20 +257,18 @@ export const updateStock = async (
     }
     if (formResponse?.responseType === "error") return parseStringify(formResponse);
 
-    revalidatePath("/stock-variants")
+    revalidatePath("/warehouse-stock-variants")
     if (paginationState && typeof paginationState.pageIndex === 'number' && typeof paginationState.pageSize === 'number') {
         const page = paginationState.pageIndex + 1; 
         const limit = paginationState.pageSize;
-        // console.log('↪️ Redirecting to:', `/stock-variants?page=${page}&limit=${limit}`);
-        redirect(`/stock-variants?page=${page}&limit=${limit}`);
+        redirect(`/warehouse-stock-variants?page=${page}&limit=${limit}`);
     } else {
-        // console.log('↪️ Redirecting to default products page');
-        redirect("/stock-variants");
+        redirect("/warehouse-stock-variants");
     }
     
 };
 
-export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
+export const deleteStockFromWarehouse = async (id: UUID): Promise<FormResponse | void> => {
     if (!id) throw new Error("Stock ID is required to perform this request");
 
     await getAuthenticatedUser();
@@ -293,12 +277,12 @@ export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
    try{
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
+    const warehouse = await getCurrentWarehouse();
 
     await apiClient.delete(
-        `/api/stock/${location?.id}/${id}`,
+        `/api/warehouse-stock/${warehouse?.id}/${id}`,
     );
-    revalidatePath("/stocks");
+    revalidatePath("/warehouse-stock-variants");
 
    }
    catch (error: any){
@@ -309,7 +293,7 @@ export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
     }
 }
 
-export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
+export const uploadStockCSVForWarehouse = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
     // console.log("Starting CSV upload");
 
     if (!fileName.endsWith(".csv")) {
@@ -331,9 +315,9 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
 
     try {
         const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
+        const warehouse = await getCurrentWarehouse();
         await apiClient.post(
-            `/api/stock/${location?.id}/upload-csv`,
+            `/api/warehouse-stock/${warehouse?.id}/upload-csv`,
             formattedCSVData,
             {
                 headers: {
@@ -346,8 +330,8 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
         // console.log("CSV upload response", response);
 
         // Revalidate or redirect after successful upload
-        revalidatePath("/stock-variants");
-        redirect("/stock-variants");
+        revalidatePath("/warehouse-stock-variants");
+        redirect("/warehouse-stock-variants");
     } catch (error: any) {
         console.error("Error uploading CSV file:", error);
 
@@ -356,68 +340,34 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
     }
 };
 
-export const uploadProductWithStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
-    // console.log("Starting CSV upload");
-
-    if (!fileName.endsWith(".csv")) {
-        throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
-    }
-
-    const lines = fileData.split("\n");
-    const isCSVContent = lines.every(line => line.split(",").length > 1);
-
-    if (!isCSVContent) {
-        throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
-    }
-
-    // console.log("CSV content to be sent:", fileData);
-
-    const formattedCSVData = fileData.replace(/\r\n/g, '\n');
-
-    // console.log("Formatted CSV data:", formattedCSVData);
-
+export const getStockVariantFromWarehouse = async (variantId: string) => {
+    if (!variantId) return null;
+    
     try {
+        
         const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
-        await apiClient.post(
-            `/api/stock/${location?.id}/upload-products-and-stock-csv`,
-            formattedCSVData,
-            {
-                headers: {
-                    "Content-Type": "text/csv",
-                },
-                transformRequest: [(data) => data],
-            }
-        );
-
-        // console.log("CSV upload response", response);
-
-        revalidatePath("/stocks");
-        redirect("/stocks");
+        const data = await apiClient.get(`/api/warehouse-stock-variants/${variantId}`);
+        return parseStringify(data);
     } catch (error) {
-
-        if (typeof error === "object" && error !== null && "digest" in error && (error as any).digest.startsWith("NEXT_REDIRECT")) {
-            // console.log("Redirect triggered, ignoring error:", error);
-            return;
-        }
-
-        // console.error("Error uploading CSV file:", error);
-        throw error;
+        console.error("Error fetching stock variant:", error);
+        return null;
     }
+}
 
-};
-
-export const stockHistory = async (): Promise<StockHistory | null> => {
+export const stockReportFromWarehouse = async (): Promise<StockHistory | null> => {
 
     await getAuthenticatedUser();
 
     try {
         const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
-        const history=await apiClient.get(`/api/reports/${location?.id}/stock/summary`);
-        return parseStringify(history);
+        const warehouse = await getCurrentWarehouse();
+        const report=await apiClient.get(`/api/reports/${warehouse?.id}/warehouse-stock/summary`);
+
+        return parseStringify(report);
     } catch (error) {
-        // console.error("Error fetching stock history:", error);
+        
         throw error;
     }
 };
+
+

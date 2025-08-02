@@ -35,6 +35,7 @@ export declare interface StockMovement {
   newAverageValue: number;
   newTotalQuantity: number;
   staffName: string;
+  warehouseStaffName?:string
   stockName: string;
   stockVariant: string;
   stockVariantName: string;

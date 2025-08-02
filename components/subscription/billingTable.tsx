@@ -48,7 +48,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
   // Initial load
   useEffect(() => {
     fetchInvoices(1, searchTerm);
-  }, []);
+  }, [searchTerm, fetchInvoices]);
 
   // Search effect with debounce
   useEffect(() => {
@@ -58,14 +58,14 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+  }, [searchTerm, fetchInvoices]);
 
   // Page change effect
   useEffect(() => {
     if (currentPage > 1) {
       fetchInvoices(currentPage, searchTerm);
     }
-  }, [currentPage]);
+  }, [currentPage, searchTerm,fetchInvoices]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

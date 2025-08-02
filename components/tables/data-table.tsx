@@ -39,7 +39,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-// import { DataTableViewOptions } from "@/components/tables/column-toggle";
 import { DoubleArrowLeftIcon, DoubleArrowRightIcon } from "@radix-ui/react-icons";
 import { ProductCSVDialog} from "../csv/CSVImport";
 import { CSVStockDialog } from "../csv/stockCsvImport";
@@ -52,6 +51,7 @@ import StockExport from "../widgets/export-stock";
 import StockIntakeExport from "../widgets/export-intake";
 import { CSVStockIntakeDialog } from "../csv/stockIntakeImport";
 import { BulkArchive } from "../widgets/bulk-archive";
+import { WarehouseBulkArchive } from "../widgets/warehouse/bulk-archive";
 
 // Define page-specific component mappings
 const pageSpecificComponents = {
@@ -60,7 +60,8 @@ const pageSpecificComponents = {
     importComponent: <ProductCSVDialog />,
     exportComponent: <TableExport filename="products-csv"/>,
     entityNames: { singular: "Product", plural: "Products" },
-    allowArchive: true 
+    allowArchive: true, 
+    isWarehouse: false
   },
   "/stock-variants": {
     entityType: "stock" as const,
@@ -70,43 +71,48 @@ const pageSpecificComponents = {
     </>,
     exportComponent: <StockExport filename="stock"/>,
     entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
-    allowArchive: true 
+    allowArchive: true,
+    isWarehouse: false
   },
   "/stock-intakes": {
     entityType: "stock-intake" as const,
     importComponent: <CSVStockIntakeDialog/>,
     exportComponent: <StockIntakeExport filename="Stock Intake"/>,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
-    allowArchive: true 
+    allowArchive: true,
+    isWarehouse: false
   },
   "/staff": {
     entityType: "staff" as const,
     importComponent: null,
     exportComponent: null,
     entityNames: { singular: "Staff Member", plural: "Staff Members" },
-    allowArchive: true 
+    isWarehouse: false
   },
-  "/categories": {
-    entityType: "category" as const,
-    importComponent: null,
-    exportComponent: null,
-    entityNames: { singular: "Category", plural: "Categories" },
-    allowArchive: false 
+  // Warehouse-specific pages
+  "/warehouse-stock-variants": {
+    entityType: "stock" as const,
+    importComponent: <>
+      {/* <CSVStockDialog />
+      <ProductWithStockCSVDialog /> */}
+    </>,
+    exportComponent: "",
+    entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
+    isWarehouse: true
   },
-  
-  "/suppliers": {
+  "/warehouse-stock-intakes": {
+    entityType: "stock-intake" as const,
+    importComponent: "",
+    exportComponent: "",
+    entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
+    isWarehouse: true
+  },
+  "/warehouse-suppliers": {
     entityType: "supplier" as const,
-    importComponent: null,
-    exportComponent: null,
+    importComponent: "",
+    exportComponent: "",
     entityNames: { singular: "Supplier", plural: "Suppliers" },
-    allowArchive: false
-  },
-  "/customers": {
-    entityType: "customer" as const,
-    importComponent: null,
-    exportComponent: null,
-    entityNames: { singular: "Customer", plural: "Customers" },
-    allowArchive: false
+    isWarehouse: true
   },
 };
 
@@ -144,16 +150,14 @@ export function DataTable<TData, TValue>({
     key: pathname.replace('/', '') 
   });
 
-  
   React.useEffect(() => {
     const timer = setTimeout(() => {
       initializePaginationState();
     }, 0);
     
     return () => clearTimeout(timer);
-  }, [searchParams]);
+  }, [searchParams, initializePaginationState]);
 
-  
   const page = searchParams?.get("page") ?? "1";
   const pageAsNumber = Number(page);
   const fallbackPage = isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
@@ -179,24 +183,19 @@ export function DataTable<TData, TValue>({
     if (!searchParams?.has("_rsc")) {
       savePaginationState(String(fallbackPage), String(fallbackPerPage));
     }
-  }, [fallbackPage, fallbackPerPage]);
-  
+  }, [fallbackPage, fallbackPerPage, searchParams, savePaginationState]);
   
   const [loading, setLoading] = React.useState<boolean>(false);
 
-  
   const handleStatusFilterChange = (newStatus: string) => {
-  
     setStatusFilter(newStatus); 
   };
 
-  
   const filteredData = React.useMemo(() => {
     if (!filterKey || !statusFilter) return data; 
     return data.filter((item) => (item as any)[filterKey] === statusFilter); 
   }, [data, statusFilter, filterKey]);
 
-  
   const createQueryString = React.useCallback(
     (params: Record<string, string | number | null>) => {
       const newSearchParams = new URLSearchParams(searchParams?.toString());
@@ -220,7 +219,6 @@ export function DataTable<TData, TValue>({
     pageSize: fallbackPerPage,
   });
 
- 
   React.useEffect(() => {
     const newPage = pageIndex + 1;
     const queryString = createQueryString({
@@ -233,11 +231,9 @@ export function DataTable<TData, TValue>({
 
     // Use replace instead of push to avoid adding to history
     router.replace(`${pathname}?${queryString}`, { scroll: false });
-  }, [pageIndex, pageSize]);
+  }, [pageIndex, pageSize, createQueryString, pathname, router]);
 
-  
   React.useEffect(() => {
-    
     const timer = setTimeout(() => {
       setLoading(false);
     }, 500); 
@@ -264,7 +260,6 @@ export function DataTable<TData, TValue>({
     getSortedRowModel: getSortedRowModel(),
   });
 
-  
   const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
 
   React.useEffect(() => {
@@ -283,7 +278,7 @@ export function DataTable<TData, TValue>({
       });
       router.replace(`${pathname}?${queryString}`, { scroll: false });
     }
-  }, [searchValue]);
+  }, [searchValue, pageSize, searchKey, createQueryString, router, pathname]);
 
   // Get selected row IDs
   const selectedRowIds = table.getFilteredSelectedRowModel().rows.map(
@@ -291,17 +286,46 @@ export function DataTable<TData, TValue>({
   );
 
   const pageConfig = pageSpecificComponents[pathname as keyof typeof pageSpecificComponents] || {
-    entityType: "product",
+    entityType: "product" as const,
     importComponent: null,
     exportComponent: null,
     entityNames: { singular: "Item", plural: "Items" },
-    allowArchive: false
-  }
+    allowArchive: false,
+    isWarehouse: false
+  };
 
   // Reset table selection callback
   const resetTableSelection = () => {
     table.resetRowSelection();
   };
+
+  // Render the appropriate archive component based on whether it's a warehouse page
+const renderArchiveComponent = () => {
+  if (disableArchive || selectedRowIds.length === 0) return null;
+
+  // Check if this is a warehouse page
+  if (pageConfig.isWarehouse) {
+    return (
+      <WarehouseBulkArchive 
+        selectedIds={selectedRowIds}
+        entityType={pageConfig.entityType as 'stock' | 'stock-intake' | 'supplier'}
+        onSuccess={resetTableSelection}
+        entityNameSingular={pageConfig.entityNames.singular}
+        entityNamePlural={pageConfig.entityNames.plural}
+      />
+    );
+  } else {
+    return (
+      <BulkArchive 
+        selectedIds={selectedRowIds}
+        entityType={pageConfig.entityType as 'product' | 'stock' | 'staff' | 'stock-intake'}
+        onSuccess={resetTableSelection}
+        entityNameSingular={pageConfig.entityNames.singular}
+        entityNamePlural={pageConfig.entityNames.plural}
+      />
+    );
+  }
+};
 
   return (
     <motion.div>
@@ -322,18 +346,8 @@ export function DataTable<TData, TValue>({
         </div>
 
         <div className="hidden lg:flex items-center space-x-2">
-          {/* Archive Button - Only show when rows are selected and archive is enabled */}
-          {!disableArchive && pageConfig.allowArchive && selectedRowIds.length > 0 && (
-    <BulkArchive 
-      selectedIds={selectedRowIds}
-      entityType={pageConfig.entityType}
-      onSuccess={resetTableSelection}
-      entityNameSingular={pageConfig.entityNames.singular}
-      entityNamePlural={pageConfig.entityNames.plural}
-    />
-  )}
-
-          {/* <DataTableViewOptions table={table} /> */}
+          {/* Archive Button - Shows appropriate component based on page type */}
+          {renderArchiveComponent()}
 
           {filterKey && filterOptions && (
             <DropdownMenu>
@@ -373,7 +387,7 @@ export function DataTable<TData, TValue>({
         </div>
       </div>
 
-      {loading ? ( // Show loader while loading
+      {loading ? (
         <div className="flex items-center justify-center h-48">
           <Loading/>
         </div>

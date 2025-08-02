@@ -1,12 +1,10 @@
+
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown} from "lucide-react";
 
 import { CellAction } from "@/components/tables/warehouse/purchase/cell-action";
-// import { StateColumn } from "@/components/tables/state-column";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Button } from "@/components/ui/button";
 import { Purchase } from "@/types/warehouse/purchase/type";
 
 export const columns: ColumnDef<Purchase>[] = [
@@ -31,47 +29,68 @@ export const columns: ColumnDef<Purchase>[] = [
   },
   
   {
-    accessorKey: "orderId",
+    accessorKey: "stockIntakePurchaseNumber",
     enableHiding: false,
-    header: ({ column }) => {
-      return (
-        <Button
-          className="text-left p-0"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Order Id
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: "SIP Number",
   },
   {
-    accessorKey: "supplier",
+    accessorKey:"stockVariantName",
+    enableHiding:false,
+    header:'Item'
+  },
+  {
+    accessorKey:"stockIntakeQuantity",
+    enableHiding:false,
+    header:'Quantity'
+  },
+  {
+    accessorKey:"supplierName",
     enableHiding:false,
     header:'Supplier'
   },
+  {
+    accessorKey: "totalPurchaseCost",
+    enableHiding:false,
+    header:'Total Purchase Cost'
+  },
   
   {
-    accessorKey: "date",
+    accessorKey: "paidAmount",
     enableHiding: false,
-    header: 'Date'
+    header: 'Paid Amount'
   },
   {
-    accessorKey: "product",
+    accessorKey: "unpaidAmount",
     enableHiding: false,
-    header: 'Items'
+    header: 'Unpaid Amount'
+  },
+  
+  {
+    accessorKey: "paymentStatus",
+    header: "Payment Status",
+    cell: (row) => {
+      const status = row.getValue();
+      
+      switch (status) {
+        case "NOT_PAID":
+          return "NOT PAID";
+        case "PARTIAL":
+          return "PARTIAL PAID";
+        default:
+          return status;
+      }
+    }
   },
   {
-    accessorKey: "amount",
-    enableHiding: false,
-    header: 'Amount'
+    accessorKey:"dateCreated",
+    enableHiding:false,
+    header:'Date Created',
+    cell:(row)=>{
+      const date = new Date(row.getValue() as string)
+      return date.toLocaleDateString()
+    }
   },
-  {
-    id: "status",
-    accessorKey: "status",
-    header: "Status",
-  },
+  
   {
     id: "actions",
     cell: ({ row }) => <CellAction data={row.original} />,

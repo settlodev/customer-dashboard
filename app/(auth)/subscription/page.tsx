@@ -266,7 +266,7 @@ const SubscriptionFormModal = ({
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [discountCode]);
+  }, [discountCode,locationId]);
 
   //Validate discount code
   const validateDiscount = async (code: string,locationId?:string) => {

@@ -18,7 +18,6 @@ import { FormResponse } from "@/types/types";
 import { Separator } from "@/components/ui/separator";
 import { Supplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
-import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 import {Building2, Loader2Icon, Mail, MapPin, Phone, User} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { FormError } from "@/components/widgets/form-error";
@@ -28,12 +27,13 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { Switch } from "@/components/ui/switch";
 import CancelButton from "@/components/widgets/cancel-button";
 import SubmitButton from "@/components/widgets/submit-button";
+import { createSupplier, updateSupplier } from "@/lib/actions/warehouse/supplier-actions";
 
-function SupplierForm({ item }: { item: Supplier | null | undefined }) {
+function WarehouseSupplierForm({ item }: { item: Supplier | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error,] = useState<string | undefined>("");
-  const [success,] = useState<string | undefined>("");
+  const [error,setError] = useState<string | undefined>("");
+  const [success,setSuccess] = useState<string | undefined>("");
   const { toast } = useToast();
   const router = useRouter();
 
@@ -43,17 +43,30 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
   });
 
   const submitData = (values: z.infer<typeof SupplierSchema>) => {
+    // Clear previous messages
+    setError("");
+    setSuccess("");
+    
     startTransition(() => {
       if (item) {
         updateSupplier(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
+            setSuccess(data.message);
             toast({
               title: "Success",
               description: data.message,
-              duration:5000
+              duration: 5000
             });
-            router.push("/suppliers");
+            router.push("/warehouse-suppliers");
+          } else if (data && data.responseType === "error") {
+            setError(data.message);
+            toast({
+              title: "Error",
+              description: data.message,
+              variant: "destructive",
+              duration: 5000
+            });
           }
         });
       } else {
@@ -62,16 +75,33 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
             console.log(data);
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
+              setSuccess(data.message);
               toast({
                 title: "Success",
                 description: data.message,
-                duration:5000
+                duration: 5000
               });
-              router.push("/suppliers");
+              router.push("/warehouse-suppliers");
+            } else if (data && data.responseType === "error") {
+              setError(data.message);
+              toast({
+                title: "Error",
+                description: data.message,
+                variant: "destructive",
+                duration: 5000
+              });
             }
           })
           .catch((err) => {
             console.log(err);
+            const errorMessage = "An unexpected error occurred. Please try again.";
+            setError(errorMessage);
+            toast({
+              title: "Error",
+              description: errorMessage,
+              variant: "destructive",
+              duration: 5000
+            });
           });
       }
     });
@@ -138,7 +168,7 @@ return (
                                 <FormItem>
                                     <FormLabel>Phone Number</FormLabel>
                                     <FormControl>
-                                        <div className="relative">
+                                        <div className="relative border border-gray-200 rounded-md">
                                             <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                                             <PhoneInput
                                                 className="pl-10"
@@ -193,7 +223,7 @@ return (
                                 <FormItem>
                                     <FormLabel>Contact Person Name</FormLabel>
                                     <FormControl>
-                                        <div className="relative">
+                                        <div className="relative border-gray-200 rounded-md">
                                             <User className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                                             <Input
                                                 className="pl-10"
@@ -324,4 +354,4 @@ return (
     );
 }
 
-export default SupplierForm;
+export default WarehouseSupplierForm;

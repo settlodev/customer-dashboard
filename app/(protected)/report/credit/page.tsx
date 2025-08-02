@@ -85,7 +85,7 @@ const CreditReportDashboard = () => {
 
     useEffect(() => {
         fetchCreditReport(form.getValues('startDate'), form.getValues('endDate'));
-    }, []);
+    }, [form]);
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {
         await fetchCreditReport(values.startDate, values.endDate);

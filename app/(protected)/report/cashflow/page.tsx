@@ -65,7 +65,7 @@ const CashFlowReportDashboard = () => {
 
     useEffect(() => {
         fetchCashFlowReport(form.getValues('startDate'), form.getValues('endDate'));
-    }, []);
+    }, [form]);
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {
         await fetchCashFlowReport(values.startDate, values.endDate);
