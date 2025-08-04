@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import WarehouseStaffSelectorWidget from '@/components/widgets/warehouse/staff-selector';
+import { FormResponse } from '@/types/types';
+import { StockRequests } from '@/types/warehouse/purchase/request/type';
 
 type Params = Promise<{id: string}>
 
@@ -49,48 +51,56 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
       });
       return;
     }
-
+  
     setIsSubmitting(true);
     
     try {
-      let result;
       const warehouseStaffApproved = selectedStaffId as UUID;
+      let response: FormResponse<StockRequests>;
       
       if (modalAction === 'approve') {
-       
-        result = await ApproveStockRequest(request.id,warehouseStaffApproved);
-        console.log("The result after approving",result)
-        toast({
-          title: "Success",
-          description: "Stock request approved successfully",
-        });
+        response = await ApproveStockRequest(request.id, warehouseStaffApproved);
       } else if (modalAction === 'cancel') {
-
-        result = await CancelStockRequest(request.id,warehouseStaffApproved);
-        toast({
-          title: "Success",
-          description: "Stock request cancelled successfully",
-        });
+        response = await CancelStockRequest(request.id, warehouseStaffApproved);
+      } else {
+        throw new Error("Invalid action");
       }
-
-      if (result?.data) {
-        setRequest(result.data); 
+  
+      // Handle the response
+      if (response.responseType === "error") {
+        throw response.error || new Error(response.message);
       }
+  
+      // Success case
+      toast({
+        title: "Success",
+        description: response.message,
+      });
+  
+      if (response.data) {
+        setRequest(response.data); 
+      }
+  
+      // Close modal and redirect
       handleModalClose();
       setTimeout(() => {
         window.location.href = '/warehouse-requests';
-      }, 500); 
-
-    } catch (error) {
+      }, 500);
+  
+    } catch (error: any) {
       console.error('Error processing request:', error);
+      
+      // Show specific error message
       toast({
         title: "Error",
-        description: `Failed to ${modalAction} request. Please try again.`,
+        description: error.message,
         variant: "destructive"
       });
+  
+      // Close the modal on error
+      handleModalClose();
     } finally {
       setIsSubmitting(false);
-      window.location.href = '/warehouse-requests';
     }
   };
 

@@ -96,6 +96,7 @@ class ApiClient {
 
       return response.data;
     } catch (error) {
+     
       throw await handleSettloApiError(error);
     }
   }

@@ -3,11 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { Edit, Building} from 'lucide-react';
 import { getWarehouse} from '@/lib/actions/warehouse/list-warehouse';
 import { Warehouses } from '@/types/warehouse/warehouse/type';
-import Loading from '@/app/(protected)/loading';
 import { Button } from '@/components/ui/button';
 import { warehouseInvoices } from '@/lib/actions/warehouse/subscription';
 import WarehouseInvoiceTable from '@/components/widgets/warehouse/invoice-table';
 import { useRouter } from 'next/navigation';
+import Loading from '@/app/loading';
 
 
 

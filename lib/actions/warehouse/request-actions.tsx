@@ -1,7 +1,7 @@
 "use server";
 
 import { UUID } from "node:crypto";
-import { ApiResponse} from "@/types/types";
+import { ApiResponse, FormResponse} from "@/types/types";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
@@ -72,40 +72,80 @@ export const getWarehouseStockRequest = async (id: UUID)=> {
 export const ApproveStockRequest = async (
     id: UUID,
     warehouseStaffApproved: UUID
-): Promise<ApiResponse<StockRequests>> => {
+  ): Promise<FormResponse<StockRequests>> => {
+    try {
+      const apiClient = new ApiClient();
+      const warehouse = await getCurrentWarehouse();
+  
+      if (!warehouse?.id) {
+        return {
+          responseType: "error",
+          message: "Warehouse ID is required",
+          error: new Error("Warehouse ID is required")
+        };
+      }
+  
+      await apiClient.put(
+        `/api/warehouse/${warehouse.id}/warehouse-stock-requests/approve/${id}`,
+        { warehouseStaffApproved }
+      );
+  
+      return {
+        responseType: "success",
+        message: "Successfully approved the request",
+        
+      };
+    } catch (error: any) {
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          "Failed to approve stock request";
+      
+      return {
+        responseType: "error",
+        message: errorMessage,
+        error: error instanceof Error ? error : new Error(errorMessage)
+      };
+    }
+  };
+  
+  export const CancelStockRequest = async (
+    id: UUID,
+    warehouseStaffApproved: UUID
+  ): Promise<FormResponse<StockRequests>> => {
+    try {
+      const apiClient = new ApiClient();
+      const warehouse = await getCurrentWarehouse();
+  
+      if (!warehouse?.id) {
+        return {
+          responseType: "error",
+          message: "Warehouse ID is required",
+          error: new Error("Warehouse ID is required")
+        };
+      }
+  
+      await apiClient.put(
+        `/api/warehouse/${warehouse.id}/warehouse-stock-requests/cancel/${id}`,
+        { warehouseStaffCancelled: warehouseStaffApproved }
+      );
+  
+      return {
+        responseType: "success",
+        message: "Successfully cancelled the request",
+      };
+    } catch (error: any) {
 
-
-    const apiClient = new ApiClient();
-
-    const warehouse = await getCurrentWarehouse();
-
-   const approvedRequest = await apiClient.put(
-        `/api/warehouse/${warehouse?.id}/warehouse-stock-requests/approve/${id}`,
-        {
-            warehouseStaffApproved
-        }
-    );
-
-    return parseStringify(approvedRequest);
-};
-
-export const CancelStockRequest = async (id: UUID,warehouseStaffApproved: UUID): Promise<ApiResponse<StockRequests>> => {
-
-    const apiClient = new ApiClient();
-
-    const warehouseStaffCancelled= warehouseStaffApproved
-
-
-    const warehouse = await getCurrentWarehouse();
-
-    const cancelledRequest = await apiClient.put(
-        `/api/warehouse/${warehouse?.id}/warehouse-stock-requests/cancel/${id}`,{
-            warehouseStaffCancelled
-        }
-    );
-
-    return parseStringify(cancelledRequest);
-};
+      const errorMessage = error?.response?.data?.message || 
+                          error?.message || 
+                          "Failed to cancel stock request";
+      
+      return {
+        responseType: "error",
+        message: errorMessage,
+        error: error instanceof Error ? error : new Error(errorMessage)
+      };
+    }
+  };
 
 export const stockRequestReportForWarehouse = async (): Promise<StockRequestReport | null> => {
 

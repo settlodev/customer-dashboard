@@ -167,9 +167,57 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
         [toast]
     );
 
-    const submitData = (values: z.infer<typeof MultiStockIntakeSchema>) => {
+    // const submitData = (values: z.infer<typeof MultiStockIntakeSchema>) => {
         
     
+    //     // Transform data to array format expected by API
+    //     const payload = values.stockIntakes.map(intake => ({
+    //         quantity: intake.quantity,
+    //         value: intake.value,
+    //         batchExpiryDate: intake.batchExpiryDate,
+    //         deliveryDate: intake.deliveryDate,
+    //         orderDate: intake.orderDate,
+    //         stockVariant: intake.stockVariant,
+    //         staff: intake.staff,
+    //         supplier: intake.supplier,
+    //         trackPurchase: intake.trackPurchase,
+    //         // Fixed condition: check if trackPurchase is true AND purchasePaidAmount is not null/undefined
+    //         ...(intake.trackPurchase && intake.purchasePaidAmount !== null && intake.purchasePaidAmount !== undefined && { 
+    //             purchasePaidAmount: intake.purchasePaidAmount 
+    //         })
+    //     }));
+    
+        
+    
+    //     startTransition(() => {
+    //         if (item) {
+                
+    //             toast({
+    //                 variant: "destructive",
+    //                 title: "Update Not Supported",
+    //                 description: "Updating multiple stock intakes is not currently supported.",
+    //             });
+    //             return;
+    //         } else {
+    //             createStockIntakeForWarehouse(payload)
+    //                 .then((data) => {
+    //                     if (data) setResponse(data);
+    //                     if (data && data.responseType === "success") {
+    //                         toast({
+    //                             title: "Success",
+    //                             description: data.message,
+    //                         });
+    //                         router.push("/warehouse-stock-intakes");
+    //                     }
+    //                 })
+    //                 .catch((err) => {
+    //                     console.log("Error while creating stock intake: ", err);
+    //                 });
+    //         }
+    //     });
+    // };
+
+    const submitData = async (values: z.infer<typeof MultiStockIntakeSchema>) => {
         // Transform data to array format expected by API
         const payload = values.stockIntakes.map(intake => ({
             quantity: intake.quantity,
@@ -181,41 +229,48 @@ function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefin
             staff: intake.staff,
             supplier: intake.supplier,
             trackPurchase: intake.trackPurchase,
-            // Fixed condition: check if trackPurchase is true AND purchasePaidAmount is not null/undefined
             ...(intake.trackPurchase && intake.purchasePaidAmount !== null && intake.purchasePaidAmount !== undefined && { 
                 purchasePaidAmount: intake.purchasePaidAmount 
             })
         }));
     
-        
-    
-        startTransition(() => {
+        startTransition(async () => {
             if (item) {
-                
                 toast({
                     variant: "destructive",
                     title: "Update Not Supported",
                     description: "Updating multiple stock intakes is not currently supported.",
                 });
                 return;
-            } else {
-                createStockIntakeForWarehouse(payload)
-                    .then((data) => {
-                        if (data) setResponse(data);
-                        if (data && data.responseType === "success") {
-                            toast({
-                                title: "Success",
-                                description: data.message,
-                            });
-                            router.push("/warehouse-stock-intakes");
-                        }
-                    })
-                    .catch((err) => {
-                        console.log("Error while creating stock intake: ", err);
+            }
+    
+            try {
+                const response = await createStockIntakeForWarehouse(payload);
+                
+                if (response?.responseType === "success") {
+                    toast({
+                        title: "Success",
+                        description: response.message,
                     });
+                    router.push("/warehouse-stock-intakes");
+                } else if (response?.responseType === "error") {
+                    toast({
+                        variant: "destructive",
+                        title: "Error",
+                        description: response.message,
+                    });
+                }
+            } catch (error) {
+                console.error("Error creating stock intake:", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error",
+                    description: "An unexpected error occurred. Please try again.",
+                });
             }
         });
     };
+   
 
     const validateDates = (orderDate: string, deliveryDate: string) => {
         const order = new Date(orderDate);

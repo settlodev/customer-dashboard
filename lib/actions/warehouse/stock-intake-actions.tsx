@@ -14,19 +14,16 @@ import { getCurrentWarehouse } from "./current-warehouse-action";
 
 
 export const createStockIntakeForWarehouse = async (
-    stockIntakes: any[] // Array of stock intakes
+    stockIntakes: any[] 
 ): Promise<FormResponse | void> => {
     let formResponse: FormResponse | null = null;
 
-    
     const formatDateForAPI = (dateString: string): string => {
         if (!dateString) return dateString;
-        
         
         if (dateString.includes('T') && (dateString.includes('Z') || dateString.includes('+'))) {
             return dateString;
         }
-        
         
         const date = new Date(dateString);
         return date.toISOString();
@@ -44,8 +41,6 @@ export const createStockIntakeForWarehouse = async (
     const validationResults = transformedStockIntakes.map(intake => StockIntakeSchema.safeParse(intake));
     const hasErrors = validationResults.some(result => !result.success);
 
-    
-
     if (hasErrors) {
         const firstError = validationResults.find(result => !result.success);
         formResponse = {
@@ -58,7 +53,6 @@ export const createStockIntakeForWarehouse = async (
 
     const warehouse = await getCurrentWarehouse();
     
-    
     const payload = transformedStockIntakes.map(intake => ({
         quantity: intake.quantity,
         value: intake.value,
@@ -68,13 +62,12 @@ export const createStockIntakeForWarehouse = async (
         stockVariant: intake.stockVariant,
         staff: intake.staff,
         supplier: intake.supplier,
-        // Fixed: Include purchasePaidAmount if it exists and is a number (including 0)
         ...(typeof intake.purchasePaidAmount === 'number' && { 
             purchasePaidAmount: intake.purchasePaidAmount 
         })
     }));
 
-    
+    console.log("The payload passed is ", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -86,14 +79,29 @@ export const createStockIntakeForWarehouse = async (
             responseType: "success",
             message: `${payload.length} Stock Intake${payload.length > 1 ? 's' : ''} recorded successfully`,
         };
-    } catch (error) {
-        console.error("Error creating stock intakes:", error);
-        formResponse = {
-            responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error)),
-        };
+    
+} catch (error: any) {
+    
+    
+    let errorMessage = "Something went wrong while processing your request, please try again";
+    
+    // Handle Axios error response
+    if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+    } 
+    // Handle custom error format
+    else if (error?.message) {
+        errorMessage = error.message;
     }
+
+    formResponse = {
+        responseType: "error",
+        message: errorMessage,
+        error: error instanceof Error ? error : new Error(errorMessage),
+    };
+    
+    return formResponse; 
+}
     
     revalidatePath("/warehouse-stock-intakes");
     return parseStringify(formResponse);
