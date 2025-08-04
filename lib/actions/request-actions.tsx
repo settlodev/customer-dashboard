@@ -68,6 +68,7 @@ export const getStockRequest = async (id: UUID) => {
     const stockRequest = await apiClient.get(
         `/api/location/${location?.id}/warehouse-stock-requests/${id}`,
     );
+    
     return parseStringify(stockRequest);
 };
 
@@ -143,7 +144,14 @@ export const updateStockRequest = async (
     }
 
     const payload = {
-        ...validData.data,
+        comment: validData.data.comment,
+        fromLocation: validData.data.fromLocation,
+        toWarehouse: validData.data.toWarehouse,
+        locationStaffRequested: validData.data.locationStaffRequested,
+        stockRequested: validData.data.stockRequested.map(item => ({
+            warehouseStockVariant: item.warehouseStockVariant,
+            quantity: item.quantity
+        }))
     };
     console.log("The payload to update stock request:", payload);
 
@@ -151,7 +159,7 @@ export const updateStockRequest = async (
 
     try {
         const apiClient = new ApiClient();
-       await apiClient.post(
+       await apiClient.put(
             `/api/location/${location?.id}/warehouse-stock-requests/${id}`,
             payload
         );

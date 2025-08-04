@@ -81,6 +81,7 @@ const MultiStockIntakeSchema = z.object({
 });
 
 function WarehouseStockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
+    
     const [isPending, startTransition] = useTransition();
     const [error, setError] = useState<string | undefined>("");
     const [, setResponse] = useState<FormResponse | undefined>();
