@@ -111,8 +111,6 @@ export const searchStockIntakesFromWarehouse = async (
     q: string,
     page: number,
     pageLimit: number,
-    dateFrom?: string,
-    dateTo?: string
 ): Promise<ApiResponse<StockIntake>> => {
     await getAuthenticatedUser();
 
@@ -132,7 +130,7 @@ export const searchStockIntakesFromWarehouse = async (
             ],
             sorts: [
                 {
-                    key: "orderDate",
+                    key: "dateCreated",
                     direction: "DESC"
                 }
             ],

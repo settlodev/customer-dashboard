@@ -146,6 +146,7 @@ export default async function Page({ searchParams }: Params) {
                             { label: "All", value: "" },
                             { label: "Pending", value: "PENDING" },
                             { label: "Approved", value: "APPROVED" },
+                            { label: "Cancelled", value: "CANCELLED" },
                             ]}
                         />
                     </CardContent>

@@ -64,8 +64,9 @@ type Params = {
                                        filterKey="warehouseStockRequestStatus"
                                         filterOptions={[
                                             { label: "All", value: "" },
-                                            { label: "Pending", value: "PENDING" },
                                             { label: "Approved", value: "APPROVED" },
+                                            { label: "Pending", value: "PENDING" },
+                                            { label: "Cancelled", value: "CANCELLED" },
                                         ]}
                             />
                         </CardContent>

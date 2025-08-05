@@ -12,7 +12,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import {getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import { Expense, ExpenseReport } from "@/types/expense/type";
-import { ExpenseSchema } from "@/types/expense/schema";
+import { ExpenseSchema, PayableExpenseSchema } from "@/types/expense/schema";
 
 export const fetchAllExpenses = async (): Promise<Expense[]> => {
     await getAuthenticatedUser();
@@ -100,6 +100,8 @@ export const createExpense = async (
         business: business?.id,
     };
 
+  
+
     try {
         const apiClient = new ApiClient();
 
@@ -113,6 +115,7 @@ export const createExpense = async (
             message: "Expense successfully created!",
         };
     } catch (error: unknown) {
+        console.log("The error while  recording expense is",error)
         formResponse = {
             responseType: "error",
             message:
@@ -241,4 +244,48 @@ export const GetExpenseReport = async (
     } catch (error) {
         throw error;
     }
+}
+
+export const payExpense = async (
+    expenseId: UUID, 
+    amount: number,
+    paymentDate:string,
+): Promise<ApiResponse<Expense>> => {
+
+    let formResponse: FormResponse | null = null;
+    const authenticatedUser = await getAuthenticatedUser();
+
+    if ("responseType" in authenticatedUser) {
+        return parseStringify(authenticatedUser);
+    }
+
+   const payload={
+    amount:amount,
+    paymentDate:paymentDate
+
+   }
+    const apiClient = new ApiClient();
+    
+    try {
+        await apiClient.post(
+            `/api/expense-payments/${expenseId}/create`,
+            payload
+        );
+        
+        formResponse = {
+            responseType: "success",
+            message: "Payment made successfully",
+        };
+        
+    } catch (error: any) {
+        console.log("The error received while paying is",error)
+        return parseStringify({
+            responseType: "error",
+            message: error.message ?? "Failed to pay for this expense. Please try again.",
+            error: error instanceof Error ? error : new Error(String(error)),
+        });
+    }
+
+    revalidatePath("/purchases");
+    return parseStringify(formResponse);
 }

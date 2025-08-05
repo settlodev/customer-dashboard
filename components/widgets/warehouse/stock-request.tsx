@@ -16,7 +16,7 @@ type Params = Promise<{id: string}>
 
 interface StockRequestPageProps {
   params: Params;
-  initialRequest: any; // Replace with your actual request type
+  initialRequest: any; 
 }
 
 const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
@@ -250,7 +250,7 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
                 {request.approvedDate && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Approved Date</label>
-                    <p className="text-gray-900">{new Date(request.approvedDate).toLocaleDateString()}</p>
+                    <p className="text-gray-900">{new Date(request.approvedDate).toLocaleString()}</p>
                   </div>
                 )}
               </div>

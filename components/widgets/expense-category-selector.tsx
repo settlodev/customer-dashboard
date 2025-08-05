@@ -8,13 +8,13 @@ import { Button } from "../ui/button";
 import { Plus, Tag } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import { Category } from "@/types/category/type";
-import { fetchAllCategories, createCategory } from "@/lib/actions/category-actions";
+import { createCategory } from "@/lib/actions/category-actions";
 import { FormError } from "@/components/widgets/form-error";
 import { usePathname } from 'next/navigation';
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import { Card, CardContent } from "../ui/card";
-import ProductCategorySelector from "@/components/widgets/product-category-selector";
+import { ExpenseCategory } from "@/types/expenseCategories/type";
+import { fetchExpenseCategories } from "@/lib/actions/expense-categories-actions";
 
 interface CategorySelectorProps {
     placeholder: string;
@@ -22,52 +22,52 @@ interface CategorySelectorProps {
     isDisabled?: boolean;
     onChange: (value: string) => void;
     onBlur?: () => void;
-    showSubcategories?: boolean; // New prop to control subcategory display
+    
 }
 
-const CategorySelector = ({
+const ExpenseCategorySelector = ({
     placeholder,
     value,
     isDisabled,
     onChange,
     onBlur,
-    showSubcategories = true // Default to true
+   
 }: CategorySelectorProps) => {
-    const [categories, setCategories] = useState<Category[]>([]);
+    
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState("");
-    const [parentCategory, setParentCategory] = useState("");
     const [, setStatus] = useState("true");
     const [imageUrl, setImageUrl] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | undefined>("");
     const [selectedValue, setSelectedValue] = useState<string | undefined>(value);
+    const [expenseCategories, setExpenseCategories] = useState<ExpenseCategory[]>(
+        []
+      );
     const pathname = usePathname();
 
     useEffect(() => {
         setSelectedValue(value);
     }, [value]);
 
-    const loadCategories = async () => {
-        try {
-            setIsLoading(true);
-            const fetchedCategories = await fetchAllCategories();
-            setCategories(fetchedCategories ?? []);
-        } catch (error: any) {
-            setError(error.message ?? "Failed to fetch categories");
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadCategories();
-    }, []);
+  
+        const getExpenseCategories = async () => {
+          try {
+            setIsLoading(true)
+            const response = await fetchExpenseCategories();
+            setExpenseCategories(response);
+          } catch (error) {
+            console.error("Error fetching countries", error);
+          }
+        };
+      
+        useEffect(() => {
+            getExpenseCategories()
+        }, []);
 
     const resetForm = () => {
         setNewCategoryName("");
-        setParentCategory("");
         setStatus("true");
         setImageUrl("");
         setError("");
@@ -85,13 +85,13 @@ const CategorySelector = ({
                     name: newCategoryName,
                     status: true,
                     image: imageUrl,
-                    parentCategory: parentCategory
+                    
                 },
                 pathname,
             );
 
             if (response.responseType === "success" && response.data) {
-                await loadCategories();
+                await getExpenseCategories()
                 const newCategoryId = response.data.id;
                 setSelectedValue(newCategoryId);
                 onChange(newCategoryId);
@@ -117,23 +117,13 @@ const CategorySelector = ({
     const renderCategoryOptions = () => {
         const options: React.ReactNode[] = [];
 
-        categories.forEach((category) => {
+        expenseCategories.forEach((category) => {
             // Add the main category
             options.push(
                 <SelectItem key={category.id} value={category.id}>
                     {category.name}
                 </SelectItem>
             );
-
-            if (showSubcategories && category.subcats && category.subcats.length > 0) {
-                category.subcats.forEach((subcat) => {
-                    options.push(
-                        <SelectItem key={subcat.id} value={subcat.id}>
-                            <span className="ml-4">└ {subcat.name}</span>
-                        </SelectItem>
-                    );
-                });
-            }
         });
 
         return options;
@@ -141,16 +131,11 @@ const CategorySelector = ({
 
     // Helper function to get display name for selected value
     const getDisplayName = (selectedId: string) => {
-        for (const category of categories) {
+        for (const category of expenseCategories) {
             if (category.id === selectedId) {
                 return category.name;
             }
-            if (category.subcats) {
-                const subcat = category.subcats.find(sub => sub.id === selectedId);
-                if (subcat) {
-                    return `${category.name} > ${subcat.name}`;
-                }
-            }
+            
         }
         return "";
     };
@@ -228,18 +213,7 @@ const CategorySelector = ({
                                                     disabled={isSubmitting}
                                                 />
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Parent Category</Label>
-                                                <ProductCategorySelector
-                                                    onBlur={() => { }}
-                                                    onChange={setParentCategory}
-                                                    isDisabled={isSubmitting}
-                                                    label="Category"
-                                                    placeholder="Select parent category"
-                                                    categories={categories}
-                                                    value={parentCategory}
-                                                />
-                                            </div>
+                                            
                                         </div>
                                     </div>
                                 </div>
@@ -269,4 +243,4 @@ const CategorySelector = ({
     );
 };
 
-export default CategorySelector;
+export default ExpenseCategorySelector;
