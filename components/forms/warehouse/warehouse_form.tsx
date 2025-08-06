@@ -196,7 +196,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
         <CardContent className="flex items-center justify-center py-12">
           <div className="flex items-center gap-3">
             <Loader2Icon className="w-6 h-6 animate-spin text-blue-600" />
-            <span className="text-gray-600">Loading warehouse data...</span>
+            <span className="text-gray-600">Loading warehouse data ...</span>
           </div>
         </CardContent>
       </Card>
