@@ -12,7 +12,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import {getCurrentBusiness, getCurrentLocation} from "@/lib/actions/business/get-current-business";
 import { Expense, ExpenseReport } from "@/types/expense/type";
-import { ExpenseSchema, PayableExpenseSchema } from "@/types/expense/schema";
+import { ExpenseSchema} from "@/types/expense/schema";
 
 export const fetchAllExpenses = async (): Promise<Expense[]> => {
     await getAuthenticatedUser();
