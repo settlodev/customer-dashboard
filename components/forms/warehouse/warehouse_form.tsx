@@ -81,7 +81,7 @@ const timeToBusinessTimeName = (timeString: string): string => {
   }
 
   const result = businessTime?.name || "";
-  console.log("Time conversion result:", result);
+
   return result;
 };
 
@@ -141,7 +141,6 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
       };
 
       form.reset(formValues);
-      console.log("Form reset with values:", formValues);
     }
   }, [item, business, isLoadingBusiness, form]);
 
