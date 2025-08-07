@@ -25,11 +25,11 @@ interface DownloadButtonProps {
 const DownloadButton = ({ 
   orderNumber, 
   isDownloadable,
-  fontFamily = 'Arial, sans-serif', 
+  fontFamily = 'system-ui, -apple-system, sans-serif', 
   fontSize = {
-    header: '24px',
-    body: '14px',
-    footer: '12px'
+    header: '14px',
+    body: '10px', 
+    footer: '8px'
   },
   fontWeight = {
     header: '600',
@@ -56,19 +56,19 @@ const DownloadButton = ({
           padding: receipt.style.padding,
           transform: receipt.style.transform,
           position: receipt.style.position,
+          backgroundColor: receipt.style.backgroundColor,
         };
 
-        // Temporarily modify styles for better capture
+        // Optimize for PDF generation
         receipt.style.width = '794px';
-        receipt.style.maxWidth = 'none';
+        receipt.style.maxWidth = '794px';
         receipt.style.margin = '0';
-        receipt.style.padding = '20px';
+        receipt.style.padding = '0';
         receipt.style.transform = 'none';
         receipt.style.position = 'relative';
+        receipt.style.backgroundColor = 'white';
 
         await new Promise(resolve => setTimeout(resolve, 100));
-        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-        receipt.offsetHeight;
 
         // Wait for images to load
         const images = receipt.querySelectorAll('img');
@@ -82,15 +82,15 @@ const DownloadButton = ({
         }));
 
         const canvas = await html2canvas(receipt, {
-          scale: 2,
+          scale: 1.5,
           useCORS: true,
           allowTaint: false,
           logging: false,
           backgroundColor: '#ffffff',
           width: 794,
-          height: receipt.scrollHeight + 100,
-          windowWidth: 1400,
-          windowHeight: receipt.scrollHeight + 200,
+          height: receipt.scrollHeight,
+          windowWidth: 1200,
+          windowHeight: receipt.scrollHeight + 100,
           scrollX: 0,
           scrollY: 0,
           imageTimeout: 15000,
@@ -99,21 +99,18 @@ const DownloadButton = ({
           onclone: (clonedDoc) => {
             const clonedElement = clonedDoc.getElementById('receipt-content');
             if (clonedElement) {
-              // Apply consistent styling
+              // Apply clean styling
               clonedElement.style.width = '794px';
-              clonedElement.style.maxWidth = 'none';
+              clonedElement.style.maxWidth = '794px';
               clonedElement.style.margin = '0';
-              clonedElement.style.padding = '20px';
+              clonedElement.style.padding = '0';
               clonedElement.style.transform = 'none';
               clonedElement.style.position = 'relative';
-              clonedElement.style.display = 'block';
               clonedElement.style.backgroundColor = 'white';
-              clonedElement.style.minHeight = receipt.scrollHeight + 'px';
-              
-              // Apply global font family to the entire receipt
               clonedElement.style.fontFamily = fontFamily;
+              clonedElement.style.color = '#111827';
               
-              // Fix all elements visibility and colors
+              // Fix all elements
               const allElements = clonedElement.querySelectorAll('*');
               allElements.forEach((el: any) => {
                 if (el.style) {
@@ -122,170 +119,139 @@ const DownloadButton = ({
                   el.style.printColorAdjust = 'exact';
                   el.style.webkitPrintColorAdjust = 'exact';
                   el.style.colorAdjust = 'exact';
-                  // Apply font family to all elements
                   el.style.fontFamily = fontFamily;
                 }
               });
 
-              // ENHANCED HEADER STYLING - Professional Invoice/Receipt Header
-              const headerElements = clonedElement.querySelectorAll('.receipt-header, .invoice-header, [data-receipt-header]');
-              headerElements.forEach((header: any) => {
-                // Ensure gradient background is solid for PDF
-                header.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)';
-                header.style.backgroundColor = '#10b981'; // Fallback
-                header.style.color = '#ffffff';
-                header.style.padding = '24px 32px';
-                header.style.borderRadius = '12px 12px 0 0';
-                header.style.printColorAdjust = 'exact';
-                header.style.webkitPrintColorAdjust = 'exact';
-                header.style.colorAdjust = 'exact';
+              // Company name and main headers
+              const mainHeaders = clonedElement.querySelectorAll('h1, h2, h3');
+              mainHeaders.forEach((header: any) => {
+                if (header.textContent?.includes('RECEIPT') || header.textContent?.includes('INVOICE')) {
+                  header.style.fontSize = '24px';
+                  header.style.fontWeight = '700';
+                  header.style.color = '#111827';
+                } else {
+                  header.style.fontSize = fontSize.header;
+                  header.style.fontWeight = fontWeight.header;
+                  header.style.color = '#374151';
+                }
                 header.style.fontFamily = fontFamily;
-                
-                // Add subtle shadow for depth
-                header.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
+                header.style.lineHeight = '1.2';
               });
 
-              // Header company name/title styling
-              const headerTitles = clonedElement.querySelectorAll('.receipt-header h1, .receipt-header .company-name, .invoice-header h1, .invoice-header .company-name, [data-receipt-header] h1, [data-receipt-header] .company-name');
-              headerTitles.forEach((title: any) => {
-                title.style.color = '#ffffff !important';
-                title.style.fontSize = '18px';
-                title.style.fontWeight = '700';
-                title.style.fontFamily = fontFamily;
-                title.style.textShadow = '0 1px 2px rgba(0, 0, 0, 0.1)';
-                title.style.letterSpacing = '0.5px';
-                title.style.margin = '0 0 4px 0';
-              });
-
-              // Header subtitle/tagline styling
-              const headerSubtitles = clonedElement.querySelectorAll('.receipt-header .tagline, .receipt-header .subtitle, .invoice-header .tagline, .invoice-header .subtitle, [data-receipt-header] .tagline, [data-receipt-header] .subtitle');
-              headerSubtitles.forEach((subtitle: any) => {
-                subtitle.style.color = '#ffffff !important';
-                subtitle.style.fontSize = '14px';
-                subtitle.style.fontWeight = '400';
-                subtitle.style.fontFamily = fontFamily;
-                subtitle.style.margin = '0';
-              });
-
-              // Header contact info styling
-              const headerContact = clonedElement.querySelectorAll('.receipt-header .contact-info, .invoice-header .contact-info, [data-receipt-header] .contact-info');
-              headerContact.forEach((contact: any) => {
-                contact.style.color = '#ffffff !important';
-                contact.style.fontSize = '13px';
-                contact.style.fontWeight = '400';
-                contact.style.fontFamily = fontFamily;
-      
-                contact.style.lineHeight = '1.4';
-              });
-
-              // Invoice/Receipt number and date in header
-              const headerMeta = clonedElement.querySelectorAll('.receipt-header .receipt-number, .receipt-header .receipt-date, .invoice-header .invoice-number, .invoice-header .invoice-date, [data-receipt-header] .receipt-number, [data-receipt-header] .receipt-date');
-              headerMeta.forEach((meta: any) => {
-                meta.style.color = '#ffffff !important';
-                meta.style.fontSize = '16px';
-                meta.style.fontWeight = '600';
-                meta.style.fontFamily = fontFamily;
-                meta.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-                meta.style.padding = '8px 16px';
-                meta.style.borderRadius = '6px';
-                meta.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-              });
-
-              // Force white color on ALL text within header sections
-              const allHeaderText = clonedElement.querySelectorAll('.receipt-header *, .invoice-header *, [data-receipt-header] *');
-              allHeaderText.forEach((textEl: any) => {
-                if (textEl.textContent && textEl.textContent.trim()) {
-                  textEl.style.color = '#ffffff !important';
-                  textEl.style.fontFamily = fontFamily;
-                }
-              });
-
-              // Header elements (h1, h2, h3, company name, etc.) - General styling for non-header sections
-              const generalHeaderElements = clonedElement.querySelectorAll('h1:not(.receipt-header h1):not(.invoice-header h1):not([data-receipt-header] h1), h2, h3, h4, .text-2xl, .text-xl, .text-lg, [class*="font-bold"]:not(.receipt-header [class*="font-bold"]):not(.invoice-header [class*="font-bold"]), [class*="font-semibold"]:not(.receipt-header [class*="font-semibold"]):not(.invoice-header [class*="font-semibold"])');
-              generalHeaderElements.forEach((el: any) => {
-                el.style.fontFamily = fontFamily;
-                el.style.fontSize = fontSize.header;
-                el.style.fontWeight = fontWeight.header;
-                el.style.color = el.style.color || '#1f2937'; // Default dark color for non-header elements
-              });
-
-              // Body text elements
-              const bodyElements = clonedElement.querySelectorAll('p:not(.receipt-header p):not(.invoice-header p):not([data-receipt-header] p), span:not(.receipt-header span):not(.invoice-header span):not([data-receipt-header] span), div:not(.text-center):not(.receipt-header):not(.invoice-header):not([data-receipt-header]), td, th, .text-sm, .text-base');
+              // Body text and paragraphs
+              const bodyElements = clonedElement.querySelectorAll('p, span, div, td');
               bodyElements.forEach((el: any) => {
-                if (!el.classList.contains('text-lg') && !el.classList.contains('text-xl') && !el.classList.contains('text-2xl')) {
-                  el.style.fontFamily = fontFamily;
+                if (!el.closest('h1, h2, h3, h4, h5, h6')) {
                   el.style.fontSize = fontSize.body;
                   el.style.fontWeight = fontWeight.body;
-                  if (!el.closest('.receipt-header') && !el.closest('.invoice-header') && !el.closest('[data-receipt-header]')) {
-                    el.style.color = el.style.color || '#374151';
+                  el.style.fontFamily = fontFamily;
+                  el.style.lineHeight = '1.4';
+                  
+                  // Set appropriate colors based on content
+                  if (el.classList.contains('text-gray-500') || el.classList.contains('text-gray-600')) {
+                    el.style.color = '#6b7280';
+                  } else if (el.classList.contains('text-gray-900')) {
+                    el.style.color = '#111827';
+                  } else if (el.classList.contains('text-green-600')) {
+                    el.style.color = '#059669';
+                  } else if (el.classList.contains('text-red-600')) {
+                    el.style.color = '#dc2626';
+                  } else {
+                    el.style.color = '#374151';
                   }
                 }
               });
 
-              // Additional fix for any remaining text elements (excluding header sections)
-              const allTextElements = clonedElement.querySelectorAll('p:not(.receipt-header p):not(.invoice-header p):not([data-receipt-header] p), span:not(.receipt-header span):not(.invoice-header span):not([data-receipt-header] span), div:not(.receipt-header):not(.invoice-header):not([data-receipt-header]), h1:not(.receipt-header h1):not(.invoice-header h1):not([data-receipt-header] h1), h2, h3, h4, h5, h6');
-              allTextElements.forEach((textEl: any) => {
-                if (textEl.textContent && textEl.textContent.trim()) {
-                  textEl.style.visibility = 'visible';
-                  textEl.style.opacity = '1';
-                  textEl.style.fontFamily = fontFamily;
-                  if (!textEl.closest('.receipt-header') && !textEl.closest('.invoice-header') && !textEl.closest('[data-receipt-header]')) {
-                    textEl.style.color = textEl.style.color || '#1f2937';
-                  }
-                }
-              });
-
-              // Ensure gradients are visible - Enhanced gradient handling
-              const gradientElements = clonedElement.querySelectorAll('[class*="bg-gradient"], [class*="from-emerald"], [class*="to-emerald"], .receipt-header, .invoice-header, [data-receipt-header]');
-              gradientElements.forEach((el: any) => {
-                el.style.background = 'linear-gradient(135deg, #059669 0%, #10b981 50%, #34d399 100%)';
-                el.style.backgroundColor = '#10b981'; // Strong fallback
-                el.style.printColorAdjust = 'exact';
-                el.style.webkitPrintColorAdjust = 'exact';
-                el.style.colorAdjust = 'exact';
-              });
-
-              // Fix background colors for other elements
-              const bgElements = clonedElement.querySelectorAll('[class*="bg-gray"], [class*="bg-white"], [class*="bg-emerald"]:not(.receipt-header):not(.invoice-header):not([data-receipt-header])');
-              bgElements.forEach((el: any) => {
-                if (el.classList.contains('bg-gray-50') || el.classList.contains('bg-gray-100')) {
-                  el.style.backgroundColor = '#f9fafb';
-                } else if (el.classList.contains('bg-white')) {
-                  el.style.backgroundColor = 'white';
-                } else if (el.classList.contains('bg-emerald-50')) {
-                  el.style.backgroundColor = '#ecfdf5';
-                }
-                el.style.printColorAdjust = 'exact';
-                el.style.webkitPrintColorAdjust = 'exact';
-              });
-
-              // Professional table styling if present
+              // Table styling
               const tables = clonedElement.querySelectorAll('table');
               tables.forEach((table: any) => {
-                table.style.borderCollapse = 'collapse';
                 table.style.width = '100%';
+                table.style.borderCollapse = 'collapse';
                 table.style.fontFamily = fontFamily;
-                
+
                 // Table headers
                 const headers = table.querySelectorAll('th');
                 headers.forEach((th: any) => {
-                  th.style.backgroundColor = '#f8fafc';
+                  th.style.backgroundColor = '#f9fafb';
+                  th.style.color = '#6b7280';
+                  th.style.fontSize = '9px';
                   th.style.fontWeight = '600';
-                  th.style.padding = '12px 16px';
-                  th.style.borderBottom = '2px solid #e2e8f0';
-                  th.style.textAlign = 'left';
-                  th.style.color = '#475569';
-                  th.style.fontSize = '14px';
+                  th.style.padding = '8px 12px';
+                  th.style.borderBottom = '1px solid #e5e7eb';
+                  th.style.textTransform = 'uppercase';
+                  th.style.letterSpacing = '0.05em';
                 });
 
                 // Table cells
                 const cells = table.querySelectorAll('td');
                 cells.forEach((td: any) => {
-                  td.style.padding = '10px 16px';
-                  td.style.borderBottom = '1px solid #e2e8f0';
-                  td.style.color = '#64748b';
-                  td.style.fontSize = '14px';
+                  td.style.fontSize = '10px';
+                  td.style.padding = '8px 12px';
+                  td.style.borderBottom = '1px solid #f3f4f6';
+                  td.style.color = '#374151';
+                  
+                  // Bold amounts in last column
+                  if (td.cellIndex === td.parentElement.children.length - 1) {
+                    td.style.fontWeight = '500';
+                    td.style.color = '#111827';
+                  }
                 });
+              });
+
+              // Status badges
+              const badges = clonedElement.querySelectorAll('.bg-green-100, .bg-yellow-100, .bg-red-100');
+              badges.forEach((badge: any) => {
+                badge.style.padding = '4px 8px';
+                badge.style.borderRadius = '9999px';
+                badge.style.fontSize = '8px';
+                badge.style.fontWeight = '500';
+                
+                if (badge.classList.contains('bg-green-100')) {
+                  badge.style.backgroundColor = '#dcfce7';
+                  badge.style.color = '#166534';
+                } else if (badge.classList.contains('bg-yellow-100')) {
+                  badge.style.backgroundColor = '#fef3c7';
+                  badge.style.color = '#92400e';
+                } else if (badge.classList.contains('bg-red-100')) {
+                  badge.style.backgroundColor = '#fee2e2';
+                  badge.style.color = '#991b1b';
+                }
+              });
+
+              // Footer text
+              const footerElements = clonedElement.querySelectorAll('[class*="text-center"] p, .text-sm');
+              footerElements.forEach((el: any) => {
+                if (el.textContent?.includes('Thank you') || 
+                    el.textContent?.includes('generated on') || 
+                    el.textContent?.includes('Powered by')) {
+                  el.style.fontSize = fontSize.footer;
+                  el.style.fontWeight = fontWeight.footer;
+                  el.style.color = '#6b7280';
+                  el.style.fontFamily = fontFamily;
+                }
+              });
+
+              // Ensure proper spacing and borders
+              const borderElements = clonedElement.querySelectorAll('[class*="border"]');
+              borderElements.forEach((el: any) => {
+                if (el.classList.contains('border-gray-200')) {
+                  el.style.borderColor = '#e5e7eb';
+                } else if (el.classList.contains('border-gray-300')) {
+                  el.style.borderColor = '#d1d5db';
+                }
+              });
+
+              // Background colors
+              const bgElements = clonedElement.querySelectorAll('[class*="bg-gray"]');
+              bgElements.forEach((el: any) => {
+                if (el.classList.contains('bg-gray-50')) {
+                  el.style.backgroundColor = '#f9fafb';
+                } else if (el.classList.contains('bg-gray-100')) {
+                  el.style.backgroundColor = '#f3f4f6';
+                }
+                el.style.printColorAdjust = 'exact';
+                el.style.webkitPrintColorAdjust = 'exact';
               });
             }
           }
@@ -294,32 +260,38 @@ const DownloadButton = ({
         // Restore original styles
         Object.assign(receipt.style, originalStyles);
 
-        // Create PDF with enhanced compression for better quality
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdfWidth = 210;
+        // Generate PDF
+        const imgData = canvas.toDataURL('image/jpeg', 0.98);
+        const pdfWidth = 210; // A4 width in mm
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-        const maxPageHeight = 297;
-        const totalPages = Math.ceil(pdfHeight / maxPageHeight);
         
         const pdf = new jsPDF({
           orientation: 'portrait',
           unit: 'mm',
-          format: 'A4',
+          format: 'a4',
           compress: true
         });
 
-        if (totalPages === 1) {
-          const finalHeight = Math.min(pdfHeight, maxPageHeight - 10);
-          pdf.addImage(imgData, 'JPEG', 5, 5, pdfWidth - 10, finalHeight, undefined, 'SLOW');
+        // Add image to PDF with proper margins
+        const margin = 10;
+        const maxWidth = pdfWidth - (margin * 2);
+        const maxHeight = 297 - (margin * 2); // A4 height minus margins
+        
+        if (pdfHeight <= maxHeight) {
+          // Single page
+          pdf.addImage(imgData, 'JPEG', margin, margin, maxWidth, pdfHeight, undefined, 'MEDIUM');
         } else {
+          // Multiple pages
+          const totalPages = Math.ceil(pdfHeight / maxHeight);
+          
           for (let page = 0; page < totalPages; page++) {
             if (page > 0) {
               pdf.addPage();
             }
             
-            const sourceY = (page * (maxPageHeight - 10) * canvas.height) / pdfHeight;
+            const sourceY = (page * maxHeight * canvas.height) / pdfHeight;
             const sourceHeight = Math.min(
-              ((maxPageHeight - 10) * canvas.height) / pdfHeight,
+              (maxHeight * canvas.height) / pdfHeight,
               canvas.height - sourceY
             );
             
@@ -330,19 +302,16 @@ const DownloadButton = ({
             pageCanvas.height = sourceHeight;
             
             if (pageCtx) {
-              pageCtx.imageSmoothingEnabled = true;
-              pageCtx.imageSmoothingQuality = 'high';
-              
               pageCtx.drawImage(
                 canvas,
                 0, sourceY, canvas.width, sourceHeight,
                 0, 0, canvas.width, sourceHeight
               );
               
-              const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.95);
-              const pageHeight = (sourceHeight * (pdfWidth - 10)) / canvas.width;
+              const pageImgData = pageCanvas.toDataURL('image/jpeg', 0.98);
+              const pageHeight = (sourceHeight * maxWidth) / canvas.width;
               
-              pdf.addImage(pageImgData, 'JPEG', 5, 5, pdfWidth - 10, pageHeight, undefined, 'SLOW');
+              pdf.addImage(pageImgData, 'JPEG', margin, margin, maxWidth, pageHeight, undefined, 'MEDIUM');
             }
           }
         }
@@ -379,10 +348,10 @@ const DownloadButton = ({
     <button
       data-download-button
       onClick={handleDownload}
-      className="flex justify-center items-center gap-1 lg:w-[50%] w-full px-3 py-2 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex justify-center items-center gap-2 lg:w-[50%] w-full px-4 py-3 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <Download size={16} />
-      Download
+      Download PDF
     </button>
   );
 };

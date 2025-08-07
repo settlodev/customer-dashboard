@@ -27,6 +27,7 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
         const cookieStore = await cookies();
         const businessCookie = cookieStore.get("currentBusiness");
 
+
         // If cookie exists, try to parse it
         if (businessCookie) {
             try {
