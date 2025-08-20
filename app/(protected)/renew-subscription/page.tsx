@@ -62,8 +62,6 @@ const InvoiceSubscriptionPage = () => {
     subscriptionSubtotal, 
     servicesSubtotal, 
     discountAmount, 
-    subscriptionDiscountAmount, 
-    servicesDiscountAmount, 
     total, 
     subscriptionTotal, 
     servicesTotal,
@@ -128,7 +126,6 @@ const InvoiceSubscriptionPage = () => {
   }, [activeSubscription, subscriptionData]);
 
   
-
   // Watch discount code changes
   const discountCode = useWatch({
     control: form.control,
@@ -162,7 +159,7 @@ const InvoiceSubscriptionPage = () => {
     return 'switch';
   }, [activeSubscription]);
 
-  // Event handlers
+  
   const handlePlanSelection = useCallback((plan: any) => {
     const actionType = getActionType(plan);
     const isDiamond = plan.packageName?.toLowerCase().includes('diamond');
@@ -203,7 +200,6 @@ const InvoiceSubscriptionPage = () => {
   }, [invoiceItems, getActionType, toast]);
   
 
-  // Helper function to check if current selection is Diamond
 const isDiamondSubscriptionSelected = useMemo(() => {
   const selectedSubscription = invoiceItems.find(item => item.type === 'subscription');
   if (!selectedSubscription) return false;
@@ -422,7 +418,7 @@ const addAdditionalService = useCallback((service: any) => {
       const locationQueryParam = locationId ? locationId : undefined;
       const response = await createInvoice(invoicePayload, locationQueryParam);
   
-      console.log("The response while creating invoice", response);
+      
   
       if (response && typeof response === 'object' && 'id' in response && data.email && data.phone) {
         const invoiceId = (response as { id: UUID }).id;

@@ -26,13 +26,10 @@ import { Button } from "@/components/ui/button";
 import WareHouseRegisterForm from "@/components/forms/warehouse/register_form";
 import { refreshWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 import WarehouseSubscriptionModal from "@/components/widgets/warehouse/warehouse-subscription-modal";
-import {
-  createWarehouseInvoice,
-  payWarehouseInvoice,
-  verifyWarehousePayment,
-} from "@/lib/actions/warehouse/subscription";
 import { UUID } from "crypto";
 import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
+import { createInvoice, payInvoice } from "@/lib/actions/invoice-actions";
+import { verifyPayment } from "@/lib/actions/subscriptions";
 
 const LocationList = ({
   locations,
@@ -57,7 +54,7 @@ const LocationList = ({
 
   const { toast } = useToast();
 
-  // Instead of combining, we'll filter based on the selected tab
+  
   const displayedItems = useMemo(() => {
     if (locationType === "warehouse") {
       return warehouses;
@@ -92,7 +89,7 @@ const LocationList = ({
 
           try {
             // console.log("Verification attempt:", attemptCount);
-            const verificationResult = await verifyWarehousePayment(
+            const verificationResult = await verifyPayment(
               transactionId,
               invoice,
             );
@@ -133,28 +130,32 @@ const LocationList = ({
     numberOfMonths: number,
   ) => {
     try {
-      setIsModalOpen(true); // Open modal immediately
+      setIsModalOpen(true); 
       setPaymentStatus("INITIATING");
 
       const invoicePayload = {
         warehouseSubscriptions: [
           {
-            numberOfMonths,
-            subscription: packageId,
+            warehouseId:selectedWarehouse.id,
+            subscriptionDurationType:"MONTHS",
+            subscriptionDurationCount:numberOfMonths,
+            warehouseSubscriptionPackageId: packageId,
           },
         ],
         email,
         phone,
       };
 
-      const response = await createWarehouseInvoice(invoicePayload);
+      console.log("The invoice payload to for warehouse is",invoicePayload)
+
+      const response = await createInvoice(invoicePayload);
 
       if (response && typeof response === "object" && "id" in response) {
         const invoiceId = (response as { id: UUID }).id;
 
         try {
           setPaymentStatus("PENDING");
-          const paymentResponse = await payWarehouseInvoice(
+          const paymentResponse = await payInvoice(
             invoiceId,
             email,
             phone,
@@ -163,7 +164,7 @@ const LocationList = ({
           setPaymentStatus("PROCESSING");
           handlePendingPayment(
             paymentResponse.id,
-            paymentResponse.warehouseInvoice,
+            paymentResponse.invoice,
           );
         } catch (error) {
           console.error("Error paying invoice:", error);
@@ -174,7 +175,6 @@ const LocationList = ({
         }
       }
 
-      // Remove the success toast and warehouse selection from here
       setShowSubscriptionModal(false);
       setSelectedWarehouse(null);
     } catch (error: any) {

@@ -72,27 +72,36 @@ export const createInvoice = async (
     let formResponse: FormResponse | null = null;
     let location;
     
-    if (locationQueryParam) {
-        location = { id: locationQueryParam };
-    } else {
-        location = await getCurrentLocation();
-    }
+    // ✅ Only get location if we have location-based subscriptions
+    const hasLocationSubscriptions = invoice.locationSubscriptions && invoice.locationSubscriptions.length > 0;
+    const hasLocationAddons = invoice.locationAddons && invoice.locationAddons.length > 0;
+    const hasFreeStandingAddons = invoice.locationFreeStandingAddonSubscriptions && invoice.locationFreeStandingAddonSubscriptions.length > 0;
+    const hasWarehouseSubscriptions = invoice.warehouseSubscriptions && invoice.warehouseSubscriptions.length > 0;
+    
+    if (hasLocationSubscriptions || hasLocationAddons || hasFreeStandingAddons) {
+        if (locationQueryParam) {
+            location = { id: locationQueryParam };
+        } else {
+            location = await getCurrentLocation();
+        }
 
-    if (!location?.id) {
-        formResponse = {
-            responseType: "error",
-            message: "Location ID is required to create an invoice",
-            error: new Error("Missing location ID"),
-        };
-        return parseStringify(formResponse);
+        if (!location?.id) {
+            formResponse = {
+                responseType: "error",
+                message: "Location ID is required for location-based subscriptions",
+                error: new Error("Missing location ID"),
+            };
+            return parseStringify(formResponse);
+        }
     }
 
     const invoiceWithLocationIds = { ...invoice };
 
+    // ✅ Add location IDs only if we have location subscriptions
     if (invoice.locationSubscriptions && invoice.locationSubscriptions.length > 0) {
         invoiceWithLocationIds.locationSubscriptions = invoice.locationSubscriptions.map(sub => ({
             ...sub,
-            locationId: location.id 
+            locationId: location!.id 
         }));
     }
 
@@ -100,9 +109,15 @@ export const createInvoice = async (
         invoiceWithLocationIds.locationFreeStandingAddonSubscriptions = invoice.locationFreeStandingAddonSubscriptions;
     }
 
+    // ✅ Keep warehouse subscriptions as-is (they already have warehouseId)
+    if (invoice.warehouseSubscriptions) {
+        invoiceWithLocationIds.warehouseSubscriptions = invoice.warehouseSubscriptions;
+    }
+
     const validatedInvoiceData = InvoiceSchema.safeParse(invoiceWithLocationIds);
 
     if (!validatedInvoiceData.success) {
+        console.error("Schema validation error:", validatedInvoiceData.error);
         formResponse = {
             responseType: "error",
             message: "Please fill in all the fields marked with * before proceeding",
@@ -111,12 +126,8 @@ export const createInvoice = async (
         return parseStringify(formResponse);
     }
 
- 
-    const hasSubscriptions = validatedInvoiceData.data.locationSubscriptions && validatedInvoiceData.data.locationSubscriptions.length > 0;
-    const hasAddons = validatedInvoiceData.data.locationAddons && validatedInvoiceData.data.locationAddons.length > 0;
-    const hasFreeStandingAddons = validatedInvoiceData.data.locationFreeStandingAddonSubscriptions && validatedInvoiceData.data.locationFreeStandingAddonSubscriptions.length > 0;
-
-    if (!hasSubscriptions && !hasAddons && !hasFreeStandingAddons) {
+    // ✅ Updated validation to include warehouse subscriptions
+    if (!hasLocationSubscriptions && !hasLocationAddons && !hasFreeStandingAddons && !hasWarehouseSubscriptions) {
         formResponse = {
             responseType: "error",
             message: "Invoice must contain at least one subscription or addon item",
@@ -127,19 +138,24 @@ export const createInvoice = async (
 
     const business = await getCurrentBusiness();
     
-   
+    // ✅ Build payload including warehouse subscriptions
     const payload: any = {};
     
-    if (hasSubscriptions) {
+    if (hasLocationSubscriptions) {
         payload.locationSubscriptions = validatedInvoiceData.data.locationSubscriptions;
     }
     
-    if (hasAddons) {
+    if (hasLocationAddons) {
         payload.locationAddons = validatedInvoiceData.data.locationAddons;
     }
     
     if (hasFreeStandingAddons) {
         payload.locationFreeStandingAddonSubscriptions = validatedInvoiceData.data.locationFreeStandingAddonSubscriptions;
+    }
+
+    // ✅ Add warehouse subscriptions to payload
+    if (hasWarehouseSubscriptions) {
+        payload.warehouseSubscriptions = validatedInvoiceData.data.warehouseSubscriptions;
     }
 
     if (validatedInvoiceData.data.email) {
@@ -158,7 +174,7 @@ export const createInvoice = async (
         payload.discountAmount = validatedInvoiceData.data.discountAmount;
     }
 
-    // console.log("The payload for creating invoice is", payload);
+    console.log("The payload for creating invoice is", payload);
 
     try {
         const apiClient = new ApiClient();
@@ -168,17 +184,20 @@ export const createInvoice = async (
             payload
         );
 
+        console.log("Invoice creation response:", response);
         return parseStringify(response);
        
     } catch (error: unknown) {
-        console.log("The error while creating invoice", error);
+        console.error("The error while creating invoice", error);
         formResponse = {
             responseType: "error",
             message: "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
+        return parseStringify(formResponse);
     }
 
+    // This line should never be reached, but keeping for safety
     revalidatePath("/invoices");
 };
 
