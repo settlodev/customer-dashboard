@@ -5,8 +5,8 @@ import { StockIntake } from "@/types/stock-intake/type";
 import StockIntakeDetails from "@/components/widgets/stock-intake-details";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Loading from "@/app/(protected)/loading";
 import { getStockIntakeFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
+import Loading from "@/app/loading";
 
 type Params = Promise<{
     id: string;
@@ -51,7 +51,7 @@ export default function StockIntakePage({ params }: { params: Params }) {
     if (loading) {
         return <div>
             <Loading/>
-        </div>; // Optional loading state
+        </div>; 
     }
 
     return (

@@ -67,8 +67,8 @@ export const searchStockIntakes = async (
             ],
             sorts:[
                 {
-                    key:"orderDate",
-                    direction:"ASC"
+                    key:"dateCreated",
+                    direction:"DESC"
                 }
             ],
             page:page ? page - 1:0,

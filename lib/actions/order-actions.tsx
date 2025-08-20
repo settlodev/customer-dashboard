@@ -18,7 +18,7 @@ export const fetchOrders = async () : Promise<Orders[]> => {
         const apiClient = new ApiClient();
 
         const ordersData= await  apiClient.get(
-           `/api/orders/${location?.id}`,
+           `/api/orders/${location?.id}?dashboard=true`,
         );
        
         return parseStringify(ordersData);
@@ -100,6 +100,7 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
         const order = await apiClient.get(
             `/api/order-receipts/${identifier}`
         );
+        
         return parseStringify(order)
 
     } catch (error) {

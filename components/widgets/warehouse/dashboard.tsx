@@ -5,8 +5,8 @@ import React, { useState } from 'react'
 import WarehouseStockReport from './stock-report'
 import UnimplementedTabContent from './helper'
 import StockRequestReport from './stock-request-report'
-import Loading from '@/app/(protected)/loading'
 import SupplierCreditReport from './supplier-credit-report'
+import Loading from '@/app/loading'
 
 export interface StockHistory {
   totalStockIntakes: number

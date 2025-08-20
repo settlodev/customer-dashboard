@@ -59,9 +59,9 @@ const ExpenseCard = ({isNewItem, item}: {
 }) => (
     <Card>
         <CardHeader>
-            <CardTitle>{isNewItem ? "Add expense" : "Edit expense details"}</CardTitle>
+            <CardTitle>{isNewItem ? "Record New expense" : "Update Expense"}</CardTitle>
             <CardDescription>
-                {isNewItem ? "Add expense to your business" : "Edit expense details"}
+                {isNewItem ? "Fill in the details to record a new expense" :  "Modify the expense details below"}
             </CardDescription>
         </CardHeader>
         <CardContent>

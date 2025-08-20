@@ -31,13 +31,14 @@ import { StockRequestSchema } from "@/types/stock-request/schema";
 import { createStockRequest, updateStockRequest } from "@/lib/actions/request-actions";
 import WarehouseSelector from "../widgets/warehouse-selector";
 import WarehouseStockVariantSelector from "../widgets/warehouse-stock-variant-selector";
-import { Package, Plus, ShoppingCart, Trash2 } from "lucide-react";
+import { Package, Plus,Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 
 function StockRequestForm({ item }: { item: StockRequests | null | undefined }) {
+
+
     const [isPending, startTransition] = useTransition();
     const [error] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
@@ -45,7 +46,9 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
     const [, setResponse] = useState<FormResponse | undefined>();
     const { toast } = useToast();
     const router = useRouter();
-    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>(
+        item?.toWarehouse || ""
+    );
 
     const searchParams = useSearchParams();
     const stockVariantId = searchParams.get('stockItem');
@@ -53,14 +56,28 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
     const form = useForm<z.infer<typeof StockRequestSchema>>({
         resolver: zodResolver(StockRequestSchema),
         defaultValues: {
-            ...item,
-            status: true,
-            stockRequested: stockVariantId 
-                ? [{ warehouseStockVariant: stockVariantId, quantity: 1 }]
-                : [{ warehouseStockVariant: "", quantity: 1 }]
+            // Handle existing item (edit mode)
+            ...(item ? {
+                fromLocation: item.fromLocation,
+                toWarehouse: item.toWarehouse,
+                locationStaffRequested: item.locationStaffRequested,
+                comment: item.comment || "",
+                status: true,
+                stockRequested: [
+                    {
+                        warehouseStockVariant: item.warehouseStockVariant,
+                        quantity: item.quantity
+                    }
+                ]
+            } : {
+                // Handle new item (create mode)
+                status: true,
+                stockRequested: stockVariantId 
+                    ? [{ warehouseStockVariant: stockVariantId, quantity: 1 }]
+                    : [{ warehouseStockVariant: "", quantity: 1 }]
+            })
         },
     });
-
     
     useEffect(() => {
         const getData = async () => {
@@ -122,6 +139,7 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
     );
 
     const submitData = (values: z.infer<typeof StockRequestSchema>) => {
+        console.log("The values are",values)
         startTransition(() => {
             if (item) {
                 updateStockRequest(item.id, values)

@@ -147,6 +147,8 @@ export const updateRole = async (
             location: location?.id
         }
 
+        console.log("The payload passed is",payload)
+
         await apiClient.put(
             `/api/roles/${location?.id}/${id}`,
             payload,
@@ -157,6 +159,7 @@ export const updateRole = async (
             message: "Role updated successfully",
         }
     } catch (error: unknown) {
+        console.log("Error occuring during updating role ",error)
         formResponse = {
             responseType: "error",
             message:

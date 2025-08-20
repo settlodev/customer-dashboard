@@ -22,7 +22,7 @@ import {
     PaginationNext,
     PaginationPrevious,
 } from "@/components/ui/pagination"
-import Loading from '../../loading';
+import Loading from '@/app/loading';
 
 const ITEMS_PER_PAGE = 5;
 const VISIBLE_PAGES = 5;

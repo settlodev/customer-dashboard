@@ -88,7 +88,7 @@ export const columns: ColumnDef<StockRequests>[] = [
     header: "Requested Date",
     cell:(row)=>{
       const date = new Date(row.getValue() as string)
-      return date.toLocaleDateString()
+      return date.toLocaleString()
     }
   },
   {
@@ -99,7 +99,7 @@ export const columns: ColumnDef<StockRequests>[] = [
       const dateValue = row.getValue() as string;
       if (!dateValue) return "-";
       
-      const formatted = new Date(dateValue).toLocaleDateString();
+      const formatted = new Date(dateValue).toLocaleString();
       return formatted === "Invalid Date" ? "-" : formatted;
     }
   },
@@ -111,7 +111,7 @@ export const columns: ColumnDef<StockRequests>[] = [
       const dateValue = row.getValue() as string;
       if (!dateValue) return "-";
       
-      const formatted = new Date(dateValue).toLocaleDateString();
+      const formatted = new Date(dateValue).toLocaleString();
       return formatted === "Invalid Date" ? "-" : formatted;
     }
   },

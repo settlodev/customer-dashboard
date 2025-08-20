@@ -4,6 +4,7 @@ import {
     Card,
     CardContent,
 } from "@/components/ui/card";
+import { Menu, X } from "lucide-react";
 
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { LocationSettings } from "@/types/locationSettings/type";
@@ -13,6 +14,7 @@ import { settingsNavItems } from '@/types/constants';
 import PreferenceSettings from '@/components/settings/preference';
 import { fetchLocationSettings } from '@/lib/actions/settings-actions';
 import Loading from '@/app/loading';
+import EFDSettings from '@/components/settings/efd';
 
 export default function SettingsPage() {
     const [locationSettings, setLocationSettings] = useState<LocationSettings | null>(null);
@@ -25,7 +27,6 @@ export default function SettingsPage() {
                 setIsLoading(true);
                 setError(null);
                 const settings = await fetchLocationSettings();
-                // console.log("Settings are:", settings);
                 setLocationSettings(settings);
             } catch (error) {
                 console.error("Failed to load settings:", error);
@@ -40,7 +41,7 @@ export default function SettingsPage() {
 
     if (isLoading) {
         return (
-            <div>
+            <div className="min-h-screen flex items-center justify-center">
                 <Loading />
             </div>
         );
@@ -49,8 +50,8 @@ export default function SettingsPage() {
     if (error) {
         return (
             <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-                <div className="flex items-center justify-center h-64">
-                    <Card className="w-full max-w-md">
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <Card className="w-full max-w-md mx-4">
                         <CardContent className="p-6 text-center">
                             <div className="text-red-500 mb-2">
                                 <svg className="w-8 h-8 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -79,9 +80,9 @@ export default function SettingsPage() {
     );
 }
 
-
 const SettingsLayout = ({ locationSettings }: { locationSettings: LocationSettings | null }) => {
     const [activeTab, setActiveTab] = useState('preferences');
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     const breadcrumbItems = [
         { title: "Settings", link: "/settings" },
@@ -93,30 +94,86 @@ const SettingsLayout = ({ locationSettings }: { locationSettings: LocationSettin
                 return <PreferenceSettings locationSettings={locationSettings} />;
             case 'notifications':
                 return <NotificationsSettings />;
+            case 'Efd':
+                return <EFDSettings/>;  
             default:
-                return <PreferenceSettings locationSettings={locationSettings} />;
+                return <EFDSettings/>; 
         }
     };
 
+    const handleTabChange = (tabId: string) => {
+        setActiveTab(tabId);
+        setIsMobileMenuOpen(false); // Close mobile menu when tab is selected
+    };
+
+    // Get current tab label for mobile display
+    const currentTabLabel = settingsNavItems.find(item => item.id === activeTab)?.label || 'Settings';
+
     return (
-        <div className="mt-12 space-y-4">
+        <div className="mt-4 md:mt-12 space-y-4">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <BreadcrumbsNav items={breadcrumbItems} />
+                <div className="flex-1 min-w-0">
+                    <div className="hidden sm:block">
+                        <BreadcrumbsNav items={breadcrumbItems} />
+                    </div>
                     <div className="mt-2">
-                        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-                        <p className="text-muted-foreground mt-1">
+                        <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
+                        <p className="text-muted-foreground mt-1 text-sm md:text-base">
                             Customize to match your workflows
                         </p>
                     </div>
                 </div>
             </div>
 
+            {/* Mobile Tab Selector */}
+            <div className="lg:hidden">
+                <button
+                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                    className="w-full flex items-center justify-between px-4 py-3 bg-white border border-gray-200 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    aria-expanded={isMobileMenuOpen}
+                    aria-haspopup="true"
+                >
+                    <span className="font-medium text-gray-900">{currentTabLabel}</span>
+                    {isMobileMenuOpen ? (
+                        <X className="h-5 w-5 text-gray-400" />
+                    ) : (
+                        <Menu className="h-5 w-5 text-gray-400" />
+                    )}
+                </button>
+
+                {/* Mobile Navigation Menu */}
+                {isMobileMenuOpen && (
+                    <div className="absolute z-50 w-full left-0 right-0 mx-4 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg">
+                        <nav className="py-2" role="navigation" aria-label="Settings navigation">
+                            {settingsNavItems.map((item) => {
+                                const Icon = item.icon;
+                                const isActive = activeTab === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => handleTabChange(item.id)}
+                                        className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors focus:outline-none focus:bg-gray-50 ${
+                                            isActive
+                                                ? 'bg-emerald-50 text-emerald-700 border-r-2 border-emerald-600'
+                                                : 'hover:bg-gray-50 text-gray-700'
+                                        }`}
+                                        aria-current={isActive ? 'page' : undefined}
+                                    >
+                                        <Icon className="h-5 w-5 flex-shrink-0" />
+                                        <span className="font-medium">{item.label}</span>
+                                    </button>
+                                );
+                            })}
+                        </nav>
+                    </div>
+                )}
+            </div>
+
             {/* Main Content */}
-            <div className="flex gap-8">
-                {/* Sidebar Navigation */}
-                <nav className="w-64 space-y-2" role="navigation" aria-label="Settings navigation">
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-8">
+                {/* Desktop Sidebar Navigation */}
+                <nav className="hidden lg:block lg:w-64 space-y-2" role="navigation" aria-label="Settings navigation">
                     {settingsNavItems.map((item) => {
                         const Icon = item.icon;
                         const isActive = activeTab === item.id;
@@ -139,10 +196,21 @@ const SettingsLayout = ({ locationSettings }: { locationSettings: LocationSettin
                 </nav>
 
                 {/* Content Area */}
-                <main className="flex-1" role="main">
-                    {renderContent()}
+                <main className="flex-1 min-w-0" role="main">
+                    <div className="w-full">
+                        {renderContent()}
+                    </div>
                 </main>
             </div>
+
+            {/* Overlay for mobile menu */}
+            {isMobileMenuOpen && (
+                <div 
+                    className="fixed inset-0 bg-black bg-opacity-25 z-40 lg:hidden" 
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
         </div>
     );
 };

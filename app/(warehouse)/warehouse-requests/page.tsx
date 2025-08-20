@@ -141,6 +141,13 @@ export default async function Page({ searchParams }: Params) {
                             pageNo={page}
                             searchKey=""
                             total={total}
+                            filterKey="warehouseStockRequestStatus"
+                            filterOptions={[
+                            { label: "All", value: "" },
+                            { label: "Pending", value: "PENDING" },
+                            { label: "Approved", value: "APPROVED" },
+                            { label: "Cancelled", value: "CANCELLED" },
+                            ]}
                         />
                     </CardContent>
                 </Card>

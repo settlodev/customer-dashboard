@@ -9,6 +9,7 @@ export interface StockRequests{
     id:UUID
     comment:string
     stockRequested:StockRequestItem[]
+    quantity:number
     fromLocation:UUID
     fromLocationName:string
     toWarehouse:UUID

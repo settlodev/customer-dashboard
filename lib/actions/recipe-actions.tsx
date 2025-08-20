@@ -176,6 +176,7 @@ export const getRecipe= async (id:UUID) : Promise<ApiResponse<Recipe>> => {
         query,
     );
 
+    
     return parseStringify(recipe)
 }
 

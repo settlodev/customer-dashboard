@@ -60,6 +60,7 @@ const pageSpecificComponents = {
     importComponent: <ProductCSVDialog />,
     exportComponent: <TableExport filename="products-csv"/>,
     entityNames: { singular: "Product", plural: "Products" },
+    allowArchive: true, 
     isWarehouse: false
   },
   "/stock-variants": {
@@ -70,6 +71,7 @@ const pageSpecificComponents = {
     </>,
     exportComponent: <StockExport filename="stock"/>,
     entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
+    allowArchive: true,
     isWarehouse: false
   },
   "/stock-intakes": {
@@ -77,6 +79,7 @@ const pageSpecificComponents = {
     importComponent: <CSVStockIntakeDialog/>,
     exportComponent: <StockIntakeExport filename="Stock Intake"/>,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
+    allowArchive: true,
     isWarehouse: false
   },
   "/staff": {
@@ -282,12 +285,12 @@ export function DataTable<TData, TValue>({
     (row) => (row.original as any).id
   );
 
-  // Get page-specific components and settings
   const pageConfig = pageSpecificComponents[pathname as keyof typeof pageSpecificComponents] || {
     entityType: "product" as const,
     importComponent: null,
     exportComponent: null,
     entityNames: { singular: "Item", plural: "Items" },
+    allowArchive: false,
     isWarehouse: false
   };
 

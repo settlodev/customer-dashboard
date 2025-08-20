@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "tz.co.settlo",
+      "sha256_cert_fingerprints": [
+        "48:F9:2B:04:E1:89:97:CA:D9:60:02:ED:3E:26:A7:32:84:C3:74:7B:CB:81:3D:DF:84:E5:27:DE:B7:4C:8F:E8"
+      ]
+    }
+  }
+]

@@ -1,5 +1,6 @@
+
 'use client'
-import { useState} from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   CalendarDays,
@@ -9,7 +10,6 @@ import {
   ShoppingCart,
   User
 } from "lucide-react";
-
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +21,6 @@ import SubmitButton from '@/components/widgets/submit-button';
 import { cn } from "@/lib/utils";
 import { ItemRefunds, RefundReport } from "@/types/refunds/type";
 import { GetRefundReport } from "@/lib/actions/refund-actions";
-
 
 interface DatePickerProps {
   value: Date;
@@ -44,17 +43,31 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
+// Helper function to get today's date range
+const getTodayDateRange = () => {
+  const now = new Date();
+  const startOfDay = new Date(now);
+  startOfDay.setHours(0, 0, 0, 0);
+  
+  const endOfDay = new Date(now);
+  endOfDay.setHours(23, 59, 59, 999);
+  
+  return { startOfDay, endOfDay };
+};
+
 export default function RefundReportPage() {
   // State management
   const [refunds, setRefunds] = useState<RefundReport>();
   const [loading, setLoading] = useState(false);
-  const [formValues, setFormValues] = useState<FormValues>({
-    startDate: (() => {
-      const now = new Date();
-      now.setHours(0, 0, 0, 1);
-      return now;
-    })(),
-    endDate: new Date()
+  const [initialLoad, setInitialLoad] = useState(true);
+  
+  // Initialize with today's date range
+  const [formValues, setFormValues] = useState<FormValues>(() => {
+    const { startOfDay, endOfDay } = getTodayDateRange();
+    return {
+      startDate: startOfDay,
+      endDate: endOfDay
+    };
   });
 
   // Form validation state
@@ -64,6 +77,29 @@ export default function RefundReportPage() {
     general?: string;
   }>({});
 
+  // Auto-fetch today's report on component mount
+  useEffect(() => {
+    const fetchTodayReport = async () => {
+      setLoading(true);
+      try {
+        const { startOfDay, endOfDay } = getTodayDateRange();
+        const data = await GetRefundReport(startOfDay.toISOString(), endOfDay.toISOString());
+        setRefunds(data);
+      } catch (error) {
+        console.error("Error fetching today's refund report:", error);
+        toast({
+          variant: "destructive",
+          title: "Error loading today's report",
+          description: "There was a problem fetching today's report data. Please try filtering manually.",
+        });
+      } finally {
+        setLoading(false);
+        setInitialLoad(false);
+      }
+    };
+
+    fetchTodayReport();
+  }, []); // Empty dependency array means this runs once on mount
 
   const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
     function handleDateSelect(date: Date | undefined) {
@@ -168,7 +204,6 @@ export default function RefundReportPage() {
     }
   };
 
-
   const validateForm = (): boolean => {
     const errors: {
       startDate?: string;
@@ -192,7 +227,6 @@ export default function RefundReportPage() {
     return Object.keys(errors).length === 0;
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -214,16 +248,24 @@ export default function RefundReportPage() {
     }
   };
 
+  // Helper function to check if we're showing today's data
+  const isShowingTodayData = () => {
+    const { startOfDay, endOfDay } = getTodayDateRange();
+    return formValues.startDate.getTime() === startOfDay.getTime() && 
+           formValues.endDate.getTime() === endOfDay.getTime();
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-7xl">
       <Card className="w-full mt-16">
         <CardHeader className="border-b pb-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-
-          <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Refund Report</h1>
-                    
-                </div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Refund Report</h1>
+              {!initialLoad && isShowingTodayData() && (
+                <p className="text-sm text-gray-600 mt-1">Showing today&apos;s data</p>
+              )}
+            </div>
             <div className="w-full md:w-auto">
               <form onSubmit={handleSubmit}>
                 <div className="flex flex-col gap-4 md:flex-row md:items-end md:gap-3">
@@ -251,11 +293,10 @@ export default function RefundReportPage() {
 
                   <div className="w-full md:w-auto">
                     <SubmitButton
-                      isPending={loading}
+                      isPending={loading && !initialLoad}
                       label="Filter"
                       margin={6}
                       className="w-full md:w-auto"
-
                     />
                   </div>
                 </div>
@@ -293,7 +334,6 @@ export default function RefundReportPage() {
                     <p className="text-xl font-semibold">{formatCurrency(refunds.totalReturnedCost)}</p>
                   </div>
                 </div>
-
               </div>
             </>
           )}
@@ -307,7 +347,9 @@ export default function RefundReportPage() {
             <div className="flex justify-center items-center h-20">
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500"></div>
             </div>
-            <p className="mt-4 text-lg font-medium">Loading report data...</p>
+            <p className="mt-4 text-lg font-medium">
+              {initialLoad ? "Loading today's report..." : "Loading report data..."}
+            </p>
           </CardContent>
         </Card>
       )}
@@ -331,16 +373,11 @@ export default function RefundReportPage() {
                         <div className="flex items-start gap-3">
                           <div>
                             <h3 className="font-semibold text-lg">{item.orderItemName}</h3>
-                            {/* <p className="text-sm text-slate-500">{item.variantName}</p> */}
-                            <div className="flex items-center mt-1">
-                              {/* <p className="bg-slate-100 text-slate-700 p-1 rounded">{item.staffName}</p> */}
-                            </div>
                           </div>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mt-3 md:mt-0">
-
                         <div className="flex flex-col items-center p-2 bg-slate-50 rounded-md">
                           <PackageIcon className="h-4 w-4 text-blue-500 mb-1" aria-hidden="true" />
                           <p className="text-xs text-slate-500">Quantity</p>
@@ -378,7 +415,6 @@ export default function RefundReportPage() {
                         <User className="h-3 w-3 mr-1" aria-hidden="true" />
                         <span>Refunded by: {item.staffName || "Staff"}</span>
                       </div>
-
                     </div>
                   </div>
                 ))}
@@ -393,8 +429,15 @@ export default function RefundReportPage() {
         <Card className="shadow-md mt-6">
           <CardContent className="p-6 text-center">
             <PackageIcon className="mx-auto h-12 w-12 text-slate-300" aria-hidden="true" />
-            <p className="mt-4 text-lg font-medium">No items refunded in this date range</p>
-            <p className="text-sm text-slate-500 mt-2">Try selecting a different date range </p>
+            <p className="mt-4 text-lg font-medium">
+              {isShowingTodayData() ? "No refunds today" : "No items refunded in this date range"}
+            </p>
+            <p className="text-sm text-slate-500 mt-2">
+              {isShowingTodayData() 
+                ? "No refunds have been processed today yet." 
+                : "Try selecting a different date range"
+              }
+            </p>
           </CardContent>
         </Card>
       )}

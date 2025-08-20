@@ -66,7 +66,7 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
         setResponse(undefined);
 
         if (privileges.length > 0) {
-            values.privilegeActionsIds = _.compact(privileges);
+            values.warehousePrivilegeActionIds = _.compact(privileges);
             console.log("Submitting values:", values);
 
             startTransition(() => {
