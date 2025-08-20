@@ -72,7 +72,7 @@ export const createInvoice = async (
     let formResponse: FormResponse | null = null;
     let location;
     
-    // ✅ Only get location if we have location-based subscriptions
+    
     const hasLocationSubscriptions = invoice.locationSubscriptions && invoice.locationSubscriptions.length > 0;
     const hasLocationAddons = invoice.locationAddons && invoice.locationAddons.length > 0;
     const hasFreeStandingAddons = invoice.locationFreeStandingAddonSubscriptions && invoice.locationFreeStandingAddonSubscriptions.length > 0;
@@ -97,7 +97,7 @@ export const createInvoice = async (
 
     const invoiceWithLocationIds = { ...invoice };
 
-    // ✅ Add location IDs only if we have location subscriptions
+    
     if (invoice.locationSubscriptions && invoice.locationSubscriptions.length > 0) {
         invoiceWithLocationIds.locationSubscriptions = invoice.locationSubscriptions.map(sub => ({
             ...sub,
@@ -109,7 +109,7 @@ export const createInvoice = async (
         invoiceWithLocationIds.locationFreeStandingAddonSubscriptions = invoice.locationFreeStandingAddonSubscriptions;
     }
 
-    // ✅ Keep warehouse subscriptions as-is (they already have warehouseId)
+    
     if (invoice.warehouseSubscriptions) {
         invoiceWithLocationIds.warehouseSubscriptions = invoice.warehouseSubscriptions;
     }
@@ -126,7 +126,7 @@ export const createInvoice = async (
         return parseStringify(formResponse);
     }
 
-    // ✅ Updated validation to include warehouse subscriptions
+   
     if (!hasLocationSubscriptions && !hasLocationAddons && !hasFreeStandingAddons && !hasWarehouseSubscriptions) {
         formResponse = {
             responseType: "error",
@@ -138,7 +138,7 @@ export const createInvoice = async (
 
     const business = await getCurrentBusiness();
     
-    // ✅ Build payload including warehouse subscriptions
+    
     const payload: any = {};
     
     if (hasLocationSubscriptions) {
@@ -153,7 +153,7 @@ export const createInvoice = async (
         payload.locationFreeStandingAddonSubscriptions = validatedInvoiceData.data.locationFreeStandingAddonSubscriptions;
     }
 
-    // ✅ Add warehouse subscriptions to payload
+    
     if (hasWarehouseSubscriptions) {
         payload.warehouseSubscriptions = validatedInvoiceData.data.warehouseSubscriptions;
     }
@@ -197,7 +197,7 @@ export const createInvoice = async (
         return parseStringify(formResponse);
     }
 
-    // This line should never be reached, but keeping for safety
+   
     revalidatePath("/invoices");
 };
 
