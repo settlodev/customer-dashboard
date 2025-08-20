@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Search, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { FileText, Search, Calendar, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react';
 import { searchInvoices } from '@/lib/actions/invoice-actions';
 
 import { useToast } from '@/hooks/use-toast';
@@ -69,7 +69,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PAID': return 'bg-green-100 text-green-800 hover:bg-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+      case 'NOT_PAID': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
       case 'FAILED': return 'bg-red-100 text-red-800 hover:bg-red-200';
       case 'overdue': return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
       default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
@@ -84,24 +84,6 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
     });
   };
 
-  const getInvoiceDescription = (invoice: Invoice) => {
-    if (invoice.locationSubscriptions?.length > 0) {
-      const subscriptionNames = invoice.locationSubscriptions
-        .map(sub => sub.subscriptionPackageName)
-        .join(', ');
-      return `Subscription: ${subscriptionNames}`;
-    }
-    return 'Invoice';
-  };
-
-  const getInvoiceItems = (invoice: Invoice) => {
-    if (invoice.locationSubscriptions?.length > 0) {
-      return invoice.locationSubscriptions.map(sub => 
-        `${sub.subscriptionPackageName} (${sub.numberOfMonths} month${sub.numberOfMonths > 1 ? 's' : ''})`
-      );
-    }
-    return ['No items'];
-  };
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
@@ -154,10 +136,9 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold text-sm">Invoice ID</th>
                     <th className="px-4 py-3 text-left font-semibold text-sm">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold text-sm">Description</th>
                     <th className="px-4 py-3 text-left font-semibold text-sm">Amount</th>
                     <th className="px-4 py-3 text-left font-semibold text-sm">Status</th>
-                    <th className="px-4 py-3 text-left font-semibold text-sm">Location</th>
+                    {/* <th className="px-4 py-3 text-left font-semibold text-sm">Actions</th> */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -180,27 +161,30 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
                             {formatDate(invoice.dateCreated)}
                           </div>
                         </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-medium">{getInvoiceDescription(invoice)}</p>
-                            <p className="text-xs text-gray-500">
-                              {getInvoiceItems(invoice).join(', ')}
-                            </p>
-                          </div>
-                        </td>
                         <td className="px-4 py-4 font-semibold">
                           TZS {invoice.totalAmount.toLocaleString()}
                         </td>
                         <td className="px-4 py-4">
                           <span 
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.locationInvoiceStatus)}`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.paymentStatus)}`}
                           >
-                            {invoice.locationInvoiceStatus}
+                            {invoice.paymentStatus}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm">{invoice.locationName || 'N/A'}</span>
-                        </td>
+                        {/* <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              // onClick={() => handleViewInvoice(invoice)}
+                              
+                              className="h-8 w-8 p-0"
+                            >
+                              <Eye size={14} />
+                            </Button>
+                            
+                          </div>
+                        </td> */}
                       </tr>
                     ))
                   )}
