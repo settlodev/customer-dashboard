@@ -12,6 +12,8 @@ export declare interface Invoice  {
     isArchived: boolean;
     locationInvoiceStatus: invoiceStatus;
     locationSubscriptions:locationSubscriptions[];
+    warehouseSubscriptions:warehouseSubscriptions[];
+    locationFreeStandingAddonSubscriptions:locationFreeStandingAddonSubscriptions[]
     dateCreated: string;
     locationName:string
 }
@@ -22,8 +24,28 @@ declare interface locationSubscriptions {
     amountPerSubscription: number;
     totalSubscriptionAmount: number;
     subscription:UUID;
+    locationSubscriptionPackage:UUID;
     subscriptionPackageName:string;
     invoice:UUID
+}
+declare interface warehouseSubscriptions {
+    id: UUID;
+    startDate: string;
+    endDate:string;
+    active:boolean;
+    istrial:boolean;
+    subscriptionStatus:string    
+}
+
+declare interface locationFreeStandingAddonSubscriptions {
+    targetedLocationSubscriptionId:string;
+    targetedLocationSubscriptionStartDate:string;
+    targetedLocationSubscriptionEndDate:string;
+    targetedLocationSubscriptionSubscriptionPackageId:string;
+    targetedLocationSubscriptionSubscriptionPackageName:string;
+    subscriptionAddonId:string;
+    targetedLocationSubscriptionLocationId:string;
+    targetedLocationSubscriptionLocationName:string;   
 }
 
 export interface InvoiceItem {

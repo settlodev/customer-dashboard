@@ -1,5 +1,5 @@
-// components/billing/BillingHistoryTable.tsx
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -26,7 +27,8 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
   
   const { toast } = useToast();
 
-  const fetchInvoices = async (page: number = 1, search: string = '') => {
+  // Memoize the fetch function to prevent unnecessary re-renders
+  const fetchInvoices = useCallback(async (page: number = 1, search: string = '') => {
     setLoading(true);
     try {
       const response = await searchInvoices(search, page, itemsPerPage, locationId);
@@ -43,29 +45,26 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
     } finally {
       setLoading(false);
     }
-  };
+  }, [locationId, itemsPerPage, toast]); 
 
-  // Initial load
-  useEffect(() => {
-    fetchInvoices(1, searchTerm);
-  }, [searchTerm, fetchInvoices]);
 
-  // Search effect with debounce
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      setCurrentPage(1);
-      fetchInvoices(1, searchTerm);
+      setDebouncedSearchTerm(searchTerm);
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, fetchInvoices]);
+  }, [searchTerm]);
 
-  // Page change effect
+  
   useEffect(() => {
-    if (currentPage > 1) {
-      fetchInvoices(currentPage, searchTerm);
-    }
-  }, [currentPage, searchTerm,fetchInvoices]);
+    setCurrentPage(1); 
+  }, [debouncedSearchTerm]);
+
+
+  useEffect(() => {
+    fetchInvoices(currentPage, debouncedSearchTerm);
+  }, [currentPage, debouncedSearchTerm, fetchInvoices]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -103,6 +102,10 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
     }
     return ['No items'];
   };
+
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
 
   return (
     <Card className={`border-t-4 border-t-purple-500 ${className || ''}`}>
@@ -218,7 +221,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft size={16} />
@@ -243,7 +246,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
                       key={page}
                       variant={currentPage === page ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => handlePageChange(page)}
                       className="w-8 h-8 p-0"
                     >
                       {page}
@@ -255,7 +258,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
                 disabled={currentPage === totalPages}
               >
                 Next

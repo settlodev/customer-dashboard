@@ -93,7 +93,6 @@ export const createLocation = async (
 ): Promise<FormResponse> => {
     let formResponse: FormResponse | null = null;
 
-    console.log('Starting createLocation with data:', location );
 
     try {
         // Authentication check
@@ -115,8 +114,7 @@ export const createLocation = async (
                 error: new Error(validatedData.error.message),
             });
         }
-        console.log("validatedData: ", validatedData);
-
+        
         // Get current business & current location
         const currentBusiness = await getCurrentBusiness();
 

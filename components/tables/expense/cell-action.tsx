@@ -25,21 +25,16 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Expense } from "@/types/expense/type";
-import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
-import { deleteExpense, payExpense } from "@/lib/actions/expense-actions";
+import { payExpense } from "@/lib/actions/expense-actions";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import DateTimePicker from "@/components/widgets/datetimepicker";
 import { PayableExpenseSchema } from "@/types/expense/schema";
 import { Input } from "@/components/ui/input";
 
-// Enhanced payment schema with date validation
-const paymentFormSchema = z.object({
- 
-});
 
-type PaymentFormData = z.infer<typeof paymentFormSchema>;
+
 
 interface CellActionProps {
   data: Expense;
@@ -47,7 +42,6 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -60,7 +54,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     },
   });
 
-  const { control, handleSubmit, watch, reset, formState: { errors, isValid } } = form;
+  const { control, handleSubmit, watch, reset, formState: {isValid } } = form;
   const watchedAmount = watch("amount");
 
   // Listen for payment dialog events from the Pay button

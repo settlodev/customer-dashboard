@@ -197,9 +197,10 @@ export const paySubscription = async (subscription: z.infer<typeof RenewSubscrip
 
 
 export const verifyPayment = async (transactionId: string,invoice?:string) => {
+  
     try {
         const apiClient = new ApiClient();
-        const response = await apiClient.get(`/api/location-invoice-payments/${invoice}/${transactionId}`);
+        const response = await apiClient.get(`/api/invoice-payments/${invoice}/${transactionId}`);
         
         return parseStringify(response);
     } catch (error) {

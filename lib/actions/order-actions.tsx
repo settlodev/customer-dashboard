@@ -18,7 +18,7 @@ export const fetchOrders = async () : Promise<Orders[]> => {
         const apiClient = new ApiClient();
 
         const ordersData= await  apiClient.get(
-           `/api/orders/${location?.id}`,
+           `/api/orders/${location?.id}?dashboard=true`,
         );
        
         return parseStringify(ordersData);

@@ -1,14 +1,17 @@
 import { z } from "zod";
 
-// Zod schema for EFD settings form
+
 export const efdSettingsSchema = z.object({
   isEfdEnabled: z.boolean().default(false),
   businessName: z.string().min(1, "Business name is required").optional().or(z.literal("")),
-  tin: z.string()
-    .regex(/^\d{9}$/, "TIN must be exactly 9 digits")
+  tinNumber: z.string()
+    .transform((val) => val.replace(/\D/g, ''))
+    .refine((val) => val === "" || /^\d{9}$/.test(val), {
+      message: "TIN must be exactly 9 digits"
+    })
     .optional()
     .or(z.literal("")),
-  email: z.string()
+  emailAddress: z.string()
     .email("Please enter a valid email address")
     .optional()
     .or(z.literal("")),
@@ -17,15 +20,15 @@ export const efdSettingsSchema = z.object({
     .optional()
     .or(z.literal("")),
 }).refine((data) => {
-  // If EFD is enabled, all fields are required
+  
   if (data.isEfdEnabled) {
     return (
       data.businessName && 
       data.businessName.trim() !== "" &&
-      data.tin && 
-      data.tin.trim() !== "" &&
-      data.email && 
-      data.email.trim() !== "" &&
+      data.tinNumber && 
+      data.tinNumber.trim() !== "" &&
+      data.emailAddress && 
+      data.emailAddress.trim() !== "" &&
       data.phoneNumber && 
       data.phoneNumber.trim() !== ""
     );

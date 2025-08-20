@@ -7,50 +7,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui
 
 const EFDSettings = () => {
     const [isLoading, setIsLoading] = useState(true);
-    const [initialData, setInitialData] = useState<Partial<EfdSettingsFormData>>({});
+    const [initialData] = useState<Partial<EfdSettingsFormData>>({});
     const session = useSession();
 
-    // Load existing settings
+   
     useEffect(() => {
         const loadSettings = async () => {
-            // Wait for session to load first
+            
             if (session.status === "loading") return;
             
-            // Simulate API call to load existing EFD settings
             await new Promise(resolve => setTimeout(resolve, 1500));
-            
-            // You can set existing values here if they exist
-            // const existingSettings = {
-            //     isEfdEnabled: true,
-            //     businessName: "Example Business",
-            //     tin: "123456789",
-            //     email: session.data?.user?.email || "business@example.com",
-            //     phoneNumber: session.data?.user?.phoneNumber || "+255712345678",
-            // };
-            // setInitialData(existingSettings);
             
             setIsLoading(false);
         };
 
         loadSettings();
     }, [session.status, session.data]);
-
-    const handleSubmit = async (data: EfdSettingsFormData) => {
-        try {
-            console.log("Submitting EFD settings:", data);
-            
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Handle success - you can show a toast notification here
-            alert("EFD settings saved successfully!");
-        } catch (error) {
-            console.error("Error saving EFD settings:", error);
-            // Handle error - you can show an error toast here
-            alert("Failed to save EFD settings. Please try again.");
-        }
-    };
-    
+  
     if (isLoading) {
         return (
             <div className="space-y-6">
@@ -85,7 +58,7 @@ const EFDSettings = () => {
                 </CardHeader>
                 <CardContent>
                     <EfdSettingsForm 
-                        onSubmit={handleSubmit}
+                        
                         initialData={initialData}
                     />
                 </CardContent>
