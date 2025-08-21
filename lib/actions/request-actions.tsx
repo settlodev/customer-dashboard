@@ -100,8 +100,7 @@ export const createStockRequest = async (
             quantity: item.quantity
         }))
     };
-    console.log("The payload to create stock request:", payload);
-
+    
     try {
         const apiClient = new ApiClient();
        await apiClient.post(

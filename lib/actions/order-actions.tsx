@@ -140,8 +140,6 @@ export const cashFlowReport = async (startDate?: Date, endDate?: Date): Promise<
             params
         });
 
-        console.log ("The transactions report with filter is: ", report);
-
         return parseStringify(report);
     }
     catch (error){

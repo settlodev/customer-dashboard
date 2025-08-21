@@ -6,6 +6,7 @@ import {
   DollarSign,
   ShoppingCart,
   Download,
+  FileText,
 } from "lucide-react";
 
 
@@ -58,6 +59,7 @@ export default function ExpenseReportPage() {
   const [expenses, setExpenses] = useState<ExpenseReport>();
   const [loading, setLoading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [formValues, setFormValues] = useState<FormValues>({
     startDate: (() => {
       const now = new Date();
@@ -84,6 +86,86 @@ const [location , setLocation] = useState<Location>();
     };
     fetchLocation();
   }, []);
+
+  // CSV Generation Function
+  const generateCSV = () => {
+    if (!expenses) {
+      toast({
+        variant: "destructive",
+        title: "No data to export",
+        description: "Please generate a report first before downloading CSV.",
+      });
+      return;
+    }
+
+    setDownloadingCsv(true);
+    
+    try {
+      // Create CSV content
+      let csvContent = "Expense Report\n\n";
+      
+      // Add location details
+      if (location) {
+        csvContent += `Location: ${location.name}\n`;
+        if (location.address) csvContent += `Address: ${location.address}\n`;
+        if (location.phone) csvContent += `Phone: ${location.phone}\n`;
+        if (location.email) csvContent += `Email: ${location.email}\n`;
+        csvContent += "\n";
+      }
+      
+      // Add date range
+      csvContent += `Period: ${format(formValues.startDate, 'MMM dd, yyyy HH:mm')} - ${format(formValues.endDate, 'MMM dd, yyyy HH:mm')}\n`;
+      csvContent += `Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')}\n\n`;
+      
+      // Add summary
+      csvContent += "SUMMARY\n";
+      csvContent += `Total Expenses,${formatCurrency(expenses.totalExpenses).replace('TSH', '').trim()}\n\n`;
+      
+      // Add category breakdown
+      csvContent += "CATEGORY BREAKDOWN\n";
+      csvContent += "Category,Amount,Percentage\n";
+      
+      expenses.categorySummaries.forEach(category => {
+        csvContent += `${category.categoryName},${formatCurrency(category.amount).replace('TSH', '').trim()},${category.percentage}%\n`;
+      });
+      
+      // Add disclaimer
+      csvContent += "\n";
+      csvContent += "This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.\n";
+      csvContent += "Powered by Settlo";
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      
+      // Generate filename
+      const filename = `expense-report-${format(formValues.startDate, 'yyyy-MM-dd')}-to-${format(formValues.endDate, 'yyyy-MM-dd')}.csv`;
+      link.setAttribute('download', filename);
+      
+      // Trigger download
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "CSV Downloaded",
+        description: `Report saved as ${filename}`,
+      });
+      
+    } catch (error) {
+      console.error("Error generating CSV:", error);
+      toast({
+        variant: "destructive",
+        title: "CSV Generation Failed",
+        description: "There was an error generating the CSV. Please try again.",
+      });
+    } finally {
+      setDownloadingCsv(false);
+    }
+  };
 
   // PDF Generation Function
   const generatePDF = async () => {
@@ -464,8 +546,8 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
           {expenses && (
             <>
                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <DollarSign className="w-6 h-6 text-blue-600" />
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <DollarSign className="w-6 h-6 text-emerald-600" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Total Expenses</p>
@@ -475,8 +557,26 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
                   </div>
                 </div>
                 
-                {/* PDF Download Button */}
-                <div className="flex justify-end">
+                {/* Export Buttons */}
+                <div className="flex lg:justify-end gap-2">
+                  <Button
+                    onClick={generateCSV}
+                    disabled={downloadingCsv}
+                    variant="outline"
+                    className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                  >
+                    {downloadingCsv ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-600 border-t-transparent mr-2"></div>
+                        Generating CSV...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Export CSV
+                      </>
+                    )}
+                  </Button>
                   <Button
                     onClick={generatePDF}
                     disabled={downloadingPdf}
@@ -490,7 +590,7 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
                     ) : (
                       <>
                         <Download className="w-4 h-4 mr-2" />
-                        Download PDF
+                        Export PDF
                       </>
                     )}
                   </Button>

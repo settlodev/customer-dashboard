@@ -346,7 +346,7 @@ export const getStockVariantFromWarehouse = async (variantId: string) => {
     try {
         
         const apiClient = new ApiClient();
-        const data = await apiClient.get(`/api/warehouse-stock-variants/${variantId}`);
+        const data = await apiClient.get(`/api/warehouse-stock-variants/${variantId}`)
         return parseStringify(data);
     } catch (error) {
         console.error("Error fetching stock variant:", error);
