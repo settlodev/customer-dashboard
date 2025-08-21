@@ -36,7 +36,7 @@ type StockFormProps = {
 };
 
 export default function StockForm({ item }: StockFormProps) {
-    console.log("The stock is", item)
+    
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
 
@@ -56,7 +56,7 @@ export default function StockForm({ item }: StockFormProps) {
                 imageOption: variant.imageOption || ""
             })) || [{
                 name: "",
-                startingQuantity: 0,
+                startingQuantity: 1,
                 startingValue: 0,
                 alertLevel: 0,
                 imageOption: ""
@@ -79,7 +79,7 @@ export default function StockForm({ item }: StockFormProps) {
     const handleAddVariant = () => {
         append({
             name: "",
-            startingQuantity: 0,
+            startingQuantity: 1,
             startingValue: 0,
             alertLevel: 0,
             imageOption: "",

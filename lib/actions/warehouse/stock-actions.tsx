@@ -60,14 +60,14 @@ export const searchStockFromWarehouse = async (
 export const createStockFromWarehouse = async (
     stock: z.infer<typeof StockSchema>
 ): Promise<FormResponse | void> => {
-    // console.log('Starting createStock with data:', stock);
+    console.log('Starting createStock with data:', stock);
 
     let formResponse: FormResponse | null = null;
 
     const validData = StockSchema.safeParse(stock);
-    // console.log('Validating stock:', validData);
+    console.log('Validating stock:', validData);
     if (!validData.success) {
-        // console.warn('Stock validation failed:', validData.error);
+        console.warn('Stock validation failed:', validData.error);
         return parseStringify({
             responseType: "error",
             message: "Please fill all the required fields",
@@ -113,6 +113,7 @@ export const createStockFromWarehouse = async (
     }
     catch (error: any){
         const formattedError = await error;
+        console.log("The error creating stock in warehouse",formattedError)
         formResponse = {
             responseType: "error",
             message: formattedError.message,
