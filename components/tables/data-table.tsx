@@ -1,4 +1,3 @@
-
 "use client";
 
 import {
@@ -150,42 +149,82 @@ export function DataTable<TData, TValue>({
     key: pathname.replace('/', '') 
   });
 
-  React.useEffect(() => {
-    const timer = setTimeout(() => {
-      initializePaginationState();
-    }, 0);
-    
-    return () => clearTimeout(timer);
-  }, [searchParams, initializePaginationState]);
-
+  // Get URL parameters
   const page = searchParams?.get("page") ?? "1";
   const pageAsNumber = Number(page);
   const fallbackPage = isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
   const per_page = searchParams?.get("limit") ?? "10";
   const perPageAsNumber = Number(per_page);
   const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
+
+  // State management
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = React.useState<string>("");
+  const [loading, setLoading] = React.useState<boolean>(false);
+  const [isInitialized, setIsInitialized] = React.useState(false);
 
-  // Save pagination state when it changes
+  // Initialize pagination state once
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const paginationState = {
+    if (!isInitialized) {
+      const timer = setTimeout(() => {
+        initializePaginationState();
+        setIsInitialized(true);
+      }, 0);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [initializePaginationState, isInitialized]);
+
+  // Pagination state synchronized with URL
+  const [{ pageIndex, pageSize }, setPagination] = React.useState<PaginationState>({
+    pageIndex: fallbackPage - 1,
+    pageSize: fallbackPerPage,
+  });
+
+  // Sync pagination state when URL changes (but only after initialization)
+  React.useEffect(() => {
+    if (isInitialized) {
+      setPagination({
         pageIndex: fallbackPage - 1,
         pageSize: fallbackPerPage,
+      });
+    }
+  }, [fallbackPage, fallbackPerPage, isInitialized]);
+
+  // Save to localStorage when pagination changes
+  React.useEffect(() => {
+    if (isInitialized && typeof window !== 'undefined') {
+      const paginationState = {
+        pageIndex: pageIndex,
+        pageSize: pageSize,
         timestamp: Date.now(),
       };
       localStorage.setItem(`pagination-${pathname.replace('/', '') || 'default'}`, JSON.stringify(paginationState));
     }
-  }, [fallbackPage, fallbackPerPage, pathname]);
+  }, [pageIndex, pageSize, pathname, isInitialized]);
+
+  // Debounced URL update to prevent multiple rapid updates
+  const [pendingPagination, setPendingPagination] = React.useState<PaginationState | null>(null);
 
   React.useEffect(() => {
-    if (!searchParams?.has("_rsc")) {
-      savePaginationState(String(fallbackPage), String(fallbackPerPage));
-    }
-  }, [fallbackPage, fallbackPerPage, searchParams, savePaginationState]);
-  
-  const [loading, setLoading] = React.useState<boolean>(false);
+    if (!isInitialized) return;
+
+    const timer = setTimeout(() => {
+      if (pendingPagination) {
+        const newPage = pendingPagination.pageIndex + 1;
+        const queryString = createQueryString({
+          page: newPage,
+          limit: pendingPagination.pageSize,
+        });
+
+        setLoading(true);
+        router.replace(`${pathname}?${queryString}`, { scroll: false });
+        setPendingPagination(null);
+      }
+    }, 100); // Small debounce to prevent rapid updates
+
+    return () => clearTimeout(timer);
+  }, [pendingPagination, isInitialized, pathname, router]);
 
   const handleStatusFilterChange = (newStatus: string) => {
     setStatusFilter(newStatus); 
@@ -213,30 +252,23 @@ export function DataTable<TData, TValue>({
     [searchParams],
   );
 
-  // Handle server-side pagination
-  const [{ pageIndex, pageSize }, setPagination] = React.useState<PaginationState>({
-    pageIndex: fallbackPage - 1,
-    pageSize: fallbackPerPage,
-  });
+  // Custom pagination change handler
+  const handlePaginationChange = React.useCallback((updater: any) => {
+    const newPagination = typeof updater === 'function' ? updater({ pageIndex, pageSize }) : updater;
+    setPagination(newPagination);
+    setPendingPagination(newPagination);
+    
+    // Save pagination state immediately for better UX
+    if (!searchParams?.has("_rsc")) {
+      savePaginationState(String(newPagination.pageIndex + 1), String(newPagination.pageSize));
+    }
+  }, [pageIndex, pageSize, searchParams, savePaginationState]);
 
-  React.useEffect(() => {
-    const newPage = pageIndex + 1;
-    const queryString = createQueryString({
-      page: newPage,
-      limit: pageSize,
-    });
-
-    // Set loading to true when changing pages
-    setLoading(true);
-
-    // Use replace instead of push to avoid adding to history
-    router.replace(`${pathname}?${queryString}`, { scroll: false });
-  }, [pageIndex, pageSize, createQueryString, pathname, router]);
-
+  // Reset loading when data changes
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 500); 
+    }, 200); 
 
     return () => clearTimeout(timer); 
   }, [data]); 
@@ -251,7 +283,7 @@ export function DataTable<TData, TValue>({
       sorting,
       pagination: { pageIndex, pageSize },
     },
-    onPaginationChange: setPagination,
+    onPaginationChange: handlePaginationChange,
     getPaginationRowModel: getPaginationRowModel(),
     manualPagination: true,
     manualFiltering: true,
@@ -262,23 +294,42 @@ export function DataTable<TData, TValue>({
 
   const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
 
+  // Handle search with debouncing and proper pagination reset
+  const [searchTimeout, setSearchTimeout] = React.useState<NodeJS.Timeout | null>(null);
+
   React.useEffect(() => {
-    if (searchValue?.length > 0) {
-      const queryString = createQueryString({
-        page: 1, 
-        limit: pageSize,
-        search: searchValue,
-      });
-      router.replace(`${pathname}?${queryString}`, { scroll: false });
-    } else if (searchValue?.length === 0 || searchValue === undefined) {
-      const queryString = createQueryString({
-        page: 1,
-        limit: pageSize,
-        search: null,
-      });
-      router.replace(`${pathname}?${queryString}`, { scroll: false });
+    if (!isInitialized) return;
+
+    // Clear previous timeout
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
     }
-  }, [searchValue, pageSize, searchKey, createQueryString, router, pathname]);
+
+    // Set new timeout for search
+    const newTimeout = setTimeout(() => {
+      if (searchValue?.length > 0) {
+        const queryString = createQueryString({
+          page: 1, // Always reset to page 1 on search
+          limit: pageSize,
+          search: searchValue,
+        });
+        router.replace(`${pathname}?${queryString}`, { scroll: false });
+      } else if (searchValue?.length === 0 || searchValue === undefined) {
+        const queryString = createQueryString({
+          page: 1,
+          limit: pageSize,
+          search: null,
+        });
+        router.replace(`${pathname}?${queryString}`, { scroll: false });
+      }
+    }, 300); // Debounce search
+
+    setSearchTimeout(newTimeout);
+
+    return () => {
+      if (newTimeout) clearTimeout(newTimeout);
+    };
+  }, [searchValue, pageSize, isInitialized]);
 
   // Get selected row IDs
   const selectedRowIds = table.getFilteredSelectedRowModel().rows.map(
@@ -300,32 +351,41 @@ export function DataTable<TData, TValue>({
   };
 
   // Render the appropriate archive component based on whether it's a warehouse page
-const renderArchiveComponent = () => {
-  if (disableArchive || selectedRowIds.length === 0) return null;
+  const renderArchiveComponent = () => {
+    if (disableArchive || selectedRowIds.length === 0) return null;
 
-  // Check if this is a warehouse page
-  if (pageConfig.isWarehouse) {
+    // Check if this is a warehouse page
+    if (pageConfig.isWarehouse) {
+      return (
+        <WarehouseBulkArchive 
+          selectedIds={selectedRowIds}
+          entityType={pageConfig.entityType as 'stock' | 'stock-intake' | 'supplier'}
+          onSuccess={resetTableSelection}
+          entityNameSingular={pageConfig.entityNames.singular}
+          entityNamePlural={pageConfig.entityNames.plural}
+        />
+      );
+    } else {
+      return (
+        <BulkArchive 
+          selectedIds={selectedRowIds}
+          entityType={pageConfig.entityType as 'product' | 'stock' | 'staff' | 'stock-intake'}
+          onSuccess={resetTableSelection}
+          entityNameSingular={pageConfig.entityNames.singular}
+          entityNamePlural={pageConfig.entityNames.plural}
+        />
+      );
+    }
+  };
+
+  // Don't render until initialized to prevent hydration issues
+  if (!isInitialized) {
     return (
-      <WarehouseBulkArchive 
-        selectedIds={selectedRowIds}
-        entityType={pageConfig.entityType as 'stock' | 'stock-intake' | 'supplier'}
-        onSuccess={resetTableSelection}
-        entityNameSingular={pageConfig.entityNames.singular}
-        entityNamePlural={pageConfig.entityNames.plural}
-      />
-    );
-  } else {
-    return (
-      <BulkArchive 
-        selectedIds={selectedRowIds}
-        entityType={pageConfig.entityType as 'product' | 'stock' | 'staff' | 'stock-intake'}
-        onSuccess={resetTableSelection}
-        entityNameSingular={pageConfig.entityNames.singular}
-        entityNamePlural={pageConfig.entityNames.plural}
-      />
+      <div className="flex items-center justify-center h-48">
+        <Loading/>
+      </div>
     );
   }
-};
 
   return (
     <motion.div>
