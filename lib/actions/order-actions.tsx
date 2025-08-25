@@ -3,10 +3,12 @@
 import ApiClient from "@/lib/settlo-api-client";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
-import {ApiResponse} from "@/types/types";
+import {ApiResponse, FormResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
 import { CashFlow, Credit, Orders } from "@/types/orders/type";
+import { orderRequestSchema } from "@/types/orders/schema";
+import { CartState } from "@/context/cartContext";
 
 
 export const fetchOrders = async () : Promise<Orders[]> => {
@@ -168,4 +170,104 @@ export const creditReport = async (startDate?: Date, endDate?: Date): Promise<Cr
         console.error("Error fetching cashFlow report:", error);
         throw error
     }
+}
+
+
+export const submitOrderRequest = async (cartState: CartState) => {
+    // console.log("The cart state is", cartState);
+
+    let formResponse: FormResponse | null = null;
+
+    // Transform cart state to API payload format
+    const payload = {
+        comment: cartState.globalComment || '',
+        customerFirstName: cartState.customerDetails.firstName,
+        customerLastName: cartState.customerDetails.lastName,
+        customerPhoneNumber: cartState.customerDetails.phoneNumber,
+        customerGender: cartState.customerDetails.gender,
+        customerEmailAddress: cartState.customerDetails.emailAddress,
+        
+        orderRequestItems: cartState.orderRequestitems.map(item => {
+            // Ensure we have a valid variant ID
+            let variantId = item.variantId;
+            
+            // If no variant ID but item has variants, use the first one
+            if (!variantId && item.variants && item.variants.length > 0) {
+                variantId = item.variants[0].id;
+            }
+            
+            // If still no variant ID, this should be caught by validation
+            if (!variantId) {
+                throw new Error(`Missing variant ID for product: ${item.name}`);
+            }
+
+            return {
+                quantity: item.quantity,
+                comment: item?.comment || '',
+                variant: variantId, 
+                discount: '', 
+                modifiers: item?.modifiers || [],
+                addons: item?.addons || [],
+            };
+        }),
+    };
+
+    // console.log("The payload is",payload)
+
+    // Validate payload with Zod
+    const validRequestData = orderRequestSchema.safeParse(payload);
+
+    
+    
+    if (!validRequestData.success) {
+
+        formResponse = {
+            responseType: "error",
+            message: "Please fill all the required fields",
+            error: new Error(validRequestData.error.message)
+        }
+        console.log("validation error",formResponse)
+        return parseStringify(formResponse)
+
+    }
+    // const location = await getCurrentLocation();
+    const location = '30bb9d8b-79b7-4fe9-8235-d9732cca6ec5';
+
+    const finalPayload = {
+        ...validRequestData.data,
+        orderRequestServingType: "DINE_IN",
+    }
+
+    console.log("The final payload is",finalPayload);
+
+    try {
+    
+    const apiClient = new ApiClient();
+
+       const requestedOrder = await apiClient.post(
+            `/api/order-request/${location}/create`,
+           finalPayload,
+            {
+                headers: {
+                    "Request-Origin": "ECOMMERCE"
+                }
+            }
+        );
+        console.log("The requested order is",requestedOrder)
+        formResponse = {
+            responseType: "success",
+            message: "Order has been requested successfully",
+        };
+    
+
+  } catch (error:any) {
+    console.error('Order submission error:', error.message);
+    formResponse = {
+        responseType: "error",
+        message: error.message ?? "Something went wrong while processing your request, please try again",
+        error: error instanceof Error ? error : new Error(String(error)),
+    };
+    
+    return parseStringify(formResponse)
+  }
 }

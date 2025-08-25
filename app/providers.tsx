@@ -2,6 +2,7 @@
 import * as React from "react";
 import { NextUIProvider } from "@nextui-org/system";
 import { ThemeProvider as NextThemesProvider, ThemeProviderProps } from "next-themes";
+import { CartProvider } from "@/context/cartContext";
 
 export interface ProvidersProps {
   children: React.ReactNode;
@@ -15,7 +16,10 @@ export function Providers({ children, themeProps }: ProvidersProps) {
         defaultTheme='light'
         attribute='class'
         {...themeProps}>
-        {children}
+          <CartProvider>
+          {children}
+          </CartProvider>
+        
       </NextThemesProvider>
     </NextUIProvider>
   );

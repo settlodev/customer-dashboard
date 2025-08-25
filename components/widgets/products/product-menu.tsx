@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -13,13 +14,18 @@ import ProductGrid from "@/components/site/ProductGrid";
 import Footer from "@/components/site/Footer";
 import MobileMenu from "@/components/site/MobileMenu";
 import ScrollToTop from "@/components/site/ScrollToTop";
+
 import {
   businessTypes,
   CategorizedProducts,
   ExtendedProduct,
 } from "@/types/site/type";
 import { LocationDetails } from "@/types/menu/type";
+
 import Loading from "@/app/loading";
+import { useCart } from "@/context/cartContext";
+import CartSidebar from "@/components/site/cartSidebar";
+
 
 interface ProductMenuProps {
   params: {
@@ -37,13 +43,11 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [pageLimit] = useState(50);
   const [categorizedProducts, setCategorizedProducts] =
     useState<CategorizedProducts>({});
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null); // Start with null to show all products
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [productsInitialLoad, setProductsInitialLoad] = useState(true);
   const [locationId, setLocationId] = useState<string | null>(null);
-  const [cartCount, setCartCount] = useState(0);
-  const [wishlistCount, setWishlistCount] = useState(0);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [businessType, setBusinessType] = useState(businessTypes.default);
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -54,6 +58,9 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [businessInfo, setBusinessInfo] = useState<any>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isBusinessDataReady, setIsBusinessDataReady] = useState(false);
+
+  // Cart context
+  const { state: cartState, addToCart, toggleCart } = useCart();
 
   useEffect(() => {
     if (params?.id) {
@@ -74,12 +81,11 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
 
       try {
         setLocationLoading(true);
-        setLocationError(null); // Clear previous errors
+        setLocationError(null);
 
         const locationData = await locationMenuDetails(locationId);
         setLocation(locationData);
 
-        // Map API response to business info structure
         const updatedBusinessInfo = {
           name: locationData.businessName || "",
           tagline: locationData.tagline || "",
@@ -99,7 +105,6 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
 
         setBusinessInfo(updatedBusinessInfo);
 
-        // Set business type if it exists in your enum
         if (
           locationData.businessType &&
           businessTypes[
@@ -276,27 +281,22 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     });
 
     setCategorizedProducts(grouped);
-    // Don't automatically set a selected category - keep it null to show all products
   };
 
   const handleSearch = () => {
     if (!isBusinessDataReady) return;
     setCurrentPage(1);
-    // Reset selected category when searching to show all results
     setSelectedCategory(null);
     fetchProducts(true);
   };
 
   const handleCategoryClick = (category: string) => {
-    // Toggle category selection: if same category is clicked, show all products
     if (selectedCategory === category) {
-      setSelectedCategory(null); // Show all products
+      setSelectedCategory(null);
     } else {
-      setSelectedCategory(category); // Show specific category
+      setSelectedCategory(category);
     }
     setIsMenuOpen(false);
-
-    // Scroll to top when category changes
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -305,12 +305,35 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   };
 
   const handleAddToCart = (product: ExtendedProduct) => {
-    setCartCount((prev) => prev + 1);
-    alert(`Added ${product.name} to cart`);
+    addToCart(product, 1);
+    // Show success feedback
+    const productName = product.name.length > 20 
+      ? product.name.substring(0, 20) + '...' 
+      : product.name;
+    
+    // Create a temporary toast notification
+    const toast = document.createElement('div');
+    toast.className = `fixed top-4 right-4 ${businessType.primary} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
+    toast.textContent = `Added ${productName} to cart`;
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // Animate out and remove
+    setTimeout(() => {
+      toast.style.transform = 'translateX(full)';
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 2000);
   };
 
   const handleAddToWishlist = (product: ExtendedProduct) => {
-    setWishlistCount((prev) => prev + 1);
     alert(`Added ${product.name} to wishlist`);
   };
 
@@ -353,10 +376,11 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         handleSearch={handleSearch}
-        cartCount={cartCount}
-        wishlistCount={wishlistCount}
+        cartCount={cartState.itemCount}
+        wishlistCount={0}
         setIsMenuOpen={setIsMenuOpen}
         isMenuOpen={isMenuOpen}
+        onCartClick={toggleCart}
       />
 
       <main className="flex-grow">
@@ -368,7 +392,6 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
         />
 
         <div className="max-w-6xl mx-auto p-4 pt-6">
-          {/* Show products loading state while business info is already displayed */}
           <LoadingStates
             initialLoad={productsInitialLoad}
             loading={productsLoading}
@@ -424,6 +447,12 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
         showScrollToTop={showScrollToTop}
         handleScrollToTop={handleScrollToTop}
         businessType={businessType}
+      />
+
+      {/* Cart Sidebar */}
+      <CartSidebar 
+        businessType={businessType}
+        businessInfo={businessInfo}
       />
     </div>
   );

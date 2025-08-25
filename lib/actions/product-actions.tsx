@@ -628,7 +628,7 @@ export const menuProducts = async (
                 }
             }
         );
-
+        console.log("The products on menu are",data)
         return parseStringify(data);
     } catch (error) {
         throw error;
