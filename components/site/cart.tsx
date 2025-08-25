@@ -33,7 +33,7 @@ const CartPage: React.FC<CartPageProps> = ({
     getTotalPrice 
   } = useCart();
 
-  console.log("The state on this page is",state)
+ 
 
   const [promoCode, setPromoCode] = useState('');
   const [discount, setDiscount] = useState(0);
@@ -84,10 +84,9 @@ const CartPage: React.FC<CartPageProps> = ({
   const subtotal = getTotalPrice();
   const discountAmount = subtotal * discount;
   const total = subtotal - discountAmount;
-  const deliveryFee = subtotal > 50000 ? 0 : 5000; // Free delivery over 50,000 TZS
-  const finalTotal = total + deliveryFee;
+  const deliveryFee = subtotal > 50000 ? 0 : 5000; 
 
-  if (state.items.length === 0) {
+  if (state.orderRequestitems.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -104,7 +103,7 @@ const CartPage: React.FC<CartPageProps> = ({
           <div className="text-center py-16">
             <ShoppingCart className="w-20 h-20 text-gray-300 mx-auto mb-6" />
             <h2 className="text-2xl font-semibold text-gray-600 mb-4">Your cart is empty</h2>
-            <p className="text-gray-500 mb-8">Looks like you haven't added any items to your cart yet.</p>
+            <p className="text-gray-500 mb-8">Looks like you haven&apost added any items to your cart yet.</p>
             <Link href={`/menu/${locationId || ''}`}>
               <Button className={`${businessType.primary} hover:${businessType.accent} text-white px-8 py-3`}>
                 Start Shopping
@@ -148,7 +147,7 @@ const CartPage: React.FC<CartPageProps> = ({
               </CardHeader>
               <CardContent className="p-0">
                 <div className="divide-y">
-                  {state.items.map((item) => (
+                  {state.orderRequestitems.map((item) => (
                     <div key={item.cartItemId} className="p-6">
                       <div className="flex gap-4">
                         {/* Product Image */}
@@ -298,7 +297,7 @@ const CartPage: React.FC<CartPageProps> = ({
                   <div className="border-t pt-3">
                     <div className="flex justify-between text-lg font-semibold">
                       <span>Total</span>
-                      <span>@ {finalTotal.toLocaleString()} TZS</span>
+                      {/* <span>@ {finalTotal.toLocaleString()} TZS</span> */}
                     </div>
                   </div>
                 </div>

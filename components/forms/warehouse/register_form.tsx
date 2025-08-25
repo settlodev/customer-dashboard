@@ -47,7 +47,7 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
             address: "",
             city: "",
             phone: "",
-            image: "",
+            image: null,
             email: "",
             description: "",
             openingTime: "",
