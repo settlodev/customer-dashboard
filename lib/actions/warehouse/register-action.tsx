@@ -112,7 +112,7 @@ export const updateWarehouse = async (
         return parseStringify(formResponse)
         
     } catch (error) {
-        console.error("Error is: ", error);
+        // console.error("Error is: ", error);
         
         let errorMessage = "Something went wrong";
         
@@ -149,7 +149,6 @@ export const getCurrentWarehouse = async (): Promise<Warehouses | undefined> => 
     const cookieStore = await cookies();
     const warehouseCookie = cookieStore.get("currentWarehouse");
 
-    // console.log("locationCookie: ", warehouseCookie);
    
     if (!warehouseCookie) return undefined;
 

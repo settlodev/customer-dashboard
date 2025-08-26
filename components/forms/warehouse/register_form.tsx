@@ -60,7 +60,7 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
                 ...form.getValues(),
                 address: business.countryName || "",
                 phone: business.notificationPhone || "",
-                image: business.image || "",
+                image: business.image || null,
                 email: business.notificationEmailAddress || "",
             });
         }
