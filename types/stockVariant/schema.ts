@@ -42,4 +42,16 @@ export const StockVariantSchema = object({
         number({ message: "Alert level is required" }).nonnegative({ message: "Alert level cannot be negative" })
     ),
     imageOption: string().nullable().optional(),
-});
+}).refine(
+    (data) => {
+        // If startingQuantity is zero, startingValue must also be zero
+        if (data.startingQuantity === 0) {
+            return data.startingValue === 0;
+        }
+        return true;
+    },
+    {
+        message: "Starting value must be zero when starting quantity is zero",
+        path: ["startingValue"]
+    }
+);

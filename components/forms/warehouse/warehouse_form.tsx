@@ -101,7 +101,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
       phone: "",
       image: null,
       email: "",
-      description: "",
+      description: null,
       openingTime: "",
       closingTime: "",
     },
@@ -131,7 +131,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
         phone: item?.phone || business?.notificationPhone || "",
         image: item?.image || business?.image || null,
         email: item?.email || business?.notificationEmailAddress || "",
-        description: item?.description || "",
+        description: item?.description || null,
         openingTime: item?.openingTime
           ? timeToBusinessTimeName(item.openingTime)
           : "",
@@ -252,6 +252,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
                       <FormControl>
                         <Textarea
                           {...field}
+                          value={field.value || '-'}
                           placeholder="Enter warehouse description"
                           disabled={isPending}
                           rows={3}

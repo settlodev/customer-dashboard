@@ -56,7 +56,7 @@ export default function WarehouseStockForm({ item }: StockFormProps) {
                 imageOption: variant.imageOption || ""
             })) || [{
                 name: "",
-                startingQuantity: 1,
+                startingQuantity: 0,
                 startingValue: 0,
                 alertLevel: 0,
                 imageOption: ""
@@ -78,7 +78,7 @@ export default function WarehouseStockForm({ item }: StockFormProps) {
     const handleAddVariant = () => {
         append({
             name: "",
-            startingQuantity: 1,
+            startingQuantity: 0,
             startingValue: 0,
             alertLevel: 0,
             imageOption: "",
