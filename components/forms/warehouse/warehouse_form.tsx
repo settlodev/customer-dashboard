@@ -99,7 +99,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
       address: "",
       city: "",
       phone: "",
-      image: "",
+      image: null,
       email: "",
       description: "",
       openingTime: "",
@@ -129,7 +129,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
         address: item?.address || business?.countryName || "",
         city: item?.city || "",
         phone: item?.phone || business?.notificationPhone || "",
-        image: item?.image || business?.image || "",
+        image: item?.image || business?.image || null,
         email: item?.email || business?.notificationEmailAddress || "",
         description: item?.description || "",
         openingTime: item?.openingTime
