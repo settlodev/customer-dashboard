@@ -1,4 +1,3 @@
-
 'use client'
 import { useTransition, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
@@ -13,18 +12,30 @@ import SubmitButton from "../widgets/submit-button";
 import { EfdSettingsFormData, efdSettingsSchema } from "@/types/efd/schema";
 import { Business } from "@/types/business/type";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
-import { RequestEfd } from "@/lib/actions/efd-action";
+import { RequestEfd, EfdStatus } from "@/lib/actions/efd-action";
 import { useToast } from "@/hooks/use-toast";
+import { CheckCircle, Clock, AlertCircle } from "lucide-react";
 
 interface EfdSettingsFormProps {
   initialData?: Partial<EfdSettingsFormData>;
 }
 
+interface EfdStatusData {
+  isOnboarded: boolean;
+  isVerified: boolean;
+  businessName?: string;
+  tinNumber?: string;
+  emailAddress?: string;
+  phoneNumber?: string;
+}
+
 const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
     const [isPending, startTransition] = useTransition();
+    const [isStatusLoading, setIsStatusLoading] = useState(true);
     const [business, setBusiness] = useState<Business | undefined>();
     const [tinDisplayValue, setTinDisplayValue] = useState("");
     const [isSuccessful, setIsSuccessful] = useState(false);
+    const [efdStatus, setEfdStatus] = useState<EfdStatusData | null>(null);
     const session = useSession();
     const { toast } = useToast();
 
@@ -41,6 +52,45 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
     const extractTinDigits = (formattedTin: string): string => {
         return formattedTin.replace(/\D/g, '');
     };
+
+    // Fetch EFD status on component mount
+    useEffect(() => {
+        const fetchEfdStatus = async () => {
+            try {
+                setIsStatusLoading(true);
+                const status = await EfdStatus();
+                console.log("EFD Status:", status);
+                
+                if (status.statusCode === 200) {
+                    setEfdStatus({
+                        isOnboarded: status.data?.isOnboarded || false,
+                        isVerified: status.data?.isVerified || false,
+                        businessName: status.data?.businessName,
+                        tinNumber: status.data?.tinNumber,
+                        emailAddress: status.data?.emailAddress,
+                        phoneNumber: status.data?.phoneNumber,
+                    });
+                } else {
+                    // If no status found, user is not onboarded
+                    setEfdStatus({
+                        isOnboarded: false,
+                        isVerified: false,
+                    });
+                }
+            } catch (error) {
+                console.error("Failed to fetch EFD status:", error);
+                // Default to not onboarded if error occurs
+                setEfdStatus({
+                    isOnboarded: false,
+                    isVerified: false,
+                });
+            } finally {
+                setIsStatusLoading(false);
+            }
+        };
+
+        fetchEfdStatus();
+    }, []);
 
     useEffect(() => {
         const fetchBusiness = async () => {
@@ -70,38 +120,51 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
 
     const isEfdEnabled = form.watch("isEfdEnabled");
 
+    // Set initial form values based on status and business data
     useEffect(() => {
-        if (business?.name && !form.getValues("businessName")) {
-            form.setValue("businessName", business.name);
+        if (!isStatusLoading && efdStatus) {
+            // If user is onboarded, enable EFD switch and populate form with existing data
+            if (efdStatus.isOnboarded) {
+                form.setValue("isEfdEnabled", true);
+                if (efdStatus.businessName) form.setValue("businessName", efdStatus.businessName);
+                if (efdStatus.tinNumber) {
+                    form.setValue("tinNumber", efdStatus.tinNumber);
+                    setTinDisplayValue(formatTinForDisplay(efdStatus.tinNumber));
+                }
+                if (efdStatus.emailAddress) form.setValue("emailAddress", efdStatus.emailAddress);
+                if (efdStatus.phoneNumber) form.setValue("phoneNumber", efdStatus.phoneNumber);
+            } else {
+                // If not onboarded, populate with business/session data
+                if (business?.name && !form.getValues("businessName")) {
+                    form.setValue("businessName", business.name);
+                }
+                if (session.data?.user?.email && !form.getValues("emailAddress")) {
+                    form.setValue("emailAddress", session.data.user.email);
+                }
+                if (session.data?.user?.phoneNumber && !form.getValues("phoneNumber")) {
+                    form.setValue("phoneNumber", session.data.user.phoneNumber);
+                }
+            }
         }
-        if (session.data?.user?.email && !form.getValues("emailAddress")) {
-            form.setValue("emailAddress", session.data.user.email);
-        }
-        if (session.data?.user?.phoneNumber && !form.getValues("phoneNumber")) {
-            form.setValue("phoneNumber", session.data.user.phoneNumber);
-        }
-        
-        const currentTin = form.getValues("tinNumber");
-        if (currentTin) {
-            setTinDisplayValue(formatTinForDisplay(currentTin));
-        }
-    }, [session.data, business, form]);
+    }, [isStatusLoading, efdStatus, session.data, business, form]);
 
     useEffect(() => {
-        if (!isEfdEnabled) {
+        if (!isEfdEnabled && !efdStatus?.isOnboarded) {
             form.setValue("businessName", business?.name || "");
             form.setValue("tinNumber", "");
             setTinDisplayValue("");
         }
-    }, [isEfdEnabled, form, business?.name]);
+    }, [isEfdEnabled, form, business?.name, efdStatus?.isOnboarded]);
 
     const handleSubmit = (data: EfdSettingsFormData) => {
         startTransition(async () => {
             try {
-                if (!data.isEfdEnabled) {
+                if (!data.isEfdEnabled && !efdStatus?.isOnboarded) {
                     toast({
-                        title:'Success'
-                    })
+                        title: 'Success',
+                        description: 'EFD settings updated'
+                    });
+                    return;
                 }
 
                 const submitData = {
@@ -111,32 +174,50 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
 
                 const result = await RequestEfd(submitData);
 
-                if (result.statusCode == 207) {
+                if (result.statusCode === 207) {
                     toast({
-                        title:"Failed to onboard for EFd",
-                        description:result.message,
-                        variant:"destructive"
-                    })
-                  
-                }
-                if(result.statusCode == 200){
+                        title: "Failed to onboard for EFD",
+                        description: result.message,
+                        variant: "destructive"
+                    });
+                } else if (result.statusCode === 200) {
                     setIsSuccessful(true);
+                    // Refresh EFD status after successful onboarding
+                    const updatedStatus = await EfdStatus();
+                    if (updatedStatus.statusCode === 200) {
+                        setEfdStatus({
+                            isOnboarded: updatedStatus.data?.isOnboarded || true,
+                            isVerified: updatedStatus.data?.isVerified || false,
+                            businessName: updatedStatus.data?.businessName,
+                            tinNumber: updatedStatus.data?.tinNumber,
+                            emailAddress: updatedStatus.data?.emailAddress,
+                            phoneNumber: updatedStatus.data?.phoneNumber,
+                        });
+                    }
                     toast({
-                        title:"Successful",
-                        description:'EFD settings updated successfully'
+                        title: "Successful",
+                        description: 'EFD settings updated successfully'
                     });
                 }
- 
             } catch (error) {
                 console.error("Error submitting EFD settings:", error);
                 toast({
-                    title:'Failed',
-                    description:"Failed to onboard for TIN",
-                    variant:"destructive"
+                    title: 'Failed',
+                    description: "Failed to onboard for EFD",
+                    variant: "destructive"
                 });
             }
         });
     };
+
+    // Show loading state while fetching status
+    if (isStatusLoading) {
+        return (
+            <div className="flex items-center justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     // Show success message when submission is successful
     if (isSuccessful) {
@@ -147,17 +228,85 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                         Success!
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                        You have successfully onboarded for TIN, please wait while we are processing the details
+                        You have successfully onboarded for EFD, please wait while we process the verification
                     </p>
                 </div>
             </div>
         );
     }
+
+    // Show status if user is already onboarded
+    if (efdStatus?.isOnboarded) {
+        return (
+            <div className="space-y-6">
+                <div className="rounded-lg border p-6">
+                    <div className="flex items-center space-x-3 mb-4">
+                        {efdStatus.isVerified ? (
+                            <CheckCircle className="h-6 w-6 text-green-600" />
+                        ) : (
+                            <Clock className="h-6 w-6 text-yellow-600" />
+                        )}
+                        <div>
+                            <h3 className="text-lg font-medium">
+                                {efdStatus.isVerified 
+                                    ? "Onboarded and Verified for EFD Receipts" 
+                                    : "EFD waiting for Verification"
+                                }
+                            </h3>
+                            <p className="text-sm text-muted-foreground">
+                                {efdStatus.isVerified 
+                                    ? "Your business is successfully verified and can issue EFD receipts"
+                                    : "Your EFD onboarding is complete, verification is in progress"
+                                }
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Display current EFD details */}
+                    <div className="space-y-3 text-sm">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <span className="font-medium">Business Name:</span>
+                                <p className="text-muted-foreground">{efdStatus.businessName}</p>
+                            </div>
+                            <div>
+                                <span className="font-medium">TIN Number:</span>
+                                <p className="text-muted-foreground">
+                                    {efdStatus.tinNumber ? formatTinForDisplay(efdStatus.tinNumber) : 'N/A'}
+                                </p>
+                            </div>
+                            <div>
+                                <span className="font-medium">Email:</span>
+                                <p className="text-muted-foreground">{efdStatus.emailAddress}</p>
+                            </div>
+                            <div>
+                                <span className="font-medium">Phone:</span>
+                                <p className="text-muted-foreground">{efdStatus.phoneNumber}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {!efdStatus.isVerified && (
+                        <div className="mt-4 p-3 bg-yellow-50 rounded-md">
+                            <div className="flex">
+                                <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
+                                <div className="text-sm">
+                                    <p className="text-yellow-800">
+                                        Verification typically takes 1-3 business days. You'll be notified once approved.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    }
     
+    // Show onboarding form if user is not onboarded
     return (
         <Form {...form}>
             <div className="space-y-6">
-                
                 <FormField
                     control={form.control}
                     name="isEfdEnabled"
@@ -228,7 +377,6 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                                                     if (digits.length <= 9) {
                                                         const formatted = formatTinForDisplay(digits);
                                                         setTinDisplayValue(formatted);
-                                                        
                                                         field.onChange(digits);
                                                     }
                                                 }}
