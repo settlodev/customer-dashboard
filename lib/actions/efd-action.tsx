@@ -66,7 +66,7 @@ export const EfdStatus = async () => {
         const status = await apiClient.get(
             `/api/vfd/${location?.id}/status`,
         );
-        
+
         return parseStringify(status);
 
     } catch (error: unknown) {

@@ -23,6 +23,7 @@ interface EfdSettingsFormProps {
 interface EfdStatusData {
   isOnboarded: boolean;
   isVerified: boolean;
+  completelyValid: boolean;
   businessName?: string;
   tinNumber?: string;
   emailAddress?: string;
@@ -61,20 +62,22 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                 const status = await EfdStatus();
                 console.log("EFD Status:", status);
                 
-                if (status.statusCode === 200) {
+                if (status) {
                     setEfdStatus({
-                        isOnboarded: status.data?.isOnboarded || false,
-                        isVerified: status.data?.isVerified || false,
-                        businessName: status.data?.businessName,
-                        tinNumber: status.data?.tinNumber,
-                        emailAddress: status.data?.emailAddress,
-                        phoneNumber: status.data?.phoneNumber,
+                        isOnboarded: status.isOnboarded || false,
+                        isVerified: status.isVerified || false,
+                        completelyValid: status?.completelyValid || false,
+                        // businessName: status.data?.businessName,
+                        // tinNumber: status.data?.tinNumber,
+                        // emailAddress: status.data?.emailAddress,
+                        // phoneNumber: status.data?.phoneNumber,
                     });
                 } else {
                     // If no status found, user is not onboarded
                     setEfdStatus({
                         isOnboarded: false,
                         isVerified: false,
+                        completelyValid: false,
                     });
                 }
             } catch (error) {
@@ -83,6 +86,7 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                 setEfdStatus({
                     isOnboarded: false,
                     isVerified: false,
+                    completelyValid: false,
                 });
             } finally {
                 setIsStatusLoading(false);
@@ -186,12 +190,13 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                     const updatedStatus = await EfdStatus();
                     if (updatedStatus.statusCode === 200) {
                         setEfdStatus({
-                            isOnboarded: updatedStatus.data?.isOnboarded || true,
-                            isVerified: updatedStatus.data?.isVerified || false,
-                            businessName: updatedStatus.data?.businessName,
-                            tinNumber: updatedStatus.data?.tinNumber,
-                            emailAddress: updatedStatus.data?.emailAddress,
-                            phoneNumber: updatedStatus.data?.phoneNumber,
+                            isOnboarded: updatedStatus.isOnboarded || true,
+                            isVerified: updatedStatus.isVerified || false,
+                            completelyValid: updatedStatus.completelyValid || false,
+                            // businessName: updatedStatus.data?.businessName,
+                            // tinNumber: updatedStatus.data?.tinNumber,
+                            // emailAddress: updatedStatus.data?.emailAddress,
+                            // phoneNumber: updatedStatus.data?.phoneNumber,
                         });
                     }
                     toast({
@@ -241,21 +246,27 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
             <div className="space-y-6">
                 <div className="rounded-lg border p-6">
                     <div className="flex items-center space-x-3 mb-4">
-                        {efdStatus.isVerified ? (
+                        {efdStatus.isVerified && efdStatus.completelyValid ? (
                             <CheckCircle className="h-6 w-6 text-green-600" />
+                        ) : efdStatus.isVerified ? (
+                            <Clock className="h-6 w-6 text-blue-600" />
                         ) : (
                             <Clock className="h-6 w-6 text-yellow-600" />
                         )}
                         <div>
                             <h3 className="text-lg font-medium">
-                                {efdStatus.isVerified 
+                                {efdStatus.isVerified && efdStatus.completelyValid
                                     ? "Onboarded and Verified for EFD Receipts" 
+                                    : efdStatus.isVerified
+                                    ? "EFD Verified - Final Setup in Progress"
                                     : "EFD waiting for Verification"
                                 }
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                                {efdStatus.isVerified 
+                                {efdStatus.isVerified && efdStatus.completelyValid
                                     ? "Your business is successfully verified and can issue EFD receipts"
+                                    : efdStatus.isVerified
+                                    ? "Your EFD is verified, completing final setup processes"
                                     : "Your EFD onboarding is complete, verification is in progress"
                                 }
                             </p>
@@ -265,34 +276,59 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                     {/* Display current EFD details */}
                     <div className="space-y-3 text-sm">
                         <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <span className="font-medium">Business Name:</span>
-                                <p className="text-muted-foreground">{efdStatus.businessName}</p>
-                            </div>
-                            <div>
-                                <span className="font-medium">TIN Number:</span>
-                                <p className="text-muted-foreground">
-                                    {efdStatus.tinNumber ? formatTinForDisplay(efdStatus.tinNumber) : 'N/A'}
-                                </p>
-                            </div>
-                            <div>
-                                <span className="font-medium">Email:</span>
-                                <p className="text-muted-foreground">{efdStatus.emailAddress}</p>
-                            </div>
-                            <div>
-                                <span className="font-medium">Phone:</span>
-                                <p className="text-muted-foreground">{efdStatus.phoneNumber}</p>
-                            </div>
+                            {efdStatus.businessName && (
+                                <div>
+                                    <span className="font-medium">Business Name:</span>
+                                    <p className="text-muted-foreground">{efdStatus.businessName}</p>
+                                </div>
+                            )}
+                            {efdStatus.tinNumber && (
+                                <div>
+                                    <span className="font-medium">TIN Number:</span>
+                                    <p className="text-muted-foreground">
+                                        {formatTinForDisplay(efdStatus.tinNumber)}
+                                    </p>
+                                </div>
+                            )}
+                            {efdStatus.emailAddress && (
+                                <div>
+                                    <span className="font-medium">Email:</span>
+                                    <p className="text-muted-foreground">{efdStatus.emailAddress}</p>
+                                </div>
+                            )}
+                            {efdStatus.phoneNumber && (
+                                <div>
+                                    <span className="font-medium">Phone:</span>
+                                    <p className="text-muted-foreground">{efdStatus.phoneNumber}</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {!efdStatus.isVerified && (
+                    {/* Status indicator */}
+                    <div className="mt-4 flex items-center space-x-2 text-sm">
+                        <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            efdStatus.completelyValid && efdStatus.isVerified
+                                ? 'bg-green-100 text-green-800'
+                                : efdStatus.isVerified
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                            {efdStatus.completelyValid && efdStatus.isVerified ? 'Fully Active' : 
+                             efdStatus.isVerified ? 'Setup in Progress' : 'Pending Verification'}
+                        </div>
+                    </div>
+
+                    {!efdStatus.completelyValid && (
                         <div className="mt-4 p-3 bg-yellow-50 rounded-md">
                             <div className="flex">
-                                <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
+                                <AlertCircle className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
                                 <div className="text-sm">
                                     <p className="text-yellow-800">
-                                        Verification typically takes 1-3 business days. You&aposll be notified once approved.
+                                        {!efdStatus.isVerified 
+                                            ? "Verification typically takes 1-3 business days. You'll be notified once approved."
+                                            : "Final setup is being completed. Your EFD will be fully active soon."
+                                        }
                                     </p>
                                 </div>
                             </div>
