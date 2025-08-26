@@ -104,11 +104,11 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
     }
   };
 
-  const canApprove = request.warehouseStockRequestStatus === 'PENDING' || 
-                    request.warehouseStockRequestStatus === 'REQUESTED';
-  const canCancel = request.warehouseStockRequestStatus === 'PENDING' || 
-                   request.warehouseStockRequestStatus === 'REQUESTED' || 
-                   request.warehouseStockRequestStatus === 'APPROVED';
+  const canApprove = request.requestStatus === 'PENDING' || 
+                    request.requestStatus === 'REQUESTED';
+  const canCancel = request.requestStatus === 'PENDING' || 
+                   request.requestStatus === 'REQUESTED' || 
+                   request.requestStatus === 'APPROVED';
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 mt-12">
@@ -119,7 +119,7 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
             <div>
               <h1 className="text-lg lg:text-2xl font-bold text-gray-900">Stock Request Details</h1>
             </div>
-            <StatusBadge status={request.warehouseStockRequestStatus} />
+            <StatusBadge status={request.requestStatus} />
           </div>
         </div>
 
@@ -142,7 +142,7 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Quantity Requested</label>
-                  <p className="text-2xl font-bold text-blue-600">{request.quantity} units</p>
+                  <p className="text-2xl font-bold text-blue-600">{request.quantity}</p>
                 </div>
               </div>
             </div>
@@ -184,12 +184,12 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
             <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Actions</h2>
               <div className="space-y-3">
-                {request.warehouseStockRequestStatus === 'APPROVED' ? (
+                {request.requestStatus === 'APPROVED' ? (
                   <div className="flex items-center text-green-600 font-semibold">
                     <CheckCircle className="w-4 h-4 mr-2" />
                     Request Approved
                   </div>
-                ) : request.warehouseStockRequestStatus === 'CANCELLED' ? (
+                ) : request.requestStatus === 'CANCELLED' ? (
                   <div className="flex items-center text-red-600 font-semibold">
                     <XCircle className="w-4 h-4 mr-2" />
                     Request Cancelled

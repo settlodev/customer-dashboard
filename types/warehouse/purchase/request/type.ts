@@ -25,6 +25,7 @@ export interface StockRequests{
     approvedDate?:string,
     cancelledDate?:string
     requestedDate?:string
+    requestStatus:string
 }
 
 export interface StockRequestReport{

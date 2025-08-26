@@ -77,7 +77,7 @@ export const columns: ColumnDef<StockRequests>[] = [
     header: "Staff Requested",
   },
   {
-    accessorKey: "warehouseStockRequestStatus",
+    accessorKey: "requestStatus",
     enableHiding: false,
     header: "Status",
   },

@@ -61,7 +61,7 @@ type Params = {
                                        pageNo={page}
                                        total={total}
                                        pageCount={pageCount}
-                                       filterKey="warehouseStockRequestStatus"
+                                       filterKey="requestStatus"
                                         filterOptions={[
                                             { label: "All", value: "" },
                                             { label: "Approved", value: "APPROVED" },

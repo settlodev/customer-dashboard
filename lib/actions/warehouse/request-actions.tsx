@@ -51,6 +51,7 @@ export const searchWarehouseStockRequests = async (
             `/api/warehouse/${warehouse?.id}/warehouse-stock-requests`,
             query,
         );
+        
         return parseStringify(requests);
     } catch (error) {
         throw error;
