@@ -292,7 +292,7 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                                 <AlertCircle className="h-5 w-5 text-yellow-600 mr-2" />
                                 <div className="text-sm">
                                     <p className="text-yellow-800">
-                                        Verification typically takes 1-3 business days. You'll be notified once approved.
+                                        Verification typically takes 1-3 business days. You&aposll be notified once approved.
                                     </p>
                                 </div>
                             </div>
