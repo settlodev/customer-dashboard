@@ -263,7 +263,7 @@ export const submitOrderRequest = async (cartState: CartState) => {
                 }
             }
         );
-        console.log("The requested order is",requestedOrder)
+        // console.log("The requested order is",requestedOrder)
         formResponse = {
             responseType: "success",
             message: "Order has been requested successfully",
