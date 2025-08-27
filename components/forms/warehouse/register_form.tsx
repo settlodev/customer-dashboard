@@ -49,7 +49,7 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
             phone: "",
             image: null,
             email: "",
-            description: "",
+            description: null,
             openingTime: "",
             closingTime: "",
         }
@@ -245,6 +245,7 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
                                     <FormControl>
                                         <Textarea
                                             {...field}
+                                            value={field.value || '-'}
                                             placeholder="Enter warehouse description"
                                             disabled={isPending}
                                             rows={3}

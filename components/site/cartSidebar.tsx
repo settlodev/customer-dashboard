@@ -15,7 +15,7 @@ import { submitOrderRequest } from '@/lib/actions/order-actions';
 
 interface CartSidebarProps {
   businessType: BusinessType;
-  businessInfo: BusinessInfo;
+  businessInfo?: BusinessInfo;
 }
 
 const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {

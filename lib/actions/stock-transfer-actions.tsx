@@ -69,6 +69,8 @@ export const searchStockTransfers = async (
     }
 
 }
+import { ErrorResponseType } from "@/types/types";
+
 export const createStockTransfer = async (
     transfer: z.infer<typeof StockTransferSchema>
 ): Promise<FormResponse | void> => {
@@ -85,35 +87,44 @@ export const createStockTransfer = async (
         return parseStringify(formResponse);
     }
 
-    const location= await getCurrentLocation();
+    const location = await getCurrentLocation();
     const payload = {
         ...validData.data,
     };
-    
 
     try {
         const apiClient = new ApiClient();
-       await apiClient.post(
+        await apiClient.post(
             `/api/stock-transfers/${location?.id}/create`,
             payload
         );
+        
         formResponse = {
             responseType: "success",
             message: "Stock transfer created successfully",
         };
     } catch (error: any) {
-        const formattedError = await error
-        console.error("Error creating stock transfer", formattedError);
+        // The error is already processed by your handleSettloApiError function
+        // It should be of type ErrorResponseType
+        const apiError = error as ErrorResponseType;
+        
+        console.error("Error creating stock transfer:", {
+            status: apiError.status,
+            code: apiError.code,
+            message: apiError.message,
+            correlationId: apiError.correlationId,
+            details: apiError.details
+        });
         
         formResponse = {
             responseType: "error",
-            message: formattedError.message,
-            error: error instanceof Error ? error : new Error(String(error)),
+            message: apiError.message || "An error occurred while creating the stock transfer",
+            error: new Error(apiError.message),
         };
     }
 
     revalidatePath("/stock-transfers");
-   return parseStringify(formResponse);
+    return parseStringify(formResponse);
 };
 
 

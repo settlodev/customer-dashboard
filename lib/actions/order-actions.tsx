@@ -178,6 +178,17 @@ export const submitOrderRequest = async (cartState: CartState) => {
 
     let formResponse: FormResponse | null = null;
 
+
+    if (!cartState.locationId) {
+        formResponse = {
+            responseType: "error",
+            message: "Location information is missing. Please refresh and try again.",
+            error: new Error("Missing locationId in cart state")
+        };
+        console.log("Missing locationId error:", formResponse);
+        return parseStringify(formResponse);
+    }
+
     // Transform cart state to API payload format
     const payload = {
         comment: cartState.globalComment || '',
@@ -188,15 +199,13 @@ export const submitOrderRequest = async (cartState: CartState) => {
         customerEmailAddress: cartState.customerDetails.emailAddress,
         
         orderRequestItems: cartState.orderRequestitems.map(item => {
-            // Ensure we have a valid variant ID
+            
             let variantId = item.variantId;
             
-            // If no variant ID but item has variants, use the first one
             if (!variantId && item.variants && item.variants.length > 0) {
                 variantId = item.variants[0].id;
             }
             
-            // If still no variant ID, this should be caught by validation
             if (!variantId) {
                 throw new Error(`Missing variant ID for product: ${item.name}`);
             }
@@ -231,7 +240,8 @@ export const submitOrderRequest = async (cartState: CartState) => {
 
     }
     // const location = await getCurrentLocation();
-    const location = '30bb9d8b-79b7-4fe9-8235-d9732cca6ec5';
+    const location = cartState.locationId
+    console.log("The location Id is",location)
 
     const finalPayload = {
         ...validRequestData.data,

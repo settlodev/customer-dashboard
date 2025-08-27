@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
 import { ExtendedProduct } from '@/types/site/type';
 
 export interface CartItem extends ExtendedProduct {
@@ -36,6 +36,7 @@ export interface CartState {
   isOpen: boolean;
   customerDetails: CustomerDetails;
   globalComment: string;
+  locationId?: string; // Add locationId to state
   discount?: string;
   tableAndSpace?: string;
   reservation?: string;
@@ -50,6 +51,7 @@ interface CartContextType {
   updateCustomerDetails: (details: Partial<CustomerDetails>) => void;
   updateGlobalComment: (comment: string) => void;
   updateOrderDetails: (details: { discount?: string; tableAndSpace?: string; reservation?: string }) => void;
+  setLocationId: (locationId: string) => void; // Add setLocationId action
   clearCart: () => void;
   toggleCart: () => void;
   getTotalPrice: () => number;
@@ -63,6 +65,7 @@ type CartAction =
   | { type: 'UPDATE_CUSTOMER_DETAILS'; payload: Partial<CustomerDetails> }
   | { type: 'UPDATE_GLOBAL_COMMENT'; payload: string }
   | { type: 'UPDATE_ORDER_DETAILS'; payload: { discount?: string; tableAndSpace?: string; reservation?: string } }
+  | { type: 'SET_LOCATION_ID'; payload: string } // Add SET_LOCATION_ID action
   | { type: 'CLEAR_CART' }
   | { type: 'TOGGLE_CART' }
   | { type: 'LOAD_CART'; payload: CartState };
@@ -77,7 +80,6 @@ const getProductPrice = (product: ExtendedProduct, variantId?: string): number =
     }
   }
   
-  // If no specific variant ID provided, use the first variant if available
   if (product.variants && product.variants.length > 0) {
     return parseFloat(product.variants[0].price as unknown as string) || 0;
   }
@@ -86,17 +88,14 @@ const getProductPrice = (product: ExtendedProduct, variantId?: string): number =
 };
 
 const getVariantId = (product: ExtendedProduct, providedVariantId?: string): string | undefined => {
-  // If variant ID is provided, use it
   if (providedVariantId) {
     return providedVariantId;
   }
   
-  // If product has variants, use the first one as default
   if (product.variants && product.variants.length > 0) {
     return product.variants[0].id;
   }
   
-  // No variants available
   return undefined;
 };
 
@@ -109,10 +108,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case 'ADD_TO_CART': {
       const { product, quantity, variantId: providedVariantId } = action.payload;
       
-      // Determine the correct variant ID to use
       const variantId = getVariantId(product, providedVariantId);
       
-      // Check if item with same product and variant already exists
       const existingItemIndex = state.orderRequestitems.findIndex(
         item => item.id === product.id && item.variantId === variantId
       );
@@ -120,14 +117,12 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       let newItems: CartItem[];
       
       if (existingItemIndex > -1) {
-        // Update existing item quantity
         newItems = state.orderRequestitems.map((item, index) =>
           index === existingItemIndex
             ? { ...item, quantity: item.quantity + quantity }
             : item
         );
       } else {
-        // Add new item to cart
         const selectedVariant = variantId && product.variants
           ? product.variants.find(v => v.id === variantId)
           : null;
@@ -232,10 +227,18 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
       };
     }
 
+    case 'SET_LOCATION_ID': {
+      return {
+        ...state,
+        locationId: action.payload,
+      };
+    }
+
     case 'CLEAR_CART':
       return {
         ...initialState,
         isOpen: state.isOpen,
+        locationId: state.locationId, // Preserve locationId when clearing cart
       };
 
     case 'TOGGLE_CART':
@@ -265,13 +268,13 @@ const initialState: CartState = {
     emailAddress: '',
   },
   globalComment: '',
-  // discount: undefined,
-  // tableAndSpace: undefined,
-  // reservation: undefined,
+  locationId: undefined, // Initialize locationId
 };
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
+  const prevStateRef = useRef<CartState>();
+
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -287,10 +290,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Save cart to localStorage on client-side only
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && prevStateRef.current !== state) {
       localStorage.setItem('cart', JSON.stringify(state));
+      prevStateRef.current = state;
     }
   }, [state]);
 
@@ -322,6 +325,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch({ type: 'UPDATE_ORDER_DETAILS', payload: details });
   };
 
+  const setLocationId = (locationId: string) => {
+    dispatch({ type: 'SET_LOCATION_ID', payload: locationId });
+  };
+
   const clearCart = () => {
     dispatch({ type: 'CLEAR_CART' });
   };
@@ -345,6 +352,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateCustomerDetails,
     updateGlobalComment,
     updateOrderDetails,
+    setLocationId,
     clearCart,
     toggleCart,
     getTotalPrice,

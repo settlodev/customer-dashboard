@@ -11,18 +11,20 @@ interface ProductDetailsPageWrapperProps {
 }
 
 const ProductDetailsPageWrapper: React.FC<ProductDetailsPageWrapperProps> = ({ product }) => {
-  const { addToCart } = useCart();
+  const { addToCart, toggleCart } = useCart(); // Add toggleCart here
   const [businessType] = useState(businessTypes.default); 
 
   const handleAddToCart = (product: ExtendedProduct, quantity: number, variantId?: string) => {
     addToCart(product, quantity, variantId);
+    
+    // Open the cart sidebar after adding item
+    toggleCart();
     
     // Show success feedback
     const productName = product.name.length > 20 
       ? product.name.substring(0, 20) + '...' 
       : product.name;
     
-    // Create a temporary toast notification
     const toast = document.createElement('div');
     toast.className = `fixed top-4 right-4 ${businessType.primary} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
     toast.textContent = `Added ${productName} to cart`;
@@ -57,7 +59,8 @@ const ProductDetailsPageWrapper: React.FC<ProductDetailsPageWrapperProps> = ({ p
         onAddToCart={handleAddToCart}
         onAddToWishlist={handleAddToWishlist}
       />
-
+      {/* Add CartSidebar here if it's not already in a parent component */}
+      <CartSidebar businessType={businessType} />
     </>
   );
 };
