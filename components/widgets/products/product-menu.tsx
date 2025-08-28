@@ -528,14 +528,14 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
     }
   }, [params]);
 
-  // Set locationId in cart when locationId is available
+  
   useEffect(() => {
     if (locationId) {
       setCartLocationId(locationId);
     }
   }, [locationId]);
 
-  // Fetch location data first - this is critical for business info
+  
   useEffect(() => {
     const fetchLocationData = async () => {
       if (!locationId) {
