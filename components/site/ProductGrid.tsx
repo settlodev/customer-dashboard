@@ -1,7 +1,7 @@
 
 'use client';
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent} from '@/components/ui/card';
 import { 
   ShoppingCart, 
   ShoppingCartIcon, 
@@ -55,35 +55,22 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     return getProductPrice(product, selectedVariantId);
   };
 
-  // Mock data for enhanced features
-  const getProductRating = (product: ExtendedProduct) => {
-    // Generate consistent rating based on product ID
-    const hash = product.id.split('').reduce((a, b) => {
-      a = ((a << 5) - a) + b.charCodeAt(0);
-      return a & a;
-    }, 0);
-    return 3.5 + (Math.abs(hash) % 20) / 10; // Rating between 3.5 - 5.5
-  };
-
-  const getProductBadge = (product: ExtendedProduct) => {
-    const badges = ['New', 'Popular', 'Sale', 'Limited'];
-    const hash = product.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
-    return Math.random() > 0.7 ? badges[hash % badges.length] : null;
-  };
-
+ 
   const allProducts = Object.values(categorizedProducts).flat();
   const displayProducts = selectedCategory && selectedCategory !== 'all'
     ? categorizedProducts[selectedCategory] || []
     : allProducts;
 
   const handleProductClick = (product: ExtendedProduct) => {
+    const productData = encodeURIComponent(JSON.stringify(product));
     const productSlug = product.name.toLowerCase()
       .replace(/[^a-z0-9\s-]/g, '') 
       .replace(/\s+/g, '-') 
       .replace(/-+/g, '-') 
       .trim();
     
-    router.push(`${basePath}/${product.id}?slug=${productSlug}`);
+    // Pass both the product data and ID (as fallback)
+    router.push(`${basePath}/${product.id}?slug=${productSlug}&product=${productData}`);
   };
 
   const handleVariantChange = (productId: string, variantId: string) => {
@@ -148,7 +135,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
       <div className={`grid gap-4 sm:gap-6 ${
         displayProducts.length === 1 
           ? 'grid-cols-1 lg:grid-cols-2 max-w-4xl mx-auto' 
-          : 'grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5'
+          : 'grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5'
       }`}>
         {displayProducts.map(product => {
           const extendedProduct = product as ExtendedProduct;

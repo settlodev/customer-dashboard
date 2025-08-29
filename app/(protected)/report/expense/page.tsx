@@ -563,7 +563,7 @@ export default function ExpenseReportPage() {
                 <h1 className="text-2xl font-bold text-gray-800">Expense Report</h1>
                 {isTodayView && (
                   <span className="bg-emerald-100 text-emerald-800 text-xs font-medium px-2.5 py-0.5 rounded">
-                    Today's Expenses
+                    Today&apos;s Expenses
                   </span>
                 )}
               </div>
@@ -633,7 +633,7 @@ export default function ExpenseReportPage() {
                       {formatCurrency(expenses.totalExpenses)}
                     </p>
                     {isTodayView && (
-                      <p className="text-xs text-emerald-600 mt-1">Showing today's expenses</p>
+                      <p className="text-xs text-emerald-600 mt-1">Showing today&apos;s expenses</p>
                     )}
                   </div>
                 </div>

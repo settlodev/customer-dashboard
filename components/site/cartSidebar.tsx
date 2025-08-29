@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Plus, Minus, ShoppingCart, Trash2, User, MessageCircle } from 'lucide-react';
+import { X, Plus, Minus, ShoppingCart, Trash2, User, MessageCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,6 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
     updateQuantity, 
     removeFromCart, 
     toggleCart,
-    updateItemComment,
     updateCustomerDetails,
     updateGlobalComment,
     getTotalPrice,
@@ -33,7 +32,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
 
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [expandedComments, setExpandedComments] = useState<Set<string>>(new Set());
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
 
   const getProductPrice = (item: any) => {
     if (item.selectedVariantId && item.variants) {
@@ -58,16 +57,6 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
     }
   };
 
-  const toggleCommentExpanded = (cartItemId: string) => {
-    const newExpanded = new Set(expandedComments);
-    if (newExpanded.has(cartItemId)) {
-      newExpanded.delete(cartItemId);
-    } else {
-      newExpanded.add(cartItemId);
-    }
-    setExpandedComments(newExpanded);
-  };
-
   const isFormValid = () => {
     const { customerDetails } = state;
     return customerDetails.firstName.trim() !== '' &&
@@ -82,21 +71,34 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
       toast.error('Please fill in all customer details');
       return;
     }
-
+  
     setIsSubmitting(true);
     try {
       const result = await submitOrderRequest(state);
-      if (result.success) {
-        toast.success('Order request submitted successfully!');
-        clearCart();
-        toggleCart();
-        setShowCustomerForm(false);
+      console.log('Order submission result:', result);
+      
+      // FIXED: Check for responseType instead of id
+      if (result && result.responseType === 'success') {
+        // Success - order created successfully
+        toast.success(result.message || 'Order created successfully!');
+        setShowSuccessAnimation(true);
+  
+        setTimeout(() => {
+          clearCart();
+          setShowSuccessAnimation(false);
+          setShowCustomerForm(false);
+          toggleCart();
+        }, 2500);
+      } else if (result && result.responseType === 'error') {
+        // Handle error response
+        toast.error(result.message || 'Failed to submit order request');
       } else {
-        toast.error(result.error || 'Failed to submit order request');
+        // Handle unexpected response format
+        toast.error('Unexpected response from server');
       }
     } catch (error) {
-      toast.error('An unexpected error occurred');
       console.error('Order submission error:', error);
+      toast.error('An unexpected error occurred');
     } finally {
       setIsSubmitting(false);
     }
@@ -104,8 +106,29 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
 
   const totalAmount = getTotalPrice();
 
+  const SuccessAnimation = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-70 z-60 flex items-center justify-center">
+      <div className="bg-white rounded-2xl p-8 mx-4 max-w-sm w-full text-center animate-pulse">
+        <div className="mb-6">
+          <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-4 animate-bounce">
+            <CheckCircle className="w-12 h-12 text-green-600 animate-pulse" />
+          </div>
+          <h3 className="text-2xl font-bold text-gray-800 mb-2">Success!</h3>
+          <p className="text-gray-600">Your order has been submitted successfully</p>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-1 mb-4">
+          <div className="bg-green-600 h-1 rounded-full animate-pulse" style={{ width: '100%' }}></div>
+        </div>
+        <p className="text-sm text-gray-500">Processing your request...</p>
+      </div>
+    </div>
+  );
+
   return (
     <>
+      {/* Success Animation Overlay */}
+      {showSuccessAnimation && <SuccessAnimation />}
+
       {/* Backdrop */}
       {state.isOpen && (
         <div 
@@ -153,9 +176,6 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
               </div>
             ) : !showCustomerForm ? (
               <div className="p-4 space-y-4">
-                {/* Global Comment */}
-                
-
                 {/* Cart Items */}
                 {state.orderRequestitems.map((item) => (
                   <div key={item.cartItemId} className="bg-gray-50 rounded-lg p-3">
@@ -227,7 +247,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
                   </div>
                 ))}
 
-          <div className="bg-blue-50 rounded-lg p-3">
+                <div className="bg-blue-50 rounded-lg p-3">
                   <Label htmlFor="global-comment" className="text-sm font-medium mb-2 block">
                     <MessageCircle className="w-4 h-4 inline mr-1" />
                     Order Notes (Optional)
@@ -260,6 +280,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
                         onChange={(e) => updateCustomerDetails({ firstName: e.target.value })}
                         placeholder="John"
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
                     <div>
@@ -270,6 +291,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
                         onChange={(e) => updateCustomerDetails({ lastName: e.target.value })}
                         placeholder="Doe"
                         required
+                        disabled={isSubmitting}
                       />
                     </div>
                   </div>
@@ -282,6 +304,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
                       onChange={(e) => updateCustomerDetails({ phoneNumber: e.target.value })}
                       placeholder="+255 xxx xxx xxx"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
 
@@ -290,6 +313,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
                     <Select 
                       value={state.customerDetails.gender} 
                       onValueChange={(value: 'MALE' | 'FEMALE') => updateCustomerDetails({ gender: value })}
+                      disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select gender" />
@@ -310,6 +334,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
                       onChange={(e) => updateCustomerDetails({ emailAddress: e.target.value })}
                       placeholder="john@example.com"
                       required
+                      disabled={isSubmitting}
                     />
                   </div>
                 </div>
@@ -319,6 +344,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
                     variant="outline"
                     onClick={() => setShowCustomerForm(false)}
                     className="flex-1"
+                    disabled={isSubmitting}
                   >
                     Back to Cart
                   </Button>
@@ -337,12 +363,12 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
           {/* Footer with Total and Checkout */}
           {state.orderRequestitems.length > 0 && !showCustomerForm && (
             <div className="border-t p-4 bg-white">
-              <div className="mb-4">
+          
                 <div className="flex justify-between items-center text-lg font-semibold">
                   <span>Total:</span>
-                  <span>@ {totalAmount.toLocaleString()} TZS</span>
+                  <span>{totalAmount.toLocaleString()} TZS</span>
                 </div>
-              </div>
+              
               
               <Button 
                 onClick={() => setShowCustomerForm(true)}
@@ -359,3 +385,4 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
 };
 
 export default CartSidebar;
+

@@ -1,15 +1,25 @@
 
 
 import ProductDetailsPageWrapper from "@/components/site/product-detail-wrapper";
-import { getProduct } from "@/lib/actions/product-actions";
-import { UUID } from "crypto";
 
-type Params = Promise<{id: string}>
-export default async function ProductPage({params}: {params: Params}) {
-  const paramId = await params;
-  const productResponse = await getProduct(paramId?.id as UUID);
+
+type SearchParams = Promise<{ [key: string]: string | string[] | undefined }>
+
+export default async function ProductPage({searchParams}: {searchParams: SearchParams}) {
+  const searchParamsObj = await searchParams;
   
-  const product = productResponse?.content?.[0];
+
+  let product = null;
+  
+  if (searchParamsObj?.product) {
+    try {
+      const productData = decodeURIComponent(searchParamsObj.product as string);
+      product = JSON.parse(productData);
+    } catch (error) {
+      console.error('Error parsing product data from URL:', error);
+    }
+  }
+  
   
   if (!product) {
     return (

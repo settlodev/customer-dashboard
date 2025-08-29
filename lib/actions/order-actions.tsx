@@ -174,10 +174,9 @@ export const creditReport = async (startDate?: Date, endDate?: Date): Promise<Cr
 
 
 export const submitOrderRequest = async (cartState: CartState) => {
-    // console.log("The cart state is", cartState);
+    console.log("The cart state is", cartState.locationId);
 
     let formResponse: FormResponse | null = null;
-
 
     if (!cartState.locationId) {
         formResponse = {
@@ -199,7 +198,6 @@ export const submitOrderRequest = async (cartState: CartState) => {
         customerEmailAddress: cartState.customerDetails.emailAddress,
         
         orderRequestItems: cartState.orderRequestitems.map(item => {
-            
             let variantId = item.variantId;
             
             if (!variantId && item.variants && item.variants.length > 0) {
@@ -221,63 +219,63 @@ export const submitOrderRequest = async (cartState: CartState) => {
         }),
     };
 
-    // console.log("The payload is",payload)
+    console.log("The payload is", payload);
 
     // Validate payload with Zod
     const validRequestData = orderRequestSchema.safeParse(payload);
-
-    
     
     if (!validRequestData.success) {
-
         formResponse = {
             responseType: "error",
             message: "Please fill all the required fields",
             error: new Error(validRequestData.error.message)
-        }
-        console.log("validation error",formResponse)
-        return parseStringify(formResponse)
-
+        };
+        console.log("validation error", formResponse);
+        return parseStringify(formResponse);
     }
-    // const location = await getCurrentLocation();
-    const location = cartState.locationId
-    console.log("The location Id is",location)
+
+    const location = cartState.locationId;
+    console.log("The location Id is", location);
 
     const finalPayload = {
         ...validRequestData.data,
         orderRequestServingType: "DINE_IN",
-    }
+    };
 
-    console.log("The final payload is",finalPayload);
+    // console.log("The final payload is", finalPayload);
 
     try {
-    
-    const apiClient = new ApiClient();
+        const apiClient = new ApiClient();
 
-       const requestedOrder = await apiClient.post(
+        const requestedOrder = await apiClient.post(
             `/api/order-request/${location}/create`,
-           finalPayload,
+            finalPayload,
             {
                 headers: {
                     "Request-Origin": "ECOMMERCE"
                 }
             }
         );
-        // console.log("The requested order is",requestedOrder)
+
+        // console.log("The requested order is", requestedOrder);
+        
+        // FIXED: Return the successful response with the order data
         formResponse = {
             responseType: "success",
             message: "Order has been requested successfully",
+            data: requestedOrder // Include the order data
         };
-    
+        
+        return parseStringify(formResponse); // FIXED: Actually return the response
 
-  } catch (error:any) {
-    console.error('Order submission error:', error.message);
-    formResponse = {
-        responseType: "error",
-        message: error.message ?? "Something went wrong while processing your request, please try again",
-        error: error instanceof Error ? error : new Error(String(error)),
-    };
-    
-    return parseStringify(formResponse)
-  }
+    } catch (error: any) {
+        console.error('Order submission error:', error.message);
+        formResponse = {
+            responseType: "error",
+            message: error.message ?? "Something went wrong while processing your request, please try again",
+            error: error instanceof Error ? error : new Error(String(error)),
+        };
+        
+        return parseStringify(formResponse);
+    }
 }

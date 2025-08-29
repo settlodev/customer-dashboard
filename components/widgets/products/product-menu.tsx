@@ -504,7 +504,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [isMobile, setIsMobile] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [productsInitialLoad, setProductsInitialLoad] = useState(true);
-  const [locationId, setLocationId] = useState<string | null>(null);
+  const [locationId, setLocationID] = useState<string | null>(null);
   const [showScrollToTop, setShowScrollToTop] = useState(false);
   const [businessType, setBusinessType] = useState(businessTypes.default);
   const loaderRef = useRef<HTMLDivElement>(null);
@@ -517,11 +517,11 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [isBusinessDataReady, setIsBusinessDataReady] = useState(false);
 
   // Cart context - add setLocationId from useCart
-  const { state: cartState, addToCart, toggleCart, setLocationId: setCartLocationId } = useCart();
+  const { state: cartState, addToCart, toggleCart, setLocationId } = useCart();
 
   useEffect(() => {
     if (params?.id) {
-      setLocationId(params.id);
+      setLocationID(params.id);
     } else {
       setLocationError("Missing location or business ID");
       setLocationLoading(false);
@@ -531,7 +531,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   
   useEffect(() => {
     if (locationId) {
-      setCartLocationId(locationId);
+      setLocationId(locationId);
     }
   }, [locationId]);
 

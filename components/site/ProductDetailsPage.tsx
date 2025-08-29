@@ -45,7 +45,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isWishlisted, setIsWishlisted] = useState(false);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  // const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isAddedToCart, setIsAddedToCart] = useState(false);
 
   useEffect(() => {
@@ -148,28 +148,6 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               <span className="hidden sm:inline">Back</span>
             </Button>
 
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleShare}
-                className="p-3 hover:bg-gray-100/50 transition-all duration-200 rounded-xl"
-              >
-                <Share2 className="w-5 h-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAddToWishlist}
-                className={`p-3 transition-all duration-200 rounded-xl ${
-                  isWishlisted 
-                    ? 'text-red-500 bg-red-50 hover:bg-red-100' 
-                    : 'hover:bg-gray-100/50'
-                }`}
-              >
-                <Heart className={`w-5 h-5 ${isWishlisted ? 'fill-current' : ''}`} />
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -323,9 +301,9 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                             disabled={quantity <= 1}
                             className="p-3 hover:bg-gray-200 rounded-l-xl"
                           >
-                            <Minus className="w-5 h-5" />
+                            <Minus className="w-4 h-4" />
                           </Button>
-                          <span className="text-xl font-bold px-6 py-3 min-w-[80px] text-center">
+                          <span className="text-sm font-bold px-4 py-2 min-w-[60px] text-center">
                             {quantity}
                           </span>
                           <Button
@@ -334,13 +312,14 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                             onClick={incrementQuantity}
                             className="p-3 hover:bg-gray-200 rounded-r-xl"
                           >
-                            <Plus className="w-5 h-5" />
+                            <Plus className="w-4 h-4" />
                           </Button>
                         </div>
                         
                         <div className="text-sm text-gray-600">
-                          <p>Total: <span className="font-bold text-lg text-gray-900">
-                            {(getCurrentPrice() * quantity).toLocaleString()} TZS
+                          <p>Total: <span className="font-bold text-sm lg:text-lg text-gray-900">
+                            {(getCurrentPrice() * quantity).toLocaleString()} {''}
+                            <span className='text-sm font-bold lg:text-lg text-gray-900'>TZS</span>
                           </span></p>
                         </div>
                       </div>
