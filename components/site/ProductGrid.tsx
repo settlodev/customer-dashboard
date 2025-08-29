@@ -8,7 +8,7 @@ import {
   Plus, 
   Eye,
   Zap,
-  Tag
+  Tag,
 } from 'lucide-react';
 import { BusinessType, CategorizedProducts, ExtendedProduct } from '@/types/site/type';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ interface ProductGridProps {
   businessType: BusinessType;
   onAddToCart: (product: ExtendedProduct, quantity?: number, variantId?: string) => void;
   basePath?: string;
+  isLoading?: boolean; 
 }
 
 const ProductGrid: React.FC<ProductGridProps> = ({
@@ -28,7 +29,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   selectedCategory,
   businessType,
   onAddToCart,
-  basePath = '/item'
+  basePath = '/item',
+  isLoading = false 
 }) => {
   const router = useRouter();
   const [loadingProducts, setLoadingProducts] = useState<Set<string>>(new Set());
@@ -55,7 +57,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     return getProductPrice(product, selectedVariantId);
   };
 
- 
   const allProducts = Object.values(categorizedProducts).flat();
   const displayProducts = selectedCategory && selectedCategory !== 'all'
     ? categorizedProducts[selectedCategory] || []
@@ -69,7 +70,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
       .replace(/-+/g, '-') 
       .trim();
     
-    // Pass both the product data and ID (as fallback)
     router.push(`${basePath}/${product.id}?slug=${productSlug}&product=${productData}`);
   };
 
@@ -79,7 +79,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     setSelectedVariants(newSelectedVariants);
   };
 
- 
   const handleAddToCart = async (product: ExtendedProduct, e: React.MouseEvent) => {
     e.stopPropagation();
     
@@ -128,7 +127,45 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     return hasVariants(product) && product.variants!.length > 1 && !selectedVariants.has(product.id);
   };
 
- 
+  // Skeleton loader component
+  const ProductSkeleton = () => (
+    <Card className="overflow-hidden bg-white/80 backdrop-blur-sm border border-gray-200/60">
+      <div className="relative overflow-hidden">
+        <div className="w-full h-48 sm:h-52 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 animate-pulse" />
+      </div>
+      
+      <CardContent className="p-4 space-y-3">
+        <div className="space-y-2">
+          <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-pulse" />
+          <div className="h-4 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded w-3/4 animate-pulse" />
+        </div>
+        
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="h-6 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded w-1/3 animate-pulse" />
+          <div className="h-8 w-8 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded-xl animate-pulse" />
+        </div>
+        
+        <div className="pt-2 border-t border-gray-100">
+          <div className="h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded animate-pulse" />
+          <div className="h-3 bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 rounded w-2/3 animate-pulse mt-1" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="px-2 sm:px-0">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 2xl:grid-cols-5">
+          {Array.from({ length: 8 }).map((_, index) => (
+            <ProductSkeleton key={`skeleton-${index}`} />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="px-2 sm:px-0">
       {/* Enhanced Products Grid */}
@@ -144,7 +181,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           const needsSelection = needsVariantSelection(extendedProduct);
           const isHovered = hoveredProduct === product.id;
          
-          
           return (
             <Card 
               key={`${product.id}-${product.name}`} 
@@ -153,7 +189,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
               onMouseEnter={() => setHoveredProduct(product.id)}
               onMouseLeave={() => setHoveredProduct(null)}
             >
-             
               <div className="relative overflow-hidden">
                 {product.image ? (
                   <Image 
@@ -169,7 +204,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   </div>
                 )}
                 
-                {/* Enhanced Overlay with Multiple Actions */}
                 <div className={`absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent transition-all duration-300 ${
                   isHovered ? 'opacity-100' : 'opacity-0'
                 }`}>
@@ -191,35 +225,17 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                         </>
                       )}
                     </Button>
-                    
-                    {/* <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleProductClick(extendedProduct);
-                      }}
-                      className={`p-3 bg-white/90 text-gray-800 hover:bg-white rounded-xl transform transition-all duration-300 ${
-                        isHovered ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'
-                      }`}
-                      style={{ transitionDelay: '100ms' }}
-                    >
-                      <Eye className="w-4 h-4" />
-                    </Button> */}
                   </div>
                 </div>
               </div>
               
               <CardContent className="p-4 space-y-3">
-                {/* Product Title */}
                 <div>
                   <h3 className="font-bold text-gray-900 line-clamp-2 text-sm sm:text-base leading-tight group-hover:text-emerald-600 transition-colors duration-200">
                     {product.name}
                   </h3>
                 </div>
 
-            
-                {/* Variant Information */}
                 {productHasVariants && (
                   <div className="space-y-2">
                     {extendedProduct.variants!.length === 1 ? (
@@ -238,7 +254,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   </div>
                 )}
 
-                {/* Price and Cart Action */}
                 <div className="flex items-center justify-between gap-3 pt-2">
                   <div className="flex-1">
                     <p className="text-lg font-bold text-gray-900">
@@ -262,7 +277,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                   </Button>
                 </div>
 
-                {/* Product Description - Condensed */}
                 {product.description && product.description.trim() && (
                   <div className="pt-2 border-t border-gray-100">
                     <p className="text-xs text-gray-600 line-clamp-2 leading-relaxed">
@@ -272,7 +286,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
                 )}
               </CardContent>
 
-              {/* Subtle glow effect on hover */}
               <div className={`absolute inset-0 rounded-lg transition-all duration-300 pointer-events-none ${
                 isHovered ? 'ring-2 ring-emerald-200 ring-opacity-50' : ''
               }`} />
@@ -281,8 +294,8 @@ const ProductGrid: React.FC<ProductGridProps> = ({
         })}
       </div>
 
-      {/* Enhanced Empty State */}
-      {displayProducts.length === 0 && (
+      {/* Enhanced Empty State - Only show when not loading and no products */}
+      {!isLoading && displayProducts.length === 0 && (
         <div className="text-center py-16 px-4">
           <div className="max-w-md mx-auto">
             <div className="relative mb-8">

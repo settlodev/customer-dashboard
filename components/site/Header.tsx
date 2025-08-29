@@ -9,7 +9,6 @@ import {
   Clock, 
   Search,
   ShoppingCartIcon,
-  User,
   ShoppingCart,
 } from 'lucide-react';
 import { BusinessInfo, BusinessType } from '@/types/site/type';
@@ -81,8 +80,13 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
             
-            {/* Search on Desktop */}
-            <div className="hidden md:flex flex-1 mx-8">
+           
+            
+            {/* Action Icons */}
+            <div className="flex items-center space-x-2">
+              
+               {/* Search on Desktop */}
+            <div className="hidden md:flex flex-1 mx-12">
               <div className="relative flex-grow max-w-md mx-auto">
                 <Input
                   type="text"
@@ -102,13 +106,6 @@ const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
             </div>
-            
-            {/* Action Icons */}
-            <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => alert('Account')}>
-                <User className="h-5 w-5" />
-              </Button>
-              
               <Button 
                 variant="ghost" 
                 size="icon" 

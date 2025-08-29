@@ -97,7 +97,7 @@ export const createStockFromWarehouse = async (
         warehouse: warehouse?.id,
         business: business?.id
     }
-    console.log("The payload is ",payload)
+    // console.log("The payload is ",payload)
 
     try {
         const apiClient = new ApiClient();

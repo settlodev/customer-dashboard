@@ -179,7 +179,7 @@ export const updateStockIntakeFromWarehouse = async (
         ...validData.data,
        
     };
-    console.log("The payload is",payload)
+    // console.log("The payload is",payload)
 
     try {
         const apiClient = new ApiClient();

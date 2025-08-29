@@ -10,12 +10,6 @@ import {
   Minus,
   ShoppingCartIcon,
   Check,
-  Heart,
-  Share2,
-  Star,
-  Truck,
-  Shield,
-  RotateCcw,
   Zap
 } from 'lucide-react';
 import Image from 'next/image';
@@ -36,16 +30,15 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   product,
   businessType,
   onAddToCart,
-  onAddToWishlist,
   relatedProducts = [],
   backPath = '/products'
 }) => {
+
+  
   const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [isWishlisted, setIsWishlisted] = useState(false);
-  // const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [isAddedToCart, setIsAddedToCart] = useState(false);
 
   useEffect(() => {
@@ -100,26 +93,6 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     }, 500);
   };
 
-  const handleAddToWishlist = () => {
-    onAddToWishlist(product);
-    setIsWishlisted(!isWishlisted);
-  };
-
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: product.name,
-          text: `Check out this product: ${product.name}`,
-          url: window.location.href,
-        });
-      } catch (error) {
-        console.log('Error sharing:', error);
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-    }
-  };
 
   const incrementQuantity = () => {
     setQuantity(prev => prev + 1);
@@ -410,7 +383,10 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           </div>
         )}
       </div>
-      <CartSidebar businessType={businessType} />
+      <CartSidebar 
+      businessType={businessType}
+      locationId={product.location}
+       />
     </div>
   );
 };

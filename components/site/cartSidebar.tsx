@@ -1,5 +1,5 @@
-'use client';
 
+'use client';
 import React, { useState } from 'react';
 import { X, Plus, Minus, ShoppingCart, Trash2, User, MessageCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,13 +12,16 @@ import Image from 'next/image';
 import { useCart } from '@/context/cartContext';
 import { toast } from 'sonner';
 import { submitOrderRequest } from '@/lib/actions/order-actions';
+import { useRouter } from 'next/navigation';
 
 interface CartSidebarProps {
   businessType: BusinessType;
   businessInfo?: BusinessInfo;
+  locationId?: string; 
 }
 
-const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
+const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) => {
+  const router = useRouter();
   const { 
     state, 
     updateQuantity, 
@@ -77,18 +80,26 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
       const result = await submitOrderRequest(state);
       console.log('Order submission result:', result);
       
-      // FIXED: Check for responseType instead of id
       if (result && result.responseType === 'success') {
-        // Success - order created successfully
+        // Success - show success animation first
         toast.success(result.message || 'Order created successfully!');
+        
+        // Close cart and clear it immediately
+        toggleCart();
+        clearCart();
+        setShowCustomerForm(false);
+        
+        // Show success animation
         setShowSuccessAnimation(true);
-  
+
+        // After animation, redirect to menu
         setTimeout(() => {
-          clearCart();
           setShowSuccessAnimation(false);
-          setShowCustomerForm(false);
-          toggleCart();
-        }, 2500);
+          if (locationId) {
+            router.push(`/menu/${locationId}`);
+          }
+        }, 5000);
+        
       } else if (result && result.responseType === 'error') {
         // Handle error response
         toast.error(result.message || 'Failed to submit order request');
@@ -119,7 +130,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
         <div className="w-full bg-gray-200 rounded-full h-1 mb-4">
           <div className="bg-green-600 h-1 rounded-full animate-pulse" style={{ width: '100%' }}></div>
         </div>
-        <p className="text-sm text-gray-500">Processing your request...</p>
+        <p className="text-sm text-gray-500">Redirecting to menu...</p>
       </div>
     </div>
   );
@@ -385,4 +396,3 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType }) => {
 };
 
 export default CartSidebar;
-

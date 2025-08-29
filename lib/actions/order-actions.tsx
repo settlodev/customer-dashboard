@@ -174,7 +174,7 @@ export const creditReport = async (startDate?: Date, endDate?: Date): Promise<Cr
 
 
 export const submitOrderRequest = async (cartState: CartState) => {
-    console.log("The cart state is", cartState.locationId);
+    // console.log("The cart state is", cartState.locationId);
 
     let formResponse: FormResponse | null = null;
 
@@ -219,9 +219,7 @@ export const submitOrderRequest = async (cartState: CartState) => {
         }),
     };
 
-    console.log("The payload is", payload);
-
-    // Validate payload with Zod
+    // console.log("The payload is", payload)
     const validRequestData = orderRequestSchema.safeParse(payload);
     
     if (!validRequestData.success) {
