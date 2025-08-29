@@ -7,6 +7,7 @@ import { Location } from "@/types/location/type";
 import { redirect } from "next/navigation";
 import { activeBusiness } from "@/types/types";
 
+
 const createMinimalBusiness = (business: Business): MinimalBusiness => {
   return {
     isArchived: business.isArchived,

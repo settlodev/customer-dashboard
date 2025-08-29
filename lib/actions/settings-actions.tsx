@@ -25,7 +25,7 @@ export const fetchLocationSettings = async () : Promise<LocationSettings> => {
         const settingsData = await  apiClient.get(
             `/api/location-settings/${location?.id}`,
         );
-        
+        console.log("The location setting are",settingsData)
         return parseStringify(settingsData);
 
     }

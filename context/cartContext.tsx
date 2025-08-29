@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { createContext, useContext, useReducer, useEffect, useRef } from 'react';
@@ -68,7 +66,8 @@ type CartAction =
   | { type: 'SET_LOCATION_ID'; payload: string } // Add SET_LOCATION_ID action
   | { type: 'CLEAR_CART' }
   | { type: 'TOGGLE_CART' }
-  | { type: 'LOAD_CART'; payload: CartState };
+  | { type: 'LOAD_CART'; payload: CartState }
+  | { type: 'INIT_CART'; payload: string }; // FIXED: Add INIT_CART action for initial locationId
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
@@ -105,6 +104,17 @@ const generateCartItemId = (productId: string, variantId?: string): string => {
 
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
+    case 'INIT_CART': {
+      // FIXED: Initialize cart with locationId if no existing cart state
+      if (!state.locationId) {
+        return {
+          ...state,
+          locationId: action.payload,
+        };
+      }
+      return state;
+    }
+
     case 'ADD_TO_CART': {
       const { product, quantity, variantId: providedVariantId } = action.payload;
       
@@ -228,6 +238,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     }
 
     case 'SET_LOCATION_ID': {
+      console.log('Setting locationId in cart reducer:', action.payload); // FIXED: Add debug logging
       return {
         ...state,
         locationId: action.payload,
@@ -247,8 +258,15 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         isOpen: !state.isOpen,
       };
 
-    case 'LOAD_CART':
-      return action.payload;
+    case 'LOAD_CART': {
+      // FIXED: Ensure loaded cart has all required properties
+      const loadedState = {
+        ...initialState,
+        ...action.payload,
+      };
+      console.log('Loading cart from storage:', loadedState); // FIXED: Add debug logging
+      return loadedState;
+    }
 
     default:
       return state;
@@ -274,26 +292,36 @@ const initialState: CartState = {
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [state, dispatch] = useReducer(cartReducer, initialState);
   const prevStateRef = useRef<CartState>();
+  const isInitialLoad = useRef(true); // FIXED: Track initial load to prevent overriding locationId
 
-
+  // FIXED: Load cart from localStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && isInitialLoad.current) {
       const savedCart = localStorage.getItem('cart');
       if (savedCart) {
         try {
           const parsedCart = JSON.parse(savedCart);
+          console.log('Loading saved cart:', parsedCart); // Debug logging
           dispatch({ type: 'LOAD_CART', payload: parsedCart });
         } catch (error) {
           console.error('Error loading cart from localStorage:', error);
+          // Clear corrupted cart data
+          localStorage.removeItem('cart');
         }
       }
+      isInitialLoad.current = false;
     }
   }, []);
 
+  // FIXED: Save to localStorage with better state comparison
   useEffect(() => {
-    if (typeof window !== 'undefined' && prevStateRef.current !== state) {
-      localStorage.setItem('cart', JSON.stringify(state));
-      prevStateRef.current = state;
+    if (typeof window !== 'undefined' && !isInitialLoad.current) {
+      // Only save if state has actually changed
+      if (prevStateRef.current !== state) {
+        console.log('Saving cart to localStorage:', state); // Debug logging
+        localStorage.setItem('cart', JSON.stringify(state));
+        prevStateRef.current = state;
+      }
     }
   }, [state]);
 
@@ -326,6 +354,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setLocationId = (locationId: string) => {
+    console.log('CartProvider setLocationId called with:', locationId); // FIXED: Add debug logging
     dispatch({ type: 'SET_LOCATION_ID', payload: locationId });
   };
 

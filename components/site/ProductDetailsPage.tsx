@@ -16,6 +16,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { BusinessType, ExtendedProduct } from '@/types/site/type';
 import CartSidebar from './cartSidebar';
+import { useCart } from '@/context/cartContext';
 
 interface ProductDetailsPageProps {
   product: ExtendedProduct;
@@ -40,6 +41,13 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isAddedToCart, setIsAddedToCart] = useState(false);
+
+  const { setLocationId } = useCart();
+
+  
+  useEffect(() => {
+      setLocationId(product.location);
+  }, []);
 
   useEffect(() => {
     if (product.variants && product.variants.length > 0) {

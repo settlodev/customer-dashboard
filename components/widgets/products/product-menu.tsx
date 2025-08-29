@@ -58,23 +58,21 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isBusinessDataReady, setIsBusinessDataReady] = useState(false);
 
-  // Cart context - add setLocationId from useCart
   const { state: cartState, addToCart, toggleCart, setLocationId } = useCart();
 
+  
   useEffect(() => {
     if (params?.id) {
       setLocationID(params.id);
+      
+      setLocationId(params.id);
+      console.log("The location is", params);
     } else {
       setLocationError("Missing location or business ID");
       setLocationLoading(false);
     }
-  }, [params]);
+  }, [params,locationId]);
 
-  useEffect(() => {
-    if (locationId) {
-      setLocationId(locationId);
-    }
-  }, [locationId]);
 
   useEffect(() => {
     const fetchLocationData = async () => {
@@ -336,6 +334,12 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
       }, 300);
     }, 2000);
   };
+
+  // FIXED: Add debug logging to see cart state
+  useEffect(() => {
+    console.log("Current cart state locationId:", cartState.locationId);
+    console.log("Local locationId:", locationId);
+  }, [cartState.locationId, locationId]);
 
   // Show loading screen while fetching critical business data
   if (locationLoading || !businessInfo) {

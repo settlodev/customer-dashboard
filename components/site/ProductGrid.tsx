@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent} from '@/components/ui/card';
 import { 
   ShoppingCart, 
@@ -14,6 +14,7 @@ import { BusinessType, CategorizedProducts, ExtendedProduct } from '@/types/site
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useCart } from '@/context/cartContext';
 
 interface ProductGridProps {
   categorizedProducts: CategorizedProducts;
