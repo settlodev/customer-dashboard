@@ -238,7 +238,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     }
 
     case 'SET_LOCATION_ID': {
-      console.log('Setting locationId in cart reducer:', action.payload); // FIXED: Add debug logging
+      // console.log('Setting locationId in cart reducer:', action.payload); // FIXED: Add debug logging
       return {
         ...state,
         locationId: action.payload,
@@ -264,7 +264,7 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         ...initialState,
         ...action.payload,
       };
-      console.log('Loading cart from storage:', loadedState); // FIXED: Add debug logging
+      // console.log('Loading cart from storage:', loadedState); // FIXED: Add debug logging
       return loadedState;
     }
 
@@ -301,7 +301,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (savedCart) {
         try {
           const parsedCart = JSON.parse(savedCart);
-          console.log('Loading saved cart:', parsedCart); // Debug logging
+          // console.log('Loading saved cart:', parsedCart); // Debug logging
           dispatch({ type: 'LOAD_CART', payload: parsedCart });
         } catch (error) {
           console.error('Error loading cart from localStorage:', error);
@@ -318,7 +318,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (typeof window !== 'undefined' && !isInitialLoad.current) {
       // Only save if state has actually changed
       if (prevStateRef.current !== state) {
-        console.log('Saving cart to localStorage:', state); // Debug logging
+        // console.log('Saving cart to localStorage:', state); // Debug logging
         localStorage.setItem('cart', JSON.stringify(state));
         prevStateRef.current = state;
       }
@@ -354,7 +354,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const setLocationId = (locationId: string) => {
-    console.log('CartProvider setLocationId called with:', locationId); // FIXED: Add debug logging
+    // console.log('CartProvider setLocationId called with:', locationId); // FIXED: Add debug logging
     dispatch({ type: 'SET_LOCATION_ID', payload: locationId });
   };
 
