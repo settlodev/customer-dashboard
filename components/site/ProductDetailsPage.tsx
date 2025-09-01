@@ -10,7 +10,8 @@ import {
   Minus,
   ShoppingCartIcon,
   Check,
-  Zap
+  Zap,
+  AlertCircle
 } from 'lucide-react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -81,11 +82,31 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     return null;
   };
 
+  // Check if product is in stock
+  const isInStock = () => {
+    return product.quantity > 0;
+  };
+
+  // Get maximum available quantity for quantity selector
+  const getMaxQuantity = () => {
+    return product.quantity;
+  };
+
   const handleVariantSelect = (variantId: string) => {
     setSelectedVariantId(variantId);
   };
 
   const handleAddToCart = async () => {
+    if (!isInStock()) {
+      alert('This product is currently out of stock');
+      return;
+    }
+
+    if (quantity > product.quantity) {
+      alert(`Only ${product.quantity} items available in stock`);
+      return;
+    }
+
     if (product.variants && product.variants.length > 1 && !selectedVariantId) {
       alert('Please select a variant first');
       return;
@@ -101,14 +122,22 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     }, 500);
   };
 
-
   const incrementQuantity = () => {
-    setQuantity(prev => prev + 1);
+    if (quantity < product.quantity) {
+      setQuantity(prev => prev + 1);
+    }
   };
 
   const decrementQuantity = () => {
     setQuantity(prev => prev > 1 ? prev - 1 : 1);
   };
+
+  // Reset quantity if it exceeds available stock
+  useEffect(() => {
+    if (quantity > product.quantity) {
+      setQuantity(Math.min(quantity, product.quantity) || 1);
+    }
+  }, [product.quantity, quantity]);
 
   const hasVariants = product.variants && product.variants.length > 0;
   const needsVariantSelection = hasVariants && product.variants!.length > 1 && !selectedVariantId;
@@ -153,18 +182,32 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                   </div>
                 )}
                 
-                {/* Image overlay with quick actions */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                  <div className="flex gap-3">
-                    <Button 
-                      size="sm" 
-                      className="bg-white/90 text-gray-800 hover:bg-white shadow-lg backdrop-blur-sm"
-                    >
-                      <Zap className="w-4 h-4 mr-1" />
-                      Quick View
-                    </Button>
+                {/* Stock overlay */}
+                {!isInStock() && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <div className="bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-6 h-6" />
+                        <span className="font-bold text-lg">Out of Stock</span>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
+                
+                {/* Image overlay with quick actions */}
+                {isInStock() && (
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
+                    <div className="flex gap-3">
+                      <Button 
+                        size="sm" 
+                        className="bg-white/90 text-gray-800 hover:bg-white shadow-lg backdrop-blur-sm"
+                      >
+                        <Zap className="w-4 h-4 mr-1" />
+                        Quick View
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
 
@@ -175,26 +218,54 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             <Card className="p-6 lg:p-8 shadow-xl ring-1 ring-gray-200/50 bg-white/70 backdrop-blur-sm">
               <CardContent className="p-0">
                 <div className="space-y-6">
-                  {/* Product Title & Rating */}
+                  {/* Product Title & Stock Status */}
                   <div>
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                       {product.name}
                     </h1>
                     
-                   
+                    {/* Stock Status Indicator */}
+                    <div className="flex items-center gap-3 mb-4">
+                      {isInStock() ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-green-600 font-semibold">
+                            In Stock ({product.quantity} available)
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                          <span className="text-red-600 font-semibold">Out of Stock</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Enhanced Price Display */}
-                  <div className="bg-gradient-to-r from-emerald-50 to-blue-50 p-4 rounded-2xl border border-emerald-200/50">
+                  <div className={`p-4 rounded-2xl border ${
+                    isInStock() 
+                      ? 'bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200/50' 
+                      : 'bg-gray-100 border-gray-300'
+                  }`}>
                     <div className="flex items-baseline gap-3">
-                      <span className="text-xl lg:text-2xl font-bold text-gray-900">
+                      <span className={`text-xl lg:text-2xl font-bold ${
+                        isInStock() ? 'text-gray-900' : 'text-gray-500'
+                      }`}>
                         {getCurrentPrice().toLocaleString()}
                       </span>
-                      <span className="text-lg font-medium text-gray-600">TZS</span>
+                      <span className={`text-lg font-medium ${
+                        isInStock() ? 'text-gray-600' : 'text-gray-400'
+                      }`}>TZS</span>
                     </div>
-                    {needsVariantSelection && (
+                    {needsVariantSelection && isInStock() && (
                       <p className="text-sm text-emerald-600 mt-1">
                         *Price may vary based on selected variant
+                      </p>
+                    )}
+                    {!isInStock() && (
+                      <p className="text-sm text-red-600 mt-1">
+                        This item is currently unavailable
                       </p>
                     )}
                   </div>
@@ -217,24 +288,28 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                       <h3 className="text-sm font-medium mb-4 text-gray-900 underline">
                         Choose your option
                       </h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 ">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {product.variants!.map((variant) => (
                           <div
                             key={variant.id}
-                            className={`relative border-2 rounded-2xl items-center p-2 cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-lg ${
+                            className={`relative border-2 rounded-2xl items-center p-2 transition-all duration-300 ${
+                              isInStock() 
+                                ? 'cursor-pointer transform hover:scale-105 hover:shadow-lg' 
+                                : 'cursor-not-allowed opacity-60'
+                            } ${
                               selectedVariantId === variant.id
                                 ? 'border-emerald-500 bg-emerald-50 shadow-lg ring-4 ring-emerald-200/50'
                                 : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
                             }`}
-                            onClick={() => handleVariantSelect(variant.id)}
+                            onClick={() => isInStock() && handleVariantSelect(variant.id)}
                           >
-                            {selectedVariantId === variant.id && (
+                            {selectedVariantId === variant.id && isInStock() && (
                               <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-2 shadow-lg">
                                 <Check className="w-4 h-4" />
                               </div>
                             )}
 
-                            <div className="space-y-2 ">
+                            <div className="space-y-2">
                               <h4 className={`font-bold text-sm ${
                                 selectedVariantId === variant.id ? 'text-emerald-900' : 'text-gray-900'
                               }`}>
@@ -269,72 +344,89 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
                   {/* Enhanced Quantity & Add to Cart */}
                   <div className="space-y-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-3 underline">
-                        Quantity
-                      </label>
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center bg-gray-50 rounded-xl border-2 border-gray-200">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={decrementQuantity}
-                            disabled={quantity <= 1}
-                            className="p-3 hover:bg-gray-200 rounded-l-xl"
-                          >
-                            <Minus className="w-4 h-4" />
-                          </Button>
-                          <span className="text-sm font-bold px-4 py-2 min-w-[60px] text-center">
-                            {quantity}
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={incrementQuantity}
-                            className="p-3 hover:bg-gray-200 rounded-r-xl"
-                          >
-                            <Plus className="w-4 h-4" />
-                          </Button>
+                    {isInStock() && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-900 mb-3 underline">
+                          Quantity
+                        </label>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center bg-gray-50 rounded-xl border-2 border-gray-200">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={decrementQuantity}
+                              disabled={quantity <= 1}
+                              className="p-3 hover:bg-gray-200 rounded-l-xl"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </Button>
+                            <span className="text-sm font-bold px-4 py-2 min-w-[60px] text-center">
+                              {quantity}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={incrementQuantity}
+                              disabled={quantity >= product.quantity}
+                              className="p-3 hover:bg-gray-200 rounded-r-xl"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </Button>
+                          </div>
+                          
+                          <div className="text-sm text-gray-600">
+                            <p>Total: <span className="font-bold text-sm lg:text-lg text-gray-900">
+                              {(getCurrentPrice() * quantity).toLocaleString()} {''}
+                              <span className='text-sm font-bold lg:text-lg text-gray-900'>TZS</span>
+                            </span></p>
+                          </div>
                         </div>
                         
-                        <div className="text-sm text-gray-600">
-                          <p>Total: <span className="font-bold text-sm lg:text-lg text-gray-900">
-                            {(getCurrentPrice() * quantity).toLocaleString()} {''}
-                            <span className='text-sm font-bold lg:text-lg text-gray-900'>TZS</span>
-                          </span></p>
-                        </div>
+                        {quantity >= product.quantity && (
+                          <p className="text-sm text-amber-600 mt-2 flex items-center gap-1">
+                            <AlertCircle className="w-4 h-4" />
+                            Maximum quantity reached
+                          </p>
+                        )}
                       </div>
-                    </div>
+                    )}
 
                     {/* Enhanced Add to Cart Button */}
-                    <Button
-                      onClick={handleAddToCart}
-                      disabled={isLoading || needsVariantSelection}
-                      className={`w-full py-4 text-lg font-bold rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl ${
-                        isAddedToCart
-                          ? 'bg-green-500 hover:bg-green-600'
-                          : needsVariantSelection
-                          ? 'bg-gray-400 cursor-not-allowed'
-                          : `${businessType.primary} hover:${businessType.accent}`
-                      } text-white`}
-                    >
-                      {isLoading ? (
-                        <div className="flex items-center justify-center gap-3">
-                          <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
-                          Adding to Cart...
-                        </div>
-                      ) : isAddedToCart ? (
-                        <div className="flex items-center justify-center gap-3">
-                          <Check className="w-6 h-6" />
-                          Added to Cart!
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center gap-3">
-                          <ShoppingCart className="w-6 h-6" />
-                          {needsVariantSelection ? 'Please select an option' : `Add ${quantity} to Cart`}
-                        </div>
-                      )}
-                    </Button>
+                    {isInStock() ? (
+                      <Button
+                        onClick={handleAddToCart}
+                        disabled={isLoading || needsVariantSelection}
+                        className={`w-full py-4 text-lg font-bold rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl ${
+                          isAddedToCart
+                            ? 'bg-green-500 hover:bg-green-600'
+                            : needsVariantSelection
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : `${businessType.primary} hover:${businessType.accent}`
+                        } text-white`}
+                      >
+                        {isLoading ? (
+                          <div className="flex items-center justify-center gap-3">
+                            <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
+                            Adding to Cart...
+                          </div>
+                        ) : isAddedToCart ? (
+                          <div className="flex items-center justify-center gap-3">
+                            <Check className="w-6 h-6" />
+                            Added to Cart!
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center gap-3">
+                            <ShoppingCart className="w-6 h-6" />
+                            {needsVariantSelection ? 'Please select an option' : `Add ${quantity} to Cart`}
+                          </div>
+                        )}
+                      </Button>
+                    ) : (
+                      <div className="w-full py-4 text-lg font-bold rounded-2xl bg-red-100 border-2 border-red-300 text-red-700 flex items-center justify-center gap-3">
+                        <AlertCircle className="w-6 h-6" />
+                        Product Out of Stock
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -380,10 +472,17 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
                       {relatedProduct.name}
                     </h3>
-                    <p className="text-lg font-bold text-emerald-600">
-                      {parseFloat(relatedProduct.price as string).toLocaleString()} 
-                      <span className="text-sm font-normal text-gray-600 ml-1">TZS</span>
-                    </p>
+                    <div className="flex justify-between items-center">
+                      <p className="text-lg font-bold text-emerald-600">
+                        {parseFloat(relatedProduct.price as string).toLocaleString()} 
+                        <span className="text-sm font-normal text-gray-600 ml-1">TZS</span>
+                      </p>
+                      {relatedProduct.quantity > 0 ? (
+                        <span className="text-xs text-green-600 font-medium">In Stock</span>
+                      ) : (
+                        <span className="text-xs text-red-600 font-medium">Out of Stock</span>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               ))}
