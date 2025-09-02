@@ -92,17 +92,17 @@ const pageSpecificComponents = {
   "/warehouse-stock-variants": {
     entityType: "stock" as const,
     importComponent: <>
-      {/* <CSVStockDialog />
-      <ProductWithStockCSVDialog /> */}
+      <CSVStockDialog />
+
     </>,
-    exportComponent: "",
+    exportComponent: <StockExport filename="Exporting Warehouse stock"/>,
     entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
     isWarehouse: true
   },
   "/warehouse-stock-intakes": {
     entityType: "stock-intake" as const,
-    importComponent: "",
-    exportComponent: "",
+    importComponent: <CSVStockIntakeDialog/>,
+    exportComponent: <StockIntakeExport filename="Warehouse Stock Intake"/>,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
     isWarehouse: true
   },

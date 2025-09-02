@@ -12,6 +12,7 @@ import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-b
 import { Stock, StockHistory } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { console } from "node:inspector";
+import { getCurrentWarehouse } from "./warehouse/current-warehouse-action";
 
 interface CSVUploadResponse {
     task_id: string;
@@ -321,30 +322,37 @@ export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
 }
 
 export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
-    // console.log("Starting CSV upload");
-
     if (!fileName.endsWith(".csv")) {
         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
     }
-
+    
     const lines = fileData.split("\n");
     const isCSVContent = lines.every(line => line.split(",").length > 1);
-
     if (!isCSVContent) {
         throw new Error("Invalid file content. The file does not appear to have a CSV structure.");
     }
-
-    // console.log("CSV content to be sent:", fileData);
-
+    
     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
-
-    // console.log("Formatted CSV data:", formattedCSVData);
-
+    
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    
+    let uploadUrl: string;
+    let isLocationUpload = false;
+    
     try {
-        const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
+        
+        if (location?.id) {
+            uploadUrl = `/rust/csv-uploading/upload-stock-csv?location_id=${location.id}`;
+            isLocationUpload = true;
+        } else {
+            const warehouse = await getCurrentWarehouse();
+            uploadUrl = `/rust/csv-uploading/upload-warehouse-stock-csv?warehouse_id=${warehouse?.id}`;
+            isLocationUpload = false;
+        }
+
         await apiClient.post(
-            `/rust/csv-uploading/upload-stock-csv?location_id=${location?.id}`,
+            uploadUrl,
             formattedCSVData,
             {
                 headers: {
@@ -354,17 +362,20 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
                 timeout: 30000,
             }
         );
-
-        // console.log("CSV upload response", response);
-
-      
+        
     } catch (error: any) {
         console.error("Error uploading CSV file:", error);
         throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
-     
-      revalidatePath("/stock-variants");
-      redirect("/stock-variants");
+
+    
+    if (isLocationUpload) {
+        revalidatePath("/stock-variants");
+       
+    } else {
+        revalidatePath("/warehouse-stock-variants");
+        
+    }
 };
 
 
@@ -463,16 +474,23 @@ export const stockHistory = async (): Promise<StockHistory | null> => {
 };
 
 export const downloadStockCSV = async (locationId?:string) => {
-
+    let uploadUrl: string;
+    const apiClient = new ApiClient();
     const location = await getCurrentLocation() || {id:locationId};
-   
-    
+
     try {
-        const apiClient = new ApiClient();
-        const response = await apiClient.get(`/rust/csv-downloading/download-stock-csv?location_id=${location?.id}`);
-        // console.log("CSV download response", response);
+        if (location?.id) {
+            uploadUrl = `/rust/csv-downloading/download-stock-csv?location_id=${location?.id}`;
+        } else {
+            const warehouse = await getCurrentWarehouse();
+            uploadUrl = `/rust/csv-downloading/download-warehouse-stock-csv?warehouse_id=${warehouse?.id}`;
+        }
+        const response = await apiClient.get(
+            uploadUrl,
+        );
         return response;
-    } catch (error) {
+    } 
+    catch (error) {
         console.error("Error downloading CSV file:", error);
         throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
