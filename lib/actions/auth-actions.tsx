@@ -21,6 +21,7 @@ import {
 import ApiClient from "@/lib/settlo-api-client";
 import { sendPasswordResetEmail } from "./emails/send";
 import { revalidatePath } from "next/cache";
+import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
 
 export async function logout() {
   try {
@@ -50,6 +51,7 @@ export const login = async (
   await deleteAuthCookie();
   await deleteActiveBusinessCookie();
   await deleteActiveLocationCookie();
+  await deleteActiveWarehouseCookie()
 
   try {
     const result = await signIn("credentials", {
