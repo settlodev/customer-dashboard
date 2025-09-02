@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { Location } from "@/types/location/type";
 import { redirect } from "next/navigation";
 import { activeBusiness } from "@/types/types";
+import { deleteActiveWarehouseCookie } from "../warehouse/current-warehouse-action";
 
 
 const createMinimalBusiness = (business: Business): MinimalBusiness => {
@@ -79,8 +80,10 @@ export const switchLocation = async (data: Location): Promise<void> => {
 };
 
 export const refreshLocation = async (data: Location): Promise<void> => {
-  if (!data)
-    throw new Error("Location data is required to perform this request");
+  if (!data) throw new Error("Location data is required to perform this request");
+
+  await deleteActiveWarehouseCookie()
+
   const cookieStore = await cookies();
   cookieStore.set({
     name: "currentLocation",
