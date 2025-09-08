@@ -1,13 +1,15 @@
+
 'use client'
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
+import { format, isToday, startOfDay, endOfDay } from "date-fns";
 import {
   CalendarIcon,
   DollarSign,
   ShoppingCart,
   Download,
+  FileText,
+  X,
 } from "lucide-react";
-
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -17,6 +19,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { toast } from "@/hooks/use-toast";
 import SubmitButton from '@/components/widgets/submit-button';
 import { cn } from "@/lib/utils";
+
 import { ExpenseReport } from "@/types/expense/type";
 import { GetExpenseReport } from "@/lib/actions/expense-actions";
 
@@ -43,7 +46,6 @@ interface FormValues {
   endDate: Date;
 }
 
-
 const formatCurrency = (amount: number) => {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -58,16 +60,13 @@ export default function ExpenseReportPage() {
   const [expenses, setExpenses] = useState<ExpenseReport>();
   const [loading, setLoading] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
+  const [isTodayView, setIsTodayView] = useState(true);
   const [formValues, setFormValues] = useState<FormValues>({
-    startDate: (() => {
-      const now = new Date();
-      now.setHours(0, 0, 0, 1);
-      return now;
-    })(),
-    endDate: new Date()
+    startDate: startOfDay(new Date()),
+    endDate: endOfDay(new Date())
   });
-const [location , setLocation] = useState<Location>();
-
+  const [location, setLocation] = useState<Location>();
 
   // Form validation state
   const [formErrors, setFormErrors] = useState<{
@@ -76,7 +75,7 @@ const [location , setLocation] = useState<Location>();
     general?: string;
   }>({});
 
-
+  // Fetch location on mount
   useEffect(() => {
     const fetchLocation = async () => {
       const location = await getCurrentLocation();
@@ -84,6 +83,111 @@ const [location , setLocation] = useState<Location>();
     };
     fetchLocation();
   }, []);
+
+  // Fetch today's expenses automatically on component mount
+  useEffect(() => {
+    const fetchTodaysExpenses = async () => {
+      setLoading(true);
+      try {
+        const todayStart = startOfDay(new Date()).toISOString();
+        const todayEnd = endOfDay(new Date()).toISOString();
+        const data = await GetExpenseReport(todayStart, todayEnd);
+        setExpenses(data);
+        setIsTodayView(true);
+      } catch (error) {
+        console.error("Error fetching today's expense report:", error);
+        toast({
+          variant: "destructive",
+          title: "Error loading today's expenses",
+          description: "There was a problem fetching today's expense data. Please try again.",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTodaysExpenses();
+  }, []);
+
+  // CSV Generation Function
+  const generateCSV = () => {
+    if (!expenses) {
+      toast({
+        variant: "destructive",
+        title: "No data to export",
+        description: "Please generate a report first before downloading CSV.",
+      });
+      return;
+    }
+
+    setDownloadingCsv(true);
+    
+    try {
+      // Create CSV content
+      let csvContent = "Expense Report\n\n";
+      
+      // Add location details
+      if (location) {
+        csvContent += `Location: ${location.name}\n`;
+        if (location.address) csvContent += `Address: ${location.address}\n`;
+        if (location.phone) csvContent += `Phone: ${location.phone}\n`;
+        if (location.email) csvContent += `Email: ${location.email}\n`;
+        csvContent += "\n";
+      }
+      
+      // Add date range
+      csvContent += `Period: ${format(formValues.startDate, 'MMM dd, yyyy HH:mm')} - ${format(formValues.endDate, 'MMM dd, yyyy HH:mm')}\n`;
+      csvContent += `Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')}\n\n`;
+      
+      // Add summary
+      csvContent += "SUMMARY\n";
+      csvContent += `Total Expenses,${formatCurrency(expenses.totalExpenses).replace('TSH', '').trim()}\n\n`;
+      
+      // Add category breakdown
+      csvContent += "CATEGORY BREAKDOWN\n";
+      csvContent += "Category,Amount,Percentage\n";
+      
+      expenses.categorySummaries.forEach(category => {
+        csvContent += `${category.categoryName},${formatCurrency(category.amount).replace('TSH', '').trim()},${category.percentage}%\n`;
+      });
+      
+      // Add disclaimer
+      csvContent += "\n";
+      csvContent += "This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.\n";
+      csvContent += "Powered by Settlo";
+      
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      
+      // Generate filename
+      const filename = `expense-report-${format(formValues.startDate, 'yyyy-MM-dd')}-to-${format(formValues.endDate, 'yyyy-MM-dd')}.csv`;
+      link.setAttribute('download', filename);
+      
+      // Trigger download
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({
+        title: "CSV Downloaded",
+        description: `Report saved as ${filename}`,
+      });
+      
+    } catch (error) {
+      console.error("Error generating CSV:", error);
+      toast({
+        variant: "destructive",
+        title: "CSV Generation Failed",
+        description: "There was an error generating the CSV. Please try again.",
+      });
+    } finally {
+      setDownloadingCsv(false);
+    }
+  };
 
   // PDF Generation Function
   const generatePDF = async () => {
@@ -202,46 +306,46 @@ const [location , setLocation] = useState<Location>();
         }
       });
       
-const finalY = (doc as any).lastAutoTable?.finalY || yPosition + 50;
-const pageHeight = doc.internal.pageSize.height;
-const footerY = pageHeight - 20;
+      const finalY = (doc as any).lastAutoTable?.finalY || yPosition + 50;
+      const pageHeight = doc.internal.pageSize.height;
+      const footerY = pageHeight - 20;
 
-// If there's not enough space, add a new page
-if (finalY > pageHeight - 60) {
-  doc.addPage();
-}
+      // If there's not enough space, add a new page
+      if (finalY > pageHeight - 60) {
+        doc.addPage();
+      }
 
-// Add the disclaimer text
-doc.setFontSize(8);
-doc.setTextColor(32, 32, 32);
-const disclaimerText = 'This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.';
+      // Add the disclaimer text
+      doc.setFontSize(8);
+      doc.setTextColor(32, 32, 32);
+      const disclaimerText = 'This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.';
 
-// Split disclaimer into multiple lines if needed
-const maxWidth = pageWidth - 2 * margin;
-const disclaimerLines = doc.splitTextToSize(disclaimerText, maxWidth);
+      // Split disclaimer into multiple lines if needed
+      const maxWidth = pageWidth - 2 * margin;
+      const disclaimerLines = doc.splitTextToSize(disclaimerText, maxWidth);
 
-// Calculate positions
-const lineHeight = 3;
-const disclaimerHeight = disclaimerLines.length * lineHeight;
-const poweredByHeight = lineHeight;
-const totalFooterHeight = disclaimerHeight + poweredByHeight + 2; // 2px gap
+      // Calculate positions
+      const lineHeight = 3;
+      const disclaimerHeight = disclaimerLines.length * lineHeight;
+      const poweredByHeight = lineHeight;
+      const totalFooterHeight = disclaimerHeight + poweredByHeight + 2; // 2px gap
 
-const disclaimerStartY = footerY - totalFooterHeight + lineHeight;
+      const disclaimerStartY = footerY - totalFooterHeight + lineHeight;
 
-// Add disclaimer lines centered
-disclaimerLines.forEach((line: string, index: number) => {
-  const textWidth = doc.getTextWidth(line);
-  const centerX = (pageWidth - textWidth) / 2;
-  doc.text(line, centerX, disclaimerStartY + (index * lineHeight));
-});
+      // Add disclaimer lines centered
+      disclaimerLines.forEach((line: string, index: number) => {
+        const textWidth = doc.getTextWidth(line);
+        const centerX = (pageWidth - textWidth) / 2;
+        doc.text(line, centerX, disclaimerStartY + (index * lineHeight));
+      });
 
-// Add "Powered by Settlo" below the disclaimer
-const poweredByText = 'Powered by Settlo';
-const poweredByWidth = doc.getTextWidth(poweredByText);
-const poweredByCenterX = (pageWidth - poweredByWidth) / 2;
-const poweredByY = disclaimerStartY + disclaimerHeight + 2; // 2px gap
+      // Add "Powered by Settlo" below the disclaimer
+      const poweredByText = 'Powered by Settlo';
+      const poweredByWidth = doc.getTextWidth(poweredByText);
+      const poweredByCenterX = (pageWidth - poweredByWidth) / 2;
+      const poweredByY = disclaimerStartY + disclaimerHeight + 2; // 2px gap
 
-doc.text(poweredByText, poweredByCenterX, poweredByY);
+      doc.text(poweredByText, poweredByCenterX, poweredByY);
       
       // Generate filename
       const filename = `expense-report-${format(formValues.startDate, 'yyyy-MM-dd')}-to-${format(formValues.endDate, 'yyyy-MM-dd')}.pdf`;
@@ -265,6 +369,7 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
       setDownloadingPdf(false);
     }
   };
+
   const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
     function handleDateSelect(date: Date | undefined) {
       if (date) {
@@ -352,6 +457,7 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
       </div>
     );
   };
+
   const handleDateChange = (field: keyof FormValues, value: Date) => {
     setFormValues(prev => ({
       ...prev,
@@ -365,7 +471,11 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
         [field]: undefined
       }));
     }
+    
+    // If changing dates, we're no longer in "today view"
+    setIsTodayView(false);
   };
+
   const validateForm = (): boolean => {
     const errors: {
       startDate?: string;
@@ -398,6 +508,10 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
     try {
       const data = await GetExpenseReport(formValues.startDate.toISOString(), formValues.endDate.toISOString());
       setExpenses(data);
+      setIsTodayView(
+        isToday(formValues.startDate) && 
+        isToday(formValues.endDate)
+      );
     } catch (error) {
       console.error("Error fetching expense report:", error);
       toast({
@@ -410,13 +524,49 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
     }
   };
 
+  const handleResetToToday = () => {
+    const todayStart = startOfDay(new Date());
+    const todayEnd = endOfDay(new Date());
+    
+    setFormValues({
+      startDate: todayStart,
+      endDate: todayEnd
+    });
+    
+    // Trigger a fetch for today's data
+    setLoading(true);
+    GetExpenseReport(todayStart.toISOString(), todayEnd.toISOString())
+      .then(data => {
+        setExpenses(data);
+        setIsTodayView(true);
+      })
+      .catch(error => {
+        console.error("Error fetching today's expense report:", error);
+        toast({
+          variant: "destructive",
+          title: "Error loading today's expenses",
+          description: "There was a problem fetching today's expense data. Please try again.",
+        });
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
   return (
     <div className="container mx-auto p-4 max-w-7xl">
       <Card className="w-full mt-16">
         <CardHeader className="border-b pb-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="mb-6">
-              <h1 className="text-2xl font-bold text-gray-800">Expense Report</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-gray-800">Expense Report</h1>
+                {isTodayView && (
+                  <span className="bg-emerald-100 text-emerald-800 text-xs font-medium px-2.5 py-0.5 rounded">
+                    Today&apos;s Expenses
+                  </span>
+                )}
+              </div>
               <p className="text-gray-600 mt-1">View and analyze your expenses</p>
             </div>
             <div className="w-full md:w-auto">
@@ -444,7 +594,17 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
                     )}
                   </div>
 
-                  <div className="w-full md:w-auto">
+                  <div className="flex gap-2 items-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResetToToday}
+                      disabled={loading}
+                      className="whitespace-nowrap mt-5"
+                    >
+                      <X className="w-4 h-4 mr-1" />
+                      Clear
+                    </Button>
                     <SubmitButton
                       isPending={loading}
                       label="Filter"
@@ -464,19 +624,40 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
           {expenses && (
             <>
                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <DollarSign className="w-6 h-6 text-blue-600" />
+                  <div className="p-2 bg-emerald-100 rounded-lg">
+                    <DollarSign className="w-6 h-6 text-emerald-600" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Total Expenses</p>
                     <p className="text-xl font-bold text-gray-900">
                       {formatCurrency(expenses.totalExpenses)}
                     </p>
+                    {isTodayView && (
+                      <p className="text-xs text-emerald-600 mt-1">Showing today&apos;s expenses</p>
+                    )}
                   </div>
                 </div>
                 
-                {/* PDF Download Button */}
-                <div className="flex justify-end">
+                {/* Export Buttons */}
+                <div className="flex lg:justify-end gap-2">
+                  <Button
+                    onClick={generateCSV}
+                    disabled={downloadingCsv}
+                    variant="outline"
+                    className="border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                  >
+                    {downloadingCsv ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-emerald-600 border-t-transparent mr-2"></div>
+                        Generating CSV...
+                      </>
+                    ) : (
+                      <>
+                        <FileText className="w-4 h-4 mr-2" />
+                        Export CSV
+                      </>
+                    )}
+                  </Button>
                   <Button
                     onClick={generatePDF}
                     disabled={downloadingPdf}
@@ -490,7 +671,7 @@ doc.text(poweredByText, poweredByCenterX, poweredByY);
                     ) : (
                       <>
                         <Download className="w-4 h-4 mr-2" />
-                        Download PDF
+                        Export PDF
                       </>
                     )}
                   </Button>

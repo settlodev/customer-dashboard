@@ -14,10 +14,10 @@ import {useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
-import Loading from '../../loading';
 import { staffReport } from '@/lib/actions/staff-actions';
 import { StaffSummaryReport } from '@/types/staff';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Loading from '@/app/loading';
 
 interface DatePickerProps {
     value: Date;
@@ -58,7 +58,7 @@ const StaffReportDashboard = () => {
         };
 
         fetchingStaffReport();
-    }, []);
+    }, [endDate, startDate]);
 
     const form = useForm({
         resolver: zodResolver(FormSchema),
@@ -83,7 +83,7 @@ const StaffReportDashboard = () => {
                     : "There was an issue submitting your form, please try later",
             });
         },
-        [toast]
+        []
     );
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {

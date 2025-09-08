@@ -21,7 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
-import { useToast } from "@/hooks/use-toast";
 import { FormError } from "../widgets/form-error";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
@@ -37,7 +36,7 @@ type StockFormProps = {
 };
 
 export default function StockForm({ item }: StockFormProps) {
-    console.log("The stock is", item)
+    
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
 
@@ -70,13 +69,12 @@ export default function StockForm({ item }: StockFormProps) {
         name: "stockVariants"
     });
 
-    const { toast } = useToast();
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
             console.log("errors", errors);
         },
-        [toast]
+        []
     );
     const handleAddVariant = () => {
         append({

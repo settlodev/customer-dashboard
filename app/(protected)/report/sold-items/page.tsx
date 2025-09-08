@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useCallback, useEffect, useState } from 'react';
 import { format } from 'date-fns';
@@ -21,8 +20,7 @@ import 'jspdf-autotable';
 import { getCurrentLocation } from '@/lib/actions/business/get-current-business';
 import { Location } from '@/types/location/type';
 import { toast } from '@/hooks/use-toast';
-
-import Loading from '../../loading';
+import Loading from '@/app/loading';
 
 interface DatePickerProps {
   value: Date;
@@ -52,7 +50,8 @@ const SoldItemsDashboard = () => {
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [paginatedItems, setPaginatedItems] = useState<SoldItem[]>([]);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-    const [location, setLocation] = useState<Location>();
+  const [downloadingCsv, setDownloadingCsv] = useState(false);
+  const [location, setLocation] = useState<Location>();
 
   useEffect(() => {
     const fetchLocation = async () => {
@@ -76,7 +75,7 @@ const SoldItemsDashboard = () => {
     };
 
     fetchingSoldItems();
-  }, []);
+  }, [startDate, endDate]);
 
   // Update paginated items whenever soldData changes or pagination settings change
   useEffect(() => {
@@ -98,6 +97,85 @@ const SoldItemsDashboard = () => {
   const handleItemsPerPageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  // Function to convert data to CSV format
+  const convertToCSV = (data: SoldItemsReport) => {
+    const headers = [
+      'Product Name',
+      'Variant Name',
+      'Category',
+      'Quantity',
+      'Price',
+      'Cost',
+      'Profit',
+      'Latest Sold Date',
+      'Earliest Sold Date'
+    ];
+
+    // Create CSV content
+    const csvRows = [
+      headers.join(','),
+      ...data.items.map(item => [
+        `"${item.productName.replace(/"/g, '""')}"`,
+        `"${(item.variantName || 'N/A').replace(/"/g, '""')}"`,
+        `"${(item.categoryName || 'N/A').replace(/"/g, '""')}"`,
+        item.quantity,
+        item.price,
+        item.cost,
+        item.profit,
+        format(new Date(item.latestSoldDate), 'yyyy-MM-dd HH:mm:ss'),
+        format(new Date(item.earliestSoldDate), 'yyyy-MM-dd HH:mm:ss')
+      ].join(','))
+    ];
+
+    return csvRows.join('\n');
+  };
+
+  // Function to download CSV
+  const downloadCSV = () => {
+    if (!soldData) {
+      toast({
+        variant: "destructive",
+        title: "No data to export",
+        description: "Please generate a report first before downloading CSV.",
+      });
+      return;
+    }
+
+    setDownloadingCsv(true);
+
+    try {
+      const csvContent = convertToCSV(soldData);
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      
+      const startDateFormatted = format(form.getValues('startDate'), 'yyyy-MM-dd');
+      const endDateFormatted = format(form.getValues('endDate'), 'yyyy-MM-dd');
+      const filename = `sold-items-report-${startDateFormatted}-to-${endDateFormatted}.csv`;
+      
+      link.setAttribute('href', url);
+      link.setAttribute('download', filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: "CSV Downloaded",
+        description: `Report saved as ${filename}`,
+      });
+    } catch (error) {
+      console.error("Error generating CSV:", error);
+      toast({
+        variant: "destructive",
+        title: "CSV Generation Failed",
+        description: "There was an error generating the CSV. Please try again.",
+      });
+    } finally {
+      setDownloadingCsv(false);
+    }
   };
 
   const generatePDF = async () => {
@@ -344,7 +422,7 @@ const SoldItemsDashboard = () => {
           : "There was an issue submitting your form, please try later",
       });
     },
-    [toast]
+    []
   );
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
@@ -437,7 +515,7 @@ const SoldItemsDashboard = () => {
                         variant={value && value.getMinutes() === minute ? "default" : "ghost"}
                         className="sm:w-full shrink-0 aspect-square"
                         onClick={() => handleTimeChange("minute", minute.toString())}
-                      >
+                        >
                         {minute.toString().padStart(2, "0")}
                       </Button>
                     ))}
@@ -511,22 +589,31 @@ const SoldItemsDashboard = () => {
 
       <Card className="shadow-md w-full">
         <CardHeader className="bg-slate-50 border-b">
-          <CardTitle className="flex items-center justify-between">
-            <div className='flex'>
+          <CardTitle className="flex flex-col lg:flex-row items-center justify-between">
+            <div className='flex '>
             <TrendingUpIcon className="mr-2 h-5 w-5 text-teal-600" />
             Sold Items Summary
             </div>
-            <div className="">
-          <Button
-            onClick={generatePDF}
-            disabled={downloadingPdf || !soldData}
-            variant="outline"
-            className="flex items-center gap-2"
-          >
-            <DownloadIcon className="h-4 w-4" />
-            {downloadingPdf ? "Generating..." : "Download PDF"}
-          </Button>
-        </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={downloadCSV}
+                disabled={downloadingCsv || !soldData}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <DownloadIcon className="h-4 w-4" />
+                {downloadingCsv ? "Generating..." : "Download CSV"}
+              </Button>
+              <Button
+                onClick={generatePDF}
+                disabled={downloadingPdf || !soldData}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <DownloadIcon className="h-4 w-4" />
+                {downloadingPdf ? "Generating..." : "Download PDF"}
+              </Button>
+            </div>
           </CardTitle>
         </CardHeader>
 
@@ -733,7 +820,3 @@ const SoldItemsDashboard = () => {
 };
 
 export default SoldItemsDashboard;
-
-
-
-

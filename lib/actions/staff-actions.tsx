@@ -229,8 +229,8 @@ export const updateStaff = async (
     if( formResponse.responseType === "error" ) return parseStringify(formResponse);
 
     revalidatePath("/staff");
-    // redirect("/staff");
 
+    return parseStringify(formResponse);
 };
 
 export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {

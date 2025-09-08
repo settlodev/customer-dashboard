@@ -1,4 +1,4 @@
-import { Bell, Bolt } from "lucide-react";
+import { Bell, Bolt, Receipt } from "lucide-react";
 
 export const taxClasses=
     [
@@ -76,12 +76,7 @@ export const ItemStatuses = [
 ];
 
 export const settingsNavItems = [
-    // {
-    //     id: 'general',
-    //     label: 'General',
-    //     icon: Settings,
-    //     description: 'Location and basic settings'
-    // },
+
     {
         id: 'preferences',
         label: 'Preferences',
@@ -94,11 +89,11 @@ export const settingsNavItems = [
         icon: Bell,
         description: 'Email and push notifications'
     },
-    // {
-    //     id: 'account',
-    //     label: 'Account',
-    //     icon: Shield,
-    //     description: 'Account security settings'
-    // },
+    {
+        id: 'efd',
+        label: 'EFD',
+        icon: Receipt,
+        description: 'Efd Settings'
+    },
    
 ];

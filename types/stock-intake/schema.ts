@@ -1,11 +1,11 @@
-import {boolean, object, string, preprocess, number} from "zod";
+import {boolean, object, string, preprocess, number, array} from "zod";
 
 export const StockIntakeSchema = object({
     stockVariant:string({message:"Please select stock item"}).uuid(),
     quantity: preprocess(
         (val)=>{
             if(typeof val==="string" && val.trim()!==""){
-                return parseInt(val)
+                return parseFloat(val)
             }
             return val
         },
@@ -14,7 +14,7 @@ export const StockIntakeSchema = object({
     value: preprocess(
         (val)=>{
             if(typeof val==="string" && val.trim()!==""){
-                return parseInt(val)
+                return parseFloat(val)
             }
             return val
         },
@@ -26,6 +26,13 @@ export const StockIntakeSchema = object({
     status: boolean().optional(),
     supplier: string({message:"Please select a supplier"}).uuid().optional(),
     staff: string({message:"Please select a staff"}).uuid(),
+    purchasePaidAmount: number().optional(),
+});
+
+
+export const MultiStockIntakeSchema = object({
+    stockIntakes: array(StockIntakeSchema).min(1, { message: "At least one stock intake must be added" }),
+    status: boolean().optional(),
 });
 
 export const UpdatedStockIntakeSchema = object({
@@ -33,4 +40,8 @@ export const UpdatedStockIntakeSchema = object({
     .refine((val) => !isNaN(val), {
       message: "Please enter a valid number",
     }),
+    quantity:number().min(0, { message: "Value must be a positive number" })
+    .refine((val) => !isNaN(val), {
+      message: "Please enter a valid number",
+    }).optional(),
 })

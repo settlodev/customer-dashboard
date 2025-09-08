@@ -14,7 +14,6 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
-import Loading from '../../loading';
 import { creditReport } from '@/lib/actions/order-actions';
 import { Credit } from '@/types/orders/type';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -24,6 +23,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { getCurrentLocation } from '@/lib/actions/business/get-current-business';
 import { Location } from '@/types/location/type';
+import Loading from '@/app/loading';
 
 interface DatePickerProps {
     value: Date;
@@ -40,6 +40,7 @@ const CreditReportDashboard = () => {
     const [creditData, setCreditData] = useState<Credit | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [downloadingPdf, setDownloadingPdf] = useState(false);
+    const [downloadingCsv, setDownloadingCsv] = useState(false);
     const [location, setLocation] = useState<Location>();
     const router = useRouter();
 
@@ -68,9 +69,6 @@ const CreditReportDashboard = () => {
         try {
             const response = await creditReport(startDate, endDate);
             setCreditData(response);
-
-
-
         } catch (error) {
             console.error("Error fetching credit report:", error);
             toast({
@@ -85,7 +83,7 @@ const CreditReportDashboard = () => {
 
     useEffect(() => {
         fetchCreditReport(form.getValues('startDate'), form.getValues('endDate'));
-    }, []);
+    }, [form]);
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {
         await fetchCreditReport(values.startDate, values.endDate);
@@ -100,7 +98,79 @@ const CreditReportDashboard = () => {
         }).format(value);
     };
 
-    
+    // Function to convert data to CSV format
+    const convertToCSV = (data: Credit) => {
+        const headers = [
+            'Order Number',
+            'Order Name',
+            'Date',
+            'Customer',
+            'Paid Amount',
+            'Unpaid Amount',
+            'Status'
+        ];
+
+        // Create CSV content
+        const csvRows = [
+            headers.join(','),
+            ...data.unpaidOrders.map(order => [
+                `"${order.orderNumber.replace(/"/g, '""')}"`,
+                `"${(order.orderName || 'N/A').replace(/"/g, '""')}"`,
+                format(new Date(order.openedDate), 'yyyy-MM-dd'),
+                `"${(order.customerName || 'N/A').replace(/"/g, '""')}"`,
+                order.paidAmount,
+                order.unpaidAmount,
+                'Unpaid'
+            ].join(','))
+        ];
+
+        return csvRows.join('\n');
+    };
+
+    // Function to download CSV
+    const downloadCSV = () => {
+        if (!creditData) {
+            toast({
+                variant: "destructive",
+                title: "No data to export",
+                description: "Please generate a report first before downloading CSV.",
+            });
+            return;
+        }
+
+        setDownloadingCsv(true);
+
+        try {
+            const csvContent = convertToCSV(creditData);
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            
+            const filename = `credit-report-${format(new Date(creditData.startDate), 'yyyy-MM-dd')}-to-${format(new Date(creditData.endDate), 'yyyy-MM-dd')}.csv`;
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            toast({
+                title: "CSV Downloaded",
+                description: `Report saved as ${filename}`,
+            });
+        } catch (error) {
+            console.error("Error generating CSV:", error);
+            toast({
+                variant: "destructive",
+                title: "CSV Generation Failed",
+                description: "There was an error generating the CSV. Please try again.",
+            });
+        } finally {
+            setDownloadingCsv(false);
+        }
+    };
+
     const generatePDF = async () => {
         if (!creditData) {
             toast({
@@ -130,8 +200,6 @@ const CreditReportDashboard = () => {
             const dateRange = `${format(new Date(creditData.startDate), 'MMM dd, yyyy HH:mm')} - ${format(new Date(creditData.endDate), 'MMM dd, yyyy HH:mm')}`;
             doc.text(`Period: ${dateRange}`, margin, 40);
             doc.text(`Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')}`, margin, 45);
-
-
 
             if (location) {
                 doc.setFontSize(10);
@@ -163,9 +231,6 @@ const CreditReportDashboard = () => {
                     doc.text(`Email: ${location.email}`, rightMargin, yPos, { align: 'right' });
                 }
             }
-
-
-
 
             // Summary Box
             doc.setFillColor(240, 248, 255);
@@ -261,11 +326,6 @@ const CreditReportDashboard = () => {
             doc.setLineWidth(0.3); // Border thickness
             doc.rect(borderX, borderY, borderWidth, borderHeight, 'S'); // 'S' for stroke only
 
-            // Optional: Add background color to the bordered area
-            // Uncomment the lines below if you want a background color
-            // doc.setFillColor(248, 249, 250); // Light gray background
-            // doc.rect(borderX, borderY, borderWidth, borderHeight, 'FD'); // 'FD' for fill and draw
-
             // Add disclaimer lines centered
             disclaimerLines.forEach((line: string, index: number) => {
                 const textWidth = doc.getTextWidth(line);
@@ -304,7 +364,7 @@ const CreditReportDashboard = () => {
         }
     };
 
-    const DateTimePicker = ({ value, onChange }: DatePickerProps) => {
+    const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
         function handleDateSelect(date: Date | undefined) {
             if (date) {
                 const newDate = new Date(date);
@@ -325,66 +385,69 @@ const CreditReportDashboard = () => {
         }
 
         return (
-            <Popover>
-                <PopoverTrigger asChild>
-                    <Button
-                        variant="outline"
-                        className={cn(
-                            "w-full justify-start text-left font-normal",
-                            !value && "text-muted-foreground"
-                        )}
-                    >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {value ? format(value, "MM/dd/yyyy HH:mm") : <span>Pick date and time</span>}
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                    <div className="sm:flex">
-                        <Calendar
-                            mode="single"
-                            selected={value}
-                            onSelect={handleDateSelect}
-                            initialFocus
-                        />
-                        <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
-                            <ScrollArea className="w-64 sm:w-auto">
-                                <div className="flex sm:flex-col p-2">
-                                    {Array.from({ length: 24 }, (_, i) => i)
-                                        .reverse()
-                                        .map((hour) => (
+            <div className="flex flex-col space-y-2">
+                <span className="text-sm font-medium text-gray-700">{label}</span>
+                <Popover>
+                    <PopoverTrigger asChild>
+                        <Button
+                            variant="outline"
+                            className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !value && "text-muted-foreground"
+                            )}
+                        >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {value ? format(value, "MM/dd/yyyy HH:mm") : <span>Pick date and time</span>}
+                        </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                        <div className="sm:flex">
+                            <Calendar
+                                mode="single"
+                                selected={value}
+                                onSelect={handleDateSelect}
+                                initialFocus
+                            />
+                            <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
+                                <ScrollArea className="w-64 sm:w-auto">
+                                    <div className="flex sm:flex-col p-2">
+                                        {Array.from({ length: 24 }, (_, i) => i)
+                                            .reverse()
+                                            .map((hour) => (
+                                                <Button
+                                                    key={hour}
+                                                    size="icon"
+                                                    variant={value && value.getHours() === hour ? "default" : "ghost"}
+                                                    className="sm:w-full shrink-0 aspect-square"
+                                                    onClick={() => handleTimeChange("hour", hour.toString())}
+                                                >
+                                                    {hour}
+                                                </Button>
+                                            ))}
+                                    </div>
+                                    <ScrollBar orientation="horizontal" className="sm:hidden" />
+                                </ScrollArea>
+                                <ScrollArea className="w-64 sm:w-auto">
+                                    <div className="flex sm:flex-col p-2">
+                                        {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
                                             <Button
-                                                key={hour}
+                                                key={minute}
                                                 size="icon"
-                                                variant={value && value.getHours() === hour ? "default" : "ghost"}
+                                                variant={value && value.getMinutes() === minute ? "default" : "ghost"}
                                                 className="sm:w-full shrink-0 aspect-square"
-                                                onClick={() => handleTimeChange("hour", hour.toString())}
+                                                onClick={() => handleTimeChange("minute", minute.toString())}
                                             >
-                                                {hour}
+                                                {minute.toString().padStart(2, "0")}
                                             </Button>
                                         ))}
-                                </div>
-                                <ScrollBar orientation="horizontal" className="sm:hidden" />
-                            </ScrollArea>
-                            <ScrollArea className="w-64 sm:w-auto">
-                                <div className="flex sm:flex-col p-2">
-                                    {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
-                                        <Button
-                                            key={minute}
-                                            size="icon"
-                                            variant={value && value.getMinutes() === minute ? "default" : "ghost"}
-                                            className="sm:w-full shrink-0 aspect-square"
-                                            onClick={() => handleTimeChange("minute", minute.toString())}
-                                        >
-                                            {minute.toString().padStart(2, "0")}
-                                        </Button>
-                                    ))}
-                                </div>
-                                <ScrollBar orientation="horizontal" className="sm:hidden" />
-                            </ScrollArea>
+                                    </div>
+                                    <ScrollBar orientation="horizontal" className="sm:hidden" />
+                                </ScrollArea>
+                            </div>
                         </div>
-                    </div>
-                </PopoverContent>
-            </Popover>
+                    </PopoverContent>
+                </Popover>
+            </div>
         );
     };
 
@@ -397,114 +460,124 @@ const CreditReportDashboard = () => {
     }
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen mt-12">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
+        <div className="p-4 md:p-6 bg-gray-50 min-h-screen mt-12 md:mt-16">
+            <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-6">
+                <div className="flex-1">
                     <h1 className="text-2xl font-bold text-gray-800">Credit Report</h1>
-                    <p className="text-gray-500 mt-1">
+                    <p className="text-gray-500 mt-1 text-sm md:text-base">
                         Report from {creditData && format(new Date(creditData.startDate), 'PPp')}
                         {' to '}
                         {creditData && format(new Date(creditData.endDate), 'PPp')}
                     </p>
                 </div>
 
-                <Card className="w-full md:w-auto shadow-sm">
+                <Card className="w-full lg:w-auto shadow-sm">
                     <CardContent className="p-4">
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col sm:flex-row gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="startDate"
-                                    render={({ field }) => (
-                                        <FormItem className="w-full sm:w-auto">
-                                            <DateTimePicker
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                label='Start Date'
-                                            />
-                                        </FormItem>
-                                    )}
-                                />
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col md:flex-row gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                                    <FormField
+                                        control={form.control}
+                                        name="startDate"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <DateTimePicker
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    label='Start Date'
+                                                />
+                                            </FormItem>
+                                        )}
+                                    />
 
-                                <FormField
-                                    control={form.control}
-                                    name="endDate"
-                                    render={({ field }) => (
-                                        <FormItem className="w-full sm:w-auto">
-                                            <DateTimePicker
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                label='End Date'
-                                            />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <SubmitButton
-                                    isPending={form.formState.isSubmitting}
-                                    label='Apply Filter'
-                                />
+                                    <FormField
+                                        control={form.control}
+                                        name="endDate"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <DateTimePicker
+                                                    value={field.value}
+                                                    onChange={field.onChange}
+                                                    label='End Date'
+                                                />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                
+                                <div className="flex items-end">
+                                    <SubmitButton
+                                        isPending={form.formState.isSubmitting}
+                                        label='Apply Filter'
+                                        className="w-full md:w-auto"
+                                    />
+                                </div>
                             </form>
                         </Form>
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
                 <Card className="shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium text-gray-700">
+                        <CardTitle className="text-base md:text-lg font-medium text-gray-700">
                             Total unpaid orders
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-amber-600">
+                        <div className="text-2xl md:text-3xl font-bold text-amber-600">
                             {creditData?.total || 0}
                         </div>
-
                     </CardContent>
                 </Card>
+                
                 <Card className="shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium text-gray-700">
+                        <CardTitle className="text-base md:text-lg font-medium text-gray-700">
                             Total Unpaid Amount
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-red-600">
+                        <div className="text-2xl md:text-3xl font-bold text-red-600">
                             {formatCurrency(creditData?.totalUnpaidAmount || 0)}
                         </div>
-
                     </CardContent>
                 </Card>
 
-
-
                 <Card className="shadow-sm">
                     <CardHeader className="pb-2">
-                        <CardTitle className="text-lg font-medium text-gray-700">
+                        <CardTitle className="text-base md:text-lg font-medium text-gray-700">
                             Total Paid Amount
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-3xl font-bold text-emerald-600">
+                        <div className="text-2xl md:text-3xl font-bold text-emerald-600">
                             {formatCurrency(creditData?.totalPaidAmount || 0)}
                         </div>
-
                     </CardContent>
                 </Card>
             </div>
 
-            <div className="flex justify-between items-center mb-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
                 <h2 className="text-xl font-semibold text-gray-800">Unpaid Orders</h2>
-                <div className="flex gap-2">
+                <div className="flex  sm:flex-row gap-2 w-full sm:w-auto">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={downloadCSV}
+                        disabled={downloadingCsv || !creditData}
+                        className="flex items-center gap-2 justify-center"
+                    >
+                        <Download className="h-4 w-4" />
+                        {downloadingCsv ? 'Generating CSV...' : 'Export CSV'}
+                    </Button>
                     <Button
                         variant="outline"
                         size="sm"
                         onClick={generatePDF}
-                        disabled={downloadingPdf}
-                        className="flex items-center gap-2"
+                        disabled={downloadingPdf || !creditData}
+                        className="flex items-center gap-2 justify-center"
                     >
                         <Download className="h-4 w-4" />
                         {downloadingPdf ? 'Generating PDF...' : 'Export PDF'}
@@ -517,35 +590,46 @@ const CreditReportDashboard = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Order Number</TableHead>
-                                <TableHead>Order Name</TableHead>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Customer</TableHead>
-                                <TableHead className="text-right">Paid Amount</TableHead>
-                                <TableHead className="text-right">Unpaid Amount</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead className="whitespace-nowrap">Order #</TableHead>
+                                <TableHead className="whitespace-nowrap">Order Name</TableHead>
+                                <TableHead className="whitespace-nowrap">Date</TableHead>
+                                <TableHead className="whitespace-nowrap">Customer</TableHead>
+                                <TableHead className="text-right whitespace-nowrap">Paid</TableHead>
+                                <TableHead className="text-right whitespace-nowrap">Unpaid</TableHead>
+                                <TableHead className="whitespace-nowrap">Status</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {creditData?.unpaidOrders && creditData.unpaidOrders.length > 0 ? (
                                 creditData.unpaidOrders.map((order) => (
-                                    <TableRow key={order.orderId}
+                                    <TableRow 
+                                        key={order.orderId}
                                         onClick={() => router.push(`/orders/${order.orderId}`)}
-                                        className="cursor-pointer hover:bg-muted">
-                                        <TableCell className="font-medium">{order.orderNumber}</TableCell>
-                                        <TableCell>{order.orderName || 'N/A'}</TableCell>
-                                        <TableCell>{format(new Date(order.openedDate), 'PP')}</TableCell>
-                                        <TableCell>{order.customerName || 'N/A'}</TableCell>
-                                        <TableCell className="text-right">{formatCurrency(order.paidAmount)}</TableCell>
-                                        <TableCell className="text-right font-medium text-red-600">
+                                        className="cursor-pointer hover:bg-muted"
+                                    >
+                                        <TableCell className="font-medium whitespace-nowrap">
+                                            {order.orderNumber}
+                                        </TableCell>
+                                        <TableCell className="whitespace-nowrap">
+                                            {order.orderName || 'N/A'}
+                                        </TableCell>
+                                        <TableCell className="whitespace-nowrap">
+                                            {format(new Date(order.openedDate), 'MMM dd')}
+                                        </TableCell>
+                                        <TableCell className="whitespace-nowrap">
+                                            {order.customerName || 'N/A'}
+                                        </TableCell>
+                                        <TableCell className="text-right whitespace-nowrap">
+                                            {formatCurrency(order.paidAmount)}
+                                        </TableCell>
+                                        <TableCell className="text-right font-medium text-red-600 whitespace-nowrap">
                                             {formatCurrency(order.unpaidAmount)}
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
                                                 Unpaid
                                             </Badge>
                                         </TableCell>
-
                                     </TableRow>
                                 ))
                             ) : (

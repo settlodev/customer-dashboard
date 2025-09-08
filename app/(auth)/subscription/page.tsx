@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge";
 
 import { Subscriptions, ValidDiscountCode } from "@/types/subscription/type";
 import { AlertCircle, Calendar, Check, CheckCircle2, Loader2, Mail, Phone, Star, Tag, X } from "lucide-react";
-import Loading from "../loading";
 import { getAllSubscriptions,paySubscription,User, validateDiscountCode, verifyPayment } from "@/lib/actions/subscriptions";
 import { useSearchParams } from "next/navigation";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
@@ -29,6 +28,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { Input } from "@/components/ui/input";
 import { NumericFormat } from "react-number-format";
 import { isValidPhoneNumber } from "libphonenumber-js";
+import Loading from "@/app/loading";
 
 
 
@@ -266,7 +266,7 @@ const SubscriptionFormModal = ({
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [discountCode]);
+  }, [discountCode,locationId]);
 
   //Validate discount code
   const validateDiscount = async (code: string,locationId?:string) => {

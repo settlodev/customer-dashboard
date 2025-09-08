@@ -14,9 +14,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
-import Loading from '../../loading';
 import { cashFlowReport } from '@/lib/actions/order-actions';
 import { CashFlow } from '@/types/orders/type';
+import Loading from '@/app/loading';
 
 interface DatePickerProps {
     value: Date;
@@ -65,7 +65,7 @@ const CashFlowReportDashboard = () => {
 
     useEffect(() => {
         fetchCashFlowReport(form.getValues('startDate'), form.getValues('endDate'));
-    }, []);
+    }, [form]);
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {
         await fetchCashFlowReport(values.startDate, values.endDate);

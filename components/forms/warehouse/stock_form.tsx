@@ -21,8 +21,6 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { NumericFormat } from "react-number-format";
-import { useToast } from "@/hooks/use-toast";
-import { createStock, updateStock } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { StockSchema } from "@/types/stock/schema";
 import { useTransition } from "react";
@@ -31,13 +29,14 @@ import { FormError } from "@/components/widgets/form-error";
 import UnitSelector from "@/components/widgets/unit-selector";
 import CancelButton from "@/components/widgets/cancel-button";
 import SubmitButton from "@/components/widgets/submit-button";
+import { createStockFromWarehouse, updateStockFromWarehouse } from "@/lib/actions/warehouse/stock-actions";
 
 type StockFormProps = {
     item: Stock | null | undefined;
 };
 
-export default function StockForm({ item }: StockFormProps) {
-    console.log("The stock is", item)
+export default function WarehouseStockForm({ item }: StockFormProps) {
+    
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
 
@@ -70,13 +69,11 @@ export default function StockForm({ item }: StockFormProps) {
         name: "stockVariants"
     });
 
-    const { toast } = useToast();
-
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
-            console.log("errors", errors);
+            console.log("The errors while creating or updating", errors);
         },
-        [toast]
+        []
     );
     const handleAddVariant = () => {
         append({
@@ -85,7 +82,6 @@ export default function StockForm({ item }: StockFormProps) {
             startingValue: 0,
             alertLevel: 0,
             imageOption: "",
-            // unit: form.getValues("unit")
         });
     };
 
@@ -93,7 +89,7 @@ export default function StockForm({ item }: StockFormProps) {
 
         const stored = localStorage.getItem('pagination-stock-variants');
         const paginationState = stored ? JSON.parse(stored) : null;
-        console.log('Pagination state:', paginationState);
+        
 
         setResponse(undefined);
 
@@ -117,14 +113,14 @@ export default function StockForm({ item }: StockFormProps) {
             })
         };
 
-        console.log('Starting submitData with values:', updatedValues);
+        
 
         startTransition(() => {
 
 
             if (item) {
                 console.log('Updating existing stock with ID:', updatedValues);
-                updateStock(item.id, updatedValues, paginationState)
+                updateStockFromWarehouse(item.id, updatedValues, paginationState)
                     .then((data) => {
                         console.log('Update stock response:', data);
                         if (data) setResponse(data);
@@ -133,10 +129,10 @@ export default function StockForm({ item }: StockFormProps) {
                         console.error('Error updating stock:', error);
                     });
             } else {
-                // console.log('Creating new stock');
-                createStock(updatedValues)
+                console.log('Creating new stock');
+                createStockFromWarehouse(updatedValues)
                     .then((data) => {
-                        // console.log('Create stock response:', data);
+                        console.log('Create stock response:', data);
                         if (data) setResponse(data);
                     })
                     .catch((error) => {

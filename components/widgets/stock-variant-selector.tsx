@@ -1,8 +1,6 @@
-
-
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -50,12 +48,10 @@ const StockVariantSelector: React.FC<Props> = ({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
-  const [debounceTimeout, setDebounceTimeout] = useState<NodeJS.Timeout | null>(null);
-  const [selectedVariantInfo, setSelectedVariantInfo] = useState<{
-    id: string;
-    displayName: string;
-  } | null>(null);
-  const [isLoadingSelectedVariant, setIsLoadingSelectedVariant] = useState(false);
+  
+  // Use useRef to store the timeout instead of state
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
   const ITEMS_PER_PAGE = 20;
 
   const getDisplayName = (stock: Stock, variant: StockVariant) => {
@@ -76,29 +72,11 @@ const StockVariantSelector: React.FC<Props> = ({
     }
   }, [hasInitialized, value]);
 
-  // Handle value changes (when form updates the value)
+  // Handle search with debounce - FIXED: removed debounceTimeout from dependencies
   useEffect(() => {
-    if (value && hasInitialized) {
-      // Check if we already have this variant in our stocks
-      const existingVariant = allVariantOptions.find(option => option.id === value);
-      if (existingVariant) {
-        setSelectedVariantInfo({
-          id: existingVariant.id,
-          displayName: existingVariant.displayName
-        });
-      } else {
-        // Load the specific variant info if we don't have it
-        loadSpecificVariant(value);
-      }
-    } else if (!value) {
-      setSelectedVariantInfo(null);
-    }
-  }, [value, hasInitialized]);
-
-  // Handle search with debounce
-  useEffect(() => {
-    if (debounceTimeout) {
-      clearTimeout(debounceTimeout);
+    // Clear existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
     }
 
     if (hasInitialized) {
@@ -108,28 +86,22 @@ const StockVariantSelector: React.FC<Props> = ({
         loadStocks(searchTerm, 1);
       }, 300);
       
-      setDebounceTimeout(timeout);
+      debounceTimeoutRef.current = timeout;
     }
 
     return () => {
-      if (debounceTimeout) {
-        clearTimeout(debounceTimeout);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [searchTerm, hasInitialized]);
+  }, [searchTerm, hasInitialized]); // Removed debounceTimeout from dependencies
 
-  async function loadSpecificVariant(variantId: string) {
+  const loadSpecificVariant = useCallback(async (variantId: string) => {
     try {
-      setIsLoadingSelectedVariant(true);
+      setIsLoading(true);
       const variantInfo = await getStockVariantById(variantId);
       
       if (variantInfo && variantInfo.variant) {
-        // Set the selected variant info for immediate display
-        setSelectedVariantInfo({
-          id: variantInfo.variant.id,
-          displayName: `${variantInfo.stockName || ''} - ${variantInfo.variant.name}`
-        });
-
         // Create a minimal stock structure with just the selected variant
         const stockWithVariant = [{
           id: variantInfo.stockId || 'temp-id',
@@ -155,12 +127,10 @@ const StockVariantSelector: React.FC<Props> = ({
     } catch (error) {
       console.error("Error loading specific variant:", error);
       loadStocks("", 1); // Fallback
-    } finally {
-      setIsLoadingSelectedVariant(false);
     }
-  }
+  }, []);
 
-  async function loadStocks(query: string, currentPage: number, showLoading = true) {
+  const loadStocks = useCallback(async (query: string, currentPage: number, showLoading = true) => {
     try {
       if (showLoading) {
         setIsLoading(true);
@@ -170,23 +140,7 @@ const StockVariantSelector: React.FC<Props> = ({
       
       // Check if it's the first page or appending more results
       if (currentPage === 1) {
-        // If we have a selected variant that's not in the new results, preserve it
-        if (selectedVariantInfo && !response.content.some(stock => 
-          stock.stockVariants.some(variant => variant.id === selectedVariantInfo.id)
-        )) {
-          // Keep the existing stock with the selected variant
-          const existingSelectedStock = stocks.find(stock => 
-            stock.stockVariants.some(variant => variant.id === selectedVariantInfo.id)
-          );
-          
-          if (existingSelectedStock) {
-            setStocks([existingSelectedStock, ...response.content]);
-          } else {
-            setStocks(response.content);
-          }
-        } else {
-          setStocks(response.content);
-        }
+        setStocks(response.content);
       } else {
         setStocks(prevStocks => [...prevStocks, ...response.content]);
       }
@@ -199,7 +153,7 @@ const StockVariantSelector: React.FC<Props> = ({
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
   // Memoize option processing to prevent recalculations
   const allVariantOptions = useMemo(() => 
@@ -215,8 +169,8 @@ const StockVariantSelector: React.FC<Props> = ({
   );
 
   const selectedOption = useMemo(() => 
-    allVariantOptions.find((option) => option.id === value) || selectedVariantInfo,
-    [allVariantOptions, value, selectedVariantInfo]
+    allVariantOptions.find((option) => option.id === value),
+    [allVariantOptions, value]
   );
 
   // Load more items when reaching the end of the list
@@ -240,20 +194,15 @@ const StockVariantSelector: React.FC<Props> = ({
             role="combobox"
             aria-expanded={open}
             className="w-full justify-between"
-            disabled={isDisabled || (isLoading && !selectedOption) || isLoadingSelectedVariant}
+            disabled={isDisabled || isLoading && !selectedOption}
           >
-            {isLoadingSelectedVariant ? (
+            {isLoading && !selectedOption ? (
               <div className="flex items-center">
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Loading...
               </div>
             ) : selectedOption ? (
               selectedOption.displayName 
-            ) : isLoading ? (
-              <div className="flex items-center">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </div>
             ) : (
               placeholder
             )}
@@ -284,8 +233,7 @@ const StockVariantSelector: React.FC<Props> = ({
                       value={option.searchString}
                       disabled={option.disabled}
                       onSelect={() => {
-                        const newValue = option.id === value ? "" : option.id;
-                        onChange(newValue);
+                        onChange(option.id === value ? "" : option.id);
                         setOpen(false);
                       }}
                     >

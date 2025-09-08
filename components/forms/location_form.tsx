@@ -94,8 +94,10 @@ const LocationForm = ({
           setResponse(response);
           if (!item) {
             // Only reload for create operations
-            window.location.reload();
+            window.location.href ='/locations';
+            return;
           }
+          window.location.href = '/select-location'
         }
       } catch (error) {
         console.error(`${item ? 'Update' : 'Create'} failed:`, error);

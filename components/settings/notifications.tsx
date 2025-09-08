@@ -10,7 +10,7 @@ import { z } from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "../ui/form";
 import SubmitButton from "../widgets/submit-button";
 import { updateNotificationSetting } from "@/lib/actions/settings-actions";
-import { fetchLocationSettings } from "@/lib/actions/settings-actions"; // Import your server action
+import { fetchLocationSettings } from "@/lib/actions/settings-actions";
 
 const NotificationSettings = () => {
     const [isPending, startTransition] = useTransition();
@@ -25,7 +25,6 @@ const NotificationSettings = () => {
         },
     });
 
-    // Fetch location settings on component mount
     useEffect(() => {
         const loadSettings = async () => {
             try {
@@ -40,7 +39,7 @@ const NotificationSettings = () => {
                 });
             } catch (error) {
                 console.error("Failed to fetch location settings:", error);
-                // Keep default values if fetch fails
+                
             } finally {
                 setIsLoading(false);
             }

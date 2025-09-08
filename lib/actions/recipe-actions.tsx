@@ -74,21 +74,21 @@ export const searchRecipe = async (
     }
 
 }
-export const  createRecipe= async (
+export const createRecipe = async (
     recipe: z.infer<typeof RecipeSchema>
 ): Promise<FormResponse | void> => {
 
     let formResponse: FormResponse | null = null;
 
-    const validRecipeData= RecipeSchema.safeParse(recipe)
+    const validRecipeData = RecipeSchema.safeParse(recipe)
 
-    if (!validRecipeData.success){
+    if (!validRecipeData.success) {
         formResponse = {
-            responseType:"error",
-            message:"Please fill all the required fields",
-            error:new Error(validRecipeData.error.message)
-      }
-      return parseStringify(formResponse)
+            responseType: "error",
+            message: "Please fill all the required fields",
+            error: new Error(validRecipeData.error.message)
+        }
+        return parseStringify(formResponse)
     }
 
     const location = await getCurrentLocation();
@@ -101,32 +101,55 @@ export const  createRecipe= async (
             quantity: variant.quantity
         })) ?? []
     };
+    
     delete payload.stockVariants;
 
     try {
         const apiClient = new ApiClient();
 
-
         await apiClient.post(
             `/api/recipes/${location?.id}/create`,
             payload
         );
+        
         formResponse = {
             responseType: "success",
             message: "Recipe created successfully",
         };
     }
-    catch (error){
-        console.error("Error while creating addons",error)
+    catch (error) {
+        console.error("Error while creating recipe", error);
+        
+        
+        let errorMessage = "Something went wrong while processing your request, please try again";
+        
+        if (error && typeof error === 'object') {
+            // Check if it's an API error with a message property
+            if ('message' in error && typeof error.message === 'string') {
+                errorMessage = error.message;
+            }
+            // Check if it's an API error with details.message property
+            else if ('details' in error && 
+                     error.details && 
+                     typeof error.details === 'object' && 
+                     'message' in error.details && 
+                     typeof error.details.message === 'string') {
+                errorMessage = error.details.message;
+            }
+            // Check if it's a standard Error with status and message
+            else if ('status' in error && 'message' in error && typeof error.message === 'string') {
+                errorMessage = error.message;
+            }
+        }
+        
         formResponse = {
             responseType: "error",
-            message:
-                "Something went wrong while processing your request, please try again",
+            message: errorMessage,
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
 
-    if ( formResponse?.responseType === "error") return formResponse;
+    if (formResponse?.responseType === "error") return formResponse;
 
     revalidatePath("/recipes")
     redirect("/recipes")

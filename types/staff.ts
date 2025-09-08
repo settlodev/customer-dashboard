@@ -103,6 +103,7 @@ export declare interface Staff {
   dateOfBirth?: Date;
   nationality?: string;
   joiningDate: Date;
+  warehouseRole?: string
 }
 
 export declare interface StaffSummaryReport{

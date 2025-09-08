@@ -1,3 +1,4 @@
+
 "use client"
 
 import React, { useEffect, useState } from "react";
@@ -21,6 +22,7 @@ interface CategorySelectorProps {
     isDisabled?: boolean;
     onChange: (value: string) => void;
     onBlur?: () => void;
+    showSubcategories?: boolean; // New prop to control subcategory display
 }
 
 const CategorySelector = ({
@@ -28,7 +30,8 @@ const CategorySelector = ({
     value,
     isDisabled,
     onChange,
-    onBlur
+    onBlur,
+    showSubcategories = true // Default to true
 }: CategorySelectorProps) => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -110,6 +113,48 @@ const CategorySelector = ({
         onChange(newValue);
     };
 
+    // Helper function to render category options with subcategories
+    const renderCategoryOptions = () => {
+        const options: React.ReactNode[] = [];
+
+        categories.forEach((category) => {
+            // Add the main category
+            options.push(
+                <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                </SelectItem>
+            );
+
+            if (showSubcategories && category.subcats && category.subcats.length > 0) {
+                category.subcats.forEach((subcat) => {
+                    options.push(
+                        <SelectItem key={subcat.id} value={subcat.id}>
+                            <span className="ml-4">└ {subcat.name}</span>
+                        </SelectItem>
+                    );
+                });
+            }
+        });
+
+        return options;
+    };
+
+    // Helper function to get display name for selected value
+    const getDisplayName = (selectedId: string) => {
+        for (const category of categories) {
+            if (category.id === selectedId) {
+                return category.name;
+            }
+            if (category.subcats) {
+                const subcat = category.subcats.find(sub => sub.id === selectedId);
+                if (subcat) {
+                    return `${category.name} > ${subcat.name}`;
+                }
+            }
+        }
+        return "";
+    };
+
     return (
         <div className="flex gap-2 items-start">
             <div className="flex-1">
@@ -120,14 +165,12 @@ const CategorySelector = ({
                     onOpenChange={onBlur}
                 >
                     <SelectTrigger className="w-full">
-                        <SelectValue placeholder={placeholder} />
+                        <SelectValue placeholder={placeholder}>
+                            {selectedValue ? getDisplayName(selectedValue) : placeholder}
+                        </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                        {categories.map((category) => (
-                            <SelectItem key={category.id} value={category.id}>
-                                {category.name}
-                            </SelectItem>
-                        ))}
+                        {renderCategoryOptions()}
                     </SelectContent>
                 </Select>
             </div>

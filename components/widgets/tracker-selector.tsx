@@ -31,7 +31,7 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange,ini
         quantity
       });
     }
-  }, [initialItemType, initialItemId]);
+  }, [initialItemType, initialItemId, onSelectionChange,quantity]);
 
   const handleTrackingTypeChange = (type: string | null) => {
     setTrackingType(type);

@@ -1,33 +1,17 @@
 "use server";
 
 import { Supplier } from "@/types/supplier/type";
-
 import { ApiResponse, FormResponse } from "@/types/types";
 import { SupplierSchema } from "@/types/supplier/schema";
 import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
+import { getCurrentBusiness } from "../business/get-current-business";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
-import { getCurrentBusiness, getCurrentLocation } from "../business/get-current-business";
 import { parseStringify } from "@/lib/utils";
-
-export const fetchSuppliers = async (): Promise<Supplier[]> => {
-  await getAuthenticatedUser();
-  
-  try {
-    const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    const supplierData = await apiClient.get(
-      `/api/suppliers/${location?.id}`,
-    );
-    return parseStringify(supplierData);
-  } catch (error) {
-    throw error;
-  }
-};
+import { getCurrentWarehouse } from "./current-warehouse-action";
+import { SupplierCreditReports } from "@/types/warehouse/supplier/type";
 
 export const searchSuppliers = async (
   q: string,
@@ -39,7 +23,7 @@ export const searchSuppliers = async (
   try {
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
+    const business = await getCurrentBusiness();
 
     const query = {
       filters: [
@@ -49,6 +33,12 @@ export const searchSuppliers = async (
               field_type: "STRING",
               value: q,
           },
+          {
+            key:"isArchived",
+            operator:"EQUAL",
+            field_type:"BOOLEAN",
+            value:false
+        }
       ],
       sorts: [
         {
@@ -61,11 +51,10 @@ export const searchSuppliers = async (
     };
 
     const supplierData = await apiClient.post(
-      `/api/suppliers/${location?.id}`,
+      `/api/suppliers/${business?.id}`,
       query
     );
-
-    
+  // console.log("The supplier data",supplierData);
     return parseStringify(supplierData);
   } catch (error) {
     throw error;
@@ -88,12 +77,11 @@ export const createSupplier = async (
     return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
+  
   const business = await getCurrentBusiness();
 
   const payload = {
     ...supplierValidData.data,
-    location: location?.id,
     business: business?.id,
   };
 
@@ -103,7 +91,7 @@ export const createSupplier = async (
     const apiClient = new ApiClient();
 
     await apiClient.post(
-      `/api/suppliers/${location?.id}/create`,
+      `/api/suppliers/${business?.id}/create`,
       payload
     );
     formResponse = {
@@ -111,16 +99,15 @@ export const createSupplier = async (
       message: "Supplier created successfully",
     };
 
-  } catch (error) {
+  } catch (error:any) {
     console.error("Error creating supplier", error);
     formResponse = {
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message:error.message || "Something went wrong while processing your request, please try again",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
-  revalidatePath("/suppliers");
+  revalidatePath("/warehouse-suppliers");
   return parseStringify(formResponse);
 };
 
@@ -142,17 +129,15 @@ export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
     size: 1,
   };
 
-  const location = await getCurrentLocation();
+  const business = await getCurrentBusiness();
 
   const supplierResponse = await apiClient.post(
-    `/api/suppliers/${location?.id}`,
+    `/api/suppliers/${business?.id}`,
     query
   );
-  console.log("Supplier Response", supplierResponse)
+  
   return parseStringify(supplierResponse);
 };
-
-
 
 export const updateSupplier = async (
   id: UUID,
@@ -170,12 +155,12 @@ export const updateSupplier = async (
       return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
+  
   const business = await getCurrentBusiness();
 
   const payload = {
     ...supplierValidData.data,
-    location: location?.id,
+    
     business: business?.id,
   };
 
@@ -184,7 +169,7 @@ export const updateSupplier = async (
       const apiClient = new ApiClient();
 
       await apiClient.put(
-          `/api/suppliers/${location?.id}/${id}`, 
+          `/api/suppliers/${business?.id}/${id}`, 
           payload
       );
 
@@ -202,7 +187,7 @@ export const updateSupplier = async (
       };
   }
 
-  revalidatePath("/suppliers");
+  revalidatePath("/warehouse-suppliers");
   return parseStringify(formResponse);
 };
 
@@ -213,11 +198,45 @@ export const deleteSupplier = async (id: UUID): Promise<void> => {
 
   try {
       const apiClient = new ApiClient();
-      const location = await getCurrentLocation();
+      const business = await getCurrentBusiness();
 
-      await apiClient.delete(`/api/suppliers/${location?.id}/${id}`);
-      revalidatePath("/suppliers");
+      await apiClient.delete(`/api/suppliers/${business?.id}/${id}`);
+      revalidatePath("/warehouse-suppliers");
   } catch (error) {
       throw error;
   }
+};
+
+export const archievSupplier = async (id: UUID): Promise<void> => {
+  if (!id) throw new Error("Supplier ID is required to perform this request");
+  await getAuthenticatedUser();
+
+  try {
+      const apiClient = new ApiClient();
+      const business = await getCurrentBusiness();
+
+      await apiClient.delete(`/api/suppliers/${business?.id}/update-archive-status`);
+      revalidatePath("/warehouse-suppliers");
+  } catch (error) {
+      console.error("Error archieving supplier", error);
+      throw error;
+  }
+}
+
+export const supplierCreditReportForWarehouse = async (): Promise<SupplierCreditReports | null> => {
+
+  await getAuthenticatedUser();
+
+  try {
+
+      const apiClient = new ApiClient();
+      const warehouse = await getCurrentWarehouse();
+      const report=await apiClient.get(`/api/reports/${warehouse?.id}/suppliers-credit/summary`);
+      return parseStringify(report);
+      
+  } catch (error) {
+      console.error("Error fetching stock request report:", error);
+      throw error;
+  }
+  
 };

@@ -33,7 +33,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                        <h3 className="text-xl font-bold text-teal-700">{salesData.totalOrders || 0}</h3>
+                        <h3 className="text-xl font-bold text-teal-700">{salesData?.totalOrders || 0}</h3>
                       </div>
                       <div className="bg-teal-100 p-3 rounded-full shadow-sm">
                         <Package className="w-5 h-5 text-teal-600" />

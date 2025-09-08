@@ -3,6 +3,7 @@ import { getOrderReceipt } from '@/lib/actions/order-actions';
 import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
+import Image from 'next/image';
 
 type Params = Promise<{
   id: string;

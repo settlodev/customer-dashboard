@@ -1,18 +1,16 @@
-import Link from "next/link";
 
 import {
     Card,
     CardContent,
+    CardDescription,
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-// import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import NoItems from "@/components/layouts/no-items";
-// import {columns} from "@/components/tables/warehouse/purchase/columns";
-// import { searchPurchases } from "@/lib/actions/warehouse/purchases-action";
-import { Plus } from "lucide-react";
+import {columns} from "@/components/tables/warehouse/purchase/columns";
+import { searchStockIntakePurchases } from "@/lib/actions/warehouse/purchases-action";
+import { DataTable } from "@/components/tables/data-table";
+import { FileSearch } from "lucide-react";
 
 const breadcrumbItems = [{ title: "Purchase", link: "/purchases" }];
 
@@ -28,15 +26,15 @@ export default async function Page({searchParams}:Params) {
     const resolvedSearchParams = await searchParams;
     
     const q = resolvedSearchParams.search || "";
-    // const page = Number(resolvedSearchParams.page) || 0;
-    // const pageLimit = Number(resolvedSearchParams.limit);
+    const page = Number(resolvedSearchParams.page) || 0;
+    const pageLimit = Number(resolvedSearchParams.limit);
 
-    // const responseData = await searchPurchases(q, page, pageLimit);
-    // const data = responseData.content;
-    // const total = responseData.totalElements || 0;
-    // const pageCount = responseData.totalPages;
+    const responseData = await searchStockIntakePurchases(q, page, pageLimit);
+    const data = responseData.content;
+    const total = responseData.totalElements || 0;
+    const pageCount = responseData.totalPages;
 
-    const total= 0
+  
 
     return (
         <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-10">
@@ -45,34 +43,37 @@ export default async function Page({searchParams}:Params) {
                     <BreadcrumbsNav items={breadcrumbItems} />
                 </div>
 
-                <div className="flex items-center space-x-2">
-                    
-                    <Button className="">
-                    <Plus className="mr-2 h-4 w-4" color="#A3FFD6"/>
-                        <Link key="add-category" href={`/purchases/new`}>New Purchase Order</Link>
-                    </Button>
-                </div>
             </div>
 
             {total > 0 || q != "" ? (
                 <Card x-chunk="data-table">
                     <CardHeader>
-                        <CardTitle>Purchase History</CardTitle>
-                        {/* <CardDescription>Manage categories in your business location</CardDescription> */}
+                        <CardTitle>Stock Supplier Payable</CardTitle>
+                        <CardDescription>
+                            List of Stock Supplier Payable
+                        </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {/* <DataTable
+                        <DataTable
                             columns={columns}
                             data={data}
                             pageCount={pageCount}
                             pageNo={page}
-                            searchKey="name"
+                            searchKey="stockVariantName"
                             total={total}
-                        /> */}
+                        />
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`Purchase`} newItemUrl={`/purchases/new`} />
+                <div className="flex flex-col items-center justify-center py-12 space-y-4">
+                            <FileSearch className="w-12 h-12 text-muted-foreground" />
+                            <div className="text-center space-y-1">
+                                <h3 className="text-lg font-medium">No records found</h3>
+                                <p className="text-sm text-muted-foreground">
+                                    {q ? "No results match your search criteria." : "No stock supplier payable records have been created yet."}
+                                </p>
+                            </div>
+                        </div>
             )}
         </div>
     );

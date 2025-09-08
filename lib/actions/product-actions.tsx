@@ -628,7 +628,6 @@ export const menuProducts = async (
                 }
             }
         );
-
         return parseStringify(data);
     } catch (error) {
         throw error;

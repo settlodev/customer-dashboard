@@ -3,10 +3,12 @@
 import ApiClient from "@/lib/settlo-api-client";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
-import {ApiResponse} from "@/types/types";
+import {ApiResponse, FormResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {getCurrentLocation } from "./business/get-current-business";
 import { CashFlow, Credit, Orders } from "@/types/orders/type";
+import { orderRequestSchema } from "@/types/orders/schema";
+import { CartState } from "@/context/cartContext";
 
 
 export const fetchOrders = async () : Promise<Orders[]> => {
@@ -18,7 +20,7 @@ export const fetchOrders = async () : Promise<Orders[]> => {
         const apiClient = new ApiClient();
 
         const ordersData= await  apiClient.get(
-           `/api/orders/${location?.id}`,
+           `/api/orders/${location?.id}?dashboard=true`,
         );
        
         return parseStringify(ordersData);
@@ -90,6 +92,7 @@ export const getOrder= async (id:UUID) : Promise<ApiResponse<Orders>> => {
         `/api/orders/${location?.id}?dashboard=true`,
         query,
     );
+    console.log("The order with EFD content is",order)
     return parseStringify(order)
 }
 
@@ -140,8 +143,6 @@ export const cashFlowReport = async (startDate?: Date, endDate?: Date): Promise<
             params
         });
 
-        console.log ("The transactions report with filter is: ", report);
-
         return parseStringify(report);
     }
     catch (error){
@@ -169,5 +170,111 @@ export const creditReport = async (startDate?: Date, endDate?: Date): Promise<Cr
     catch (error){
         console.error("Error fetching cashFlow report:", error);
         throw error
+    }
+}
+
+
+export const submitOrderRequest = async (cartState: CartState) => {
+    console.log("The cart state is", cartState.locationId);
+
+    let formResponse: FormResponse | null = null;
+
+    if (!cartState.locationId) {
+        formResponse = {
+            responseType: "error",
+            message: "Location information is missing. Please refresh and try again.",
+            error: new Error("Missing locationId in cart state")
+        };
+        console.log("Missing locationId error:", formResponse);
+        return parseStringify(formResponse);
+    }
+
+    // Transform cart state to API payload format
+    const payload = {
+        comment: cartState.globalComment || '',
+        customerFirstName: cartState.customerDetails.firstName,
+        customerLastName: cartState.customerDetails.lastName,
+        customerPhoneNumber: cartState.customerDetails.phoneNumber,
+        customerGender: cartState.customerDetails.gender,
+        customerEmailAddress: cartState.customerDetails.emailAddress,
+        
+        orderRequestItems: cartState.orderRequestitems.map(item => {
+            let variantId = item.variantId;
+            
+            if (!variantId && item.variants && item.variants.length > 0) {
+                variantId = item.variants[0].id;
+            }
+            
+            if (!variantId) {
+                throw new Error(`Missing variant ID for product: ${item.name}`);
+            }
+
+            return {
+                quantity: item.quantity,
+                comment: item?.comment || '',
+                variant: variantId, 
+                discount: '', 
+                modifiers: item?.modifiers || [],
+                addons: item?.addons || [],
+            };
+        }),
+    };
+
+    // console.log("The payload is", payload)
+    const validRequestData = orderRequestSchema.safeParse(payload);
+    
+    if (!validRequestData.success) {
+        formResponse = {
+            responseType: "error",
+            message: "Please fill all the required fields",
+            error: new Error(validRequestData.error.message)
+        };
+        console.log("validation error", formResponse);
+        return parseStringify(formResponse);
+    }
+
+    const location = cartState.locationId;
+    console.log("The location Id is", location);
+
+    const finalPayload = {
+        ...validRequestData.data,
+        orderRequestServingType: "DINE_IN",
+    };
+
+    // console.log("The final payload is", finalPayload);
+
+    try {
+        const apiClient = new ApiClient();
+
+        const requestedOrder = await apiClient.post(
+            `/api/order-request/${location}/create`,
+            finalPayload,
+            {
+                headers: {
+                    "Request-Origin": "ECOMMERCE"
+                }
+            }
+        );
+
+        // console.log("The requested order is", requestedOrder);
+        
+        // FIXED: Return the successful response with the order data
+        formResponse = {
+            responseType: "success",
+            message: "Order has been requested successfully",
+            data: requestedOrder // Include the order data
+        };
+        
+        return parseStringify(formResponse); // FIXED: Actually return the response
+
+    } catch (error: any) {
+        console.error('Order submission error:', error.message);
+        formResponse = {
+            responseType: "error",
+            message: error.message ?? "Something went wrong while processing your request, please try again",
+            error: error instanceof Error ? error : new Error(String(error)),
+        };
+        
+        return parseStringify(formResponse);
     }
 }

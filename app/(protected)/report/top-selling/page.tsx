@@ -17,8 +17,8 @@ import { Input } from '@/components/ui/input';
 import { TopItems, TopSellingProduct } from '@/types/product/type';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
+import Loading from '@/app/loading';
 
-import Loading from '../../loading';
 
 interface DatePickerProps {
     value: Date;
@@ -58,7 +58,7 @@ const SalesDashboard = () => {
         };
 
         fetchingTopSellingProducts();
-    }, []);
+    }, [endDate, startDate]);
 
     const form = useForm<z.infer<typeof FormSchema>>({
         resolver: zodResolver(FormSchema),
@@ -84,7 +84,7 @@ const SalesDashboard = () => {
                     : "There was an issue submitting your form, please try later",
             });
         },
-        [toast]
+        []
     );
 
     const onSubmit = async (values: z.infer<typeof FormSchema>) => {

@@ -1,4 +1,5 @@
 "use server"
+import { deleteActiveLocationCookie } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { ActiveSubscription } from "@/types/subscription/type";
@@ -8,12 +9,11 @@ import {cookies} from "next/headers";
 export const getCurrentWarehouse = async (): Promise<any | undefined> => {
     const cookieStore =await cookies();
     const warehouseCookie = cookieStore.get("currentWarehouse");
-
+    
     if (!warehouseCookie) return undefined;
 
     try {
         return JSON.parse(warehouseCookie.value) as any;
-        // console.log("The cookie is: ", warehouseCookie?.value)
     } catch (error) {
         console.error("Failed to parse Warehouse cookie:", error);
         return undefined;
@@ -21,6 +21,9 @@ export const getCurrentWarehouse = async (): Promise<any | undefined> => {
 };
 export const refreshWarehouse = async (data: any): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
+
+    await deleteActiveLocationCookie();
+
     const cookieStore =await cookies();
     cookieStore.set({
         name: "currentWarehouse",
@@ -28,8 +31,13 @@ export const refreshWarehouse = async (data: any): Promise<void> => {
         sameSite: "strict"
     });
 
-    console.log("The cookie is: ", cookieStore.get("currentWarehouse"))
     revalidatePath("/warehouse");
+};
+
+export const deleteActiveWarehouseCookie = async () => {
+    const cookieStore = await cookies();
+    cookieStore.delete("activeWarehouse");
+    console.log("Deleting current warehouse cookies")
 };
 
 export const getActiveSubscriptionForWarehouse = async (locationId?: string | null): Promise<ActiveSubscription> => {

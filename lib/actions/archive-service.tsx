@@ -2,11 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import ApiClient from "../settlo-api-client";
-import { getCurrentLocation } from "./business/get-current-business";
+import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
 
 interface ArchiveEntityProps {
   ids: string[];
-  entityType: 'product' | 'stock' | 'staff' |'stock-intake';
+  entityType: 'product' | 'stock' | 'staff' |'stock-intake' | 'customer' | 'supplier' | 'category';
   locationId?: string;
 }
 
@@ -15,6 +15,8 @@ export async function archiveEntity({
   entityType,
   locationId
 }: ArchiveEntityProps): Promise<{ success: boolean; message: string }> {
+
+  
     
   try {
     if (!ids || ids.length === 0) {
@@ -25,6 +27,7 @@ export async function archiveEntity({
     
    
 const location = locationId ? { id: locationId } : await getCurrentLocation();
+const business = await getCurrentBusiness();
 
 const actualLocationId = locationId || location?.id;
  
@@ -51,7 +54,7 @@ if (!actualLocationId) {
           case 'stock-intake':
            await apiClient.put(`/api/stock-intakes/${actualLocationId}/all/archive`, ids);
             break;  
-       
+   
         default:
           return { success: false, message: `Unsupported entity type: ${entityType}` };
       }
@@ -71,7 +74,7 @@ if (!actualLocationId) {
       location: "/locations",
       supplier: "/suppliers",
       customer: "/customers",
-      stockIntake: "/stock-intakes"
+      stockIntake: "/stock-intakes",
     };
     
     if (paths[entityType]) {

@@ -19,6 +19,7 @@ export declare interface LoginResponse {
 }
 
 export type ApiResponse<T> = {
+    warehouseStockRequestStatus: string;
     data: any;
     totalPages: number;
     totalElements: number;
@@ -172,6 +173,27 @@ export declare interface FormPrivilegeActionItem{
 export declare interface StatusItem{
     name: string;
     value: boolean;
+}
+
+export declare interface WarehousePrivilegeItem{
+    id: UUID;
+    name: string;
+    code: string;
+    status: boolean;
+    canDelete: boolean;
+    isArchived: boolean;
+    warehousePrivilegeActions: WarehousePrivilegeActionItem[];
+}
+
+export declare interface WarehousePrivilegeActionItem{
+    id: UUID;
+    warehouseprivilegeSectionName: string;
+    action: string;
+    warehouseprivilegeSection: UUID;
+    warehouseprivilegeSectionCode: string;
+    status: boolean;
+    canDelete: boolean;
+    isArchived: boolean;
 }
 
 
