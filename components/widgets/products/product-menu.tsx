@@ -66,7 +66,6 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
       setLocationID(params.id);
       
       setLocationId(params.id);
-      console.log("The location is", params);
     } else {
       setLocationError("Missing location or business ID");
       setLocationLoading(false);
@@ -337,8 +336,8 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
 
   // FIXED: Add debug logging to see cart state
   useEffect(() => {
-    console.log("Current cart state locationId:", cartState.locationId);
-    console.log("Local locationId:", locationId);
+    // console.log("Current cart state locationId:", cartState.locationId);
+    // console.log("Local locationId:", locationId);
   }, [cartState.locationId, locationId]);
 
   // Show loading screen while fetching critical business data

@@ -32,7 +32,6 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
     clearCart
   } = useCart();
 
-  console.log("The state of the cart is ",state)
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
