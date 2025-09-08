@@ -92,6 +92,7 @@ export const getOrder= async (id:UUID) : Promise<ApiResponse<Orders>> => {
         `/api/orders/${location?.id}?dashboard=true`,
         query,
     );
+    console.log("The order with EFD content is",order)
     return parseStringify(order)
 }
 
