@@ -123,41 +123,52 @@ export default function ExpenseReportPage() {
     setDownloadingCsv(true);
     
     try {
+      const escapeCSV = (value: string) => {
+        if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      };
+
       // Create CSV content
       let csvContent = "Expense Report\n\n";
       
       // Add location details
-      if (location) {
-        csvContent += `Location: ${location.name}\n`;
-        if (location.address) csvContent += `Address: ${location.address}\n`;
-        if (location.phone) csvContent += `Phone: ${location.phone}\n`;
-        if (location.email) csvContent += `Email: ${location.email}\n`;
-        csvContent += "\n";
+     if (location) {
+      csvContent += `Location,${escapeCSV(location.name)}\n`;
+      if (location.address) csvContent += `Address,${escapeCSV(location.address)}\n`;
+      if (location.phone) csvContent += `Phone,${escapeCSV(location.phone)}\n`;
+      if (location.email) csvContent += `Email,${escapeCSV(location.email)}\n`;
+      csvContent += "\n";
       }
       
       // Add date range
-      csvContent += `Period: ${format(formValues.startDate, 'MMM dd, yyyy HH:mm')} - ${format(formValues.endDate, 'MMM dd, yyyy HH:mm')}\n`;
-      csvContent += `Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')}\n\n`;
+      csvContent += `Period Start,${format(formValues.startDate, 'MMM dd, yyyy HH:mm')}\n`;
+      csvContent += `Period End,${format(formValues.endDate, 'MMM dd, yyyy HH:mm')}\n`;
+      csvContent += `Report Generated,${format(new Date(), 'MMM dd, yyyy HH:mm')}\n\n`;
+
       
       // Add summary
       csvContent += "SUMMARY\n";
-      csvContent += `Total Expenses,${formatCurrency(expenses.totalExpenses).replace('TSH', '').trim()}\n\n`;
-      
+      csvContent += `Total Expenses,${escapeCSV(formatCurrency(expenses.totalExpenses).replace('TSH', '').trim())}\n\n`;
+
       // Add category breakdown
       csvContent += "CATEGORY BREAKDOWN\n";
       csvContent += "Category,Amount,Percentage\n";
-      
+
       expenses.categorySummaries.forEach(category => {
-        csvContent += `${category.categoryName},${formatCurrency(category.amount).replace('TSH', '').trim()},${category.percentage}%\n`;
+        csvContent += `${escapeCSV(category.categoryName)},${escapeCSV(formatCurrency(category.amount).replace('TSH', '').trim())},${category.percentage}%\n`;
       });
-      
+
       // Add disclaimer
       csvContent += "\n";
-      csvContent += "This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.\n";
-      csvContent += "Powered by Settlo";
+      const disclaimer = "This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.";
+      csvContent += `Disclaimer,${escapeCSV(disclaimer)}\n`;
+      csvContent += `Powered By,Settlo`;
       
       // Create blob and download
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const BOM = '\uFEFF';
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.setAttribute('href', url);
