@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState } from 'react';
 import { X, Plus, Minus, ShoppingCart, Trash2, User, MessageCircle, CheckCircle } from 'lucide-react';
@@ -33,11 +32,29 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
     clearCart
   } = useCart();
 
+  console.log("The state of the cart is ",state)
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  
+  // Track which items have quantity input focused
+  const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
 
   const getProductPrice = (item: any) => {
+    // First check selectedVariant object
+    if (item.selectedVariant && item.selectedVariant.price !== undefined) {
+      return parseFloat(item.selectedVariant.price as unknown as string) || 0;
+    }
+    
+    // Then check by variantId in variants array
+    if (item.variantId && item.variants) {
+      const variant = item.variants.find((v: any) => v.id === item.variantId);
+      if (variant && variant.price !== undefined) {
+        return parseFloat(variant.price as unknown as string) || 0;
+      }
+    }
+    
+    // Fallback to selectedVariantId
     if (item.selectedVariantId && item.variants) {
       const variant = item.variants.find((v: any) => v.id === item.selectedVariantId);
       if (variant) {
@@ -45,19 +62,137 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
       }
     }
     
+    // If no variants, use first variant price
     if (item.variants && item.variants.length > 0) {
       return parseFloat(item.variants[0].price as unknown as string) || 0;
     }
     
+    // Final fallback to item price
     return parseFloat(item.price as string) || 0;
+  };
+
+  // Get available quantity for an item using variant availableStock
+  const getAvailableQuantity = (item: any) => {
+    // First check selectedVariant object for availableStock
+    if (item.selectedVariant && item.selectedVariant.availableStock !== undefined) {
+      const availableStock = parseInt(item.selectedVariant.availableStock as string) || 0;
+      console.log(`Available stock for ${item.name} (selectedVariant):`, availableStock);
+      return availableStock;
+    }
+    
+    // Then check by variantId in variants array
+    if (item.variantId && item.variants) {
+      const variant = item.variants.find((v: any) => v.id === item.variantId);
+      if (variant && variant.availableStock !== undefined) {
+        const availableStock = parseInt(variant.availableStock as string) || 0;
+        console.log(`Available stock for ${item.name} (by variantId):`, availableStock);
+        return availableStock;
+      }
+    }
+    
+    // Fallback to selectedVariantId
+    if (item.selectedVariantId && item.variants) {
+      const variant = item.variants.find((v: any) => v.id === item.selectedVariantId);
+      if (variant && variant.availableStock !== undefined) {
+        const availableStock = parseInt(variant.availableStock as string) || 0;
+        console.log(`Available stock for ${item.name} (by selectedVariantId):`, availableStock);
+        return availableStock;
+      }
+    }
+    
+    // If no variants found, use first variant availableStock
+    if (item.variants && item.variants.length > 0 && item.variants[0].availableStock !== undefined) {
+      const availableStock = parseInt(item.variants[0].availableStock as string) || 0;
+      console.log(`Available stock for ${item.name} (first variant):`, availableStock);
+      return availableStock;
+    }
+    
+    // Final fallback to 0 if no variant stock found
+    console.log(`No available stock found for ${item.name}, defaulting to 0`);
+    return 0;
   };
 
   const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
     if (newQuantity < 1) {
       removeFromCart(cartItemId);
-    } else {
-      updateQuantity(cartItemId, newQuantity);
+      return;
     }
+
+    // Find the item in the cart
+    const cartItem = state.orderRequestitems.find(item => item.cartItemId === cartItemId);
+    if (!cartItem) {
+      toast.error('Item not found in cart');
+      return;
+    }
+
+    const availableQuantity = getAvailableQuantity(cartItem);
+    
+    // Check if the new quantity exceeds available stock
+    if (newQuantity > availableQuantity) {
+      toast.error(`Only ${availableQuantity} item(s) available in stock`);
+      return;
+    }
+
+    updateQuantity(cartItemId, newQuantity);
+  };
+
+  // Handle direct quantity input change
+  const handleQuantityInputChange = (cartItemId: string, value: string) => {
+    setQuantityInputs(prev => ({
+      ...prev,
+      [cartItemId]: value
+    }));
+  };
+
+  // Handle quantity input blur (when user finishes typing)
+  const handleQuantityInputBlur = (cartItemId: string) => {
+    const inputValue = quantityInputs[cartItemId];
+    if (inputValue === undefined) return;
+
+    const newQuantity = parseInt(inputValue);
+    
+    if (isNaN(newQuantity) || newQuantity < 1) {
+      // Reset to current quantity if invalid
+      const cartItem = state.orderRequestitems.find(item => item.cartItemId === cartItemId);
+      if (cartItem) {
+        setQuantityInputs(prev => ({
+          ...prev,
+          [cartItemId]: cartItem.quantity.toString()
+        }));
+      }
+      return;
+    }
+
+    handleQuantityChange(cartItemId, newQuantity);
+    
+    // Clear the input state
+    setQuantityInputs(prev => {
+      const newState = { ...prev };
+      delete newState[cartItemId];
+      return newState;
+    });
+  };
+
+  // Handle Enter key press in quantity input
+  const handleQuantityInputKeyPress = (cartItemId: string, e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleQuantityInputBlur(cartItemId);
+    }
+  };
+
+  // Check if we can increase quantity for an item
+  const canIncreaseQuantity = (cartItem: any) => {
+    const availableQuantity = getAvailableQuantity(cartItem);
+    // Get the current cart quantity for this specific cart item
+    const currentCartQuantity = cartItem.quantity || 1;
+    
+    console.log(`Can increase quantity check for ${cartItem.name}:`, {
+      availableQuantity,
+      currentCartQuantity,
+      canIncrease: currentCartQuantity < availableQuantity
+    });
+    
+    return currentCartQuantity < availableQuantity;
   };
 
   const isFormValid = () => {
@@ -188,75 +323,131 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
             ) : !showCustomerForm ? (
               <div className="p-4 space-y-4">
                 {/* Cart Items */}
-                {state.orderRequestitems.map((item) => (
-                  <div key={item.cartItemId} className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex gap-3">
-                      {/* Product Image */}
-                      <div className="w-16 h-16 flex-shrink-0">
-                        {item.image ? (
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            width={64}
-                            height={64}
-                            className="w-full h-full object-cover rounded-md"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-200 rounded-md flex items-center justify-center">
-                            <ShoppingCart className="w-6 h-6 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
+                {state.orderRequestitems.map((item) => {
+                  const availableQuantity = getAvailableQuantity(item);
+                  const canIncrease = canIncreaseQuantity(item);
+                  
+                  return (
+                    <div key={item.cartItemId} className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex gap-3">
+                        {/* Product Image */}
+                        <div className="w-16 h-16 flex-shrink-0">
+                          {item.image ? (
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover rounded-md"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 rounded-md flex items-center justify-center">
+                              <ShoppingCart className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Product Details */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm truncate">{item.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          @ {getProductPrice(item).toLocaleString()} TZS
-                        </p>
-                        
-                        {/* Quantity Controls */}
-                        <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-2">
+                        {/* Product Details */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm truncate">{item.name}</h4>
+                          <p className="text-sm text-gray-600">
+                            @ {getProductPrice(item).toLocaleString()} TZS
+                          </p>
+                          
+                          {/* Stock info */}
+                          <p className="text-xs text-gray-500">
+                            Available: {availableQuantity} item(s)
+                          </p>
+                          
+                          {/* Enhanced Quantity Controls - Conditional based on available quantity */}
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleQuantityChange(item.cartItemId, item.quantity - 1)}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              
+                              {/* Conditional Quantity Display/Input */}
+                              {availableQuantity <= 1 ? (
+                                // Simple display for single item stock
+                                <span className="font-medium min-w-[2rem] text-center">{item.quantity}</span>
+                              ) : (
+                                // Direct Quantity Input for multiple items
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  max={availableQuantity}
+                                  value={quantityInputs[item.cartItemId] ?? item.quantity}
+                                  onChange={(e) => handleQuantityInputChange(item.cartItemId, e.target.value)}
+                                  onBlur={() => handleQuantityInputBlur(item.cartItemId)}
+                                  onKeyPress={(e) => handleQuantityInputKeyPress(item.cartItemId, e)}
+                                  className="h-8 w-16 text-center text-sm font-medium px-1"
+                                  placeholder={item.quantity.toString()}
+                                />
+                              )}
+                              
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className={`h-8 w-8 ${!canIncrease ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={() => handleQuantityChange(item.cartItemId, item.quantity + 1)}
+                                disabled={!canIncrease}
+                                title={!canIncrease ? 'Maximum quantity reached' : 'Increase quantity'}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleQuantityChange(item.cartItemId, item.quantity - 1)}
+                              className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => removeFromCart(item.cartItemId)}
                             >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <span className="font-medium min-w-[2rem] text-center">{item.quantity}</span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleQuantityChange(item.cartItemId, item.quantity + 1)}
-                            >
-                              <Plus className="w-3 h-3" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                           
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => removeFromCart(item.cartItemId)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                         
-                        {/* Item Total */}
-                        <div className="mt-2">
-                          <p className="font-semibold text-sm">
-                            Total: @ {(getProductPrice(item) * item.quantity).toLocaleString()} TZS
-                          </p>
+                          {/* Quick quantity buttons only for items with stock >= 10 */}
+                          {availableQuantity >= 10 && (
+                            <div className="flex gap-1 mt-2">
+                              <span className="text-xs text-gray-500 mr-2">Quick:</span>
+                              {[10, 25, 50, 100].filter(qty => qty <= availableQuantity).map(qty => (
+                                <Button
+                                  key={qty}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600"
+                                  onClick={() => handleQuantityChange(item.cartItemId, qty)}
+                                >
+                                  {qty}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                           
+                          {/* Item Total */}
+                          <div className="mt-2">
+                            <p className="font-semibold text-sm">
+                              Total: @ {(getProductPrice(item) * item.quantity).toLocaleString()} TZS
+                            </p>
+                          </div>
+                          
+                          {/* At maximum quantity warning */}
+                          {item.quantity >= availableQuantity && availableQuantity > 0 && (
+                            <p className="text-xs text-blue-600 font-medium mt-1">
+                              Maximum quantity reached
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div className="bg-blue-50 rounded-lg p-3">
                   <Label htmlFor="global-comment" className="text-sm font-medium mb-2 block">
@@ -374,12 +565,10 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
           {/* Footer with Total and Checkout */}
           {state.orderRequestitems.length > 0 && !showCustomerForm && (
             <div className="border-t p-4 bg-white">
-          
-                <div className="flex justify-between items-center text-lg font-semibold">
-                  <span>Total:</span>
-                  <span>{totalAmount.toLocaleString()} TZS</span>
-                </div>
-              
+              <div className="flex justify-between items-center text-lg font-semibold">
+                <span>Total:</span>
+                <span>{totalAmount.toLocaleString()} TZS</span>
+              </div>
               
               <Button 
                 onClick={() => setShowCustomerForm(true)}

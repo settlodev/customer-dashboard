@@ -153,7 +153,7 @@ export default function StockForm({ item }: StockFormProps) {
         <Form {...form}>
             <FormError message={response?.message} />
             <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-                <div className="grid lg:grid-cols-3 md:grid-cols-2 gap-6">
+                <div className="grid lg:grid-cols-2 md:grid-cols-2 gap-6">
 
                     {/* Left Column - Basic Information */}
                     <Card className="order-1 xl:order-none md:col-span-1">
@@ -261,7 +261,7 @@ export default function StockForm({ item }: StockFormProps) {
                     {/* Right Column - Variants */}
                     <Card className="order-2 xl:order-none md:col-span-1 xl:col-span-2">
                         <CardContent className="pt-6">
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 gap-2">
                                 <div>
                                     <h2 className="text-xl font-semibold">Stock Variants</h2>
                                     <p className="text-sm text-muted-foreground mt-1">
@@ -274,6 +274,7 @@ export default function StockForm({ item }: StockFormProps) {
                                     size="sm"
                                     onClick={handleAddVariant}
                                     disabled={isPending}
+                                    
                                 >
                                     <Plus className="w-4 h-4 mr-2" />
                                     Add Variant
@@ -399,8 +400,10 @@ export default function StockForm({ item }: StockFormProps) {
                         </CardContent>
                     </Card>
 
-                    {/* Action Buttons */}
-                    <div className="flex items-center space-x-4 order-3 md:order-none">
+                </div>
+                <div className="lg:flex mt-3 item-center justify-end">
+                     {/* Action Buttons */}
+                     <div className="flex items-center space-x-4 order-3 md:order-none">
                         <CancelButton />
                         <Separator orientation="vertical" />
                         <SubmitButton
