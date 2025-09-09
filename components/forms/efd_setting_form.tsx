@@ -15,6 +15,7 @@ import { getCurrentBusiness } from "@/lib/actions/business/get-current-business"
 import { RequestEfd, EfdStatus } from "@/lib/actions/efd-action";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, Clock, AlertCircle } from "lucide-react";
+import { formatTinForDisplay } from "../helpers/tin_formatter";
 
 interface EfdSettingsFormProps {
   initialData?: Partial<EfdSettingsFormData>;
@@ -40,15 +41,7 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
     const session = useSession();
     const { toast } = useToast();
 
-    const formatTinForDisplay = (tin: string): string => {
-        const digits = tin.replace(/\D/g, ''); 
-        if (digits.length >= 6) {
-            return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 9)}`;
-        } else if (digits.length >= 3) {
-            return `${digits.slice(0, 3)}-${digits.slice(3)}`;
-        }
-        return digits;
-    };
+   
 
     const extractTinDigits = (formattedTin: string): string => {
         return formattedTin.replace(/\D/g, '');

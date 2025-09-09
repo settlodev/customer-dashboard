@@ -103,7 +103,24 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
         const order = await apiClient.get(
             `/api/order-receipts/${identifier}`
         );
-        
+        // await isEfdPrinted()
+        // console.log("The receipt order with efd details",order)
+        return parseStringify(order)
+
+    } catch (error) {
+        throw error
+    }
+}
+
+export const isEfdPrinted = async (orderId: string | UUID,location: string | UUID) => {
+    const apiClient = new ApiClient();
+
+ 
+    try {
+        const order = await apiClient.get(
+            `/api/vfd/${location}/receipt/${orderId}`
+        );
+        // console.log("The receipt order with efd details",order)
         return parseStringify(order)
 
     } catch (error) {
