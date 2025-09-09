@@ -28,6 +28,81 @@ interface ProductDetailsPageProps {
   backPath?: string;
 }
 
+// Improved stock checking logic (same as in ProductGrid)
+const getProductStockStatus = (product: ExtendedProduct): {
+  status: 'in-stock' | 'out-of-stock';
+  quantity: number;
+  hasVariants: boolean;
+  variantStockInfo?: {
+    [variantId: string]: {
+      status: 'in-stock' | 'out-of-stock';
+      quantity: number;
+    };
+  };
+} => {
+  // If product has explicit quantity
+  if (product.quantity !== null && product.quantity !== undefined) {
+    const qty = parseInt(product.quantity as unknown as string) || 0;
+    return {
+      status: qty > 0 ? 'in-stock' : 'out-of-stock',
+      quantity: qty,
+      hasVariants: false
+    };
+  }
+
+  // If product has variants
+  if (product.variants && product.variants.length > 0) {
+    const variantStockInfo: { [variantId: string]: { status: 'in-stock' | 'out-of-stock'; quantity: number } } = {};
+    let hasInStockVariant = false;
+
+    product.variants.forEach(variant => {
+      let variantStatus: 'in-stock' | 'out-of-stock' = 'out-of-stock';
+      let variantQuantity = 0;
+
+      // If trackingType is null, consider it always in stock
+      if (variant.trackingType === null) {
+        variantStatus = 'in-stock';
+        variantQuantity = 0; // Unlimited stock
+        hasInStockVariant = true;
+      }
+      // If availableStock is provided, check it
+      else if (variant.availableStock !== null && variant.availableStock !== undefined) {
+        variantQuantity = parseInt(variant.availableStock as unknown as string) || 0;
+        variantStatus = variantQuantity > 0 ? 'in-stock' : 'out-of-stock';
+        if (variantStatus === 'in-stock') hasInStockVariant = true;
+      }
+
+      variantStockInfo[variant.id] = {
+        status: variantStatus,
+        quantity: variantQuantity
+      };
+    });
+
+    return {
+      status: hasInStockVariant ? 'in-stock' : 'out-of-stock',
+      quantity: 0, // We don't have a total quantity for variants
+      hasVariants: true,
+      variantStockInfo
+    };
+  }
+
+  // If no quantity info and no variants, check trackingType
+  if (product.trackingType === null) {
+    return {
+      status: 'in-stock',
+      quantity: 0,
+      hasVariants: false
+    };
+  }
+
+  // Default to out of stock
+  return {
+    status: 'out-of-stock',
+    quantity: 0,
+    hasVariants: false
+  };
+};
+
 const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   product,
   businessType,
@@ -35,8 +110,6 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   relatedProducts = [],
   backPath = '/products'
 }) => {
-
-  
   const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
@@ -45,9 +118,13 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   const { setLocationId } = useCart();
 
-  
+  const stockInfo = getProductStockStatus(product);
+  const isInStock = stockInfo.status === 'in-stock';
+  const hasVariants = product.variants && product.variants.length > 0;
+  const needsVariantSelection = hasVariants && product.variants!.length > 1 && !selectedVariantId;
+
   useEffect(() => {
-      setLocationId(product.location);
+    setLocationId(product.location);
   }, []);
 
   useEffect(() => {
@@ -82,33 +159,50 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     return null;
   };
 
-  // Check if product is in stock
-  const isInStock = () => {
-    return product.quantity > 0;
+  // Get available quantity for selected variant or product
+  const getAvailableQuantity = (): number => {
+    if (stockInfo.hasVariants && selectedVariantId && stockInfo.variantStockInfo) {
+      return stockInfo.variantStockInfo[selectedVariantId]?.quantity || 0;
+    }
+    return stockInfo.quantity;
   };
 
-  // Get maximum available quantity for quantity selector
-  const getMaxQuantity = () => {
-    return product.quantity;
+  // Check if selected variant is in stock
+  const isSelectedVariantInStock = (): boolean => {
+    if (stockInfo.hasVariants && selectedVariantId && stockInfo.variantStockInfo) {
+      return stockInfo.variantStockInfo[selectedVariantId]?.status === 'in-stock';
+    }
+    return isInStock;
   };
 
   const handleVariantSelect = (variantId: string) => {
+    if (!isInStock) return;
+    
     setSelectedVariantId(variantId);
+    // Reset quantity when variant changes
+    setQuantity(1);
   };
 
   const handleAddToCart = async () => {
-    if (!isInStock()) {
+    if (!isInStock) {
       alert('This product is currently out of stock');
       return;
     }
 
-    if (quantity > product.quantity) {
-      alert(`Only ${product.quantity} items available in stock`);
+    if (hasVariants && !selectedVariantId) {
+      alert('Please select a variant first');
       return;
     }
 
-    if (product.variants && product.variants.length > 1 && !selectedVariantId) {
-      alert('Please select a variant first');
+    // Check if selected variant is in stock
+    if (hasVariants && !isSelectedVariantInStock()) {
+      alert('The selected variant is out of stock');
+      return;
+    }
+
+    const availableQty = getAvailableQuantity();
+    if (availableQty > 0 && quantity > availableQty) {
+      alert(`Only ${availableQty} items available in stock`);
       return;
     }
 
@@ -123,7 +217,8 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   };
 
   const incrementQuantity = () => {
-    if (quantity < product.quantity) {
+    const availableQty = getAvailableQuantity();
+    if (availableQty === 0 || quantity < availableQty) {
       setQuantity(prev => prev + 1);
     }
   };
@@ -134,15 +229,39 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   // Reset quantity if it exceeds available stock
   useEffect(() => {
-    if (quantity > product.quantity) {
-      setQuantity(Math.min(quantity, product.quantity) || 1);
+    const availableQty = getAvailableQuantity();
+    if (availableQty > 0 && quantity > availableQty) {
+      setQuantity(availableQty);
     }
-  }, [product.quantity, quantity]);
+  }, [selectedVariantId, stockInfo]);
 
-  const hasVariants = product.variants && product.variants.length > 0;
-  const needsVariantSelection = hasVariants && product.variants!.length > 1 && !selectedVariantId;
+  // Get stock display text
+  const getStockDisplayText = (): string => {
+    if (!isInStock) return 'Out of Stock';
 
- 
+    if (stockInfo.hasVariants) {
+      if (selectedVariantId && stockInfo.variantStockInfo) {
+        const variantStock = stockInfo.variantStockInfo[selectedVariantId];
+        if (variantStock.quantity === 0) {
+          return 'In Stock'; // For variants with trackingType: null
+        }
+        return `In Stock (${variantStock.quantity} available)`;
+      }
+      return 'Check variants for availability';
+    }
+
+    if (stockInfo.quantity === 0) {
+      return 'In Stock'; // For products with trackingType: null
+    }
+
+    return `In Stock (${stockInfo.quantity} available)`;
+  };
+
+  // Get stock status color
+  const getStockStatusColor = (): string => {
+    return isInStock ? 'text-green-600' : 'text-red-600';
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
       {/* Enhanced Header with Glass Effect */}
@@ -157,7 +276,6 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               <ArrowLeft className="w-5 h-5" />
               <span className="hidden sm:inline">Back</span>
             </Button>
-
           </div>
         </div>
       </div>
@@ -183,7 +301,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                 )}
                 
                 {/* Stock overlay */}
-                {!isInStock() && (
+                {!isInStock && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                     <div className="bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg">
                       <div className="flex items-center gap-2">
@@ -193,24 +311,8 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     </div>
                   </div>
                 )}
-                
-                {/* Image overlay with quick actions */}
-                {isInStock() && (
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <div className="flex gap-3">
-                      <Button 
-                        size="sm" 
-                        className="bg-white/90 text-gray-800 hover:bg-white shadow-lg backdrop-blur-sm"
-                      >
-                        <Zap className="w-4 h-4 mr-1" />
-                        Quick View
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             </Card>
-
           </div>
 
           {/* Enhanced Product Info Section */}
@@ -226,44 +328,37 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     
                     {/* Stock Status Indicator */}
                     <div className="flex items-center gap-3 mb-4">
-                      {isInStock() ? (
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                          <span className="text-green-600 font-semibold">
-                            In Stock ({product.quantity} available)
-                          </span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-                          <span className="text-red-600 font-semibold">Out of Stock</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        <div className={`w-3 h-3 rounded-full ${isInStock ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                        <span className={`font-semibold ${getStockStatusColor()}`}>
+                          {getStockDisplayText()}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
                   {/* Enhanced Price Display */}
                   <div className={`p-4 rounded-2xl border ${
-                    isInStock() 
+                    isInStock 
                       ? 'bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200/50' 
                       : 'bg-gray-100 border-gray-300'
                   }`}>
                     <div className="flex items-baseline gap-3">
                       <span className={`text-xl lg:text-2xl font-bold ${
-                        isInStock() ? 'text-gray-900' : 'text-gray-500'
+                        isInStock ? 'text-gray-900' : 'text-gray-500'
                       }`}>
                         {getCurrentPrice().toLocaleString()}
                       </span>
                       <span className={`text-lg font-medium ${
-                        isInStock() ? 'text-gray-600' : 'text-gray-400'
+                        isInStock ? 'text-gray-600' : 'text-gray-400'
                       }`}>TZS</span>
                     </div>
-                    {needsVariantSelection && isInStock() && (
+                    {needsVariantSelection && isInStock && (
                       <p className="text-sm text-emerald-600 mt-1">
                         *Price may vary based on selected variant
                       </p>
                     )}
-                    {!isInStock() && (
+                    {!isInStock && (
                       <p className="text-sm text-red-600 mt-1">
                         This item is currently unavailable
                       </p>
@@ -289,44 +384,68 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                         Choose your option
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        {product.variants!.map((variant) => (
-                          <div
-                            key={variant.id}
-                            className={`relative border-2 rounded-2xl items-center p-2 transition-all duration-300 ${
-                              isInStock() 
-                                ? 'cursor-pointer transform hover:scale-105 hover:shadow-lg' 
-                                : 'cursor-not-allowed opacity-60'
-                            } ${
-                              selectedVariantId === variant.id
-                                ? 'border-emerald-500 bg-emerald-50 shadow-lg ring-4 ring-emerald-200/50'
-                                : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
-                            }`}
-                            onClick={() => isInStock() && handleVariantSelect(variant.id)}
-                          >
-                            {selectedVariantId === variant.id && isInStock() && (
-                              <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-2 shadow-lg">
-                                <Check className="w-4 h-4" />
-                              </div>
-                            )}
+                        {product.variants!.map((variant) => {
+                          const variantStock = stockInfo.variantStockInfo?.[variant.id];
+                          const isVariantInStock = variantStock?.status === 'in-stock';
+                          const isSelected = selectedVariantId === variant.id;
+                          
+                          return (
+                            <div
+                              key={variant.id}
+                              className={`relative border-2 rounded-2xl items-center p-2 transition-all duration-300 ${
+                                isVariantInStock 
+                                  ? 'cursor-pointer transform hover:scale-105 hover:shadow-lg' 
+                                  : 'cursor-not-allowed opacity-60'
+                              } ${
+                                isSelected
+                                  ? 'border-emerald-500 bg-emerald-50 shadow-lg ring-4 ring-emerald-200/50'
+                                  : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
+                              }`}
+                              onClick={() => isVariantInStock && handleVariantSelect(variant.id)}
+                            >
+                              {isSelected && isVariantInStock && (
+                                <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-2 shadow-lg">
+                                  <Check className="w-4 h-4" />
+                                </div>
+                              )}
 
-                            <div className="space-y-2">
-                              <h4 className={`font-bold text-sm ${
-                                selectedVariantId === variant.id ? 'text-emerald-900' : 'text-gray-900'
-                              }`}>
-                                {variant.name || `Option ${variant.id.slice(0, 8)}`}
-                              </h4>
+                              {!isVariantInStock && (
+                                <div className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-2 shadow-lg">
+                                  <AlertCircle className="w-4 h-4" />
+                                </div>
+                              )}
 
-                              <div className="flex justify-between items-center">
-                                <span className={`text-xs font-semibold ${
-                                  selectedVariantId === variant.id ? 'text-emerald-700' : 'text-gray-900'
+                              <div className="space-y-2">
+                                <h4 className={`font-bold text-sm ${
+                                  isSelected ? 'text-emerald-900' : 
+                                  isVariantInStock ? 'text-gray-900' : 'text-gray-500'
                                 }`}>
-                                  {parseFloat(variant.price as unknown as string).toLocaleString()}
-                                  <span className="text-sm font-normal ml-1">TZS</span>
-                                </span>
+                                  {variant.name || `Option ${variant.id.slice(0, 8)}`}
+                                </h4>
+
+                                <div className="flex justify-between items-center">
+                                  <span className={`text-xs font-semibold ${
+                                    isSelected ? 'text-emerald-700' : 
+                                    isVariantInStock ? 'text-gray-900' : 'text-gray-500'
+                                  }`}>
+                                    {parseFloat(variant.price as unknown as string).toLocaleString()}
+                                    <span className="text-sm font-normal ml-1">TZS</span>
+                                  </span>
+                                </div>
+
+                                {variantStock && (
+                                  <div className="text-xs">
+                                    {variantStock.quantity === 0 ? (
+                                      <span className="text-green-600">Available</span>
+                                    ) : (
+                                      <span className="text-gray-600">{variantStock.quantity} available</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {selectedVariantId && (
@@ -344,7 +463,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
                   {/* Enhanced Quantity & Add to Cart */}
                   <div className="space-y-6">
-                    {isInStock() && (
+                    {isInStock && !needsVariantSelection && (
                       <div>
                         <label className="block text-sm font-medium text-gray-900 mb-3 underline">
                           Quantity
@@ -367,7 +486,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                               variant="ghost"
                               size="sm"
                               onClick={incrementQuantity}
-                              disabled={quantity >= product.quantity}
+                              disabled={quantity >= getAvailableQuantity() && getAvailableQuantity() > 0}
                               className="p-3 hover:bg-gray-200 rounded-r-xl"
                             >
                               <Plus className="w-4 h-4" />
@@ -382,7 +501,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                           </div>
                         </div>
                         
-                        {quantity >= product.quantity && (
+                        {getAvailableQuantity() > 0 && quantity >= getAvailableQuantity() && (
                           <p className="text-sm text-amber-600 mt-2 flex items-center gap-1">
                             <AlertCircle className="w-4 h-4" />
                             Maximum quantity reached
@@ -392,7 +511,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     )}
 
                     {/* Enhanced Add to Cart Button */}
-                    {isInStock() ? (
+                    {isInStock ? (
                       <Button
                         onClick={handleAddToCart}
                         disabled={isLoading || needsVariantSelection}
@@ -445,55 +564,60 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {relatedProducts.slice(0, 4).map((relatedProduct) => (
-                <Card
-                  key={relatedProduct.id}
-                  className="group cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-2xl bg-white/70 backdrop-blur-sm ring-1 ring-gray-200/50"
-                  onClick={() => router.push(`/products/${relatedProduct.id}`)}
-                >
-                  <div className="relative overflow-hidden">
-                    {relatedProduct.image ? (
-                      <Image
-                        src={relatedProduct.image}
-                        alt={relatedProduct.name}
-                        width={300}
-                        height={200}
-                        className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
-                      />
-                    ) : (
-                      <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
-                        <ShoppingCartIcon className="w-12 h-12 text-gray-400" />
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300"></div>
-                  </div>
-                  
-                  <CardContent className="p-4">
-                    <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
-                      {relatedProduct.name}
-                    </h3>
-                    <div className="flex justify-between items-center">
-                      <p className="text-lg font-bold text-emerald-600">
-                        {parseFloat(relatedProduct.price as string).toLocaleString()} 
-                        <span className="text-sm font-normal text-gray-600 ml-1">TZS</span>
-                      </p>
-                      {relatedProduct.quantity > 0 ? (
-                        <span className="text-xs text-green-600 font-medium">In Stock</span>
+              {relatedProducts.slice(0, 4).map((relatedProduct) => {
+                const relatedStockInfo = getProductStockStatus(relatedProduct);
+                const isRelatedInStock = relatedStockInfo.status === 'in-stock';
+                
+                return (
+                  <Card
+                    key={relatedProduct.id}
+                    className="group cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-2xl bg-white/70 backdrop-blur-sm ring-1 ring-gray-200/50"
+                    onClick={() => router.push(`/products/${relatedProduct.id}`)}
+                  >
+                    <div className="relative overflow-hidden">
+                      {relatedProduct.image ? (
+                        <Image
+                          src={relatedProduct.image}
+                          alt={relatedProduct.name}
+                          width={300}
+                          height={200}
+                          className="w-full h-48 object-cover transition-transform duration-300 group-hover:scale-110"
+                        />
                       ) : (
-                        <span className="text-xs text-red-600 font-medium">Out of Stock</span>
+                        <div className="w-full h-48 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center">
+                          <ShoppingCartIcon className="w-12 h-12 text-gray-400" />
+                        </div>
                       )}
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300"></div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    
+                    <CardContent className="p-4">
+                      <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
+                        {relatedProduct.name}
+                      </h3>
+                      <div className="flex justify-between items-center">
+                        <p className="text-lg font-bold text-emerald-600">
+                          {parseFloat(relatedProduct.price as string).toLocaleString()} 
+                          <span className="text-sm font-normal text-gray-600 ml-1">TZS</span>
+                        </p>
+                        {isRelatedInStock ? (
+                          <span className="text-xs text-green-600 font-medium">In Stock</span>
+                        ) : (
+                          <span className="text-xs text-red-600 font-medium">Out of Stock</span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}
       </div>
       <CartSidebar 
-      businessType={businessType}
-      locationId={product.location}
-       />
+        businessType={businessType}
+        locationId={product.location}
+      />
     </div>
   );
 };

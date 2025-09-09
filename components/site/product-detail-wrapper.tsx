@@ -11,7 +11,8 @@ interface ProductDetailsPageWrapperProps {
 }
 
 const ProductDetailsPageWrapper: React.FC<ProductDetailsPageWrapperProps> = ({ product }) => {
-  const { addToCart, toggleCart } = useCart(); // Add toggleCart here
+  
+  const { addToCart, toggleCart } = useCart(); 
   const [businessType] = useState(businessTypes.default); 
 
   const handleAddToCart = (product: ExtendedProduct, quantity: number, variantId?: string) => {

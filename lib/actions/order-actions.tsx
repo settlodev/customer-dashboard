@@ -103,8 +103,7 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
         const order = await apiClient.get(
             `/api/order-receipts/${identifier}`
         );
-        // await isEfdPrinted()
-        // console.log("The receipt order with efd details",order)
+       
         return parseStringify(order)
 
     } catch (error) {

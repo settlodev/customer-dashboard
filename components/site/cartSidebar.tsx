@@ -1,5 +1,6 @@
+
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Plus, Minus, ShoppingCart, Trash2, User, MessageCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,81 @@ interface CartSidebarProps {
   businessInfo?: BusinessInfo;
   locationId?: string; 
 }
+
+// Improved stock checking logic (same as in ProductDetailsPage)
+const getProductStockStatus = (product: any): {
+  status: 'in-stock' | 'out-of-stock';
+  quantity: number;
+  hasVariants: boolean;
+  variantStockInfo?: {
+    [variantId: string]: {
+      status: 'in-stock' | 'out-of-stock';
+      quantity: number;
+    };
+  };
+} => {
+  // If product has explicit quantity
+  if (product.quantity !== null && product.quantity !== undefined) {
+    const qty = parseInt(product.quantity as unknown as string) || 0;
+    return {
+      status: qty > 0 ? 'in-stock' : 'out-of-stock',
+      quantity: qty,
+      hasVariants: false
+    };
+  }
+
+  // If product has variants
+  if (product.variants && product.variants.length > 0) {
+    const variantStockInfo: { [variantId: string]: { status: 'in-stock' | 'out-of-stock'; quantity: number } } = {};
+    let hasInStockVariant = false;
+
+    product.variants.forEach((variant: any) => {
+      let variantStatus: 'in-stock' | 'out-of-stock' = 'out-of-stock';
+      let variantQuantity = 0;
+
+      // If trackingType is null, consider it always in stock
+      if (variant.trackingType === null) {
+        variantStatus = 'in-stock';
+        variantQuantity = 0; // Unlimited stock
+        hasInStockVariant = true;
+      }
+      // If availableStock is provided, check it
+      else if (variant.availableStock !== null && variant.availableStock !== undefined) {
+        variantQuantity = parseInt(variant.availableStock as unknown as string) || 0;
+        variantStatus = variantQuantity > 0 ? 'in-stock' : 'out-of-stock';
+        if (variantStatus === 'in-stock') hasInStockVariant = true;
+      }
+
+      variantStockInfo[variant.id] = {
+        status: variantStatus,
+        quantity: variantQuantity
+      };
+    });
+
+    return {
+      status: hasInStockVariant ? 'in-stock' : 'out-of-stock',
+      quantity: 0, // We don't have a total quantity for variants
+      hasVariants: true,
+      variantStockInfo
+    };
+  }
+
+  // If no quantity info and no variants, check trackingType
+  if (product.trackingType === null) {
+    return {
+      status: 'in-stock',
+      quantity: 0,
+      hasVariants: false
+    };
+  }
+
+  // Default to out of stock
+  return {
+    status: 'out-of-stock',
+    quantity: 0,
+    hasVariants: false
+  };
+};
 
 const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) => {
   const router = useRouter();
@@ -38,14 +114,26 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
   
   // Track which items have quantity input focused
   const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
+  const [rememberDetails, setRememberDetails] = useState(false);
+
+  useEffect(() => {
+    const savedCustomerDetails = localStorage.getItem('customerDetails');
+    if (savedCustomerDetails) {
+      try {
+        const parsedDetails = JSON.parse(savedCustomerDetails);
+        updateCustomerDetails(parsedDetails);
+        setRememberDetails(true); 
+      } catch (error) {
+        console.error('Error parsing saved customer details:', error);
+      }
+    }
+  }, []);
 
   const getProductPrice = (item: any) => {
-    // First check selectedVariant object
     if (item.selectedVariant && item.selectedVariant.price !== undefined) {
       return parseFloat(item.selectedVariant.price as unknown as string) || 0;
     }
     
-    // Then check by variantId in variants array
     if (item.variantId && item.variants) {
       const variant = item.variants.find((v: any) => v.id === item.variantId);
       if (variant && variant.price !== undefined) {
@@ -70,45 +158,82 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
     return parseFloat(item.price as string) || 0;
   };
 
-  // Get available quantity for an item using variant availableStock
-  const getAvailableQuantity = (item: any) => {
-    // First check selectedVariant object for availableStock
-    if (item.selectedVariant && item.selectedVariant.availableStock !== undefined) {
-      const availableStock = parseInt(item.selectedVariant.availableStock as string) || 0;
-      console.log(`Available stock for ${item.name} (selectedVariant):`, availableStock);
-      return availableStock;
-    }
-    
-    // Then check by variantId in variants array
-    if (item.variantId && item.variants) {
-      const variant = item.variants.find((v: any) => v.id === item.variantId);
-      if (variant && variant.availableStock !== undefined) {
-        const availableStock = parseInt(variant.availableStock as string) || 0;
-        console.log(`Available stock for ${item.name} (by variantId):`, availableStock);
-        return availableStock;
+  // Check if an item has unlimited stock (availableStock: null AND trackingType: null)
+  const hasUnlimitedStock = (item: any): boolean => {
+    if (item.variants && item.variants.length > 0) {
+      let selectedVariant = item.selectedVariant;
+      
+      if (!selectedVariant && item.variantId) {
+        selectedVariant = item.variants.find((v: any) => v.id === item.variantId);
       }
-    }
-    
-    // Fallback to selectedVariantId
-    if (item.selectedVariantId && item.variants) {
-      const variant = item.variants.find((v: any) => v.id === item.selectedVariantId);
-      if (variant && variant.availableStock !== undefined) {
-        const availableStock = parseInt(variant.availableStock as string) || 0;
-        console.log(`Available stock for ${item.name} (by selectedVariantId):`, availableStock);
-        return availableStock;
+      
+      if (!selectedVariant && item.selectedVariantId) {
+        selectedVariant = item.variants.find((v: any) => v.id === item.selectedVariantId);
       }
+      
+      if (!selectedVariant && item.variants.length === 1) {
+        selectedVariant = item.variants[0];
+      }
+      
+      // Check if selected variant has unlimited stock
+      if (selectedVariant) {
+        return selectedVariant.trackingType === null && 
+               selectedVariant.availableStock === null;
+      }
+      
+      return false;
     }
     
-    // If no variants found, use first variant availableStock
-    if (item.variants && item.variants.length > 0 && item.variants[0].availableStock !== undefined) {
-      const availableStock = parseInt(item.variants[0].availableStock as string) || 0;
-      console.log(`Available stock for ${item.name} (first variant):`, availableStock);
-      return availableStock;
+    // Check if it's a regular product with unlimited stock
+    return item.trackingType === null && 
+           item.availableStock === null;
+  };
+
+  const getAvailableQuantity = (item: any): number => {
+    
+    if (hasUnlimitedStock(item)) {
+      return 0; // 0 represents unlimited stock
     }
     
-    // Final fallback to 0 if no variant stock found
-    console.log(`No available stock found for ${item.name}, defaulting to 0`);
-    return 0;
+    const stockInfo = getProductStockStatus(item);
+    
+    if (stockInfo.hasVariants && stockInfo.variantStockInfo) {
+      let selectedVariantId = item.selectedVariantId || item.variantId;
+      
+      if (item.selectedVariant && item.selectedVariant.id) {
+        selectedVariantId = item.selectedVariant.id;
+      }
+      
+      if (selectedVariantId && stockInfo.variantStockInfo[selectedVariantId]) {
+        return stockInfo.variantStockInfo[selectedVariantId].quantity;
+      }
+      
+      return 0;
+    }
+    return stockInfo.quantity;
+  };
+
+  // Check if an item is in stock
+  const isItemInStock = (item: any): boolean => {
+    if (hasUnlimitedStock(item)) {
+      return true;
+    }
+    
+    const stockInfo = getProductStockStatus(item);
+    return stockInfo.status === 'in-stock';
+  };
+
+
+  const canIncreaseQuantity = (cartItem: any): boolean => {
+    if (hasUnlimitedStock(cartItem)) {
+      return true;
+    }
+    
+    const availableQuantity = getAvailableQuantity(cartItem);
+    
+    const currentCartQuantity = cartItem.quantity || 1;
+    
+    return currentCartQuantity < availableQuantity;
   };
 
   const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
@@ -124,12 +249,15 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
       return;
     }
 
-    const availableQuantity = getAvailableQuantity(cartItem);
-    
-    // Check if the new quantity exceeds available stock
-    if (newQuantity > availableQuantity) {
-      toast.error(`Only ${availableQuantity} item(s) available in stock`);
-      return;
+    // Only validate stock if it's NOT unlimited
+    if (!hasUnlimitedStock(cartItem)) {
+      const availableQuantity = getAvailableQuantity(cartItem);
+      
+      // Check if the new quantity exceeds available stock
+      if (newQuantity > availableQuantity) {
+        toast.error(`Only ${availableQuantity} item(s) available in stock`);
+        return;
+      }
     }
 
     updateQuantity(cartItemId, newQuantity);
@@ -179,19 +307,41 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
     }
   };
 
-  // Check if we can increase quantity for an item
-  const canIncreaseQuantity = (cartItem: any) => {
-    const availableQuantity = getAvailableQuantity(cartItem);
-    // Get the current cart quantity for this specific cart item
-    const currentCartQuantity = cartItem.quantity || 1;
+  // Get stock display text for an item
+  const getStockDisplayText = (item: any): string => {
+    // Special case for unlimited stock
+    if (hasUnlimitedStock(item)) {
+      return 'In Stock (Unlimited)';
+    }
     
-    console.log(`Can increase quantity check for ${cartItem.name}:`, {
-      availableQuantity,
-      currentCartQuantity,
-      canIncrease: currentCartQuantity < availableQuantity
-    });
+    const stockInfo = getProductStockStatus(item);
     
-    return currentCartQuantity < availableQuantity;
+    if (stockInfo.status === 'out-of-stock') {
+      return 'Out of Stock';
+    }
+
+    if (stockInfo.hasVariants) {
+      // Try to find the selected variant ID
+      let selectedVariantId = item.selectedVariantId || item.variantId;
+      if (item.selectedVariant && item.selectedVariant.id) {
+        selectedVariantId = item.selectedVariant.id;
+      }
+      
+      if (selectedVariantId && stockInfo.variantStockInfo) {
+        const variantStock = stockInfo.variantStockInfo[selectedVariantId];
+        if (variantStock.quantity === 0) {
+          return 'In Stock'; // For variants with trackingType: null
+        }
+        return `${variantStock.quantity} available`;
+      }
+      return 'Check variant availability';
+    }
+
+    if (stockInfo.quantity === 0) {
+      return 'In Stock'; // For products with trackingType: null
+    }
+
+    return `${stockInfo.quantity} available`;
   };
 
   const isFormValid = () => {
@@ -207,6 +357,12 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
     if (!isFormValid()) {
       toast.error('Please fill in all customer details');
       return;
+    }
+
+    if (rememberDetails) {
+      localStorage.setItem('customerDetails', JSON.stringify(state.customerDetails));
+    } else {
+      localStorage.removeItem('customerDetails');
     }
   
     setIsSubmitting(true);
@@ -325,6 +481,8 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                 {state.orderRequestitems.map((item) => {
                   const availableQuantity = getAvailableQuantity(item);
                   const canIncrease = canIncreaseQuantity(item);
+                  const isInStock = isItemInStock(item);
+                  const isUnlimitedStock = hasUnlimitedStock(item);
                   
                   return (
                     <div key={item.cartItemId} className="bg-gray-50 rounded-lg p-3">
@@ -354,11 +512,14 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                           </p>
                           
                           {/* Stock info */}
-                          <p className="text-xs text-gray-500">
-                            Available: {availableQuantity} item(s)
-                          </p>
+                          <div className="flex items-center gap-1 text-xs">
+                            <div className={`w-2 h-2 rounded-full ${isInStock ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span className={isInStock ? 'text-green-600' : 'text-red-600'}>
+                              {getStockDisplayText(item)}
+                            </span>
+                          </div>
                           
-                          {/* Enhanced Quantity Controls - Conditional based on available quantity */}
+                          {/* Enhanced Quantity Controls */}
                           <div className="flex items-center justify-between mt-2">
                             <div className="flex items-center gap-2">
                               <Button
@@ -366,36 +527,32 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => handleQuantityChange(item.cartItemId, item.quantity - 1)}
+                                disabled={!isInStock}
                               >
                                 <Minus className="w-3 h-3" />
                               </Button>
                               
-                              {/* Conditional Quantity Display/Input */}
-                              {availableQuantity <= 1 ? (
-                                // Simple display for single item stock
-                                <span className="font-medium min-w-[2rem] text-center">{item.quantity}</span>
-                              ) : (
-                                // Direct Quantity Input for multiple items
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  max={availableQuantity}
-                                  value={quantityInputs[item.cartItemId] ?? item.quantity}
-                                  onChange={(e) => handleQuantityInputChange(item.cartItemId, e.target.value)}
-                                  onBlur={() => handleQuantityInputBlur(item.cartItemId)}
-                                  onKeyPress={(e) => handleQuantityInputKeyPress(item.cartItemId, e)}
-                                  className="h-8 w-16 text-center text-sm font-medium px-1"
-                                  placeholder={item.quantity.toString()}
-                                />
-                              )}
+                              {/* Quantity Display/Input */}
+                              <Input
+                                type="number"
+                                min="1"
+                                max={!isUnlimitedStock && availableQuantity > 0 ? availableQuantity : undefined}
+                                value={quantityInputs[item.cartItemId] ?? item.quantity}
+                                onChange={(e) => handleQuantityInputChange(item.cartItemId, e.target.value)}
+                                onBlur={() => handleQuantityInputBlur(item.cartItemId)}
+                                onKeyPress={(e) => handleQuantityInputKeyPress(item.cartItemId, e)}
+                                className="h-8 w-16 text-center text-sm font-medium px-1"
+                                placeholder={item.quantity.toString()}
+                                disabled={!isInStock}
+                              />
                               
                               <Button
                                 variant="outline"
                                 size="icon"
-                                className={`h-8 w-8 ${!canIncrease ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className={`h-8 w-8 ${!canIncrease && !isUnlimitedStock ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 onClick={() => handleQuantityChange(item.cartItemId, item.quantity + 1)}
-                                disabled={!canIncrease}
-                                title={!canIncrease ? 'Maximum quantity reached' : 'Increase quantity'}
+                                disabled={!canIncrease && !isUnlimitedStock}
+                                title={!canIncrease && !isUnlimitedStock ? 'Maximum quantity reached' : 'Increase quantity'}
                               >
                                 <Plus className="w-3 h-3" />
                               </Button>
@@ -411,11 +568,11 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                             </Button>
                           </div>
                           
-                          {/* Quick quantity buttons only for items with stock >= 10 */}
-                          {availableQuantity >= 10 && (
+                          {/* Quick quantity buttons for items with sufficient stock or unlimited stock */}
+                          {isInStock && (isUnlimitedStock || availableQuantity >= 10) && (
                             <div className="flex gap-1 mt-2">
                               <span className="text-xs text-gray-500 mr-2">Quick:</span>
-                              {[10, 25, 50, 100].filter(qty => qty <= availableQuantity).map(qty => (
+                              {[10, 25, 50, 100].filter(qty => isUnlimitedStock || qty <= availableQuantity).map(qty => (
                                 <Button
                                   key={qty}
                                   variant="ghost"
@@ -432,14 +589,21 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                           {/* Item Total */}
                           <div className="mt-2">
                             <p className="font-semibold text-sm">
-                              Total: @ {(getProductPrice(item) * item.quantity).toLocaleString()} TZS
+                              Total: {(getProductPrice(item) * item.quantity).toLocaleString()} TZS
                             </p>
                           </div>
                           
-                          {/* At maximum quantity warning */}
-                          {item.quantity >= availableQuantity && availableQuantity > 0 && (
+                          {/* At maximum quantity warning (only for limited stock items) */}
+                          {!isUnlimitedStock && isInStock && availableQuantity > 0 && item.quantity >= availableQuantity && (
                             <p className="text-xs text-blue-600 font-medium mt-1">
                               Maximum quantity reached
+                            </p>
+                          )}
+                          
+                          {/* Out of stock warning */}
+                          {!isInStock && (
+                            <p className="text-xs text-red-600 font-medium mt-1">
+                              This item is out of stock
                             </p>
                           )}
                         </div>
@@ -474,7 +638,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="firstName">First Name *</Label>
+                      <Label htmlFor="firstName">First Name <span className='text-red-500 font-medium'>*</span></Label>
                       <Input
                         id="firstName"
                         value={state.customerDetails.firstName}
@@ -485,7 +649,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                       />
                     </div>
                     <div>
-                      <Label htmlFor="lastName">Last Name *</Label>
+                      <Label htmlFor="lastName">Last Name <span className='text-red-500 font-medium'>*</span></Label>
                       <Input
                         id="lastName"
                         value={state.customerDetails.lastName}
@@ -498,7 +662,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                   </div>
 
                   <div>
-                    <Label htmlFor="phoneNumber">Phone Number *</Label>
+                    <Label htmlFor="phoneNumber">Phone Number <span className='text-red-500 font-medium'>*</span></Label>
                     <Input
                       id="phoneNumber"
                       value={state.customerDetails.phoneNumber}
@@ -510,7 +674,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                   </div>
 
                   <div>
-                    <Label htmlFor="gender">Gender *</Label>
+                    <Label htmlFor="gender">Gender <span className='text-red-500 font-medium'>*</span></Label>
                     <Select 
                       value={state.customerDetails.gender} 
                       onValueChange={(value: 'MALE' | 'FEMALE') => updateCustomerDetails({ gender: value })}
@@ -527,7 +691,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                   </div>
 
                   <div>
-                    <Label htmlFor="email">Email Address *</Label>
+                    <Label htmlFor="email">Email Address <span className='text-red-500 font-medium'>*</span></Label>
                     <Input
                       id="email"
                       type="email"
@@ -538,6 +702,19 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                       disabled={isSubmitting}
                     />
                   </div>
+                  <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="rememberDetails"
+            checked={rememberDetails}
+            onChange={(e) => setRememberDetails(e.target.checked)}
+            className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+            disabled={isSubmitting}
+          />
+          <Label htmlFor="rememberDetails" className="text-sm font-medium">
+            Remember Me
+          </Label>
+        </div>
                 </div>
 
                 <div className="flex gap-2 mt-6">
