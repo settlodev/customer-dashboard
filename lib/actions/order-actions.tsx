@@ -11,25 +11,7 @@ import { orderRequestSchema } from "@/types/orders/schema";
 import { CartState } from "@/context/cartContext";
 
 
-export const fetchOrders = async () : Promise<Orders[]> => {
-    await  getAuthenticatedUser();
 
-    const location = await getCurrentLocation();
-
-    try {
-        const apiClient = new ApiClient();
-
-        const ordersData= await  apiClient.get(
-           `/api/orders/${location?.id}?dashboard=true`,
-        );
-       
-        return parseStringify(ordersData);
-
-    }
-    catch (error){
-        throw error;
-    }
-}
 export const searchOrder = async (
     q:string,
     page:number,
