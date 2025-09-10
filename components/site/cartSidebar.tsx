@@ -349,7 +349,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
     return customerDetails.firstName.trim() !== '' &&
            customerDetails.lastName.trim() !== '' &&
            customerDetails.phoneNumber.trim() !== '' &&
-           customerDetails.gender !== '' &&
+           customerDetails.gender.trim() !== '' &&
            customerDetails.emailAddress.trim() !== '';
   };
 
@@ -677,13 +677,14 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                     <Label htmlFor="gender">Gender <span className='text-red-500 font-medium'>*</span></Label>
                     <Select 
                       value={state.customerDetails.gender} 
-                      onValueChange={(value: 'MALE' | 'FEMALE') => updateCustomerDetails({ gender: value })}
+                      onValueChange={(value: 'MALE' | 'FEMALE'|'UNDISCLOSED') => updateCustomerDetails({ gender: value })}
                       disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
+                      <SelectItem value="UNDISCLOSED">Do not disclose</SelectItem>
                         <SelectItem value="MALE">Male</SelectItem>
                         <SelectItem value="FEMALE">Female</SelectItem>
                       </SelectContent>

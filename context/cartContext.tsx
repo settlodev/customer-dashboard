@@ -23,7 +23,7 @@ export interface CustomerDetails {
   firstName: string;
   lastName: string;
   phoneNumber: string;
-  gender: 'MALE' | 'FEMALE' | '';
+  gender: 'MALE' | 'FEMALE' | 'UNDISCLOSED';
   emailAddress: string;
 }
 
@@ -282,7 +282,7 @@ const initialState: CartState = {
     firstName: '',
     lastName: '',
     phoneNumber: '',
-    gender: '',
+    gender: 'UNDISCLOSED',
     emailAddress: '',
   },
   globalComment: '',
