@@ -15,7 +15,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     
     <div className="relative flex items-center gap-2">
         <EyeIcon className="cursor-pointer" onClick={() => router.push(`/orders/${data.id}`)} />
-        <Receipt className="cursor-pointer" onClick={() => router.push(`/receipt/${data.id}`)} />
+        <Receipt className="cursor-pointer" onClick={() => router.push(`/receipt/${data.id}?location=${data.location}`)} /> 
     </div>
     );
 };

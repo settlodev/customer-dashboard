@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent} from '@/components/ui/card';
 import { 
   ShoppingCart, 
@@ -20,7 +20,7 @@ interface ProductGridProps {
   categorizedProducts: CategorizedProducts;
   selectedCategory: string | null;
   businessType: BusinessType;
-  onAddToCart: (product: ExtendedProduct, quantity?: number, variantId?: string) => void;
+  onAddToCart: (product: ExtendedProduct, quantity?: number , variantId?: string) => void;
   basePath?: string;
   isLoading?: boolean; 
 }
@@ -37,6 +37,65 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   const [loadingProducts, setLoadingProducts] = useState<Set<string>>(new Set());
   const [selectedVariants, setSelectedVariants] = useState<Map<string, string>>(new Map());
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
+
+  const getProductStockStatus = (product: ExtendedProduct): {
+    status: 'in-stock' | 'out-of-stock';
+    quantity: number;
+    hasVariants: boolean;
+  } => {
+    // If product has explicit quantity
+    if (product.quantity !== null && product.quantity !== undefined) {
+      const qty = parseInt(product.quantity as unknown as string) || 0;
+      return {
+        status: qty > 0 ? 'in-stock' : 'out-of-stock',
+        quantity: qty,
+        hasVariants: false
+      };
+    }
+  
+    // If product has variants
+    if (product.variants && product.variants.length > 0) {
+      // Check if any variant is in stock
+      const hasInStockVariant = product.variants.some(variant => {
+        // If trackingType is null, consider it always in stock
+        if (variant.trackingType === null) {
+          return true;
+        }
+        
+        // If availableStock is provided, check it
+        if (variant.availableStock !== null && variant.availableStock !== undefined) {
+          const variantQty = parseInt(variant.availableStock as unknown as string) || 0;
+          return variantQty > 0;
+        }
+        
+        // Default to out of stock if no stock info available
+        return false;
+      });
+  
+      return {
+        status: hasInStockVariant ? 'in-stock' : 'out-of-stock',
+        quantity: 0, // We don't have a total quantity for variants
+        hasVariants: true
+      };
+    }
+  
+    // If no quantity info and no variants, check trackingType
+    // For products without variants but with trackingType
+    if (product.trackingType === null) {
+      return {
+        status: 'in-stock',
+        quantity: 0,
+        hasVariants: false
+      };
+    }
+  
+    // Default to out of stock
+    return {
+      status: 'out-of-stock',
+      quantity: 0,
+      hasVariants: false
+    };
+  }
 
   const getProductPrice = (product: ExtendedProduct, variantId?: string) => {
     if (variantId && product.variants) {
@@ -58,25 +117,36 @@ const ProductGrid: React.FC<ProductGridProps> = ({
     return getProductPrice(product, selectedVariantId);
   };
 
-
-  const getProductQuantity = (product: ExtendedProduct) => {
-    return parseInt(product.quantity as unknown as string) || 0;
-  };
-
+  
   const getDisplayQuantity = (product: ExtendedProduct) => {
-    return getProductQuantity(product);
-  };
-
-
-  const getQuantityStatus = (quantity: number) => {
-    if (quantity === 0) return 'out-of-stock';
+    const stockInfo = getProductStockStatus(product);
     
-    return 'in-stock';
+    if (stockInfo.hasVariants) {
+   
+      const totalVariantQuantity = product.variants?.reduce((sum, variant) => {
+        if (variant.availableStock !== null && variant.availableStock !== undefined) {
+          return sum + (parseInt(variant.availableStock as unknown as string) || 0);
+        }
+        return sum;
+      }, 0) || 0;
+      
+      return totalVariantQuantity;
+    }
+    
+    return stockInfo.quantity;
   };
 
-  // Get quantity display info
-  const getQuantityDisplayInfo = (quantity: number) => {
-    const status = getQuantityStatus(quantity);
+
+  const getQuantityStatus = (product: ExtendedProduct) => {
+    const stockInfo = getProductStockStatus(product);
+    return stockInfo.status;
+  };
+
+
+
+  const getQuantityDisplayInfo = (product: ExtendedProduct) => {
+    const status = getQuantityStatus(product);
+    const quantity = getDisplayQuantity(product);
     
     switch (status) {
       case 'out-of-stock':
@@ -90,7 +160,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
       
       default:
         return {
-          text: `${quantity} in stock`,
+          text: quantity > 0 ? `${quantity} in stock` : 'In Stock',
           bgColor: 'bg-green-100',
           textColor: 'text-green-600',
           icon: Package,
@@ -124,11 +194,11 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   const handleAddToCart = async (product: ExtendedProduct, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    // Check if product is out of stock
-    const quantity = getDisplayQuantity(product);
-    if (quantity === 0) {
-      return; // Don't add to cart if out of stock
-    }
+   
+    const stockStatus = getProductStockStatus(product);
+  if (stockStatus.status === 'out-of-stock') {
+    return; // Don't add to cart if out of stock
+  }
     
     if (product.variants && product.variants.length > 0) {
       let variantId = selectedVariants.get(product.id);
@@ -229,8 +299,12 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           const needsSelection = needsVariantSelection(extendedProduct);
           const isHovered = hoveredProduct === product.id;
           const quantity = getDisplayQuantity(extendedProduct);
-          const quantityInfo = getQuantityDisplayInfo(quantity);
-          const isOutOfStock = quantity === 0;
+          // const quantityInfo = getQuantityDisplayInfo(quantity);
+          // const isOutOfStock = quantity === 0;
+          const stockStatus = getProductStockStatus(extendedProduct);
+          const isOutOfStock = stockStatus.status === 'out-of-stock';
+          const quantityInfo = getQuantityDisplayInfo(extendedProduct);
+          const displayQuantity = getDisplayQuantity(extendedProduct);
          
           return (
             <Card 
@@ -359,8 +433,10 @@ const ProductGrid: React.FC<ProductGridProps> = ({
 
                       Available Stock
                     </span>
+                    
                     <span className={`${quantityInfo.textColor}`}>
-                      {quantity > 0 ? `${quantity} units` : 'No stock'}
+                      {displayQuantity > 0 ? `${displayQuantity} units` : 
+                      stockStatus.hasVariants ? '' : 'No stock'}
                     </span>
                   </div>
                   

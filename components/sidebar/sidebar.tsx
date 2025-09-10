@@ -231,7 +231,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                         ) : (
                                             section.items.map((item: MenuItem, index: React.Key | null | undefined) => (
                                                 <Link
-                                                    key={item.id}
+                                                    key={item.title}
                                                     href={item.link}
                                                     onClick={isMobile ? onClose : undefined}
                                                     className={cn(

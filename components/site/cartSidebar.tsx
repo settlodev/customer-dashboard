@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Plus, Minus, ShoppingCart, Trash2, User, MessageCircle, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,81 @@ interface CartSidebarProps {
   locationId?: string; 
 }
 
+// Improved stock checking logic (same as in ProductDetailsPage)
+const getProductStockStatus = (product: any): {
+  status: 'in-stock' | 'out-of-stock';
+  quantity: number;
+  hasVariants: boolean;
+  variantStockInfo?: {
+    [variantId: string]: {
+      status: 'in-stock' | 'out-of-stock';
+      quantity: number;
+    };
+  };
+} => {
+  // If product has explicit quantity
+  if (product.quantity !== null && product.quantity !== undefined) {
+    const qty = parseInt(product.quantity as unknown as string) || 0;
+    return {
+      status: qty > 0 ? 'in-stock' : 'out-of-stock',
+      quantity: qty,
+      hasVariants: false
+    };
+  }
+
+  // If product has variants
+  if (product.variants && product.variants.length > 0) {
+    const variantStockInfo: { [variantId: string]: { status: 'in-stock' | 'out-of-stock'; quantity: number } } = {};
+    let hasInStockVariant = false;
+
+    product.variants.forEach((variant: any) => {
+      let variantStatus: 'in-stock' | 'out-of-stock' = 'out-of-stock';
+      let variantQuantity = 0;
+
+      // If trackingType is null, consider it always in stock
+      if (variant.trackingType === null) {
+        variantStatus = 'in-stock';
+        variantQuantity = 0; // Unlimited stock
+        hasInStockVariant = true;
+      }
+      // If availableStock is provided, check it
+      else if (variant.availableStock !== null && variant.availableStock !== undefined) {
+        variantQuantity = parseInt(variant.availableStock as unknown as string) || 0;
+        variantStatus = variantQuantity > 0 ? 'in-stock' : 'out-of-stock';
+        if (variantStatus === 'in-stock') hasInStockVariant = true;
+      }
+
+      variantStockInfo[variant.id] = {
+        status: variantStatus,
+        quantity: variantQuantity
+      };
+    });
+
+    return {
+      status: hasInStockVariant ? 'in-stock' : 'out-of-stock',
+      quantity: 0, // We don't have a total quantity for variants
+      hasVariants: true,
+      variantStockInfo
+    };
+  }
+
+  // If no quantity info and no variants, check trackingType
+  if (product.trackingType === null) {
+    return {
+      status: 'in-stock',
+      quantity: 0,
+      hasVariants: false
+    };
+  }
+
+  // Default to out of stock
+  return {
+    status: 'out-of-stock',
+    quantity: 0,
+    hasVariants: false
+  };
+};
+
 const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) => {
   const router = useRouter();
   const { 
@@ -36,8 +111,37 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  
+  // Track which items have quantity input focused
+  const [quantityInputs, setQuantityInputs] = useState<{[key: string]: string}>({});
+  const [rememberDetails, setRememberDetails] = useState(false);
+
+  useEffect(() => {
+    const savedCustomerDetails = localStorage.getItem('customerDetails');
+    if (savedCustomerDetails) {
+      try {
+        const parsedDetails = JSON.parse(savedCustomerDetails);
+        updateCustomerDetails(parsedDetails);
+        setRememberDetails(true); 
+      } catch (error) {
+        console.error('Error parsing saved customer details:', error);
+      }
+    }
+  }, []);
 
   const getProductPrice = (item: any) => {
+    if (item.selectedVariant && item.selectedVariant.price !== undefined) {
+      return parseFloat(item.selectedVariant.price as unknown as string) || 0;
+    }
+    
+    if (item.variantId && item.variants) {
+      const variant = item.variants.find((v: any) => v.id === item.variantId);
+      if (variant && variant.price !== undefined) {
+        return parseFloat(variant.price as unknown as string) || 0;
+      }
+    }
+    
+    // Fallback to selectedVariantId
     if (item.selectedVariantId && item.variants) {
       const variant = item.variants.find((v: any) => v.id === item.selectedVariantId);
       if (variant) {
@@ -45,19 +149,199 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
       }
     }
     
+    // If no variants, use first variant price
     if (item.variants && item.variants.length > 0) {
       return parseFloat(item.variants[0].price as unknown as string) || 0;
     }
     
+    // Final fallback to item price
     return parseFloat(item.price as string) || 0;
+  };
+
+  // Check if an item has unlimited stock (availableStock: null AND trackingType: null)
+  const hasUnlimitedStock = (item: any): boolean => {
+    if (item.variants && item.variants.length > 0) {
+      let selectedVariant = item.selectedVariant;
+      
+      if (!selectedVariant && item.variantId) {
+        selectedVariant = item.variants.find((v: any) => v.id === item.variantId);
+      }
+      
+      if (!selectedVariant && item.selectedVariantId) {
+        selectedVariant = item.variants.find((v: any) => v.id === item.selectedVariantId);
+      }
+      
+      if (!selectedVariant && item.variants.length === 1) {
+        selectedVariant = item.variants[0];
+      }
+      
+      // Check if selected variant has unlimited stock
+      if (selectedVariant) {
+        return selectedVariant.trackingType === null && 
+               selectedVariant.availableStock === null;
+      }
+      
+      return false;
+    }
+    
+    // Check if it's a regular product with unlimited stock
+    return item.trackingType === null && 
+           item.availableStock === null;
+  };
+
+  const getAvailableQuantity = (item: any): number => {
+    
+    if (hasUnlimitedStock(item)) {
+      return 0; // 0 represents unlimited stock
+    }
+    
+    const stockInfo = getProductStockStatus(item);
+    
+    if (stockInfo.hasVariants && stockInfo.variantStockInfo) {
+      let selectedVariantId = item.selectedVariantId || item.variantId;
+      
+      if (item.selectedVariant && item.selectedVariant.id) {
+        selectedVariantId = item.selectedVariant.id;
+      }
+      
+      if (selectedVariantId && stockInfo.variantStockInfo[selectedVariantId]) {
+        return stockInfo.variantStockInfo[selectedVariantId].quantity;
+      }
+      
+      return 0;
+    }
+    return stockInfo.quantity;
+  };
+
+  // Check if an item is in stock
+  const isItemInStock = (item: any): boolean => {
+    if (hasUnlimitedStock(item)) {
+      return true;
+    }
+    
+    const stockInfo = getProductStockStatus(item);
+    return stockInfo.status === 'in-stock';
+  };
+
+
+  const canIncreaseQuantity = (cartItem: any): boolean => {
+    if (hasUnlimitedStock(cartItem)) {
+      return true;
+    }
+    
+    const availableQuantity = getAvailableQuantity(cartItem);
+    
+    const currentCartQuantity = cartItem.quantity || 1;
+    
+    return currentCartQuantity < availableQuantity;
   };
 
   const handleQuantityChange = (cartItemId: string, newQuantity: number) => {
     if (newQuantity < 1) {
       removeFromCart(cartItemId);
-    } else {
-      updateQuantity(cartItemId, newQuantity);
+      return;
     }
+
+    // Find the item in the cart
+    const cartItem = state.orderRequestitems.find(item => item.cartItemId === cartItemId);
+    if (!cartItem) {
+      toast.error('Item not found in cart');
+      return;
+    }
+
+    // Only validate stock if it's NOT unlimited
+    if (!hasUnlimitedStock(cartItem)) {
+      const availableQuantity = getAvailableQuantity(cartItem);
+      
+      // Check if the new quantity exceeds available stock
+      if (newQuantity > availableQuantity) {
+        toast.error(`Only ${availableQuantity} item(s) available in stock`);
+        return;
+      }
+    }
+
+    updateQuantity(cartItemId, newQuantity);
+  };
+
+  // Handle direct quantity input change
+  const handleQuantityInputChange = (cartItemId: string, value: string) => {
+    setQuantityInputs(prev => ({
+      ...prev,
+      [cartItemId]: value
+    }));
+  };
+
+  // Handle quantity input blur (when user finishes typing)
+  const handleQuantityInputBlur = (cartItemId: string) => {
+    const inputValue = quantityInputs[cartItemId];
+    if (inputValue === undefined) return;
+
+    const newQuantity = parseInt(inputValue);
+    
+    if (isNaN(newQuantity) || newQuantity < 1) {
+      // Reset to current quantity if invalid
+      const cartItem = state.orderRequestitems.find(item => item.cartItemId === cartItemId);
+      if (cartItem) {
+        setQuantityInputs(prev => ({
+          ...prev,
+          [cartItemId]: cartItem.quantity.toString()
+        }));
+      }
+      return;
+    }
+
+    handleQuantityChange(cartItemId, newQuantity);
+    
+    // Clear the input state
+    setQuantityInputs(prev => {
+      const newState = { ...prev };
+      delete newState[cartItemId];
+      return newState;
+    });
+  };
+
+  // Handle Enter key press in quantity input
+  const handleQuantityInputKeyPress = (cartItemId: string, e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleQuantityInputBlur(cartItemId);
+    }
+  };
+
+  // Get stock display text for an item
+  const getStockDisplayText = (item: any): string => {
+    // Special case for unlimited stock
+    if (hasUnlimitedStock(item)) {
+      return 'In Stock (Unlimited)';
+    }
+    
+    const stockInfo = getProductStockStatus(item);
+    
+    if (stockInfo.status === 'out-of-stock') {
+      return 'Out of Stock';
+    }
+
+    if (stockInfo.hasVariants) {
+      // Try to find the selected variant ID
+      let selectedVariantId = item.selectedVariantId || item.variantId;
+      if (item.selectedVariant && item.selectedVariant.id) {
+        selectedVariantId = item.selectedVariant.id;
+      }
+      
+      if (selectedVariantId && stockInfo.variantStockInfo) {
+        const variantStock = stockInfo.variantStockInfo[selectedVariantId];
+        if (variantStock.quantity === 0) {
+          return 'In Stock'; // For variants with trackingType: null
+        }
+        return `${variantStock.quantity} available`;
+      }
+      return 'Check variant availability';
+    }
+
+    if (stockInfo.quantity === 0) {
+      return 'In Stock'; // For products with trackingType: null
+    }
+
+    return `${stockInfo.quantity} available`;
   };
 
   const isFormValid = () => {
@@ -65,7 +349,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
     return customerDetails.firstName.trim() !== '' &&
            customerDetails.lastName.trim() !== '' &&
            customerDetails.phoneNumber.trim() !== '' &&
-           customerDetails.gender !== '' &&
+           customerDetails.gender.trim() !== '' &&
            customerDetails.emailAddress.trim() !== '';
   };
 
@@ -73,6 +357,12 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
     if (!isFormValid()) {
       toast.error('Please fill in all customer details');
       return;
+    }
+
+    if (rememberDetails) {
+      localStorage.setItem('customerDetails', JSON.stringify(state.customerDetails));
+    } else {
+      localStorage.removeItem('customerDetails');
     }
   
     setIsSubmitting(true);
@@ -188,75 +478,139 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
             ) : !showCustomerForm ? (
               <div className="p-4 space-y-4">
                 {/* Cart Items */}
-                {state.orderRequestitems.map((item) => (
-                  <div key={item.cartItemId} className="bg-gray-50 rounded-lg p-3">
-                    <div className="flex gap-3">
-                      {/* Product Image */}
-                      <div className="w-16 h-16 flex-shrink-0">
-                        {item.image ? (
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            width={64}
-                            height={64}
-                            className="w-full h-full object-cover rounded-md"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-200 rounded-md flex items-center justify-center">
-                            <ShoppingCart className="w-6 h-6 text-gray-400" />
-                          </div>
-                        )}
-                      </div>
+                {state.orderRequestitems.map((item) => {
+                  const availableQuantity = getAvailableQuantity(item);
+                  const canIncrease = canIncreaseQuantity(item);
+                  const isInStock = isItemInStock(item);
+                  const isUnlimitedStock = hasUnlimitedStock(item);
+                  
+                  return (
+                    <div key={item.cartItemId} className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex gap-3">
+                        {/* Product Image */}
+                        <div className="w-16 h-16 flex-shrink-0">
+                          {item.image ? (
+                            <Image
+                              src={item.image}
+                              alt={item.name}
+                              width={64}
+                              height={64}
+                              className="w-full h-full object-cover rounded-md"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gray-200 rounded-md flex items-center justify-center">
+                              <ShoppingCart className="w-6 h-6 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
 
-                      {/* Product Details */}
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-sm truncate">{item.name}</h4>
-                        <p className="text-sm text-gray-600">
-                          @ {getProductPrice(item).toLocaleString()} TZS
-                        </p>
-                        
-                        {/* Quantity Controls */}
-                        <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-2">
+                        {/* Product Details */}
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-medium text-sm truncate">{item.name}</h4>
+                          <p className="text-sm text-gray-600">
+                            @ {getProductPrice(item).toLocaleString()} TZS
+                          </p>
+                          
+                          {/* Stock info */}
+                          <div className="flex items-center gap-1 text-xs">
+                            <div className={`w-2 h-2 rounded-full ${isInStock ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span className={isInStock ? 'text-green-600' : 'text-red-600'}>
+                              {getStockDisplayText(item)}
+                            </span>
+                          </div>
+                          
+                          {/* Enhanced Quantity Controls */}
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleQuantityChange(item.cartItemId, item.quantity - 1)}
+                                disabled={!isInStock}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              
+                              {/* Quantity Display/Input */}
+                              <Input
+                                type="number"
+                                min="1"
+                                max={!isUnlimitedStock && availableQuantity > 0 ? availableQuantity : undefined}
+                                value={quantityInputs[item.cartItemId] ?? item.quantity}
+                                onChange={(e) => handleQuantityInputChange(item.cartItemId, e.target.value)}
+                                onBlur={() => handleQuantityInputBlur(item.cartItemId)}
+                                onKeyPress={(e) => handleQuantityInputKeyPress(item.cartItemId, e)}
+                                className="h-8 w-16 text-center text-sm font-medium px-1"
+                                placeholder={item.quantity.toString()}
+                                disabled={!isInStock}
+                              />
+                              
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className={`h-8 w-8 ${!canIncrease && !isUnlimitedStock ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                onClick={() => handleQuantityChange(item.cartItemId, item.quantity + 1)}
+                                disabled={!canIncrease && !isUnlimitedStock}
+                                title={!canIncrease && !isUnlimitedStock ? 'Maximum quantity reached' : 'Increase quantity'}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleQuantityChange(item.cartItemId, item.quantity - 1)}
+                              className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => removeFromCart(item.cartItemId)}
                             >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <span className="font-medium min-w-[2rem] text-center">{item.quantity}</span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => handleQuantityChange(item.cartItemId, item.quantity + 1)}
-                            >
-                              <Plus className="w-3 h-3" />
+                              <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
                           
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => removeFromCart(item.cartItemId)}
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                         
-                        {/* Item Total */}
-                        <div className="mt-2">
-                          <p className="font-semibold text-sm">
-                            Total: @ {(getProductPrice(item) * item.quantity).toLocaleString()} TZS
-                          </p>
+                          {/* Quick quantity buttons for items with sufficient stock or unlimited stock */}
+                          {isInStock && (isUnlimitedStock || availableQuantity >= 10) && (
+                            <div className="flex gap-1 mt-2">
+                              <span className="text-xs text-gray-500 mr-2">Quick:</span>
+                              {[10, 25, 50, 100].filter(qty => isUnlimitedStock || qty <= availableQuantity).map(qty => (
+                                <Button
+                                  key={qty}
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs bg-blue-50 hover:bg-blue-100 text-blue-600"
+                                  onClick={() => handleQuantityChange(item.cartItemId, qty)}
+                                >
+                                  {qty}
+                                </Button>
+                              ))}
+                            </div>
+                          )}
+                           
+                          {/* Item Total */}
+                          <div className="mt-2">
+                            <p className="font-semibold text-sm">
+                              Total: {(getProductPrice(item) * item.quantity).toLocaleString()} TZS
+                            </p>
+                          </div>
+                          
+                          {/* At maximum quantity warning (only for limited stock items) */}
+                          {!isUnlimitedStock && isInStock && availableQuantity > 0 && item.quantity >= availableQuantity && (
+                            <p className="text-xs text-blue-600 font-medium mt-1">
+                              Maximum quantity reached
+                            </p>
+                          )}
+                          
+                          {/* Out of stock warning */}
+                          {!isInStock && (
+                            <p className="text-xs text-red-600 font-medium mt-1">
+                              This item is out of stock
+                            </p>
+                          )}
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
 
                 <div className="bg-blue-50 rounded-lg p-3">
                   <Label htmlFor="global-comment" className="text-sm font-medium mb-2 block">
@@ -284,7 +638,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="firstName">First Name *</Label>
+                      <Label htmlFor="firstName">First Name <span className='text-red-500 font-medium'>*</span></Label>
                       <Input
                         id="firstName"
                         value={state.customerDetails.firstName}
@@ -295,7 +649,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                       />
                     </div>
                     <div>
-                      <Label htmlFor="lastName">Last Name *</Label>
+                      <Label htmlFor="lastName">Last Name <span className='text-red-500 font-medium'>*</span></Label>
                       <Input
                         id="lastName"
                         value={state.customerDetails.lastName}
@@ -308,7 +662,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                   </div>
 
                   <div>
-                    <Label htmlFor="phoneNumber">Phone Number *</Label>
+                    <Label htmlFor="phoneNumber">Phone Number <span className='text-red-500 font-medium'>*</span></Label>
                     <Input
                       id="phoneNumber"
                       value={state.customerDetails.phoneNumber}
@@ -320,16 +674,17 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                   </div>
 
                   <div>
-                    <Label htmlFor="gender">Gender *</Label>
+                    <Label htmlFor="gender">Gender <span className='text-red-500 font-medium'>*</span></Label>
                     <Select 
                       value={state.customerDetails.gender} 
-                      onValueChange={(value: 'MALE' | 'FEMALE') => updateCustomerDetails({ gender: value })}
+                      onValueChange={(value: 'MALE' | 'FEMALE'|'UNDISCLOSED') => updateCustomerDetails({ gender: value })}
                       disabled={isSubmitting}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
                       <SelectContent>
+                      <SelectItem value="UNDISCLOSED">Do not disclose</SelectItem>
                         <SelectItem value="MALE">Male</SelectItem>
                         <SelectItem value="FEMALE">Female</SelectItem>
                       </SelectContent>
@@ -337,7 +692,7 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                   </div>
 
                   <div>
-                    <Label htmlFor="email">Email Address *</Label>
+                    <Label htmlFor="email">Email Address <span className='text-red-500 font-medium'>*</span></Label>
                     <Input
                       id="email"
                       type="email"
@@ -348,6 +703,19 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
                       disabled={isSubmitting}
                     />
                   </div>
+                  <div className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            id="rememberDetails"
+            checked={rememberDetails}
+            onChange={(e) => setRememberDetails(e.target.checked)}
+            className="w-4 h-4 text-emerald-600 bg-gray-100 border-gray-300 rounded focus:ring-emerald-500"
+            disabled={isSubmitting}
+          />
+          <Label htmlFor="rememberDetails" className="text-sm font-medium">
+            Remember Me
+          </Label>
+        </div>
                 </div>
 
                 <div className="flex gap-2 mt-6">
@@ -374,12 +742,10 @@ const CartSidebar: React.FC<CartSidebarProps> = ({ businessType, locationId }) =
           {/* Footer with Total and Checkout */}
           {state.orderRequestitems.length > 0 && !showCustomerForm && (
             <div className="border-t p-4 bg-white">
-          
-                <div className="flex justify-between items-center text-lg font-semibold">
-                  <span>Total:</span>
-                  <span>{totalAmount.toLocaleString()} TZS</span>
-                </div>
-              
+              <div className="flex justify-between items-center text-lg font-semibold">
+                <span>Total:</span>
+                <span>{totalAmount.toLocaleString()} TZS</span>
+              </div>
               
               <Button 
                 onClick={() => setShowCustomerForm(true)}
