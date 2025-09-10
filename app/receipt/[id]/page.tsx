@@ -34,7 +34,7 @@ const OrderReceipt = async ({ params, searchParams }: {
 
   // Check if EFD data should be displayed
   let efdData = null;
-  if (orderData.efdPrinted === false) {
+  if (orderData.efdPrinted === true) {
     efdData = await isEfdPrinted(id, location);
     
   }
