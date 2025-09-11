@@ -12,7 +12,7 @@ export const orderRequestSchema = object({
   customerFirstName: string().min(1, 'First name is required'),
   customerLastName: string().min(1, 'Last name is required'),
   customerPhoneNumber:string().min(1, 'Phone number is required'),
-  customerGender: z.enum(['MALE', 'FEMALE'], {
+  customerGender: z.enum(['MALE', 'FEMALE','UNDISCLOSED'], {
     required_error: 'Gender is required',
   }),
   customerEmailAddress: z.string().email('Valid email address is required'),

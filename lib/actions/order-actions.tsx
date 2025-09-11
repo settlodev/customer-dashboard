@@ -173,7 +173,7 @@ export const creditReport = async (startDate?: Date, endDate?: Date): Promise<Cr
 
 
 export const submitOrderRequest = async (cartState: CartState) => {
-    console.log("The cart state is", cartState.locationId);
+    
 
     let formResponse: FormResponse | null = null;
 
