@@ -15,6 +15,7 @@ import { BusinessType, CategorizedProducts, ExtendedProduct } from '@/types/site
 import { Button } from '@/components/ui/button';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { getProductStockStatus } from './productStockStatus';
 
 interface ProductGridProps {
   categorizedProducts: CategorizedProducts;
@@ -38,64 +39,7 @@ const ProductGrid: React.FC<ProductGridProps> = ({
   const [selectedVariants, setSelectedVariants] = useState<Map<string, string>>(new Map());
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
 
-  const getProductStockStatus = (product: ExtendedProduct): {
-    status: 'in-stock' | 'out-of-stock';
-    quantity: number;
-    hasVariants: boolean;
-  } => {
-    // If product has explicit quantity
-    if (product.quantity !== null && product.quantity !== undefined) {
-      const qty = parseInt(product.quantity as unknown as string) || 0;
-      return {
-        status: qty > 0 ? 'in-stock' : 'out-of-stock',
-        quantity: qty,
-        hasVariants: false
-      };
-    }
-  
-    // If product has variants
-    if (product.variants && product.variants.length > 0) {
-      // Check if any variant is in stock
-      const hasInStockVariant = product.variants.some(variant => {
-        // If trackingType is null, consider it always in stock
-        if (variant.trackingType === null) {
-          return true;
-        }
-        
-        // If availableStock is provided, check it
-        if (variant.availableStock !== null && variant.availableStock !== undefined) {
-          const variantQty = parseInt(variant.availableStock as unknown as string) || 0;
-          return variantQty > 0;
-        }
-        
-        // Default to out of stock if no stock info available
-        return false;
-      });
-  
-      return {
-        status: hasInStockVariant ? 'in-stock' : 'out-of-stock',
-        quantity: 0, // We don't have a total quantity for variants
-        hasVariants: true
-      };
-    }
-  
-    // If no quantity info and no variants, check trackingType
-    // For products without variants but with trackingType
-    if (product.trackingType === null) {
-      return {
-        status: 'in-stock',
-        quantity: 0,
-        hasVariants: false
-      };
-    }
-  
-    // Default to out of stock
-    return {
-      status: 'out-of-stock',
-      quantity: 0,
-      hasVariants: false
-    };
-  }
+ 
 
   const getProductPrice = (product: ExtendedProduct, variantId?: string) => {
     if (variantId && product.variants) {
