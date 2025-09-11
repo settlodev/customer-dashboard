@@ -2,7 +2,7 @@
 
 import {z} from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
+import {deleteActiveBusinessCookie, deleteActiveLocationCookie, getAuthenticatedUser} from "@/lib/auth-utils";
 import {parseStringify} from "@/lib/utils";
 import {ApiResponse, FormResponse} from "@/types/types";
 import {revalidatePath} from "next/cache";
@@ -612,12 +612,14 @@ export const menuProducts = async (
                     direction: "ASC"
                 }
             ],
-            page: page ? page - 1 : 0,
-            size: pageLimit ? pageLimit : 10
+            page: Math.max(page ? page - 1 : 0, 0), 
+            size: pageLimit ? Math.min(pageLimit, 100) : 10 
         };
 
-        const location = await getCurrentLocation() || { id: locationId };
-        // console.log("The location passed is: ", location)
+        const location = { id: locationId };
+       
+        await deleteActiveBusinessCookie()
+        await deleteActiveLocationCookie()
 
         const data = await apiClient.post(
             `/api/menu/${location?.id}`,
@@ -628,9 +630,10 @@ export const menuProducts = async (
                 }
             }
         );
-        // console.log("The product for listing are",data)
+        
         return parseStringify(data);
     } catch (error) {
+        
         throw error;
     }
 };
