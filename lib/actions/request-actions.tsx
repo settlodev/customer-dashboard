@@ -74,7 +74,7 @@ export const getStockRequest = async (id: UUID) => {
 
 export const createStockRequest = async (
     request: z.infer<typeof StockRequestSchema>
-): Promise<FormResponse | void> => {
+): Promise<FormResponse> => {
 
     let formResponse: FormResponse | null = null;
 
@@ -86,7 +86,7 @@ export const createStockRequest = async (
             message: "Please fill all the required fields",
             error: new Error(validData.error.message)
         };
-        return parseStringify(formResponse);
+        return formResponse; 
     }
 
     const location= await getCurrentLocation();
@@ -122,13 +122,13 @@ export const createStockRequest = async (
     }
 
     revalidatePath("/stock-requests");
-   return parseStringify(formResponse);
+   return formResponse; 
 };
 
 export const updateStockRequest = async (
     id: UUID,
     request: z.infer<typeof StockRequestSchema>
-): Promise<FormResponse | void> => {
+): Promise<FormResponse > => {
     let formResponse: FormResponse | null = null;
 
     const validData = StockRequestSchema.safeParse(request);
@@ -139,7 +139,7 @@ export const updateStockRequest = async (
             message: "Please fill all the required fields",
             error: new Error(validData.error.message)
         };
-        return parseStringify(formResponse);
+        return formResponse;
     }
 
     const payload = {
@@ -152,7 +152,7 @@ export const updateStockRequest = async (
             quantity: item.quantity
         }))
     };
-    console.log("The payload to update stock request:", payload);
+    // console.log("The payload to update stock request:", payload);
 
     const location= await getCurrentLocation();
 
@@ -179,3 +179,4 @@ export const updateStockRequest = async (
     revalidatePath("/stock-requests");
    return parseStringify(formResponse);
 };
+

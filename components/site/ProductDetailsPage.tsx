@@ -10,7 +10,6 @@ import {
   Minus,
   ShoppingCartIcon,
   Check,
-  Zap,
   AlertCircle
 } from 'lucide-react';
 import Image from 'next/image';
@@ -18,6 +17,7 @@ import { useRouter } from 'next/navigation';
 import { BusinessType, ExtendedProduct } from '@/types/site/type';
 import CartSidebar from './cartSidebar';
 import { useCart } from '@/context/cartContext';
+import { getProductStockStatus } from './productStockStatus';
 
 interface ProductDetailsPageProps {
   product: ExtendedProduct;
@@ -28,80 +28,7 @@ interface ProductDetailsPageProps {
   backPath?: string;
 }
 
-// Improved stock checking logic (same as in ProductGrid)
-const getProductStockStatus = (product: ExtendedProduct): {
-  status: 'in-stock' | 'out-of-stock';
-  quantity: number;
-  hasVariants: boolean;
-  variantStockInfo?: {
-    [variantId: string]: {
-      status: 'in-stock' | 'out-of-stock';
-      quantity: number;
-    };
-  };
-} => {
-  // If product has explicit quantity
-  if (product.quantity !== null && product.quantity !== undefined) {
-    const qty = parseInt(product.quantity as unknown as string) || 0;
-    return {
-      status: qty > 0 ? 'in-stock' : 'out-of-stock',
-      quantity: qty,
-      hasVariants: false
-    };
-  }
 
-  // If product has variants
-  if (product.variants && product.variants.length > 0) {
-    const variantStockInfo: { [variantId: string]: { status: 'in-stock' | 'out-of-stock'; quantity: number } } = {};
-    let hasInStockVariant = false;
-
-    product.variants.forEach(variant => {
-      let variantStatus: 'in-stock' | 'out-of-stock' = 'out-of-stock';
-      let variantQuantity = 0;
-
-      // If trackingType is null, consider it always in stock
-      if (variant.trackingType === null) {
-        variantStatus = 'in-stock';
-        variantQuantity = 0; // Unlimited stock
-        hasInStockVariant = true;
-      }
-      // If availableStock is provided, check it
-      else if (variant.availableStock !== null && variant.availableStock !== undefined) {
-        variantQuantity = parseInt(variant.availableStock as unknown as string) || 0;
-        variantStatus = variantQuantity > 0 ? 'in-stock' : 'out-of-stock';
-        if (variantStatus === 'in-stock') hasInStockVariant = true;
-      }
-
-      variantStockInfo[variant.id] = {
-        status: variantStatus,
-        quantity: variantQuantity
-      };
-    });
-
-    return {
-      status: hasInStockVariant ? 'in-stock' : 'out-of-stock',
-      quantity: 0, // We don't have a total quantity for variants
-      hasVariants: true,
-      variantStockInfo
-    };
-  }
-
-  // If no quantity info and no variants, check trackingType
-  if (product.trackingType === null) {
-    return {
-      status: 'in-stock',
-      quantity: 0,
-      hasVariants: false
-    };
-  }
-
-  // Default to out of stock
-  return {
-    status: 'out-of-stock',
-    quantity: 0,
-    hasVariants: false
-  };
-};
 
 const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   product,
@@ -110,6 +37,8 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   relatedProducts = [],
   backPath = '/products'
 }) => {
+
+
   const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState<string>('');
   const [quantity, setQuantity] = useState(1);
@@ -177,7 +106,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   const handleVariantSelect = (variantId: string) => {
     if (!isInStock) return;
-    
+
     setSelectedVariantId(variantId);
     // Reset quantity when variant changes
     setQuantity(1);
@@ -299,7 +228,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     <ShoppingCartIcon className="w-20 h-20 text-gray-400" />
                   </div>
                 )}
-                
+
                 {/* Stock overlay */}
                 {!isInStock && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -325,7 +254,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 mb-3 leading-tight">
                       {product.name}
                     </h1>
-                    
+
                     {/* Stock Status Indicator */}
                     <div className="flex items-center gap-3 mb-4">
                       <div className="flex items-center gap-2">
@@ -338,20 +267,17 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                   </div>
 
                   {/* Enhanced Price Display */}
-                  <div className={`p-4 rounded-2xl border ${
-                    isInStock 
-                      ? 'bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200/50' 
+                  <div className={`p-4 rounded-2xl border ${isInStock
+                      ? 'bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200/50'
                       : 'bg-gray-100 border-gray-300'
-                  }`}>
+                    }`}>
                     <div className="flex items-baseline gap-3">
-                      <span className={`text-xl lg:text-2xl font-bold ${
-                        isInStock ? 'text-gray-900' : 'text-gray-500'
-                      }`}>
+                      <span className={`text-xl lg:text-2xl font-bold ${isInStock ? 'text-gray-900' : 'text-gray-500'
+                        }`}>
                         {getCurrentPrice().toLocaleString()}
                       </span>
-                      <span className={`text-lg font-medium ${
-                        isInStock ? 'text-gray-600' : 'text-gray-400'
-                      }`}>TZS</span>
+                      <span className={`text-lg font-medium ${isInStock ? 'text-gray-600' : 'text-gray-400'
+                        }`}>TZS</span>
                     </div>
                     {needsVariantSelection && isInStock && (
                       <p className="text-sm text-emerald-600 mt-1">
@@ -388,19 +314,17 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                           const variantStock = stockInfo.variantStockInfo?.[variant.id];
                           const isVariantInStock = variantStock?.status === 'in-stock';
                           const isSelected = selectedVariantId === variant.id;
-                          
+
                           return (
                             <div
                               key={variant.id}
-                              className={`relative border-2 rounded-2xl items-center p-2 transition-all duration-300 ${
-                                isVariantInStock 
-                                  ? 'cursor-pointer transform hover:scale-105 hover:shadow-lg' 
+                              className={`relative border-2 rounded-2xl items-center p-2 transition-all duration-300 ${isVariantInStock
+                                  ? 'cursor-pointer transform hover:scale-105 hover:shadow-lg'
                                   : 'cursor-not-allowed opacity-60'
-                              } ${
-                                isSelected
+                                } ${isSelected
                                   ? 'border-emerald-500 bg-emerald-50 shadow-lg ring-4 ring-emerald-200/50'
                                   : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
-                              }`}
+                                }`}
                               onClick={() => isVariantInStock && handleVariantSelect(variant.id)}
                             >
                               {isSelected && isVariantInStock && (
@@ -416,18 +340,16 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                               )}
 
                               <div className="space-y-2">
-                                <h4 className={`font-bold text-sm ${
-                                  isSelected ? 'text-emerald-900' : 
-                                  isVariantInStock ? 'text-gray-900' : 'text-gray-500'
-                                }`}>
+                                <h4 className={`font-bold text-sm ${isSelected ? 'text-emerald-900' :
+                                    isVariantInStock ? 'text-gray-900' : 'text-gray-500'
+                                  }`}>
                                   {variant.name || `Option ${variant.id.slice(0, 8)}`}
                                 </h4>
 
                                 <div className="flex justify-between items-center">
-                                  <span className={`text-xs font-semibold ${
-                                    isSelected ? 'text-emerald-700' : 
-                                    isVariantInStock ? 'text-gray-900' : 'text-gray-500'
-                                  }`}>
+                                  <span className={`text-xs font-semibold ${isSelected ? 'text-emerald-700' :
+                                      isVariantInStock ? 'text-gray-900' : 'text-gray-500'
+                                    }`}>
                                     {parseFloat(variant.price as unknown as string).toLocaleString()}
                                     <span className="text-sm font-normal ml-1">TZS</span>
                                   </span>
@@ -492,7 +414,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                               <Plus className="w-4 h-4" />
                             </Button>
                           </div>
-                          
+
                           <div className="text-sm text-gray-600">
                             <p>Total: <span className="font-bold text-sm lg:text-lg text-gray-900">
                               {(getCurrentPrice() * quantity).toLocaleString()} {''}
@@ -500,7 +422,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                             </span></p>
                           </div>
                         </div>
-                        
+
                         {getAvailableQuantity() > 0 && quantity >= getAvailableQuantity() && (
                           <p className="text-sm text-amber-600 mt-2 flex items-center gap-1">
                             <AlertCircle className="w-4 h-4" />
@@ -515,13 +437,12 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                       <Button
                         onClick={handleAddToCart}
                         disabled={isLoading || needsVariantSelection}
-                        className={`w-full py-4 text-lg font-bold rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl ${
-                          isAddedToCart
+                        className={`w-full py-4 text-lg font-bold rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl ${isAddedToCart
                             ? 'bg-green-500 hover:bg-green-600'
                             : needsVariantSelection
-                            ? 'bg-gray-400 cursor-not-allowed'
-                            : `${businessType.primary} hover:${businessType.accent}`
-                        } text-white`}
+                              ? 'bg-gray-400 cursor-not-allowed'
+                              : `${businessType.primary} hover:${businessType.accent}`
+                          } text-white`}
                       >
                         {isLoading ? (
                           <div className="flex items-center justify-center gap-3">
@@ -562,12 +483,12 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
               </h2>
               <div className="w-24 h-1 bg-gradient-to-r from-emerald-500 to-blue-500 mx-auto rounded-full"></div>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.slice(0, 4).map((relatedProduct) => {
                 const relatedStockInfo = getProductStockStatus(relatedProduct);
                 const isRelatedInStock = relatedStockInfo.status === 'in-stock';
-                
+
                 return (
                   <Card
                     key={relatedProduct.id}
@@ -590,14 +511,14 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                       )}
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300"></div>
                     </div>
-                    
+
                     <CardContent className="p-4">
                       <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2 group-hover:text-emerald-600 transition-colors">
                         {relatedProduct.name}
                       </h3>
                       <div className="flex justify-between items-center">
                         <p className="text-lg font-bold text-emerald-600">
-                          {parseFloat(relatedProduct.price as string).toLocaleString()} 
+                          {parseFloat(relatedProduct.price as string).toLocaleString()}
                           <span className="text-sm font-normal text-gray-600 ml-1">TZS</span>
                         </p>
                         {isRelatedInStock ? (
@@ -614,7 +535,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           </div>
         )}
       </div>
-      <CartSidebar 
+      <CartSidebar
         businessType={businessType}
         locationId={product.location}
       />

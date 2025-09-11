@@ -40,7 +40,7 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
 
 
     const [isPending, startTransition] = useTransition();
-    const [error] = useState<string | undefined>("");
+    const [error,setError] = useState<string | undefined>("");
     const [success] = useState<string | undefined>("");
     const [currentLocation, setCurrentLocation] = useState<Location | undefined>(undefined);
     const [, setResponse] = useState<FormResponse | undefined>();
@@ -138,43 +138,57 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
         [toast]
     );
 
+    
     const submitData = (values: z.infer<typeof StockRequestSchema>) => {
-        console.log("The values are",values)
+        setError(""); 
+        setResponse(undefined);
+        
         startTransition(() => {
             if (item) {
                 updateStockRequest(item.id, values)
                     .then((data) => {
-                        if (data) setResponse(data);
+                        setResponse(data);
                         if (data && data.responseType === "success") {
                             toast({
                                 title: "Success",
                                 description: data.message,
                             });
                             router.push("/stock-requests");
+                        } else if (data && data.responseType === "error") {
+                            setError(data.message);
+                           
                         }
                     })
                     .catch((err) => {
                         console.error("Error updating stock request:", err);
+                        setError(err.message || "An unexpected error occurred");
                     });
             } else {
                 createStockRequest(values)
                     .then((data) => {
-                        if (data) setResponse(data);
+                        setResponse(data);
                         if (data && data.responseType === "success") {
                             toast({
                                 title: "Success",
                                 description: data.message,
                             });
                             router.push("/stock-requests");
+                        } else if (data && data.responseType === "error") {
+                            setError(data.message);
+                            toast({
+                                variant: "destructive",
+                                title: "Error",
+                                description: data.message,
+                            });
                         }
                     })
                     .catch((err) => {
                         console.error("Error creating stock request:", err);
+                        setError(err.message || "An unexpected error occurred");
                     });
             }
         });
     };
-
     return (
         <div className="max-w-6xl mx-auto p-6 space-y-6">
             {/* Header Section */}
