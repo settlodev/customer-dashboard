@@ -192,7 +192,7 @@ export interface CashFlow{
     refunds:number
     transactionsAmount:number
     refundsAmount:number
-    expensesAmount:number
+    expensesPaidAmount:number
     closingBalance:number
     paymentMethodTotals:PaymentMethods[]
 }
