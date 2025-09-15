@@ -250,7 +250,7 @@ const CashFlowReportDashboard = () => {
                     <CardContent>
                         <div className="flex justify-between items-center">
                             <span>Total Expenses</span>
-                            <span className="font-bold">{cashfData?.expenses || 0}</span>
+                            <span className="font-bold">{cashfData?.expensePayments || 0}</span>
                         </div>
                         <div className="flex justify-between items-center mt-2">
                             <span>Total Amount</span>
