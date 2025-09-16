@@ -121,7 +121,8 @@ export const generateEfd = async (orderId: string | UUID,location: string | UUID
         return parseStringify(order)
 
     } catch (error) {
-        throw error
+       
+        return parseStringify(error)
     }
 }
 

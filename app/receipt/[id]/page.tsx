@@ -1,8 +1,10 @@
 
-import { generateEfd, getOrderReceipt, isEfdPrinted } from '@/lib/actions/order-actions';
+import { getOrderReceipt, isEfdPrinted } from '@/lib/actions/order-actions';
 import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
+import GenerateEfdButton from '@/components/widgets/generate-efd-button';
+
 
 type Params = Promise<{
   id: string;
@@ -22,13 +24,12 @@ const OrderReceipt = async ({ params, searchParams }: {
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
   const { id, download } = resolvedParams;
+ 
   
   const orderData = await getOrderReceipt(id);
-  
-  // Get the location from searchParams
   const location = resolvedSearchParams.location || orderData.location;
 
-  // Check if EFD data should be displayed
+  
   let efdData = null;
   if (orderData.efdPrinted === true) {
     efdData = await isEfdPrinted(id, location);
@@ -71,34 +72,7 @@ const OrderReceipt = async ({ params, searchParams }: {
     new Set(orderData.transactions?.map((t: { paymentMethodName: string }) => t.paymentMethodName).filter(Boolean))
   ) as string[];
 
-  // EFD Generation Component
-  const GenerateEfdButton = () => {
-    return (
-      <form action={async () => {
-        'use server';
-        try {
-          const efdGenerated =await generateEfd(id, location);
-
-          if (efdGenerated.statusDescription === 'success'){
-            setTimeout(() => {
-            window.location.reload()
-            }, 5000);
-          }
-
-        } catch (error) {
-          console.log("Error while generating EFD", error);
-        }
-      }}>
-        <button
-          type="submit"
-          className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
-        >
-          Generate EFD Receipt
-        </button>
-      </form>
-    );
-  };
-
+  
   const hasCustomerInfo = orderData.customerName || orderData.customerPhoneNumber || orderData.customerTinNumber;
 
   return (
@@ -110,7 +84,10 @@ const OrderReceipt = async ({ params, searchParams }: {
           {/* Show EFD Generate button if EFD is not printed */}
           {!orderData.efdPrinted && (
             <div className="flex items-center">
-              <GenerateEfdButton />
+              <GenerateEfdButton 
+                orderId={id} 
+                location={location} 
+              />
             </div>
           )}
         </div>
@@ -459,7 +436,10 @@ const OrderReceipt = async ({ params, searchParams }: {
           {/* Show EFD Generate button if EFD is not printed */}
           {!orderData.efdPrinted && (
             <div className="flex items-center w-full">
-              <GenerateEfdButton />
+              <GenerateEfdButton 
+                orderId={id} 
+                location={location} 
+              />
             </div>
           )}
         </div>
