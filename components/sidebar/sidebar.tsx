@@ -96,9 +96,10 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     //Check if subscription is expired, null, or empty
     const isSubscriptionInactive = !subscription || 
                                    subscription.subscriptionStatus === 'EXPIRED' || 
+                                   
                                    subscription.subscriptionStatus === null || 
                                    subscription.subscriptionStatus === '';
-
+    
     // Get filtered menu items based on subscription
     const myMenuItems = menuItems({
         subscription,
@@ -253,7 +254,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             </div>
 
             <div className="border-t border-gray-700 p-4">
-            {!isSubscriptionInactive && menuTypeLabel === 'Location' && (
+            {menuTypeLabel === 'Location' && (
     <>
         <Link
             href="/renew-subscription"
@@ -267,7 +268,10 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             <CreditCard className="mr-2 h-4 w-4"/>
             <span>Billing</span>
         </Link>
-        
+  
+    </>
+)}
+      {!isSubscriptionInactive  && menuTypeLabel === 'Location' &&(
         <Link
             href="/settings"
             onClick={isMobile ? onClose : undefined}
@@ -279,9 +283,8 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
         >
             <Settings className="mr-2 h-4 w-4"/>
             <span>Settings</span>
-        </Link>
-    </>
-)}
+        </Link>)
+}
 
                 <VersionDisplay />
 

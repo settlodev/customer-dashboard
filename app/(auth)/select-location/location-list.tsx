@@ -53,6 +53,8 @@ const LocationList = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { toast } = useToast();
+  
+
 
   
   const displayedItems = useMemo(() => {
@@ -210,12 +212,73 @@ const LocationList = ({
     },
     [selectedWarehouse, toast],
   );
-
+  
+  // const handleLocationSelect = async (item: any, index: number) => {
+    
+  //   setPendingIndex(index);
+  
+  //   const isWarehouse = locationType === "warehouse";
+  
+  //   if (isWarehouse) {
+  //     // Check warehouse subscription status
+  //     if (
+  //       item.subscriptionStatus === "EXPIRED" ||
+  //       item.subscriptionStatus === null ||
+  //       item.subscriptionStatus === "" ||
+  //       item.subscriptionStatus === undefined
+  //     ) {
+  //       setSelectedWarehouse(item);
+  //       setShowSubscriptionModal(true);
+  //       setPendingIndex(null);
+  //       return;
+  //     }
+  
+  //     setIsRedirecting(true);
+  //     await refreshWarehouse(item);
+  //     setTimeout(() => {
+  //       window.location.href = "/warehouse";
+  //     }, 1500);
+  //   } else {
+     
+  //     if (
+  //       item.subscriptionStatus === "EXPIRED" ||
+  //       item.subscriptionStatus === "EXPIRED_TRIAL" ||
+  //       item.subscriptionStatus === null ||
+  //       item.subscriptionStatus === "" ||
+  //       item.subscriptionStatus === undefined
+  //     ) {
+  //       toast({
+  //         variant: "destructive",
+  //         title: "Subscription Expired",
+  //         description: "Please renew your subscription to continue.",
+  //       });
+  //       setIsRedirecting(true);
+  //       setTimeout(() => {
+  //         window.location.href = `/renew-subscription?location=${item.id}`;
+  //       }, 3000);
+  //     } else {
+  //       setIsRedirecting(true);
+  //       await refreshLocation(item);
+  //       setTimeout(() => {
+  //         window.location.href = "/dashboard";
+  //       }, 3000);
+  //     }
+  //   }
+  
+  //   setPendingIndex(null);
+  // };
+  
   const handleLocationSelect = async (item: any, index: number) => {
+    // Prevent multiple clicks/redirects
+    if (isRedirecting || pendingIndex !== null) {
+      return;
+    }
+  
+    console.log("This location has been selected", item);
     setPendingIndex(index);
-
+  
     const isWarehouse = locationType === "warehouse";
-
+  
     if (isWarehouse) {
       // Check warehouse subscription status
       if (
@@ -229,18 +292,18 @@ const LocationList = ({
         setPendingIndex(null);
         return;
       }
-
+  
       setIsRedirecting(true);
       await refreshWarehouse(item);
-
-      setTimeout(() => {
-        window.location.href = "/warehouse";
-      }, 1500);
+      window.location.href = "/warehouse";
     } else {
-      // Original location selection logic
+      
       if (
-        item.subscriptionStatus === "EXPIRED" ||
-        item.subscriptionStatus === null
+        item.subscriptionStatus === "EXPIRED" || 
+        item.subscriptionStatus === "EXPIRED_TRIAL" ||
+        item.subscriptionStatus === null ||
+        item.subscriptionStatus === "" ||
+        item.subscriptionStatus === undefined
       ) {
         toast({
           variant: "destructive",
@@ -248,19 +311,19 @@ const LocationList = ({
           description: "Please renew your subscription to continue.",
         });
         setIsRedirecting(true);
-        setTimeout(() => {
-          window.location.href = `/renew-subscription?location=${item.id}`;
-        }, 3000);
+        
+        
+        window.location.href = `/renew-subscription?location=${item.id}`;
       } else {
         setIsRedirecting(true);
         await refreshLocation(item);
         window.location.href = "/dashboard";
       }
     }
-
+  
     setPendingIndex(null);
   };
-
+  
   const handleSuccessfulCreation = (location: Location) => {
     console.log("Location created successfully:", location);
     setIsRedirecting(true);
