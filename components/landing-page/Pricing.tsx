@@ -1,3 +1,4 @@
+
 'use client'
 import { fetchSubscriptions } from "@/lib/actions/subscriptions"
 import { Subscriptions, SubscriptionFeature } from "@/types/subscription/type"
@@ -110,6 +111,11 @@ export const Pricing: React.FC = () => {
         getSubscriptions();
     }, []);
 
+    // Function to check if a subscription is the most popular (amount = 25,000)
+    const isPopularPackage = (subscription: Subscriptions): boolean => {
+        return subscription.amount === 25000;
+    };
+
     return (
         <section id="pricing" className="relative w-full overflow-hidden py-24">
             {/* Background with gradients */}
@@ -132,7 +138,7 @@ export const Pricing: React.FC = () => {
 
                 <div className="container mx-auto px-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                        {subscriptions.map((sub, index) => (
+                        {subscriptions.map((sub) => (
                             <PricingCard
                                 key={sub.id}
                                 sub={sub}
@@ -143,7 +149,7 @@ export const Pricing: React.FC = () => {
                                 subscriptionFeatures={sub.subscriptionFeatures.map(
                                     (feature) => (feature as SubscriptionFeature).name
                                 )}
-                                isPopular={index === Math.floor(subscriptions.length / 2) - 1} // Make second plan popular
+                                isPopular={isPopularPackage(sub)} // Use the amount-based check
                             />
                         ))}
                     </div>

@@ -321,7 +321,11 @@ export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
     }
 }
 
-export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string; fileName: string }): Promise<void> => {
+export const uploadStockCSV = async (
+    { fileData, fileName,uploadType  }:
+     { fileData: string; fileName: string,uploadType: 'warehouse' | 'location' }): Promise<void> => {
+
+
     if (!fileName.endsWith(".csv")) {
         throw new Error("Invalid file type. Please upload a CSV file with a .csv extension.");
     }
@@ -335,20 +339,18 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
     const formattedCSVData = fileData.replace(/\r\n/g, '\n');
     
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    
-    let uploadUrl: string;
-    let isLocationUpload = false;
+    let uploadUrl: string
     
     try {
         
-        if (location?.id) {
-            uploadUrl = `/rust/csv-uploading/upload-stock-csv?location_id=${location.id}`;
-            isLocationUpload = true;
-        } else {
+        if (uploadType === 'warehouse') {
             const warehouse = await getCurrentWarehouse();
-            uploadUrl = `/rust/csv-uploading/upload-warehouse-stock-csv?warehouse_id=${warehouse?.id}`;
-            isLocationUpload = false;
+            if (!warehouse?.id) throw new Error("No warehouse found");
+            uploadUrl = `/rust/csv-uploading/upload-warehouse-stock-csv?warehouse_id=${warehouse.id}`;
+        } else {
+            const location = await getCurrentLocation();
+            if (!location?.id) throw new Error("No location found");
+            uploadUrl = `/rust/csv-uploading/upload-stock-csv?location_id=${location.id}`;
         }
 
         await apiClient.post(
@@ -369,7 +371,7 @@ export const uploadStockCSV = async ({ fileData, fileName }: { fileData: string;
     }
 
     
-    if (isLocationUpload) {
+    if (uploadType === 'location') {
         revalidatePath("/stock-variants");
        
     } else {
@@ -473,17 +475,20 @@ export const stockHistory = async (): Promise<StockHistory | null> => {
     }
 };
 
-export const downloadStockCSV = async (locationId?:string) => {
+export const downloadStockCSV = async (exportType:'warehouse' | 'location',locationId?:string) => {
     let uploadUrl: string;
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation() || {id:locationId};
-
+   
     try {
-        if (location?.id) {
-            uploadUrl = `/rust/csv-downloading/download-stock-csv?location_id=${location?.id}`;
-        } else {
+      
+        if (exportType === 'warehouse') {
             const warehouse = await getCurrentWarehouse();
+            if (!warehouse?.id) throw new Error("No warehouse found");
             uploadUrl = `/rust/csv-downloading/download-warehouse-stock-csv?warehouse_id=${warehouse?.id}`;
+        } else {
+            const location = await getCurrentLocation()|| {id:locationId};
+            if (!location?.id) throw new Error("No location found");
+            uploadUrl = `/rust/csv-downloading/download-stock-csv?location_id=${location?.id}`;
         }
         const response = await apiClient.get(
             uploadUrl,

@@ -65,10 +65,10 @@ const pageSpecificComponents = {
   "/stock-variants": {
     entityType: "stock" as const,
     importComponent: <>
-      <CSVStockDialog />
+      <CSVStockDialog uploadType="location"/>
       <ProductWithStockCSVDialog />
     </>,
-    exportComponent: <StockExport filename="stock"/>,
+    exportComponent: <StockExport filename="stock" exportType="location"/>,
     entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
     allowArchive: true,
     isWarehouse: false
@@ -92,10 +92,10 @@ const pageSpecificComponents = {
   "/warehouse-stock-variants": {
     entityType: "stock" as const,
     importComponent: <>
-      <CSVStockDialog />
+      <CSVStockDialog uploadType="warehouse"/>
 
     </>,
-    exportComponent: <StockExport filename="Exporting Warehouse stock"/>,
+    exportComponent: <StockExport filename="Exporting Warehouse stock" exportType="warehouse"/>,
     entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
     isWarehouse: true
   },

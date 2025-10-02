@@ -10,6 +10,7 @@ interface DownloadButtonProps {
   orderNumber: string;
   isDownloadable?: boolean;
   fontFamily?: string;
+  title:string
   fontSize?: {
     header?: string;
     body?: string;
@@ -25,6 +26,7 @@ interface DownloadButtonProps {
 const DownloadButton = ({ 
   orderNumber, 
   isDownloadable,
+  title,
   fontFamily = 'system-ui, -apple-system, sans-serif', 
   fontSize = {
     header: '14px',
@@ -351,7 +353,7 @@ const DownloadButton = ({
       className="flex justify-center items-center gap-2 lg:w-[50%] w-full px-4 py-3 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <Download size={16} />
-      Download PDF
+      {title}
     </button>
   );
 };

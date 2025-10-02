@@ -35,11 +35,9 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
 
   // Auto-redirect if only one business
   useEffect(() => {
-    console.log("Businesses count:", businesses.length);
-    console.log("Loading:", isLoading);
-    console.log("Redirecting:", isRedirecting);
+    
     if (businesses.length === 1 && !isLoading && !isRedirecting) {
-      console.log("Auto-redirecting to business details...");
+      
       handleBusinessSelect(businesses[0], 0);
     }
   }, [businesses]);

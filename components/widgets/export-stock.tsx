@@ -9,13 +9,15 @@ interface TableExportProps {
   filename?: string;
   // locationId?: string;
   useEndpoint?: boolean;
+  exportType: 'warehouse' | 'location';
 }
 
 const StockExport: React.FC<TableExportProps> = ({ 
   data = [], 
   filename = 'stock-data',
   // locationId,
-  useEndpoint = true
+  useEndpoint = true,
+  exportType
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -88,7 +90,7 @@ const StockExport: React.FC<TableExportProps> = ({
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
-      const response = await downloadStockCSV();
+      const response = await downloadStockCSV(exportType);
       let csvData;
       
       if (response) {

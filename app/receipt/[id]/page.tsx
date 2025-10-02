@@ -1,9 +1,9 @@
 
-import React from 'react';
 import { getOrderReceipt, isEfdPrinted } from '@/lib/actions/order-actions';
 import { OrderItems } from '@/types/orders/type';
 import DownloadButton from '@/components/widgets/download-button';
 import ShareButton from '@/components/widgets/share-button';
+import GenerateEfdButton from '@/components/widgets/generate-efd-button';
 
 
 type Params = Promise<{
@@ -20,23 +20,19 @@ const OrderReceipt = async ({ params, searchParams }: {
   params: Params;
   searchParams: SearchParams;
 }) => {
-
   // Await the params to resolve them
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
   const { id, download } = resolvedParams;
-
-  const orderData = await getOrderReceipt(id);
+ 
   
-  // Get the location from searchParams
-  const location = resolvedSearchParams.location || orderData.location;;
+  const orderData = await getOrderReceipt(id);
+  const location = resolvedSearchParams.location || orderData.location;
 
-
-  // Check if EFD data should be displayed
+  
   let efdData = null;
   if (orderData.efdPrinted === true) {
     efdData = await isEfdPrinted(id, location);
-    
   }
 
   const orderUrl = `${process.env.NEXT_PUBLIC_APP_URL}/receipt/${orderData.id}`;
@@ -76,12 +72,26 @@ const OrderReceipt = async ({ params, searchParams }: {
     new Set(orderData.transactions?.map((t: { paymentMethodName: string }) => t.paymentMethodName).filter(Boolean))
   ) as string[];
 
-  // Check if customer information is present
+  
   const hasCustomerInfo = orderData.customerName || orderData.customerPhoneNumber || orderData.customerTinNumber;
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
+        
+        <div className="hidden lg:flex justify-end items-end mr-12 mb-4">
+          
+          {/* Show EFD Generate button if EFD is not printed */}
+          {!orderData.efdPrinted && (
+            <div className="flex items-center">
+              <GenerateEfdButton 
+                orderId={id} 
+                location={location} 
+              />
+            </div>
+          )}
+        </div>
+
         <div
           id="receipt-content"
           className="bg-white shadow-sm border border-gray-200 mx-auto"
@@ -94,65 +104,55 @@ const OrderReceipt = async ({ params, searchParams }: {
         >
           {/* Header Section */}
           <div className="p-8 pb-6">
-            <div className="flex flex-col lg:flex-row justify-between lg:items-start  gap-6 mb-8">
+            <div className="flex flex-col lg:flex-row justify-between lg:items-start gap-6 mb-8">
               {/* Company Info */}
-
-              {
-                orderData.efdPrinted === true && efdData ? (
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">{efdData.clientInformation?.businessName || orderData.businessName}</h1>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <div className='flex gap-2'>
-                        {/* <p className="font-medium capitalize">{orderData.locationName}</p> */}
-                        <p>
-                          {efdData.vfdInformation?.physicalAddress &&
-                            `${efdData.vfdInformation.physicalAddress}, `}
-                          {efdData.vfdInformation?.street ||
-                            (orderData.locationAddress ?
-                              `${orderData.locationAddress}, ${orderData.locationCity}` :
-                              orderData.locationCity)
-                          }
-                        </p>
-                      </div>
-                      <p><span className="font-medium text-gray-900">Phone:</span> {efdData.vfdInformation?.mobile || orderData.locationPhone}</p>
-                      <div className="text-sm text-gray-500 space-y-1">
-                        {efdData.vfdInformation?.uin && (
-
-                          <p><span className="font-medium text-gray-900">UIN:</span> {efdData.vfdInformation.uin}</p>
-
-                        )}
-
-                        {efdData.vfdInformation?.tin && (
-                          <p><span className="font-medium text-gray-900">TIN:</span> {efdData.vfdInformation.tin}</p>
-
-                        )}
-                        {efdData.vfdInformation?.vrn && (
-                          <p><span className="font-medium text-gray-900">VRN:</span> {efdData.vfdInformation.vrn}</p>
-                        )}
-                        {efdData.vfdInformation?.taxOffice && (
-
-                          <p><span className="font-medium text-gray-900">Tax Office:</span> {efdData.vfdInformation.taxOffice}</p>
-
-                        )}
-                      </div>
+              {orderData.efdPrinted === true && efdData ? (
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{efdData.clientInformation?.businessName || orderData.businessName}</h1>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <div className='flex gap-2'>
+                      <p>
+                        {efdData.vfdInformation?.physicalAddress &&
+                          `${efdData.vfdInformation.physicalAddress}, `}
+                        {efdData.vfdInformation?.street ||
+                          (orderData.locationAddress ?
+                            `${orderData.locationAddress}, ${orderData.locationCity}` :
+                            orderData.locationCity)
+                        }
+                      </p>
+                    </div>
+                    <p><span className="font-medium text-gray-900">Phone:</span> {efdData.vfdInformation?.mobile || orderData.locationPhone}</p>
+                    <div className="text-sm text-gray-500 space-y-1">
+                      {efdData.vfdInformation?.uin && (
+                        <p><span className="font-medium text-gray-900">UIN:</span> {efdData.vfdInformation.uin}</p>
+                      )}
+                      {efdData.vfdInformation?.tin && (
+                        <p><span className="font-medium text-gray-900">TIN:</span> {efdData.vfdInformation.tin}</p>
+                      )}
+                      {efdData.vfdInformation?.vrn && (
+                        <p><span className="font-medium text-gray-900">VRN:</span> {efdData.vfdInformation.vrn}</p>
+                      )}
+                      {efdData.vfdInformation?.taxOffice && (
+                        <p><span className="font-medium text-gray-900">Tax Office:</span> {efdData.vfdInformation.taxOffice}</p>
+                      )}
                     </div>
                   </div>
-                ) : (
-                  <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-gray-900 mb-2">{orderData.businessName}</h1>
-                    <div className="text-sm text-gray-600 space-y-1">
-                      <div className='flex gap-2'>
-                        <p className="font-medium capitalize">{orderData.locationName}</p>
-                        <p>{orderData.locationAddress ?
-                          `${orderData.locationAddress}, ${orderData.locationCity}` :
-                          orderData.locationCity}
-                        </p>
-                      </div>
-                      <p>Phone: {orderData.locationPhone}</p>
+                </div>
+              ) : (
+                <div className="flex-1">
+                  <h1 className="text-2xl font-bold text-gray-900 mb-2">{orderData.businessName}</h1>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <div className='flex gap-2'>
+                      <p className="font-medium capitalize">{orderData.locationName}</p>
+                      <p>{orderData.locationAddress ?
+                        `${orderData.locationAddress}, ${orderData.locationCity}` :
+                        orderData.locationCity}
+                      </p>
                     </div>
+                    <p>Phone: {orderData.locationPhone}</p>
                   </div>
-                )
-              }
+                </div>
+              )}
 
               {/* Receipt Title & Number */}
               <div className="lg:text-right">
@@ -246,7 +246,6 @@ const OrderReceipt = async ({ params, searchParams }: {
             </div>
           </div>
 
-         
           {/* Totals Section */}
           <div className="px-8 mb-6">
             <div className="flex justify-end">
@@ -332,35 +331,6 @@ const OrderReceipt = async ({ params, searchParams }: {
                         </div>
                       </div>
                     )}
-
-                    {/* EFD Receipt Details */}
-                    {/* {efdData.data && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">EFD Receipt Details</h4>
-              <div className="text-xs text-gray-500 space-y-1">
-                <p><span className="font-medium">Receipt #:</span> {efdData.data.rctNum}</p>
-                <p><span className="font-medium">Z Number:</span> {efdData.data.zNum}</p>
-                <p><span className="font-medium">Date & Time:</span> {formatDate(efdData.data.dateTime)}</p>
-                <p><span className="font-medium">Status:</span> {efdData.data.receiptStatus}</p>
-                {efdData.data.traReceiptVerificationCode && (
-                  <p><span className="font-medium">Verification Code:</span> {efdData.data.traReceiptVerificationCode}</p>
-                )}
-                {efdData.data.traReceiptVerificationUrl && (
-                  <p>
-                    <span className="font-medium">Verify at:</span>{' '}
-                    <a 
-                      href={`https://${efdData.data.traReceiptVerificationUrl}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline"
-                    >
-                      {efdData.data.traReceiptVerificationUrl}
-                    </a>
-                  </p>
-                )}
-              </div>
-            </div>
-          )} */}
                   </div>
                 ) : (
                   /* Regular Totals Display */
@@ -432,9 +402,6 @@ const OrderReceipt = async ({ params, searchParams }: {
             </div>
           </div>
 
-
-
-
           {/* Footer */}
           <div className="px-8 pb-8 pt-4 border-t border-gray-200">
             <div className="text-center space-y-2">
@@ -445,13 +412,13 @@ const OrderReceipt = async ({ params, searchParams }: {
               <p className="text-sm text-gray-500">Powered by Settlo Technologies</p>
             </div>
           </div>
-        </div>
 
-        {/* Action Buttons */}
+        </div>
         <div className="hidden lg:block">
           {!isDownloadable && (
-            <div className="grid lg:flex lg:justify-center items-center mt-6 mb-4 gap-3">
+            <div className="grid lg:flex lg:justify-center items-center mt-6 mb-4 gap-3 mr-12 ml-12">
               <DownloadButton
+                title={orderData.efdPrinted === true ? 'Download EFD Receipt':'Download PDF'}
                 orderNumber={orderData.orderNumber}
                 isDownloadable={isDownloadable === '1'}
                 fontSize={{
@@ -461,6 +428,18 @@ const OrderReceipt = async ({ params, searchParams }: {
                 }}
               />
               <ShareButton url={orderUrl} />
+            </div>
+          )}
+        </div>
+        <div className="w-full lg:hidden mt-4">
+          
+          {/* Show EFD Generate button if EFD is not printed */}
+          {!orderData.efdPrinted && (
+            <div className="flex items-center w-full">
+              <GenerateEfdButton 
+                orderId={id} 
+                location={location} 
+              />
             </div>
           )}
         </div>
