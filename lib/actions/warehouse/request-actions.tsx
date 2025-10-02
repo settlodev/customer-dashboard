@@ -22,12 +22,7 @@ export const searchWarehouseStockRequests = async (
 
         const query = {
             filters: [
-                // {
-                //     key: "",
-                //     operator: "LIKE",
-                //     field_type: "STRING",
-                //     value: q,
-                // },
+               
                 {
                     key:"isArchived",
                     operator:"EQUAL",
@@ -158,6 +153,8 @@ export const stockRequestReportForWarehouse = async (): Promise<StockRequestRepo
         const warehouse = await getCurrentWarehouse();
         
         const report=await apiClient.get(`/api/reports/${warehouse?.id}/stock-requests/summary`);
+
+        console.log("report",report);
 
 
         return parseStringify(report);

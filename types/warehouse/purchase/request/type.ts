@@ -33,4 +33,5 @@ export interface StockRequestReport{
     approvedStockRequests: number
     pendingStockRequests: number
     cancelledStockRequests: number
+    receivedStockRequests: number
 }
