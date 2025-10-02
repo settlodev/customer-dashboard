@@ -6,7 +6,6 @@ export declare interface StockIntake {
     valuePerItem:number,
     stockAndStockVariantName: string,
     value: number,
-    valuePerItem:number
     batchExpiryDate: string,
     orderDate: string,
     deliveryDate: string,
