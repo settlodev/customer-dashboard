@@ -108,7 +108,7 @@ const StockRequestReport = () => {
           {/* Approved Card */}
           <div 
             className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleCardClick('approved')}
+            onClick={() => handleCardClick('APPROVED')}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -120,11 +120,26 @@ const StockRequestReport = () => {
               </div>
             </div>
           </div>
+          {/* Received Card */}
+          <div 
+            className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => handleCardClick('RECEIVED')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Received</p>
+                <p className="text-3xl font-bold text-green-600">{reportData?.receivedStockRequests || 0}</p>
+              </div>
+              <div className="p-3 bg-green-100 rounded-full">
+                <CheckCircle className="w-6 h-6 text-green-600" />
+              </div>
+            </div>
+          </div>
 
           {/* Pending Card */}
           <div 
             className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleCardClick('pending')}
+            onClick={() => handleCardClick('PENDING')}
           >
             <div className="flex items-center justify-between">
               <div>
@@ -140,7 +155,7 @@ const StockRequestReport = () => {
           {/* Cancelled Card */}
           <div 
             className="bg-white rounded-lg shadow-sm p-6 border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => handleCardClick('cancelled')}
+            onClick={() => handleCardClick('CANCELLED')}
           >
             <div className="flex items-center justify-between">
               <div>

@@ -24,10 +24,10 @@ export const searchWarehouseStockRequests = async (
             filters: [
                
                 {
-                    key:"isArchived",
-                    operator:"EQUAL",
-                    field_type:"BOOLEAN",
-                    value:false
+                    key:"stockVariant.name",
+                    operator:"LIKE",
+                    field_type:"STRING",
+                    value:q
                 }
             ],
             sorts: [
@@ -153,10 +153,7 @@ export const stockRequestReportForWarehouse = async (): Promise<StockRequestRepo
         const warehouse = await getCurrentWarehouse();
         
         const report=await apiClient.get(`/api/reports/${warehouse?.id}/stock-requests/summary`);
-
-        console.log("report",report);
-
-
+        
         return parseStringify(report);
         
     } catch (error) {
