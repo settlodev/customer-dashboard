@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Activity, ArrowDownCircle, ArrowUpCircle, BarChart, Clock, DollarSign, TrendingDown, TrendingUp } from 'lucide-react';
+import { Activity, ArrowDownCircle, ArrowUpCircle, BarChart,  DollarSign, TrendingDown, TrendingUp } from 'lucide-react';
 import { StockMovement, stockVariantSummary } from '@/types/stockVariant/type';
 import PaginatedStockTable from './paginatedStock';
 import MetricCard from './stock-item/metric-card';
