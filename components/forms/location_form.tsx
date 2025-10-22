@@ -38,15 +38,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import CancelButton from "../widgets/cancel-button";
 import { Separator } from "../ui/separator";
 
-const LocationForm = ({
+export const LocationForm = ({
   item,
-  // onSubmit,
+  onSubmit,
   multipleStep = false,
+  businessId,
 }: {
   item: Location | null | undefined;
   onSubmit: (values: z.infer<typeof LocationSchema>) => void;
   multipleStep?: boolean;
+  businessId?: string | null;
 }) => {
+  console.log("Business Id passed is", businessId);
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
 
@@ -95,7 +98,7 @@ const LocationForm = ({
 
         const response = item
           ? await updateLocation(item.id, values)
-          : await createLocation(values);
+          : await createLocation(values, businessId || undefined);
 
         if (response) {
           setResponse(response);
@@ -431,5 +434,3 @@ const LocationForm = ({
     </Form>
   );
 };
-
-export default LocationForm;
