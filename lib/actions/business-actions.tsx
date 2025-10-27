@@ -86,8 +86,6 @@ export const createBusiness = async (
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
-  // const authenticatedUser = await getAuthenticatedUser();
-
   const authToken = await getAuthToken();
   const userId = authToken?.id;
 

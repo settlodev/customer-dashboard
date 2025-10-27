@@ -51,7 +51,7 @@ export const login = async (
   await deleteAuthCookie();
   await deleteActiveBusinessCookie();
   await deleteActiveLocationCookie();
-  await deleteActiveWarehouseCookie()
+  await deleteActiveWarehouseCookie();
 
   try {
     const result = await signIn("credentials", {
@@ -140,8 +140,6 @@ export const getUserById = async (
 
     return parseStringify(userDetails);
   } catch (error) {
-    // Ignore redirect error
-    // if (isRedirectError(error)) throw error;
     throw error;
   }
 };
@@ -149,9 +147,6 @@ export const getUserById = async (
 export const verifyToken = async (token: string): Promise<FormResponse> => {
   //  if (!token) throw new Error("Authentication token is required");
   console.log("Token verification started");
-
-  // first logout without redirecting
-  //  await signOut({ redirect: false });
 
   const apiClient = new ApiClient();
 
@@ -356,9 +351,6 @@ export const resetPassword = async (
       data: result,
     });
   } catch (error: any) {
-    // Ignore redirect error
-    // if (isRedirectError(error)) throw error;
-
     return parseStringify({
       responseType: "error",
       message: error.message
