@@ -1,0 +1,33 @@
+export interface EmploymentDetails {
+  nida: number;
+  sourceOfFundId: number;
+  postalCode: string;
+  occupationId: number;
+  contact: string;
+  addressLine1: string;
+  addressCity: string;
+  professionId: number;
+  addressFromDate: string;
+  idIssueDate: string;
+  idExpiryDate: string;
+  employmentStartYear: number;
+  employmentStartMonth: string;
+  employmentCategoryId: number;
+  qualificationId: number;
+  sourceOfFundCd: number;
+  employerName: string;
+  religionId: number;
+  marriageFlag: string;
+  professionCd: string;
+  profQualificationId: number;
+  employAddressLine: string;
+  idCityOfIssue: string;
+  grossAnnualSalId: number;
+  employmentCity: string;
+  qualificationCode: string;
+  countryOfBirthId: number;
+  profQualificationCode: string;
+  employmentAddress: string;
+  spouseName: string;
+  employed: boolean;
+}
