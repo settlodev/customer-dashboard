@@ -135,7 +135,7 @@ const InvoiceSubscriptionPage = () => {
           name: currentPlan.packageName,
           unitPrice: currentPlan.amount,
           months: 12,
-          totalPrice: currentPlan.amount,
+          totalPrice: currentPlan.amount * 12,
           isRenewal: true,
           actionType: "renew",
         };
@@ -209,15 +209,14 @@ const InvoiceSubscriptionPage = () => {
         }
       }
 
-      // Add new subscription item
       const subscriptionItem: InvoiceItem = {
         id: Date.now(),
         type: "subscription",
         itemId: plan.id,
         name: plan.packageName,
         unitPrice: plan.amount,
-        months: 1,
-        totalPrice: plan.amount,
+        months: 12,
+        totalPrice: plan.amount * 12,
         actionType: actionType,
         isRenewal: actionType === "renew",
       };
@@ -255,6 +254,16 @@ const InvoiceSubscriptionPage = () => {
         return;
       }
 
+      // Check if there's an active subscription to determine duration
+      const activeSubscriptionItem = invoiceItems.find(
+        (item) => item.type === "subscription",
+      );
+
+      // Default to 12 months if no subscription found, otherwise use subscription months
+      const defaultMonths = activeSubscriptionItem
+        ? activeSubscriptionItem.months
+        : 12;
+
       const existingService = invoiceItems.find(
         (item) =>
           item.type === "service" && item.itemId === service.id.toString(),
@@ -275,11 +284,18 @@ const InvoiceSubscriptionPage = () => {
         itemId: service.id.toString(),
         name: service.name,
         unitPrice: service.amount,
-        months: 1,
-        totalPrice: service.amount,
+        months: defaultMonths,
+        totalPrice: service.amount * defaultMonths,
       };
 
       setInvoiceItems((prev) => [...prev, newItem]);
+
+      // Show toast indicating the duration
+      toast({
+        title: "Service Added",
+        description: `Service added for ${defaultMonths} month${defaultMonths !== 1 ? "s" : ""}`,
+        variant: "default",
+      });
     },
     [invoiceItems, toast, isDiamondSubscriptionSelected],
   );
@@ -296,13 +312,33 @@ const InvoiceSubscriptionPage = () => {
   );
 
   const updateItemMonths = useCallback((id: number, months: number) => {
-    setInvoiceItems((prev) =>
-      prev.map((item) =>
+    setInvoiceItems((prev) => {
+      const updatedItems = prev.map((item) =>
         item.id === id
-          ? { ...item, months: months, totalPrice: item.unitPrice * months }
+          ? {
+              ...item,
+              months: months,
+              totalPrice: item.unitPrice * months,
+            }
           : item,
-      ),
-    );
+      );
+
+      // If updating a subscription, also update all services to match the same duration
+      const updatedItem = updatedItems.find((item) => item.id === id);
+      if (updatedItem?.type === "subscription") {
+        return updatedItems.map((item) =>
+          item.type === "service"
+            ? {
+                ...item,
+                months: months,
+                totalPrice: item.unitPrice * months,
+              }
+            : item,
+        );
+      }
+
+      return updatedItems;
+    });
   }, []);
 
   const handlePendingPayment = useCallback(

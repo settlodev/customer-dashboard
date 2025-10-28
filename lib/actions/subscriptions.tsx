@@ -9,7 +9,6 @@ import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
 import { z } from "zod";
-// import { RenewSubscription } from "@/types/renew-subscription/type";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { getCurrentLocation } from "./business/get-current-business";
 import { getAuthenticatedUser } from "../auth-utils";
@@ -32,7 +31,6 @@ export const fetchSubscriptions = async (): Promise<Subscriptions[]> => {
       "/api/subscriptions/",
     );
     const sortedSubscriptions = response.sort((a, b) => a.amount - b.amount);
-    console.log("The sorted subscriptions", sortedSubscriptions);
     return parseStringify(sortedSubscriptions);
   } catch (error) {
     throw error;
