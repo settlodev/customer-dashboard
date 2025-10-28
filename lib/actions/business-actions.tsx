@@ -86,8 +86,6 @@ export const createBusiness = async (
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
-  // const authenticatedUser = await getAuthenticatedUser();
-
   const authToken = await getAuthToken();
   const userId = authToken?.id;
 
@@ -111,12 +109,17 @@ export const createBusiness = async (
   try {
     const apiClient = new ApiClient();
 
-    const business = await apiClient.post(
+    const response = await apiClient.post(
       `/api/businesses/${userId}/create`,
       payload,
     );
-    console.log("business", business);
-    return parseStringify(business);
+    // console.log("The business created is", business);
+
+    return {
+      responseType: "success",
+      message: "Business created successfully",
+      data: response,
+    };
   } catch (error: unknown) {
     console.error("Error creating business:", error);
     formResponse = {

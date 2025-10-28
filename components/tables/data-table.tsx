@@ -38,11 +38,21 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { DoubleArrowLeftIcon, DoubleArrowRightIcon } from "@radix-ui/react-icons";
-import { ProductCSVDialog} from "../csv/CSVImport";
+import {
+  DoubleArrowLeftIcon,
+  DoubleArrowRightIcon,
+} from "@radix-ui/react-icons";
+import { ProductCSVDialog } from "../csv/CSVImport";
 import { CSVStockDialog } from "../csv/stockCsvImport";
 import { ProductWithStockCSVDialog } from "../csv/ProductWithStockCsvImport";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "../ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import Loading from "@/app/loading";
 import { usePaginationState } from "@/hooks/usePaginationState";
 import TableExport from "../widgets/export";
@@ -57,61 +67,77 @@ const pageSpecificComponents = {
   "/products": {
     entityType: "product" as const,
     importComponent: <ProductCSVDialog />,
-    exportComponent: <TableExport filename="products-csv"/>,
+    exportComponent: <TableExport filename="products-csv" />,
     entityNames: { singular: "Product", plural: "Products" },
-    allowArchive: true, 
-    isWarehouse: false
+    allowArchive: true,
+    isWarehouse: false,
   },
   "/stock-variants": {
     entityType: "stock" as const,
-    importComponent: <>
-      <CSVStockDialog uploadType="location"/>
-      <ProductWithStockCSVDialog />
-    </>,
-    exportComponent: <StockExport filename="stock" exportType="location"/>,
+    importComponent: (
+      <>
+        <CSVStockDialog uploadType="location" />
+        <ProductWithStockCSVDialog />
+      </>
+    ),
+    exportComponent: <StockExport filename="stock" exportType="location" />,
     entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
     allowArchive: true,
-    isWarehouse: false
+    isWarehouse: false,
   },
   "/stock-intakes": {
     entityType: "stock-intake" as const,
-    importComponent: <CSVStockIntakeDialog/>,
-    exportComponent: <StockIntakeExport filename="Stock Intake"/>,
+    importComponent: <CSVStockIntakeDialog />,
+    exportComponent: <StockIntakeExport filename="Stock Intake" />,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
     allowArchive: true,
-    isWarehouse: false
+    isWarehouse: false,
   },
   "/staff": {
     entityType: "staff" as const,
     importComponent: null,
     exportComponent: null,
     entityNames: { singular: "Staff Member", plural: "Staff Members" },
-    isWarehouse: false
+    isWarehouse: false,
+  },
+  "/recipes": {
+    entityType: "recipe" as const,
+    importComponent: null,
+    exportComponent: null,
+    entityNames: { singular: "Recipe", plural: "Recipes" },
+    allowArchive: false,
+    isWarehouse: false,
   },
   // Warehouse-specific pages
   "/warehouse-stock-variants": {
     entityType: "stock" as const,
-    importComponent: <>
-      <CSVStockDialog uploadType="warehouse"/>
-
-    </>,
-    exportComponent: <StockExport filename="Exporting Warehouse stock" exportType="warehouse"/>,
+    importComponent: (
+      <>
+        <CSVStockDialog uploadType="warehouse" />
+      </>
+    ),
+    exportComponent: (
+      <StockExport
+        filename="Exporting Warehouse stock"
+        exportType="warehouse"
+      />
+    ),
     entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
-    isWarehouse: true
+    isWarehouse: true,
   },
   "/warehouse-stock-intakes": {
     entityType: "stock-intake" as const,
-    importComponent: <CSVStockIntakeDialog/>,
-    exportComponent: <StockIntakeExport filename="Warehouse Stock Intake"/>,
+    importComponent: <CSVStockIntakeDialog />,
+    exportComponent: <StockIntakeExport filename="Warehouse Stock Intake" />,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
-    isWarehouse: true
+    isWarehouse: true,
   },
   "/warehouse-suppliers": {
     entityType: "supplier" as const,
     importComponent: "",
     exportComponent: "",
     entityNames: { singular: "Supplier", plural: "Suppliers" },
-    isWarehouse: true
+    isWarehouse: true,
   },
 };
 
@@ -126,33 +152,36 @@ interface DataTableProps<TData, TValue> {
   searchParams?: {
     [key: string]: string | string[] | undefined;
   };
-  filterKey?: string; 
-  filterOptions?: { label: string; value: string }[]; 
-  disableArchive?: boolean; 
+  filterKey?: string;
+  filterOptions?: { label: string; value: string }[];
+  disableArchive?: boolean;
 }
 
 export function DataTable<TData, TValue>({
-   columns,
-   data,
-   searchKey,
-   pageCount,
-   pageSizeOptions = [10, 20, 30, 40, 50, 100],
-   filterKey,
-   filterOptions,
-   disableArchive = false
- }: DataTableProps<TData , TValue>) {
+  columns,
+  data,
+  searchKey,
+  pageCount,
+  pageSizeOptions = [10, 20, 30, 40, 50, 100],
+  filterKey,
+  filterOptions,
+  disableArchive = false,
+}: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const { initializePaginationState, savePaginationState } = usePaginationState({
-    key: pathname.replace('/', '') 
-  });
+  const { initializePaginationState, savePaginationState } = usePaginationState(
+    {
+      key: pathname.replace("/", ""),
+    },
+  );
 
   // Get URL parameters
   const page = searchParams?.get("page") ?? "1";
   const pageAsNumber = Number(page);
-  const fallbackPage = isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
+  const fallbackPage =
+    isNaN(pageAsNumber) || pageAsNumber < 1 ? 1 : pageAsNumber;
   const per_page = searchParams?.get("limit") ?? "10";
   const perPageAsNumber = Number(per_page);
   const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
@@ -170,16 +199,17 @@ export function DataTable<TData, TValue>({
         initializePaginationState();
         setIsInitialized(true);
       }, 0);
-      
+
       return () => clearTimeout(timer);
     }
   }, [initializePaginationState, isInitialized]);
 
   // Pagination state synchronized with URL
-  const [{ pageIndex, pageSize }, setPagination] = React.useState<PaginationState>({
-    pageIndex: fallbackPage - 1,
-    pageSize: fallbackPerPage,
-  });
+  const [{ pageIndex, pageSize }, setPagination] =
+    React.useState<PaginationState>({
+      pageIndex: fallbackPage - 1,
+      pageSize: fallbackPerPage,
+    });
 
   // Sync pagination state when URL changes (but only after initialization)
   React.useEffect(() => {
@@ -193,18 +223,22 @@ export function DataTable<TData, TValue>({
 
   // Save to localStorage when pagination changes
   React.useEffect(() => {
-    if (isInitialized && typeof window !== 'undefined') {
+    if (isInitialized && typeof window !== "undefined") {
       const paginationState = {
         pageIndex: pageIndex,
         pageSize: pageSize,
         timestamp: Date.now(),
       };
-      localStorage.setItem(`pagination-${pathname.replace('/', '') || 'default'}`, JSON.stringify(paginationState));
+      localStorage.setItem(
+        `pagination-${pathname.replace("/", "") || "default"}`,
+        JSON.stringify(paginationState),
+      );
     }
   }, [pageIndex, pageSize, pathname, isInitialized]);
 
   // Debounced URL update to prevent multiple rapid updates
-  const [pendingPagination, setPendingPagination] = React.useState<PaginationState | null>(null);
+  const [pendingPagination, setPendingPagination] =
+    React.useState<PaginationState | null>(null);
 
   React.useEffect(() => {
     if (!isInitialized) return;
@@ -227,12 +261,12 @@ export function DataTable<TData, TValue>({
   }, [pendingPagination, isInitialized, pathname, router]);
 
   const handleStatusFilterChange = (newStatus: string) => {
-    setStatusFilter(newStatus); 
+    setStatusFilter(newStatus);
   };
 
   const filteredData = React.useMemo(() => {
-    if (!filterKey || !statusFilter) return data; 
-    return data.filter((item) => (item as any)[filterKey] === statusFilter); 
+    if (!filterKey || !statusFilter) return data;
+    return data.filter((item) => (item as any)[filterKey] === statusFilter);
   }, [data, statusFilter, filterKey]);
 
   const createQueryString = React.useCallback(
@@ -253,25 +287,34 @@ export function DataTable<TData, TValue>({
   );
 
   // Custom pagination change handler
-  const handlePaginationChange = React.useCallback((updater: any) => {
-    const newPagination = typeof updater === 'function' ? updater({ pageIndex, pageSize }) : updater;
-    setPagination(newPagination);
-    setPendingPagination(newPagination);
-    
-    // Save pagination state immediately for better UX
-    if (!searchParams?.has("_rsc")) {
-      savePaginationState(String(newPagination.pageIndex + 1), String(newPagination.pageSize));
-    }
-  }, [pageIndex, pageSize, searchParams, savePaginationState]);
+  const handlePaginationChange = React.useCallback(
+    (updater: any) => {
+      const newPagination =
+        typeof updater === "function"
+          ? updater({ pageIndex, pageSize })
+          : updater;
+      setPagination(newPagination);
+      setPendingPagination(newPagination);
+
+      // Save pagination state immediately for better UX
+      if (!searchParams?.has("_rsc")) {
+        savePaginationState(
+          String(newPagination.pageIndex + 1),
+          String(newPagination.pageSize),
+        );
+      }
+    },
+    [pageIndex, pageSize, searchParams, savePaginationState],
+  );
 
   // Reset loading when data changes
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 200); 
+    }, 200);
 
-    return () => clearTimeout(timer); 
-  }, [data]); 
+    return () => clearTimeout(timer);
+  }, [data]);
 
   const table = useReactTable({
     data: filteredData,
@@ -295,7 +338,8 @@ export function DataTable<TData, TValue>({
   const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
 
   // Handle search with debouncing and proper pagination reset
-  const [searchTimeout, setSearchTimeout] = React.useState<NodeJS.Timeout | null>(null);
+  const [searchTimeout, setSearchTimeout] =
+    React.useState<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
     if (!isInitialized) return;
@@ -332,17 +376,19 @@ export function DataTable<TData, TValue>({
   }, [searchValue, pageSize, isInitialized]);
 
   // Get selected row IDs
-  const selectedRowIds = table.getFilteredSelectedRowModel().rows.map(
-    (row) => (row.original as any).id
-  );
+  const selectedRowIds = table
+    .getFilteredSelectedRowModel()
+    .rows.map((row) => (row.original as any).id);
 
-  const pageConfig = pageSpecificComponents[pathname as keyof typeof pageSpecificComponents] || {
+  const pageConfig = pageSpecificComponents[
+    pathname as keyof typeof pageSpecificComponents
+  ] || {
     entityType: "product" as const,
     importComponent: null,
     exportComponent: null,
     entityNames: { singular: "Item", plural: "Items" },
     allowArchive: false,
-    isWarehouse: false
+    isWarehouse: false,
   };
 
   // Reset table selection callback
@@ -357,9 +403,11 @@ export function DataTable<TData, TValue>({
     // Check if this is a warehouse page
     if (pageConfig.isWarehouse) {
       return (
-        <WarehouseBulkArchive 
+        <WarehouseBulkArchive
           selectedIds={selectedRowIds}
-          entityType={pageConfig.entityType as 'stock' | 'stock-intake' | 'supplier'}
+          entityType={
+            pageConfig.entityType as "stock" | "stock-intake" | "supplier"
+          }
           onSuccess={resetTableSelection}
           entityNameSingular={pageConfig.entityNames.singular}
           entityNamePlural={pageConfig.entityNames.plural}
@@ -367,9 +415,15 @@ export function DataTable<TData, TValue>({
       );
     } else {
       return (
-        <BulkArchive 
+        <BulkArchive
           selectedIds={selectedRowIds}
-          entityType={pageConfig.entityType as 'product' | 'stock' | 'staff' | 'stock-intake'}
+          entityType={
+            pageConfig.entityType as
+              | "product"
+              | "stock"
+              | "staff"
+              | "stock-intake"
+          }
           onSuccess={resetTableSelection}
           entityNameSingular={pageConfig.entityNames.singular}
           entityNamePlural={pageConfig.entityNames.plural}
@@ -382,7 +436,7 @@ export function DataTable<TData, TValue>({
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-48">
-        <Loading/>
+        <Loading />
       </div>
     );
   }
@@ -427,7 +481,7 @@ export function DataTable<TData, TValue>({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Filter by</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                
+
                 {filterOptions.map((option) => (
                   <DropdownMenuCheckboxItem
                     key={option.value}
@@ -449,7 +503,7 @@ export function DataTable<TData, TValue>({
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <Loading/>
+          <Loading />
         </div>
       ) : (
         <ScrollArea className="rounded-md border h-[calc(80vh-220px)]">
@@ -463,9 +517,9 @@ export function DataTable<TData, TValue>({
                         {header.isPlaceholder
                           ? null
                           : flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                              header.column.columnDef.header,
+                              header.getContext(),
+                            )}
                       </TableHead>
                     );
                   })}

@@ -25,26 +25,33 @@ import { Location } from "@/types/location/type";
 import { createLocation, updateLocation } from "@/lib/actions/location-actions";
 import { toast } from "@/hooks/use-toast";
 import { PhoneInput } from "../ui/phone-input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { businessTimes } from "@/types/constants";
 import { Switch } from "../ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import CancelButton from "../widgets/cancel-button";
 import { Separator } from "../ui/separator";
 
-const LocationForm = ({ 
-  item, 
-  // onSubmit, 
-  multipleStep = false 
-}: { 
-  item: Location | null | undefined, 
-  onSubmit: (values: z.infer<typeof LocationSchema>) => void, 
-  multipleStep?: boolean 
+export const LocationForm = ({
+  item,
+  onSubmit,
+  multipleStep = false,
+  businessId,
+}: {
+  item: Location | null | undefined;
+  onSubmit: (values: z.infer<typeof LocationSchema>) => void;
+  multipleStep?: boolean;
+  businessId?: string | null;
 }) => {
-
+  console.log("Business Id passed is", businessId);
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-
 
   const formatTimeForSelect = (timeString: string | null | undefined) => {
     if (!timeString) return undefined;
@@ -58,53 +65,59 @@ const LocationForm = ({
     resolver: zodResolver(LocationSchema),
     defaultValues: {
       ...item,
-      openingTime: item?.openingTime ? formatTimeForSelect(item.openingTime) : undefined,
-      closingTime: item?.closingTime ? formatTimeForSelect(item.closingTime) : undefined,
-      status: item ? item.status : true
+      openingTime: item?.openingTime
+        ? formatTimeForSelect(item.openingTime)
+        : undefined,
+      closingTime: item?.closingTime
+        ? formatTimeForSelect(item.closingTime)
+        : undefined,
+      status: item ? item.status : true,
     },
   });
 
-  const onInvalid = useCallback(
-    (errors: FieldErrors) => {
-      console.log("The errors are:", errors);
-      toast({
-        variant: "destructive",
-        title: "Uh oh! something went wrong",
-        description: typeof errors.message === 'string' ? errors.message : "There was an issue submitting your form, please try later",
-      });
-    },
-    [],
-  );
+  const onInvalid = useCallback((errors: FieldErrors) => {
+    console.log("The errors are:", errors);
+    toast({
+      variant: "destructive",
+      title: "Uh oh! something went wrong",
+      description:
+        typeof errors.message === "string"
+          ? errors.message
+          : "There was an issue submitting your form, please try later",
+    });
+  }, []);
 
-
-   const submitData = (values: z.infer<typeof LocationSchema>) => {
-//     console.log("Submitting data:", values);
+  const submitData = (values: z.infer<typeof LocationSchema>) => {
+    //     console.log("Submitting data:", values);
     setResponse(undefined);
 
     startTransition(async () => {
       try {
-        const operation = item ? 'update' : 'create';
+        const operation = item ? "update" : "create";
         console.log(`Performing ${operation} operation`);
 
         const response = item
           ? await updateLocation(item.id, values)
-          : await createLocation(values);
+          : await createLocation(values, businessId || undefined);
 
         if (response) {
           setResponse(response);
           if (!item) {
             // Only reload for create operations
-            window.location.href ='/locations';
+            window.location.href = "/locations";
             return;
           }
-          window.location.href = '/select-location'
+          window.location.href = "/select-location";
         }
       } catch (error) {
-        console.error(`${item ? 'Update' : 'Create'} failed:`, error);
+        console.error(`${item ? "Update" : "Create"} failed:`, error);
         toast({
           variant: "destructive",
-          title: `${item ? 'Update' : 'Create'} failed`,
-          description: error instanceof Error ? error.message : 'An unknown error occurred',
+          title: `${item ? "Update" : "Create"} failed`,
+          description:
+            error instanceof Error
+              ? error.message
+              : "An unknown error occurred",
         });
       }
     });
@@ -112,7 +125,10 @@ const LocationForm = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="mx-auto space-y-8">
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className="mx-auto space-y-8"
+      >
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -135,7 +151,7 @@ const LocationForm = ({
                           className="pl-10"
                           {...field}
                           disabled={isPending}
-                          placeholder="Eg. Mark Juices Sinza"
+                          placeholder="Enter location name"
                         />
                       </div>
                     </FormControl>
@@ -231,17 +247,20 @@ const LocationForm = ({
                       <Select
                         disabled={isPending}
                         onValueChange={field.onChange}
-                        value={field.value}>
+                        value={field.value}
+                      >
                         <SelectTrigger className="pl-10">
                           <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                           <SelectValue placeholder="Select opening time" />
                         </SelectTrigger>
                         <SelectContent>
-                          {businessTimes.map((item: BusinessTimeType, index: number) => (
-                            <SelectItem key={index} value={item.name}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
+                          {businessTimes.map(
+                            (item: BusinessTimeType, index: number) => (
+                              <SelectItem key={index} value={item.name}>
+                                {item.label}
+                              </SelectItem>
+                            ),
+                          )}
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -263,17 +282,20 @@ const LocationForm = ({
                       <Select
                         disabled={isPending}
                         onValueChange={field.onChange}
-                        value={field.value}>
+                        value={field.value}
+                      >
                         <SelectTrigger className="pl-10">
                           <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                           <SelectValue placeholder="Select closing time" />
                         </SelectTrigger>
                         <SelectContent>
-                          {businessTimes.map((item: BusinessTimeType, index: number) => (
-                            <SelectItem key={index} value={item.name}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
+                          {businessTimes.map(
+                            (item: BusinessTimeType, index: number) => (
+                              <SelectItem key={index} value={item.name}>
+                                {item.label}
+                              </SelectItem>
+                            ),
+                          )}
                         </SelectContent>
                       </Select>
                     </FormControl>
@@ -373,7 +395,9 @@ const LocationForm = ({
               <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                 <div>
                   <FormLabel className="text-base">Location Status</FormLabel>
-                  <FormDescription>Enable or disable this business location</FormDescription>
+                  <FormDescription>
+                    Enable or disable this business location
+                  </FormDescription>
                 </div>
                 <FormControl>
                   <Switch
@@ -391,17 +415,18 @@ const LocationForm = ({
         <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
           <CancelButton />
           <Separator orientation="vertical" />
-          <Button
-            type="submit"
-            disabled={isPending}
-            className="h-11">
+          <Button type="submit" disabled={isPending} className="h-11">
             {isPending ? (
               <div className="flex items-center gap-2">
                 <Loader2Icon className="h-4 w-4 animate-spin" />
                 Processing
               </div>
+            ) : item ? (
+              "Update business location"
+            ) : multipleStep ? (
+              "Complete Setup"
             ) : (
-              item ? 'Update business location' : (multipleStep ? 'Complete Setup' : 'Setup business location')
+              "Setup business location"
             )}
           </Button>
         </div>
@@ -409,5 +434,3 @@ const LocationForm = ({
     </Form>
   );
 };
-
-export default LocationForm;

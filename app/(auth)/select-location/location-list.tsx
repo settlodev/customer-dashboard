@@ -53,10 +53,7 @@ const LocationList = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { toast } = useToast();
-  
 
-
-  
   const displayedItems = useMemo(() => {
     if (locationType === "warehouse") {
       return warehouses;
@@ -90,7 +87,6 @@ const LocationList = ({
           }
 
           try {
-            // console.log("Verification attempt:", attemptCount);
             const verificationResult = await verifyPayment(
               transactionId,
               invoice,
@@ -132,15 +128,15 @@ const LocationList = ({
     numberOfMonths: number,
   ) => {
     try {
-      setIsModalOpen(true); 
+      setIsModalOpen(true);
       setPaymentStatus("INITIATING");
 
       const invoicePayload = {
         warehouseSubscriptions: [
           {
-            warehouseId:selectedWarehouse.id,
-            subscriptionDurationType:"MONTHS",
-            subscriptionDurationCount:numberOfMonths,
+            warehouseId: selectedWarehouse.id,
+            subscriptionDurationType: "MONTHS",
+            subscriptionDurationCount: numberOfMonths,
             warehouseSubscriptionPackageId: packageId,
           },
         ],
@@ -148,7 +144,7 @@ const LocationList = ({
         phone,
       };
 
-      console.log("The invoice payload to for warehouse is",invoicePayload)
+      console.log("The invoice payload to for warehouse is", invoicePayload);
 
       const response = await createInvoice(invoicePayload);
 
@@ -157,17 +153,10 @@ const LocationList = ({
 
         try {
           setPaymentStatus("PENDING");
-          const paymentResponse = await payInvoice(
-            invoiceId,
-            email,
-            phone,
-          );
+          const paymentResponse = await payInvoice(invoiceId, email, phone);
 
           setPaymentStatus("PROCESSING");
-          handlePendingPayment(
-            paymentResponse.id,
-            paymentResponse.invoice,
-          );
+          handlePendingPayment(paymentResponse.id, paymentResponse.invoice);
         } catch (error) {
           console.error("Error paying invoice:", error);
           setPaymentStatus("FAILED");
@@ -212,73 +201,16 @@ const LocationList = ({
     },
     [selectedWarehouse, toast],
   );
-  
-  // const handleLocationSelect = async (item: any, index: number) => {
-    
-  //   setPendingIndex(index);
-  
-  //   const isWarehouse = locationType === "warehouse";
-  
-  //   if (isWarehouse) {
-  //     // Check warehouse subscription status
-  //     if (
-  //       item.subscriptionStatus === "EXPIRED" ||
-  //       item.subscriptionStatus === null ||
-  //       item.subscriptionStatus === "" ||
-  //       item.subscriptionStatus === undefined
-  //     ) {
-  //       setSelectedWarehouse(item);
-  //       setShowSubscriptionModal(true);
-  //       setPendingIndex(null);
-  //       return;
-  //     }
-  
-  //     setIsRedirecting(true);
-  //     await refreshWarehouse(item);
-  //     setTimeout(() => {
-  //       window.location.href = "/warehouse";
-  //     }, 1500);
-  //   } else {
-     
-  //     if (
-  //       item.subscriptionStatus === "EXPIRED" ||
-  //       item.subscriptionStatus === "EXPIRED_TRIAL" ||
-  //       item.subscriptionStatus === null ||
-  //       item.subscriptionStatus === "" ||
-  //       item.subscriptionStatus === undefined
-  //     ) {
-  //       toast({
-  //         variant: "destructive",
-  //         title: "Subscription Expired",
-  //         description: "Please renew your subscription to continue.",
-  //       });
-  //       setIsRedirecting(true);
-  //       setTimeout(() => {
-  //         window.location.href = `/renew-subscription?location=${item.id}`;
-  //       }, 3000);
-  //     } else {
-  //       setIsRedirecting(true);
-  //       await refreshLocation(item);
-  //       setTimeout(() => {
-  //         window.location.href = "/dashboard";
-  //       }, 3000);
-  //     }
-  //   }
-  
-  //   setPendingIndex(null);
-  // };
-  
+
   const handleLocationSelect = async (item: any, index: number) => {
     // Prevent multiple clicks/redirects
     if (isRedirecting || pendingIndex !== null) {
       return;
     }
-  
-    console.log("This location has been selected", item);
     setPendingIndex(index);
-  
+
     const isWarehouse = locationType === "warehouse";
-  
+
     if (isWarehouse) {
       // Check warehouse subscription status
       if (
@@ -292,14 +224,13 @@ const LocationList = ({
         setPendingIndex(null);
         return;
       }
-  
+
       setIsRedirecting(true);
       await refreshWarehouse(item);
       window.location.href = "/warehouse";
     } else {
-      
       if (
-        item.subscriptionStatus === "EXPIRED" || 
+        item.subscriptionStatus === "EXPIRED" ||
         item.subscriptionStatus === "EXPIRED_TRIAL" ||
         item.subscriptionStatus === null ||
         item.subscriptionStatus === "" ||
@@ -311,8 +242,7 @@ const LocationList = ({
           description: "Please renew your subscription to continue.",
         });
         setIsRedirecting(true);
-        
-        
+        await refreshLocation(item);
         window.location.href = `/renew-subscription?location=${item.id}`;
       } else {
         setIsRedirecting(true);
@@ -320,10 +250,10 @@ const LocationList = ({
         window.location.href = "/dashboard";
       }
     }
-  
+
     setPendingIndex(null);
   };
-  
+
   const handleSuccessfulCreation = (location: Location) => {
     console.log("Location created successfully:", location);
     setIsRedirecting(true);
