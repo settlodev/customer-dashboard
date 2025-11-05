@@ -1121,19 +1121,22 @@ const SoldItemsDashboard = () => {
 
                       {/* Profit Summary */}
                       <div className="md:col-span-2 text-right">
-                        <div>
-                          <p className="text-xs text-slate-500 mb-1">
-                            {item.profit < 0 ? "Loss" : "Profit"}
-                          </p>
-                          <p
-                            className={`font-semibold text-lg ${
-                              item.profit < 0
-                                ? "text-red-600"
-                                : "text-purple-600"
-                            }`}
-                          >
-                            {formatCurrency(item.profit)}
-                          </p>
+                      <div className="space-y-1">
+                          <div className="flex justify-between items-center">
+                            <p className="text-xs text-slate-500">Profit:</p>
+                            <p className="font-semibold text-sm text-emerald-600">
+                              {formatCurrency(item.profit || 0)}
+                            </p>
+                          </div>
+
+                          <div className="flex justify-between items-center">
+                            <p className="text-xs text-slate-500">
+                              Net Profit:
+                            </p>
+                            <p className="font-semibold text-sm text-emerald-600">
+                              {formatCurrency(item.netProfit || 0)}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
