@@ -45,6 +45,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { NidaQuestion } from "@/types/mhb/type";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const getMhbDataList = (
   mhbData: MhbDataMap | null,
@@ -95,8 +96,8 @@ function RequestTanqrForm() {
         console.error("Failed to load MHB data map:", error);
         toast({
           variant: "destructive",
-          title: "Error",
-          description: "Failed to load form data. Please try again.",
+          title: error.code,
+          description: error.message,
         });
       } finally {
         setLoadingData(false);
@@ -187,13 +188,18 @@ function RequestTanqrForm() {
       }
     } catch (error: any) {
       console.error("NIDA verification error:", error);
-      setError(error?.message || "Failed to verify NIDA");
+
+      // Extract the right error message from the error response
+      const errorMessage =
+        error?.message ||
+        error?.details ||
+        "Failed to verify NIDA. Please check the number and try again.";
+
+      setError(errorMessage);
       toast({
         variant: "destructive",
         title: "Verification Failed",
-        description:
-          error?.message ||
-          "Failed to verify NIDA. Please check the number and try again.",
+        description: errorMessage,
       });
       setPendingFormData(null);
     } finally {
@@ -254,11 +260,17 @@ function RequestTanqrForm() {
       }
     } catch (error: any) {
       console.error("Answer submission error:", error);
+
+      // Extract the right error message
+      const errorMessage =
+        error?.message ||
+        error?.details ||
+        "Failed to submit answer. Please try again.";
+
       toast({
         variant: "destructive",
         title: "Submission Failed",
-        description:
-          error?.message || "Failed to submit answer. Please try again.",
+        description: errorMessage,
       });
     } finally {
       setSubmittingAnswer(false);
@@ -359,10 +371,10 @@ function RequestTanqrForm() {
                   <FormItem>
                     <FormLabel>Contact Number</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="Enter contact number"
+                      <PhoneInput
                         {...field}
                         disabled={isPending}
+                        placeholder="Enter contact phone number"
                       />
                     </FormControl>
                     <FormMessage />

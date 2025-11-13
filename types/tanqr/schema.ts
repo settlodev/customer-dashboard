@@ -36,7 +36,7 @@ export const EmploymentDetailsSchema = object({
   countryOfBirthId: number().int(),
   // profQualificationCode: string(),
   employmentAddress: string(),
-  spouseName: string(),
+  spouseName: string().optional(),
   employed: boolean(),
 });
 

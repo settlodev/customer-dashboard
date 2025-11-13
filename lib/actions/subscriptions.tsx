@@ -32,7 +32,7 @@ export const fetchSubscriptions = async (): Promise<Subscriptions[]> => {
       "/api/subscriptions/",
     );
     const sortedSubscriptions = response.sort((a, b) => a.amount - b.amount);
-    console.log("The sorted subscriptions", sortedSubscriptions);
+
     return parseStringify(sortedSubscriptions);
   } catch (error) {
     throw error;
