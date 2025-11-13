@@ -372,6 +372,12 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
           icon: "grid",
         },
         {
+          title: "Stock Modification",
+          link: "/warehouse-stock-modifications",
+          current: args?.isCurrentItem,
+          icon: "grid",
+        },
+        {
           title: "Stock Supplier Payable",
           link: "/purchases",
           current: args?.isCurrentItem,
