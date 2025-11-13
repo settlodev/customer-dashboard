@@ -1,14 +1,17 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import { DateRangePicker } from "../ui/date-picker-with-range";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
 import Loading from "@/app/loading";
-import SalesDashboard from "./salesDashboard";
+import ProfitLossStatement from "@/components/widgets/profit&loss";
+import { DateRangePicker } from "@/components/ui/date-picker-with-range";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { Location } from "@/types/location/type";
 
-const Dashboard: React.FC = () => {
+const ProfitAndLossPage: React.FC = () => {
   const [summaries, setSummaries] = useState<SummaryResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [location, setLocation] = useState<Location>();
 
   useEffect(() => {
     let isMounted = true;
@@ -17,8 +20,6 @@ const Dashboard: React.FC = () => {
       try {
         setIsLoading(true);
         const summary = await fetchSummaries();
-
-        console.log("Summaries loaded:", summary);
 
         if (isMounted) {
           setSummaries(summary as SummaryResponse);
@@ -41,10 +42,29 @@ const Dashboard: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const fetchLocation = async () => {
+      const loc = await getCurrentLocation();
+      setLocation(loc);
+    };
+    fetchLocation();
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-lg">
+          <Loading />
+        </div>
+      </div>
+    );
+  }
+
+  if (!summaries || !location) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="text-lg mb-2">Loading data...</div>
           <Loading />
         </div>
       </div>
@@ -64,9 +84,9 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
-      <SalesDashboard salesData={summaries} />
+      <ProfitLossStatement salesData={summaries} location={location} />
     </div>
   );
 };
 
-export default Dashboard;
+export default ProfitAndLossPage;
