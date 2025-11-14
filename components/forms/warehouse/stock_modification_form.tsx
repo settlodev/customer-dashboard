@@ -189,7 +189,6 @@ function WarehouseStockModificationForm({
           });
         }
       } catch (error) {
-        console.error("Error creating stock modification:", error);
         toast({
           variant: "destructive",
           title: "Error",

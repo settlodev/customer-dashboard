@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-modification/column";
+import { columns } from "@/components/tables/warehouse/stock-modification/column";
 import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
 import { StockModification } from "@/types/stock-modification/type";
 import { searchStockModificationsInWarehouse } from "@/lib/actions/warehouse/stock-modification-actions";

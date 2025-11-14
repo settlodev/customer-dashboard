@@ -36,10 +36,9 @@ export const searchStockModificationsInWarehouse = async (
     };
     const warehouse = await getCurrentWarehouse();
     const data = await apiClient.post(
-      `/api/stock-modifications/${warehouse?.id}`,
+      `/api/warehouse/stock-modifications/${warehouse?.id}`,
       query,
     );
-
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -70,30 +69,49 @@ export const createStockModificationInWarehouse = async (
 
   const warehouse = await getCurrentWarehouse();
 
-  // Prepare payload for batch creation
-  const payload = stockModifications.map((modification) => ({
-    quantity: modification.quantity,
-    reason: modification.reason,
-    comment: modification.comment,
-    stockVariant: modification.stockVariant,
-    staff: modification.staff,
-    warehouse: warehouse?.id,
-  }));
+  console.log("Valida warehouse is", warehouse);
+
+  // Check if all modifications have the same staff member
+  const uniqueStaffIds = [
+    ...new Set(stockModifications.map((mod) => mod.staff)),
+  ];
+
+  if (uniqueStaffIds.length > 1) {
+    formResponse = {
+      responseType: "error",
+      message:
+        "All stock modifications must be assigned to the same staff member",
+      error: new Error("Multiple staff members not allowed"),
+    };
+    return parseStringify(formResponse);
+  }
+
+  // Build payload according to API expectations
+  const payload = {
+    staff: stockModifications[0].staff,
+    modifiedItems: stockModifications.map((modification) => ({
+      reason: modification.reason,
+      comment: modification.comment || null,
+      quantity: modification.quantity,
+      stockVariant: modification.stockVariant,
+    })),
+  };
 
   console.log("The payload passed is ", payload);
 
   try {
     const apiClient = new ApiClient();
     await apiClient.post(
-      `/api/stock-modifications/${warehouse?.id}/create`,
+      `/api/warehouse/stock-modifications/${warehouse?.id}/create`,
       payload,
     );
     formResponse = {
       responseType: "success",
-      message: `${payload.length} Stock Modification${payload.length > 1 ? "s" : ""} recorded successfully`,
+      message: `${payload.modifiedItems.length} Stock Modification${payload.modifiedItems.length > 1 ? "s" : ""} recorded successfully`,
     };
   } catch (error: any) {
-    console.log("The error occuring is ", error.message);
+    console.log("The error occuring is ", error);
+
     let errorMessage =
       "Something went wrong while processing your request, please try again";
 
@@ -111,6 +129,8 @@ export const createStockModificationInWarehouse = async (
       message: errorMessage,
       error: error instanceof Error ? error : new Error(errorMessage),
     };
+
+    console.error("form response error", formResponse);
 
     return formResponse;
   }
