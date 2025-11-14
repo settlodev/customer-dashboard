@@ -34,9 +34,10 @@ import {
   fetchMhbDataMap,
   validateNida,
   submitNidaAnswer,
+  createAccountMhb,
 } from "@/lib/actions/mhb";
 import { MhbSelect } from "@/components/widgets/mhb-selector";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, CheckCircle2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -46,6 +47,7 @@ import {
 } from "@/components/ui/dialog";
 import { NidaQuestion } from "@/types/mhb/type";
 import { PhoneInput } from "@/components/ui/phone-input";
+import Loading from "@/app/loading";
 
 const getMhbDataList = (
   mhbData: MhbDataMap | null,
@@ -75,6 +77,11 @@ function RequestTanqrForm() {
     typeof EmploymentDetailsSchema
   > | null>(null);
 
+  // Account creation success state
+  const [accountCreated, setAccountCreated] = useState(false);
+  const [accountCreationMessage, setAccountCreationMessage] = useState("");
+  const [accountReferenceId, setAccountReferenceId] = useState("");
+
   const form = useForm<z.infer<typeof EmploymentDetailsSchema>>({
     resolver: zodResolver(EmploymentDetailsSchema),
     defaultValues: {
@@ -96,8 +103,8 @@ function RequestTanqrForm() {
         console.error("Failed to load MHB data map:", error);
         toast({
           variant: "destructive",
-          title: error.code,
-          description: error.message,
+          title: "Error loading MHB data",
+          description: "Failed to load MHB data",
         });
       } finally {
         setLoadingData(false);
@@ -133,25 +140,38 @@ function RequestTanqrForm() {
 
       console.log("Creating account with payload:", formData);
 
-      // TODO: Replace with your actual account creation API call
-      // const response = await createAccountApi(formData);
+      const response = await createAccountMhb(formData);
+      // console.log("Successfully created account", response);
 
-      setSuccess("Account created successfully!");
+      // Extract message and reference ID from response
+      const message = response?.message || "Account created successfully!";
+      const referenceId = response?.referenceId || "";
+
+      // Set success state
+      setAccountCreated(true);
+      setAccountCreationMessage(message);
+      setAccountReferenceId(referenceId);
+      setSuccess(message);
+
+      // Clear form
+      form.reset();
+
+      // Show toast notification
       toast({
         title: "Success",
-        description: "Your account has been created successfully!",
+        description: message,
       });
-
-      // Reset form or redirect user
-      // router.push('/success');
     } catch (error: any) {
-      console.error("Account creation error:", error);
-      setError("Failed to create account. Please try again.");
+      // console.error("Account creation error:", error);
+
+      const errorMessage =
+        error?.message || "Failed to create account. Please try again.";
+
+      setError(errorMessage);
       toast({
         variant: "destructive",
         title: "Error",
-        description:
-          error?.message || "Failed to create account. Please try again.",
+        description: errorMessage,
       });
     }
   };
@@ -163,9 +183,10 @@ function RequestTanqrForm() {
       const verificationResult = await validateNida(nidaNumber);
 
       if (verificationResult) {
-        if (verificationResult.hasMoreQuestions) {
-          // Has questions to answer
-          setCurrentQuestion(verificationResult);
+        const questionData = verificationResult.data;
+
+        if (questionData && questionData.hasMoreQuestions) {
+          setCurrentQuestion(questionData);
           setCurrentAnswer("");
           setShowVerificationDialog(true);
           toast({
@@ -173,12 +194,10 @@ function RequestTanqrForm() {
             description: "Please answer the verification questions to proceed.",
           });
         } else {
-          // No questions, verification complete
           toast({
             title: "NIDA Verified",
             description: "Your NIDA has been verified successfully.",
           });
-          // Proceed to create account
           if (pendingFormData) {
             await createAccount(pendingFormData);
           }
@@ -187,9 +206,8 @@ function RequestTanqrForm() {
         throw new Error("NIDA verification failed");
       }
     } catch (error: any) {
-      console.error("NIDA verification error:", error);
+      // console.error("NIDA verification error:", error);
 
-      // Extract the right error message from the error response
       const errorMessage =
         error?.message ||
         error?.details ||
@@ -229,16 +247,16 @@ function RequestTanqrForm() {
       );
 
       if (response) {
-        if (response.hasMoreQuestions) {
-          // More questions to answer
-          setCurrentQuestion(response);
+        const responseData = response.data;
+
+        if (responseData && responseData.hasMoreQuestions) {
+          setCurrentQuestion(responseData);
           setCurrentAnswer("");
           toast({
             title: "Answer Submitted",
-            description: `Question ${response.questionNumber} of verification process.`,
+            description: `Question ${responseData.questionNumber} of verification process.`,
           });
         } else {
-          // All questions answered successfully
           setCurrentQuestion(null);
           setCurrentAnswer("");
           setShowVerificationDialog(false);
@@ -249,7 +267,6 @@ function RequestTanqrForm() {
               "All verification questions have been answered correctly.",
           });
 
-          // Proceed to create account
           if (pendingFormData) {
             await createAccount(pendingFormData);
             setPendingFormData(null);
@@ -259,9 +276,8 @@ function RequestTanqrForm() {
         throw new Error("Answer submission failed");
       }
     } catch (error: any) {
-      console.error("Answer submission error:", error);
+      // console.error("Answer submission error:", error);
 
-      // Extract the right error message
       const errorMessage =
         error?.message ||
         error?.details ||
@@ -290,8 +306,7 @@ function RequestTanqrForm() {
           return;
         }
 
-        // Validate NIDA number exists
-        if (!values.nida) {
+        if (!values.identificationNumber) {
           toast({
             variant: "destructive",
             title: "Error",
@@ -300,9 +315,8 @@ function RequestTanqrForm() {
           return;
         }
 
-        // Store form data and start NIDA verification
         setPendingFormData(values);
-        await startNidaVerification(values.nida);
+        await startNidaVerification(values.identificationNumber);
       } catch (error: any) {
         console.error("Form submission error:", error);
         toast({
@@ -315,13 +329,70 @@ function RequestTanqrForm() {
     });
   };
 
+  // Handle creating another account
+  const handleCreateAnother = () => {
+    setAccountCreated(false);
+    setAccountCreationMessage("");
+    setAccountReferenceId("");
+    setSuccess("");
+    setError("");
+    form.reset();
+  };
+
   if (loadingData) {
     return (
       <div className="flex justify-center items-center h-64">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4">Loading form data...</p>
+          <Loading />
         </div>
+      </div>
+    );
+  }
+
+  // Show success message if account was created
+  if (accountCreated) {
+    return (
+      <div className="flex justify-center items-center min-h-[500px]">
+        <Card className="w-full max-w-2xl">
+          <CardContent className="pt-6">
+            <div className="text-center space-y-6">
+              <div className="flex justify-center">
+                <div className="rounded-full bg-green-100 p-6">
+                  <CheckCircle2 className="h-16 w-16 text-green-600" />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-gray-900">Success!</h2>
+                <p className="text-lg text-gray-700">
+                  {accountCreationMessage}
+                </p>
+              </div>
+
+              {accountReferenceId && (
+                <div className="bg-slate-50 rounded-lg p-4 space-y-2">
+                  <p className="text-sm font-medium text-slate-700">
+                    Reference ID
+                  </p>
+                  <p className="text-sm font-mono text-slate-900 break-all">
+                    {accountReferenceId}
+                  </p>
+                </div>
+              )}
+
+              <div className="flex justify-center gap-4 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={handleCreateAnother}
+                  className="min-w-[150px]"
+                >
+                  Create Another Account
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -347,7 +418,7 @@ function RequestTanqrForm() {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
-                name="nida"
+                name="identificationNumber"
                 render={({ field }) => (
                   <FormItem className="md:col-span-2">
                     <FormLabel>NIDA Number *</FormLabel>

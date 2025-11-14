@@ -3,6 +3,9 @@
 import ApiClient from "@/lib/settlo-api-client";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
+import { EmploymentDetailsSchema } from "@/types/tanqr/schema";
+import { z } from "zod";
+import { FormResponse } from "@/types/types";
 
 export const fetchMhbDataMap = async (): Promise<any> => {
   await getAuthenticatedUser();
@@ -32,7 +35,7 @@ export const validateNida = async (nidaNumber: string): Promise<any> => {
     identificationNumber: nidaNumber,
   };
 
-  console.log("payload", JSON.stringify(payload, null, 2));
+  // console.log("payload", JSON.stringify(payload, null, 2));
 
   try {
     const apiClient = new ApiClient();
@@ -40,7 +43,7 @@ export const validateNida = async (nidaNumber: string): Promise<any> => {
       "/mhb/api/v1/identity/verify",
       JSON.stringify(payload),
     );
-    console.log("Verifying NIDA", verifyNida);
+    // console.log("Verifying NIDA", verifyNida);
     return parseStringify(verifyNida);
   } catch (error) {
     console.log("Error validateNida", error);
@@ -66,7 +69,7 @@ export const submitNidaAnswer = async (
     answer: answer,
   };
 
-  console.log("Submitting answer payload", JSON.stringify(payload, null, 2));
+  // console.log("Submitting answer payload", JSON.stringify(payload, null, 2));
 
   try {
     const apiClient = new ApiClient();
@@ -74,10 +77,49 @@ export const submitNidaAnswer = async (
       "/mhb/api/v1/identity/answer",
       JSON.stringify(payload),
     );
-    console.log("Answer submission response", response);
+    // console.log("Answer submission response", response);
     return parseStringify(response);
   } catch (error) {
     console.log("Error submitNidaAnswer", error);
+    throw error;
+  }
+};
+
+export const createAccountMhb = async (
+  details: z.infer<typeof EmploymentDetailsSchema>,
+): Promise<FormResponse> => {
+  const user = await getAuthenticatedUser();
+  let formResponse: FormResponse | null = null;
+
+  const validData = EmploymentDetailsSchema.safeParse(details);
+  if (!validData.success) {
+    formResponse = {
+      responseType: "error",
+      message: "Please fill all the fields",
+      error: new Error(validData.error.message),
+    };
+    return parseStringify(formResponse);
+  }
+
+  if (!user || !("id" in user)) {
+    throw new Error("User not authenticated or invalid user object");
+  }
+  const payload = {
+    ...validData.data,
+    userId: user.id,
+  };
+  // console.log("payload", JSON.stringify(payload, null, 2));
+
+  try {
+    const apiClient = new ApiClient();
+    const response = await apiClient.post(
+      "/mhb/api/v1/accounts/create",
+      payload,
+    );
+    // console.log("Response after creating account", response);
+    return parseStringify(response);
+  } catch (error) {
+    console.log("Error creating account", error);
     throw error;
   }
 };
