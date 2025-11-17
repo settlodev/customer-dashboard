@@ -6,6 +6,7 @@ import { parseStringify } from "@/lib/utils";
 import { EmploymentDetailsSchema } from "@/types/tanqr/schema";
 import { z } from "zod";
 import { FormResponse } from "@/types/types";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 
 export const fetchMhbDataMap = async (): Promise<any> => {
   await getAuthenticatedUser();
@@ -89,6 +90,7 @@ export const createAccountMhb = async (
   details: z.infer<typeof EmploymentDetailsSchema>,
 ): Promise<FormResponse> => {
   const user = await getAuthenticatedUser();
+  const location = await getCurrentLocation();
   let formResponse: FormResponse | null = null;
 
   const validData = EmploymentDetailsSchema.safeParse(details);
@@ -104,9 +106,11 @@ export const createAccountMhb = async (
   if (!user || !("id" in user)) {
     throw new Error("User not authenticated or invalid user object");
   }
+
   const payload = {
     ...validData.data,
     userId: user.id,
+    locationId: location?.id,
   };
   // console.log("payload", JSON.stringify(payload, null, 2));
 
