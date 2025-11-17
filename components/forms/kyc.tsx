@@ -57,7 +57,7 @@ const getMhbDataList = (
   return mhbData[listName] as any[];
 };
 
-function RequestTanqrForm() {
+function AccountCreationMhbForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
@@ -1007,4 +1007,4 @@ function RequestTanqrForm() {
   );
 }
 
-export default RequestTanqrForm;
+export default AccountCreationMhbForm;

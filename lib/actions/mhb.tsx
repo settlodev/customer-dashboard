@@ -7,6 +7,7 @@ import { EmploymentDetailsSchema } from "@/types/tanqr/schema";
 import { z } from "zod";
 import { FormResponse } from "@/types/types";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+import { TanqrSchema } from "@/types/mhb/schema";
 
 export const fetchMhbDataMap = async (): Promise<any> => {
   await getAuthenticatedUser();
@@ -125,5 +126,56 @@ export const createAccountMhb = async (
   } catch (error) {
     console.log("Error creating account", error);
     throw error;
+  }
+};
+
+export const initiateTanQr = async (
+  details: z.infer<typeof TanqrSchema>,
+): Promise<FormResponse> => {
+  const user = await getAuthenticatedUser();
+  const location = await getCurrentLocation();
+  let formResponse: FormResponse | null = null;
+
+  const validData = TanqrSchema.safeParse(details);
+  if (!validData.success) {
+    formResponse = {
+      responseType: "error",
+      message: "Please fill all the fields",
+      error: new Error(validData.error.message),
+    };
+    return parseStringify(formResponse);
+  }
+
+  if (!user || !("id" in user)) {
+    throw new Error("User not authenticated or invalid user object");
+  }
+
+  const payload = {
+    ...validData.data,
+    userId: user.id,
+    locationId: location?.id,
+  };
+  console.log("payload", JSON.stringify(payload, null, 2));
+
+  try {
+    const apiClient = new ApiClient();
+    const response = await apiClient.post(
+      "/mhb/api/v1/accounts/tanqr/initiate",
+      payload,
+    );
+    console.log("Response after initiating tanqr", response);
+    return parseStringify(response);
+  } catch (error: any) {
+    console.log("Error initiating tanqr", error);
+    // Extract the actual error message from the API response
+    const apiErrorMessage = error?.response?.data?.message || error?.message;
+
+    return parseStringify({
+      responseType: "error",
+      message:
+        apiErrorMessage ||
+        "Something went wrong while processing your request, please try again",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
   }
 };

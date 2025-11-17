@@ -263,15 +263,21 @@ const getNormalMenuItems = (
 
     // Staff & Roles Management
     {
-      label: "Request TanQr",
+      label: "MHB Integration ",
       showSeparator: true,
       collapsible: false,
       current: args?.isCurrentItem,
       icon: "users",
       items: [
         {
-          title: "tanqr",
+          title: "account",
           link: "/tanqr",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "tanqr",
+          link: "/mhb-tanqr",
           current: args?.isCurrentItem,
           icon: "cart",
         },
