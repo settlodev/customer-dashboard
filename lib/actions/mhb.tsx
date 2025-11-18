@@ -37,7 +37,7 @@ export const validateNida = async (nidaNumber: string): Promise<any> => {
     identificationNumber: nidaNumber,
   };
 
-  // console.log("payload", JSON.stringify(payload, null, 2));
+  console.log("payload", JSON.stringify(payload, null, 2));
 
   try {
     const apiClient = new ApiClient();
@@ -47,9 +47,18 @@ export const validateNida = async (nidaNumber: string): Promise<any> => {
     );
     // console.log("Verifying NIDA", verifyNida);
     return parseStringify(verifyNida);
-  } catch (error) {
-    console.log("Error validateNida", error);
-    throw error;
+  } catch (error: any) {
+    const apiErrorMessage = error?.response?.data?.message || error?.message;
+
+    console.log("Error submitNidaAnswer", apiErrorMessage);
+
+    return parseStringify({
+      responseType: "error",
+      message:
+        apiErrorMessage ||
+        "Something went wrong while processing your request, please try again",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
   }
 };
 
@@ -71,7 +80,7 @@ export const submitNidaAnswer = async (
     answer: answer,
   };
 
-  // console.log("Submitting answer payload", JSON.stringify(payload, null, 2));
+  console.log("Submitting answer payload", JSON.stringify(payload, null, 2));
 
   try {
     const apiClient = new ApiClient();
@@ -79,11 +88,20 @@ export const submitNidaAnswer = async (
       "/mhb/api/v1/identity/answer",
       JSON.stringify(payload),
     );
-    // console.log("Answer submission response", response);
+    console.log("Answer submission response", response);
     return parseStringify(response);
-  } catch (error) {
-    console.log("Error submitNidaAnswer", error);
-    throw error;
+  } catch (error: any) {
+    const apiErrorMessage = error?.response?.data?.message || error?.message;
+
+    console.log("Error submitNidaAnswer", apiErrorMessage);
+
+    return parseStringify({
+      responseType: "error",
+      message:
+        apiErrorMessage ||
+        "Something went wrong while processing your request, please try again",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
   }
 };
 
@@ -113,7 +131,7 @@ export const createAccountMhb = async (
     userId: user.id,
     locationId: location?.id,
   };
-  // console.log("payload", JSON.stringify(payload, null, 2));
+  console.log("payload", JSON.stringify(payload, null, 2));
 
   try {
     const apiClient = new ApiClient();
@@ -121,11 +139,18 @@ export const createAccountMhb = async (
       "/mhb/api/v1/accounts/create",
       payload,
     );
-    // console.log("Response after creating account", response);
+    console.log("Response after creating account", response);
     return parseStringify(response);
-  } catch (error) {
-    console.log("Error creating account", error);
-    throw error;
+  } catch (error: any) {
+    const apiErrorMessage = error?.response?.data?.message || error?.message;
+    console.log("Error creating account", apiErrorMessage);
+    return parseStringify({
+      responseType: "error",
+      message:
+        apiErrorMessage ||
+        "Something went wrong while processing your request, please try again",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
   }
 };
 
@@ -155,7 +180,7 @@ export const initiateTanQr = async (
     userId: user.id,
     locationId: location?.id,
   };
-  console.log("payload", JSON.stringify(payload, null, 2));
+  // console.log("payload", JSON.stringify(payload, null, 2));
 
   try {
     const apiClient = new ApiClient();
@@ -167,7 +192,7 @@ export const initiateTanQr = async (
     return parseStringify(response);
   } catch (error: any) {
     console.log("Error initiating tanqr", error);
-    // Extract the actual error message from the API response
+
     const apiErrorMessage = error?.response?.data?.message || error?.message;
 
     return parseStringify({

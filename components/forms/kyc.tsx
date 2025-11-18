@@ -143,6 +143,10 @@ function AccountCreationMhbForm() {
       const response = await createAccountMhb(formData);
       // console.log("Successfully created account", response);
 
+      if (response.responseType === "error") {
+        throw new Error(response.message);
+      }
+
       // Extract message and reference ID from response
       const message = response?.message || "Account created successfully!";
       const referenceId = response?.referenceId || "";
@@ -162,17 +166,19 @@ function AccountCreationMhbForm() {
         description: message,
       });
     } catch (error: any) {
-      // console.error("Account creation error:", error);
-
       const errorMessage =
-        error?.message || "Failed to create account. Please try again.";
+        error?.message || "Failed to creat account. Please try again.";
+
+      console.log("Error Creating account with payload:", errorMessage);
 
       setError(errorMessage);
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Submission Failed",
         description: errorMessage,
       });
+
+      throw error;
     }
   };
 

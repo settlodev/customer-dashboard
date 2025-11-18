@@ -178,7 +178,7 @@ function RequestTanqrForm() {
         description: errorMessage,
       });
 
-      throw error; // Re-throw to be handled by submitData
+      throw error;
     }
   };
 
