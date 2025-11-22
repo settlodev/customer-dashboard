@@ -84,4 +84,5 @@ export interface SoldItem {
   netCost: number;
   latestSoldDate: string;
   earliestSoldDate: string;
+  discountIncludingOrderDiscountPortion: number;
 }

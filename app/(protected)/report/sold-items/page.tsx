@@ -978,16 +978,14 @@ const SoldItemsDashboard = () => {
                             </p>
                             <div className="grid grid-cols-2 gap-2">
                               <div>
-                                <p className="text-xs text-slate-600">
-                                  Unit Price
-                                </p>
+                                <p className="text-xs text-slate-600">Price</p>
                                 <p className="font-semibold text-sm text-emerald-600">
                                   {formatCurrency(item.price || 0)}
                                 </p>
                               </div>
                               <div>
                                 <p className="text-xs text-slate-600">
-                                  Total Revenue
+                                  Net Price
                                 </p>
                                 <p className="font-semibold text-sm text-emerald-600">
                                   {formatCurrency(item.netPrice)}
@@ -1001,6 +999,18 @@ const SoldItemsDashboard = () => {
                                 </p>
                                 <p className="font-semibold text-sm text-amber-600">
                                   {formatCurrency(item.refundedPrice)}
+                                </p>
+                              </div>
+                            )}
+                            {item.discountIncludingOrderDiscountPortion > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs text-slate-600">
+                                  Discount Amount
+                                </p>
+                                <p className="font-semibold text-sm text-amber-600">
+                                  {formatCurrency(
+                                    item.discountIncludingOrderDiscountPortion,
+                                  )}
                                 </p>
                               </div>
                             )}
@@ -1108,9 +1118,21 @@ const SoldItemsDashboard = () => {
                               </p>
                             </div>
                           )}
+                          {item.discountIncludingOrderDiscountPortion > 0 && (
+                            <div className="flex justify-between items-center">
+                              <p className="text-xs text-slate-500">
+                                Discount Amount:
+                              </p>
+                              <p className="font-semibold text-sm text-amber-600">
+                                {formatCurrency(
+                                  item.discountIncludingOrderDiscountPortion,
+                                )}
+                              </p>
+                            </div>
+                          )}
                           <div className="flex justify-between items-center">
                             <p className="text-xs text-slate-500">
-                              Total Revenue:
+                              Net Prices:
                             </p>
                             <p className="font-semibold text-sm text-emerald-600">
                               {formatCurrency(item.netPrice)}
@@ -1121,19 +1143,35 @@ const SoldItemsDashboard = () => {
 
                       {/* Profit Summary */}
                       <div className="md:col-span-2 text-right">
-                      <div className="space-y-1">
+                        <div className="space-y-1">
                           <div className="flex justify-between items-center">
-                            <p className="text-xs text-slate-500">Profit:</p>
-                            <p className="font-semibold text-sm text-emerald-600">
+                            <p className="text-xs text-slate-500">
+                              {(item.profit || 0) >= 0 ? "Profit:" : "Loss:"}
+                            </p>
+                            <p
+                              className={`font-semibold text-sm ${
+                                (item.profit || 0) >= 0
+                                  ? "text-emerald-600"
+                                  : "text-red-600"
+                              }`}
+                            >
                               {formatCurrency(item.profit || 0)}
                             </p>
                           </div>
 
                           <div className="flex justify-between items-center">
                             <p className="text-xs text-slate-500">
-                              Net Profit:
+                              {(item.netProfit || 0) >= 0
+                                ? "Net Profit:"
+                                : "Net Loss:"}
                             </p>
-                            <p className="font-semibold text-sm text-emerald-600">
+                            <p
+                              className={`font-semibold text-sm ${
+                                (item.netProfit || 0) >= 0
+                                  ? "text-emerald-600"
+                                  : "text-red-600"
+                              }`}
+                            >
                               {formatCurrency(item.netProfit || 0)}
                             </p>
                           </div>
