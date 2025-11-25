@@ -74,6 +74,7 @@ export interface SoldItem {
   price: number;
   cost: number;
   profit: number;
+  netProfit: number;
   margin: number;
   refundedQuantity: number;
   refundedPrice: number;
@@ -83,4 +84,5 @@ export interface SoldItem {
   netCost: number;
   latestSoldDate: string;
   earliestSoldDate: string;
+  discountIncludingOrderDiscountPortion: number;
 }

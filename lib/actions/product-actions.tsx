@@ -497,6 +497,7 @@ export const SoldItemsReports = async (
         params,
       },
     );
+
     return parseStringify(soldItems);
   } catch (error) {
     console.error("Error fetching sold items report:", error);
