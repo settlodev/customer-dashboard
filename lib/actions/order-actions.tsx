@@ -267,14 +267,13 @@ export const submitOrderRequest = async (cartState: CartState) => {
 
     // console.log("The requested order is", requestedOrder);
 
-    // FIXED: Return the successful response with the order data
     formResponse = {
       responseType: "success",
       message: "Order has been requested successfully",
       data: requestedOrder, // Include the order data
     };
 
-    return parseStringify(formResponse); // FIXED: Actually return the response
+    return parseStringify(formResponse);
   } catch (error: any) {
     console.error("Order submission error:", error.message);
     formResponse = {
