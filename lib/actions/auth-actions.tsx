@@ -126,6 +126,7 @@ export const login = async (
     });
   }
 };
+
 export const getUserById = async (
   userId: string | undefined,
 ): Promise<ExtendedUser> => {

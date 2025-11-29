@@ -262,28 +262,40 @@ export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
 
   const data = await apiClient.post(`/api/locations/${business?.id}`, query);
 
-  // console.log(data)
+  console.log("location details found", data);
   return parseStringify(data);
 };
 
-export const getLocationById = async (
-  businessId: string,
-  locationId: string,
-): Promise<Location> => {
+export const getLocationById = async (): Promise<Location> => {
   await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
+    const business = await getCurrentBusiness();
+    const currentLocation = await getCurrentLocation();
 
-    // Use the actual parameters in the URL
-    const data: Location = await apiClient.get<Location>(
-      `/api/locations/${businessId}/${locationId}`,
+    const data = await apiClient.get(
+      `/api/locations/${business?.id}/${currentLocation?.id}`,
     );
 
-    // console.log("The location data is:", data);
     return parseStringify(data);
   } catch (error) {
     console.error("Error fetching location:", error);
+    throw error;
+  }
+};
+
+export const generateLocationCode = async (): Promise<any> => {
+  await getAuthenticatedUser();
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    const response = await apiClient.get(
+      `/api/auth/location/code/generate/${location?.id}`,
+    );
+    return parseStringify(response);
+  } catch (error) {
+    console.error("Error generating location:", error);
     throw error;
   }
 };
