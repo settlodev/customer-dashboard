@@ -95,7 +95,7 @@ const CashFlowReportDashboard = () => {
     }
 
     function handleTimeChange(type: "hour" | "minute", val: string) {
-      if (!value) return; // Guard clause
+      if (!value) return;
 
       const newDate = new Date(value);
       if (type === "hour") {
