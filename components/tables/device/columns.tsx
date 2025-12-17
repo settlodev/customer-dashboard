@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 
 import { Device } from "@/types/device/type";
+import { CellAction } from "@/components/tables/device/cell-action";
 
 export const columns: ColumnDef<Device>[] = [
   {
@@ -43,16 +44,16 @@ export const columns: ColumnDef<Device>[] = [
       );
     },
   },
- 
+
   {
     accessorKey: "model",
     header: "Model",
     enableHiding: false,
     cell: ({ row }) => {
-        const model = row.original.model;
-        return <span>{model ? model : "None"}</span>;
-    }
-},
+      const model = row.original.model;
+      return <span>{model ? model : "None"}</span>;
+    },
+  },
   {
     id: "serialNumber",
     accessorKey: "Serial Number",
@@ -60,31 +61,31 @@ export const columns: ColumnDef<Device>[] = [
     cell: ({ row }) => {
       const serial = row.original.serialNumber;
       return <span>{serial ? serial : "None"}</span>;
-  }
+    },
   },
 
-  {
-    id: "operatingSystem",
-    accessorKey: "Operating System",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const os = row.original.operatingSystem;
-      return <span>{os ? os : "None"}</span>;
-  }
-  },
-   
-  {
-    accessorKey: "operatingSystemVersion",
-    header: "OS Version",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const version = row.original.operatingSystemVersion;
-      return <span>{version ? version : "None"}</span>;
-  }
-},
- 
   // {
-  //   id: "actions",
-  //   cell: ({ row }) => <CellAction data={row.original} />,
+  //   id: "operatingSystem",
+  //   accessorKey: "Operating System",
+  //   enableHiding: false,
+  //   cell: ({ row }) => {
+  //     const os = row.original.operatingSystem;
+  //     return <span>{os ? os : "None"}</span>;
+  //   },
   // },
+
+  // {
+  //   accessorKey: "operatingSystemVersion",
+  //   header: "OS Version",
+  //   enableHiding: false,
+  //   cell: ({ row }) => {
+  //     const version = row.original.operatingSystemVersion;
+  //     return <span>{version ? version : "None"}</span>;
+  //   },
+  // },
+
+  {
+    id: "actions",
+    cell: ({ row }) => <CellAction data={row.original} />,
+  },
 ];

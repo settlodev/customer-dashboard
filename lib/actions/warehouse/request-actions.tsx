@@ -1,163 +1,162 @@
 "use server";
 
 import { UUID } from "node:crypto";
-import { ApiResponse, FormResponse} from "@/types/types";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
+import { ApiResponse, FormResponse } from "@/types/types";
+import { getAuthenticatedUser } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { getCurrentWarehouse } from "./current-warehouse-action";
-import { StockRequestReport, StockRequests } from "@/types/warehouse/purchase/request/type";
-
+import {
+  StockRequestReport,
+  StockRequests,
+} from "@/types/warehouse/purchase/request/type";
 
 export const searchWarehouseStockRequests = async (
-    q: string,
-    page: number,
-    pageLimit: number,
+  q: string,
+  page: number,
+  pageLimit: number,
 ): Promise<ApiResponse<StockRequests>> => {
-    await getAuthenticatedUser();
+  await getAuthenticatedUser();
 
-
-    try {
-        const apiClient = new ApiClient();
-
-        const query = {
-            filters: [
-               
-                {
-                    key:"stockVariant.name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
-            sorts: [
-                {
-                    key: "dateCreated",
-                    direction: "DESC",
-                },
-            ],
-            page: page ? page - 1 : 0,
-            size: pageLimit ? pageLimit : 10,
-        };
-
-        const warehouse = await getCurrentWarehouse();
-
-        const requests= await apiClient.post(
-            `/api/warehouse/${warehouse?.id}/warehouse-stock-requests`,
-            query,
-        );
-        
-        return parseStringify(requests);
-    } catch (error) {
-        throw error;
-    }
-};
-
-export const getWarehouseStockRequest = async (id: UUID)=> {
+  try {
     const apiClient = new ApiClient();
-    
+
+    const query = {
+      filters: [
+        {
+          key: "stockVariant.stock.name",
+          operator: "LIKE",
+          field_type: "STRING",
+          value: q,
+        },
+      ],
+      sorts: [
+        {
+          key: "dateCreated",
+          direction: "DESC",
+        },
+      ],
+      page: page ? page - 1 : 0,
+      size: pageLimit ? pageLimit : 10,
+    };
+
     const warehouse = await getCurrentWarehouse();
 
-    const stockRequest = await apiClient.get(
-        `/api/warehouse/${warehouse?.id}/warehouse-stock-requests/${id}`,
+    const requests = await apiClient.post(
+      `/api/warehouse/${warehouse?.id}/warehouse-stock-requests`,
+      query,
     );
+    return parseStringify(requests);
+  } catch (error) {
+    throw error;
+  }
+};
 
-    return parseStringify(stockRequest);
+export const getWarehouseStockRequest = async (id: UUID) => {
+  const apiClient = new ApiClient();
+
+  const warehouse = await getCurrentWarehouse();
+
+  const stockRequest = await apiClient.get(
+    `/api/warehouse/${warehouse?.id}/warehouse-stock-requests/${id}`,
+  );
+
+  return parseStringify(stockRequest);
 };
 
 export const ApproveStockRequest = async (
-    id: UUID,
-    warehouseStaffApproved: UUID
-  ): Promise<FormResponse<StockRequests>> => {
-    try {
-      const apiClient = new ApiClient();
-      const warehouse = await getCurrentWarehouse();
-  
-      if (!warehouse?.id) {
-        return {
-          responseType: "error",
-          message: "Warehouse ID is required",
-          error: new Error("Warehouse ID is required")
-        };
-      }
-  
-      await apiClient.put(
-        `/api/warehouse/${warehouse.id}/warehouse-stock-requests/approve/${id}`,
-        { warehouseStaffApproved }
-      );
-  
-      return {
-        responseType: "success",
-        message: "Successfully approved the request",
-        
-      };
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || 
-                          error?.message || 
-                          "Failed to approve stock request";
-      
+  id: UUID,
+  warehouseStaffApproved: UUID,
+): Promise<FormResponse<StockRequests>> => {
+  try {
+    const apiClient = new ApiClient();
+    const warehouse = await getCurrentWarehouse();
+
+    if (!warehouse?.id) {
       return {
         responseType: "error",
-        message: errorMessage,
-        error: error instanceof Error ? error : new Error(errorMessage)
+        message: "Warehouse ID is required",
+        error: new Error("Warehouse ID is required"),
       };
     }
-  };
-  
-  export const CancelStockRequest = async (
-    id: UUID,
-    warehouseStaffApproved: UUID
-  ): Promise<FormResponse<StockRequests>> => {
-    try {
-      const apiClient = new ApiClient();
-      const warehouse = await getCurrentWarehouse();
-  
-      if (!warehouse?.id) {
-        return {
-          responseType: "error",
-          message: "Warehouse ID is required",
-          error: new Error("Warehouse ID is required")
-        };
-      }
-  
-      await apiClient.put(
-        `/api/warehouse/${warehouse.id}/warehouse-stock-requests/cancel/${id}`,
-        { warehouseStaffCancelled: warehouseStaffApproved }
-      );
-  
-      return {
-        responseType: "success",
-        message: "Successfully cancelled the request",
-      };
-    } catch (error: any) {
 
-      const errorMessage = error?.response?.data?.message || 
-                          error?.message || 
-                          "Failed to cancel stock request";
-      
+    await apiClient.put(
+      `/api/warehouse/${warehouse.id}/warehouse-stock-requests/approve/${id}`,
+      { warehouseStaffApproved },
+    );
+
+    return {
+      responseType: "success",
+      message: "Successfully approved the request",
+    };
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Failed to approve stock request";
+
+    return {
+      responseType: "error",
+      message: errorMessage,
+      error: error instanceof Error ? error : new Error(errorMessage),
+    };
+  }
+};
+
+export const CancelStockRequest = async (
+  id: UUID,
+  warehouseStaffApproved: UUID,
+): Promise<FormResponse<StockRequests>> => {
+  try {
+    const apiClient = new ApiClient();
+    const warehouse = await getCurrentWarehouse();
+
+    if (!warehouse?.id) {
       return {
         responseType: "error",
-        message: errorMessage,
-        error: error instanceof Error ? error : new Error(errorMessage)
+        message: "Warehouse ID is required",
+        error: new Error("Warehouse ID is required"),
       };
     }
-  };
 
-export const stockRequestReportForWarehouse = async (): Promise<StockRequestReport | null> => {
+    await apiClient.put(
+      `/api/warehouse/${warehouse.id}/warehouse-stock-requests/cancel/${id}`,
+      { warehouseStaffCancelled: warehouseStaffApproved },
+    );
 
+    return {
+      responseType: "success",
+      message: "Successfully cancelled the request",
+    };
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "Failed to cancel stock request";
+
+    return {
+      responseType: "error",
+      message: errorMessage,
+      error: error instanceof Error ? error : new Error(errorMessage),
+    };
+  }
+};
+
+export const stockRequestReportForWarehouse =
+  async (): Promise<StockRequestReport | null> => {
     await getAuthenticatedUser();
 
     try {
+      const apiClient = new ApiClient();
+      const warehouse = await getCurrentWarehouse();
 
-        const apiClient = new ApiClient();
-        const warehouse = await getCurrentWarehouse();
-        
-        const report=await apiClient.get(`/api/reports/${warehouse?.id}/stock-requests/summary`);
-        
-        return parseStringify(report);
-        
+      const report = await apiClient.get(
+        `/api/reports/${warehouse?.id}/stock-requests/summary`,
+      );
+
+      return parseStringify(report);
     } catch (error) {
-        console.error("Error fetching stock request report:", error);
-        throw error;
+      console.error("Error fetching stock request report:", error);
+      throw error;
     }
-};
+  };
