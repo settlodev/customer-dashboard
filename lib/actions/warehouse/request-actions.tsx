@@ -24,7 +24,7 @@ export const searchWarehouseStockRequests = async (
             filters: [
                
                 {
-                    key:"stockVariant.name",
+                    key: "stockVariant.stock.name",
                     operator:"LIKE",
                     field_type:"STRING",
                     value:q
