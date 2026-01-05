@@ -71,7 +71,7 @@ import {AuthError, NextAuthConfig} from "next-auth";
 import Credentials from "@auth/core/providers/credentials";
 import { LoginSchema } from "@/types/data-schemas";
 
-const serviceURL = process.env.NON_SSL_SERVICE_URL;
+const serviceURL = process.env.SERVICE_URL;
 
 export default {
     providers: [
