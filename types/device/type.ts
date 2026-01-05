@@ -3,6 +3,7 @@ import { UUID } from "crypto";
 export declare interface Device {
   id: UUID;
   deviceName: string;
+  name: string;
   department: UUID;
   deviceId: string;
   model: string;
