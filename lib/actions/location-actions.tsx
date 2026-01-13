@@ -262,7 +262,6 @@ export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
 
   const data = await apiClient.post(`/api/locations/${business?.id}`, query);
 
-  console.log("location details found", data);
   return parseStringify(data);
 };
 

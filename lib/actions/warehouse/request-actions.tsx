@@ -48,6 +48,7 @@ export const searchWarehouseStockRequests = async (
     );
     return parseStringify(requests);
   } catch (error) {
+    console.log("Error while searching", error);
     throw error;
   }
 };
