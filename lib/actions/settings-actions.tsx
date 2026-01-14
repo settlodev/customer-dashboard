@@ -124,3 +124,20 @@ export const updateNotificationSetting = async (
     return parseStringify(formResponse);
   }
 };
+
+export const acceptOrderPaymentMethods = async (): Promise<any> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+
+    const location = await getCurrentLocation();
+
+    const orderPaymentMethods = await apiClient.get(
+      `/api/${location?.id}/accepted-payment-methods/order-transactions/all`,
+    );
+    return parseStringify(orderPaymentMethods);
+  } catch (error) {
+    throw error;
+  }
+};

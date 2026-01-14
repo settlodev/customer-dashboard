@@ -7,7 +7,10 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NotificationsSettings from "@/components/settings/notifications";
 import { settingsNavItems } from "@/types/constants";
 import PreferenceSettings from "@/components/settings/preference";
-import { fetchLocationSettings } from "@/lib/actions/settings-actions";
+import {
+  acceptOrderPaymentMethods,
+  fetchLocationSettings,
+} from "@/lib/actions/settings-actions";
 import Loading from "@/app/loading";
 import EFDSettings from "@/components/settings/efd";
 import { LocationSettings } from "@/types/settings/type";
@@ -24,6 +27,7 @@ export default function SettingsPage() {
         setIsLoading(true);
         setError(null);
         const settings = await fetchLocationSettings();
+        const orderPaymentMethods = await acceptOrderPaymentMethods();
         setLocationSettings(settings);
       } catch (error) {
         console.error("Failed to load settings:", error);
