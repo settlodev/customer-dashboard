@@ -21,7 +21,10 @@ import { Stock } from "@/types/stock/type";
 import { StockVariant } from "@/types/stockVariant/type";
 import { ApiResponse } from "@/types/types";
 import { UUID } from "crypto";
-import { getStockVariantFromWarehouse, searchStockFromWarehouse } from "@/lib/actions/warehouse/stock-actions";
+import {
+  getStockVariantFromWarehouse,
+  searchStockFromWarehouse,
+} from "@/lib/actions/warehouse/stock-actions";
 
 interface Props {
   placeholder?: string;
@@ -48,7 +51,7 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [hasInitialized, setHasInitialized] = useState(false);
-  
+
   // Use useRef to store the timeout reference
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const ITEMS_PER_PAGE = 20;
@@ -89,55 +92,66 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
         clearTimeout(debounceTimeoutRef.current);
       }
     };
-  }, [searchTerm, hasInitialized]); 
+  }, [searchTerm, hasInitialized]);
 
   async function loadSpecificVariant(variantId: string) {
     try {
       setIsLoading(true);
       const variantInfo = await getStockVariantFromWarehouse(variantId);
-      
+
+      console.log("variantInfo", variantInfo);
+
       if (variantInfo && variantInfo.variant) {
-        const stockWithVariant = [{
-          id: variantInfo.stockId || 'temp-id',
-          name: variantInfo.stockName || '',
-          description: '',
-          unit: '',
-          status: true,
-          canDelete: false,
-          business: '' as UUID,
-          location: '' as UUID,
-          isArchived: false,
-          stockVariants: [variantInfo.variant]
-        }];
-        
+        const stockWithVariant = [
+          {
+            id: variantInfo.stockId || "temp-id",
+            name: variantInfo.stockName || "",
+            description: "",
+            unit: "",
+            status: true,
+            canDelete: false,
+            business: "" as UUID,
+            location: "" as UUID,
+            isArchived: false,
+            stockVariants: [variantInfo.variant],
+          },
+        ];
+
         setStocks(stockWithVariant);
-        
+
         loadStocks("", 1, false);
       } else {
         loadStocks("", 1);
       }
     } catch (error) {
       console.error("Error loading specific variant:", error);
-      loadStocks("", 1); 
+      loadStocks("", 1);
     }
   }
 
-  async function loadStocks(query: string, currentPage: number, showLoading = true) {
+  async function loadStocks(
+    query: string,
+    currentPage: number,
+    showLoading = true,
+  ) {
     try {
       if (showLoading) {
         setIsLoading(true);
       }
-      
-      const response: ApiResponse<Stock> = await searchStockFromWarehouse(query, currentPage, ITEMS_PER_PAGE);
-      
+
+      const response: ApiResponse<Stock> = await searchStockFromWarehouse(
+        query,
+        currentPage,
+        ITEMS_PER_PAGE,
+      );
+
       if (currentPage === 1) {
         setStocks(response.content);
       } else {
-        setStocks(prevStocks => [...prevStocks, ...response.content]);
+        setStocks((prevStocks) => [...prevStocks, ...response.content]);
       }
-      
+
       setHasMore(!response.last);
-      
     } catch (error: any) {
       console.log("Error fetching stocks:", error);
     } finally {
@@ -145,27 +159,28 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
     }
   }
 
-  const allVariantOptions = useMemo(() => 
-    stocks.flatMap((stock) =>
-      stock.stockVariants.map((variant) => ({
-        id: variant.id,
-        displayName: getDisplayName(stock, variant),
-        disabled: disabledValues.includes(variant.id),
-        searchString: `${stock.name.toLowerCase()} ${variant.name.toLowerCase()}`
-      }))
-    ),
-    [stocks, disabledValues]
+  const allVariantOptions = useMemo(
+    () =>
+      stocks.flatMap((stock) =>
+        stock.stockVariants.map((variant) => ({
+          id: variant.id,
+          displayName: getDisplayName(stock, variant),
+          disabled: disabledValues.includes(variant.id),
+          searchString: `${stock.name.toLowerCase()} ${variant.name.toLowerCase()}`,
+        })),
+      ),
+    [stocks, disabledValues],
   );
 
-  const selectedOption = useMemo(() => 
-    allVariantOptions.find((option) => option.id === value),
-    [allVariantOptions, value]
+  const selectedOption = useMemo(
+    () => allVariantOptions.find((option) => option.id === value),
+    [allVariantOptions, value],
   );
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
     const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
-    
+
     if (isNearBottom && !isLoading && hasMore) {
       const nextPage = page + 1;
       setPage(nextPage);
@@ -190,7 +205,7 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
                 Loading...
               </div>
             ) : selectedOption ? (
-              selectedOption.displayName 
+              selectedOption.displayName
             ) : (
               placeholder
             )}
@@ -199,8 +214,8 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
         </PopoverTrigger>
         <PopoverContent className="w-[400px] p-0">
           <Command shouldFilter={false}>
-            <CommandInput 
-              placeholder={`Search ${placeholder.toLowerCase()}...`} 
+            <CommandInput
+              placeholder={`Search ${placeholder.toLowerCase()}...`}
               value={searchTerm}
               onValueChange={setSearchTerm}
             />
@@ -212,7 +227,9 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
                 {allVariantOptions.length === 0 && isLoading ? (
                   <div className="py-6 text-center">
                     <Loader2 className="mx-auto h-5 w-5 animate-spin opacity-50" />
-                    <p className="mt-2 text-sm text-muted-foreground">Loading stock items...</p>
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      Loading stock items...
+                    </p>
                   </div>
                 ) : (
                   allVariantOptions.map((option) => (
@@ -228,7 +245,7 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
                       <Check
                         className={cn(
                           "mr-2 h-4 w-4",
-                          value === option.id ? "opacity-100" : "opacity-0"
+                          value === option.id ? "opacity-100" : "opacity-0",
                         )}
                       />
                       {option.displayName}
@@ -238,7 +255,9 @@ const StockVariantSelectorForWarehouse: React.FC<Props> = ({
                 {isLoading && allVariantOptions.length > 0 && (
                   <div className="py-2 text-center">
                     <Loader2 className="mx-auto h-4 w-4 animate-spin opacity-50" />
-                    <p className="text-sm text-muted-foreground">Loading more...</p>
+                    <p className="text-sm text-muted-foreground">
+                      Loading more...
+                    </p>
                   </div>
                 )}
                 {!isLoading && hasMore && allVariantOptions.length > 0 && (

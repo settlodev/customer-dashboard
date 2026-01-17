@@ -30,7 +30,7 @@ const CategoryMenu: React.FC<CategoryMenuProps> = ({
   };
 
   return (
-    <div className="bg-white shadow-md sticky lg:top-[80px] top-[118px] z-30">
+    <div className="bg-white shadow-md sticky lg:top-[70px] top-[118px] z-30">
       <div className="max-w-6xl mx-auto">
         <ScrollArea className="w-full whitespace-nowrap">
           <div className="flex space-x-2 py-2 px-4">

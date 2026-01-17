@@ -1,144 +1,167 @@
 "use server";
 
-import {z} from "zod";
+import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import {getAuthenticatedUser} from "@/lib/auth-utils";
-import {parseStringify} from "@/lib/utils";
-import {ApiResponse, FormResponse} from "@/types/types";
-import {revalidatePath} from "next/cache";
-import {UUID} from "node:crypto";
+import { getAuthenticatedUser } from "@/lib/auth-utils";
+import { parseStringify } from "@/lib/utils";
+import { ApiResponse, FormResponse } from "@/types/types";
+import { revalidatePath } from "next/cache";
+import { UUID } from "node:crypto";
 import { console } from "node:inspector";
 import { StockModification } from "@/types/stock-modification/type";
 import { StockModificationSchema } from "@/types/stock-modification/schema";
 import { getCurrentLocation } from "../business/get-current-business";
+import { getCurrentWarehouse } from "@/lib/actions/warehouse/register-action";
 
-export const fetchStockModification = async () : Promise<StockModification[]> => {
-    await  getAuthenticatedUser();
+export const searchStockModificationsInWarehouse = async (
+  q: string,
+  page: number,
+  pageLimit: number,
+): Promise<ApiResponse<StockModification>> => {
+  await getAuthenticatedUser();
 
-    try {
-        const apiClient = new ApiClient();
-
-        const location = await getCurrentLocation();
-
-        const data = await  apiClient.get(
-            `/api/stock-modifications/${location?.id}/all`,
-        );
-        console.log("The list of Stock modifications in this location: ", data)
-        return parseStringify(data);
-    }
-    catch (error){
-        throw error;
-    }
-}
-export const searchStockModifications = async (
-    q:string,
-    page:number,
-    pageLimit:number
-): Promise<ApiResponse<StockModification>> =>{
-    await getAuthenticatedUser();
-
-    try {
-        const apiClient = new ApiClient();
-        const query ={
-            filters: [
-                {
-                    key:"stockVariant.stock.name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
-            // sorts:[
-            //     {
-            //         key:"stockVariant.stock.name",
-            //         direction:"ASC"
-            //     }
-            // ],
-            page:page ? page - 1:0,
-            size:pageLimit ? pageLimit : 10
-        }
-        const location = await getCurrentLocation();
-        const data = await  apiClient.post(
-            `/api/stock-modifications/${location?.id}`,
-            query
-        );
-        
-        return parseStringify(data);
-    }
-    catch (error){
-        throw error;
-    }
-
-}
-export const createStockModification = async (
-    modification: z.infer<typeof StockModificationSchema>
-): Promise<FormResponse | void> => {
-    let formResponse: FormResponse | null = null;
-
-    const validData = StockModificationSchema.safeParse(modification);
-
-    if (!validData.success) {
-        formResponse = {
-            responseType: "error",
-            message: "Please fill all the required fields",
-            error: new Error(validData.error.message)
-        };
-        return parseStringify(formResponse);
-    }
-
-    const location = await getCurrentLocation();
-    const payload = {
-        ...validData.data,
-        location: location?.id
+  try {
+    const apiClient = new ApiClient();
+    const query = {
+      filters: [
+        {
+          key: "stockVariant.stock.name",
+          operator: "LIKE",
+          field_type: "STRING",
+          value: q,
+        },
+      ],
+      page: page ? page - 1 : 0,
+      size: pageLimit ? pageLimit : 10,
     };
-
-    try {
-        const apiClient = new ApiClient();
-       await apiClient.post(
-            `/api/stock-modifications/${location?.id}/create`,
-            payload
-        );
-        formResponse = {
-            responseType: "success",
-            message: "Stock modification created successfully",
-        }
-    } catch (error) {
-        console.error("Error creating product", error);
-        formResponse = {
-            responseType: "error",
-            message: "Something went wrong while processing your request, please try again",
-            error: error instanceof Error ? error : new Error(String(error)),
-        };
-    }
-
-    revalidatePath("/stock-modifications");
-    return parseStringify(formResponse);
+    const warehouse = await getCurrentWarehouse();
+    const data = await apiClient.post(
+      `/api/warehouse/stock-modifications/${warehouse?.id}`,
+      query,
+    );
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
 };
 
+export const createStockModificationInWarehouse = async (
+  stockModifications: any[],
+): Promise<FormResponse | void> => {
+  let formResponse: FormResponse | null = null;
 
-export const getStockModified= async (id:UUID, stockVariant:UUID) : Promise<ApiResponse<StockModification>> => {
+  // Validate each stock modification item
+  const validationResults = stockModifications.map((modification) =>
+    StockModificationSchema.safeParse(modification),
+  );
 
+  const hasErrors = validationResults.some((result) => !result.success);
+
+  if (hasErrors) {
+    const firstError = validationResults.find((result) => !result.success);
+    formResponse = {
+      responseType: "error",
+      message: "Please fill all the required fields",
+      error: new Error(firstError?.error.message || "Validation failed"),
+    };
+    return parseStringify(formResponse);
+  }
+
+  const warehouse = await getCurrentWarehouse();
+
+  console.log("Valida warehouse is", warehouse);
+
+  // Check if all modifications have the same staff member
+  const uniqueStaffIds = [
+    ...new Set(stockModifications.map((mod) => mod.staff)),
+  ];
+
+  if (uniqueStaffIds.length > 1) {
+    formResponse = {
+      responseType: "error",
+      message:
+        "All stock modifications must be assigned to the same staff member",
+      error: new Error("Multiple staff members not allowed"),
+    };
+    return parseStringify(formResponse);
+  }
+
+  // Build payload according to API expectations
+  const payload = {
+    staff: stockModifications[0].staff,
+    modifiedItems: stockModifications.map((modification) => ({
+      reason: modification.reason,
+      comment: modification.comment || null,
+      quantity: modification.quantity,
+      stockVariant: modification.stockVariant,
+    })),
+  };
+
+  console.log("The payload passed is ", payload);
+
+  try {
     const apiClient = new ApiClient();
-    const query ={
-        filters:[
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            }
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
-    }
-    const location = await getCurrentLocation();
-    const response = await apiClient.post(
-        `/api/stock-modifications/${location?.id}/${id}`,
-        query,
+    await apiClient.post(
+      `/api/warehouse/stock-modifications/${warehouse?.id}/create`,
+      payload,
     );
+    formResponse = {
+      responseType: "success",
+      message: `${payload.modifiedItems.length} Stock Modification${payload.modifiedItems.length > 1 ? "s" : ""} recorded successfully`,
+    };
+  } catch (error: any) {
+    console.log("The error occuring is ", error);
 
-    return parseStringify(response)
-}
+    let errorMessage =
+      "Something went wrong while processing your request, please try again";
 
+    // Handle Axios error response
+    if (error?.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    }
+    // Handle custom error format
+    else if (error?.message) {
+      errorMessage = error.message;
+    }
 
+    formResponse = {
+      responseType: "error",
+      message: errorMessage,
+      error: error instanceof Error ? error : new Error(errorMessage),
+    };
+
+    console.error("form response error", formResponse);
+
+    return formResponse;
+  }
+
+  revalidatePath("/warehouse-stock-modifications");
+  return parseStringify(formResponse);
+};
+
+export const getStockModifiedInWarehouse = async (
+  id: UUID,
+  stockVariant: UUID,
+): Promise<ApiResponse<StockModification>> => {
+  const apiClient = new ApiClient();
+  const query = {
+    filters: [
+      {
+        key: "id",
+        operator: "EQUAL",
+        field_type: "UUID_STRING",
+        value: id,
+      },
+    ],
+    sorts: [],
+    page: 0,
+    size: 1,
+  };
+  const warehouse = await getCurrentWarehouse();
+  const response = await apiClient.post(
+    `/api/stock-modifications/${warehouse?.id}/${id}`,
+    query,
+  );
+
+  return parseStringify(response);
+};

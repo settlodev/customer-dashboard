@@ -62,7 +62,12 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
 
         if (error.response) {
             const { status } = error.response;
+            // const serverMessage = (error.response.data as { message?: string })?.message;
             const serverMessage = (error.response.data as { message?: string })?.message;
+
+            // console.log("Status:", status);
+            // console.log("Server message:", serverMessage);
+            // console.log("Full response data:", error.response.data);
 
             switch (status) {
                 case 400:
@@ -82,6 +87,7 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                     );
 
                 case 403:
+                    // console.log("Creating 403 error response with message:", serverMessage);
                     return createErrorResponse(
                         status,
                         ErrorCodes.FORBIDDEN,

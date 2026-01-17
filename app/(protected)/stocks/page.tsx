@@ -45,7 +45,7 @@ type Params = {
                         <Link href={`/stocks/new`}>Add Stock</Link>
                     </Button>
                     <div>
-                    {total === 0 ?  <CSVStockDialog /> : null}
+                    {total === 0 ?  <CSVStockDialog uploadType="location" /> : null}
                     {total === 0 ?  <ProductWithStockCSVDialog /> : null}
                     </div>
                 </div>

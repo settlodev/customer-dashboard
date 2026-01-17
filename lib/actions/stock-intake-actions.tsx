@@ -11,6 +11,7 @@ import {getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema, UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
+import { getCurrentWarehouse } from "./warehouse/current-warehouse-action";
 
 
 function isNextRedirect(error: any): boolean {
@@ -67,8 +68,8 @@ export const searchStockIntakes = async (
             ],
             sorts:[
                 {
-                    key:"orderDate",
-                    direction:"ASC"
+                    key:"dateCreated",
+                    direction:"DESC"
                 }
             ],
             page:page ? page - 1:0,
@@ -199,17 +200,25 @@ export const updateStockIntake = async (
    return parseStringify(formResponse);
 };
 
-export const downloadStockIntakeCSV = async (locationId?:string) => {
 
-    const location = await getCurrentLocation() || {id:locationId};
-    console.log("location",location)
-    
+export const downloadStockIntakeCSV = async () => {
+    let uploadUrl: string;
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+
     try {
-        const apiClient = new ApiClient();
-        const response = await apiClient.get(`/rust/csv-downloading/download-stock-intake-upload-sample-csv?location_id=${location?.id}`);
-        console.log("CSV download response", response);
+        if (location?.id) {
+            uploadUrl = `/rust/csv-downloading/download-stock-intake-upload-sample-csv?location_id=${location?.id}`;
+        } else {
+            const warehouse = await getCurrentWarehouse();
+            uploadUrl = `/rust/csv-downloading/download-warehouse-stock-intake-upload-sample-csv?warehouse_id=${warehouse?.id}`;
+        }
+        const response = await apiClient.get(
+            uploadUrl,
+        );
         return response;
-    } catch (error) {
+    } 
+    catch (error) {
         console.error("Error downloading CSV file:", error);
         throw new Error(`Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -234,11 +243,25 @@ export const uploadStockIntakeCSV = async ({ fileData, fileName }: { fileData: s
 
     // console.log("Formatted CSV data:", formattedCSVData);
 
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    
+    let uploadUrl: string;
+    let isLocationUpload = false;
+    
     try {
-        const apiClient = new ApiClient();
-        const location = await getCurrentLocation();
+        
+        if (location?.id) {
+            uploadUrl = `/rust/csv-uploading/upload-stock-intake-csv?location_id=${location?.id}`;
+            isLocationUpload = true;
+        } else {
+            const warehouse = await getCurrentWarehouse();
+            uploadUrl = `/rust/csv-uploading/upload-warehouse-stock-intake-csv?warehouse_id=${warehouse?.id}`;
+            isLocationUpload = false;
+        }
+
         await apiClient.post(
-            `/rust/csv-uploading/upload-stock-intake-csv?location_id=${location?.id}`,
+            uploadUrl,
             formattedCSVData,
             {
                 headers: {
@@ -249,17 +272,41 @@ export const uploadStockIntakeCSV = async ({ fileData, fileName }: { fileData: s
             }
         );
 
-        revalidatePath("/stock-intakes");
         
     } catch (error: any) {
-
         if (isNextRedirect(error)) {
             throw error;
-        }
-
-        console.error("Error uploading CSV file:", error);
-        throw new Error(`Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`);
-    }
-     
+          }
       
+          if (error?.response?.status === 413) {
+            throw new Error("File too large. Please reduce the file size and try again.");
+          }
+      
+          if (error?.response?.status === 400) {
+            throw new Error(
+              `Invalid CSV format: ${error?.response?.data?.message || 'Please check your CSV file format and try again.'}`
+            );
+          }
+      
+          if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+            throw new Error("Upload timeout. Please try again with a smaller file or check your connection.");
+          }
+      
+          // Generic error with more context
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          throw new Error(`Failed to upload CSV file: ${errorMessage}`)
+    }
+
+    
+    try {
+        if (isLocationUpload) {
+          revalidatePath("/stock-intakes");
+        } else {
+          revalidatePath("/warehouse-stock-intakes");
+        }
+      } catch (revalidationError) {
+        console.warn("Failed to revalidate path after successful upload:", revalidationError);
+        
+      }
+     
 };

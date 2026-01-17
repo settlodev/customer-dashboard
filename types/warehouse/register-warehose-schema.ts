@@ -12,9 +12,9 @@ export const RegisterWarehouseSchema = object({
           message: "Invalid phone number",
         }
       ),
-    image: string().optional(),
+    image: string().nullish().optional(),
     email: string({ required_error: "Email is required" }).email("Please enter a valid email address"),
-    description: string().optional(),
+    description: string().nullish().optional(),
     openingTime: string({ required_error: "Opening time is required" }),
     closingTime: string({ required_error: "Closing time is required" }),  
 });

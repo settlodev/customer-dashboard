@@ -7,15 +7,17 @@ import { StockVariant } from '@/types/stockVariant/type';
 interface TableExportProps {
   data?: StockVariant[];
   filename?: string;
-  locationId?: string;
+  // locationId?: string;
   useEndpoint?: boolean;
+  exportType: 'warehouse' | 'location';
 }
 
 const StockExport: React.FC<TableExportProps> = ({ 
   data = [], 
   filename = 'stock-data',
-  locationId,
-  useEndpoint = true
+  // locationId,
+  useEndpoint = true,
+  exportType
 }) => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,12 +45,12 @@ const StockExport: React.FC<TableExportProps> = ({
           : '';
           
         return [
-          stock.name || '', // Stock/Product Name
-          stock.stockName || '', // Variant Name
-          stock.startingValue?.toString() || '0', // Starting Value
-          stock.startingQuantity?.toString() || '0', // Starting Quantity  
-          stock.alertLevel?.toString() || '0', // Alert Level
-          expiryDate // Expiry Date
+          stock.name || '', 
+          stock.stockName || '', 
+          stock.startingValue?.toString() || '0', 
+          stock.startingQuantity?.toString() || '0',  
+          stock.alertLevel?.toString() || '0', 
+          expiryDate 
         ].map(escapeCSVValue).join(',');
       })
     ];
@@ -88,7 +90,7 @@ const StockExport: React.FC<TableExportProps> = ({
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
-      const response = await downloadStockCSV(locationId);
+      const response = await downloadStockCSV(exportType);
       let csvData;
       
       if (response) {

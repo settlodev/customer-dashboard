@@ -42,6 +42,12 @@ interface SidebarProps {
     menuType?: MenuType;
 }
 
+interface MenuItem {
+    link: string | UrlObject;
+    title: string;
+    id?: string;
+}
+
 const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: SidebarProps) => {
     const [visibleIndex, setVisibleIndex] = useState<number>(0);
     const [subscription, setSubscription] = useState<ActiveSubscription | null>(null);
@@ -50,6 +56,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
 
     // Fetch subscription based on menu type
     useEffect(() => {
+        let isMounted = true;
         const fetchSubscription = async () => {
             try {
                 setIsLoading(true);
@@ -64,25 +71,35 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                     activeSubscription = await getActiveSubscription();
                 }
                 
-                setSubscription(activeSubscription);
+                if (isMounted) {
+                    setSubscription(activeSubscription);
+                }
             } catch (err) {
-                console.error(`Failed to fetch ${menuType} subscription:`, err);
-                setError('Failed to load subscription data');
-                setSubscription(null);
+               
+                if (isMounted) {
+                    setError('Failed to load subscription data');
+                    setSubscription(null);
+                }
             } finally {
-                setIsLoading(false);
+                if (isMounted) {
+                    setIsLoading(false);
+                }
             }
         };
 
         fetchSubscription();
-    }, [menuType]); // Re-run when menuType changes
+        return () => {
+            isMounted = false;
+        };
+    }, [menuType]); 
 
     //Check if subscription is expired, null, or empty
     const isSubscriptionInactive = !subscription || 
                                    subscription.subscriptionStatus === 'EXPIRED' || 
+                                   
                                    subscription.subscriptionStatus === null || 
                                    subscription.subscriptionStatus === '';
-
+    
     // Get filtered menu items based on subscription
     const myMenuItems = menuItems({
         subscription,
@@ -128,6 +145,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                         size="icon"
                         onClick={onClose}
                         className="lg:hidden text-gray-400 hover:text-gray-100"
+                        aria-label="Close sidebar"
                     >
                         <X className="h-5 w-5" />
                     </Button>
@@ -212,9 +230,9 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                                 </Link>
                                             </div>
                                         ) : (
-                                            section.items.map((item: { link: string | UrlObject; title: string | number | bigint | boolean | React.ReactElement<any, string | React.JSXElementConstructor<any>> | Iterable<React.ReactNode> | React.ReactPortal | Promise<React.AwaitedReactNode> | null | undefined; }, index: React.Key | null | undefined) => (
+                                            section.items.map((item: MenuItem, index: React.Key | null | undefined) => (
                                                 <Link
-                                                    key={index}
+                                                    key={item.title}
                                                     href={item.link}
                                                     onClick={isMobile ? onClose : undefined}
                                                     className={cn(
@@ -236,35 +254,37 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             </div>
 
             <div className="border-t border-gray-700 p-4">
-                
-                <Link
-                    href="/renew-subscription"
-                    onClick={isMobile ? onClose : undefined}
-                    className={cn(
-                        "flex items-center rounded-lg px-2 py-1.5",
-                        "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
-                        "transition-colors duration-200"
-                    )}
-                >
-                    <CreditCard className="mr-2 h-4 w-4"/>
-                    <span>Billing</span>
-                </Link>
-                
-                {/* Only show settings if subscription is active */}
-                {!isSubscriptionInactive && (
-                    <Link
-                        href="/settings"
-                        onClick={isMobile ? onClose : undefined}
-                        className={cn(
-                            "flex items-center rounded-lg px-2 py-1.5",
-                            "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
-                            "transition-colors duration-200"
-                        )}
-                    >
-                        <Settings className="mr-2 h-4 w-4"/>
-                        <span>Settings</span>
-                    </Link>
-                )}
+            {menuTypeLabel === 'Location' && (
+    <>
+        <Link
+            href="/renew-subscription"
+            onClick={isMobile ? onClose : undefined}
+            className={cn(
+                "flex items-center rounded-lg px-2 py-1.5",
+                "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
+                "transition-colors duration-200"
+            )}
+        >
+            <CreditCard className="mr-2 h-4 w-4"/>
+            <span>Billing</span>
+        </Link>
+  
+    </>
+)}
+      {!isSubscriptionInactive  && menuTypeLabel === 'Location' &&(
+        <Link
+            href="/settings"
+            onClick={isMobile ? onClose : undefined}
+            className={cn(
+                "flex items-center rounded-lg px-2 py-1.5",
+                "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
+                "transition-colors duration-200"
+            )}
+        >
+            <Settings className="mr-2 h-4 w-4"/>
+            <span>Settings</span>
+        </Link>)
+}
 
                 <VersionDisplay />
 

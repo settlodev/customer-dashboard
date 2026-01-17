@@ -149,7 +149,6 @@ export const getCurrentWarehouse = async (): Promise<Warehouses | undefined> => 
     const cookieStore = await cookies();
     const warehouseCookie = cookieStore.get("currentWarehouse");
 
-    // console.log("locationCookie: ", warehouseCookie);
    
     if (!warehouseCookie) return undefined;
 

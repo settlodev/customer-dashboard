@@ -6,7 +6,7 @@ import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-b
 
 interface ArchiveEntityProps {
   ids: string[];
-  entityType: 'product' | 'stock' | 'staff' |'stock-intake';
+  entityType: 'product' | 'stock' | 'staff' |'stock-intake' | 'customer' | 'supplier' | 'category';
   locationId?: string;
 }
 

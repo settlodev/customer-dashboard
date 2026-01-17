@@ -52,8 +52,29 @@ export const columns: ColumnDef<Expense>[] = [
   {
     id: "amount",
     accessorKey: "amount",
+    header:'Total amount',
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue("amount"));
+      const formattedAmount = Intl.NumberFormat().format(amount);
+      return <div>{formattedAmount}</div>;
+    },
+    enableHiding: false,
+  },
+  {
+    accessorKey: "paidAmount",
+    header:'Paid Amount',
+    cell: ({ row }) => {
+      const amount = parseFloat(row.getValue("paidAmount"));
+      const formattedAmount = Intl.NumberFormat().format(amount);
+      return <div>{formattedAmount}</div>;
+    },
+    enableHiding: false,
+  },
+  {
+    accessorKey: "unpaidAmount",
+    header:'UnPaid Amount',
+    cell: ({ row }) => {
+      const amount = parseFloat(row.getValue("unpaidAmount"));
       const formattedAmount = Intl.NumberFormat().format(amount);
       return <div>{formattedAmount}</div>;
     },
@@ -62,21 +83,14 @@ export const columns: ColumnDef<Expense>[] = [
    {
     id:'date',
     accessorKey:"date",
+    header:"Date",
     enableHiding: false,
     cell: ({row})=>{
       const date = row.original.date;
       const format = new Intl.DateTimeFormat("en").format(new Date(date))
       return <div>{format}</div>
     }
-   },
-  {
-    id: "status",
-    accessorKey: "status",
-    header: "Status",
-    cell: ({ row }) => <StateColumn state={row.original.status} />,
-    enableHiding: false,
-},
- 
+   }, 
   {
     id: "actions",
     cell: ({ row }) => <CellAction data={row.original} />,

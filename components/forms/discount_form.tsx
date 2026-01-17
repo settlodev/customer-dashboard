@@ -27,70 +27,59 @@ import { createDiscount, updateDiscount } from "@/lib/actions/discount-actions";
 import DiscountTypeSelector from "../widgets/discount-type-selector";
 import { formatNumber } from "@/lib/utils";
 import { Switch } from "../ui/switch";
-import DateTimePicker from "../widgets/datetimepicker";
 import { NumericFormat } from "react-number-format";
 import { useRouter } from "next/navigation";
 import DiscountUsageSelector from "../widgets/discount-usage-selector";
 import DiscountApplyOptionsWidget from "../widgets/discount-apply-selectort";
+import DateTimePickerTwo from "@/components/widgets/date-time-picker";
 
 function DiscountForm({ item }: { item: Discount | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [error,] = useState<string | undefined>("");
-  const [success,] = useState<string | undefined>("");
-  const [validFrom, setValidFrom] = useState<Date | undefined>(
-    item?.validFrom ? new Date(item.validFrom) : undefined
-  );
-  const [validTo, setValidTo] = useState<Date | undefined>(item?.validTo ? new Date(item.validTo) : undefined);
+  const [error] = useState<string | undefined>("");
+  const [success] = useState<string | undefined>("");
+
   const { toast } = useToast();
   const router = useRouter();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const handleTimeChange = (type: "hour" | "minutes", value: string) => {
-
-    const newValidFromDate = validFrom ? new Date(validFrom) : new Date();
-    const newValidToDate = validTo ? new Date(validTo) : new Date();
-
-    if (type === "hour") {
-      newValidFromDate.setHours(Number(value));
-      newValidToDate.setHours(Number(value))
-    } else if (type === "minutes") {
-      newValidFromDate.setMinutes(Number(value));
-      newValidToDate.setMinutes(Number(value))
-    }
-    setValidFrom(newValidFromDate);
-    setValidTo(newValidToDate);
-  };
-
-  const handleDateSelect = (date: Date) => {
-    setValidFrom(date);
-    setValidTo(date)
-  };
-
   const form = useForm<z.infer<typeof DiscountSchema>>({
     resolver: zodResolver(DiscountSchema),
     defaultValues: {
       ...item,
-      discountValue: typeof item?.discountValue === 'string' ? Number(item.discountValue) : item?.discountValue,
-      status: true
+      discountValue: item?.discountValue,
+      status: true,
+      validFrom: item?.validFrom ? new Date(item.validFrom) : undefined,
+      validTo: item?.validTo ? new Date(item.validTo) : undefined,
+      department: item?.department || null,
+      customer: item?.customer || null,
+      category: item?.category || null,
+      product: item?.product || null,
     },
   });
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
+      const errorEntries = Object.entries(errors);
+
+      const firstError = errorEntries[0]?.[1]?.message;
+      const errorMessage =
+        typeof firstError === "string"
+          ? firstError
+          : "Please check all fields and try again";
+
       toast({
         variant: "destructive",
-        title: "Uh oh! something went wrong",
-        description: typeof errors.message === 'string' && errors.message
-          ? errors.message
-          : "There was an issue submitting your form, please try later",
+        title: "Validation Error",
+        description: errorMessage,
       });
     },
-    [toast]
+    [toast],
   );
 
   const submitData = (values: z.infer<typeof DiscountSchema>) => {
+    console.log("The payload is submitted", values);
     startTransition(() => {
       if (item) {
         updateDiscount(item.id, values).then((data: FormResponse | void) => {
@@ -122,19 +111,21 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
     });
   };
 
-  const handleSelectionChange = (selection: { itemType: string; itemId: string | null }) => {
+  const handleSelectionChange = (selection: {
+    itemType: string;
+    itemId: string | null;
+  }) => {
     const { itemType, itemId } = selection;
 
     console.log("Selected item type:", itemType);
     console.log("Selected item ID:", itemId);
 
-
-
     if (itemType && itemId) {
-      form.setValue(itemType as keyof z.infer<typeof DiscountSchema>, itemId, { shouldValidate: true });
+      form.setValue(itemType as keyof z.infer<typeof DiscountSchema>, itemId, {
+        shouldValidate: true,
+      });
     }
   };
-
 
   return (
     <Form {...form}>
@@ -202,7 +193,11 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                           allowNegative={false}
                           onValueChange={(values) => {
                             console.log(values);
-                            const rawValue = Number(values.value.replace(/,/g, "").replace(/\.00$/, ''));
+                            const rawValue = Number(
+                              values.value
+                                .replace(/,/g, "")
+                                .replace(/\.00$/, ""),
+                            );
                             field.onChange(rawValue);
                           }}
                         />
@@ -218,15 +213,16 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                     <FormItem className="flex flex-col lg:mt-4">
                       <FormLabel>Minimum Spend</FormLabel>
                       <FormControl>
-
                         <Input
                           placeholder="Enter minimum spend for discount,if customer has spend X or more amount"
                           {...field}
                           disabled={isPending}
-                          value={field.value ? formatNumber(field.value) : ''}
+                          value={field.value ? formatNumber(field.value) : ""}
                           onChange={(e) => {
-                            const value = e.target.value.replace(/,/g, '');
-                            field.onChange(value ? parseFloat(value) : undefined);
+                            const value = e.target.value.replace(/,/g, "");
+                            field.onChange(
+                              value ? parseFloat(value) : undefined,
+                            );
                           }}
                         />
                       </FormControl>
@@ -252,7 +248,9 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                           placeholder="Select discount usage"
                         />
                       </FormControl>
-                      <FormDescription>Discount Usage can either be once or repeated</FormDescription>
+                      <FormDescription>
+                        Discount Usage can either be once or repeated
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -264,12 +262,22 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Valid From </FormLabel>
-                      <DateTimePicker
+                      <DateTimePickerTwo
                         field={field}
-                        date={validFrom}
-                        setDate={setValidFrom}
-                        handleTimeChange={handleTimeChange}
-                        onDateSelect={handleDateSelect}
+                        date={field.value}
+                        setDate={field.onChange}
+                        handleTimeChange={(type, value) => {
+                          const newDate = field.value
+                            ? new Date(field.value)
+                            : new Date();
+                          if (type === "hour") {
+                            newDate.setHours(Number(value));
+                          } else if (type === "minutes") {
+                            newDate.setMinutes(Number(value));
+                          }
+                          field.onChange(newDate);
+                        }}
+                        onDateSelect={field.onChange}
                         minDate={today}
                       />
                       <FormDescription>
@@ -286,12 +294,22 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Valid To </FormLabel>
-                      <DateTimePicker
+                      <DateTimePickerTwo
                         field={field}
-                        date={validTo}
-                        setDate={setValidTo}
-                        handleTimeChange={handleTimeChange}
-                        onDateSelect={handleDateSelect}
+                        date={field.value}
+                        setDate={field.onChange}
+                        handleTimeChange={(type, value) => {
+                          const newDate = field.value
+                            ? new Date(field.value)
+                            : new Date();
+                          if (type === "hour") {
+                            newDate.setHours(Number(value));
+                          } else if (type === "minutes") {
+                            newDate.setMinutes(Number(value));
+                          }
+                          field.onChange(newDate);
+                        }}
+                        onDateSelect={field.onChange}
                         minDate={new Date()}
                       />
                       <FormDescription>
@@ -305,11 +323,14 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                 <DiscountApplyOptionsWidget
                   onSelectionChange={handleSelectionChange}
                   initialItemType={
-                    // item?.stockVariant ? "variant" : 
-                    item?.customer ? "customer" :
-                      item?.category ? "category" :
-                        item?.department ? "department" :
-                          null
+                    // item?.stockVariant ? "variant" :
+                    item?.customer
+                      ? "customer"
+                      : item?.category
+                        ? "category"
+                        : item?.department
+                          ? "department"
+                          : null
                   }
                   initialItemId={
                     item?.customer || item?.category || item?.department || null
@@ -321,20 +342,20 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                     <FormField
                       control={form.control}
                       name="status"
-
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <FormLabel>
-
                             Discount Status {""}
-                            <span className={item.status ? "text-green-500" : "text-red-500"}>
+                            <span
+                              className={
+                                item.status ? "text-green-500" : "text-red-500"
+                              }
+                            >
                               ({item.status ? "Active" : "Inactive"})
                             </span>
-
                           </FormLabel>
                           <FormControl>
                             <Switch
-
                               checked={field.value}
                               onCheckedChange={field.onChange}
                               disabled={isPending}
@@ -345,9 +366,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
                       )}
                     />
                   </div>
-                )
-                }
-
+                )}
               </div>
             </>
           </>
@@ -360,7 +379,6 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
             />
           </div>
         </div>
-
       </form>
     </Form>
   );

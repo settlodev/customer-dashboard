@@ -6,6 +6,8 @@ export declare interface Recipe {
     id:UUID;
     name:string;
     recipeStockVariants:recipeVariants[];
+    image:string;
+    cost:number;
     variant:Variant;
     variantName:string;
     location:string;

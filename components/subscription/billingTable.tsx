@@ -1,9 +1,9 @@
-// components/billing/BillingHistoryTable.tsx
-import React, { useState, useEffect } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Search, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
+import { FileText, Search, Calendar, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react';
 import { searchInvoices } from '@/lib/actions/invoice-actions';
 
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -26,7 +27,8 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
   
   const { toast } = useToast();
 
-  const fetchInvoices = async (page: number = 1, search: string = '') => {
+  // Memoize the fetch function to prevent unnecessary re-renders
+  const fetchInvoices = useCallback(async (page: number = 1, search: string = '') => {
     setLoading(true);
     try {
       const response = await searchInvoices(search, page, itemsPerPage, locationId);
@@ -43,34 +45,31 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
     } finally {
       setLoading(false);
     }
-  };
+  }, [locationId, itemsPerPage, toast]); 
 
-  // Initial load
-  useEffect(() => {
-    fetchInvoices(1, searchTerm);
-  }, [searchTerm, fetchInvoices]);
 
-  // Search effect with debounce
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      setCurrentPage(1);
-      fetchInvoices(1, searchTerm);
+      setDebouncedSearchTerm(searchTerm);
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, fetchInvoices]);
+  }, [searchTerm]);
 
-  // Page change effect
+  
   useEffect(() => {
-    if (currentPage > 1) {
-      fetchInvoices(currentPage, searchTerm);
-    }
-  }, [currentPage, searchTerm,fetchInvoices]);
+    setCurrentPage(1); 
+  }, [debouncedSearchTerm]);
+
+
+  useEffect(() => {
+    fetchInvoices(currentPage, debouncedSearchTerm);
+  }, [currentPage, debouncedSearchTerm, fetchInvoices]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'PAID': return 'bg-green-100 text-green-800 hover:bg-green-200';
-      case 'pending': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+      case 'NOT_PAID': return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
       case 'FAILED': return 'bg-red-100 text-red-800 hover:bg-red-200';
       case 'overdue': return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
       default: return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
@@ -85,24 +84,10 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
     });
   };
 
-  const getInvoiceDescription = (invoice: Invoice) => {
-    if (invoice.locationSubscriptions?.length > 0) {
-      const subscriptionNames = invoice.locationSubscriptions
-        .map(sub => sub.subscriptionPackageName)
-        .join(', ');
-      return `Subscription: ${subscriptionNames}`;
-    }
-    return 'Invoice';
-  };
 
-  const getInvoiceItems = (invoice: Invoice) => {
-    if (invoice.locationSubscriptions?.length > 0) {
-      return invoice.locationSubscriptions.map(sub => 
-        `${sub.subscriptionPackageName} (${sub.numberOfMonths} month${sub.numberOfMonths > 1 ? 's' : ''})`
-      );
-    }
-    return ['No items'];
-  };
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentPage(page);
+  }, []);
 
   return (
     <Card className={`border-t-4 border-t-purple-500 ${className || ''}`}>
@@ -151,10 +136,9 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
                   <tr>
                     <th className="px-4 py-3 text-left font-semibold text-sm">Invoice ID</th>
                     <th className="px-4 py-3 text-left font-semibold text-sm">Date</th>
-                    <th className="px-4 py-3 text-left font-semibold text-sm">Description</th>
                     <th className="px-4 py-3 text-left font-semibold text-sm">Amount</th>
                     <th className="px-4 py-3 text-left font-semibold text-sm">Status</th>
-                    <th className="px-4 py-3 text-left font-semibold text-sm">Location</th>
+                    {/* <th className="px-4 py-3 text-left font-semibold text-sm">Actions</th> */}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -177,27 +161,30 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
                             {formatDate(invoice.dateCreated)}
                           </div>
                         </td>
-                        <td className="px-4 py-4">
-                          <div>
-                            <p className="font-medium">{getInvoiceDescription(invoice)}</p>
-                            <p className="text-xs text-gray-500">
-                              {getInvoiceItems(invoice).join(', ')}
-                            </p>
-                          </div>
-                        </td>
                         <td className="px-4 py-4 font-semibold">
                           TZS {invoice.totalAmount.toLocaleString()}
                         </td>
                         <td className="px-4 py-4">
                           <span 
-                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.locationInvoiceStatus)}`}
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(invoice.paymentStatus)}`}
                           >
-                            {invoice.locationInvoiceStatus}
+                            {invoice.paymentStatus}
                           </span>
                         </td>
-                        <td className="px-4 py-4">
-                          <span className="text-sm">{invoice.locationName || 'N/A'}</span>
-                        </td>
+                        {/* <td className="px-4 py-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              // onClick={() => handleViewInvoice(invoice)}
+                              
+                              className="h-8 w-8 p-0"
+                            >
+                              <Eye size={14} />
+                            </Button>
+                            
+                          </div>
+                        </td> */}
                       </tr>
                     ))
                   )}
@@ -218,7 +205,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                onClick={() => handlePageChange(Math.max(currentPage - 1, 1))}
                 disabled={currentPage === 1}
               >
                 <ChevronLeft size={16} />
@@ -243,7 +230,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
                       key={page}
                       variant={currentPage === page ? "default" : "outline"}
                       size="sm"
-                      onClick={() => setCurrentPage(page)}
+                      onClick={() => handlePageChange(page)}
                       className="w-8 h-8 p-0"
                     >
                       {page}
@@ -255,7 +242,7 @@ const BillingHistoryTable: React.FC<BillingHistoryTableProps> = ({ className, lo
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                onClick={() => handlePageChange(Math.min(currentPage + 1, totalPages))}
                 disabled={currentPage === totalPages}
               >
                 Next

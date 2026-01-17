@@ -1,73 +1,97 @@
+"use client";
 
+import React, { useState } from "react";
+import { toast } from "@/hooks/use-toast";
+import BusinessForm from "./business_form";
+import { createBusiness } from "@/lib/actions/business-actions";
+import { createLocation } from "@/lib/actions/location-actions";
+import { Business } from "@/types/business/type";
+import { LocationForm } from "@/components/forms/location_form";
 
-
-  'use client';
-
-import React, { useState } from 'react';
-import { toast } from '@/hooks/use-toast';
-import BusinessForm from './business_form';
-import LocationForm from './location_form';
-import { createBusiness } from '@/lib/actions/business-actions';
-import { createLocation } from '@/lib/actions/location-actions';
-import { Business } from '@/types/business/type';
-
-const MultiStepBusinessForm = ({ item }: { item: Business | null | undefined }) => {
-  console.log("item: ", item);
+const MultiStepBusinessForm = ({
+  item,
+}: {
+  item: Business | null | undefined;
+}) => {
   const [step, setStep] = useState(1);
   const [businessData, setBusinessData] = useState<Business | null>(null);
+  const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(
+    null,
+  );
   const isNewItem = !item;
-  
+
   const handleBusinessSubmit = async (data: any) => {
     console.log("Business Data:", data);
-    setBusinessData(data as Business);
 
     if (!isNewItem) {
-      await handleLocationSubmit({});
+      setBusinessData(data as Business);
       return;
     }
 
-    setStep(2);
-    toast({
-      title: "Business information saved",
-      description: "Please complete location information to finish setup",
-    });
-  };
-
-  const handleLocationSubmit = async (locationData: any) => {
-    let savedBusiness;
     try {
-      // First submit business data
-      if (businessData) {
-        savedBusiness = await createBusiness(businessData);
-        // console.log("Saved Business:", savedBusiness );
-      }
-      
-      if (savedBusiness) {
-        // Then submit location data with the new business ID
-        const businessId = (savedBusiness as unknown as Business).id; 
-        const locationPayload = {
-          ...locationData,
-          business: businessId
-        };
+      const savedBusiness = await createBusiness(data);
 
-        console.log("Location with Business ID:", locationPayload);
-        
-        // Changed to use the imported function directly instead of passing a second parameter
-        const savedLocation = await createLocation(locationPayload);
-        
-        if (savedLocation) {
-          toast({
-            title: "Setup complete!",
-            description: "Business and location have been registered successfully.",
-          });
-        }
+      console.log("Business data after successful saving data:", savedBusiness);
+
+      if (savedBusiness?.responseType === "success" && savedBusiness.data) {
+        const businessId = (savedBusiness.data as Business).id;
+        setCreatedBusinessId(businessId);
+        setBusinessData(savedBusiness.data as Business);
+
+        setStep(2);
+        toast({
+          title: "Business created successfully",
+          description: "Please complete location information to finish setup",
+        });
+      } else {
+        throw new Error("Failed to create business");
       }
     } catch (error) {
-      console.error("Error saving business or location:", error);
+      console.error("Error creating business:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "There was a problem setting up your business. Please try again.",
+        description:
+          "There was a problem creating your business. Please try again.",
+      });
+    }
+  };
+
+  const handleLocationSubmit = async (locationData: any) => {
+    if (!createdBusinessId) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Business ID not found. Please try again.",
+      });
+      return;
+    }
+
+    try {
+      // Pass the businessId as the second parameter
+      const savedLocation = await createLocation(
+        locationData,
+        createdBusinessId,
+      );
+
+      if (savedLocation?.responseType === "success") {
+        toast({
+          title: "Setup complete!",
+          description:
+            "Business and location have been registered successfully.",
+        });
+
+        window.location.href = "/select-location";
+      } else {
+        throw new Error(savedLocation?.message || "Failed to create location");
+      }
+    } catch (error) {
+      console.error("Error creating location:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          "There was a problem creating the location. Please try again.",
       });
     }
   };
@@ -84,14 +108,16 @@ const MultiStepBusinessForm = ({ item }: { item: Business | null | undefined }) 
             )}
             <h2 className="text-lg font-semibold">Business Information</h2>
           </div>
-          <BusinessForm 
-            item={item} 
+          <BusinessForm
+            item={item}
             onSubmit={handleBusinessSubmit}
-            submitButtonText={isNewItem ? "Continue to Location Setup" : "Update Business"}
+            submitButtonText={
+              isNewItem ? "Continue to Location Setup" : "Update Business"
+            }
           />
         </div>
       )}
-      
+
       {step === 2 && isNewItem && (
         <div className="space-y-4">
           <div className="flex items-center gap-2">
@@ -100,23 +126,26 @@ const MultiStepBusinessForm = ({ item }: { item: Business | null | undefined }) 
             </div>
             <h2 className="text-lg font-semibold">Location Information</h2>
           </div>
-          <LocationForm 
+          <LocationForm
             item={null}
             onSubmit={handleLocationSubmit}
             multipleStep={true}
+            businessId={createdBusinessId}
           />
         </div>
       )}
-      
+
       {isNewItem && (
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <div className={`h-2 w-2 rounded-full ${step >= 1 ? 'bg-primary' : 'bg-gray-200'}`} />
-            <div className={`h-2 w-2 rounded-full ${step >= 2 ? 'bg-primary' : 'bg-gray-200'}`} />
+            <div
+              className={`h-2 w-2 rounded-full ${step >= 1 ? "bg-primary" : "bg-gray-200"}`}
+            />
+            <div
+              className={`h-2 w-2 rounded-full ${step >= 2 ? "bg-primary" : "bg-gray-200"}`}
+            />
           </div>
-          <p className="text-sm text-gray-500">
-            Step {step} of 2
-          </p>      
+          <p className="text-sm text-gray-500">Step {step} of 2</p>
         </div>
       )}
     </div>

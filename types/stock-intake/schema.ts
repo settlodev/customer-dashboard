@@ -5,7 +5,7 @@ export const StockIntakeSchema = object({
     quantity: preprocess(
         (val)=>{
             if(typeof val==="string" && val.trim()!==""){
-                return parseInt(val)
+                return parseFloat(val)
             }
             return val
         },
@@ -14,7 +14,7 @@ export const StockIntakeSchema = object({
     value: preprocess(
         (val)=>{
             if(typeof val==="string" && val.trim()!==""){
-                return parseInt(val)
+                return parseFloat(val)
             }
             return val
         },

@@ -1,4 +1,5 @@
 "use server"
+import { deleteActiveLocationCookie } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { ActiveSubscription } from "@/types/subscription/type";
@@ -20,6 +21,9 @@ export const getCurrentWarehouse = async (): Promise<any | undefined> => {
 };
 export const refreshWarehouse = async (data: any): Promise<void> => {
     if (!data) throw new Error("Business ID is required to perform this request");
+
+    await deleteActiveLocationCookie();
+
     const cookieStore =await cookies();
     cookieStore.set({
         name: "currentWarehouse",

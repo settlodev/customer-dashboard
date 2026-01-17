@@ -1,20 +1,20 @@
 import React from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Eye, 
-  Pencil, 
-  MoreHorizontal, 
-  ArrowDownToLine, 
+import {
+  Eye,
+  Pencil,
+  MoreHorizontal,
+  ArrowDownToLine,
   FileSignature,
-  ArrowLeftRight
+  ArrowLeftRight,
 } from "lucide-react";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { StockVariant } from "@/types/stockVariant/type";
@@ -24,10 +24,10 @@ interface CellActionProps {
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
+  console.log("The data from api is", data);
   const router = useRouter();
 
   const handleRedirect = (id: string) => {
-    
     router.push(`/stock-variants/${id}?stock=${data.stock}`);
   };
 
@@ -57,7 +57,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       >
         <Eye className="h-4 w-4 text-slate-600" />
       </Button>
-      
+
       <Button
         variant="ghost"
         size="sm"
@@ -69,11 +69,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button 
-            variant="ghost" 
-            size="sm"
-            className="h-8 w-8 p-0"
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
             <span className="sr-only">Open menu</span>
             <MoreHorizontal className="h-4 w-4" />
           </Button>

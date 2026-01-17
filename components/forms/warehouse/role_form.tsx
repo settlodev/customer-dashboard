@@ -16,9 +16,8 @@ import {
 } from "@/components/ui/form";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
-import { FormResponse, WarehousePrivilegeItem } from "@/types/types";
+import { WarehousePrivilegeItem } from "@/types/types";
 import { WarehouseRoleSchema } from "@/types/roles/schema";
-import { FormError } from "@/components/widgets/form-error";
 import { WarehouseRole } from "@/types/roles/type";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
@@ -32,7 +31,6 @@ import { searchWarehousePrivilegesSection } from "@/lib/actions/privileges-actio
 const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined }) => {
 
     const [isPending, startTransition] = useTransition();
-    const [response, setResponse] = useState<FormResponse | undefined>();
     const [privileges, setPrivileges] = useState<string[]>([]);
     const [sections, setSections] = useState<WarehousePrivilegeItem[]>([]);
     const [isLoadingSections, setIsLoadingSections] = useState(true);
@@ -63,16 +61,13 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
     });
 
     const submitData = (values: z.infer<typeof WarehouseRoleSchema>) => {
-        setResponse(undefined);
-
         if (privileges.length > 0) {
-            values.privilegeActionsIds = _.compact(privileges);
+            values.warehousePrivilegeActionIds = _.compact(privileges);
             console.log("Submitting values:", values);
 
             startTransition(() => {
                 if (item) {
                     updateWarehouseRole(item.id, values).then((data) => {
-                        if (data) setResponse(data);
                         if (data && data.responseType === "success") {
                             toast({
                                 title: "Success",
@@ -90,7 +85,6 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
                     });
                 } else {
                     createWarehouseRole(values).then((data) => {
-                        if (data) setResponse(data);
                         if (data && data.responseType === "success") {
                             toast({
                                 title: "Success",
@@ -157,7 +151,7 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
 
     const onInvalid = useCallback(
         (errors: any) => {
-            console.log("The error received",errors)
+            
             const firstError = Object.values(errors)[0] as any;
             toast({
                 variant: "destructive",
@@ -202,7 +196,7 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
                 <div className="p-8">
                     <Form {...form}>
-                        <FormError message={response?.message} />
+                        {/* Removed FormError component - using toast notifications instead */}
                         
                         <form className="space-y-6" onSubmit={form.handleSubmit(submitData, onInvalid)}>
                             {/* Role Details Section */}

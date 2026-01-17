@@ -77,7 +77,6 @@ function StockTransferForm({ item }: { item: StockTransfer | null | undefined })
 
     const onInvalid = useCallback(
         (errors: any) => {
-            console.error("Validation errors:", errors );
             toast({
                 variant: "destructive",
                 title: "Uh oh! Something went wrong",
