@@ -11,57 +11,57 @@ interface GenerateEfdButtonProps {
 
 const GenerateEfdButton = ({ orderId, location, onSuccess }: GenerateEfdButtonProps) => {
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [, setIsLoading] = useState(false);
   
-  const handleGenerateEfd = async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const efdGenerated = await generateEfd(orderId, location);
+  // const handleGenerateEfd = async () => {
+  //   setIsLoading(true);
+  //   setError(null);
+  //   try {
+  //     const efdGenerated = await generateEfd(orderId, location);
 
-      console.log("The Efd generated is",efdGenerated)
+  //     console.log("The Efd generated is",efdGenerated)
       
-      if (efdGenerated.status === 200) {
-        if (onSuccess) {
-          onSuccess();
-        } else {
-          // Default behavior: reload after 3 seconds
-          setTimeout(() => {
-            window.location.reload();
-          }, 3000);
-        }
-      } else {
-        // Extract the error message from the response
-        const errorMessage = efdGenerated.message || 'Failed to generate EFD receipt';
-        setError(errorMessage);
-      }
-    } catch (error: any) {
-      console.log("Error while generating EFD", error);
+  //     if (efdGenerated.status === 200) {
+  //       if (onSuccess) {
+  //         onSuccess();
+  //       } else {
+  //         // Default behavior: reload after 3 seconds
+  //         setTimeout(() => {
+  //           window.location.reload();
+  //         }, 3000);
+  //       }
+  //     } else {
+  //       // Extract the error message from the response
+  //       const errorMessage = efdGenerated.message || 'Failed to generate EFD receipt';
+  //       setError(errorMessage);
+  //     }
+  //   } catch (error: any) {
+  //     console.log("Error while generating EFD", error);
       
-      // Handle different error response formats
-      let errorMessage = 'An unexpected error occurred while generating EFD receipt';
+  //     // Handle different error response formats
+  //     let errorMessage = 'An unexpected error occurred while generating EFD receipt';
       
-      if (typeof error === 'string') {
-        errorMessage = error;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      } else if (error?.details?.message) {
-        errorMessage = error.details.message;
-      } else if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.statusText) {
-        errorMessage = error.statusText;
-      }
+  //     if (typeof error === 'string') {
+  //       errorMessage = error;
+  //     } else if (error?.message) {
+  //       errorMessage = error.message;
+  //     } else if (error?.details?.message) {
+  //       errorMessage = error.details.message;
+  //     } else if (error?.response?.data?.message) {
+  //       errorMessage = error.response.data.message;
+  //     } else if (error?.statusText) {
+  //       errorMessage = error.statusText;
+  //     }
       
-      setError(errorMessage);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  //     setError(errorMessage);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
   
   return (
     <div className="flex flex-col gap-2">
-      <button
+      {/* <button
         onClick={handleGenerateEfd}
         disabled={isLoading}
         className={`px-4 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors ${
@@ -71,7 +71,7 @@ const GenerateEfdButton = ({ orderId, location, onSuccess }: GenerateEfdButtonPr
         }`}
       >
         {isLoading ? 'Generating EFD...' : 'Generate EFD Receipt'}
-      </button>
+      </button> */}
       
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-md">
