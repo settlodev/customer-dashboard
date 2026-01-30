@@ -20,25 +20,24 @@ import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Separator } from "../ui/separator";
-import { Loader2Icon } from "lucide-react";
+import { Loader2Icon, ImageIcon, FileText } from "lucide-react";
 import { updateLocationSettings } from "@/lib/actions/settings-actions";
 import { toast } from "@/hooks/use-toast";
 import {
   LocationSettings,
+  PaymentDetails,
   SettingField,
   SETTINGS_CONFIG,
 } from "@/types/settings/type";
 import { LocationSettingsSchema } from "@/types/settings/schema";
-import {
-  PaymentDetails,
-  PaymentDetailsModal,
-} from "../settings/paymentDetailsModal";
 import { ImageUploadModal } from "@/components/settings/uploadImage";
+import { PaymentDetailsModal } from "@/components/settings/paymentDetailsModal";
 
 // Loading skeleton component (enhanced for dynamic fields)
 const LoadingSkeleton = () => {
   const categories = [
     "basic",
+    "receipt-management",
     "feature",
     "printing",
     "inventory",
@@ -85,12 +84,11 @@ const LoadingSkeleton = () => {
 // Category titles mapping
 const CATEGORY_TITLES = {
   basic: "Basic Settings",
+  receipt: "Receipt Management",
   feature: "Feature Settings",
-  // system: "System Settings",
   printing: "Printing Settings",
   inventory: "Inventory Settings",
   notifications: "Notifications Settings",
-  receipt: "Receipt Settings",
   order: "Order Settings",
 } as const;
 
@@ -232,47 +230,30 @@ const LocationSettingsForm = ({
     });
   };
 
-  const handleSwitchChange = (
-    fieldKey: keyof LocationSettings,
-    currentValue: boolean,
-    onChange: (value: boolean) => void,
-  ) => {
-    // If turning ON, show the appropriate modal
-    if (!currentValue) {
-      if (fieldKey === "showImageOnReceipt") {
-        setIsImageModalOpen(true);
-        // Don't change the switch value yet
-        return;
-      } else if (fieldKey === "showAdditionalDetailsOnPhysicalReceipt") {
-        setPaymentModalType("physical");
-        setIsPaymentModalOpen(true);
-        // Don't change the switch value yet
-        return;
-      } else if (fieldKey === "showAdditionalDetailsOnDigitalReceipt") {
-        setPaymentModalType("digital");
-        setIsPaymentModalOpen(true);
-        // Don't change the switch value yet
-        return;
-      }
-    }
+  const handleManageImage = () => {
+    setIsImageModalOpen(true);
+  };
 
-    // For all other switches or when turning OFF, proceed normally
-    onChange(!currentValue);
+  const handleManagePhysicalPaymentDetails = () => {
+    setPaymentModalType("physical");
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleManageDigitalPaymentDetails = () => {
+    setPaymentModalType("digital");
+    setIsPaymentModalOpen(true);
   };
 
   const handleImageSave = (imageUrl: string) => {
     setReceiptImage(imageUrl);
-    form.setValue("showImageOnReceipt", true);
     setIsImageModalOpen(false);
   };
 
   const handlePaymentDetailsSave = (details: PaymentDetails) => {
     if (paymentModalType === "physical") {
       setPhysicalReceiptPaymentDetails(details);
-      form.setValue("showAdditionalDetailsOnPhysicalReceipt", true);
     } else {
       setDigitalReceiptPaymentDetails(details);
-      form.setValue("showAdditionalDetailsOnDigitalReceipt", true);
     }
     setIsPaymentModalOpen(false);
   };
@@ -303,13 +284,7 @@ const LocationSettingsForm = ({
                 <FormControl>
                   <Switch
                     checked={formField.value}
-                    onCheckedChange={() =>
-                      handleSwitchChange(
-                        key,
-                        formField.value,
-                        formField.onChange,
-                      )
-                    }
+                    onCheckedChange={formField.onChange}
                     disabled={isPending || field.disabled}
                     className="bg-green-500"
                   />
@@ -317,6 +292,65 @@ const LocationSettingsForm = ({
               </FormItem>
             )}
           />
+        );
+
+      case "button":
+        return (
+          <div key={key as any} className="rounded-lg border p-4">
+            <div className="space-y-2">
+              <FormLabel className="text-sm font-medium">
+                {field.label}
+              </FormLabel>
+              {helperText && (
+                <FormDescription className="text-xs">
+                  {helperText}
+                </FormDescription>
+              )}
+              <div className="pt-2">
+                {key === "receiptImageUpload" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManageImage}
+                  >
+                    <ImageIcon className="h-4 w-4 mr-2" />
+                    {receiptImage ? "Change Image" : "Upload Image"}
+                  </Button>
+                )}
+
+                {key === "physicalReceiptPaymentDetails" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManagePhysicalPaymentDetails}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {physicalReceiptPaymentDetails.bankDetails.length > 0 ||
+                    physicalReceiptPaymentDetails.mnoDetails.length > 0
+                      ? "Edit Payment Details"
+                      : "Add Payment Details"}
+                  </Button>
+                )}
+
+                {key === "digitalReceiptPaymentDetails" && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleManageDigitalPaymentDetails}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    {digitalReceiptPaymentDetails.bankDetails.length > 0 ||
+                    digitalReceiptPaymentDetails.mnoDetails.length > 0
+                      ? "Edit Payment Details"
+                      : "Add Payment Details"}
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
         );
 
       case "input":

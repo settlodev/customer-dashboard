@@ -54,6 +54,7 @@ export interface LocationSettings {
   trackInventory?: boolean;
   enableNotifications?: boolean;
   autoCloseOrderWhenFullyPaid?: boolean;
+  receiptImageUpload: string;
   showQrCodeOnReceipt: boolean;
   showImageOnReceipt: boolean;
   showAdditionalDetailsOnPhysicalReceipt: boolean;
@@ -71,7 +72,8 @@ export type SettingType =
   | "select"
   | "number"
   | "text"
-  | "password";
+  | "password"
+  | "button";
 
 export interface SettingField {
   key: keyof LocationSettings;
@@ -79,13 +81,13 @@ export interface SettingField {
   type: SettingType;
   category:
     | "basic"
+    | "receipt"
     | "feature"
     | "system"
     | "printing"
     | "inventory"
     | "notifications"
-    | "order"
-    | "receipt";
+    | "order";
   placeholder?: string;
   helperText?: string;
   inputType?: "text" | "number" | "password" | "tel" | "email";
@@ -125,6 +127,32 @@ export const SETTINGS_CONFIG: SettingField[] = [
     category: "basic",
     placeholder: "Enter report passcode",
     inputType: "password",
+  },
+
+  // Receipt Management (Buttons for uploading and configuring)
+  {
+    key: "receiptImageUpload" as any,
+    label: "Receipt Image",
+    type: "button" as any,
+    category: "receipt" as any,
+    helperText: "Upload or change the image to display on receipts",
+  },
+
+  {
+    key: "physicalReceiptPaymentDetails" as any,
+    label: "Physical Receipt Payment Details",
+    type: "button" as any,
+    category: "receipt" as any,
+    helperText:
+      "Add or edit bank and MNO payment details for physical receipts",
+  },
+
+  {
+    key: "digitalReceiptPaymentDetails" as any,
+    label: "Digital Receipt Payment Details",
+    type: "button" as any,
+    category: "receipt" as any,
+    helperText: "Add or edit bank and MNO payment details for digital receipts",
   },
 
   // Feature Settings
@@ -229,37 +257,6 @@ export const SETTINGS_CONFIG: SettingField[] = [
     helperText: "Allow customers to add tips",
   },
 
-  // Receipt Settings
-  {
-    key: "showQrCodeOnReceipt",
-    label: "Show QrCode On Receipt",
-    type: "switch",
-    category: "receipt",
-    helperText: "Show QR Code on printed receipt",
-  },
-
-  {
-    key: "showImageOnReceipt",
-    label: "Show Image On Receipt",
-    type: "switch",
-    category: "receipt",
-    helperText: "Show image on printed receipt (opens upload dialog)",
-  },
-  {
-    key: "showAdditionalDetailsOnPhysicalReceipt",
-    label: "Show Additional Details On Physical Receipt",
-    type: "switch",
-    category: "receipt",
-    helperText: "Show payment details (bank/MNO) on physical receipt",
-  },
-  {
-    key: "showAdditionalDetailsOnDigitalReceipt",
-    label: "Show Additional Details On Digital Receipt",
-    type: "switch",
-    category: "receipt",
-    helperText: "Show payment details (bank/MNO) on digital receipt",
-  },
-
   // Printing Settings
   {
     key: "printEachTicketItem",
@@ -288,6 +285,37 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "switch",
     category: "printing",
     helperText: "Display prices on printed tickets",
+  },
+  {
+    key: "showQrCodeOnReceipt",
+    label: "Show QrCode On Receipt",
+    type: "switch",
+    category: "printing",
+    helperText: "Show QR Code on printed receipt",
+  },
+
+  {
+    key: "showImageOnReceipt",
+    label: "Show Image On Receipt",
+    type: "switch",
+    category: "printing",
+    helperText: "Show image on printed receipt",
+  },
+
+  {
+    key: "showAdditionalDetailsOnPhysicalReceipt",
+    label: "Show Additional Details On Physical Receipt",
+    type: "switch",
+    category: "printing",
+    helperText: "Show payment details on physical receipt",
+  },
+
+  {
+    key: "showAdditionalDetailsOnDigitalReceipt",
+    label: "Show Additional Details On Digital Receipt",
+    type: "switch",
+    category: "printing",
+    helperText: "Show payment details on digital receipt",
   },
 
   // Inventory Settings

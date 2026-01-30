@@ -183,7 +183,7 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
 
             {bankDetails.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                No bank details added. Click `Add Bank` to add one.
+                No bank details added. Click "Add Bank" to add one.
               </div>
             )}
 
@@ -268,7 +268,7 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
 
             {mnoDetails.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                No MNO details added. Click `Add MNO` to add one.
+                No MNO details added. Click "Add MNO" to add one.
               </div>
             )}
 
@@ -296,11 +296,11 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
                   <div className="grid gap-3">
                     <div className="space-y-1">
                       <Label htmlFor={`mno-number-${detail.id}`}>
-                        Business Number
+                        Phone Number
                       </Label>
                       <Input
                         id={`mno-number-${detail.id}`}
-                        placeholder="e.g., XXX XXX XXX"
+                        placeholder="e.g., +255 XXX XXX XXX"
                         value={detail.phoneNumber}
                         onChange={(e) =>
                           updateMNODetail(
@@ -314,11 +314,11 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
 
                     <div className="space-y-1">
                       <Label htmlFor={`mno-name-${detail.id}`}>
-                        Business Name
+                        Account Name
                       </Label>
                       <Input
                         id={`mno-name-${detail.id}`}
-                        placeholder="e.g., LIPA TECH"
+                        placeholder="e.g., M-Pesa - Business Name"
                         value={detail.accountName}
                         onChange={(e) =>
                           updateMNODetail(
