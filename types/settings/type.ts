@@ -36,6 +36,7 @@ export interface LocationSettings {
   isArchived: boolean;
   trackInventory?: boolean;
   enableNotifications?: boolean;
+  autoCloseOrderWhenFullyPaid?: boolean;
 }
 
 export type SettingType =
@@ -56,7 +57,8 @@ export interface SettingField {
     | "system"
     | "printing"
     | "inventory"
-    | "notifications";
+    | "notifications"
+    | "order";
   placeholder?: string;
   helperText?: string;
   inputType?: "text" | "number" | "password" | "tel" | "email";
@@ -184,6 +186,22 @@ export const SETTINGS_CONFIG: SettingField[] = [
     helperText: "Display product price on POS interface",
   },
 
+  // Order settings
+  {
+    key: "autoCloseOrderWhenFullyPaid",
+    label: "Auto Close Order When Fully Paid",
+    type: "switch",
+    category: "order",
+    helperText: "Close orders automatically upon full payment completion",
+  },
+  {
+    key: "allowTipping",
+    label: "Allow Tipping",
+    type: "switch",
+    category: "order",
+    helperText: "Allow customers to add tips",
+  },
+
   // Printing Settings
   {
     key: "printEachTicketItem",
@@ -265,13 +283,6 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "switch",
     category: "notifications",
     helperText: "Receive push notifications",
-  },
-  {
-    key: "allowTipping",
-    label: "Allow Tipping",
-    type: "switch",
-    category: "notifications",
-    helperText: "Allow customers to add tips",
   },
 
   // System Settings
