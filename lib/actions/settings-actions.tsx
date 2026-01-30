@@ -56,7 +56,6 @@ export const updateLocationSettings = async (
     locationId: locationId?.id,
   };
 
-  console.log("payload", payload);
   try {
     const apiClient = new ApiClient();
 

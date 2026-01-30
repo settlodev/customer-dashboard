@@ -29,7 +29,11 @@ import {
   SETTINGS_CONFIG,
 } from "@/types/settings/type";
 import { LocationSettingsSchema } from "@/types/settings/schema";
-import { UUID } from "node:crypto";
+import {
+  PaymentDetails,
+  PaymentDetailsModal,
+} from "../settings/paymentDetailsModal";
+import { ImageUploadModal } from "@/components/settings/uploadImage";
 
 // Loading skeleton component (enhanced for dynamic fields)
 const LoadingSkeleton = () => {
@@ -86,6 +90,8 @@ const CATEGORY_TITLES = {
   printing: "Printing Settings",
   inventory: "Inventory Settings",
   notifications: "Notifications Settings",
+  receipt: "Receipt Settings",
+  order: "Order Settings",
 } as const;
 
 // Helper to group settings by category
@@ -128,6 +134,20 @@ const LocationSettingsForm = ({
   const [isLoading, setIsLoading] = useState(true);
   const [, setResponse] = useState<FormResponse | undefined>();
 
+  // Modal states
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [paymentModalType, setPaymentModalType] = useState<
+    "physical" | "digital"
+  >("physical");
+
+  // Store payment details and receipt image
+  const [receiptImage, setReceiptImage] = useState<string>("");
+  const [physicalReceiptPaymentDetails, setPhysicalReceiptPaymentDetails] =
+    useState<PaymentDetails>({ bankDetails: [], mnoDetails: [] });
+  const [digitalReceiptPaymentDetails, setDigitalReceiptPaymentDetails] =
+    useState<PaymentDetails>({ bankDetails: [], mnoDetails: [] });
+
   const form = useForm<z.infer<typeof LocationSettingsSchema>>({
     resolver: zodResolver(LocationSettingsSchema),
     defaultValues: {
@@ -140,6 +160,8 @@ const LocationSettingsForm = ({
     if (item) {
       form.reset(item);
       setIsLoading(false);
+      // Load existing data if available
+      // TODO: Load receipt image and payment details from item
     } else {
       const timer = setTimeout(() => setIsLoading(false), 1000);
       return () => clearTimeout(timer);
@@ -160,11 +182,29 @@ const LocationSettingsForm = ({
 
   const submitData = (values: z.infer<typeof LocationSettingsSchema>) => {
     console.log("The submitted settings are", values);
+    console.log("Receipt Image:", receiptImage);
+    console.log(
+      "Physical Receipt Payment Details:",
+      physicalReceiptPaymentDetails,
+    );
+    console.log(
+      "Digital Receipt Payment Details:",
+      digitalReceiptPaymentDetails,
+    );
+
     setResponse(undefined);
 
     startTransition(() => {
       if (item) {
-        updateLocationSettings(item.id, values).then((data) => {
+        // TODO: Include receipt image and payment details in the update
+        const dataToUpdate = {
+          ...values,
+          receiptImage,
+          physicalReceiptPaymentDetails,
+          digitalReceiptPaymentDetails,
+        };
+
+        updateLocationSettings(item.id, dataToUpdate as any).then((data) => {
           if (data) {
             setResponse(data);
             toast({
@@ -190,6 +230,51 @@ const LocationSettingsForm = ({
       }
       return true;
     });
+  };
+
+  const handleSwitchChange = (
+    fieldKey: keyof LocationSettings,
+    currentValue: boolean,
+    onChange: (value: boolean) => void,
+  ) => {
+    // If turning ON, show the appropriate modal
+    if (!currentValue) {
+      if (fieldKey === "showImageOnReceipt") {
+        setIsImageModalOpen(true);
+        // Don't change the switch value yet
+        return;
+      } else if (fieldKey === "showAdditionalDetailsOnPhysicalReceipt") {
+        setPaymentModalType("physical");
+        setIsPaymentModalOpen(true);
+        // Don't change the switch value yet
+        return;
+      } else if (fieldKey === "showAdditionalDetailsOnDigitalReceipt") {
+        setPaymentModalType("digital");
+        setIsPaymentModalOpen(true);
+        // Don't change the switch value yet
+        return;
+      }
+    }
+
+    // For all other switches or when turning OFF, proceed normally
+    onChange(!currentValue);
+  };
+
+  const handleImageSave = (imageUrl: string) => {
+    setReceiptImage(imageUrl);
+    form.setValue("showImageOnReceipt", true);
+    setIsImageModalOpen(false);
+  };
+
+  const handlePaymentDetailsSave = (details: PaymentDetails) => {
+    if (paymentModalType === "physical") {
+      setPhysicalReceiptPaymentDetails(details);
+      form.setValue("showAdditionalDetailsOnPhysicalReceipt", true);
+    } else {
+      setDigitalReceiptPaymentDetails(details);
+      form.setValue("showAdditionalDetailsOnDigitalReceipt", true);
+    }
+    setIsPaymentModalOpen(false);
   };
 
   const renderFormControl = (field: SettingField) => {
@@ -218,7 +303,13 @@ const LocationSettingsForm = ({
                 <FormControl>
                   <Switch
                     checked={formField.value}
-                    onCheckedChange={formField.onChange}
+                    onCheckedChange={() =>
+                      handleSwitchChange(
+                        key,
+                        formField.value,
+                        formField.onChange,
+                      )
+                    }
                     disabled={isPending || field.disabled}
                     className="bg-green-500"
                   />
@@ -291,50 +382,74 @@ const LocationSettingsForm = ({
   const settingsGroups = groupSettingsByCategory(filteredSettings);
 
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(submitData, onInvalid)}
-            className="space-y-6"
-          >
-            {Object.entries(settingsGroups).map(
-              ([category, settings], index, array) => (
-                <React.Fragment key={category}>
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">
-                      {CATEGORY_TITLES[
-                        category as keyof typeof CATEGORY_TITLES
-                      ] || category.charAt(0).toUpperCase() + category.slice(1)}
-                    </h3>
+    <>
+      <Card>
+        <CardContent className="pt-6">
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(submitData, onInvalid)}
+              className="space-y-6"
+            >
+              {Object.entries(settingsGroups).map(
+                ([category, settings], index, array) => (
+                  <React.Fragment key={category}>
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-medium">
+                        {CATEGORY_TITLES[
+                          category as keyof typeof CATEGORY_TITLES
+                        ] ||
+                          category.charAt(0).toUpperCase() + category.slice(1)}
+                      </h3>
 
-                    <div className={getGridClass(settings)}>
-                      {settings.map((field) => renderFormControl(field))}
+                      <div className={getGridClass(settings)}>
+                        {settings.map((field) => renderFormControl(field))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Don't add separator after last category */}
-                  {index < array.length - 1 && <Separator />}
-                </React.Fragment>
-              ),
-            )}
-
-            <div className="flex justify-end pt-6">
-              {isPending ? (
-                <Button disabled className="w-full md:w-auto">
-                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                  Updating Settings...
-                </Button>
-              ) : (
-                <Button type="submit" className="w-full md:w-auto">
-                  Update Settings
-                </Button>
+                    {/* Don't add separator after last category */}
+                    {index < array.length - 1 && <Separator />}
+                  </React.Fragment>
+                ),
               )}
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+
+              <div className="flex justify-end pt-6">
+                {isPending ? (
+                  <Button disabled className="w-full md:w-auto">
+                    <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                    Updating Settings...
+                  </Button>
+                ) : (
+                  <Button type="submit" className="w-full md:w-auto">
+                    Update Settings
+                  </Button>
+                )}
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+
+      {/* Image Upload Modal */}
+      <ImageUploadModal
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        onSave={handleImageSave}
+        currentImage={receiptImage}
+      />
+
+      {/* Payment Details Modal */}
+      <PaymentDetailsModal
+        isOpen={isPaymentModalOpen}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onSave={handlePaymentDetailsSave}
+        currentDetails={
+          paymentModalType === "physical"
+            ? physicalReceiptPaymentDetails
+            : digitalReceiptPaymentDetails
+        }
+        receiptType={paymentModalType}
+      />
+    </>
   );
 };
 

@@ -1,5 +1,22 @@
 import { UUID } from "node:crypto";
 
+export interface BankDetail {
+  id: string;
+  accountNumber: string;
+  accountName: string;
+}
+
+export interface MNODetail {
+  id: string;
+  phoneNumber: string;
+  accountName: string;
+}
+
+export interface PaymentDetails {
+  bankDetails: BankDetail[];
+  mnoDetails: MNODetail[];
+}
+
 export interface LocationSettings {
   id: UUID;
   minimumSettlementAmount: number;
@@ -37,6 +54,15 @@ export interface LocationSettings {
   trackInventory?: boolean;
   enableNotifications?: boolean;
   autoCloseOrderWhenFullyPaid?: boolean;
+  showQrCodeOnReceipt: boolean;
+  showImageOnReceipt: boolean;
+  showAdditionalDetailsOnPhysicalReceipt: boolean;
+  showAdditionalDetailsOnDigitalReceipt: boolean;
+
+  // New fields for extended functionality
+  receiptImage?: string;
+  physicalReceiptPaymentDetails?: PaymentDetails;
+  digitalReceiptPaymentDetails?: PaymentDetails;
 }
 
 export type SettingType =
@@ -58,7 +84,8 @@ export interface SettingField {
     | "printing"
     | "inventory"
     | "notifications"
-    | "order";
+    | "order"
+    | "receipt";
   placeholder?: string;
   helperText?: string;
   inputType?: "text" | "number" | "password" | "tel" | "email";
@@ -200,6 +227,37 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "switch",
     category: "order",
     helperText: "Allow customers to add tips",
+  },
+
+  // Receipt Settings
+  {
+    key: "showQrCodeOnReceipt",
+    label: "Show QrCode On Receipt",
+    type: "switch",
+    category: "receipt",
+    helperText: "Show QR Code on printed receipt",
+  },
+
+  {
+    key: "showImageOnReceipt",
+    label: "Show Image On Receipt",
+    type: "switch",
+    category: "receipt",
+    helperText: "Show image on printed receipt (opens upload dialog)",
+  },
+  {
+    key: "showAdditionalDetailsOnPhysicalReceipt",
+    label: "Show Additional Details On Physical Receipt",
+    type: "switch",
+    category: "receipt",
+    helperText: "Show payment details (bank/MNO) on physical receipt",
+  },
+  {
+    key: "showAdditionalDetailsOnDigitalReceipt",
+    label: "Show Additional Details On Digital Receipt",
+    type: "switch",
+    category: "receipt",
+    helperText: "Show payment details (bank/MNO) on digital receipt",
   },
 
   // Printing Settings

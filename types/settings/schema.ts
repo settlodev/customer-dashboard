@@ -44,4 +44,10 @@ export const LocationSettingsSchema = z.object({
   status: z.boolean().default(true),
   canDelete: z.boolean().default(true),
   isArchived: z.boolean().default(false),
+
+  // Receipt settings
+  showQrCodeOnReceipt: z.boolean().default(false),
+  showImageOnReceipt: z.boolean().default(false),
+  showAdditionalDetailsOnPhysicalReceipt: z.boolean().default(false),
+  showAdditionalDetailsOnDigitalReceipt: z.boolean().default(false),
 });
