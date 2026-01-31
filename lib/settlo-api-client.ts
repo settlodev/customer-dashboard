@@ -95,8 +95,8 @@ class ApiClient {
       const response = await this.instance.post<T>(url, data, config);
 
       return response.data;
-    } catch (error:any) {
-    //  console.log("The error while sending this request is",error.response)
+    } catch (error: any) {
+      // console.log("The error while sending this request is",error.response)
       throw await handleSettloApiError(error);
     }
   }

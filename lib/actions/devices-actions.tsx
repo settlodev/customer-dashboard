@@ -190,10 +190,12 @@ export const generateDeviceToken = async (
   try {
     const apiClient = new ApiClient();
 
+    console.time("API Request Duration");
     const response = await apiClient.post(
-      `/auth/api/token/generate-device-token`,
+      "/auth/api/token/generate/location-device/new",
       payload,
     );
+    console.timeEnd("API Request Duration");
     console.log("The response from server is", response);
     formResponse = {
       responseType: "success",
