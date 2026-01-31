@@ -183,7 +183,7 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
 
             {bankDetails.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                No bank details added. Click "Add Bank" to add one.
+                No bank details added. Click &quotAdd Bank&quot to add one.
               </div>
             )}
 
@@ -268,7 +268,7 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
 
             {mnoDetails.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
-                No MNO details added. Click "Add MNO" to add one.
+                No MNO details added. Click &quotAdd MNO&quot to add one.
               </div>
             )}
 
