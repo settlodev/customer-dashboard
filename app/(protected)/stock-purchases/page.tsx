@@ -1,4 +1,5 @@
 "use client";
+
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
@@ -16,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { searchStockPurchases } from "@/lib/actions/stock-purchase-actions";
 import { StockPurchase } from "@/types/stock-purchases/type";
+import { Loader2 } from "lucide-react";
 
 const breadCrumbItems = [
   { title: "Stock Purchases", link: "/stock-purchases" },
@@ -38,6 +40,7 @@ function Page({ searchParams }: Params) {
     page?: string;
     limit?: string;
   } | null>(null);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
 
   const { toast } = useToast();
   const router = useRouter();
@@ -60,11 +63,25 @@ function Page({ searchParams }: Params) {
     if (resolvedParams === null) return;
 
     const fetchStockPurchases = async () => {
-      const responseData = await searchStockPurchases(q, page, pageLimit);
-      console.log("The stock purchase data is", responseData);
-      setData(responseData.content);
-      setTotal(responseData.totalElements);
-      setPageCount(responseData.totalPages);
+      if (initialLoading) {
+        setInitialLoading(true);
+      }
+
+      try {
+        const responseData = await searchStockPurchases(q, page, pageLimit);
+        setData(responseData.content);
+        setTotal(responseData.totalElements);
+        setPageCount(responseData.totalPages);
+      } catch (error) {
+        console.error("Error fetching stock purchases:", error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to load stock purchases. Please try again.",
+        });
+      } finally {
+        setInitialLoading(false);
+      }
     };
 
     fetchStockPurchases();
@@ -74,9 +91,37 @@ function Page({ searchParams }: Params) {
     await router.push(`/stock-purchases/new`);
   };
 
-  // Show loading state while params are being resolved
-  if (resolvedParams === null) {
-    return <div>Loading...</div>;
+  // Show loading state while params are being resolved OR during initial load
+  if (resolvedParams === null || initialLoading) {
+    return (
+      <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
+        <div className={`flex items-center justify-between mb-2`}>
+          <div className={`relative flex-1 md:max-w-md`}>
+            <div className="h-6 w-48 bg-gray-200 animate-pulse rounded"></div>
+          </div>
+          <div className={`flex items-center space-x-2`}>
+            <div className="h-10 w-36 bg-gray-200 animate-pulse rounded"></div>
+          </div>
+        </div>
+
+        <Card x-chunk="data-table">
+          <CardHeader>
+            <CardTitle>Stock Purchases</CardTitle>
+            <CardDescription>
+              Purchase stock from your trusted suppliers
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex items-center justify-center py-12">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">
+                Loading stock purchases...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   return (

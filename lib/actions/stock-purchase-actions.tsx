@@ -30,7 +30,6 @@ export const searchStockPurchases = async (
       `/api/stock-intake-purchase-order/${location?.id}/paginate`,
       query,
     );
-    console.log("The list of stock purchase is", data);
     return parseStringify(data);
   } catch (error) {
     throw error;
