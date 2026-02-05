@@ -141,13 +141,18 @@ function StockPurchaseForm({
     }
   };
 
-  const getTotalQuantity = () => {
+  const getTotalItems = () => {
+    // Only count items that have a stock variant selected
     const items = form.getValues("stockIntakePurchaseOrderItems");
-    return items.reduce((total, item) => total + (item.quantity || 0), 0);
+    return items.filter((item) => item.stockVariantId).length;
   };
 
-  const getTotalItems = () => {
-    return fields.length;
+  const getTotalQuantity = () => {
+    const items = form.getValues("stockIntakePurchaseOrderItems");
+    // Only sum quantities for items that have a stock variant selected
+    return items
+      .filter((item) => item.stockVariantId)
+      .reduce((total, item) => total + (item.quantity || 0), 0);
   };
 
   const onInvalid = useCallback(

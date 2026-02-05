@@ -4,45 +4,13 @@ import React from "react";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { Button } from "@react-email/components";
 
-// Alternative approach - always render a Button that either navigates or triggers modal
 interface NoItemsProps {
-  newItemUrl?: string;
+  newItemUrl: string;
   itemName: string;
-  onCreateNew?: () => void;
 }
 
-export default function NoItems({
-  newItemUrl,
-  itemName,
-  onCreateNew,
-}: NoItemsProps) {
-  const handleClick = () => {
-    if (onCreateNew) {
-      onCreateNew();
-    } else if (newItemUrl) {
-      // This will be handled by the Link wrapper
-    }
-  };
-
-  const ButtonElement = onCreateNew ? (
-    <Button
-      className={cn(buttonVariants({ variant: "default" }))}
-      onClick={handleClick}
-    >
-      <Plus className="mr-2 h-4 w-4" /> Add {itemName}
-    </Button>
-  ) : (
-    <Link
-      className={cn(buttonVariants({ variant: "default" }))}
-      href={newItemUrl || "#"}
-      onClick={onCreateNew ? handleClick : undefined}
-    >
-      <Plus className="mr-2 h-4 w-4" /> Add {itemName}
-    </Link>
-  );
-
+export default function NoItems({ newItemUrl, itemName }: NoItemsProps) {
   return (
     <div className="h-[calc(100vh-240px)] border border-dashed">
       <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
@@ -54,7 +22,14 @@ export default function NoItems({
           {itemName} record to start viewing data.
         </p>
 
-        <div className="mt-6 flex gap-4">{ButtonElement}</div>
+        <div className="mt-6 flex gap-4">
+          <Link
+            className={cn(buttonVariants({ variant: "default" }))}
+            href={newItemUrl}
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add {itemName}
+          </Link>
+        </div>
       </div>
     </div>
   );

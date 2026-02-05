@@ -27,7 +27,6 @@ import { searchStock, getStockVariantById } from "@/lib/actions/stock-actions";
 import { Stock } from "@/types/stock/type";
 import { StockVariant } from "@/types/stockVariant/type";
 import { ApiResponse } from "@/types/types";
-import { UUID } from "crypto";
 
 interface Props {
   placeholder?: string;
@@ -59,44 +58,42 @@ const StockVariantSelector: React.FC<Props> = ({
   } | null>(null);
 
   const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const hasLoadedInitialValue = useRef(false);
-  const hasLoadedStocks = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const previousValueRef = useRef<string | undefined>(value);
 
   const ITEMS_PER_PAGE = 20;
 
-  const getDisplayName = (stock: Stock, variant: StockVariant) => {
+  const getDisplayName = useCallback((stock: Stock, variant: StockVariant) => {
     return `${stock.name} - ${variant.name}`;
-  };
+  }, []);
 
-  // Load the selected variant info immediately when value exists
+  // Load the selected variant info only when value changes
   useEffect(() => {
-    if (value && !hasLoadedInitialValue.current) {
-      hasLoadedInitialValue.current = true;
+    if (value && value !== previousValueRef.current && !selectedVariantInfo) {
       loadSpecificVariantInfo(value);
-    } else if (!value) {
+    } else if (!value && previousValueRef.current) {
       setSelectedVariantInfo(null);
-      hasLoadedInitialValue.current = false;
     }
+    previousValueRef.current = value;
   }, [value]);
 
-  // Load stocks when popover opens
+  // Load stocks when popover opens (only once)
   useEffect(() => {
-    if (open && !hasLoadedStocks.current) {
-      hasLoadedStocks.current = true;
+    if (open && stocks.length === 0) {
       loadStocks("", 1);
     }
   }, [open]);
 
-  // Handle search with debounce
+  // Handle search with debounce and abort previous requests
   useEffect(() => {
+    if (!open) return;
+
+    // Clear previous timeout
     if (debounceTimeoutRef.current) {
       clearTimeout(debounceTimeoutRef.current);
     }
 
-    if (!open || !hasLoadedStocks.current) {
-      return;
-    }
-
+    // Debounce search
     const timeout = setTimeout(() => {
       setPage(1);
       loadStocks(searchTerm, 1);
@@ -129,6 +126,14 @@ const StockVariantSelector: React.FC<Props> = ({
   const loadStocks = useCallback(
     async (query: string, currentPage: number, showLoading = true) => {
       try {
+        // Cancel previous request
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+
+        // Create new abort controller
+        abortControllerRef.current = new AbortController();
+
         if (showLoading) {
           setIsLoading(true);
         }
@@ -147,7 +152,10 @@ const StockVariantSelector: React.FC<Props> = ({
 
         setHasMore(!response.last);
       } catch (error: any) {
-        console.log("Error fetching stocks:", error);
+        // Don't log aborted requests
+        if (error.name !== "AbortError") {
+          console.log("Error fetching stocks:", error);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -155,7 +163,7 @@ const StockVariantSelector: React.FC<Props> = ({
     [],
   );
 
-  // Memoize option processing
+  // Memoize option processing - only recalculate when stocks or disabledValues change
   const allVariantOptions = useMemo(
     () =>
       stocks.flatMap((stock) =>
@@ -166,10 +174,12 @@ const StockVariantSelector: React.FC<Props> = ({
           searchString: `${stock.name.toLowerCase()} ${variant.name.toLowerCase()}`,
         })),
       ),
-    [stocks, disabledValues],
+    [stocks, disabledValues, getDisplayName],
   );
 
   const selectedOption = useMemo(() => {
+    if (!value) return null;
+
     // First try to find in loaded stocks
     const option = allVariantOptions.find((option) => option.id === value);
     if (option) return option;
@@ -182,17 +192,38 @@ const StockVariantSelector: React.FC<Props> = ({
     return null;
   }, [allVariantOptions, value, selectedVariantInfo]);
 
-  // Load more items when scrolling
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+  // Optimized scroll handler with throttling
+  const handleScroll = useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
 
-    if (isNearBottom && !isLoading && hasMore) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      loadStocks(searchTerm, nextPage, false);
-    }
-  };
+      if (isNearBottom && !isLoading && hasMore) {
+        const nextPage = page + 1;
+        setPage(nextPage);
+        loadStocks(searchTerm, nextPage, false);
+      }
+    },
+    [isLoading, hasMore, page, searchTerm, loadStocks],
+  );
+
+  const handleSelect = useCallback(
+    (option: { id: string; displayName: string }) => {
+      const newValue = option.id === value ? "" : option.id;
+      onChange(newValue);
+
+      if (newValue) {
+        setSelectedVariantInfo({
+          id: option.id,
+          displayName: option.displayName,
+        });
+      } else {
+        setSelectedVariantInfo(null);
+      }
+      setOpen(false);
+    },
+    [value, onChange],
+  );
 
   return (
     <div className="space-y-2">
@@ -234,19 +265,7 @@ const StockVariantSelector: React.FC<Props> = ({
                       key={option.id}
                       value={option.searchString}
                       disabled={option.disabled}
-                      onSelect={() => {
-                        const newValue = option.id === value ? "" : option.id;
-                        onChange(newValue);
-                        if (newValue) {
-                          setSelectedVariantInfo({
-                            id: option.id,
-                            displayName: option.displayName,
-                          });
-                        } else {
-                          setSelectedVariantInfo(null);
-                        }
-                        setOpen(false);
-                      }}
+                      onSelect={() => handleSelect(option)}
                     >
                       <Check
                         className={cn(

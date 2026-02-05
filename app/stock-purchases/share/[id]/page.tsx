@@ -5,8 +5,6 @@ export default async function SharePurchaseOrderPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  // Await the params promise before accessing properties
   const { id } = await params;
-
   return <SharePurchaseOrder purchaseId={id} />;
 }
