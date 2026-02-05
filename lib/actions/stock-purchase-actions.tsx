@@ -26,6 +26,7 @@ export const searchStockPurchases = async (
       size: pageLimit ? pageLimit : 10,
     };
     const location = await getCurrentLocation();
+
     const data = await apiClient.post(
       `/api/stock-intake-purchase-order/${location?.id}/paginate`,
       query,
@@ -35,6 +36,28 @@ export const searchStockPurchases = async (
     throw error;
   }
 };
+
+// export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
+//   // Change return type to StockPurchase
+//   const apiClient = new ApiClient();
+//
+//   const location = await getCurrentLocation();
+//
+//   if (!location?.id) {
+//     throw new Error("Location not found or invalid");
+//   }
+//
+//   try {
+//     const stockPurchaseOrder = await apiClient.get(
+//       `/api/stock-intake-purchase-order/${location.id}/lookup?orderNumber=${id}`,
+//     );
+//
+//     return parseStringify(stockPurchaseOrder);
+//   } catch (error) {
+//     console.error("Failed to fetch stock purchases:", error);
+//     throw error;
+//   }
+// };
 
 export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
   // Change return type to StockPurchase
@@ -51,6 +74,7 @@ export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
       `/api/stock-intake-purchase-order/${location.id}/lookup?orderNumber=${id}`,
     );
 
+    console.log("The purchase order is", stockPurchaseOrder);
     return parseStringify(stockPurchaseOrder);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);
