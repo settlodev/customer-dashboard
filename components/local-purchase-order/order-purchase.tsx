@@ -32,14 +32,34 @@ export default function SharePurchaseOrder() {
         </p>
       </CardHeader>
       <CardContent>
-        <div className="flex gap-2">
-          <div className="flex-1 bg-gray-50 dark:bg-gray-800 border rounded-lg p-3">
-            <p className="text-sm font-mono truncate">{shareLink}</p>
+        <div className="space-y-3">
+          {/* URL display with better mobile handling */}
+          <div className="relative">
+            <div className="bg-gray-50 dark:bg-gray-800 border rounded-lg p-3 pr-12">
+              <p className="text-sm font-mono break-all select-all">
+                {shareLink}
+              </p>
+            </div>
+            {/* Mobile-only copy button positioned absolutely */}
+            <div className="sm:hidden absolute right-3 top-3">
+              <Button
+                onClick={copyShareLink}
+                size="icon"
+                variant="outline"
+                className="h-8 w-8"
+              >
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <Button onClick={copyShareLink} className="gap-2">
-            <Copy className="h-4 w-4" />
-            Copy Link
-          </Button>
+
+          {/* Desktop copy button (hidden on mobile) */}
+          <div className="hidden sm:block">
+            <Button onClick={copyShareLink} className="gap-2 w-full sm:w-auto">
+              <Copy className="h-4 w-4" />
+              Copy Link
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
