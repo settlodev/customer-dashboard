@@ -7,11 +7,12 @@ export const publicRoutes = [
   "/contact-us",
   "/careers",
   "/menu/[id]",
+  "/stock-purchases/share/[id]",
   "/email-verification",
   "/reset-password",
   "/auth-error",
   "/update-password",
-  "/item/[id]"
+  "/item/[id]",
 ];
 
 export const authRoutes = ["/login", "/register"];

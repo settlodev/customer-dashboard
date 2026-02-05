@@ -11,15 +11,14 @@ import {
 } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-transfer/column";
-import { searchStockTransfers } from "@/lib/actions/stock-transfer-actions";
-import { StockTransfer } from "@/types/stock-transfer/type";
-import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+import { columns } from "@/components/tables/stock-purchases/column";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { searchStockPurchases } from "@/lib/actions/stock-purchase-actions";
+import { StockPurchase } from "@/types/stock-purchases/type";
 
 const breadCrumbItems = [
-  { title: "Stock Purchases", link: "/stock-transfers" },
+  { title: "Stock Purchases", link: "/stock-purchases" },
 ];
 
 type Params = {
@@ -31,10 +30,7 @@ type Params = {
 };
 
 function Page({ searchParams }: Params) {
-  const [totalLocations, setTotalLocations] = useState<number | undefined>(
-    undefined,
-  );
-  const [data, setData] = useState<StockTransfer[]>([]);
+  const [data, setData] = useState<StockPurchase[]>([]);
   const [total, setTotal] = useState<number>(0);
   const [pageCount, setPageCount] = useState<number>(0);
   const [resolvedParams, setResolvedParams] = useState<{
@@ -63,14 +59,15 @@ function Page({ searchParams }: Params) {
   useEffect(() => {
     if (resolvedParams === null) return;
 
-    const fetchStockTransfers = async () => {
-      const responseData = await searchStockTransfers(q, page, pageLimit);
+    const fetchStockPurchases = async () => {
+      const responseData = await searchStockPurchases(q, page, pageLimit);
+      console.log("The stock purchase data is", responseData);
       setData(responseData.content);
       setTotal(responseData.totalElements);
       setPageCount(responseData.totalPages);
     };
 
-    fetchStockTransfers();
+    fetchStockPurchases();
   }, [q, page, pageLimit, resolvedParams]);
 
   const handleStockPurchase = async () => {
@@ -104,7 +101,7 @@ function Page({ searchParams }: Params) {
             <DataTable
               columns={columns}
               data={data}
-              searchKey="stockVariantName"
+              searchKey=""
               pageNo={page}
               total={total}
               pageCount={pageCount}
