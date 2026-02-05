@@ -146,10 +146,9 @@ export const AcceptStockPurchase = async (
 
   try {
     const stockPurchaseOrder = await apiClient.get(
-      "/api/stock-intake-purchase-order/public/accept/{id}",
+      `/api/stock-intake-purchase-order/public/accept/${id}`,
     );
 
-    console.log("The purchase order is accepted", stockPurchaseOrder);
     return parseStringify(stockPurchaseOrder);
   } catch (error) {
     console.error("Failed to accept purchase order:", error);

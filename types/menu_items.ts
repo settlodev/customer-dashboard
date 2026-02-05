@@ -242,6 +242,22 @@ const getNormalMenuItems = (
         },
       ],
     },
+    // Local Purchase Order
+    {
+      label: "Local Purchase Orders",
+      showSeparator: true,
+      collapsible: false,
+      current: args?.isCurrentItem,
+      icon: "cart",
+      items: [
+        {
+          title: "Purchase Orders",
+          link: "/stock-purchases",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+      ],
+    },
 
     // Staff & Roles Management
     {
