@@ -8,6 +8,7 @@ export declare interface StockPurchaseItem {
   stock: string;
   stockName: string;
   stockVariant: string;
+  unitCost: number;
 }
 
 export declare interface StockPurchase {
@@ -26,4 +27,16 @@ export declare interface StockPurchase {
   isArchived: boolean;
   canDelete: boolean;
   status: string;
+}
+
+export interface StockIntakeFromLPOItem {
+  stockIntakePurchaseOrderItem: string;
+  quantityReceived: number;
+  totalCost: number;
+}
+
+export interface StockIntakeFromLPOPayload {
+  staff: string;
+  receivedAt: string;
+  receivedItems: StockIntakeFromLPOItem[];
 }

@@ -10,6 +10,8 @@ import { UUID } from "node:crypto";
 import { getCurrentLocation } from "./business/get-current-business";
 import { ErrorResponseType } from "@/types/types";
 import { StockPurchaseSchema } from "@/types/stock-purchases/schema";
+
+import { stockIntakeReceiptSchema } from "@/types/stock-intake/schema";
 import { StockPurchase } from "@/types/stock-purchases/type";
 
 export const searchStockPurchases = async (
@@ -31,33 +33,12 @@ export const searchStockPurchases = async (
       `/api/stock-intake-purchase-order/${location?.id}/paginate`,
       query,
     );
+
     return parseStringify(data);
   } catch (error) {
     throw error;
   }
 };
-
-// export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
-//   // Change return type to StockPurchase
-//   const apiClient = new ApiClient();
-//
-//   const location = await getCurrentLocation();
-//
-//   if (!location?.id) {
-//     throw new Error("Location not found or invalid");
-//   }
-//
-//   try {
-//     const stockPurchaseOrder = await apiClient.get(
-//       `/api/stock-intake-purchase-order/${location.id}/lookup?orderNumber=${id}`,
-//     );
-//
-//     return parseStringify(stockPurchaseOrder);
-//   } catch (error) {
-//     console.error("Failed to fetch stock purchases:", error);
-//     throw error;
-//   }
-// };
 
 export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
   // Change return type to StockPurchase
@@ -175,6 +156,71 @@ export const AcceptStockPurchase = async (
     return parseStringify(stockPurchaseOrder);
   } catch (error) {
     console.error("Failed to accept purchase order:", error);
+    throw error;
+  }
+};
+
+export interface StockIntakeFromLPOItem {
+  stockIntakePurchaseOrderItem: string;
+  quantityReceived: number;
+  totalCost: number;
+}
+
+export interface StockIntakeFromLPOPayload {
+  staff: string;
+  receivedAt: string;
+  receivedItems: StockIntakeFromLPOItem[];
+}
+
+interface SubmissionItem {
+  itemId: string;
+  receivedQuantity: number;
+  unitCost: number;
+}
+
+interface SubmissionData {
+  purchaseOrderId: string;
+  items: SubmissionItem[];
+}
+
+export const receivePurchaseOrderAsStockIntake = async (
+  data: SubmissionData,
+  staffId: string,
+  receivedAt?: string,
+): Promise<ApiResponse<any>> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+
+    // Use provided receivedAt or default to current time
+    const receiptTime = receivedAt || new Date().toISOString();
+
+    // Prepare payload in exact API format
+    const payload: StockIntakeFromLPOPayload = {
+      staff: staffId,
+      receivedAt: receiptTime,
+      receivedItems: data.items.map((item) => ({
+        stockIntakePurchaseOrderItem: item.itemId,
+        quantityReceived: item.receivedQuantity,
+        totalCost: item.unitCost * item.receivedQuantity,
+      })),
+    };
+
+    // Validate payload with Zod schema before sending
+    const validatedPayload = stockIntakeReceiptSchema.parse(payload);
+
+    console.log("Sending validated payload to API:", validatedPayload);
+
+    const response = await apiClient.post(
+      `/api/stock-intake-purchase-order/${location?.id}/receive/${data.purchaseOrderId}`,
+      validatedPayload,
+    );
+
+    return parseStringify(response);
+  } catch (error) {
+    console.error("Error receiving purchase order as stock intake:", error);
     throw error;
   }
 };

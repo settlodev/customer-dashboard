@@ -1,47 +1,75 @@
-import {boolean, object, string, preprocess, number, array} from "zod";
+import { boolean, object, string, preprocess, number, array, z } from "zod";
 
 export const StockIntakeSchema = object({
-    stockVariant:string({message:"Please select stock item"}).uuid(),
-    quantity: preprocess(
-        (val)=>{
-            if(typeof val==="string" && val.trim()!==""){
-                return parseFloat(val)
-            }
-            return val
-        },
-        number({message:"Quantity is required"}).nonnegative({message:"Quantity can not be negative"}).gt(0,{message:"Quantity can not be zero"})
-    ),
-    value: preprocess(
-        (val)=>{
-            if(typeof val==="string" && val.trim()!==""){
-                return parseFloat(val)
-            }
-            return val
-        },
-        number({message:"Value of inventory is required"}).nonnegative({message:"Value can not be negative"}).gt(0,{message:"Value can not be zero"})
-    ),
-    batchExpiryDate: string({ required_error: "Batch expiry date is required" }).optional(),
-    orderDate: string({ required_error: "Order date is required" }),
-    deliveryDate: string({ required_error: "Delivery date is required" }),
-    status: boolean().optional(),
-    supplier: string({message:"Please select a supplier"}).uuid().optional(),
-    staff: string({message:"Please select a staff"}).uuid(),
-    purchasePaidAmount: number().optional(),
+  stockVariant: string({ message: "Please select stock item" }).uuid(),
+  quantity: preprocess(
+    (val) => {
+      if (typeof val === "string" && val.trim() !== "") {
+        return parseFloat(val);
+      }
+      return val;
+    },
+    number({ message: "Quantity is required" })
+      .nonnegative({ message: "Quantity can not be negative" })
+      .gt(0, { message: "Quantity can not be zero" }),
+  ),
+  value: preprocess(
+    (val) => {
+      if (typeof val === "string" && val.trim() !== "") {
+        return parseFloat(val);
+      }
+      return val;
+    },
+    number({ message: "Value of inventory is required" })
+      .nonnegative({ message: "Value can not be negative" })
+      .gt(0, { message: "Value can not be zero" }),
+  ),
+  batchExpiryDate: string({
+    required_error: "Batch expiry date is required",
+  }).optional(),
+  orderDate: string({ required_error: "Order date is required" }),
+  deliveryDate: string({ required_error: "Delivery date is required" }),
+  status: boolean().optional(),
+  supplier: string({ message: "Please select a supplier" }).uuid().optional(),
+  staff: string({ message: "Please select a staff" }).uuid(),
+  purchasePaidAmount: number().optional(),
 });
 
-
 export const MultiStockIntakeSchema = object({
-    stockIntakes: array(StockIntakeSchema).min(1, { message: "At least one stock intake must be added" }),
-    status: boolean().optional(),
+  stockIntakes: array(StockIntakeSchema).min(1, {
+    message: "At least one stock intake must be added",
+  }),
+  status: boolean().optional(),
 });
 
 export const UpdatedStockIntakeSchema = object({
-    value:number().min(0, { message: "Value must be a positive number" })
+  value: number()
+    .min(0, { message: "Value must be a positive number" })
     .refine((val) => !isNaN(val), {
       message: "Please enter a valid number",
     }),
-    quantity:number().min(0, { message: "Value must be a positive number" })
+  quantity: number()
+    .min(0, { message: "Value must be a positive number" })
     .refine((val) => !isNaN(val), {
       message: "Please enter a valid number",
-    }).optional(),
-})
+    })
+    .optional(),
+});
+
+export const receivedItemSchema = object({
+  stockIntakePurchaseOrderItem: string().uuid("Invalid item ID"),
+  quantityReceived: number().int().min(0, "Quantity cannot be negative"),
+  totalCost: number().min(0, "Total cost cannot be negative"),
+});
+
+export const stockIntakeReceiptSchema = object({
+  staff: string().uuid("Invalid staff ID"),
+  receivedAt: string().datetime("Invalid date format"),
+  receivedItems: array(receivedItemSchema).min(
+    1,
+    "At least one item is required",
+  ),
+});
+
+export type ReceivedItem = z.infer<typeof receivedItemSchema>;
+export type StockIntakeReceipt = z.infer<typeof stockIntakeReceiptSchema>;

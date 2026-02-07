@@ -37,6 +37,7 @@ import DepartmentSelector from "@/components/widgets/department-selector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
+import LocationDepartmentSelector from "@/components/widgets/location-department-selector";
 
 function StockTransferForm({
   item,
@@ -105,7 +106,6 @@ function StockTransferForm({
 
     startTransition(() => {
       if (item) {
-        // Update logic for existing stock transfer
         console.log("Update logic for existing stock transfer");
       } else {
         createStockTransfer(values)
@@ -301,9 +301,11 @@ function StockTransferForm({
                           <span className="text-blue-500">(optional)</span>
                         </FormLabel>
                         <FormControl>
-                          <DepartmentSelector
+                          <LocationDepartmentSelector
                             {...field}
                             value={field.value ?? ""}
+                            locationId={form.watch("toLocation")}
+                            isDisabled={isPending || !form.watch("toLocation")}
                           />
                         </FormControl>
                         <FormMessage />

@@ -194,6 +194,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "truck-return",
         },
+        {
+          title: "Purchase Orders",
+          link: "/stock-purchases",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
       ],
     },
 
@@ -239,22 +245,6 @@ const getNormalMenuItems = (
           link: "/discounts",
           current: args?.isCurrentItem,
           icon: "percent",
-        },
-      ],
-    },
-    // Local Purchase Order
-    {
-      label: "Local Purchase Orders",
-      showSeparator: true,
-      collapsible: false,
-      current: args?.isCurrentItem,
-      icon: "cart",
-      items: [
-        {
-          title: "Purchase Orders",
-          link: "/stock-purchases",
-          current: args?.isCurrentItem,
-          icon: "cart",
         },
       ],
     },
