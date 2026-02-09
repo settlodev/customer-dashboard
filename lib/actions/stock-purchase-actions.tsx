@@ -12,7 +12,11 @@ import { ErrorResponseType } from "@/types/types";
 import { StockPurchaseSchema } from "@/types/stock-purchases/schema";
 
 import { stockIntakeReceiptSchema } from "@/types/stock-intake/schema";
-import { StockPurchase } from "@/types/stock-purchases/type";
+import {
+  StockIntakeFromLPOPayload,
+  StockPurchase,
+  SubmissionData,
+} from "@/types/stock-purchases/type";
 
 export const searchStockPurchases = async (
   q: string,
@@ -41,7 +45,6 @@ export const searchStockPurchases = async (
 };
 
 export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
-  // Change return type to StockPurchase
   const apiClient = new ApiClient();
 
   const location = await getCurrentLocation();
@@ -55,7 +58,6 @@ export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
       `/api/stock-intake-purchase-order/${location.id}/lookup?orderNumber=${id}`,
     );
 
-    console.log("The purchase order is", stockPurchaseOrder);
     return parseStringify(stockPurchaseOrder);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);
@@ -93,7 +95,6 @@ export const createStockPurchase = async (
   }
 
   const location = await getCurrentLocation();
-  console.log("The current location is", location);
 
   // Transform data to match API expected format
   const payload = {
@@ -160,29 +161,6 @@ export const AcceptStockPurchase = async (
   }
 };
 
-export interface StockIntakeFromLPOItem {
-  stockIntakePurchaseOrderItem: string;
-  quantityReceived: number;
-  totalCost: number;
-}
-
-export interface StockIntakeFromLPOPayload {
-  staff: string;
-  receivedAt: string;
-  receivedItems: StockIntakeFromLPOItem[];
-}
-
-interface SubmissionItem {
-  itemId: string;
-  receivedQuantity: number;
-  unitCost: number;
-}
-
-interface SubmissionData {
-  purchaseOrderId: string;
-  items: SubmissionItem[];
-}
-
 export const receivePurchaseOrderAsStockIntake = async (
   data: SubmissionData,
   staffId: string,
@@ -210,8 +188,6 @@ export const receivePurchaseOrderAsStockIntake = async (
 
     // Validate payload with Zod schema before sending
     const validatedPayload = stockIntakeReceiptSchema.parse(payload);
-
-    console.log("Sending validated payload to API:", validatedPayload);
 
     const response = await apiClient.post(
       `/api/stock-intake-purchase-order/${location?.id}/receive/${data.purchaseOrderId}`,

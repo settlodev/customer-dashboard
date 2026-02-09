@@ -166,7 +166,6 @@ export const getRecipe = async (id: UUID): Promise<ApiResponse<Recipe>> => {
   };
   const location = await getCurrentLocation();
   const recipe = await apiClient.post(`/api/recipes/${location?.id}`, query);
-
   return parseStringify(recipe);
 };
 

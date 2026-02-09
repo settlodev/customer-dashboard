@@ -75,11 +75,51 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
   // Dialog state
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [selectedLPO, setSelectedLPO] = useState<string | null>(null);
+
+  // Helper function to get current local time in datetime-local format
+  const getLocalDateTimeForInput = () => {
+    const now = new Date();
+    // Get local time components (browser automatically uses local timezone)
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Helper function to get max datetime in local format for validation
+  const getMaxLocalDateTime = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    const hours = String(now.getHours()).padStart(2, "0");
+    const minutes = String(now.getMinutes()).padStart(2, "0");
+
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  };
+
+  // Convert local datetime string to UTC ISO string
+  const localToUTCISO = (localDateTimeString: string) => {
+    // Create date from local string (browser interprets as local time)
+    const localDate = new Date(localDateTimeString);
+    // Convert to UTC ISO string
+    return localDate.toISOString();
+  };
+
+  // Format date for display in dialog (shows what will be submitted)
+  const formatForDisplay = (dateTimeString: string) => {
+    const date = new Date(dateTimeString);
+    return format(date, "dd/MM/yyyy, HH:mm");
+  };
+
   const [receiptData, setReceiptData] = useState<ReceiptDialogData>({
     lpoId: "",
     lpoOrderNumber: "",
     staffId: "",
-    receivedAt: new Date().toISOString().slice(0, 16),
+    receivedAt: getLocalDateTimeForInput(),
   });
 
   // Filter LPOs based on search query
@@ -256,13 +296,13 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       }
     }
 
-    // Set dialog data and open
+    // Set dialog data and open - USE LOCAL TIME, not UTC!
     setSelectedLPO(lpoOrderNumber);
     setReceiptData({
       lpoId: selectedLPOData.id,
       lpoOrderNumber,
       staffId: "",
-      receivedAt: new Date().toISOString().slice(0, 16),
+      receivedAt: getLocalDateTimeForInput(), // FIXED: Use local time function
     });
     setShowReceiptDialog(true);
   };
@@ -303,8 +343,11 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
 
       const quantities = receivedQuantities[selectedLPO] || {};
 
-      // Convert the datetime-local value to ISO string
-      const receivedAtISO = new Date(receiptData.receivedAt).toISOString();
+      // Convert the datetime-local value (in local time) to UTC ISO string
+      const receivedAtISO = localToUTCISO(receiptData.receivedAt);
+
+      console.log("Local time input:", receiptData.receivedAt);
+      console.log("Converted to UTC:", receivedAtISO);
 
       // Prepare the payload in the exact format expected by the API
       const payload = {
@@ -734,14 +777,11 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                       receivedAt: e.target.value,
                     }))
                   }
-                  max={new Date().toISOString().slice(0, 16)}
+                  max={getMaxLocalDateTime()} // Use local time max
                   className="pl-9"
                   disabled={!!isSubmitting}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Leave as current time or select a different date/time
-              </p>
             </div>
 
             <Separator />

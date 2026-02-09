@@ -40,3 +40,26 @@ export interface StockIntakeFromLPOPayload {
   receivedAt: string;
   receivedItems: StockIntakeFromLPOItem[];
 }
+
+export interface StockIntakeFromLPOItem {
+  stockIntakePurchaseOrderItem: string;
+  quantityReceived: number;
+  totalCost: number;
+}
+
+export interface StockIntakeFromLPOPayload {
+  staff: string;
+  receivedAt: string;
+  receivedItems: StockIntakeFromLPOItem[];
+}
+
+export interface SubmissionItem {
+  itemId: string;
+  receivedQuantity: number;
+  unitCost: number;
+}
+
+export interface SubmissionData {
+  purchaseOrderId: string;
+  items: SubmissionItem[];
+}

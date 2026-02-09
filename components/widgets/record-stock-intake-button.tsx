@@ -1,4 +1,3 @@
-// components/stock-intake/record-stock-intake-button.tsx
 "use client";
 
 import { useState } from "react";

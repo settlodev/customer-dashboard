@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,7 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { FileText, Package } from "lucide-react";
+import { FileText, Package, Loader2 } from "lucide-react";
 
 interface StockIntakeSelectionDialogProps {
   open: boolean;
@@ -21,14 +22,17 @@ export function StockIntakeSelectionDialog({
   onOpenChange,
 }: StockIntakeSelectionDialogProps) {
   const router = useRouter();
+  const [isNavigating, setIsNavigating] = useState<"normal" | "lpo" | null>(
+    null,
+  );
 
   const handleNormalIntake = () => {
-    onOpenChange(false);
+    setIsNavigating("normal");
     router.push("/stock-intakes/new");
   };
 
   const handleLPOIntake = () => {
-    onOpenChange(false);
+    setIsNavigating("lpo");
     router.push("/stock-intakes/accepted-purchase-orders");
   };
 
@@ -46,12 +50,19 @@ export function StockIntakeSelectionDialog({
             variant="outline"
             className="h-24 flex flex-col items-center justify-center gap-2"
             onClick={handleNormalIntake}
+            disabled={isNavigating !== null}
           >
-            <Package className="h-8 w-8" />
+            {isNavigating === "normal" ? (
+              <Loader2 className="h-8 w-8 animate-spin" />
+            ) : (
+              <Package className="h-8 w-8" />
+            )}
             <div className="text-center">
               <div className="font-semibold">Normal Entry</div>
               <div className="text-xs text-muted-foreground">
-                Manually record stock intake
+                {isNavigating === "normal"
+                  ? "Loading..."
+                  : "Manually record stock intake"}
               </div>
             </div>
           </Button>
@@ -59,12 +70,19 @@ export function StockIntakeSelectionDialog({
             variant="outline"
             className="h-24 flex flex-col items-center justify-center gap-2"
             onClick={handleLPOIntake}
+            disabled={isNavigating !== null}
           >
-            <FileText className="h-8 w-8" />
+            {isNavigating === "lpo" ? (
+              <Loader2 className="h-8 w-8 animate-spin" />
+            ) : (
+              <FileText className="h-8 w-8" />
+            )}
             <div className="text-center">
               <div className="font-semibold">From Purchase Order</div>
               <div className="text-xs text-muted-foreground">
-                Select from existing LPOs
+                {isNavigating === "lpo"
+                  ? "Loading..."
+                  : "Select from existing LPOs"}
               </div>
             </div>
           </Button>
