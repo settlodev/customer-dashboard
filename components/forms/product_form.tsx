@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useState, useTransition,useEffect } from "react";
 import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -748,7 +748,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                     isDisabled={isPending}
                                                                     placeholder="Select stock item"
                                                                     onChange={(value) => {
-                                                                      field.onChange(value);
+                                                                      field.onChange(value || null);
                                                                     }}
                                                                   />
                                                             </FormControl>
@@ -772,7 +772,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                     placeholder="Select recipe"
                                                                     isDisabled={isPending}
                                                                     onChange={(value) => {
-                                                                      field.onChange(value);
+                                                                      field.onChange(value || null);
                                                                     }}
                                                                   />
                                                             </FormControl>
