@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useTransition,useEffect } from "react";
+import React, { useCallback, useState, useTransition} from "react";
 import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -58,6 +58,7 @@ export default function ProductForm({ item }: ProductFormProps) {
     const { toast } = useToast();
     const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
     // const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+    const [selectorKey, setSelectorKey] = useState(0);
 
 
 
@@ -108,46 +109,28 @@ export default function ProductForm({ item }: ProductFormProps) {
     );
 
     const handleTrackingTypeSelect = (type: string) => {
-        // Update product level tracking
-        form.setValue('trackInventory', true);
-        form.setValue('trackingType', type);
-
-        // Update all variants' tracking settings
-        fields.forEach((_, index) => {
-            form.setValue(`variants.${index}.trackInventory`, true);
-            form.setValue(`variants.${index}.trackingType`, type);
-            form.setValue(`variants.${index}.trackItem`, null); // Reset trackItem when changing type
-        });
-
+      form.setValue("trackInventory", true);
+      form.setValue("trackingType", type);
+      setSelectorKey(prev => prev + 1); // Force remount
+      
+      fields.forEach((_, index) => {
+        form.setValue(`variants.${index}.trackInventory`, true);
+        form.setValue(`variants.${index}.trackingType`, type);
+        form.setValue(`variants.${index}.trackItem`, null);
+      });
     };
 
     const handleTrackingDisable = () => {
-        // Disable tracking at product level
-        form.setValue('trackInventory', false);
-        form.setValue('trackingType', null);
-
-        // Disable tracking for all variants
-        fields.forEach((_, index) => {
+          form.setValue("trackInventory", false);
+          form.setValue("trackingType", null);
+          setSelectorKey(prev => prev + 1); // Force remount
+          
+          fields.forEach((_, index) => {
             form.setValue(`variants.${index}.trackInventory`, false);
             form.setValue(`variants.${index}.trackingType`, null);
             form.setValue(`variants.${index}.trackItem`, null);
-        });
-
-        // setShowTrackingModal(false);
-
-    };
-
-            useEffect(() => {
-          const subscription = form.watch((value, { name }) => {
-            if (name === "trackingType") {
-              // Reset all variants' trackItem when trackingType changes
-              fields.forEach((_, index) => {
-                form.setValue(`variants.${index}.trackItem`, null);
-              });
-            }
           });
-          return () => subscription.unsubscribe();
-        }, [form, fields]);
+        };
 
     const handleAppendVariant = () => {
         const currentTrackInventory = form.getValues('trackInventory');
@@ -733,53 +716,53 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             />
 
                                             {/* Conditional fields based on tracking type */}
-                                            {form.watch('trackingType') === 'STOCK' && (
-                                                <FormField
-                                                    control={form.control}
-                                                    name={`variants.${index}.trackItem`}
-                                                    key={`stock-selector-${index}-${form.watch("trackingType")}`}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Stock Item</FormLabel>
-                                                            <FormControl>
-                                                                <StockVariantSelector
-                                                                    key={`stock-${index}-${Date.now()}`} 
-                                                                    value={field.value ?? ""}
-                                                                    isDisabled={isPending}
-                                                                    placeholder="Select stock item"
-                                                                    onChange={(value) => {
-                                                                      field.onChange(value || null);
-                                                                    }}
-                                                                  />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                           {form.watch("trackingType") === "STOCK" && (
+                                              <FormField
+                                                control={form.control}
+                                                name={`variants.${index}.trackItem`}
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Stock Item</FormLabel>
+                                                    <FormControl>
+                                                      <StockVariantSelector
+                                                        {...field}
+                                                        key={`stock-${selectorKey}-${index}`} {/* Include selectorKey */}
+                                                        value={field.value ?? ""}
+                                                        isDisabled={isPending}
+                                                        onChange={(value) => {
+                                                          field.onChange(value);
+                                                        }}
+                                                      />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}
+                                              />
                                             )}
-
-                                            {form.watch('trackingType') === 'RECIPE' && (
-                                                <FormField
-                                                    control={form.control}
-                                                    name={`variants.${index}.trackItem`}
-                                                    render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Recipe</FormLabel>
-                                                            <FormControl>
-                                                                <RecipeSelector
-                                                                    key={`recipe-${index}-${Date.now()}`} 
-                                                                    value={field.value ?? ""}
-                                                                    placeholder="Select recipe"
-                                                                    isDisabled={isPending}
-                                                                    onChange={(value) => {
-                                                                      field.onChange(value || null);
-                                                                    }}
-                                                                  />
-                                                            </FormControl>
-                                                            <FormMessage />
-                                                        </FormItem>
-                                                    )}
-                                                />
+                                            
+                                            {form.watch("trackingType") === "RECIPE" && (
+                                              <FormField
+                                                control={form.control}
+                                                name={`variants.${index}.trackItem`}
+                                                render={({ field }) => (
+                                                  <FormItem>
+                                                    <FormLabel>Recipe</FormLabel>
+                                                    <FormControl>
+                                                      <RecipeSelector
+                                                        {...field}
+                                                        key={`recipe-${selectorKey}-${index}`} {/* Include selectorKey */}
+                                                        value={field.value ?? ""}
+                                                        placeholder="Select recipe"
+                                                        isDisabled={isPending}
+                                                        onChange={(value) => {
+                                                          field.onChange(value);
+                                                        }}
+                                                      />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                  </FormItem>
+                                                )}
+                                              />
                                             )}
                                         </div>
                                     </CardContent>
