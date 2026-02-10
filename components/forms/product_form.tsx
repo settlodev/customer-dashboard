@@ -137,18 +137,19 @@ export default function ProductForm({ item }: ProductFormProps) {
     );
 
     const handleTrackingTypeSelect = (type: string) => {
-        form.setValue("trackInventory", true);
-        form.setValue("trackingType", type);
-        setSelectorKey(prev => prev + 1); // Force remount
-        
-        fields.forEach((_, index) => {
-          form.setValue(`variants.${index}.trackInventory`, true);
-          form.setValue(`variants.${index}.trackingType`, type);
-          form.setValue(`variants.${index}.trackItem`, null);
-        });
-        
-        setShowTrackingModal(false);
-      };
+          // First update the form state to true
+          form.setValue("trackInventory", true);
+          form.setValue("trackingType", type);
+          setSelectorKey(prev => prev + 1); // Force remount
+          
+          fields.forEach((_, index) => {
+            form.setValue(`variants.${index}.trackInventory`, true);
+            form.setValue(`variants.${index}.trackingType`, type);
+            form.setValue(`variants.${index}.trackItem`, null);
+          });
+          
+          setShowTrackingModal(false);
+        };
 
     const handleTrackingDisable = () => {
         form.setValue("trackInventory", false);
@@ -486,31 +487,34 @@ export default function ProductForm({ item }: ProductFormProps) {
                             </h2>
                             <div className="space-y-4">
                                 <FormField
-                                    control={form.control}
-                                    name="trackInventory"
-                                    render={({ field }) => (
+                                      control={form.control}
+                                      name="trackInventory"
+                                      render={({ field }) => (
                                         <FormItem className="flex items-center justify-between p-3 rounded-lg border">
-                                            <div className="space-y-0.5">
-                                                <FormLabel>Track Inventory</FormLabel>
-                                                <div className="text-sm text-muted-foreground">
-                                                    Enable inventory tracking
-                                                </div>
+                                          <div className="space-y-0.5">
+                                            <FormLabel>Track Inventory</FormLabel>
+                                            <div className="text-sm text-muted-foreground">
+                                              Enable inventory tracking
                                             </div>
-                                            <FormControl>
-                                                <Switch
-                                                    checked={field.value}
-                                                    onCheckedChange={(checked) => {
-                                                        if (checked) {
-                                                            setShowTrackingModal(true);
-                                                        } else {
-                                                            handleTrackingDisable();
-                                                        }
-                                                    }}
-                                                />
-                                            </FormControl>
+                                          </div>
+                                          <FormControl>
+                                            <Switch
+                                              checked={field.value}
+                                              onCheckedChange={(checked) => {
+                                                if (checked) {
+                                                  // Show modal first, don't update form state yet
+                                                  setShowTrackingModal(true);
+                                                } else {
+                                                  // Turn off tracking - update form state immediately
+                                                  field.onChange(false);
+                                                  handleTrackingDisable();
+                                                }
+                                              }}
+                                            />
+                                          </FormControl>
                                         </FormItem>
-                                    )}
-                                />
+                                      )}
+                                    />
 
                                 <FormField
                                     control={form.control}
