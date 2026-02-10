@@ -171,7 +171,6 @@ export const getProduct = async (id: UUID): Promise<ApiResponse<Product>> => {
   };
   const location = await getCurrentLocation();
   const response = await apiClient.post(`/api/products/${location?.id}`, query);
-
   return parseStringify(response);
 };
 
