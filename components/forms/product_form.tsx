@@ -732,12 +732,13 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                             <FormControl>
                                                                 <StockVariantSelector
                                                                     {...field}
+                                                                    key={`stock-selector-${index}-${form.watch("trackingType")}`}
                                                                     value={field.value ?? ""}
                                                                     isDisabled={isPending}
                                                                     onChange={(value) => {
                                                                       field.onChange(value);
                                                                     }}
-                                                                />
+                                                                  />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
