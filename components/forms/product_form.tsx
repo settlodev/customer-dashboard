@@ -964,6 +964,8 @@ export default function ProductForm({ item }: ProductFormProps) {
       form.setValue(`variants.${index}.trackingType`, type);
       form.setValue(`variants.${index}.stockItem`, null);
       form.setValue(`variants.${index}.recipeItem`, null);
+      // Also set trackItem to null initially
+      form.setValue(`variants.${index}.trackItem`, null);
     });
 
     setShowTrackingModal(false);
@@ -1003,35 +1005,69 @@ export default function ProductForm({ item }: ProductFormProps) {
   };
 
   const submitData = (values: z.infer<typeof ProductSchema>) => {
-    const stored = localStorage.getItem("pagination-products");
-    const paginationState = stored ? JSON.parse(stored) : null;
+    console.log("=== DEBUGGING VALIDATION ===");
 
-    setResponse(undefined);
+    // First, update the form values with trackItem
+    const updatedValues = { ...values };
 
-    // Transform variants: merge stockItem/recipeItem into trackItem for backend
-    const transformedVariants = values.variants.map((variant) => {
+    updatedValues.variants = updatedValues.variants.map((variant, index) => {
+      const trackingType = form.getValues(`variants.${index}.trackingType`);
+
+      // Get the correct trackItem from the form fields
       const trackItem =
-        variant.trackingType === "STOCK"
-          ? variant.stockItem
-          : variant.trackingType === "RECIPE"
-            ? variant.recipeItem
+        trackingType === "STOCK"
+          ? form.getValues(`variants.${index}.stockItem`)
+          : trackingType === "RECIPE"
+            ? form.getValues(`variants.${index}.recipeItem`)
             : null;
 
-      // Return variant with trackItem, excluding stockItem and recipeItem
-      const { stockItem, recipeItem, ...rest } = variant;
-      return {
-        ...rest,
+      console.log(`Variant ${index}:`, {
+        trackingType,
+        stockItem: form.getValues(`variants.${index}.stockItem`),
+        recipeItem: form.getValues(`variants.${index}.recipeItem`),
         trackItem,
+      });
+
+      return {
+        ...variant,
+        trackItem: trackItem || variant.trackItem,
       };
     });
 
+    console.log(
+      "Updated values with trackItem:",
+      JSON.stringify(updatedValues, null, 2),
+    );
+
+    // Now validate
+    const result = ProductSchema.safeParse(updatedValues);
+
+    if (!result.success) {
+      console.log(
+        "Zod validation errors:",
+        JSON.stringify(result.error, null, 2),
+      );
+      toast({
+        variant: "destructive",
+        title: "Form validation failed",
+        description: "Please check your inputs and try again.",
+      });
+      return;
+    }
+
+    console.log("Validation successful!");
+
+    // Continue with submission...
+    const stored = localStorage.getItem("pagination-products");
+    const paginationState = stored ? JSON.parse(stored) : null;
+    setResponse(undefined);
+
     const productData = {
-      ...values,
-      variants: transformedVariants,
+      ...result.data,
       image: imageUrl,
     };
 
-    console.log("Submitting data:", productData);
+    console.log("Final payload:", JSON.stringify(productData, null, 2));
 
     startTransition(() => {
       if (item) {
@@ -1057,7 +1093,6 @@ export default function ProductForm({ item }: ProductFormProps) {
       }
     });
   };
-
   const handleGenerateDescription = async () => {
     const name = form.getValues("name");
     const category = form.getValues("category");
