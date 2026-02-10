@@ -62,8 +62,7 @@ const DeviceCard = ({
       </CardDescription>
     </CardHeader>
     <CardContent>
-      {/*<DeviceForm item={item} />*/}
-      <DeviceForm />
+      <DeviceForm item={item} />
     </CardContent>
   </Card>
 );

@@ -22,20 +22,20 @@ export const searchDevices = async (
 
     const query = {
       filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
+        // {
+        //   key: "name",
+        //   operator: "LIKE",
+        //   field_type: "STRING",
+        //   value: q,
+        // },
       ],
       sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
+        // {
+        //   key: "name",
+        //   direction: "ASC",
+        // },
       ],
-      page: page ? page - 1 : 0,
+      page: page > 0 ? page - 1 : 0,
       size: pageLimit ? pageLimit : 10,
     };
 
@@ -45,7 +45,6 @@ export const searchDevices = async (
       `/api/location-devices/${location?.id}`,
       query,
     );
-
     return parseStringify(deviceResponse);
   } catch (error) {
     throw error;
@@ -77,7 +76,13 @@ export const createDevice = async (
   try {
     const apiClient = new ApiClient();
 
-    await apiClient.post(`/api/discounts/${location?.id}/create`, payload);
+    const response = await apiClient.post(
+      `/api/location-devices/${location?.id}/create`,
+      payload,
+    );
+
+    console.log("The response is ", response);
+
     formResponse = {
       responseType: "success",
       message: "Device created successfully",
@@ -91,7 +96,7 @@ export const createDevice = async (
     };
   }
 
-  revalidatePath("/discounts");
+  revalidatePath("/devices");
   return parseStringify(formResponse);
 };
 
