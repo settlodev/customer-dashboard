@@ -137,6 +137,18 @@ export default function ProductForm({ item }: ProductFormProps) {
 
     };
 
+            useEffect(() => {
+          const subscription = form.watch((value, { name }) => {
+            if (name === "trackingType") {
+              // Reset all variants' trackItem when trackingType changes
+              fields.forEach((_, index) => {
+                form.setValue(`variants.${index}.trackItem`, null);
+              });
+            }
+          });
+          return () => subscription.unsubscribe();
+        }, [form, fields]);
+
     const handleAppendVariant = () => {
         const currentTrackInventory = form.getValues('trackInventory');
         const currentTrackingType = form.getValues('trackingType');
@@ -731,10 +743,10 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                             <FormLabel>Stock Item</FormLabel>
                                                             <FormControl>
                                                                 <StockVariantSelector
-                                                                    {...field}
-                                                                    key={`stock-selector-${index}-${form.watch("trackingType")}`}
+                                                                    key={`stock-${index}-${Date.now()}`} 
                                                                     value={field.value ?? ""}
                                                                     isDisabled={isPending}
+                                                                    placeholder="Select stock item"
                                                                     onChange={(value) => {
                                                                       field.onChange(value);
                                                                     }}
@@ -755,15 +767,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                             <FormLabel>Recipe</FormLabel>
                                                             <FormControl>
                                                                 <RecipeSelector
-                                                                    {...field}
-                                                                    key={`recipe-selector-${index}-${form.watch("trackingType")}`}
+                                                                    key={`recipe-${index}-${Date.now()}`} 
                                                                     value={field.value ?? ""}
                                                                     placeholder="Select recipe"
                                                                     isDisabled={isPending}
                                                                     onChange={(value) => {
                                                                       field.onChange(value);
                                                                     }}
-                                                                />
+                                                                  />
                                                             </FormControl>
                                                             <FormMessage />
                                                         </FormItem>
