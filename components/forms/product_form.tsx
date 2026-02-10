@@ -50,17 +50,12 @@ type ProductFormProps = {
 
 
 export default function ProductForm({ item }: ProductFormProps) {
-    // console.log("ProductForm item:", item );
     const [isPending, startTransition] = useTransition();
     const [response, setResponse] = useState<FormResponse | undefined>();
     const [showTrackingModal, setShowTrackingModal] = useState(false);
     const [imageUrl, setImageUrl] = useState(item?.image || '');
     const { toast } = useToast();
     const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
-    // const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-    const [selectorKey, setSelectorKey] = useState(0);
-
-
 
     const form = useForm<z.infer<typeof ProductSchema>>({
         resolver: zodResolver(ProductSchema),
@@ -89,40 +84,24 @@ export default function ProductForm({ item }: ProductFormProps) {
         },
     });
 
-
     const { fields, append, remove } = useFieldArray({
         control: form.control,
         name: "variants"
     });
 
-
-    // Debug: Log current state
-  useEffect(() => {
-    console.log("Current trackingType:", form.watch("trackingType"));
-    console.log("Selector key:", selectorKey);
-  }, [form.watch("trackingType"), selectorKey]);
-
-  // Clear trackItem when trackingType changes
-  useEffect(() => {
-    const trackingType = form.watch("trackingType");
-    
-    if (trackingType) {
-      fields.forEach((_, index) => {
-        form.setValue(`variants.${index}.trackItem`, null);
-      });
-      
-      // Force a re-render of the selectors
-      setSelectorKey(prev => prev + 1);
-    }
-  }, [form.watch("trackingType"), fields, form]);
-
-  // Close modal when tracking is disabled
-  useEffect(() => {
-    if (!form.getValues("trackInventory") && showTrackingModal) {
-      setShowTrackingModal(false);
-    }
-  }, [form.watch("trackInventory"), showTrackingModal]);
-
+    // Clear trackItem when trackingType changes
+    useEffect(() => {
+        const subscription = form.watch((value, { name }) => {
+            if (name === "trackingType") {
+                // Clear all trackItems when tracking type changes
+                fields.forEach((_, index) => {
+                    form.setValue(`variants.${index}.trackItem`, null);
+                });
+            }
+        });
+        
+        return () => subscription.unsubscribe();
+    }, [form, fields]);
 
     const onInvalid = useCallback(
         (errors: FieldErrors) => {
@@ -137,33 +116,28 @@ export default function ProductForm({ item }: ProductFormProps) {
     );
 
     const handleTrackingTypeSelect = (type: string) => {
-          // First update the form state to true
-          form.setValue("trackInventory", true);
-          form.setValue("trackingType", type);
-          setSelectorKey(prev => prev + 1); // Force remount
-          
-          fields.forEach((_, index) => {
+        form.setValue("trackInventory", true);
+        form.setValue("trackingType", type);
+        
+        fields.forEach((_, index) => {
             form.setValue(`variants.${index}.trackInventory`, true);
             form.setValue(`variants.${index}.trackingType`, type);
             form.setValue(`variants.${index}.trackItem`, null);
-          });
-          
-          setShowTrackingModal(false);
-        };
+        });
+        
+        setShowTrackingModal(false);
+    };
 
     const handleTrackingDisable = () => {
         form.setValue("trackInventory", false);
         form.setValue("trackingType", null);
-        setSelectorKey(prev => prev + 1);
         
         fields.forEach((_, index) => {
-          form.setValue(`variants.${index}.trackInventory`, false);
-          form.setValue(`variants.${index}.trackingType`, null);
-          form.setValue(`variants.${index}.trackItem`, null);
+            form.setValue(`variants.${index}.trackInventory`, false);
+            form.setValue(`variants.${index}.trackingType`, null);
+            form.setValue(`variants.${index}.trackItem`, null);
         });
-        
-        setShowTrackingModal(false);
-      };
+    };
 
     const handleAppendVariant = () => {
         const currentTrackInventory = form.getValues('trackInventory');
@@ -184,20 +158,15 @@ export default function ProductForm({ item }: ProductFormProps) {
         });
     };
 
-
     const submitData = (values: z.infer<typeof ProductSchema>) => {
-
         const stored = localStorage.getItem('pagination-products');
         const paginationState = stored ? JSON.parse(stored) : null;
-        // console.log('Pagination state:', paginationState);
 
         setResponse(undefined);
         const productData = {
             ...values,
             image: imageUrl
         };
-
-        // console.log("Submitting data:", productData);
 
         startTransition(() => {
             if (item) {
@@ -225,6 +194,7 @@ export default function ProductForm({ item }: ProductFormProps) {
             }
         });
     };
+
     const handleGenerateDescription = async () => {
         const name = form.getValues('name');
         const category = form.getValues('category');
@@ -253,48 +223,6 @@ export default function ProductForm({ item }: ProductFormProps) {
             setIsGeneratingDescription(false);
         }
     };
-
-
-    // const handleGenerateDescriptionAndImage = async () => {
-    //     const name = form.getValues('name');
-    //     const category = form.getValues('category');
-
-    //     if (!name || !category) {
-    //         toast({
-    //             variant: "destructive",
-    //             title: "Missing Information",
-    //             description: "Please enter a product name and select a category first."
-    //         });
-    //         return;
-    //     }
-
-    //     setIsGeneratingDescription(true);
-    //     setIsGeneratingImage(true);
-
-    //     try {
-    //         // Generate description first
-    //         const aiDescription = await generateAIDescription(name, category);
-    //         form.setValue('description', aiDescription);
-
-    //         // Then generate image based on the description
-    //         const generatedImageUrl = await generateAIImage(aiDescription, name);
-    //         setImageUrl(generatedImageUrl);
-
-    //         toast({
-    //             title: "Success",
-    //             description: "AI description and image generated successfully!"
-    //         });
-    //     } catch (error) {
-    //         toast({
-    //             variant: "destructive",
-    //             title: "Generation Failed",
-    //             description: "Unable to generate content. Please try again."
-    //         });
-    //     } finally {
-    //         setIsGeneratingDescription(false);
-    //         setIsGeneratingImage(false);
-    //     }
-    // };
 
     return (
         <Form {...form}>
@@ -375,49 +303,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             </FormItem>
                                         )}
                                     />
-                                    {/* <FormField
-                                        control={form.control}
-                                        name="description"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <div className="flex items-center justify-between">
-                                                    <FormLabel>Description</FormLabel>
-                                                    <div className="flex gap-2">
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={handleGenerateDescription}
-                                                            disabled={isGeneratingDescription || isPending}
-                                                        >
-                                                            <Sparkles className="w-4 h-4 mr-2" />
-                                                            Generate Description
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            variant="default"
-                                                            size="sm"
-                                                            onClick={handleGenerateDescriptionAndImage}
-                                                            disabled={isGeneratingDescription || isGeneratingImage || isPending}
-                                                        >
-                                                            <Wand2 className="w-4 h-4 mr-2" />
-                                                            Generate Both
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                                <FormControl>
-                                                    <Textarea
-                                                        {...field}
-                                                        value={field.value ?? ""}
-                                                        placeholder="Enter product description"
-                                                        disabled={isPending}
-                                                        className="resize-none h-32"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    /> */}
                                 </div>
                             </div>
 
@@ -487,34 +372,32 @@ export default function ProductForm({ item }: ProductFormProps) {
                             </h2>
                             <div className="space-y-4">
                                 <FormField
-                                      control={form.control}
-                                      name="trackInventory"
-                                      render={({ field }) => (
+                                    control={form.control}
+                                    name="trackInventory"
+                                    render={({ field }) => (
                                         <FormItem className="flex items-center justify-between p-3 rounded-lg border">
-                                          <div className="space-y-0.5">
-                                            <FormLabel>Track Inventory</FormLabel>
-                                            <div className="text-sm text-muted-foreground">
-                                              Enable inventory tracking
+                                            <div className="space-y-0.5">
+                                                <FormLabel>Track Inventory</FormLabel>
+                                                <div className="text-sm text-muted-foreground">
+                                                    Enable inventory tracking
+                                                </div>
                                             </div>
-                                          </div>
-                                          <FormControl>
-                                            <Switch
-                                              checked={field.value}
-                                              onCheckedChange={(checked) => {
-                                                if (checked) {
-                                                  // Show modal first, don't update form state yet
-                                                  setShowTrackingModal(true);
-                                                } else {
-                                                  // Turn off tracking - update form state immediately
-                                                  field.onChange(false);
-                                                  handleTrackingDisable();
-                                                }
-                                              }}
-                                            />
-                                          </FormControl>
+                                            <FormControl>
+                                                <Switch
+                                                    checked={field.value}
+                                                    onCheckedChange={(checked) => {
+                                                        if (checked) {
+                                                            setShowTrackingModal(true);
+                                                        } else {
+                                                            field.onChange(false);
+                                                            handleTrackingDisable();
+                                                        }
+                                                    }}
+                                                />
+                                            </FormControl>
                                         </FormItem>
-                                      )}
-                                    />
+                                    )}
+                                />
 
                                 <FormField
                                     control={form.control}
@@ -646,7 +529,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                 )}
                                             />
 
-
                                             {!form.watch('trackInventory') && (
                                                 <FormField
                                                     control={form.control}
@@ -694,6 +576,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                     </FormItem>
                                                 )}
                                             />
+
                                             <FormField
                                                 control={form.control}
                                                 name={`variants.${index}.sku`}
@@ -712,6 +595,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                     </FormItem>
                                                 )}
                                             />
+
                                             <FormField
                                                 control={form.control}
                                                 name={`variants.${index}.barcode`}
@@ -730,7 +614,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                     </FormItem>
                                                 )}
                                             />
-
 
                                             <FormField
                                                 control={form.control}
@@ -752,54 +635,53 @@ export default function ProductForm({ item }: ProductFormProps) {
                                             />
 
                                             {/* Conditional fields based on tracking type */}
-                                           {form.watch("trackingType") === "STOCK" && (
-                                              <FormField
-                                                control={form.control}
-                                                name={`variants.${index}.trackItem`}
-                                                render={({ field: formField }) => (
-                                                  <FormItem>
-                                                    <FormLabel>Stock Item</FormLabel>
-                                                    <FormControl>
-                                                      <StockVariantSelector
-                                                        {...formField}
-                                                        key={`stock-${selectorKey}-${index}-${formField.name}`}
-                                                        value={formField.value ?? ""}
-                                                        isDisabled={isPending}
-                                                        onChange={(value) => {
-                                                          formField.onChange(value);
-                                                        }}
-                                                      />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                  </FormItem>
-                                                )}
-                                              />
+                                            {form.watch("trackingType") === "STOCK" && (
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`variants.${index}.trackItem`}
+                                                    render={({ field: formField }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Stock Item</FormLabel>
+                                                            <FormControl>
+                                                                <StockVariantSelector
+                                                                    key={`stock-selector-${index}`}
+                                                                    value={formField.value ?? ""}
+                                                                    isDisabled={isPending}
+                                                                    placeholder="Select stock item"
+                                                                    onChange={(value) => {
+                                                                        formField.onChange(value);
+                                                                    }}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
                                             )}
                                             
                                             {form.watch("trackingType") === "RECIPE" && (
-                                          <FormField
-                                            control={form.control}
-                                            name={`variants.${index}.trackItem`}
-                                            render={({ field: formField }) => (
-                                              <FormItem>
-                                                <FormLabel>Recipe</FormLabel>
-                                                <FormControl>
-                                                  <RecipeSelector
-                                                    {...formField}
-                                                    key={`recipe-${selectorKey}-${index}-${formField.name}`}
-                                                    value={formField.value ?? ""}
-                                                    placeholder="Select recipe"
-                                                    isDisabled={isPending}
-                                                    onChange={(value) => {
-                                                      formField.onChange(value);
-                                                    }}
-                                                  />
-                                                </FormControl>
-                                                <FormMessage />
-                                              </FormItem>
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`variants.${index}.trackItem`}
+                                                    render={({ field: formField }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Recipe</FormLabel>
+                                                            <FormControl>
+                                                                <RecipeSelector
+                                                                    key={`recipe-selector-${index}`}
+                                                                    value={formField.value ?? ""}
+                                                                    placeholder="Select recipe"
+                                                                    isDisabled={isPending}
+                                                                    onChange={(value) => {
+                                                                        formField.onChange(value);
+                                                                    }}
+                                                                />
+                                                            </FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
                                             )}
-                                          />
-                                        )}
                                         </div>      
                                     </CardContent>
                                 </Card>
@@ -815,7 +697,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                     <SubmitButton
                         isPending={isPending}
                         label={item ? "Update product" : "Create product"}
-
                     />
                 </div>
             </form>
@@ -833,14 +714,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                         <Button
                             variant="outline"
                             className="w-full"
-                            onClick={() => { handleTrackingTypeSelect('RECIPE'); setShowTrackingModal(false) }}
+                            onClick={() => handleTrackingTypeSelect('RECIPE')}
                         >
                             Track as Recipe
                         </Button>
                         <Button
                             variant="outline"
                             className="w-full"
-                            onClick={() => { handleTrackingTypeSelect('STOCK'); setShowTrackingModal(false) }}
+                            onClick={() => handleTrackingTypeSelect('STOCK')}
                         >
                             Track as Stock Item
                         </Button>
