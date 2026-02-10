@@ -725,6 +725,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                 <FormField
                                                     control={form.control}
                                                     name={`variants.${index}.trackItem`}
+                                                    key={`stock-selector-${index}-${form.watch("trackingType")}`}
                                                     render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel>Stock Item</FormLabel>
@@ -733,6 +734,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                                     {...field}
                                                                     value={field.value ?? ""}
                                                                     isDisabled={isPending}
+                                                                    onChange={(value) => {
+                                                                      field.onChange(value);
+                                                                    }}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
@@ -751,9 +755,13 @@ export default function ProductForm({ item }: ProductFormProps) {
                                                             <FormControl>
                                                                 <RecipeSelector
                                                                     {...field}
+                                                                    key={`recipe-selector-${index}-${form.watch("trackingType")}`}
                                                                     value={field.value ?? ""}
                                                                     placeholder="Select recipe"
                                                                     isDisabled={isPending}
+                                                                    onChange={(value) => {
+                                                                      field.onChange(value);
+                                                                    }}
                                                                 />
                                                             </FormControl>
                                                             <FormMessage />
