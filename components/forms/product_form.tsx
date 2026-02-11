@@ -229,52 +229,44 @@ export default function ProductForm({ item }: ProductFormProps) {
       "📤 [SUBMIT] Raw form values:",
       JSON.stringify(values, null, 2),
     );
-
+    // First, update the form values with trackItem
     const updatedValues = { ...values };
 
     updatedValues.variants = updatedValues.variants.map((variant, index) => {
       const trackingType = form.getValues(`variants.${index}.trackingType`);
-      const stockItem = form.getValues(`variants.${index}.stockItem`);
-      const recipeItem = form.getValues(`variants.${index}.recipeItem`);
 
-      console.log(`📤 [SUBMIT] Variant ${index} details:`, {
-        trackingType,
-        stockItem,
-        recipeItem,
-        variantFromValues: variant,
-      });
-
+      // Get the correct trackItem from the form fields
       const trackItem =
         trackingType === "STOCK"
-          ? stockItem
+          ? form.getValues(`variants.${index}.stockItem`)
           : trackingType === "RECIPE"
-            ? recipeItem
+            ? form.getValues(`variants.${index}.recipeItem`)
             : null;
 
-      console.log(
-        `📤 [SUBMIT] Variant ${index} resolved trackItem:`,
+      console.log(`Variant ${index}:`, {
+        trackingType,
+        stockItem: form.getValues(`variants.${index}.stockItem`),
+        recipeItem: form.getValues(`variants.${index}.recipeItem`),
         trackItem,
-      );
-
-      // Remove stockItem and recipeItem, keep trackItem
-      const { stockItem: _, recipeItem: __, ...rest } = variant;
+      });
 
       return {
-        ...rest,
-        trackItem,
+        ...variant,
+        trackItem: trackItem || variant.trackItem,
       };
     });
 
     console.log(
-      "📤 [SUBMIT] Final payload:",
+      "Updated values with trackItem:",
       JSON.stringify(updatedValues, null, 2),
     );
 
+    // Now validate
     const result = ProductSchema.safeParse(updatedValues);
 
     if (!result.success) {
       console.log(
-        "❌ [SUBMIT] Validation failed:",
+        "Zod validation errors:",
         JSON.stringify(result.error, null, 2),
       );
       toast({
@@ -284,8 +276,6 @@ export default function ProductForm({ item }: ProductFormProps) {
       });
       return;
     }
-
-    console.log("✅ [SUBMIT] Validation passed");
 
     const stored = localStorage.getItem("pagination-products");
     const paginationState = stored ? JSON.parse(stored) : null;
