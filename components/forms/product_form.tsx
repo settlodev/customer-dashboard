@@ -103,17 +103,13 @@ export default function ProductForm({ item }: ProductFormProps) {
     name: "variants",
   });
 
-  // DEBUG: Watch trackingType changes
   useEffect(() => {
     const trackingType = form.watch("trackingType");
-    console.log("🔍 [FORM] TrackingType changed to:", trackingType);
   }, [form.watch("trackingType")]);
 
-  // Clear both stockItem and recipeItem when trackingType changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "trackingType") {
-        console.log("🧹 [FORM] Clearing items due to trackingType change");
         fields.forEach((_, index) => {
           const currentStockItem = form.getValues(
             `variants.${index}.stockItem`,
@@ -129,8 +125,6 @@ export default function ProductForm({ item }: ProductFormProps) {
 
           form.setValue(`variants.${index}.stockItem`, null);
           form.setValue(`variants.${index}.recipeItem`, null);
-
-          console.log(`✅ [FORM] Variant ${index} after clear - set to null`);
         });
       }
     });
@@ -151,13 +145,10 @@ export default function ProductForm({ item }: ProductFormProps) {
   );
 
   const handleTrackingTypeSelect = (type: string) => {
-    console.log("🎯 [FORM] handleTrackingTypeSelect called with type:", type);
-
     form.setValue("trackInventory", true);
     form.setValue("trackingType", type);
 
     fields.forEach((_, index) => {
-      console.log(`🔄 [FORM] Setting variant ${index} trackingType to:`, type);
       form.setValue(`variants.${index}.trackInventory`, true);
       form.setValue(`variants.${index}.trackingType`, type);
       form.setValue(`variants.${index}.stockItem`, null);
@@ -170,7 +161,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     // Verify the values were set
     setTimeout(() => {
       const trackingType = form.getValues("trackingType");
-      console.log("✅ [FORM] Verified trackingType after modal:", trackingType);
       fields.forEach((_, index) => {
         const variantTrackingType = form.getValues(
           `variants.${index}.trackingType`,
@@ -184,8 +174,6 @@ export default function ProductForm({ item }: ProductFormProps) {
   };
 
   const handleTrackingDisable = () => {
-    console.log("🚫 [FORM] handleTrackingDisable called");
-
     form.setValue("trackInventory", false);
     form.setValue("trackingType", null);
 
@@ -224,11 +212,6 @@ export default function ProductForm({ item }: ProductFormProps) {
   };
 
   const submitData = (values: z.infer<typeof ProductSchema>) => {
-    console.log("📤 [SUBMIT] Starting submission process");
-    console.log(
-      "📤 [SUBMIT] Raw form values:",
-      JSON.stringify(values, null, 2),
-    );
     // First, update the form values with trackItem
     const updatedValues = { ...values };
 
@@ -243,12 +226,12 @@ export default function ProductForm({ item }: ProductFormProps) {
             ? form.getValues(`variants.${index}.recipeItem`)
             : null;
 
-      console.log(`Variant ${index}:`, {
-        trackingType,
-        stockItem: form.getValues(`variants.${index}.stockItem`),
-        recipeItem: form.getValues(`variants.${index}.recipeItem`),
-        trackItem,
-      });
+      // console.log(`Variant ${index}:`, {
+      //   trackingType,
+      //   stockItem: form.getValues(`variants.${index}.stockItem`),
+      //   recipeItem: form.getValues(`variants.${index}.recipeItem`),
+      //   trackItem,
+      // });
 
       return {
         ...variant,
@@ -256,10 +239,10 @@ export default function ProductForm({ item }: ProductFormProps) {
       };
     });
 
-    console.log(
-      "Updated values with trackItem:",
-      JSON.stringify(updatedValues, null, 2),
-    );
+    // console.log(
+    //   "Updated values with trackItem:",
+    //   JSON.stringify(updatedValues, null, 2),
+    // );
 
     // Now validate
     const result = ProductSchema.safeParse(updatedValues);
@@ -286,10 +269,10 @@ export default function ProductForm({ item }: ProductFormProps) {
       image: imageUrl,
     };
 
-    console.log(
-      "🚀 [SUBMIT] Sending to API:",
-      JSON.stringify(productData, null, 2),
-    );
+    // console.log(
+    //   "🚀 [SUBMIT] Sending to API:",
+    //   JSON.stringify(productData, null, 2),
+    // );
 
     startTransition(() => {
       if (item) {
@@ -755,7 +738,6 @@ export default function ProductForm({ item }: ProductFormProps) {
                         )}
                       />
 
-                      {/* SEPARATE FIELDS - Stock Item */}
                       {/* SEPARATE FIELDS - Stock Item */}
                       {form.watch("trackingType") === "STOCK" && (
                         <FormField
