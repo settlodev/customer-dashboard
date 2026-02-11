@@ -87,7 +87,6 @@ export default function ProductForm({ item }: ProductFormProps) {
       variants: item?.variants.map((variant) => ({
         ...variant,
         trackingType: variant.trackingType || null,
-        // Split trackItem into stockItem and recipeItem based on trackingType
         stockItem: variant.trackingType === "STOCK" ? variant.trackItem : null,
         recipeItem:
           variant.trackingType === "RECIPE" ? variant.trackItem : null,
@@ -104,13 +103,34 @@ export default function ProductForm({ item }: ProductFormProps) {
     name: "variants",
   });
 
+  // DEBUG: Watch trackingType changes
+  useEffect(() => {
+    const trackingType = form.watch("trackingType");
+    console.log("🔍 [FORM] TrackingType changed to:", trackingType);
+  }, [form.watch("trackingType")]);
+
   // Clear both stockItem and recipeItem when trackingType changes
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "trackingType") {
+        console.log("🧹 [FORM] Clearing items due to trackingType change");
         fields.forEach((_, index) => {
+          const currentStockItem = form.getValues(
+            `variants.${index}.stockItem`,
+          );
+          const currentRecipeItem = form.getValues(
+            `variants.${index}.recipeItem`,
+          );
+
+          console.log(`🧹 [FORM] Variant ${index} before clear:`, {
+            stockItem: currentStockItem,
+            recipeItem: currentRecipeItem,
+          });
+
           form.setValue(`variants.${index}.stockItem`, null);
           form.setValue(`variants.${index}.recipeItem`, null);
+
+          console.log(`✅ [FORM] Variant ${index} after clear - set to null`);
         });
       }
     });
@@ -120,7 +140,7 @@ export default function ProductForm({ item }: ProductFormProps) {
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log("errors", errors);
+      console.log("❌ [FORM] Validation errors:", errors);
       toast({
         variant: "destructive",
         title: "Form validation failed",
@@ -131,22 +151,41 @@ export default function ProductForm({ item }: ProductFormProps) {
   );
 
   const handleTrackingTypeSelect = (type: string) => {
+    console.log("🎯 [FORM] handleTrackingTypeSelect called with type:", type);
+
     form.setValue("trackInventory", true);
     form.setValue("trackingType", type);
 
     fields.forEach((_, index) => {
+      console.log(`🔄 [FORM] Setting variant ${index} trackingType to:`, type);
       form.setValue(`variants.${index}.trackInventory`, true);
       form.setValue(`variants.${index}.trackingType`, type);
       form.setValue(`variants.${index}.stockItem`, null);
       form.setValue(`variants.${index}.recipeItem`, null);
-      // Also set trackItem to null initially
       form.setValue(`variants.${index}.trackItem`, null);
     });
 
     setShowTrackingModal(false);
+
+    // Verify the values were set
+    setTimeout(() => {
+      const trackingType = form.getValues("trackingType");
+      console.log("✅ [FORM] Verified trackingType after modal:", trackingType);
+      fields.forEach((_, index) => {
+        const variantTrackingType = form.getValues(
+          `variants.${index}.trackingType`,
+        );
+        console.log(
+          `✅ [FORM] Verified variant ${index} trackingType:`,
+          variantTrackingType,
+        );
+      });
+    }, 100);
   };
 
   const handleTrackingDisable = () => {
+    console.log("🚫 [FORM] handleTrackingDisable called");
+
     form.setValue("trackInventory", false);
     form.setValue("trackingType", null);
 
@@ -161,6 +200,11 @@ export default function ProductForm({ item }: ProductFormProps) {
   const handleAppendVariant = () => {
     const currentTrackInventory = form.getValues("trackInventory");
     const currentTrackingType = form.getValues("trackingType");
+
+    console.log("➕ [FORM] Adding variant with:", {
+      trackInventory: currentTrackInventory,
+      trackingType: currentTrackingType,
+    });
 
     append({
       name: "",
@@ -180,44 +224,57 @@ export default function ProductForm({ item }: ProductFormProps) {
   };
 
   const submitData = (values: z.infer<typeof ProductSchema>) => {
-    // First, update the form values with trackItem
+    console.log("📤 [SUBMIT] Starting submission process");
+    console.log(
+      "📤 [SUBMIT] Raw form values:",
+      JSON.stringify(values, null, 2),
+    );
+
     const updatedValues = { ...values };
 
     updatedValues.variants = updatedValues.variants.map((variant, index) => {
       const trackingType = form.getValues(`variants.${index}.trackingType`);
+      const stockItem = form.getValues(`variants.${index}.stockItem`);
+      const recipeItem = form.getValues(`variants.${index}.recipeItem`);
 
-      // Get the correct trackItem from the form fields
-      const trackItem =
-        trackingType === "STOCK"
-          ? form.getValues(`variants.${index}.stockItem`)
-          : trackingType === "RECIPE"
-            ? form.getValues(`variants.${index}.recipeItem`)
-            : null;
-
-      console.log(`Variant ${index}:`, {
+      console.log(`📤 [SUBMIT] Variant ${index} details:`, {
         trackingType,
-        stockItem: form.getValues(`variants.${index}.stockItem`),
-        recipeItem: form.getValues(`variants.${index}.recipeItem`),
-        trackItem,
+        stockItem,
+        recipeItem,
+        variantFromValues: variant,
       });
 
+      const trackItem =
+        trackingType === "STOCK"
+          ? stockItem
+          : trackingType === "RECIPE"
+            ? recipeItem
+            : null;
+
+      console.log(
+        `📤 [SUBMIT] Variant ${index} resolved trackItem:`,
+        trackItem,
+      );
+
+      // Remove stockItem and recipeItem, keep trackItem
+      const { stockItem: _, recipeItem: __, ...rest } = variant;
+
       return {
-        ...variant,
-        trackItem: trackItem || variant.trackItem,
+        ...rest,
+        trackItem,
       };
     });
 
     console.log(
-      "Updated values with trackItem:",
+      "📤 [SUBMIT] Final payload:",
       JSON.stringify(updatedValues, null, 2),
     );
 
-    // Now validate
     const result = ProductSchema.safeParse(updatedValues);
 
     if (!result.success) {
       console.log(
-        "Zod validation errors:",
+        "❌ [SUBMIT] Validation failed:",
         JSON.stringify(result.error, null, 2),
       );
       toast({
@@ -228,6 +285,8 @@ export default function ProductForm({ item }: ProductFormProps) {
       return;
     }
 
+    console.log("✅ [SUBMIT] Validation passed");
+
     const stored = localStorage.getItem("pagination-products");
     const paginationState = stored ? JSON.parse(stored) : null;
     setResponse(undefined);
@@ -236,6 +295,11 @@ export default function ProductForm({ item }: ProductFormProps) {
       ...result.data,
       image: imageUrl,
     };
+
+    console.log(
+      "🚀 [SUBMIT] Sending to API:",
+      JSON.stringify(productData, null, 2),
+    );
 
     startTransition(() => {
       if (item) {
@@ -261,6 +325,7 @@ export default function ProductForm({ item }: ProductFormProps) {
       }
     });
   };
+
   const handleGenerateDescription = async () => {
     const name = form.getValues("name");
     const category = form.getValues("category");
@@ -701,24 +766,44 @@ export default function ProductForm({ item }: ProductFormProps) {
                       />
 
                       {/* SEPARATE FIELDS - Stock Item */}
+                      {/* SEPARATE FIELDS - Stock Item */}
                       {form.watch("trackingType") === "STOCK" && (
                         <FormField
                           control={form.control}
                           name={`variants.${index}.stockItem`}
-                          render={({ field: formField }) => (
-                            <FormItem>
-                              <FormLabel>Stock Item</FormLabel>
-                              <FormControl>
-                                <StockVariantSelector
-                                  value={formField.value ?? ""}
-                                  isDisabled={isPending}
-                                  placeholder="Select stock item"
-                                  onChange={formField.onChange}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                          render={({ field: formField }) => {
+                            console.log(
+                              `🏪 [RENDER] StockVariantSelector rendering for variant ${index}:`,
+                              {
+                                trackingType: form.watch("trackingType"),
+                                value: formField.value,
+                              },
+                            );
+
+                            return (
+                              <FormItem>
+                                <FormLabel>Stock Item</FormLabel>
+                                <FormControl>
+                                  <StockVariantSelector
+                                    value={formField.value ?? ""}
+                                    isDisabled={isPending}
+                                    placeholder="Select stock item"
+                                    onChange={(value) => {
+                                      console.log(
+                                        `🏪 [SELECTOR] StockVariantSelector onChange:`,
+                                        {
+                                          variantIndex: index,
+                                          newValue: value,
+                                        },
+                                      );
+                                      formField.onChange(value);
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            );
+                          }}
                         />
                       )}
 
@@ -727,20 +812,39 @@ export default function ProductForm({ item }: ProductFormProps) {
                         <FormField
                           control={form.control}
                           name={`variants.${index}.recipeItem`}
-                          render={({ field: formField }) => (
-                            <FormItem>
-                              <FormLabel>Recipe</FormLabel>
-                              <FormControl>
-                                <RecipeSelector
-                                  value={formField.value ?? ""}
-                                  placeholder="Select recipe"
-                                  isDisabled={isPending}
-                                  onChange={formField.onChange}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
+                          render={({ field: formField }) => {
+                            console.log(
+                              `📋 [RENDER] RecipeSelector rendering for variant ${index}:`,
+                              {
+                                trackingType: form.watch("trackingType"),
+                                value: formField.value,
+                              },
+                            );
+
+                            return (
+                              <FormItem>
+                                <FormLabel>Recipe</FormLabel>
+                                <FormControl>
+                                  <RecipeSelector
+                                    value={formField.value ?? ""}
+                                    placeholder="Select recipe"
+                                    isDisabled={isPending}
+                                    onChange={(value) => {
+                                      console.log(
+                                        `📋 [SELECTOR] RecipeSelector onChange:`,
+                                        {
+                                          variantIndex: index,
+                                          newValue: value,
+                                        },
+                                      );
+                                      formField.onChange(value);
+                                    }}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            );
+                          }}
                         />
                       )}
                     </div>
