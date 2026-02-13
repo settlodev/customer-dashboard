@@ -15,6 +15,11 @@ import {
 import { NotificationSettingsSchema } from "@/types/notification/shema";
 import { LocationSettingsSchema } from "@/types/settings/schema";
 import { LocationSettings } from "@/types/settings/type";
+import {
+  PaymentMethodsResponse,
+  UpdatePaymentMethodsRequest,
+} from "@/types/payments/type";
+import { updatePaymentMethodsSchema } from "@/types/payments/schema";
 
 export const fetchLocationSettings = async (): Promise<LocationSettings> => {
   await getAuthenticatedUser();
@@ -125,16 +130,46 @@ export const updateNotificationSetting = async (
   }
 };
 
-export const acceptOrderPaymentMethods = async (): Promise<any> => {
+export const acceptOrderPaymentMethods =
+  async (): Promise<PaymentMethodsResponse> => {
+    await getAuthenticatedUser();
+
+    try {
+      const apiClient = new ApiClient();
+
+      const location = await getCurrentLocation();
+
+      const orderPaymentMethods = await apiClient.get(
+        `/api/${location?.id}/accepted-payment-methods/order-transactions/all`,
+      );
+
+      return parseStringify(orderPaymentMethods);
+    } catch (error) {
+      throw error;
+    }
+  };
+
+export const updateOrderPaymentMethods = async (
+  payload: UpdatePaymentMethodsRequest,
+): Promise<PaymentMethodsResponse> => {
   await getAuthenticatedUser();
+
+  const validated = updatePaymentMethodsSchema.safeParse(payload);
+
+  if (!validated.success) {
+    const errorMessage = validated.error.errors
+      .map((e) => e.message)
+      .join(", ");
+    throw new Error(`Validation failed: ${errorMessage}`);
+  }
 
   try {
     const apiClient = new ApiClient();
-
     const location = await getCurrentLocation();
 
-    const orderPaymentMethods = await apiClient.get(
-      `/api/${location?.id}/accepted-payment-methods/order-transactions/all`,
+    const orderPaymentMethods = await apiClient.put(
+      `/api/${location?.id}/accepted-payment-methods/order-transactions`,
+      validated.data,
     );
     return parseStringify(orderPaymentMethods);
   } catch (error) {

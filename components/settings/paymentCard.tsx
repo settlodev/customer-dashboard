@@ -7,16 +7,31 @@ import {
   Smartphone,
 } from "lucide-react";
 import { useState } from "react";
+import {
+  PaymentMethodCategory,
+  PaymentMethodType,
+} from "@/types/payments/type";
+
+interface PaymentMethodCardProps {
+  category: PaymentMethodCategory;
+  selectedMethods: string[];
+  onMethodToggle: (methodId: string) => void;
+  onCategoryToggle: (
+    categoryName: string,
+    methods: PaymentMethodType[],
+    selectAll: boolean,
+  ) => void;
+}
 
 export const PaymentMethodCard = ({
   category,
   selectedMethods,
   onMethodToggle,
   onCategoryToggle,
-}) => {
+}: PaymentMethodCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const getIcon = (name: any) => {
+  const getIcon = (name: string) => {
     switch (name.toLowerCase()) {
       case "mobile money":
         return <Smartphone className="w-6 h-6" />;
@@ -31,7 +46,7 @@ export const PaymentMethodCard = ({
     }
   };
 
-  const getColorClass = (name: any) => {
+  const getColorClass = (name: string) => {
     switch (name.toLowerCase()) {
       case "mobile money":
         return "bg-blue-50 border-blue-200 text-blue-700";
@@ -46,20 +61,19 @@ export const PaymentMethodCard = ({
     }
   };
 
-  const enabledMethods = category.acceptedPaymentMethodTypes.filter(
-    (m: any) => m.isEnabled,
-  );
+  const allMethods = category.acceptedPaymentMethodTypes;
 
-  const allSelected = enabledMethods.every((method: any) =>
+  const allSelected = allMethods.every((method) =>
     selectedMethods.includes(method.id),
   );
+
   const someSelected =
-    enabledMethods.some((method: any) => selectedMethods.includes(method.id)) &&
+    allMethods.some((method) => selectedMethods.includes(method.id)) &&
     !allSelected;
 
-  const handleCategoryCheckbox = (e: any) => {
+  const handleCategoryCheckbox = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onCategoryToggle(category.id, enabledMethods, !allSelected);
+    onCategoryToggle(category.name, allMethods, !allSelected);
   };
 
   return (
@@ -92,8 +106,8 @@ export const PaymentMethodCard = ({
               {category.name}
             </h3>
             <p className="text-sm text-gray-500">
-              {enabledMethods.length} payment{" "}
-              {enabledMethods.length === 1 ? "method" : "methods"} available
+              {allMethods.length} payment{" "}
+              {allMethods.length === 1 ? "method" : "methods"} available
             </p>
           </div>
         </div>
@@ -109,7 +123,7 @@ export const PaymentMethodCard = ({
       {isExpanded && (
         <div className="px-6 pb-6 border-t border-gray-100">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
-            {enabledMethods.map((method: any) => (
+            {allMethods.map((method) => (
               <div
                 key={method.id}
                 onClick={() => onMethodToggle(method.id)}
@@ -121,7 +135,11 @@ export const PaymentMethodCard = ({
                   onChange={() => {}}
                   className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
                 />
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    method.isEnabled ? "bg-green-500" : "bg-gray-300"
+                  }`}
+                />
                 <span className="text-sm text-gray-700 font-medium">
                   {method.name}
                 </span>
