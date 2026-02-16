@@ -89,7 +89,6 @@ export const createLocation = async (
   let formResponse: FormResponse | null = null;
 
   try {
-    // Authentication check
     const authenticatedUser = await getAuthenticatedUser();
     if ("responseType" in authenticatedUser) {
       return parseStringify({
@@ -99,7 +98,6 @@ export const createLocation = async (
       });
     }
 
-    // Validate input data
     const validatedData = LocationSchema.safeParse(location);
 
     if (!validatedData.success) {
@@ -163,9 +161,9 @@ export const createLocation = async (
     if (formResponse.responseType === "success") {
       // Use businessId to determine if this is multistep
       if (businessId) {
-        redirect("/business");
+        revalidatePath("/business");
       } else {
-        revalidatePath("/locations");
+        revalidatePath("/select-location");
       }
     }
     return formResponse;

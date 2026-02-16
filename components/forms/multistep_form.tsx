@@ -21,8 +21,6 @@ const MultiStepBusinessForm = ({
   const isNewItem = !item;
 
   const handleBusinessSubmit = async (data: any) => {
-    console.log("Business Data:", data);
-
     if (!isNewItem) {
       setBusinessData(data as Business);
       return;
@@ -30,8 +28,6 @@ const MultiStepBusinessForm = ({
 
     try {
       const savedBusiness = await createBusiness(data);
-
-      console.log("Business data after successful saving data:", savedBusiness);
 
       if (savedBusiness?.responseType === "success" && savedBusiness.data) {
         const businessId = (savedBusiness.data as Business).id;
