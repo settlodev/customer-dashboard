@@ -14,7 +14,6 @@ import {
 } from "./business/get-current-business";
 import { NotificationSettingsSchema } from "@/types/notification/shema";
 import { LocationSettingsSchema } from "@/types/settings/schema";
-import { LocationSettings } from "@/types/settings/type";
 import {
   PaymentMethodsResponse,
   UpdatePaymentMethodsRequest,
@@ -149,11 +148,11 @@ export const acceptOrderPaymentMethods =
   };
 
 export const updateOrderPaymentMethods = async (
-  payload: UpdatePaymentMethodsRequest,
+  methods: UpdatePaymentMethodsRequest,
 ): Promise<PaymentMethodsResponse> => {
   await getAuthenticatedUser();
 
-  const validated = updatePaymentMethodsSchema.safeParse(payload);
+  const validated = updatePaymentMethodsSchema.safeParse(methods);
 
   if (!validated.success) {
     const errorMessage = validated.error.errors
@@ -162,13 +161,17 @@ export const updateOrderPaymentMethods = async (
     throw new Error(`Validation failed: ${errorMessage}`);
   }
 
+  const payload = {
+    ...validated.data,
+  };
+
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
 
     const orderPaymentMethods = await apiClient.put(
       `/api/${location?.id}/accepted-payment-methods/order-transactions`,
-      validated.data,
+      payload,
     );
     return parseStringify(orderPaymentMethods);
   } catch (error) {
