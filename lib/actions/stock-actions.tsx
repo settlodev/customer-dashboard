@@ -401,7 +401,6 @@ export const uploadProductWithStockCSV = async ({
 
     console.log("CSV upload response", response.task_id);
 
-    // Don't redirect or poll here - return the response to the client
     revalidatePath("/stocks");
 
     // Return the response so the client can access the task_id
