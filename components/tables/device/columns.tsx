@@ -28,8 +28,9 @@ export const columns: ColumnDef<Device>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+
   {
-    accessorKey: "name",
+    accessorKey: "customName",
     enableHiding: false,
     header: ({ column }) => {
       return (
@@ -38,10 +39,20 @@ export const columns: ColumnDef<Device>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Device Name
+          Custom Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
+    },
+  },
+
+  {
+    accessorKey: "name",
+    header: "Brand",
+    enableHiding: false,
+    cell: ({ row }) => {
+      const name = row.original.name;
+      return <span>{name ? name : "None"}</span>;
     },
   },
 
