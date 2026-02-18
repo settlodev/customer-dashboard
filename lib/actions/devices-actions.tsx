@@ -141,7 +141,7 @@ export const updateDevice = async (
     };
   }
 
-  revalidatePath("/discounts");
+  revalidatePath("/devices");
   return parseStringify(formResponse);
 };
 
