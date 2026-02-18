@@ -10,6 +10,19 @@ import { CashFlow, Credit, Orders } from "@/types/orders/type";
 import { orderRequestSchema } from "@/types/orders/schema";
 import { CartState } from "@/context/cartContext";
 
+type DigitalReceiptPaymentDetail = {
+  id: string;
+  acceptedPaymentMethodType: string;
+  acceptedPaymentMethodTypeName: string;
+  accountNumber: string;
+  notes: string;
+};
+
+type OrderReceiptResponse = {
+  order: Record<string, any>;
+  digitalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
+  physicalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
+};
 export const searchOrder = async (
   q: string,
   page: number,
@@ -77,8 +90,16 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
   const apiClient = new ApiClient();
 
   try {
-    const order = await apiClient.get(`/api/order-receipts/${identifier}`);
-    return parseStringify(order);
+    const response = (await apiClient.get(
+      `/api/order-receipts/with-additional-details/${identifier}`,
+    )) as OrderReceiptResponse;
+
+    console.log("order receipt", response);
+
+    return parseStringify({
+      ...response.order,
+      digitalReceiptPaymentDetails: response.digitalReceiptPaymentDetails ?? [],
+    });
   } catch (error) {
     throw error;
   }
