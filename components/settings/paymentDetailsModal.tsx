@@ -12,138 +12,224 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import {
+  digitalReceiptPaymentDetails,
+  physicalReceiptPaymentDetails,
+} from "@/lib/actions/settings-actions";
+import PaymentMethodSelectorWidget from "@/components/widgets/paymentMethodSelector";
+import { PhysicalReceiptPaymentDetails } from "@/types/payments/schema";
 
-export interface BankDetail {
+interface PaymentRow {
   id: string;
+  methodId: string;
   accountNumber: string;
-  accountName: string;
-}
-
-export interface MNODetail {
-  id: string;
-  phoneNumber: string;
-  accountName: string;
-}
-
-export interface PaymentDetails {
-  bankDetails: BankDetail[];
-  mnoDetails: MNODetail[];
+  notes: string;
 }
 
 interface PaymentDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: PaymentDetails) => void;
-  currentDetails?: PaymentDetails;
+  onSaved?: () => void;
   receiptType: "physical" | "digital";
+  initialRows?: PaymentRow[];
 }
+
+const emptyRow = (): PaymentRow => ({
+  id: Date.now().toString() + Math.random(),
+  methodId: "",
+  accountNumber: "",
+  notes: "",
+});
 
 export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
   isOpen,
   onClose,
-  onSave,
-  currentDetails,
+  onSaved,
   receiptType,
+  initialRows,
 }) => {
-  const [bankDetails, setBankDetails] = useState<BankDetail[]>(
-    currentDetails?.bankDetails || [],
-  );
-  const [mnoDetails, setMnoDetails] = useState<MNODetail[]>(
-    currentDetails?.mnoDetails || [],
-  );
+  const [bankRows, setBankRows] = useState<PaymentRow[]>(initialRows ?? []);
+  const [mnoRows, setMnoRows] = useState<PaymentRow[]>(initialRows ?? []);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const addBankDetail = () => {
-    setBankDetails([
-      ...bankDetails,
-      { id: Date.now().toString(), accountNumber: "", accountName: "" },
-    ]);
-  };
+  const addRow = (setter: React.Dispatch<React.SetStateAction<PaymentRow[]>>) =>
+    setter((prev) => [...prev, emptyRow()]);
 
-  const removeBankDetail = (id: string) => {
-    setBankDetails(bankDetails.filter((detail) => detail.id !== id));
-  };
-
-  const updateBankDetail = (
+  const removeRow = (
+    setter: React.Dispatch<React.SetStateAction<PaymentRow[]>>,
     id: string,
-    field: keyof BankDetail,
-    value: string,
-  ) => {
-    setBankDetails(
-      bankDetails.map((detail) =>
-        detail.id === id ? { ...detail, [field]: value } : detail,
-      ),
-    );
-  };
+  ) => setter((prev) => prev.filter((r) => r.id !== id));
 
-  const addMNODetail = () => {
-    setMnoDetails([
-      ...mnoDetails,
-      { id: Date.now().toString(), phoneNumber: "", accountName: "" },
-    ]);
-  };
-
-  const removeMNODetail = (id: string) => {
-    setMnoDetails(mnoDetails.filter((detail) => detail.id !== id));
-  };
-
-  const updateMNODetail = (
+  const updateRow = (
+    setter: React.Dispatch<React.SetStateAction<PaymentRow[]>>,
     id: string,
-    field: keyof MNODetail,
+    field: keyof Omit<PaymentRow, "id">,
     value: string,
-  ) => {
-    setMnoDetails(
-      mnoDetails.map((detail) =>
-        detail.id === id ? { ...detail, [field]: value } : detail,
-      ),
+  ) =>
+    setter((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
     );
+
+  const validateRows = (rows: PaymentRow[], label: string): boolean => {
+    for (const row of rows) {
+      if (!row.methodId && !row.accountNumber) continue;
+      if (!row.methodId) {
+        toast({
+          variant: "destructive",
+          title: "Incomplete details",
+          description: `Please select a ${label} for every entry.`,
+        });
+        return false;
+      }
+      if (!row.accountNumber.trim()) {
+        toast({
+          variant: "destructive",
+          title: "Incomplete details",
+          description: `Please enter an account number for every ${label} entry.`,
+        });
+        return false;
+      }
+    }
+    return true;
   };
 
-  const handleSave = () => {
-    // Validate that filled fields are complete
-    const incompleteBankDetails = bankDetails.some(
-      (detail) =>
-        (detail.accountNumber && !detail.accountName) ||
-        (!detail.accountNumber && detail.accountName),
-    );
+  const toPayload = (rows: PaymentRow[]): PhysicalReceiptPaymentDetails =>
+    rows
+      .filter((r) => r.methodId && r.accountNumber.trim())
+      .map((r) => ({
+        acceptedPaymentMethodType: r.methodId,
+        accountNumber: r.accountNumber.trim(),
+        notes: r.notes.trim(),
+      }));
 
-    const incompleteMNODetails = mnoDetails.some(
-      (detail) =>
-        (detail.phoneNumber && !detail.accountName) ||
-        (!detail.phoneNumber && detail.accountName),
-    );
+  const handleSave = async () => {
+    if (!validateRows(bankRows, "bank")) return;
+    if (!validateRows(mnoRows, "MNO")) return;
 
-    if (incompleteBankDetails || incompleteMNODetails) {
+    const payload = toPayload([...bankRows, ...mnoRows]);
+
+    if (payload.length === 0) {
       toast({
         variant: "destructive",
-        title: "Incomplete details",
-        description:
-          "Please fill in both account number and name for each entry",
+        title: "No entries",
+        description: "Please add at least one payment method before saving.",
       });
       return;
     }
 
-    // Filter out empty entries
-    const validBankDetails = bankDetails.filter(
-      (detail) => detail.accountNumber && detail.accountName,
-    );
-    const validMNODetails = mnoDetails.filter(
-      (detail) => detail.phoneNumber && detail.accountName,
-    );
-
-    onSave({
-      bankDetails: validBankDetails,
-      mnoDetails: validMNODetails,
-    });
-
-    toast({
-      title: "Success",
-      description: "Payment details saved successfully",
-    });
-
-    onClose();
+    try {
+      setIsSaving(true);
+      const saveFn =
+        receiptType === "physical"
+          ? physicalReceiptPaymentDetails
+          : digitalReceiptPaymentDetails;
+      await saveFn(payload);
+      toast({
+        title: "Saved",
+        description: "Payment details saved successfully.",
+      });
+      onSaved?.();
+      onClose();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Save failed",
+        description:
+          error?.message ?? "Something went wrong. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const renderRows = (
+    rows: PaymentRow[],
+    mode: "bank" | "mno",
+    setter: React.Dispatch<React.SetStateAction<PaymentRow[]>>,
+    label: string,
+  ) => (
+    <div className="space-y-4">
+      {rows.map((row, index) => (
+        <div key={row.id} className="border rounded-lg p-4 space-y-3">
+          <div className="flex justify-between items-center">
+            <h4 className="font-medium text-sm">
+              {label} {index + 1}
+            </h4>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => removeRow(setter, row.id)}
+              disabled={isSaving}
+            >
+              <Trash2 className="h-4 w-4 text-destructive" />
+            </Button>
+          </div>
+
+          <div className="grid gap-3">
+            {/* Bank / MNO selector */}
+            <div className="space-y-1">
+              <Label>
+                {mode === "bank" ? "Bank" : "Mobile Money Operator"}
+              </Label>
+              <PaymentMethodSelectorWidget
+                mode={mode}
+                value={row.methodId}
+                onChange={(value) =>
+                  updateRow(setter, row.id, "methodId", value)
+                }
+                isDisabled={isSaving}
+              />
+            </div>
+
+            {/* Account number / phone number */}
+            <div className="space-y-1">
+              <Label htmlFor={`${mode}-acct-${row.id}`}>
+                {mode === "bank" ? "Account Number" : "Phone Number"}
+              </Label>
+              <Input
+                id={`${mode}-acct-${row.id}`}
+                placeholder={
+                  mode === "bank"
+                    ? "e.g., 1234567890"
+                    : "e.g., +255 XXX XXX XXX"
+                }
+                value={row.accountNumber}
+                onChange={(e) =>
+                  updateRow(setter, row.id, "accountNumber", e.target.value)
+                }
+                disabled={isSaving}
+              />
+            </div>
+
+            {/* Notes (optional) */}
+            <div className="space-y-1">
+              <Label htmlFor={`${mode}-notes-${row.id}`}>
+                Notes{" "}
+                <span className="text-muted-foreground font-normal">
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                id={`${mode}-notes-${row.id}`}
+                placeholder="e.g., Primary business account"
+                value={row.notes}
+                onChange={(e) =>
+                  updateRow(setter, row.id, "notes", e.target.value)
+                }
+                disabled={isSaving}
+              />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -165,6 +251,7 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
             <TabsTrigger value="mno">MNO Details</TabsTrigger>
           </TabsList>
 
+          {/* ── Bank Tab ─────────────────────────────────────────────────── */}
           <TabsContent value="bank" className="space-y-4 mt-4">
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
@@ -174,82 +261,24 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={addBankDetail}
+                onClick={() => addRow(setBankRows)}
+                disabled={isSaving}
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Add Bank
               </Button>
             </div>
 
-            {bankDetails.length === 0 && (
+            {bankRows.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No bank details added. Click &quotAdd Bank&quot to add one.
+                No bank details added. Click &quot;Add Bank&quot; to add one.
               </div>
+            ) : (
+              renderRows(bankRows, "bank", setBankRows, "Bank Account")
             )}
-
-            <div className="space-y-4">
-              {bankDetails.map((detail, index) => (
-                <div
-                  key={detail.id}
-                  className="border rounded-lg p-4 space-y-3 relative"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-sm">
-                      Bank Account {index + 1}
-                    </h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => removeBankDetail(detail.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor={`bank-number-${detail.id}`}>
-                        Account Number
-                      </Label>
-                      <Input
-                        id={`bank-number-${detail.id}`}
-                        placeholder="e.g., 1234567890"
-                        value={detail.accountNumber}
-                        onChange={(e) =>
-                          updateBankDetail(
-                            detail.id,
-                            "accountNumber",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor={`bank-name-${detail.id}`}>
-                        Account Name
-                      </Label>
-                      <Input
-                        id={`bank-name-${detail.id}`}
-                        placeholder="e.g., Business Account - CRDB Bank"
-                        value={detail.accountName}
-                        onChange={(e) =>
-                          updateBankDetail(
-                            detail.id,
-                            "accountName",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </TabsContent>
 
+          {/* ── MNO Tab ──────────────────────────────────────────────────── */}
           <TabsContent value="mno" className="space-y-4 mt-4">
             <div className="flex justify-between items-center">
               <p className="text-sm text-muted-foreground">
@@ -259,88 +288,38 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={addMNODetail}
+                onClick={() => addRow(setMnoRows)}
+                disabled={isSaving}
               >
                 <Plus className="h-4 w-4 mr-1" />
                 Add MNO
               </Button>
             </div>
 
-            {mnoDetails.length === 0 && (
+            {mnoRows.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
-                No MNO details added. Click &quotAdd MNO&quot to add one.
+                No MNO details added. Click &quot;Add MNO&quot; to add one.
               </div>
+            ) : (
+              renderRows(mnoRows, "mno", setMnoRows, "MNO Account")
             )}
-
-            <div className="space-y-4">
-              {mnoDetails.map((detail, index) => (
-                <div
-                  key={detail.id}
-                  className="border rounded-lg p-4 space-y-3 relative"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-sm">
-                      MNO Account {index + 1}
-                    </h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => removeMNODetail(detail.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor={`mno-number-${detail.id}`}>
-                        Phone Number
-                      </Label>
-                      <Input
-                        id={`mno-number-${detail.id}`}
-                        placeholder="e.g., +255 XXX XXX XXX"
-                        value={detail.phoneNumber}
-                        onChange={(e) =>
-                          updateMNODetail(
-                            detail.id,
-                            "phoneNumber",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor={`mno-name-${detail.id}`}>
-                        Account Name
-                      </Label>
-                      <Input
-                        id={`mno-name-${detail.id}`}
-                        placeholder="e.g., M-Pesa - Business Name"
-                        value={detail.accountName}
-                        onChange={(e) =>
-                          updateMNODetail(
-                            detail.id,
-                            "accountName",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
           </TabsContent>
         </Tabs>
 
         <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSaving}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>Save Payment Details</Button>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <>
+                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Save Payment Details"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

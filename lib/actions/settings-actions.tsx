@@ -18,7 +18,11 @@ import {
   PaymentMethodsResponse,
   UpdatePaymentMethodsRequest,
 } from "@/types/payments/type";
-import { updatePaymentMethodsSchema } from "@/types/payments/schema";
+import {
+  PhysicalReceiptPaymentDetails,
+  physicalReceiptPaymentDetailsSchema,
+  updatePaymentMethodsSchema,
+} from "@/types/payments/schema";
 
 export const fetchLocationSettings = async (): Promise<any> => {
   await getAuthenticatedUser();
@@ -141,6 +145,7 @@ export const acceptOrderPaymentMethods =
         `/api/${location?.id}/accepted-payment-methods/order-transactions/all`,
       );
 
+      console.log("orderPaymentMethods", orderPaymentMethods);
       return parseStringify(orderPaymentMethods);
     } catch (error) {
       throw error;
@@ -175,6 +180,76 @@ export const updateOrderPaymentMethods = async (
     );
     return parseStringify(orderPaymentMethods);
   } catch (error) {
+    throw error;
+  }
+};
+
+export const physicalReceiptPaymentDetails = async (
+  methods: PhysicalReceiptPaymentDetails,
+): Promise<any> => {
+  await getAuthenticatedUser();
+
+  const validated = physicalReceiptPaymentDetailsSchema.safeParse(methods);
+
+  if (!validated.success) {
+    const errors = validated.error.errors.map((err) => {
+      const path = err.path.join(".");
+      return path ? `${path}: ${err.message}` : err.message;
+    });
+
+    throw new Error(`Validation failed: ${errors.join("; ")}`);
+  }
+
+  const payload = validated.data;
+  console.log("The payload", payload);
+
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+
+    const physicalReceipt = await apiClient.post(
+      `/api/physical-receipt-payment-details/${location?.id}/create`,
+      payload,
+    );
+    console.log("The physical receipt payment details are", physicalReceipt);
+    return parseStringify(physicalReceipt);
+  } catch (error) {
+    console.error("Failed to store physical receipt payment details:", error);
+    throw error;
+  }
+};
+
+export const digitalReceiptPaymentDetails = async (
+  methods: PhysicalReceiptPaymentDetails,
+): Promise<any> => {
+  await getAuthenticatedUser();
+
+  const validated = physicalReceiptPaymentDetailsSchema.safeParse(methods);
+
+  if (!validated.success) {
+    const errors = validated.error.errors.map((err) => {
+      const path = err.path.join(".");
+      return path ? `${path}: ${err.message}` : err.message;
+    });
+
+    throw new Error(`Validation failed: ${errors.join("; ")}`);
+  }
+
+  const payload = validated.data;
+  console.log("The payload", payload);
+
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+
+    const digitalReceipt = await apiClient.post(
+      `/api/digital-receipt-payment-details/${location?.id}/create`,
+      payload,
+    );
+    console.log("The digital receipt payment details are", digitalReceipt);
+    return parseStringify(digitalReceipt);
+  } catch (error) {
+    console.error("Failed to store digital receipt payment details:", error);
     throw error;
   }
 };
