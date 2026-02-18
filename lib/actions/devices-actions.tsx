@@ -125,7 +125,7 @@ export const updateDevice = async (
   try {
     const apiClient = new ApiClient();
 
-    await apiClient.put(`/api/discounts/${location?.id}/${id}`, payload);
+    await apiClient.put(`/api/location-devices/${location?.id}/${id}`, payload);
 
     formResponse = {
       responseType: "success",
