@@ -1,5 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -8,9 +11,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2, Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -19,14 +29,18 @@ import {
   physicalReceiptPaymentDetails,
 } from "@/lib/actions/settings-actions";
 import PaymentMethodSelectorWidget from "@/components/widgets/paymentMethodSelector";
-import { PhysicalReceiptPaymentDetails } from "@/types/payments/schema";
+import {
+  physicalReceiptPaymentDetailsSchema,
+  PhysicalReceiptPaymentDetails,
+} from "@/types/payments/schema";
 
-interface PaymentRow {
-  id: string;
-  methodId: string;
-  accountNumber: string;
-  notes: string;
-}
+const formSchema = z.object({
+  bankRows: physicalReceiptPaymentDetailsSchema.optional().default([]),
+  mnoRows: physicalReceiptPaymentDetailsSchema.optional().default([]),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+type PaymentRow = PhysicalReceiptPaymentDetails[number];
 
 interface PaymentDetailsModalProps {
   isOpen: boolean;
@@ -37,8 +51,7 @@ interface PaymentDetailsModalProps {
 }
 
 const emptyRow = (): PaymentRow => ({
-  id: Date.now().toString() + Math.random(),
-  methodId: "",
+  acceptedPaymentMethodType: "",
   accountNumber: "",
   notes: "",
 });
@@ -50,82 +63,50 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
   receiptType,
   initialRows,
 }) => {
-  const [bankRows, setBankRows] = useState<PaymentRow[]>(initialRows ?? []);
-  const [mnoRows, setMnoRows] = useState<PaymentRow[]>(initialRows ?? []);
-  const [isSaving, setIsSaving] = useState(false);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      bankRows: initialRows ?? [],
+      mnoRows: initialRows ?? [],
+    },
+  });
 
-  const addRow = (setter: React.Dispatch<React.SetStateAction<PaymentRow[]>>) =>
-    setter((prev) => [...prev, emptyRow()]);
+  const {
+    fields: bankFields,
+    append: appendBank,
+    remove: removeBank,
+  } = useFieldArray({ control: form.control, name: "bankRows" });
 
-  const removeRow = (
-    setter: React.Dispatch<React.SetStateAction<PaymentRow[]>>,
-    id: string,
-  ) => setter((prev) => prev.filter((r) => r.id !== id));
+  const {
+    fields: mnoFields,
+    append: appendMno,
+    remove: removeMno,
+  } = useFieldArray({ control: form.control, name: "mnoRows" });
 
-  const updateRow = (
-    setter: React.Dispatch<React.SetStateAction<PaymentRow[]>>,
-    id: string,
-    field: keyof Omit<PaymentRow, "id">,
-    value: string,
-  ) =>
-    setter((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r)),
-    );
+  const onSubmit = async (data: FormValues) => {
+    // Merge both tabs, strip incomplete rows, then validate against real schema
+    const merged: PhysicalReceiptPaymentDetails = [
+      ...(data.bankRows ?? []),
+      ...(data.mnoRows ?? []),
+    ].filter((r) => r.acceptedPaymentMethodType && r.accountNumber.trim());
 
-  const validateRows = (rows: PaymentRow[], label: string): boolean => {
-    for (const row of rows) {
-      if (!row.methodId && !row.accountNumber) continue;
-      if (!row.methodId) {
-        toast({
-          variant: "destructive",
-          title: "Incomplete details",
-          description: `Please select a ${label} for every entry.`,
-        });
-        return false;
-      }
-      if (!row.accountNumber.trim()) {
-        toast({
-          variant: "destructive",
-          title: "Incomplete details",
-          description: `Please enter an account number for every ${label} entry.`,
-        });
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const toPayload = (rows: PaymentRow[]): PhysicalReceiptPaymentDetails =>
-    rows
-      .filter((r) => r.methodId && r.accountNumber.trim())
-      .map((r) => ({
-        acceptedPaymentMethodType: r.methodId,
-        accountNumber: r.accountNumber.trim(),
-        notes: r.notes.trim(),
-      }));
-
-  const handleSave = async () => {
-    if (!validateRows(bankRows, "bank")) return;
-    if (!validateRows(mnoRows, "MNO")) return;
-
-    const payload = toPayload([...bankRows, ...mnoRows]);
-
-    if (payload.length === 0) {
+    const result = physicalReceiptPaymentDetailsSchema.safeParse(merged);
+    if (!result.success) {
       toast({
         variant: "destructive",
-        title: "No entries",
-        description: "Please add at least one payment method before saving.",
+        title: "Validation error",
+        description:
+          result.error.issues[0]?.message ?? "Invalid payment details.",
       });
       return;
     }
 
     try {
-      setIsSaving(true);
       const saveFn =
         receiptType === "physical"
           ? physicalReceiptPaymentDetails
           : digitalReceiptPaymentDetails;
-      await saveFn(payload);
+      await saveFn(result.data);
       toast({
         title: "Saved",
         description: "Payment details saved successfully.",
@@ -139,97 +120,136 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
         description:
           error?.message ?? "Something went wrong. Please try again.",
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const renderRows = (
-    rows: PaymentRow[],
+    fields: typeof bankFields | typeof mnoFields,
     mode: "bank" | "mno",
-    setter: React.Dispatch<React.SetStateAction<PaymentRow[]>>,
+    remove: (index: number) => void,
+    append: (row: PaymentRow) => void,
     label: string,
-  ) => (
-    <div className="space-y-4">
-      {rows.map((row, index) => (
-        <div key={row.id} className="border rounded-lg p-4 space-y-3">
-          <div className="flex justify-between items-center">
-            <h4 className="font-medium text-sm">
-              {label} {index + 1}
-            </h4>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={() => removeRow(setter, row.id)}
-              disabled={isSaving}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
+  ) => {
+    const fieldName = (mode === "bank" ? "bankRows" : "mnoRows") as
+      | "bankRows"
+      | "mnoRows";
 
-          <div className="grid gap-3">
-            {/* Bank / MNO selector */}
-            <div className="space-y-1">
-              <Label>
-                {mode === "bank" ? "Bank" : "Mobile Money Operator"}
-              </Label>
-              <PaymentMethodSelectorWidget
-                mode={mode}
-                value={row.methodId}
-                onChange={(value) =>
-                  updateRow(setter, row.id, "methodId", value)
-                }
-                isDisabled={isSaving}
-              />
-            </div>
-
-            {/* Account number / phone number */}
-            <div className="space-y-1">
-              <Label htmlFor={`${mode}-acct-${row.id}`}>
-                {mode === "bank" ? "Account Number" : "Phone Number"}
-              </Label>
-              <Input
-                id={`${mode}-acct-${row.id}`}
-                placeholder={
-                  mode === "bank"
-                    ? "e.g., 1234567890"
-                    : "e.g., +255 XXX XXX XXX"
-                }
-                value={row.accountNumber}
-                onChange={(e) =>
-                  updateRow(setter, row.id, "accountNumber", e.target.value)
-                }
-                disabled={isSaving}
-              />
-            </div>
-
-            {/* Notes (optional) */}
-            <div className="space-y-1">
-              <Label htmlFor={`${mode}-notes-${row.id}`}>
-                Notes{" "}
-                <span className="text-muted-foreground font-normal">
-                  (optional)
-                </span>
-              </Label>
-              <Input
-                id={`${mode}-notes-${row.id}`}
-                placeholder="e.g., Primary business account"
-                value={row.notes}
-                onChange={(e) =>
-                  updateRow(setter, row.id, "notes", e.target.value)
-                }
-                disabled={isSaving}
-              />
-            </div>
-          </div>
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <p className="text-sm text-muted-foreground">
+            Add {mode === "bank" ? "bank account" : "mobile money operator"}{" "}
+            information
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => append(emptyRow())}
+            disabled={form.formState.isSubmitting}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add {mode === "bank" ? "Bank" : "MNO"}
+          </Button>
         </div>
-      ))}
-    </div>
-  );
 
-  // ─────────────────────────────────────────────────────────────────────────
+        {fields.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No {label.toLowerCase()} details added. Click &quot;Add{" "}
+            {mode === "bank" ? "Bank" : "MNO"}&quot; to add one.
+          </div>
+        ) : (
+          fields.map((field, index) => (
+            <div key={field.id} className="border rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium text-sm">
+                  {label} {index + 1}
+                </h4>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => remove(index)}
+                  disabled={form.formState.isSubmitting}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+
+              <div className="grid gap-3">
+                {/* Payment method selector */}
+                <FormField
+                  control={form.control}
+                  name={`${fieldName}.${index}.acceptedPaymentMethodType`}
+                  render={({ field: f }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {mode === "bank" ? "Bank" : "Mobile Money Operator"}
+                      </FormLabel>
+                      <FormControl>
+                        <PaymentMethodSelectorWidget
+                          mode={mode}
+                          value={f.value}
+                          onChange={f.onChange}
+                          isDisabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Account / phone number */}
+                <FormField
+                  control={form.control}
+                  name={`${fieldName}.${index}.accountNumber`}
+                  render={({ field: f }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {mode === "bank" ? "Account Number" : "Phone Number"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={
+                            mode === "bank"
+                              ? "e.g., 0152 xxx xxx xxx x"
+                              : "e.g., 5XX XXX XX"
+                          }
+                          {...f}
+                          disabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Notes */}
+                <FormField
+                  control={form.control}
+                  name={`${fieldName}.${index}.notes`}
+                  render={({ field: f }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Primary business account"
+                          {...f}
+                          disabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    );
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -245,82 +265,57 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="bank" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="bank">Bank Details</TabsTrigger>
-            <TabsTrigger value="mno">MNO Details</TabsTrigger>
-          </TabsList>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <Tabs defaultValue="bank" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="bank">Bank Details</TabsTrigger>
+                <TabsTrigger value="mno">MNO Details</TabsTrigger>
+              </TabsList>
 
-          {/* ── Bank Tab ─────────────────────────────────────────────────── */}
-          <TabsContent value="bank" className="space-y-4 mt-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
-                Add bank account information
-              </p>
+              <TabsContent value="bank" className="space-y-4 mt-4">
+                {renderRows(
+                  bankFields,
+                  "bank",
+                  removeBank,
+                  appendBank,
+                  "Bank Account",
+                )}
+              </TabsContent>
+
+              <TabsContent value="mno" className="space-y-4 mt-4">
+                {renderRows(
+                  mnoFields,
+                  "mno",
+                  removeMno,
+                  appendMno,
+                  "MNO Account",
+                )}
+              </TabsContent>
+            </Tabs>
+
+            <DialogFooter className="mt-6">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                onClick={() => addRow(setBankRows)}
-                disabled={isSaving}
+                onClick={onClose}
+                disabled={form.formState.isSubmitting}
               >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Bank
+                Cancel
               </Button>
-            </div>
-
-            {bankRows.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No bank details added. Click &quot;Add Bank&quot; to add one.
-              </div>
-            ) : (
-              renderRows(bankRows, "bank", setBankRows, "Bank Account")
-            )}
-          </TabsContent>
-
-          {/* ── MNO Tab ──────────────────────────────────────────────────── */}
-          <TabsContent value="mno" className="space-y-4 mt-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
-                Add mobile money operator information
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => addRow(setMnoRows)}
-                disabled={isSaving}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add MNO
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save Payment Details"
+                )}
               </Button>
-            </div>
-
-            {mnoRows.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                No MNO details added. Click &quot;Add MNO&quot; to add one.
-              </div>
-            ) : (
-              renderRows(mnoRows, "mno", setMnoRows, "MNO Account")
-            )}
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onClose} disabled={isSaving}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              "Save Payment Details"
-            )}
-          </Button>
-        </DialogFooter>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

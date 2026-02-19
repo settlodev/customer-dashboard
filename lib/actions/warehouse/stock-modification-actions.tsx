@@ -97,8 +97,6 @@ export const createStockModificationInWarehouse = async (
     })),
   };
 
-  console.log("The payload passed is ", payload);
-
   try {
     const apiClient = new ApiClient();
     await apiClient.post(

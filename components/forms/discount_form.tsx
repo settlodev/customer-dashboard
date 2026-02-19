@@ -79,7 +79,6 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof DiscountSchema>) => {
-    console.log("The payload is submitted", values);
     startTransition(() => {
       if (item) {
         updateDiscount(item.id, values).then((data: FormResponse | void) => {

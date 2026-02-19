@@ -18,9 +18,8 @@ const paymentMethodItemSchema = z.object({
     ),
   notes: z
     .string()
-    .max(500, "Notes cannot exceed 500 characters")
-    .optional()
-    .default(""),
+    .min(5, "Notes are required")
+    .max(500, "Notes cannot exceed 500 characters"),
 });
 
 export const physicalReceiptPaymentDetailsSchema = z

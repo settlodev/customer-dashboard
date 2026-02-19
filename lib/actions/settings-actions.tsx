@@ -109,8 +109,6 @@ export const updateNotificationSetting = async (
     ...validNotificationSetting.data,
   };
 
-  console.log("The payload", payload);
-
   try {
     const apiClient = new ApiClient();
 
@@ -145,7 +143,6 @@ export const acceptOrderPaymentMethods =
         `/api/${location?.id}/accepted-payment-methods/order-transactions/all`,
       );
 
-      console.log("orderPaymentMethods", orderPaymentMethods);
       return parseStringify(orderPaymentMethods);
     } catch (error) {
       throw error;
@@ -211,7 +208,6 @@ export const physicalReceiptPaymentDetails = async (
       `/api/physical-receipt-payment-details/${location?.id}/create`,
       payload,
     );
-    console.log("The physical receipt payment details are", physicalReceipt);
     return parseStringify(physicalReceipt);
   } catch (error) {
     console.error("Failed to store physical receipt payment details:", error);
@@ -246,7 +242,6 @@ export const digitalReceiptPaymentDetails = async (
       `/api/digital-receipt-payment-details/${location?.id}/create`,
       payload,
     );
-    console.log("The digital receipt payment details are", digitalReceipt);
     return parseStringify(digitalReceipt);
   } catch (error) {
     console.error("Failed to store digital receipt payment details:", error);
