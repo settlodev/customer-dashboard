@@ -1,5 +1,8 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Dialog,
   DialogContent,
@@ -8,141 +11,244 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import {
+  digitalReceiptPaymentDetails,
+  physicalReceiptPaymentDetails,
+} from "@/lib/actions/settings-actions";
+import PaymentMethodSelectorWidget from "@/components/widgets/paymentMethodSelector";
+import {
+  physicalReceiptPaymentDetailsSchema,
+  PhysicalReceiptPaymentDetails,
+} from "@/types/payments/schema";
 
-export interface BankDetail {
-  id: string;
-  accountNumber: string;
-  accountName: string;
-}
+const formSchema = z.object({
+  bankRows: physicalReceiptPaymentDetailsSchema.optional().default([]),
+  mnoRows: physicalReceiptPaymentDetailsSchema.optional().default([]),
+});
 
-export interface MNODetail {
-  id: string;
-  phoneNumber: string;
-  accountName: string;
-}
-
-export interface PaymentDetails {
-  bankDetails: BankDetail[];
-  mnoDetails: MNODetail[];
-}
+type FormValues = z.infer<typeof formSchema>;
+type PaymentRow = PhysicalReceiptPaymentDetails[number];
 
 interface PaymentDetailsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (details: PaymentDetails) => void;
-  currentDetails?: PaymentDetails;
+  onSaved?: () => void;
   receiptType: "physical" | "digital";
+  initialRows?: PaymentRow[];
 }
+
+const emptyRow = (): PaymentRow => ({
+  acceptedPaymentMethodType: "",
+  accountNumber: "",
+  notes: "",
+});
 
 export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
   isOpen,
   onClose,
-  onSave,
-  currentDetails,
+  onSaved,
   receiptType,
+  initialRows,
 }) => {
-  const [bankDetails, setBankDetails] = useState<BankDetail[]>(
-    currentDetails?.bankDetails || [],
-  );
-  const [mnoDetails, setMnoDetails] = useState<MNODetail[]>(
-    currentDetails?.mnoDetails || [],
-  );
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      bankRows: initialRows ?? [],
+      mnoRows: initialRows ?? [],
+    },
+  });
 
-  const addBankDetail = () => {
-    setBankDetails([
-      ...bankDetails,
-      { id: Date.now().toString(), accountNumber: "", accountName: "" },
-    ]);
-  };
+  const {
+    fields: bankFields,
+    append: appendBank,
+    remove: removeBank,
+  } = useFieldArray({ control: form.control, name: "bankRows" });
 
-  const removeBankDetail = (id: string) => {
-    setBankDetails(bankDetails.filter((detail) => detail.id !== id));
-  };
+  const {
+    fields: mnoFields,
+    append: appendMno,
+    remove: removeMno,
+  } = useFieldArray({ control: form.control, name: "mnoRows" });
 
-  const updateBankDetail = (
-    id: string,
-    field: keyof BankDetail,
-    value: string,
-  ) => {
-    setBankDetails(
-      bankDetails.map((detail) =>
-        detail.id === id ? { ...detail, [field]: value } : detail,
-      ),
-    );
-  };
+  const onSubmit = async (data: FormValues) => {
+    // Merge both tabs, strip incomplete rows, then validate against real schema
+    const merged: PhysicalReceiptPaymentDetails = [
+      ...(data.bankRows ?? []),
+      ...(data.mnoRows ?? []),
+    ].filter((r) => r.acceptedPaymentMethodType && r.accountNumber.trim());
 
-  const addMNODetail = () => {
-    setMnoDetails([
-      ...mnoDetails,
-      { id: Date.now().toString(), phoneNumber: "", accountName: "" },
-    ]);
-  };
-
-  const removeMNODetail = (id: string) => {
-    setMnoDetails(mnoDetails.filter((detail) => detail.id !== id));
-  };
-
-  const updateMNODetail = (
-    id: string,
-    field: keyof MNODetail,
-    value: string,
-  ) => {
-    setMnoDetails(
-      mnoDetails.map((detail) =>
-        detail.id === id ? { ...detail, [field]: value } : detail,
-      ),
-    );
-  };
-
-  const handleSave = () => {
-    // Validate that filled fields are complete
-    const incompleteBankDetails = bankDetails.some(
-      (detail) =>
-        (detail.accountNumber && !detail.accountName) ||
-        (!detail.accountNumber && detail.accountName),
-    );
-
-    const incompleteMNODetails = mnoDetails.some(
-      (detail) =>
-        (detail.phoneNumber && !detail.accountName) ||
-        (!detail.phoneNumber && detail.accountName),
-    );
-
-    if (incompleteBankDetails || incompleteMNODetails) {
+    const result = physicalReceiptPaymentDetailsSchema.safeParse(merged);
+    if (!result.success) {
       toast({
         variant: "destructive",
-        title: "Incomplete details",
+        title: "Validation error",
         description:
-          "Please fill in both account number and name for each entry",
+          result.error.issues[0]?.message ?? "Invalid payment details.",
       });
       return;
     }
 
-    // Filter out empty entries
-    const validBankDetails = bankDetails.filter(
-      (detail) => detail.accountNumber && detail.accountName,
+    try {
+      const saveFn =
+        receiptType === "physical"
+          ? physicalReceiptPaymentDetails
+          : digitalReceiptPaymentDetails;
+      await saveFn(result.data);
+      toast({
+        title: "Saved",
+        description: "Payment details saved successfully.",
+      });
+      onSaved?.();
+      onClose();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Save failed",
+        description:
+          error?.message ?? "Something went wrong. Please try again.",
+      });
+    }
+  };
+
+  const renderRows = (
+    fields: typeof bankFields | typeof mnoFields,
+    mode: "bank" | "mno",
+    remove: (index: number) => void,
+    append: (row: PaymentRow) => void,
+    label: string,
+  ) => {
+    const fieldName = (mode === "bank" ? "bankRows" : "mnoRows") as
+      | "bankRows"
+      | "mnoRows";
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <p className="text-sm text-muted-foreground">
+            Add {mode === "bank" ? "bank account" : "mobile money operator"}{" "}
+            information
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => append(emptyRow())}
+            disabled={form.formState.isSubmitting}
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Add {mode === "bank" ? "Bank" : "MNO"}
+          </Button>
+        </div>
+
+        {fields.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            No {label.toLowerCase()} details added. Click &quot;Add{" "}
+            {mode === "bank" ? "Bank" : "MNO"}&quot; to add one.
+          </div>
+        ) : (
+          fields.map((field, index) => (
+            <div key={field.id} className="border rounded-lg p-4 space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium text-sm">
+                  {label} {index + 1}
+                </h4>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => remove(index)}
+                  disabled={form.formState.isSubmitting}
+                >
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+
+              <div className="grid gap-3">
+                {/* Payment method selector */}
+                <FormField
+                  control={form.control}
+                  name={`${fieldName}.${index}.acceptedPaymentMethodType`}
+                  render={({ field: f }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {mode === "bank" ? "Bank" : "Mobile Money Operator"}
+                      </FormLabel>
+                      <FormControl>
+                        <PaymentMethodSelectorWidget
+                          mode={mode}
+                          value={f.value}
+                          onChange={f.onChange}
+                          isDisabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Account / phone number */}
+                <FormField
+                  control={form.control}
+                  name={`${fieldName}.${index}.accountNumber`}
+                  render={({ field: f }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {mode === "bank" ? "Account Number" : "Phone Number"}
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder={
+                            mode === "bank"
+                              ? "e.g., 0152 xxx xxx xxx x"
+                              : "e.g., 5XX XXX XX"
+                          }
+                          {...f}
+                          disabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Notes */}
+                <FormField
+                  control={form.control}
+                  name={`${fieldName}.${index}.notes`}
+                  render={({ field: f }) => (
+                    <FormItem>
+                      <FormLabel>Notes</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., Primary business account"
+                          {...f}
+                          disabled={form.formState.isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          ))
+        )}
+      </div>
     );
-    const validMNODetails = mnoDetails.filter(
-      (detail) => detail.phoneNumber && detail.accountName,
-    );
-
-    onSave({
-      bankDetails: validBankDetails,
-      mnoDetails: validMNODetails,
-    });
-
-    toast({
-      title: "Success",
-      description: "Payment details saved successfully",
-    });
-
-    onClose();
   };
 
   return (
@@ -159,189 +265,57 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="bank" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="bank">Bank Details</TabsTrigger>
-            <TabsTrigger value="mno">MNO Details</TabsTrigger>
-          </TabsList>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <Tabs defaultValue="bank" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="bank">Bank Details</TabsTrigger>
+                <TabsTrigger value="mno">MNO Details</TabsTrigger>
+              </TabsList>
 
-          <TabsContent value="bank" className="space-y-4 mt-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
-                Add bank account information
-              </p>
+              <TabsContent value="bank" className="space-y-4 mt-4">
+                {renderRows(
+                  bankFields,
+                  "bank",
+                  removeBank,
+                  appendBank,
+                  "Bank Account",
+                )}
+              </TabsContent>
+
+              <TabsContent value="mno" className="space-y-4 mt-4">
+                {renderRows(
+                  mnoFields,
+                  "mno",
+                  removeMno,
+                  appendMno,
+                  "MNO Account",
+                )}
+              </TabsContent>
+            </Tabs>
+
+            <DialogFooter className="mt-6">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
-                onClick={addBankDetail}
+                onClick={onClose}
+                disabled={form.formState.isSubmitting}
               >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Bank
+                Cancel
               </Button>
-            </div>
-
-            {bankDetails.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No bank details added. Click &quotAdd Bank&quot to add one.
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {bankDetails.map((detail, index) => (
-                <div
-                  key={detail.id}
-                  className="border rounded-lg p-4 space-y-3 relative"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-sm">
-                      Bank Account {index + 1}
-                    </h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => removeBankDetail(detail.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor={`bank-number-${detail.id}`}>
-                        Account Number
-                      </Label>
-                      <Input
-                        id={`bank-number-${detail.id}`}
-                        placeholder="e.g., 1234567890"
-                        value={detail.accountNumber}
-                        onChange={(e) =>
-                          updateBankDetail(
-                            detail.id,
-                            "accountNumber",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor={`bank-name-${detail.id}`}>
-                        Account Name
-                      </Label>
-                      <Input
-                        id={`bank-name-${detail.id}`}
-                        placeholder="e.g., Business Account - CRDB Bank"
-                        value={detail.accountName}
-                        onChange={(e) =>
-                          updateBankDetail(
-                            detail.id,
-                            "accountName",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="mno" className="space-y-4 mt-4">
-            <div className="flex justify-between items-center">
-              <p className="text-sm text-muted-foreground">
-                Add mobile money operator information
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addMNODetail}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add MNO
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? (
+                  <>
+                    <Loader2Icon className="h-4 w-4 mr-2 animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save Payment Details"
+                )}
               </Button>
-            </div>
-
-            {mnoDetails.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                No MNO details added. Click &quotAdd MNO&quot to add one.
-              </div>
-            )}
-
-            <div className="space-y-4">
-              {mnoDetails.map((detail, index) => (
-                <div
-                  key={detail.id}
-                  className="border rounded-lg p-4 space-y-3 relative"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <h4 className="font-medium text-sm">
-                      MNO Account {index + 1}
-                    </h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6"
-                      onClick={() => removeMNODetail(detail.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  </div>
-
-                  <div className="grid gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor={`mno-number-${detail.id}`}>
-                        Phone Number
-                      </Label>
-                      <Input
-                        id={`mno-number-${detail.id}`}
-                        placeholder="e.g., +255 XXX XXX XXX"
-                        value={detail.phoneNumber}
-                        onChange={(e) =>
-                          updateMNODetail(
-                            detail.id,
-                            "phoneNumber",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label htmlFor={`mno-name-${detail.id}`}>
-                        Account Name
-                      </Label>
-                      <Input
-                        id={`mno-name-${detail.id}`}
-                        placeholder="e.g., M-Pesa - Business Name"
-                        value={detail.accountName}
-                        onChange={(e) =>
-                          updateMNODetail(
-                            detail.id,
-                            "accountName",
-                            e.target.value,
-                          )
-                        }
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>Save Payment Details</Button>
-        </DialogFooter>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

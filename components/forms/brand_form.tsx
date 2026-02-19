@@ -36,7 +36,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
 
   const form = useForm<z.infer<typeof BrandSchema>>({
     resolver: zodResolver(BrandSchema),
-    defaultValues: { 
+    defaultValues: {
           ...item,
           name: item ? item.name : "",
           status: item ? item.status : true
@@ -74,7 +74,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
         });
       } else {
         createBrand(values)
-        
+
           .then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {

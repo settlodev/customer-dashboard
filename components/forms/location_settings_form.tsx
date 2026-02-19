@@ -25,7 +25,6 @@ import { updateLocationSettings } from "@/lib/actions/settings-actions";
 import { toast } from "@/hooks/use-toast";
 import {
   LocationSettings,
-  PaymentDetails,
   SettingField,
   SETTINGS_CONFIG,
 } from "@/types/settings/type";
@@ -33,7 +32,6 @@ import { LocationSettingsSchema } from "@/types/settings/schema";
 import { ImageUploadModal } from "@/components/settings/uploadImage";
 import { PaymentDetailsModal } from "@/components/settings/paymentDetailsModal";
 
-// Loading skeleton component (enhanced for dynamic fields)
 const LoadingSkeleton = () => {
   const categories = [
     "basic",
@@ -52,36 +50,32 @@ const LoadingSkeleton = () => {
         {categories.map((category) => (
           <div key={category} className="space-y-4">
             <div className="animate-pulse">
-              <div className="h-6 bg-gray-200 rounded w-1/4 mb-4"></div>
+              <div className="h-6 bg-gray-200 rounded w-1/4 mb-4" />
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[1, 2].map((i) => (
                 <div key={i} className="animate-pulse border rounded-lg p-4">
                   <div className="flex items-center justify-between">
                     <div className="space-y-2">
-                      <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
                     </div>
-                    <div className="h-6 bg-gray-200 rounded-full w-12"></div>
+                    <div className="h-6 bg-gray-200 rounded-full w-12" />
                   </div>
                 </div>
               ))}
             </div>
-
             <Separator />
           </div>
         ))}
-
         <div className="animate-pulse">
-          <div className="h-10 bg-gray-200 rounded w-full"></div>
+          <div className="h-10 bg-gray-200 rounded w-full" />
         </div>
       </CardContent>
     </Card>
   );
 };
 
-// Category titles mapping
 const CATEGORY_TITLES = {
   basic: "Basic Settings",
   receipt: "Receipt Management",
@@ -92,35 +86,23 @@ const CATEGORY_TITLES = {
   order: "Order Settings",
 } as const;
 
-// Helper to group settings by category
-const groupSettingsByCategory = (settings: SettingField[]) => {
-  return settings.reduce(
+const groupSettingsByCategory = (settings: SettingField[]) =>
+  settings.reduce(
     (acc, setting) => {
-      if (!acc[setting.category]) {
-        acc[setting.category] = [];
-      }
+      if (!acc[setting.category]) acc[setting.category] = [];
       acc[setting.category].push(setting);
       return acc;
     },
     {} as Record<string, SettingField[]>,
   );
-};
 
-// Helper to get appropriate grid class based on field type
 const getGridClass = (fields: SettingField[]): string => {
-  const hasInputFields = fields.some(
-    (field) =>
-      field.type === "input" ||
-      field.type === "text" ||
-      field.type === "password" ||
-      field.type === "number",
+  const hasInputFields = fields.some((f) =>
+    ["input", "text", "password", "number"].includes(f.type),
   );
-
-  if (hasInputFields) {
-    return "grid grid-cols-1 md:grid-cols-3 gap-4";
-  }
-
-  return "grid grid-cols-1 md:grid-cols-2 gap-4";
+  return hasInputFields
+    ? "grid grid-cols-1 md:grid-cols-3 gap-4"
+    : "grid grid-cols-1 md:grid-cols-2 gap-4";
 };
 
 const LocationSettingsForm = ({
@@ -139,27 +121,19 @@ const LocationSettingsForm = ({
     "physical" | "digital"
   >("physical");
 
-  // Store payment details and receipt image
+  const [physicalPaymentSaved, setPhysicalPaymentSaved] = useState(false);
+  const [digitalPaymentSaved, setDigitalPaymentSaved] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string>("");
-  const [physicalReceiptPaymentDetails, setPhysicalReceiptPaymentDetails] =
-    useState<PaymentDetails>({ bankDetails: [], mnoDetails: [] });
-  const [digitalReceiptPaymentDetails, setDigitalReceiptPaymentDetails] =
-    useState<PaymentDetails>({ bankDetails: [], mnoDetails: [] });
 
   const form = useForm<z.infer<typeof LocationSettingsSchema>>({
     resolver: zodResolver(LocationSettingsSchema),
-    defaultValues: {
-      ...item,
-      status: true,
-    },
+    defaultValues: { ...item, status: true },
   });
 
   useEffect(() => {
     if (item) {
       form.reset(item);
       setIsLoading(false);
-      // Load existing data if available
-      // TODO: Load receipt image and payment details from item
     } else {
       const timer = setTimeout(() => setIsLoading(false), 1000);
       return () => clearTimeout(timer);
@@ -179,30 +153,13 @@ const LocationSettingsForm = ({
   }, []);
 
   const submitData = (values: z.infer<typeof LocationSettingsSchema>) => {
-    console.log("The submitted settings are", values);
-    console.log("Receipt Image:", receiptImage);
-    console.log(
-      "Physical Receipt Payment Details:",
-      physicalReceiptPaymentDetails,
-    );
-    console.log(
-      "Digital Receipt Payment Details:",
-      digitalReceiptPaymentDetails,
-    );
-
     setResponse(undefined);
-
     startTransition(() => {
       if (item) {
-        // TODO: Include receipt image and payment details in the update
-        const dataToUpdate = {
+        updateLocationSettings(item.id, {
           ...values,
           receiptImage,
-          physicalReceiptPaymentDetails,
-          digitalReceiptPaymentDetails,
-        };
-
-        updateLocationSettings(item.id, dataToUpdate as any).then((data) => {
+        } as any).then((data) => {
           if (data) {
             setResponse(data);
             toast({
@@ -218,10 +175,8 @@ const LocationSettingsForm = ({
 
   const getFilteredSettings = () => {
     const currentValues = form.watch();
-
     return SETTINGS_CONFIG.filter((setting) => {
-      // Check dependencies if they exist
-      if (setting.dependencies && setting.dependencies.length > 0) {
+      if (setting.dependencies?.length) {
         return setting.dependencies.every(
           (dep) => currentValues[dep as keyof typeof currentValues],
         );
@@ -230,32 +185,18 @@ const LocationSettingsForm = ({
     });
   };
 
-  const handleManageImage = () => {
-    setIsImageModalOpen(true);
-  };
-
-  const handleManagePhysicalPaymentDetails = () => {
-    setPaymentModalType("physical");
+  const openPaymentModal = (type: "physical" | "digital") => {
+    setPaymentModalType(type);
     setIsPaymentModalOpen(true);
   };
 
-  const handleManageDigitalPaymentDetails = () => {
-    setPaymentModalType("digital");
-    setIsPaymentModalOpen(true);
-  };
-
-  const handleImageSave = (imageUrl: string) => {
-    setReceiptImage(imageUrl);
-    setIsImageModalOpen(false);
-  };
-
-  const handlePaymentDetailsSave = (details: PaymentDetails) => {
+  // Called by the modal after a successful API save
+  const handlePaymentSaved = () => {
     if (paymentModalType === "physical") {
-      setPhysicalReceiptPaymentDetails(details);
+      setPhysicalPaymentSaved(true);
     } else {
-      setDigitalReceiptPaymentDetails(details);
+      setDigitalPaymentSaved(true);
     }
-    setIsPaymentModalOpen(false);
   };
 
   const renderFormControl = (field: SettingField) => {
@@ -312,7 +253,7 @@ const LocationSettingsForm = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleManageImage}
+                    onClick={() => setIsImageModalOpen(true)}
                   >
                     <ImageIcon className="h-4 w-4 mr-2" />
                     {receiptImage ? "Change Image" : "Upload Image"}
@@ -324,11 +265,10 @@ const LocationSettingsForm = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleManagePhysicalPaymentDetails}
+                    onClick={() => openPaymentModal("physical")}
                   >
                     <FileText className="h-4 w-4 mr-2" />
-                    {physicalReceiptPaymentDetails.bankDetails.length > 0 ||
-                    physicalReceiptPaymentDetails.mnoDetails.length > 0
+                    {physicalPaymentSaved
                       ? "Edit Payment Details"
                       : "Add Payment Details"}
                   </Button>
@@ -339,11 +279,10 @@ const LocationSettingsForm = ({
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleManageDigitalPaymentDetails}
+                    onClick={() => openPaymentModal("digital")}
                   >
                     <FileText className="h-4 w-4 mr-2" />
-                    {digitalReceiptPaymentDetails.bankDetails.length > 0 ||
-                    digitalReceiptPaymentDetails.mnoDetails.length > 0
+                    {digitalPaymentSaved
                       ? "Edit Payment Details"
                       : "Add Payment Details"}
                   </Button>
@@ -408,9 +347,7 @@ const LocationSettingsForm = ({
     }
   };
 
-  if (isLoading) {
-    return <LoadingSkeleton />;
-  }
+  if (isLoading) return <LoadingSkeleton />;
 
   const filteredSettings = getFilteredSettings();
   const settingsGroups = groupSettingsByCategory(filteredSettings);
@@ -434,13 +371,10 @@ const LocationSettingsForm = ({
                         ] ||
                           category.charAt(0).toUpperCase() + category.slice(1)}
                       </h3>
-
                       <div className={getGridClass(settings)}>
                         {settings.map((field) => renderFormControl(field))}
                       </div>
                     </div>
-
-                    {/* Don't add separator after last category */}
                     {index < array.length - 1 && <Separator />}
                   </React.Fragment>
                 ),
@@ -467,20 +401,18 @@ const LocationSettingsForm = ({
       <ImageUploadModal
         isOpen={isImageModalOpen}
         onClose={() => setIsImageModalOpen(false)}
-        onSave={handleImageSave}
+        onSave={(imageUrl) => {
+          setReceiptImage(imageUrl);
+          setIsImageModalOpen(false);
+        }}
         currentImage={receiptImage}
       />
 
-      {/* Payment Details Modal */}
+      {/* Payment Details Modal — calls the API internally */}
       <PaymentDetailsModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
-        onSave={handlePaymentDetailsSave}
-        currentDetails={
-          paymentModalType === "physical"
-            ? physicalReceiptPaymentDetails
-            : digitalReceiptPaymentDetails
-        }
+        onSaved={handlePaymentSaved}
         receiptType={paymentModalType}
       />
     </>
