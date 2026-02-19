@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
@@ -60,18 +59,16 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
 
   const { state: cartState, addToCart, toggleCart, setLocationId } = useCart();
 
-  
   useEffect(() => {
     if (params?.id) {
       setLocationID(params.id);
-      
+
       setLocationId(params.id);
     } else {
       setLocationError("Missing location or business ID");
       setLocationLoading(false);
     }
-  }, [params,locationId]);
-
+  }, [params, locationId]);
 
   useEffect(() => {
     const fetchLocationData = async () => {
@@ -308,24 +305,25 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   const handleAddToCart = (product: ExtendedProduct) => {
     addToCart(product, 1);
     // Show success feedback
-    const productName = product.name.length > 20 
-      ? product.name.substring(0, 20) + '...' 
-      : product.name;
-    
+    const productName =
+      product.name.length > 20
+        ? product.name.substring(0, 20) + "..."
+        : product.name;
+
     // Create a temporary toast notification
-    const toast = document.createElement('div');
+    const toast = document.createElement("div");
     toast.className = `fixed top-4 right-4 ${businessType.primary} text-white px-4 py-2 rounded-lg shadow-lg z-50 transform translate-x-full transition-transform duration-300`;
     toast.textContent = `Added ${productName} to cart`;
     document.body.appendChild(toast);
-    
+
     // Animate in
     setTimeout(() => {
-      toast.style.transform = 'translateX(0)';
+      toast.style.transform = "translateX(0)";
     }, 10);
-    
+
     // Animate out and remove
     setTimeout(() => {
-      toast.style.transform = 'translateX(100%)';
+      toast.style.transform = "translateX(100%)";
       setTimeout(() => {
         if (toast.parentNode) {
           toast.parentNode.removeChild(toast);
@@ -335,10 +333,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
   };
 
   // FIXED: Add debug logging to see cart state
-  useEffect(() => {
-    // console.log("Current cart state locationId:", cartState.locationId);
-    // console.log("Local locationId:", locationId);
-  }, [cartState.locationId, locationId]);
+  useEffect(() => {}, [cartState.locationId, locationId]);
 
   // Show loading screen while fetching critical business data
   if (locationLoading || !businessInfo) {
@@ -414,7 +409,10 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
               selectedCategory={selectedCategory}
               businessType={businessType}
               onAddToCart={handleAddToCart}
-              isLoading={productsInitialLoad || (productsLoading && products.length === 0)}
+              isLoading={
+                productsInitialLoad ||
+                (productsLoading && products.length === 0)
+              }
             />
           )}
 
@@ -457,10 +455,7 @@ const ProductMenu = ({ params }: ProductMenuProps) => {
       />
 
       {/* Cart Sidebar */}
-      <CartSidebar 
-        businessType={businessType}
-        businessInfo={businessInfo}
-      />
+      <CartSidebar businessType={businessType} businessInfo={businessInfo} />
     </div>
   );
 };

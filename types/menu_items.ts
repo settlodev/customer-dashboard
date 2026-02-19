@@ -194,6 +194,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "truck-return",
         },
+        {
+          title: "Purchase Orders",
+          link: "/stock-purchases",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
       ],
     },
 
@@ -316,6 +322,12 @@ const getNormalMenuItems = (
           link: "/qrcode",
           current: args?.isCurrentItem,
           icon: "cart",
+        },
+        {
+          title: "Accepted Payment Method",
+          link: "/payments",
+          current: args?.isCurrentItem,
+          icon: "card",
         },
         {
           title: "Devices",

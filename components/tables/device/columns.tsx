@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 
 import { Device } from "@/types/device/type";
+import { CellAction } from "@/components/tables/device/cell-action";
 
 export const columns: ColumnDef<Device>[] = [
   {
@@ -27,8 +28,9 @@ export const columns: ColumnDef<Device>[] = [
     enableSorting: false,
     enableHiding: false,
   },
+
   {
-    accessorKey: "name",
+    accessorKey: "customName",
     enableHiding: false,
     header: ({ column }) => {
       return (
@@ -37,22 +39,32 @@ export const columns: ColumnDef<Device>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Device Name
+          Custom Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
   },
- 
+
+  {
+    accessorKey: "name",
+    header: "Brand",
+    enableHiding: false,
+    cell: ({ row }) => {
+      const name = row.original.name;
+      return <span>{name ? name : "None"}</span>;
+    },
+  },
+
   {
     accessorKey: "model",
     header: "Model",
     enableHiding: false,
     cell: ({ row }) => {
-        const model = row.original.model;
-        return <span>{model ? model : "None"}</span>;
-    }
-},
+      const model = row.original.model;
+      return <span>{model ? model : "None"}</span>;
+    },
+  },
   {
     id: "serialNumber",
     accessorKey: "Serial Number",
@@ -60,31 +72,31 @@ export const columns: ColumnDef<Device>[] = [
     cell: ({ row }) => {
       const serial = row.original.serialNumber;
       return <span>{serial ? serial : "None"}</span>;
-  }
+    },
   },
 
-  {
-    id: "operatingSystem",
-    accessorKey: "Operating System",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const os = row.original.operatingSystem;
-      return <span>{os ? os : "None"}</span>;
-  }
-  },
-   
-  {
-    accessorKey: "operatingSystemVersion",
-    header: "OS Version",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const version = row.original.operatingSystemVersion;
-      return <span>{version ? version : "None"}</span>;
-  }
-},
- 
   // {
-  //   id: "actions",
-  //   cell: ({ row }) => <CellAction data={row.original} />,
+  //   id: "operatingSystem",
+  //   accessorKey: "Operating System",
+  //   enableHiding: false,
+  //   cell: ({ row }) => {
+  //     const os = row.original.operatingSystem;
+  //     return <span>{os ? os : "None"}</span>;
+  //   },
   // },
+
+  // {
+  //   accessorKey: "operatingSystemVersion",
+  //   header: "OS Version",
+  //   enableHiding: false,
+  //   cell: ({ row }) => {
+  //     const version = row.original.operatingSystemVersion;
+  //     return <span>{version ? version : "None"}</span>;
+  //   },
+  // },
+
+  {
+    id: "actions",
+    cell: ({ row }) => <CellAction data={row.original} />,
+  },
 ];

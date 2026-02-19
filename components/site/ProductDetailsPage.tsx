@@ -1,8 +1,7 @@
-
-'use client';
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+"use client";
+import React, { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
   ShoppingCart,
@@ -10,51 +9,59 @@ import {
   Minus,
   ShoppingCartIcon,
   Check,
-  AlertCircle
-} from 'lucide-react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { BusinessType, ExtendedProduct } from '@/types/site/type';
-import CartSidebar from './cartSidebar';
-import { useCart } from '@/context/cartContext';
-import { getProductStockStatus } from './productStockStatus';
+  AlertCircle,
+} from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { BusinessType, ExtendedProduct } from "@/types/site/type";
+
+import { useCart } from "@/context/cartContext";
+import { getProductStockStatus } from "./productStockStatus";
 
 interface ProductDetailsPageProps {
   product: ExtendedProduct;
   businessType: BusinessType;
-  onAddToCart: (product: ExtendedProduct, quantity: number, variantId?: string) => void;
+  onAddToCart: (
+    product: ExtendedProduct,
+    quantity: number,
+    variantId?: string,
+  ) => void;
   onAddToWishlist: (product: ExtendedProduct) => void;
   relatedProducts?: ExtendedProduct[];
   backPath?: string;
 }
-
-
 
 const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   product,
   businessType,
   onAddToCart,
   relatedProducts = [],
-  backPath = '/products'
+  backPath = "/products",
 }) => {
-
-
   const router = useRouter();
-  const [selectedVariantId, setSelectedVariantId] = useState<string>('');
+  const [selectedVariantId, setSelectedVariantId] = useState<string>("");
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [isAddedToCart, setIsAddedToCart] = useState(false);
 
-  const { setLocationId } = useCart();
+  const { setLocationId, state: cartState } = useCart();
 
   const stockInfo = getProductStockStatus(product);
-  const isInStock = stockInfo.status === 'in-stock';
+  const isInStock = stockInfo.status === "in-stock";
   const hasVariants = product.variants && product.variants.length > 0;
-  const needsVariantSelection = hasVariants && product.variants!.length > 1 && !selectedVariantId;
+  const needsVariantSelection =
+    hasVariants && product.variants!.length > 1 && !selectedVariantId;
 
   useEffect(() => {
-    setLocationId(product.location);
-  }, []);
+    // Set the locationId when component mounts (only if it's different)
+    if (product.location && cartState.locationId !== product.location) {
+      console.log(
+        "Setting locationId in ProductDetailsPage:",
+        product.location,
+      );
+      setLocationId(product.location);
+    }
+  }, [product.location, cartState.locationId, setLocationId]);
 
   useEffect(() => {
     if (product.variants && product.variants.length > 0) {
@@ -66,7 +73,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   const getProductPrice = (variantId?: string) => {
     if (variantId && product.variants) {
-      const variant = product.variants.find(v => v.id === variantId);
+      const variant = product.variants.find((v) => v.id === variantId);
       if (variant) {
         return parseFloat(variant.price as unknown as string) || 0;
       }
@@ -83,49 +90,54 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
   const getSelectedVariant = () => {
     if (selectedVariantId && product.variants) {
-      return product.variants.find(v => v.id === selectedVariantId);
+      return product.variants.find((v) => v.id === selectedVariantId);
     }
     return null;
   };
 
-  // Get available quantity for selected variant or product
   const getAvailableQuantity = (): number => {
-    if (stockInfo.hasVariants && selectedVariantId && stockInfo.variantStockInfo) {
+    if (
+      stockInfo.hasVariants &&
+      selectedVariantId &&
+      stockInfo.variantStockInfo
+    ) {
       return stockInfo.variantStockInfo[selectedVariantId]?.quantity || 0;
     }
     return stockInfo.quantity;
   };
 
-  // Check if selected variant is in stock
   const isSelectedVariantInStock = (): boolean => {
-    if (stockInfo.hasVariants && selectedVariantId && stockInfo.variantStockInfo) {
-      return stockInfo.variantStockInfo[selectedVariantId]?.status === 'in-stock';
+    if (
+      stockInfo.hasVariants &&
+      selectedVariantId &&
+      stockInfo.variantStockInfo
+    ) {
+      return (
+        stockInfo.variantStockInfo[selectedVariantId]?.status === "in-stock"
+      );
     }
     return isInStock;
   };
 
   const handleVariantSelect = (variantId: string) => {
     if (!isInStock) return;
-
     setSelectedVariantId(variantId);
-    // Reset quantity when variant changes
     setQuantity(1);
   };
 
   const handleAddToCart = async () => {
     if (!isInStock) {
-      alert('This product is currently out of stock');
+      alert("This product is currently out of stock");
       return;
     }
 
     if (hasVariants && !selectedVariantId) {
-      alert('Please select a variant first');
+      alert("Please select a variant first");
       return;
     }
 
-    // Check if selected variant is in stock
     if (hasVariants && !isSelectedVariantInStock()) {
-      alert('The selected variant is out of stock');
+      alert("The selected variant is out of stock");
       return;
     }
 
@@ -148,15 +160,14 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   const incrementQuantity = () => {
     const availableQty = getAvailableQuantity();
     if (availableQty === 0 || quantity < availableQty) {
-      setQuantity(prev => prev + 1);
+      setQuantity((prev) => prev + 1);
     }
   };
 
   const decrementQuantity = () => {
-    setQuantity(prev => prev > 1 ? prev - 1 : 1);
+    setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
   };
 
-  // Reset quantity if it exceeds available stock
   useEffect(() => {
     const availableQty = getAvailableQuantity();
     if (availableQty > 0 && quantity > availableQty) {
@@ -164,36 +175,34 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
     }
   }, [selectedVariantId, stockInfo]);
 
-  // Get stock display text
   const getStockDisplayText = (): string => {
-    if (!isInStock) return 'Out of Stock';
+    if (!isInStock) return "Out of Stock";
 
     if (stockInfo.hasVariants) {
       if (selectedVariantId && stockInfo.variantStockInfo) {
         const variantStock = stockInfo.variantStockInfo[selectedVariantId];
         if (variantStock.quantity === 0) {
-          return 'In Stock'; // For variants with trackingType: null
+          return "In Stock";
         }
         return `In Stock (${variantStock.quantity} available)`;
       }
-      return 'Check variants for availability';
+      return "Check variants for availability";
     }
 
     if (stockInfo.quantity === 0) {
-      return 'In Stock'; // For products with trackingType: null
+      return "In Stock";
     }
 
     return `In Stock (${stockInfo.quantity} available)`;
   };
 
-  // Get stock status color
   const getStockStatusColor = (): string => {
-    return isInStock ? 'text-green-600' : 'text-red-600';
+    return isInStock ? "text-green-600" : "text-red-600";
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      {/* Enhanced Header with Glass Effect */}
+      {/* Header */}
       <div className="bg-white/80 backdrop-blur-md shadow-lg sticky top-0 z-20 border-b border-gray-200/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
@@ -211,7 +220,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
-          {/* Enhanced Product Images Section */}
+          {/* Product Images Section */}
           <div className="space-y-6">
             <Card className="overflow-hidden shadow-2xl ring-1 ring-gray-200/50 bg-white/50 backdrop-blur-sm">
               <div className="relative group">
@@ -229,7 +238,6 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                   </div>
                 )}
 
-                {/* Stock overlay */}
                 {!isInStock && (
                   <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
                     <div className="bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg">
@@ -244,7 +252,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             </Card>
           </div>
 
-          {/* Enhanced Product Info Section */}
+          {/* Product Info Section */}
           <div className="space-y-8">
             <Card className="p-6 lg:p-8 shadow-xl ring-1 ring-gray-200/50 bg-white/70 backdrop-blur-sm">
               <CardContent className="p-0">
@@ -255,29 +263,39 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                       {product.name}
                     </h1>
 
-                    {/* Stock Status Indicator */}
                     <div className="flex items-center gap-3 mb-4">
                       <div className="flex items-center gap-2">
-                        <div className={`w-3 h-3 rounded-full ${isInStock ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                        <span className={`font-semibold ${getStockStatusColor()}`}>
+                        <div
+                          className={`w-3 h-3 rounded-full ${isInStock ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+                        ></div>
+                        <span
+                          className={`font-semibold ${getStockStatusColor()}`}
+                        >
                           {getStockDisplayText()}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Enhanced Price Display */}
-                  <div className={`p-4 rounded-2xl border ${isInStock
-                      ? 'bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200/50'
-                      : 'bg-gray-100 border-gray-300'
-                    }`}>
+                  {/* Price Display */}
+                  <div
+                    className={`p-4 rounded-2xl border ${
+                      isInStock
+                        ? "bg-gradient-to-r from-emerald-50 to-blue-50 border-emerald-200/50"
+                        : "bg-gray-100 border-gray-300"
+                    }`}
+                  >
                     <div className="flex items-baseline gap-3">
-                      <span className={`text-xl lg:text-2xl font-bold ${isInStock ? 'text-gray-900' : 'text-gray-500'
-                        }`}>
+                      <span
+                        className={`text-xl lg:text-2xl font-bold ${isInStock ? "text-gray-900" : "text-gray-500"}`}
+                      >
                         {getCurrentPrice().toLocaleString()}
                       </span>
-                      <span className={`text-lg font-medium ${isInStock ? 'text-gray-600' : 'text-gray-400'
-                        }`}>TZS</span>
+                      <span
+                        className={`text-lg font-medium ${isInStock ? "text-gray-600" : "text-gray-400"}`}
+                      >
+                        TZS
+                      </span>
                     </div>
                     {needsVariantSelection && isInStock && (
                       <p className="text-sm text-emerald-600 mt-1">
@@ -303,7 +321,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     </div>
                   )}
 
-                  {/* Enhanced Variant Selection */}
+                  {/* Variant Selection */}
                   {hasVariants && product.variants!.length > 1 && (
                     <div>
                       <h3 className="text-sm font-medium mb-4 text-gray-900 underline">
@@ -311,21 +329,28 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {product.variants!.map((variant) => {
-                          const variantStock = stockInfo.variantStockInfo?.[variant.id];
-                          const isVariantInStock = variantStock?.status === 'in-stock';
+                          const variantStock =
+                            stockInfo.variantStockInfo?.[variant.id];
+                          const isVariantInStock =
+                            variantStock?.status === "in-stock";
                           const isSelected = selectedVariantId === variant.id;
 
                           return (
                             <div
                               key={variant.id}
-                              className={`relative border-2 rounded-2xl items-center p-2 transition-all duration-300 ${isVariantInStock
-                                  ? 'cursor-pointer transform hover:scale-105 hover:shadow-lg'
-                                  : 'cursor-not-allowed opacity-60'
-                                } ${isSelected
-                                  ? 'border-emerald-500 bg-emerald-50 shadow-lg ring-4 ring-emerald-200/50'
-                                  : 'border-gray-200 hover:border-gray-300 bg-white hover:shadow-md'
-                                }`}
-                              onClick={() => isVariantInStock && handleVariantSelect(variant.id)}
+                              className={`relative border-2 rounded-2xl items-center p-2 transition-all duration-300 ${
+                                isVariantInStock
+                                  ? "cursor-pointer transform hover:scale-105 hover:shadow-lg"
+                                  : "cursor-not-allowed opacity-60"
+                              } ${
+                                isSelected
+                                  ? "border-emerald-500 bg-emerald-50 shadow-lg ring-4 ring-emerald-200/50"
+                                  : "border-gray-200 hover:border-gray-300 bg-white hover:shadow-md"
+                              }`}
+                              onClick={() =>
+                                isVariantInStock &&
+                                handleVariantSelect(variant.id)
+                              }
                             >
                               {isSelected && isVariantInStock && (
                                 <div className="absolute -top-2 -right-2 bg-emerald-500 text-white rounded-full p-2 shadow-lg">
@@ -340,27 +365,48 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                               )}
 
                               <div className="space-y-2">
-                                <h4 className={`font-bold text-sm ${isSelected ? 'text-emerald-900' :
-                                    isVariantInStock ? 'text-gray-900' : 'text-gray-500'
-                                  }`}>
-                                  {variant.name || `Option ${variant.id.slice(0, 8)}`}
+                                <h4
+                                  className={`font-bold text-sm ${
+                                    isSelected
+                                      ? "text-emerald-900"
+                                      : isVariantInStock
+                                        ? "text-gray-900"
+                                        : "text-gray-500"
+                                  }`}
+                                >
+                                  {variant.name ||
+                                    `Option ${variant.id.slice(0, 8)}`}
                                 </h4>
 
                                 <div className="flex justify-between items-center">
-                                  <span className={`text-xs font-semibold ${isSelected ? 'text-emerald-700' :
-                                      isVariantInStock ? 'text-gray-900' : 'text-gray-500'
-                                    }`}>
-                                    {parseFloat(variant.price as unknown as string).toLocaleString()}
-                                    <span className="text-sm font-normal ml-1">TZS</span>
+                                  <span
+                                    className={`text-xs font-semibold ${
+                                      isSelected
+                                        ? "text-emerald-700"
+                                        : isVariantInStock
+                                          ? "text-gray-900"
+                                          : "text-gray-500"
+                                    }`}
+                                  >
+                                    {parseFloat(
+                                      variant.price as unknown as string,
+                                    ).toLocaleString()}
+                                    <span className="text-sm font-normal ml-1">
+                                      TZS
+                                    </span>
                                   </span>
                                 </div>
 
                                 {variantStock && (
                                   <div className="text-xs">
                                     {variantStock.quantity === 0 ? (
-                                      <span className="text-green-600">Available</span>
+                                      <span className="text-green-600">
+                                        Available
+                                      </span>
                                     ) : (
-                                      <span className="text-gray-600">{variantStock.quantity} available</span>
+                                      <span className="text-gray-600">
+                                        {variantStock.quantity} available
+                                      </span>
                                     )}
                                   </div>
                                 )}
@@ -375,7 +421,8 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                           <div className="flex items-center gap-3">
                             <Check className="w-5 h-5 text-emerald-600" />
                             <span className="font-medium text-emerald-800">
-                              Selected: {getSelectedVariant()?.name || 'Default Option'}
+                              Selected:{" "}
+                              {getSelectedVariant()?.name || "Default Option"}
                             </span>
                           </div>
                         </div>
@@ -383,7 +430,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                     </div>
                   )}
 
-                  {/* Enhanced Quantity & Add to Cart */}
+                  {/* Quantity & Add to Cart */}
                   <div className="space-y-6">
                     {isInStock && !needsVariantSelection && (
                       <div>
@@ -408,7 +455,10 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                               variant="ghost"
                               size="sm"
                               onClick={incrementQuantity}
-                              disabled={quantity >= getAvailableQuantity() && getAvailableQuantity() > 0}
+                              disabled={
+                                quantity >= getAvailableQuantity() &&
+                                getAvailableQuantity() > 0
+                              }
                               className="p-3 hover:bg-gray-200 rounded-r-xl"
                             >
                               <Plus className="w-4 h-4" />
@@ -416,33 +466,43 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                           </div>
 
                           <div className="text-sm text-gray-600">
-                            <p>Total: <span className="font-bold text-sm lg:text-lg text-gray-900">
-                              {(getCurrentPrice() * quantity).toLocaleString()} {''}
-                              <span className='text-sm font-bold lg:text-lg text-gray-900'>TZS</span>
-                            </span></p>
+                            <p>
+                              Total:{" "}
+                              <span className="font-bold text-sm lg:text-lg text-gray-900">
+                                {(
+                                  getCurrentPrice() * quantity
+                                ).toLocaleString()}{" "}
+                                {""}
+                                <span className="text-sm font-bold lg:text-lg text-gray-900">
+                                  TZS
+                                </span>
+                              </span>
+                            </p>
                           </div>
                         </div>
 
-                        {getAvailableQuantity() > 0 && quantity >= getAvailableQuantity() && (
-                          <p className="text-sm text-amber-600 mt-2 flex items-center gap-1">
-                            <AlertCircle className="w-4 h-4" />
-                            Maximum quantity reached
-                          </p>
-                        )}
+                        {getAvailableQuantity() > 0 &&
+                          quantity >= getAvailableQuantity() && (
+                            <p className="text-sm text-amber-600 mt-2 flex items-center gap-1">
+                              <AlertCircle className="w-4 h-4" />
+                              Maximum quantity reached
+                            </p>
+                          )}
                       </div>
                     )}
 
-                    {/* Enhanced Add to Cart Button */}
+                    {/* Add to Cart Button */}
                     {isInStock ? (
                       <Button
                         onClick={handleAddToCart}
                         disabled={isLoading || needsVariantSelection}
-                        className={`w-full py-4 text-lg font-bold rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl ${isAddedToCart
-                            ? 'bg-green-500 hover:bg-green-600'
+                        className={`w-full py-4 text-lg font-bold rounded-2xl shadow-lg transform transition-all duration-200 hover:scale-105 hover:shadow-xl ${
+                          isAddedToCart
+                            ? "bg-green-500 hover:bg-green-600"
                             : needsVariantSelection
-                              ? 'bg-gray-400 cursor-not-allowed'
+                              ? "bg-gray-400 cursor-not-allowed"
                               : `${businessType.primary} hover:${businessType.accent}`
-                          } text-white`}
+                        } text-white`}
                       >
                         {isLoading ? (
                           <div className="flex items-center justify-center gap-3">
@@ -457,7 +517,9 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                         ) : (
                           <div className="flex items-center justify-center gap-3">
                             <ShoppingCart className="w-6 h-6" />
-                            {needsVariantSelection ? 'Please select an option' : `Add ${quantity} to Cart`}
+                            {needsVariantSelection
+                              ? "Please select an option"
+                              : `Add ${quantity} to Cart`}
                           </div>
                         )}
                       </Button>
@@ -474,7 +536,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           </div>
         </div>
 
-        {/* Enhanced Related Products */}
+        {/* Related Products */}
         {relatedProducts.length > 0 && (
           <div className="mt-16">
             <div className="text-center mb-12">
@@ -487,13 +549,15 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {relatedProducts.slice(0, 4).map((relatedProduct) => {
                 const relatedStockInfo = getProductStockStatus(relatedProduct);
-                const isRelatedInStock = relatedStockInfo.status === 'in-stock';
+                const isRelatedInStock = relatedStockInfo.status === "in-stock";
 
                 return (
                   <Card
                     key={relatedProduct.id}
                     className="group cursor-pointer transition-all duration-300 transform hover:scale-105 hover:shadow-2xl bg-white/70 backdrop-blur-sm ring-1 ring-gray-200/50"
-                    onClick={() => router.push(`/products/${relatedProduct.id}`)}
+                    onClick={() =>
+                      router.push(`/products/${relatedProduct.id}`)
+                    }
                   >
                     <div className="relative overflow-hidden">
                       {relatedProduct.image ? (
@@ -518,13 +582,21 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
                       </h3>
                       <div className="flex justify-between items-center">
                         <p className="text-lg font-bold text-emerald-600">
-                          {parseFloat(relatedProduct.price as string).toLocaleString()}
-                          <span className="text-sm font-normal text-gray-600 ml-1">TZS</span>
+                          {parseFloat(
+                            relatedProduct.price as string,
+                          ).toLocaleString()}
+                          <span className="text-sm font-normal text-gray-600 ml-1">
+                            TZS
+                          </span>
                         </p>
                         {isRelatedInStock ? (
-                          <span className="text-xs text-green-600 font-medium">In Stock</span>
+                          <span className="text-xs text-green-600 font-medium">
+                            In Stock
+                          </span>
                         ) : (
-                          <span className="text-xs text-red-600 font-medium">Out of Stock</span>
+                          <span className="text-xs text-red-600 font-medium">
+                            Out of Stock
+                          </span>
                         )}
                       </div>
                     </CardContent>
@@ -535,10 +607,6 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
           </div>
         )}
       </div>
-      <CartSidebar
-        businessType={businessType}
-        locationId={product.location}
-      />
     </div>
   );
 };

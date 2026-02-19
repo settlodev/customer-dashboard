@@ -28,10 +28,8 @@ function RecipeSelector({
 }: RecipeProps) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  
 
   useEffect(() => {
-    
     async function loadRecipes() {
       try {
         setIsLoading(true);

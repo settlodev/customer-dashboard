@@ -10,6 +10,19 @@ import { CashFlow, Credit, Orders } from "@/types/orders/type";
 import { orderRequestSchema } from "@/types/orders/schema";
 import { CartState } from "@/context/cartContext";
 
+type DigitalReceiptPaymentDetail = {
+  id: string;
+  acceptedPaymentMethodType: string;
+  acceptedPaymentMethodTypeName: string;
+  accountNumber: string;
+  notes: string;
+};
+
+type OrderReceiptResponse = {
+  order: Record<string, any>;
+  digitalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
+  physicalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
+};
 export const searchOrder = async (
   q: string,
   page: number,
@@ -77,8 +90,14 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
   const apiClient = new ApiClient();
 
   try {
-    const order = await apiClient.get(`/api/order-receipts/${identifier}`);
-    return parseStringify(order);
+    const response = (await apiClient.get(
+      `/api/order-receipts/with-additional-details/${identifier}`,
+    )) as OrderReceiptResponse;
+
+    return parseStringify({
+      ...response.order,
+      digitalReceiptPaymentDetails: response.digitalReceiptPaymentDetails ?? [],
+    });
   } catch (error) {
     throw error;
   }
@@ -267,14 +286,13 @@ export const submitOrderRequest = async (cartState: CartState) => {
 
     // console.log("The requested order is", requestedOrder);
 
-    // FIXED: Return the successful response with the order data
     formResponse = {
       responseType: "success",
       message: "Order has been requested successfully",
       data: requestedOrder, // Include the order data
     };
 
-    return parseStringify(formResponse); // FIXED: Actually return the response
+    return parseStringify(formResponse);
   } catch (error: any) {
     console.error("Order submission error:", error.message);
     formResponse = {

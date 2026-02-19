@@ -89,7 +89,6 @@ export const createLocation = async (
   let formResponse: FormResponse | null = null;
 
   try {
-    // Authentication check
     const authenticatedUser = await getAuthenticatedUser();
     if ("responseType" in authenticatedUser) {
       return parseStringify({
@@ -99,7 +98,6 @@ export const createLocation = async (
       });
     }
 
-    // Validate input data
     const validatedData = LocationSchema.safeParse(location);
 
     if (!validatedData.success) {
@@ -163,9 +161,9 @@ export const createLocation = async (
     if (formResponse.responseType === "success") {
       // Use businessId to determine if this is multistep
       if (businessId) {
-        redirect("/business");
+        revalidatePath("/business");
       } else {
-        revalidatePath("/locations");
+        revalidatePath("/select-location");
       }
     }
     return formResponse;
@@ -262,28 +260,39 @@ export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
 
   const data = await apiClient.post(`/api/locations/${business?.id}`, query);
 
-  // console.log(data)
   return parseStringify(data);
 };
 
-export const getLocationById = async (
-  businessId: string,
-  locationId: string,
-): Promise<Location> => {
+export const getLocationById = async (): Promise<Location> => {
   await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
+    const business = await getCurrentBusiness();
+    const currentLocation = await getCurrentLocation();
 
-    // Use the actual parameters in the URL
-    const data: Location = await apiClient.get<Location>(
-      `/api/locations/${businessId}/${locationId}`,
+    const data = await apiClient.get(
+      `/api/locations/${business?.id}/${currentLocation?.id}`,
     );
 
-    // console.log("The location data is:", data);
     return parseStringify(data);
   } catch (error) {
     console.error("Error fetching location:", error);
+    throw error;
+  }
+};
+
+export const generateLocationCode = async (): Promise<any> => {
+  await getAuthenticatedUser();
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    const response = await apiClient.get(
+      `/api/auth/location/code/generate/${location?.id}`,
+    );
+    return parseStringify(response);
+  } catch (error) {
+    console.error("Error generating location:", error);
     throw error;
   }
 };

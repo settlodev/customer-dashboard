@@ -49,18 +49,22 @@ export const columns: ColumnDef<StockRequests>[] = [
     enableHiding: false,
     header: ({ column }) => {
       return (
-          <Button
-              className="text-left p-0"
-              variant="ghost"
-              onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-          >
-            Location
-            <ArrowUpDown className="ml-2 h-4 w-4" />
-          </Button>
+        <Button
+          className="text-left p-0"
+          variant="ghost"
+          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+        >
+          Location
+          <ArrowUpDown className="ml-2 h-4 w-4" />
+        </Button>
       );
     },
   },
-
+  {
+    accessorKey: "warehouseStockName",
+    header: "Stock Name",
+    enableHiding: false,
+  },
   {
     accessorKey: "warehouseStockName",
     header: "Stock Name",
@@ -71,7 +75,7 @@ export const columns: ColumnDef<StockRequests>[] = [
     header: "Variant Name",
     enableHiding: false,
   },
-  
+
   {
     accessorKey: "quantity",
     enableHiding: false,
@@ -82,7 +86,7 @@ export const columns: ColumnDef<StockRequests>[] = [
     enableHiding: false,
     header: "Requested By",
   },
-  
+
   {
     accessorKey: "requestStatus",
     enableHiding: false,
@@ -92,10 +96,10 @@ export const columns: ColumnDef<StockRequests>[] = [
     accessorKey: "requestedDate",
     enableHiding: false,
     header: "Requested Date",
-    cell:(row)=>{
-      const date = new Date(row.getValue() as string)
-      return date.toLocaleString()
-    }
+    cell: (row) => {
+      const date = new Date(row.getValue() as string);
+      return date.toLocaleString();
+    },
   },
   {
     accessorKey: "approvedDate",
@@ -104,10 +108,10 @@ export const columns: ColumnDef<StockRequests>[] = [
     cell: (row) => {
       const dateValue = row.getValue() as string;
       if (!dateValue) return "-";
-      
+
       const formatted = new Date(dateValue).toLocaleString();
       return formatted === "Invalid Date" ? "-" : formatted;
-    }
+    },
   },
   {
     accessorKey: "cancelledDate",
@@ -116,10 +120,10 @@ export const columns: ColumnDef<StockRequests>[] = [
     cell: (row) => {
       const dateValue = row.getValue() as string;
       if (!dateValue) return "-";
-      
+
       const formatted = new Date(dateValue).toLocaleString();
       return formatted === "Invalid Date" ? "-" : formatted;
-    }
+    },
   },
   {
     accessorKey: "warehouseStaffApprovedName",

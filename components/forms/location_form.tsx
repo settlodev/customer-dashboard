@@ -426,7 +426,7 @@ export const LocationForm = ({
             ) : multipleStep ? (
               "Complete Setup"
             ) : (
-              "Setup business location"
+              "Add location"
             )}
           </Button>
         </div>

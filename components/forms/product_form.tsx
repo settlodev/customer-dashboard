@@ -103,11 +103,10 @@ export default function ProductForm({ item }: ProductFormProps) {
     name: "variants",
   });
 
-  
   useEffect(() => {
     const trackingType = form.watch("trackingType");
   }, [form.watch("trackingType")]);
-  
+
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === "trackingType") {
@@ -126,7 +125,6 @@ export default function ProductForm({ item }: ProductFormProps) {
 
           form.setValue(`variants.${index}.stockItem`, null);
           form.setValue(`variants.${index}.recipeItem`, null);
-
         });
       }
     });
@@ -147,7 +145,6 @@ export default function ProductForm({ item }: ProductFormProps) {
   );
 
   const handleTrackingTypeSelect = (type: string) => {
-
     form.setValue("trackInventory", true);
     form.setValue("trackingType", type);
 
@@ -177,7 +174,6 @@ export default function ProductForm({ item }: ProductFormProps) {
   };
 
   const handleTrackingDisable = () => {
-
     form.setValue("trackInventory", false);
     form.setValue("trackingType", null);
 
@@ -216,7 +212,6 @@ export default function ProductForm({ item }: ProductFormProps) {
   };
 
   const submitData = (values: z.infer<typeof ProductSchema>) => {
-   
     // First, update the form values with trackItem
     const updatedValues = { ...values };
 
@@ -742,7 +737,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                           </FormItem>
                         )}
                       />
-                      
+
                       {/* SEPARATE FIELDS - Stock Item */}
                       {form.watch("trackingType") === "STOCK" && (
                         <FormField

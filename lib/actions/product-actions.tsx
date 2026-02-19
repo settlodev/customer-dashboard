@@ -171,7 +171,6 @@ export const getProduct = async (id: UUID): Promise<ApiResponse<Product>> => {
   };
   const location = await getCurrentLocation();
   const response = await apiClient.post(`/api/products/${location?.id}`, query);
-
   return parseStringify(response);
 };
 
@@ -398,7 +397,7 @@ export const uploadProductCSV = async ({
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    await apiClient.post(
+    const upload = await apiClient.post(
       `/rust/csv-uploading/upload-products-csv?location_id=${location?.id}`,
       formattedCSVData,
       {
@@ -408,12 +407,8 @@ export const uploadProductCSV = async ({
         transformRequest: [(data) => data],
       },
     );
-
-    // console.log("The uploading process",upload)
-
-    revalidatePath("/products");
-    redirect("/products");
   } catch (error: any) {
+    console.error("Error updating csv", error);
     // Handle subscription limit exceeded error
     if (
       error.code === "FORBIDDEN" &&
@@ -448,6 +443,8 @@ export const uploadProductCSV = async ({
       );
     }
   }
+  revalidatePath("/products");
+  // redirect("/products");
 };
 
 export const topSellingProduct = async (
