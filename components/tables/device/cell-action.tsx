@@ -285,6 +285,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Device } from "@/types/device/type";
 import { generateLocationCode } from "@/lib/actions/location-actions";
+import { logoutDevice } from "@/lib/actions/devices-actions";
 
 interface CellActionProps {
   data: Device;
@@ -300,6 +301,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Calculate time remaining
   useEffect(() => {
@@ -342,11 +345,23 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setShowLogoutAlert(true);
   };
 
-  const confirmLogout = () => {
-    // Implement your logout logic here
-    console.log("Logging out device:", data.id);
-    // Example: await logoutDevice(data.id);
-    setShowLogoutAlert(false);
+  const confirmLogout = async () => {
+    // added async
+    setIsLoggingOut(true);
+    setLogoutError(null);
+    try {
+      const result = await logoutDevice(data.id);
+      if (result.success) {
+        setShowLogoutAlert(false);
+        router.refresh();
+      } else {
+        setLogoutError(result.error ?? "Something went wrong");
+      }
+    } catch (error) {
+      setLogoutError("Unexpected error occurred");
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   const handleCopyCode = async () => {
@@ -399,22 +414,31 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       {/* Logout Confirmation Alert */}
       {showLogoutAlert && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-lg p-4">
+          <div className="w-full max-w-lg p-4 bg-white text-white">
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertTitle>Logout Device Confirmation</AlertTitle>
               <AlertDescription>
-                <p className="mb-3">
+                <p className="mb-3 text-black">
                   Are you sure you want to logout this device? You will be
                   logged out from{" "}
-                  <span className="font-semibold">{data.name || data.id}</span>{" "}
+                  <span className="font-semibold">
+                    {data.customName || data.id}
+                  </span>{" "}
                   and will need to authenticate again to use it.
                 </p>
+                {logoutError && (
+                  <p className="text-sm text-destructive mb-2">{logoutError}</p>
+                )}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setShowLogoutAlert(false)}
+                    onClick={() => {
+                      setShowLogoutAlert(false);
+                      setLogoutError(null);
+                    }}
+                    disabled={isLoggingOut}
                     className="bg-background"
                   >
                     Cancel
@@ -423,8 +447,9 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                     variant="destructive"
                     size="sm"
                     onClick={confirmLogout}
+                    disabled={isLoggingOut}
                   >
-                    Logout Device
+                    {isLoggingOut ? "Logging out..." : "Logout Device"}
                   </Button>
                 </div>
               </AlertDescription>

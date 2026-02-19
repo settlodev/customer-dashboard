@@ -10,8 +10,8 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
 import { columns } from "@/components/tables/device/columns";
 import { searchDevices } from "@/lib/actions/devices-actions";
-import { Button } from "@react-email/components";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 const breadcrumbItems = [{ title: "Devices", link: "/devices" }];
 

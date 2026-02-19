@@ -22,20 +22,20 @@ export const searchDevices = async (
 
     const query = {
       filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
+        // {
+        //   key: "name",
+        //   operator: "LIKE",
+        //   field_type: "STRING",
+        //   value: q,
+        // },
       ],
       sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
+        // {
+        //   key: "name",
+        //   direction: "ASC",
+        // },
       ],
-      page: page ? page - 1 : 0,
+      page: page > 0 ? page - 1 : 0,
       size: pageLimit ? pageLimit : 10,
     };
 
@@ -45,7 +45,6 @@ export const searchDevices = async (
       `/api/location-devices/${location?.id}`,
       query,
     );
-
     return parseStringify(deviceResponse);
   } catch (error) {
     throw error;
@@ -77,7 +76,13 @@ export const createDevice = async (
   try {
     const apiClient = new ApiClient();
 
-    await apiClient.post(`/api/discounts/${location?.id}/create`, payload);
+    const response = await apiClient.post(
+      `/api/location-devices/${location?.id}/create`,
+      payload,
+    );
+
+    console.log("The response is ", response);
+
     formResponse = {
       responseType: "success",
       message: "Device created successfully",
@@ -91,7 +96,7 @@ export const createDevice = async (
     };
   }
 
-  revalidatePath("/discounts");
+  revalidatePath("/devices");
   return parseStringify(formResponse);
 };
 
@@ -120,7 +125,7 @@ export const updateDevice = async (
   try {
     const apiClient = new ApiClient();
 
-    await apiClient.put(`/api/discounts/${location?.id}/${id}`, payload);
+    await apiClient.put(`/api/location-devices/${location?.id}/${id}`, payload);
 
     formResponse = {
       responseType: "success",
@@ -136,7 +141,7 @@ export const updateDevice = async (
     };
   }
 
-  revalidatePath("/discounts");
+  revalidatePath("/devices");
   return parseStringify(formResponse);
 };
 
@@ -164,54 +169,21 @@ export const getDevice = async (id: UUID): Promise<ApiResponse<Device>> => {
   return parseStringify(deviceResponse);
 };
 
-export const generateDeviceToken = async (
-  discount: z.infer<typeof DeviceSchema>,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
+export const logoutDevice = async (
+  id: string,
+): Promise<{ success: boolean; error?: string }> => {
+  const apiClient = new ApiClient();
 
-  const deviceValidData = DeviceSchema.safeParse(discount);
-
-  if (!deviceValidData.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(deviceValidData.error.message),
-    };
-    return parseStringify(formResponse);
-  }
-
-  const location = await getCurrentLocation();
-
-  const payload = {
-    ...deviceValidData.data,
-    locationId: location?.id,
-  };
-  console.log("The payload is", payload);
   try {
-    const apiClient = new ApiClient();
-
-    console.time("API Request Duration");
-    const response = await apiClient.post(
-      "/auth/api/token/generate/location-device/new",
-      payload,
+    const location = await getCurrentLocation();
+    const device = await apiClient.post(
+      `/api/location-devices/${location?.id}/${id}`, // fixed: ${id}
+      {},
     );
-    console.timeEnd("API Request Duration");
-    console.log("The response from server is", response);
-    formResponse = {
-      responseType: "success",
-      message: "Device Token generated successfully",
-    };
+    console.log("The response is ", device);
+    return { success: true };
   } catch (error) {
-    console.log("Error not formatted", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-    console.log("The error displayed from from response is", formResponse);
+    console.error("Failed to logout device:", error);
+    return { success: false, error: "Failed to logout device" };
   }
-
-  revalidatePath("/devices");
-  return parseStringify(formResponse);
 };

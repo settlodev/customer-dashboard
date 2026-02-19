@@ -73,7 +73,7 @@ export const columns: ColumnDef<StockIntake>[] = [
         }
        
     },
-    {
+     {
         id: "costPerItem",
         header: "Cost Per Item",
         enableHiding: true,

@@ -21,7 +21,6 @@ const OrderReceipt = async ({
   params: Params;
   searchParams: SearchParams;
 }) => {
-  // Await the params to resolve them
   const resolvedParams = await params;
   const resolvedSearchParams = await searchParams;
   const { id, download } = resolvedParams;
@@ -543,6 +542,141 @@ const OrderReceipt = async ({
               </div>
             </div>
           </div>
+
+          {/* Digital Payment Details - shown when unpaid or partially paid */}
+          {(orderData.orderPaymentStatus === "NOT_PAID" ||
+            orderData.orderPaymentStatus === "PARTIAL_PAID") &&
+            orderData.digitalReceiptPaymentDetails?.length > 0 && (
+              <div className="px-4 mb-6">
+                <div className="border border-gray-200 rounded-lg p-4">
+                  <h3 className="text-base font-semibold text-gray-900 mb-1">
+                    Payment Instructions
+                  </h3>
+                  <p className="text-sm text-black mb-4">
+                    Please use one of the following methods to complete your
+                    payment of{" "}
+                    <span className="font-bold">
+                      {formatCurrency(
+                        orderData.unpaidAmount ??
+                          orderData.netAmount - orderData.paidAmount,
+                      )}
+                    </span>
+                    :
+                  </p>
+
+                  {/* Two-column grid — collapses to single column when only one method exists */}
+                  <div
+                    className={`grid gap-4 ${
+                      Object.keys(
+                        orderData.digitalReceiptPaymentDetails.reduce(
+                          (
+                            groups: Record<string, unknown[]>,
+                            detail: (typeof orderData.digitalReceiptPaymentDetails)[0],
+                          ) => {
+                            if (!groups[detail.acceptedPaymentMethodTypeName])
+                              groups[detail.acceptedPaymentMethodTypeName] = [];
+                            groups[detail.acceptedPaymentMethodTypeName].push(
+                              detail,
+                            );
+                            return groups;
+                          },
+                          {},
+                        ),
+                      ).length > 1
+                        ? "grid-cols-1 lg:grid-cols-2"
+                        : "grid-cols-1"
+                    }`}
+                  >
+                    {Object.entries(
+                      orderData.digitalReceiptPaymentDetails.reduce(
+                        (
+                          groups: Record<
+                            string,
+                            typeof orderData.digitalReceiptPaymentDetails
+                          >,
+                          detail: (typeof orderData.digitalReceiptPaymentDetails)[0],
+                        ) => {
+                          const key = detail.acceptedPaymentMethodTypeName;
+                          if (!groups[key]) groups[key] = [];
+                          groups[key].push(detail);
+                          return groups;
+                        },
+                        {},
+                      ),
+                    ).map(([methodName, details]) => (
+                      <div key={methodName} className=" p-3 ">
+                        {/* Method Header */}
+                        <div className="flex items-center gap-2 mb-3 pb-2 ">
+                          <span className="inline-flex items-center bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full">
+                            {methodName}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {
+                              (
+                                details as typeof orderData.digitalReceiptPaymentDetails
+                              ).length
+                            }{" "}
+                            account
+                            {(
+                              details as typeof orderData.digitalReceiptPaymentDetails
+                            ).length > 1
+                              ? "s"
+                              : ""}
+                          </span>
+                        </div>
+
+                        {/* Account Cards */}
+                        <div className="space-y-2">
+                          {(
+                            details as typeof orderData.digitalReceiptPaymentDetails
+                          ).map(
+                            (
+                              detail: (typeof orderData.digitalReceiptPaymentDetails)[0],
+                              index: number,
+                            ) => (
+                              <div
+                                key={detail.id}
+                                className="bg-white border border-gray-200 rounded-md p-3 text-sm"
+                              >
+                                {/* Account label if multiple */}
+                                {(
+                                  details as typeof orderData.digitalReceiptPaymentDetails
+                                ).length > 1 && (
+                                  <p className="text-xs text-gray-400 mb-1">
+                                    Option {index + 1}
+                                  </p>
+                                )}
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="text-xs text-gray-500 mb-0.5">
+                                      Account Number
+                                    </p>
+                                    <p className="font-mono font-semibold text-gray-900 tracking-wide truncate">
+                                      {detail.accountNumber}
+                                    </p>
+                                  </div>
+                                </div>
+                                {detail.notes && (
+                                  <p className="text-xs text-gray-500 mt-2 italic border-t border-gray-100 pt-2">
+                                    {detail.notes}
+                                  </p>
+                                )}
+                              </div>
+                            ),
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Footer note */}
+                  <p className="text-xs text-gray-400 mt-4 text-center">
+                    After payment, please share proof of payment with us to
+                    confirm your order.
+                  </p>
+                </div>
+              </div>
+            )}
 
           {/* Footer */}
           <div className="px-8 pb-8 pt-4 border-t border-gray-200">
