@@ -3,9 +3,9 @@ import { UUID } from "crypto"
 export declare interface StockIntake {
     id: UUID,
     quantity: number,
+    valuePerItem:number,
     stockAndStockVariantName: string,
     value: number,
-    valuePerItem:number
     batchExpiryDate: string,
     orderDate: string,
     deliveryDate: string,

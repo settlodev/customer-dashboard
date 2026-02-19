@@ -66,6 +66,11 @@ export const columns: ColumnDef<StockRequests>[] = [
     enableHiding: false,
   },
   {
+    accessorKey: "warehouseStockName",
+    header: "Stock Name",
+    enableHiding: false,
+  },
+  {
     accessorKey: "warehouseStockVariantName",
     header: "Variant Name",
     enableHiding: false,
