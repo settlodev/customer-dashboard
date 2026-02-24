@@ -113,7 +113,7 @@ function StockPurchaseForm({
         },
       ],
       deliveryDate: item?.deliveryDate || new Date().toISOString(),
-      notes: item?.notes || "",
+      notes: item?.notes,
     },
   });
 
