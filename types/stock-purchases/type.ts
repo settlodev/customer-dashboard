@@ -13,6 +13,10 @@ export declare interface StockPurchaseItem {
 
 export declare interface StockPurchase {
   id: UUID;
+  businessName: string;
+  locationName: string;
+  locationEmail: string;
+  locationPhone: string;
   supplier: UUID;
   supplierName: string;
   supplierEmail: string;

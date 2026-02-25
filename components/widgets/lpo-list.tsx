@@ -101,15 +101,12 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // Convert local datetime string to UTC ISO string
   const localToUTCISO = (localDateTimeString: string) => {
-    // Create date from local string (browser interprets as local time)
     const localDate = new Date(localDateTimeString);
     // Convert to UTC ISO string
     return localDate.toISOString();
   };
 
-  // Format date for display in dialog (shows what will be submitted)
   const formatForDisplay = (dateTimeString: string) => {
     const date = new Date(dateTimeString);
     return format(date, "dd/MM/yyyy, HH:mm");

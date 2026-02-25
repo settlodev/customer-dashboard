@@ -20,9 +20,8 @@ export default async function StockPurchasePage({
   const { id } = paramsData;
   const isNewItem = id === "new";
 
-  // If it's a new item, redirect or show appropriate message
   if (isNewItem) {
-    notFound(); // Or redirect to create form
+    notFound();
   }
 
   let purchaseData: StockPurchase;
@@ -34,13 +33,25 @@ export default async function StockPurchasePage({
     notFound();
   }
 
-  // Calculate totals
   const totalItems = purchaseData.stockIntakePurchaseOrderItems?.length || 0;
   const totalQuantity =
     purchaseData.stockIntakePurchaseOrderItems?.reduce(
       (sum, item) => sum + (item.quantity || 0),
       0,
     ) || 0;
+
+  const statusColorMap: Record<string, string> = {
+    SUBMITTED:
+      "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+    APPROVED:
+      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
+    DELIVERED:
+      "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+    PARTIALLY_RECEIVED:
+      "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+    RECEIVED:
+      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+  };
 
   const breadCrumbItems = [
     { title: "Stock Purchases", link: "/stock-purchases" },
@@ -58,7 +69,6 @@ export default async function StockPurchasePage({
         </div>
       </div>
 
-      {/* Purchase Order Card */}
       <Card className="shadow-xl print:shadow-none">
         <CardContent className="p-0">
           {/* LPO Header */}
@@ -68,27 +78,26 @@ export default async function StockPurchasePage({
                 <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                   LOCAL PURCHASE ORDER
                 </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  {purchaseData.businessName} &mdash;{" "}
+                  {purchaseData.locationName}
+                </p>
               </div>
               <Badge
                 className={cn(
                   "text-sm px-4 py-1",
-                  purchaseData.status === "SUBMITTED"
-                    ? "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
-                    : purchaseData.status === "APPROVED"
-                      ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
-                      : purchaseData.status === "DELIVERED"
-                        ? "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300"
-                        : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
+                  statusColorMap[purchaseData.status] ||
+                    "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
                 )}
               >
-                {purchaseData.status || "SUBMITTED"}
+                {purchaseData.status?.replace("_", " ") || "SUBMITTED"}
               </Badge>
             </div>
           </div>
 
-          {/* Order Number and Date */}
+          {/* Order Number and Dates */}
           <div className="px-8 py-6 bg-white dark:bg-gray-800 border-b">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 font-semibold">
                   Order Number
@@ -97,18 +106,36 @@ export default async function StockPurchasePage({
                   {purchaseData.orderNumber}
                 </p>
               </div>
-              <div className="md:text-right">
+              <div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 font-semibold">
-                  Issue Date
+                  Date Created
                 </p>
                 <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {format(new Date(), "MMMM dd, yyyy")}
+                  {purchaseData.dateCreated
+                    ? format(
+                        new Date(purchaseData.dateCreated),
+                        "MMMM dd, yyyy",
+                      )
+                    : "—"}
+                </p>
+              </div>
+              <div className="md:text-right">
+                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 font-semibold">
+                  Expected Delivery
+                </p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {purchaseData.deliveryDate
+                    ? format(
+                        new Date(purchaseData.deliveryDate),
+                        "MMMM dd, yyyy",
+                      )
+                    : "Not specified"}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Supplier & Delivery Information */}
+          {/* Supplier & Business/Location Information */}
           <div className="px-8 py-6 border-b bg-gray-50 dark:bg-gray-900/50">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {/* Supplier Details */}
@@ -148,25 +175,48 @@ export default async function StockPurchasePage({
                 </div>
               </div>
 
-              {/* Delivery Details */}
+              {/* Business / Location Details */}
               <div>
                 <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-300 dark:border-gray-700 pb-1">
-                  Delivery Information
+                  Ship To
                 </h2>
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Expected Delivery Date
+                      Business
                     </p>
                     <p className="text-base font-semibold text-gray-900 dark:text-white">
-                      {purchaseData.deliveryDate
-                        ? format(
-                            new Date(purchaseData.deliveryDate),
-                            "MMMM dd, yyyy",
-                          )
-                        : "Not specified"}
+                      {purchaseData.businessName}
                     </p>
                   </div>
+                  <div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Location
+                    </p>
+                    <p className="text-base font-semibold text-gray-900 dark:text-white">
+                      {purchaseData.locationName}
+                    </p>
+                  </div>
+                  {purchaseData.locationEmail && (
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Email
+                      </p>
+                      <p className="text-base text-gray-900 dark:text-white">
+                        {purchaseData.locationEmail}
+                      </p>
+                    </div>
+                  )}
+                  {purchaseData.locationPhone && (
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Phone
+                      </p>
+                      <p className="text-base text-gray-900 dark:text-white">
+                        {purchaseData.locationPhone}
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -252,7 +302,7 @@ export default async function StockPurchasePage({
             </div>
           </div>
 
-          {/* Special Instructions */}
+          {/* Notes */}
           {purchaseData.notes && (
             <div className="px-8 py-6 border-t bg-gray-50 dark:bg-gray-900/50">
               <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-300 dark:border-gray-700 pb-1">
@@ -290,50 +340,6 @@ export default async function StockPurchasePage({
               <p>6. Payment terms: Net 30 days from date of invoice.</p>
             </div>
           </div>
-
-          {/* Signature Section */}
-          {/*<div className="px-8 py-6 border-t bg-gray-50 dark:bg-gray-900/50">*/}
-          {/*  <div className="grid grid-cols-1 md:grid-cols-2 gap-12">*/}
-          {/*    <div>*/}
-          {/*      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-8 font-semibold">*/}
-          {/*        Authorized By*/}
-          {/*      </p>*/}
-          {/*      <div className="border-t border-gray-400 dark:border-gray-600 pt-2 mt-4">*/}
-          {/*        <p className="text-sm text-gray-700 dark:text-gray-300">*/}
-          {/*          ___________________________*/}
-          {/*        </p>*/}
-          {/*        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">*/}
-          {/*          Signature*/}
-          {/*        </p>*/}
-          {/*      </div>*/}
-          {/*      <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">*/}
-          {/*        Name: _______________________*/}
-          {/*      </p>*/}
-          {/*      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">*/}
-          {/*        Date: _____________*/}
-          {/*      </p>*/}
-          {/*    </div>*/}
-          {/*    <div>*/}
-          {/*      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-8 font-semibold">*/}
-          {/*        Supplier Acknowledgment*/}
-          {/*      </p>*/}
-          {/*      <div className="border-t border-gray-400 dark:border-gray-600 pt-2 mt-4">*/}
-          {/*        <p className="text-sm text-gray-700 dark:text-gray-300">*/}
-          {/*          ___________________________*/}
-          {/*        </p>*/}
-          {/*        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">*/}
-          {/*          Signature*/}
-          {/*        </p>*/}
-          {/*      </div>*/}
-          {/*      <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">*/}
-          {/*        Name: _______________________*/}
-          {/*      </p>*/}
-          {/*      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">*/}
-          {/*        Date: _____________*/}
-          {/*      </p>*/}
-          {/*    </div>*/}
-          {/*  </div>*/}
-          {/*</div>*/}
 
           {/* Footer */}
           <div className="px-8 py-4 bg-emerald-500 text-center">
