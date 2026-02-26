@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
@@ -31,7 +25,6 @@ import {
   Package,
   FileText,
   AlertCircle,
-  Truck,
   Phone,
   Mail,
   Hash,
@@ -74,7 +67,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     useState<ReceivedQuantities>({});
   const [isSubmitting, setIsSubmitting] = useState<string | null>(null);
 
-  // Dialog state
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [selectedLPO, setSelectedLPO] = useState<string | null>(null);
 
@@ -110,8 +102,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     notes: "",
   });
 
-  // Check if notes are required for a given LPO order number
-  // (true when any item received qty < ordered qty)
   const isNotesRequired = (lpoOrderNumber: string) => {
     const lpo = lpos.find((l) => l.orderNumber === lpoOrderNumber);
     if (!lpo) return false;
@@ -303,7 +293,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       return;
     }
 
-    // Validate notes requirement
     const notesRequired = isNotesRequired(selectedLPO);
     if (notesRequired && !receiptData.notes.trim()) {
       toast({
@@ -323,7 +312,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       const payload = {
         staff: receiptData.staffId,
         receivedAt: receivedAtISO,
-        notes: receiptData.notes || undefined,
+        notes: receiptData.notes || null,
         receivedItems: selectedLPOData.stockIntakePurchaseOrderItems.map(
           (item) => {
             const itemData = quantities[item.id] || {
@@ -340,7 +329,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       };
 
       const validatedPayload = stockIntakeReceiptSchema.parse(payload);
-      console.log("Validated Payload:", validatedPayload);
+      // console.log("Validated Payload:", validatedPayload);
 
       await receivePurchaseOrderAsStockIntake(
         {
@@ -356,7 +345,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
               unitCost: itemData.unitCost,
             };
           }),
-          notes: receiptData.notes || undefined,
+          notes: receiptData.notes || null,
         },
         receiptData.staffId,
         receivedAtISO,
@@ -366,7 +355,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
         title: "Success",
         description: `Stock intake for ${selectedLPO} recorded successfully.`,
       });
-
       setShowReceiptDialog(false);
       setSelectedLPO(null);
       setReceivedQuantities({});
@@ -399,24 +387,23 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
 
   return (
     <div className="space-y-4 pb-6">
-      {/* Header with search */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="relative flex-1 w-full sm:max-w-sm">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* ── Header: search + count ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search by order number, supplier, or item..."
+            placeholder="Search by order, supplier, or item…"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-10 text-sm"
           />
         </div>
+        <p className="text-sm text-muted-foreground shrink-0">
+          {filteredLPOs.length} of {lpos.length} order(s)
+        </p>
       </div>
 
-      <div className="text-sm text-muted-foreground">
-        Showing {filteredLPOs.length} of {lpos.length} purchase order(s)
-      </div>
-
-      {/* LPO List in 2-column grid */}
+      {/* ── LPO grid: 1 col → 2 col on lg ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {filteredLPOs.length > 0 ? (
           filteredLPOs.map((lpo) => {
@@ -433,7 +420,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
             return (
               <Card
                 key={lpo.orderNumber}
-                className={`transition-all hover:shadow-sm h-full flex flex-col ${
+                className={`flex flex-col transition-all hover:shadow-md ${
                   hasQuantities && !isComplete
                     ? "border-amber-500"
                     : isComplete
@@ -441,41 +428,39 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                       : ""
                 }`}
               >
-                <CardHeader className="pb-3">
-                  {/* Order number + status */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <CardTitle className="text-base truncate">
+                <CardHeader className="pb-3 space-y-3">
+                  {/* Order number + status badge */}
+                  <div className="flex items-center justify-between gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <FileText className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <CardTitle className="text-sm sm:text-base truncate">
                         {lpo.orderNumber}
                       </CardTitle>
                     </div>
-                    <Badge variant="secondary" className="text-xs">
+                    <Badge variant="secondary" className="text-xs shrink-0">
                       {lpo.status}
                     </Badge>
                   </div>
 
-                  {/* ── Supplier info block at the top ── */}
-                  <div className="mt-3 rounded-md border bg-muted/30 px-3 py-2 space-y-2">
-                    {/* Supplier name */}
-                    <div className="flex items-center gap-2">
-                      <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  {/* Supplier block */}
+                  <div className="rounded-md border bg-muted/30 px-3 py-2 space-y-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Building2 className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <span className="text-sm font-medium truncate">
                         {lpo.supplierName}
                       </span>
                     </div>
-                    {/* Phone + Email in a row */}
                     {(lpo.supplierPhoneNumber || lpo.supplierEmail) && (
-                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      <div className="flex flex-col xs:flex-row flex-wrap gap-x-4 gap-y-1">
                         {lpo.supplierPhoneNumber && (
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3 flex-shrink-0" />
+                            <Phone className="h-3 w-3 shrink-0" />
                             <span>{lpo.supplierPhoneNumber}</span>
                           </div>
                         )}
                         {lpo.supplierEmail && (
-                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Mail className="h-3 w-3 flex-shrink-0" />
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground min-w-0">
+                            <Mail className="h-3 w-3 shrink-0" />
                             <span className="truncate">
                               {lpo.supplierEmail}
                             </span>
@@ -486,10 +471,10 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-3 pt-0 flex-1">
-                  {/* Progress indicator */}
+                <CardContent className="flex-1 space-y-3 pt-0">
+                  {/* Progress bar */}
                   {hasQuantities && !isComplete && (
-                    <div className="mb-2">
+                    <div>
                       <div className="flex justify-between text-xs text-muted-foreground mb-1">
                         <span>Progress</span>
                         <span>
@@ -507,44 +492,36 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                     </div>
                   )}
 
-                  {/* Order stats: Delivery / Items / Ordered / Received */}
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Calendar className="h-3.5 w-3.5" />
-                        <span>Delivery</span>
+                  {/* Stats grid: 2×2 on all sizes */}
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    {[
+                      {
+                        icon: Calendar,
+                        label: "Delivery",
+                        value: format(new Date(lpo.deliveryDate), "MMM dd"),
+                      },
+                      { icon: Hash, label: "Items", value: totalItems },
+                      { icon: Package, label: "Ordered", value: totalQuantity },
+                      {
+                        icon: Package,
+                        label: "Received",
+                        value: getTotalReceived(lpo),
+                      },
+                    ].map(({ icon: Icon, label, value }) => (
+                      <div key={label} className="space-y-0.5">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <Icon className="h-3.5 w-3.5 shrink-0" />
+                          <span className="text-xs">{label}</span>
+                        </div>
+                        <p className="font-medium text-sm">{value}</p>
                       </div>
-                      <p className="font-medium truncate">
-                        {format(new Date(lpo.deliveryDate), "MMM dd")}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Hash className="h-3.5 w-3.5" />
-                        <span>Items</span>
-                      </div>
-                      <p className="font-medium">{totalItems}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Package className="h-3.5 w-3.5" />
-                        <span>Ordered</span>
-                      </div>
-                      <p className="font-medium">{totalQuantity}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 text-muted-foreground">
-                        <Package className="h-3.5 w-3.5" />
-                        <span>Received</span>
-                      </div>
-                      <p className="font-medium">{getTotalReceived(lpo)}</p>
-                    </div>
+                    ))}
                   </div>
 
-                  {/* Warning: incomplete quantities */}
+                  {/* Incomplete warning */}
                   {hasQuantities && !isComplete && (
                     <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-2 rounded-md text-xs">
-                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                       <span>Fill quantities for all items (0 is allowed)</span>
                     </div>
                   )}
@@ -564,7 +541,8 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                         </Badge>
                       )}
                     </div>
-                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+
+                    <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1 -mr-1">
                       {lpo.stockIntakePurchaseOrderItems.map((item) => {
                         const itemData =
                           receivedQuantities[lpo.orderNumber]?.[item.id];
@@ -576,20 +554,24 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                         return (
                           <div
                             key={item.id}
-                            className={`flex items-center justify-between gap-2 p-1.5 rounded ${
-                              hasQuantity ? "bg-muted/30" : "hover:bg-muted/30"
+                            className={`flex items-center justify-between gap-2 p-2 rounded-md ${
+                              hasQuantity ? "bg-muted/40" : "hover:bg-muted/30"
                             }`}
                           >
+                            {/* Item name + ordered qty */}
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">
+                              <p className="text-xs font-medium truncate leading-tight">
                                 {item.stockVariantName}
                               </p>
                               <span className="text-xs text-muted-foreground">
                                 Ordered: {item.quantity}
                               </span>
                             </div>
+
+                            {/* Qty input — larger touch target on mobile */}
                             <Input
                               type="number"
+                              inputMode="numeric"
                               min="0"
                               max={item.quantity}
                               placeholder="0"
@@ -615,7 +597,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                                   );
                                 }
                               }}
-                              className={`w-20 text-center h-7 text-xs ${
+                              className={`w-16 sm:w-20 text-center h-8 text-xs shrink-0 ${
                                 !hasQuantity
                                   ? "border-dashed"
                                   : receivedQty === 0
@@ -631,24 +613,24 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                     </div>
                   </div>
 
-                  {/* Confirm Receipt button — NO notes textarea here */}
-                  <div className="pt-2">
+                  {/* Confirm Receipt CTA */}
+                  <div className="pt-1">
                     <Button
                       onClick={() => handleOpenReceiptDialog(lpo.orderNumber)}
                       disabled={submittingThis || !isComplete}
-                      size="sm"
-                      className={`w-full ${
+                      size="default"
+                      className={`w-full h-10 text-sm ${
                         isComplete ? "bg-green-600 hover:bg-green-700" : ""
                       }`}
                     >
                       {submittingThis ? (
                         <>
                           <span className="animate-spin mr-2">⏳</span>
-                          Processing...
+                          Processing…
                         </>
                       ) : (
                         <>
-                          <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />
+                          <CheckCircle2 className="h-4 w-4 mr-1.5" />
                           Confirm Receipt
                         </>
                       )}
@@ -659,9 +641,9 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
             );
           })
         ) : (
-          <div className="col-span-1 lg:col-span-2">
+          <div className="col-span-full">
             <Card>
-              <CardContent className="py-12">
+              <CardContent className="py-16">
                 <div className="text-center space-y-2">
                   <Search className="h-12 w-12 text-muted-foreground mx-auto" />
                   <p className="font-semibold">No purchase orders found</p>
@@ -677,19 +659,28 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
 
       {/* ── Receipt Confirmation Dialog ── */}
       <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Confirm Stock Receipt</DialogTitle>
-            <DialogDescription>
-              Review and confirm the receipt details for purchase order{" "}
-              <span className="font-semibold">{selectedLPO}</span>
+        {/*
+          On mobile: near-full-screen sheet feel (w-[95vw], no side padding).
+          On sm+: standard centered modal.
+          max-h with overflow-y-auto ensures it never clips on short screens.
+        */}
+        <DialogContent className="w-[95vw] sm:max-w-2xl max-h-[92dvh] overflow-y-auto p-4 sm:p-6 gap-4">
+          <DialogHeader className="space-y-1">
+            <DialogTitle className="text-base sm:text-lg">
+              Confirm Stock Receipt
+            </DialogTitle>
+            <DialogDescription className="text-sm">
+              Review and confirm receipt for{" "}
+              <span className="font-semibold text-foreground">
+                {selectedLPO}
+              </span>
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4">
             {/* Staff Selector */}
-            <div className="space-y-2">
-              <Label htmlFor="staff">
+            <div className="space-y-1.5">
+              <Label className="text-sm">
                 Staff Member <span className="text-red-500">*</span>
               </Label>
               <StaffSelectorWidget
@@ -705,15 +696,14 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
               />
             </div>
 
-            {/* Date Time Picker */}
-            <div className="space-y-2">
-              <Label htmlFor="receivedAt">
+            {/* Date & Time */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">
                 Receipt Date & Time <span className="text-red-500">*</span>
               </Label>
               <div className="relative">
-                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
                 <Input
-                  id="receivedAt"
                   type="datetime-local"
                   value={receiptData.receivedAt}
                   onChange={(e) =>
@@ -723,7 +713,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                     }))
                   }
                   max={getMaxLocalDateTime()}
-                  className="pl-9"
+                  className="pl-9 h-10 text-sm"
                   disabled={!!isSubmitting}
                 />
               </div>
@@ -731,20 +721,20 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
 
             <Separator />
 
-            {/* Items Review with Unit Cost Inputs */}
-            <div className="space-y-3">
+            {/* Items & Costs review */}
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label>Items & Costs Review</Label>
+                <Label className="text-sm">Items & Costs Review</Label>
                 <Badge variant="outline" className="text-xs">
                   {selectedLPO &&
                     getItemsWithQuantityCount(
-                      lpos.find((lpo) => lpo.orderNumber === selectedLPO)!,
+                      lpos.find((l) => l.orderNumber === selectedLPO)!,
                     )}{" "}
                   items
                 </Badge>
               </div>
 
-              <div className="border rounded-lg divide-y max-h-64 overflow-y-auto">
+              <div className="border rounded-lg divide-y max-h-60 overflow-y-auto">
                 {selectedLPO &&
                   lpos
                     .find((lpo) => lpo.orderNumber === selectedLPO)
@@ -757,16 +747,17 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
 
                       return (
                         <div key={item.id} className="p-3 space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">
+                          {/* Item name + total cost */}
+                          <div className="flex items-start justify-between gap-2 min-w-0">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate leading-tight">
                                 {item.stockVariantName}
                               </p>
                               <p className="text-xs text-muted-foreground">
                                 Qty: {quantity} × {unitCost.toFixed(2)}
                               </p>
                             </div>
-                            <div className="text-right">
+                            <div className="text-right shrink-0">
                               <p className="text-xs text-muted-foreground">
                                 Total
                               </p>
@@ -775,16 +766,19 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                               </p>
                             </div>
                           </div>
+
+                          {/* Unit cost input row — stacks nicely on all widths */}
                           <div className="flex items-center gap-2">
                             <Label
                               htmlFor={`unitCost-${item.id}`}
-                              className="text-xs min-w-fit"
+                              className="text-xs whitespace-nowrap shrink-0"
                             >
                               Unit Cost:
                             </Label>
                             <Input
                               id={`unitCost-${item.id}`}
                               type="number"
+                              inputMode="decimal"
                               min="0"
                               step="0.01"
                               value={unitCost}
@@ -796,7 +790,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                                   quantity,
                                 )
                               }
-                              className="pl-3 h-8 text-xs"
+                              className="h-9 text-sm flex-1"
                               placeholder="0.00"
                               disabled={!!isSubmitting}
                             />
@@ -806,17 +800,17 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                     })}
               </div>
 
-              {/* Total Cost Summary */}
+              {/* Total cost summary */}
               {selectedLPO && (
-                <div className="bg-muted p-3 rounded-lg">
-                  <div className="flex items-center justify-between">
+                <div className="bg-muted rounded-lg p-3">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
                       <p className="text-sm font-medium">Total Order Cost</p>
                       <p className="text-xs text-muted-foreground">
                         Based on received quantities
                       </p>
                     </div>
-                    <p className="text-2xl font-bold">
+                    <p className="text-xl sm:text-2xl font-bold tabular-nums">
                       {calculateTotalCost(selectedLPO).toFixed(2)}
                     </p>
                   </div>
@@ -826,14 +820,14 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
 
             <Separator />
 
-            {/* ── Notes field — ONLY in the dialog ── */}
+            {/* Notes */}
             {(() => {
               const notesRequired = selectedLPO
                 ? isNotesRequired(selectedLPO)
                 : false;
               return (
-                <div className="space-y-2">
-                  <Label htmlFor="dialog-notes">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">
                     Notes{" "}
                     {notesRequired ? (
                       <span className="text-red-500">
@@ -846,17 +840,16 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
 
                   {notesRequired && (
                     <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-2 rounded-md text-xs">
-                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                      <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
                       <span>
                         Some items were received in smaller quantities than
-                        ordered. Please describe the reason (e.g., damaged
-                        goods, partial shipment, supplier shortage).
+                        ordered. Please describe the reason (e.g. damaged goods,
+                        partial shipment, supplier shortage).
                       </span>
                     </div>
                   )}
 
                   <Textarea
-                    id="dialog-notes"
                     value={receiptData.notes}
                     onChange={(e) =>
                       setReceiptData((prev) => ({
@@ -866,10 +859,10 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                     }
                     placeholder={
                       notesRequired
-                        ? "Describe why quantities are less than ordered..."
-                        : "Optional notes about this receipt..."
+                        ? "Describe why quantities are less than ordered…"
+                        : "Optional notes about this receipt…"
                     }
-                    className={`min-h-[80px] resize-none ${
+                    className={`min-h-[80px] resize-none text-sm ${
                       notesRequired && !receiptData.notes.trim()
                         ? "border-red-400 focus-visible:ring-red-400"
                         : ""
@@ -888,7 +881,12 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
             })()}
           </div>
 
-          <DialogFooter className="sm:justify-between">
+          {/*
+            Footer: stacks vertically on mobile (Cancel below Submit) so
+            the primary action is always easy to reach with a thumb.
+            On sm+: side-by-side.
+          */}
+          <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between pt-2">
             <Button
               type="button"
               variant="outline"
@@ -897,6 +895,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                 setSelectedLPO(null);
               }}
               disabled={!!isSubmitting}
+              className="w-full sm:w-auto h-10"
             >
               Cancel
             </Button>
@@ -904,12 +903,12 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
               type="button"
               onClick={handleFinalSubmit}
               disabled={!receiptData.staffId || !!isSubmitting}
-              className="bg-green-600 hover:bg-green-700"
+              className="w-full sm:w-auto h-10 bg-green-600 hover:bg-green-700"
             >
               {isSubmitting ? (
                 <>
                   <span className="animate-spin mr-2">⏳</span>
-                  Submitting...
+                  Submitting…
                 </>
               ) : (
                 <>

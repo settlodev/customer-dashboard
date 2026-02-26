@@ -63,7 +63,7 @@ export const receivedItemSchema = object({
 });
 
 export const stockIntakeReceiptSchema = object({
-  notes: string().optional(),
+  notes: string().nullish().optional(),
   staff: string().uuid("Invalid staff ID"),
   receivedAt: string().datetime("Invalid date format"),
   receivedItems: array(receivedItemSchema).min(
