@@ -323,7 +323,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       const payload = {
         staff: receiptData.staffId,
         receivedAt: receivedAtISO,
-        notes: receiptData.notes || undefined,
+        notes: receiptData.notes || null,
         receivedItems: selectedLPOData.stockIntakePurchaseOrderItems.map(
           (item) => {
             const itemData = quantities[item.id] || {
