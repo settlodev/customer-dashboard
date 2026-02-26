@@ -13,6 +13,10 @@ export declare interface StockPurchaseItem {
 
 export declare interface StockPurchase {
   id: UUID;
+  businessName: string;
+  locationName: string;
+  locationEmail: string;
+  locationPhone: string;
   supplier: UUID;
   supplierName: string;
   supplierEmail: string;
@@ -36,6 +40,7 @@ export interface StockIntakeFromLPOItem {
 }
 
 export interface StockIntakeFromLPOPayload {
+  notes: string;
   staff: string;
   receivedAt: string;
   receivedItems: StockIntakeFromLPOItem[];
@@ -62,4 +67,5 @@ export interface SubmissionItem {
 export interface SubmissionData {
   purchaseOrderId: string;
   items: SubmissionItem[];
+  notes?: string;
 }

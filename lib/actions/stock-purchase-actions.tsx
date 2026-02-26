@@ -17,6 +17,7 @@ import {
   StockPurchase,
   SubmissionData,
 } from "@/types/stock-purchases/type";
+import { StockReceipt } from "@/types/stock-intake-receipt/type";
 
 export const searchStockPurchases = async (
   q: string,
@@ -28,6 +29,7 @@ export const searchStockPurchases = async (
   try {
     const apiClient = new ApiClient();
     const query = {
+      filters: [],
       page: page ? page - 1 : 0,
       size: pageLimit ? pageLimit : 10,
     };
@@ -58,6 +60,7 @@ export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
       `/api/stock-intake-purchase-order/${location.id}/lookup?orderNumber=${id}`,
     );
 
+    console.log("The stock purchase is", stockPurchaseOrder);
     return parseStringify(stockPurchaseOrder);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);
@@ -108,13 +111,15 @@ export const createStockPurchase = async (
       })),
   };
 
+  console.log("The payload:", payload);
+
   try {
     const apiClient = new ApiClient();
     const response = await apiClient.post(
       `/api/stock-intake-purchase-order/${location?.id}/create`,
       payload,
     );
-    // console.log("The purchase order is", response);
+    console.log("The purchase order is", response);
     formResponse = {
       data: response,
       responseType: "success",
@@ -184,6 +189,7 @@ export const receivePurchaseOrderAsStockIntake = async (
         quantityReceived: item.receivedQuantity,
         totalCost: item.unitCost * item.receivedQuantity,
       })),
+      notes: data.notes ?? "", // passes empty string or the value
     };
 
     // Validate payload with Zod schema before sending
@@ -193,10 +199,60 @@ export const receivePurchaseOrderAsStockIntake = async (
       `/api/stock-intake-purchase-order/${location?.id}/receive/${data.purchaseOrderId}`,
       validatedPayload,
     );
-
+    // console.log("Received Goods:", response);
     return parseStringify(response);
   } catch (error) {
     console.error("Error receiving purchase order as stock intake:", error);
+    throw error;
+  }
+};
+
+export const searchStockIntakeReceived = async (
+  q: string,
+  page: number,
+  pageLimit: number,
+): Promise<ApiResponse<StockReceipt>> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    const query = {
+      filters: [],
+      page: page ? page - 1 : 0,
+      size: pageLimit ? pageLimit : 10,
+    };
+    const location = await getCurrentLocation();
+
+    const data = await apiClient.post(
+      `/api/stock-intake-receipts/${location?.id}/paginate`,
+      query,
+    );
+
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const getStockIntakeReceipt = async (
+  id: string,
+): Promise<StockReceipt> => {
+  const apiClient = new ApiClient();
+
+  const location = await getCurrentLocation();
+
+  if (!location?.id) {
+    throw new Error("Location not found or invalid");
+  }
+
+  try {
+    const stockIntakeReceipt = await apiClient.get(
+      `/api/stock-intake-receipts/${location.id}/${id}`,
+    );
+
+    return parseStringify(stockIntakeReceipt);
+  } catch (error) {
+    console.error("Failed to fetch stock purchases:", error);
     throw error;
   }
 };

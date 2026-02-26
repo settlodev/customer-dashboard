@@ -63,6 +63,7 @@ export const receivedItemSchema = object({
 });
 
 export const stockIntakeReceiptSchema = object({
+  notes: string().optional(),
   staff: string().uuid("Invalid staff ID"),
   receivedAt: string().datetime("Invalid date format"),
   receivedItems: array(receivedItemSchema).min(
@@ -70,6 +71,3 @@ export const stockIntakeReceiptSchema = object({
     "At least one item is required",
   ),
 });
-
-export type ReceivedItem = z.infer<typeof receivedItemSchema>;
-export type StockIntakeReceipt = z.infer<typeof stockIntakeReceiptSchema>;
