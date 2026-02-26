@@ -356,7 +356,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
               unitCost: itemData.unitCost,
             };
           }),
-          notes: receiptData.notes || undefined,
+          notes: receiptData.notes || null,
         },
         receiptData.staffId,
         receivedAtISO,

@@ -189,7 +189,7 @@ export const receivePurchaseOrderAsStockIntake = async (
         quantityReceived: item.receivedQuantity,
         totalCost: item.unitCost * item.receivedQuantity,
       })),
-      notes: data.notes ?? "", // passes empty string or the value
+      notes: data.notes ?? null,
     };
 
     // Validate payload with Zod schema before sending
