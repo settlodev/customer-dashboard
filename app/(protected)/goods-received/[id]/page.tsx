@@ -53,43 +53,42 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
     0,
   );
 
-  // Helper function to format currency
-  const formatCurrency = (value: number) => {
-    return value.toLocaleString("en-US", {
+  const formatCurrency = (value: number) =>
+    value.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-  };
 
   return (
-    <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 bg-white min-h-screen mt-4">
-      <Card className="shadow-none border border-black mt-4 bg-white w-full max-w-7xl mx-auto">
+    <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 bg-emerald-50 min-h-screen mt-4">
+      <Card className="shadow-none border border-emerald-200 mt-4 bg-white w-full max-w-7xl mx-auto overflow-hidden">
         <CardContent className="p-0">
           {/* ── HEADER ── */}
-          <div className="border-b-2 border-black px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6">
+          <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 px-4 sm:px-6 md:px-8 py-4 sm:py-5">
             <div className="flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-6">
               <div className="w-full sm:w-auto">
-                <p className="text-[8px] sm:text-[9px] font-black text-black uppercase tracking-[0.25em] mb-1">
+                <p className="text-[8px] sm:text-[9px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-1">
                   {receiptData.businessName}
                 </p>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-black tracking-tight leading-none">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-none">
                   Goods Received Note
                 </h1>
-                <p className="text-xs sm:text-sm text-black mt-1 font-medium">
+                <p className="text-xs sm:text-sm text-emerald-300/70 mt-1.5 font-medium">
                   {receiptData.locationName}
                 </p>
               </div>
 
               <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3">
-                <div className="text-right border border-black px-3 sm:px-4 py-2 sm:py-3">
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-0.5">
+                {/* GRN Badge */}
+                <div className="bg-emerald-500 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-right">
+                  <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.25em] text-emerald-100 mb-0.5">
                     GRN No.
                   </p>
-                  <p className="text-lg sm:text-xl font-black font-mono text-black break-all">
+                  <p className="text-sm sm:text-base font-black font-mono text-white break-all leading-tight">
                     {receiptData.receiptNumber}
                   </p>
                 </div>
-                <div className="sm:mt-2">
+                <div className="sm:mt-1">
                   <GRNDownloadButton
                     receiptData={receiptData}
                     items={items}
@@ -101,9 +100,12 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
             </div>
           </div>
 
+          {/* ── EMERALD ACCENT BAR ── */}
+          <div className="h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400" />
+
           {/* ── META ROW ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 border-b border-black">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          <div className="px-4 sm:px-6 md:px-8 py-4 border-b border-emerald-100 bg-emerald-50/50">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
               {[
                 {
                   label: "PO Reference",
@@ -126,12 +128,12 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
               ].map(({ label, value }) => (
                 <div
                   key={label}
-                  className="border border-black/10 p-2 sm:p-3 rounded bg-black/[0.02]"
+                  className="border border-emerald-200 p-2.5 sm:p-3 rounded-lg bg-white shadow-sm"
                 >
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-0.5">
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 mb-1">
                     {label}
                   </p>
-                  <p className="text-xs sm:text-sm font-bold text-black break-words">
+                  <p className="text-xs sm:text-sm font-bold text-gray-800 break-words">
                     {value}
                   </p>
                 </div>
@@ -140,14 +142,16 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
           </div>
 
           {/* ── SUPPLIER & RECEIVING LOCATION ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 border-b border-black">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-b border-emerald-100">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
               {/* Supplier */}
-              <div>
-                <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-2 pb-1 border-b border-black">
-                  Supplier Information
-                </p>
-                <div className="space-y-2 sm:space-y-1.5">
+              <div className="border border-emerald-200 rounded-lg overflow-hidden">
+                <div className="bg-emerald-500 px-4 py-2">
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-white">
+                    Supplier Information
+                  </p>
+                </div>
+                <div className="p-3 sm:p-4 space-y-2.5 bg-white">
                   {[
                     { label: "Supplier", value: receiptData.supplierName },
                     receiptData.supplierEmail && {
@@ -163,12 +167,12 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                     .map(({ label, value }: any) => (
                       <div
                         key={label}
-                        className="flex flex-col sm:flex-row sm:gap-4"
+                        className="flex flex-col sm:flex-row sm:gap-3"
                       >
-                        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-black sm:w-14 shrink-0">
-                          {label}:
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-600 sm:w-16 shrink-0">
+                          {label}
                         </span>
-                        <span className="text-xs sm:text-sm text-black font-medium break-words">
+                        <span className="text-xs sm:text-sm text-gray-700 font-medium break-words">
                           {value}
                         </span>
                       </div>
@@ -177,11 +181,13 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
               </div>
 
               {/* Receiving Location */}
-              <div>
-                <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-2 pb-1 border-b border-black">
-                  Receiving Location
-                </p>
-                <div className="space-y-2 sm:space-y-1.5">
+              <div className="border border-emerald-200 rounded-lg overflow-hidden">
+                <div className="bg-emerald-500 px-4 py-2">
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-white">
+                    Receiving Location
+                  </p>
+                </div>
+                <div className="p-3 sm:p-4 space-y-2.5 bg-white">
                   {[
                     { label: "Business", value: receiptData.businessName },
                     { label: "Location", value: receiptData.locationName },
@@ -202,12 +208,12 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                     .map(({ label, value }: any) => (
                       <div
                         key={label}
-                        className="flex flex-col sm:flex-row sm:gap-4"
+                        className="flex flex-col sm:flex-row sm:gap-3"
                       >
-                        <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-black sm:w-14 shrink-0">
-                          {label}:
+                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-600 sm:w-16 shrink-0">
+                          {label}
                         </span>
-                        <span className="text-xs sm:text-sm text-black font-medium break-words">
+                        <span className="text-xs sm:text-sm text-gray-700 font-medium break-words">
                           {value}
                         </span>
                       </div>
@@ -219,99 +225,95 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
 
           {/* ── ITEMS TABLE ── */}
           <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6">
-            <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-3 pb-1 border-b border-black">
-              Received Items
-            </p>
+            {/* Section heading */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-5 w-1 bg-emerald-500 rounded-full" />
+              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] text-gray-700">
+                Received Items
+              </p>
+            </div>
 
             {/* Mobile Card View */}
-            <div className="block lg:hidden space-y-4">
+            <div className="block lg:hidden space-y-3">
               {items.map((item, index) => (
                 <div
                   key={item.id || index}
-                  className="border border-black rounded-lg overflow-hidden"
+                  className="border border-emerald-200 rounded-lg overflow-hidden shadow-sm"
                 >
-                  <div className="bg-black/[0.03] px-3 py-2 border-b border-black">
-                    <span className="text-xs font-bold">Item #{index + 1}</span>
+                  <div className="bg-emerald-50 px-3 py-2 border-b border-emerald-200 flex items-center gap-2">
+                    <span className="bg-emerald-500 text-white text-[9px] font-black rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+                      {index + 1}
+                    </span>
+                    <span className="text-xs font-bold text-gray-700">
+                      {item.stockName}
+                    </span>
                   </div>
-                  <div className="p-3 space-y-2">
-                    <div>
-                      <p className="text-xs font-black uppercase tracking-wider text-black/60">
-                        Product
-                      </p>
-                      <p className="font-bold text-sm">{item.stockName}</p>
-                      {item.stockVariantName &&
-                        item.stockVariantName !== item.stockName && (
-                          <p className="text-xs text-black mt-0.5">
-                            {item.stockVariantName}
-                          </p>
-                        )}
-                    </div>
-
+                  <div className="p-3 bg-white">
+                    {item.stockVariantName &&
+                      item.stockVariantName !== item.stockName && (
+                        <p className="text-xs text-gray-500 mb-2">
+                          {item.stockVariantName}
+                        </p>
+                      )}
                     <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-wider text-black/60">
-                          Qty
-                        </p>
-                        <p className="font-bold">
-                          {item.quantityReceived?.toLocaleString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-wider text-black/60">
-                          CP
-                        </p>
-                        <p className="font-medium">
-                          {item.previousCostPerItem != null
-                            ? formatCurrency(item.previousCostPerItem)
-                            : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-wider text-black/60">
-                          Last CP
-                        </p>
-                        <p className="font-medium">
-                          {item.lastCostPerItem != null
-                            ? formatCurrency(item.lastCostPerItem)
-                            : item.previousCostPerItem != null
+                      {[
+                        {
+                          k: "Qty",
+                          v: item.quantityReceived?.toLocaleString(),
+                        },
+                        {
+                          k: "Cost Price",
+                          v:
+                            item.previousCostPerItem != null
                               ? formatCurrency(item.previousCostPerItem)
-                              : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-black uppercase tracking-wider text-black/60">
-                          Amount
-                        </p>
-                        <p className="font-bold">
-                          {formatCurrency(item.totalCost || 0)}
-                        </p>
-                      </div>
+                              : "—",
+                        },
+                        {
+                          k: "Last CP",
+                          v:
+                            item.lastCostPerItem != null
+                              ? formatCurrency(item.lastCostPerItem)
+                              : item.previousCostPerItem != null
+                                ? formatCurrency(item.previousCostPerItem)
+                                : "—",
+                        },
+                        { k: "Amount", v: formatCurrency(item.totalCost || 0) },
+                      ].map(({ k, v }) => (
+                        <div key={k}>
+                          <p className="text-[9px] font-black uppercase tracking-wider text-emerald-600">
+                            {k}
+                          </p>
+                          <p className="text-sm font-bold text-gray-800">{v}</p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
               ))}
 
               {/* Mobile Totals */}
-              <div className="border-2 border-black bg-black/[0.03] p-3 rounded-lg mt-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs font-black uppercase tracking-wider">
+              <div className="border border-emerald-300 bg-emerald-50 p-3 rounded-lg mt-2">
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-700">
                     Total Items
                   </span>
-                  <span className="font-bold">{items.length}</span>
+                  <span className="font-bold text-gray-800">
+                    {items.length}
+                  </span>
                 </div>
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs font-black uppercase tracking-wider">
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-emerald-700">
                     Total Quantity
                   </span>
-                  <span className="font-bold">
+                  <span className="font-bold text-gray-800">
                     {totalQuantityReceived.toLocaleString()}
                   </span>
                 </div>
-                <div className="flex justify-between items-center mt-2 pt-2 border-t border-black">
-                  <span className="text-sm font-black uppercase tracking-wider">
+                <div className="flex justify-between items-center mt-1 pt-2 border-t border-emerald-300">
+                  <span className="text-sm font-black uppercase tracking-wider text-emerald-700">
                     Total Value
                   </span>
-                  <span className="text-lg font-black">
+                  <span className="text-lg font-black text-gray-900">
                     {formatCurrency(totalValue)}
                   </span>
                 </div>
@@ -319,24 +321,24 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
             </div>
 
             {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
+            <div className="hidden lg:block overflow-x-auto rounded-lg border border-emerald-200 shadow-sm">
               <table className="w-full text-sm border-collapse">
                 <thead>
-                  <tr className="border-b-2 border-black">
+                  <tr className="bg-gray-900">
                     {[
                       "#",
                       "Product Description",
                       "Qty",
-                      "CP",
-                      "Last CP",
+                      "Cost Price",
+                      "Last Cost",
                       "Amount",
                     ].map((h, i) => (
                       <th
                         key={h}
                         className={cn(
-                          "py-2 px-3 text-[9px] font-black uppercase tracking-[0.15em] text-black whitespace-nowrap",
+                          "py-3 px-4 text-[9px] font-black uppercase tracking-[0.15em] text-emerald-400 whitespace-nowrap",
                           i === 0
-                            ? "text-left"
+                            ? "text-center"
                             : i === 1
                               ? "text-left"
                               : "text-right",
@@ -352,56 +354,60 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                     <tr
                       key={item.id || index}
                       className={cn(
-                        "border-b border-black",
-                        index % 2 === 0 ? "bg-white" : "bg-black/[0.02]",
+                        "border-b border-emerald-100 hover:bg-emerald-50/60 transition-colors",
+                        index % 2 === 0 ? "bg-white" : "bg-emerald-50/30",
                       )}
                     >
-                      <td className="py-3 px-3 text-black text-xs font-bold">
-                        {index + 1}
+                      <td className="py-3 px-4 text-center">
+                        <span className="bg-emerald-100 text-emerald-700 text-xs font-black rounded-full w-6 h-6 inline-flex items-center justify-center">
+                          {index + 1}
+                        </span>
                       </td>
-                      <td className="py-3 px-3">
-                        <p className="font-bold text-black">{item.stockName}</p>
+                      <td className="py-3 px-4">
+                        <p className="font-bold text-gray-800">
+                          {item.stockName}
+                        </p>
                         {item.stockVariantName &&
                           item.stockVariantName !== item.stockName && (
-                            <p className="text-xs text-black mt-0.5">
+                            <p className="text-xs text-gray-500 mt-0.5">
                               {item.stockVariantName}
                             </p>
                           )}
                       </td>
-                      <td className="py-3 px-3 text-right font-black text-black whitespace-nowrap">
+                      <td className="py-3 px-4 text-right font-black text-gray-800 whitespace-nowrap">
                         {item.quantityReceived?.toLocaleString()}
                       </td>
-                      <td className="py-3 px-3 text-right text-black font-medium whitespace-nowrap">
+                      <td className="py-3 px-4 text-right text-gray-600 font-medium whitespace-nowrap">
                         {item.previousCostPerItem != null
                           ? formatCurrency(item.previousCostPerItem)
                           : "—"}
                       </td>
-                      <td className="py-3 px-3 text-right text-black font-medium whitespace-nowrap">
+                      <td className="py-3 px-4 text-right text-gray-600 font-medium whitespace-nowrap">
                         {item.lastCostPerItem != null
                           ? formatCurrency(item.lastCostPerItem)
                           : item.previousCostPerItem != null
                             ? formatCurrency(item.previousCostPerItem)
                             : "—"}
                       </td>
-                      <td className="py-3 px-3 text-right font-black text-black whitespace-nowrap">
+                      <td className="py-3 px-4 text-right font-black text-gray-900 whitespace-nowrap">
                         {formatCurrency(item.totalCost || 0)}
                       </td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-black bg-black/[0.03]">
+                  <tr className="bg-emerald-500">
                     <td
                       colSpan={2}
-                      className="py-3 px-3 text-[9px] font-black uppercase tracking-widest text-black"
+                      className="py-3 px-4 text-[9px] font-black uppercase tracking-widest text-white"
                     >
                       Totals
                     </td>
-                    <td className="py-3 px-3 text-right font-black text-black whitespace-nowrap">
+                    <td className="py-3 px-4 text-right font-black text-white whitespace-nowrap">
                       {totalQuantityReceived.toLocaleString()}
                     </td>
                     <td colSpan={2} />
-                    <td className="py-3 px-3 text-right font-black text-black whitespace-nowrap">
+                    <td className="py-3 px-4 text-right font-black text-white whitespace-nowrap">
                       {formatCurrency(totalValue)}
                     </td>
                   </tr>
@@ -409,38 +415,34 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
               </table>
             </div>
 
-            {/* ── SUMMARY BOXES ── */}
+            {/* ── SUMMARY BOX ── */}
             <div className="mt-6 sm:mt-8 flex justify-end">
-              <div className="w-full sm:w-80 md:w-72 border border-black overflow-hidden">
-                <div className="border-b border-black px-3 sm:px-4 py-2">
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black">
+              <div className="w-full sm:w-80 md:w-72 rounded-lg border border-emerald-200 overflow-hidden shadow-sm">
+                <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2.5">
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-emerald-700">
                     Summary
                   </p>
                 </div>
-                <div className="divide-y divide-black/10">
+                <div className="divide-y divide-emerald-100 bg-white">
                   {[
-                    {
-                      label: "Net Amount",
-                      value: formatCurrency(totalValue),
-                      strong: false,
-                    },
-                    { label: "VAT Amount", value: "0.00", strong: false },
-                    { label: "Rounding Amount", value: "0.00", strong: false },
+                    { label: "Net Amount", value: formatCurrency(totalValue) },
+                    { label: "VAT Amount", value: "0.00" },
+                    { label: "Rounding Amount", value: "0.00" },
                   ].map(({ label, value }) => (
                     <div
                       key={label}
-                      className="flex justify-between px-3 sm:px-4 py-2 sm:py-2.5"
+                      className="flex justify-between px-4 py-2.5"
                     >
-                      <span className="text-xs sm:text-sm text-black font-medium">
+                      <span className="text-xs sm:text-sm text-gray-600 font-medium">
                         {label}
                       </span>
-                      <span className="text-sm sm:text-base font-bold text-black">
+                      <span className="text-sm sm:text-base font-bold text-gray-800">
                         {value}
                       </span>
                     </div>
                   ))}
-                  <div className="flex justify-between px-3 sm:px-4 py-2 sm:py-3 bg-black">
-                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] text-white/70">
+                  <div className="flex justify-between px-4 py-3 bg-emerald-500">
+                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] text-emerald-100">
                       Total Amount
                     </span>
                     <span className="text-sm sm:text-base font-black text-white">
@@ -453,24 +455,34 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
           </div>
 
           {/* ── SIGNATURES ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 border-t border-black">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
+          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-t border-emerald-100 bg-emerald-50/30">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-5 w-1 bg-emerald-500 rounded-full" />
+              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] text-gray-700">
+                Authorisation & Signatures
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
               {[
                 {
-                  label: "Pre. By",
+                  label: "Prepared By",
                   value: `${receiptData.staffFirstName} ${receiptData.staffLastName}`,
                 },
                 { label: "Checked By", value: "" },
-                { label: "Auth. By", value: "" },
+                { label: "Authorised By", value: "" },
                 { label: "Accounts", value: "" },
               ].map(({ label, value }) => (
                 <div key={label} className="text-center">
-                  <div className="h-10 border-b border-black/30 mb-1 flex items-end justify-center pb-1">
-                    <span className="text-xs sm:text-sm text-black font-bold truncate max-w-full px-1">
-                      {value || "—"}
-                    </span>
+                  <div className="h-12 flex items-end justify-center pb-1.5">
+                    {value && (
+                      <span className="text-xs sm:text-sm text-gray-700 font-bold truncate max-w-full px-1">
+                        {value}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black">
+                  <div className="border-b-2 border-gray-400 mx-2 mb-2" />
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-emerald-700">
                     {label}
                   </p>
                 </div>
@@ -480,16 +492,19 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
             {/* Approval + VAT Summary */}
             <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="overflow-x-auto">
-                <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-2">
-                  Approval
-                </p>
-                <table className="w-full min-w-[300px] border border-black text-xs text-center">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-3.5 w-0.5 bg-emerald-500 rounded-full" />
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
+                    Approval
+                  </p>
+                </div>
+                <table className="w-full min-w-[300px] border border-emerald-200 text-xs text-center rounded-lg overflow-hidden">
                   <thead>
-                    <tr className="border-b border-black">
+                    <tr className="bg-gray-900">
                       {["Approved By", "Date", "Amount"].map((h) => (
                         <th
                           key={h}
-                          className="py-2 px-2 sm:px-3 text-black font-black border-r border-black last:border-r-0 text-xs sm:text-sm"
+                          className="py-2.5 px-3 text-emerald-400 font-black border-r border-gray-700 last:border-r-0 text-xs"
                         >
                           {h}
                         </th>
@@ -498,10 +513,13 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                   </thead>
                   <tbody>
                     {[1, 2].map((r) => (
-                      <tr key={r} className="border-t border-black/10">
-                        <td className="py-3 sm:py-4 border-r border-black/10" />
-                        <td className="py-3 sm:py-4 border-r border-black/10" />
-                        <td className="py-3 sm:py-4" />
+                      <tr
+                        key={r}
+                        className="border-t border-emerald-100 bg-white"
+                      >
+                        <td className="py-4 border-r border-emerald-100" />
+                        <td className="py-4 border-r border-emerald-100" />
+                        <td className="py-4" />
                       </tr>
                     ))}
                   </tbody>
@@ -509,16 +527,19 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
               </div>
 
               <div className="overflow-x-auto">
-                <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-2">
-                  VAT Summary
-                </p>
-                <table className="w-full min-w-[250px] border border-black text-xs">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-3.5 w-0.5 bg-emerald-500 rounded-full" />
+                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
+                    VAT Summary
+                  </p>
+                </div>
+                <table className="w-full min-w-[250px] border border-emerald-200 text-xs rounded-lg overflow-hidden">
                   <thead>
-                    <tr className="border-b border-black">
+                    <tr className="bg-gray-900">
                       {["Type", "VAT", "Goods Value"].map((h) => (
                         <th
                           key={h}
-                          className="py-2 px-2 sm:px-3 text-black font-black border-r border-black last:border-r-0 text-right first:text-left text-xs sm:text-sm"
+                          className="py-2.5 px-3 text-emerald-400 font-black border-r border-gray-700 last:border-r-0 text-right first:text-left text-xs"
                         >
                           {h}
                         </th>
@@ -526,28 +547,32 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-t border-black/10">
-                      <td className="py-2 px-2 sm:px-3 border-r border-black/10 font-bold">
-                        VAT
-                      </td>
-                      <td className="py-2 px-2 sm:px-3 border-r border-black/10 text-right whitespace-nowrap">
-                        0
-                      </td>
-                      <td className="py-2 px-2 sm:px-3 text-right font-bold whitespace-nowrap">
-                        {formatCurrency(totalValue)}
-                      </td>
-                    </tr>
-                    <tr className="border-t border-black/10">
-                      <td className="py-2 px-2 sm:px-3 border-r border-black/10 font-bold">
-                        EXEM
-                      </td>
-                      <td className="py-2 px-2 sm:px-3 border-r border-black/10 text-right whitespace-nowrap">
-                        0
-                      </td>
-                      <td className="py-2 px-2 sm:px-3 text-right font-bold whitespace-nowrap">
-                        0.00
-                      </td>
-                    </tr>
+                    {[
+                      {
+                        type: "VAT",
+                        vat: "0",
+                        goods: formatCurrency(totalValue),
+                      },
+                      { type: "EXEM", vat: "0", goods: "0.00" },
+                    ].map(({ type, vat, goods }, i) => (
+                      <tr
+                        key={type}
+                        className={cn(
+                          "border-t border-emerald-100",
+                          i % 2 === 0 ? "bg-white" : "bg-emerald-50/40",
+                        )}
+                      >
+                        <td className="py-2.5 px-3 border-r border-emerald-100 font-bold text-gray-700">
+                          {type}
+                        </td>
+                        <td className="py-2.5 px-3 border-r border-emerald-100 text-right text-gray-600">
+                          {vat}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-bold text-gray-800">
+                          {goods}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -556,22 +581,28 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
 
           {/* ── NOTES ── */}
           {receiptData.notes && (
-            <div className="px-4 sm:px-6 md:px-8 py-3 sm:py-4 border-t border-black">
-              <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-2">
-                Notes
-              </p>
-              <p className="text-xs sm:text-sm text-black border border-black rounded p-2 sm:p-3 bg-black/[0.02]">
+            <div className="px-4 sm:px-6 md:px-8 py-3 sm:py-4 border-t border-emerald-100">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="h-3.5 w-0.5 bg-emerald-500 rounded-full" />
+                <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
+                  Notes
+                </p>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-700 border border-emerald-200 rounded-lg p-3 bg-emerald-50/50">
                 {receiptData.notes}
               </p>
             </div>
           )}
 
           {/* ── TERMS ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6 border-t border-black">
-            <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-black mb-3">
-              Terms & Conditions
-            </p>
-            <ol className="space-y-1 list-decimal list-inside text-[10px] sm:text-[11px] text-black leading-relaxed">
+          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-t border-emerald-100">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-3.5 w-0.5 bg-emerald-500 rounded-full" />
+              <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
+                Terms & Conditions
+              </p>
+            </div>
+            <ol className="space-y-1.5 list-decimal list-inside text-[10px] sm:text-[11px] text-gray-600 leading-relaxed bg-emerald-50/40 border border-emerald-100 rounded-lg p-3 sm:p-4">
               <li>
                 This goods receipt note confirms the receipt of items listed
                 above in the specified quantities and conditions.
@@ -600,14 +631,14 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
           </div>
 
           {/* ── FOOTER ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-2 sm:py-3 bg-emerald-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p className="text-[10px] sm:text-[12px] text-white font-medium text-center sm:text-left">
+          <div className="px-4 sm:px-6 md:px-8 py-3 bg-emerald-500 flex flex-col sm:flex-row items-center justify-between gap-2">
+            <p className="text-[10px] sm:text-[12px] text-emerald-100 font-medium text-center sm:text-left">
               This is a system-generated document
             </p>
-            <p className="text-[10px] sm:text-[12px] text-white font-medium text-center">
+            <p className="text-[10px] sm:text-[12px] text-emerald-100 font-medium text-center">
               {format(new Date(), "dd MMM yyyy, hh:mm:ss a")}
             </p>
-            <p className="text-[10px] sm:text-[12px] text-white font-medium tracking-wider text-center">
+            <p className="text-[10px] sm:text-[12px] text-white font-black tracking-wider text-center">
               Powered by Settlo
             </p>
           </div>
