@@ -24,7 +24,6 @@ interface CellActionProps {
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
-  console.log("The data from api is", data);
   const router = useRouter();
 
   const handleRedirect = (id: string) => {

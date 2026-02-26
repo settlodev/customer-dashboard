@@ -111,7 +111,7 @@ export const createStockPurchase = async (
       })),
   };
 
-  console.log("The payload:", payload);
+  // console.log("The payload:", payload);
 
   try {
     const apiClient = new ApiClient();
@@ -119,7 +119,7 @@ export const createStockPurchase = async (
       `/api/stock-intake-purchase-order/${location?.id}/create`,
       payload,
     );
-    console.log("The purchase order is", response);
+    // console.log("The purchase order is", response);
     formResponse = {
       data: response,
       responseType: "success",
@@ -191,7 +191,7 @@ export const receivePurchaseOrderAsStockIntake = async (
       })),
       notes: data.notes ?? null,
     };
-
+    console.log("The payload:", payload);
     // Validate payload with Zod schema before sending
     const validatedPayload = stockIntakeReceiptSchema.parse(payload);
 

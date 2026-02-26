@@ -5,8 +5,7 @@ interface FormErrorProps {
 }
 
 export const FormError = ({ message }: FormErrorProps) => {
-  if (!message) return null;
-
+  if (!message || typeof message !== "string") return null;
   return (
     <div className="bg-destructive/15 p-3 rounded-md flex items-center gap-x-2 text-sm text-destructive justify-center mb-3">
       <Icon className="h-5 w-5" icon="bi:exclamation-triangle" />
