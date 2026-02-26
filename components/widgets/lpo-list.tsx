@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +36,7 @@ import {
   Mail,
   Hash,
   Clock,
-  DollarSign,
+  Building2,
 } from "lucide-react";
 import { StockPurchase } from "@/types/stock-purchases/type";
 import { useToast } from "@/hooks/use-toast";
@@ -62,6 +63,7 @@ interface ReceiptDialogData {
   lpoOrderNumber: string;
   staffId: string;
   receivedAt: string;
+  notes: string;
 }
 
 export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
@@ -76,20 +78,16 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
   const [showReceiptDialog, setShowReceiptDialog] = useState(false);
   const [selectedLPO, setSelectedLPO] = useState<string | null>(null);
 
-  // Helper function to get current local time in datetime-local format
   const getLocalDateTimeForInput = () => {
     const now = new Date();
-    // Get local time components (browser automatically uses local timezone)
     const year = now.getFullYear();
     const month = String(now.getMonth() + 1).padStart(2, "0");
     const day = String(now.getDate()).padStart(2, "0");
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
-
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
-  // Helper function to get max datetime in local format for validation
   const getMaxLocalDateTime = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -97,19 +95,11 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     const day = String(now.getDate()).padStart(2, "0");
     const hours = String(now.getHours()).padStart(2, "0");
     const minutes = String(now.getMinutes()).padStart(2, "0");
-
     return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const localToUTCISO = (localDateTimeString: string) => {
-    const localDate = new Date(localDateTimeString);
-    // Convert to UTC ISO string
-    return localDate.toISOString();
-  };
-
-  const formatForDisplay = (dateTimeString: string) => {
-    const date = new Date(dateTimeString);
-    return format(date, "dd/MM/yyyy, HH:mm");
+    return new Date(localDateTimeString).toISOString();
   };
 
   const [receiptData, setReceiptData] = useState<ReceiptDialogData>({
@@ -117,9 +107,21 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     lpoOrderNumber: "",
     staffId: "",
     receivedAt: getLocalDateTimeForInput(),
+    notes: "",
   });
 
-  // Filter LPOs based on search query
+  // Check if notes are required for a given LPO order number
+  // (true when any item received qty < ordered qty)
+  const isNotesRequired = (lpoOrderNumber: string) => {
+    const lpo = lpos.find((l) => l.orderNumber === lpoOrderNumber);
+    if (!lpo) return false;
+    const quantities = receivedQuantities[lpoOrderNumber] || {};
+    return lpo.stockIntakePurchaseOrderItems.some((item) => {
+      const received = quantities[item.id]?.quantity;
+      return typeof received === "number" && received < item.quantity;
+    });
+  };
+
   const filteredLPOs = lpos.filter((lpo) => {
     const searchLower = searchQuery.toLowerCase();
     return (
@@ -132,7 +134,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     );
   });
 
-  // Handle quantity input change with validation
   const handleQuantityChange = (
     lpoOrderNumber: string,
     itemId: string,
@@ -141,7 +142,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     currentUnitCost: number,
   ) => {
     const numValue = parseInt(value) || 0;
-
     if (numValue > maxQuantity) {
       toast({
         title: "Quantity Exceeded",
@@ -150,7 +150,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       });
       return;
     }
-
     if (numValue < 0) {
       toast({
         title: "Invalid Quantity",
@@ -159,20 +158,15 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       });
       return;
     }
-
     setReceivedQuantities((prev) => ({
       ...prev,
       [lpoOrderNumber]: {
         ...prev[lpoOrderNumber],
-        [itemId]: {
-          quantity: numValue,
-          unitCost: currentUnitCost,
-        },
+        [itemId]: { quantity: numValue, unitCost: currentUnitCost },
       },
     }));
   };
 
-  // Handle unit cost change
   const handleUnitCostChange = (
     lpoOrderNumber: string,
     itemId: string,
@@ -180,7 +174,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     currentQuantity: number,
   ) => {
     const numValue = parseFloat(value) || 0;
-
     if (numValue < 0) {
       toast({
         title: "Invalid Cost",
@@ -189,20 +182,15 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       });
       return;
     }
-
     setReceivedQuantities((prev) => ({
       ...prev,
       [lpoOrderNumber]: {
         ...prev[lpoOrderNumber],
-        [itemId]: {
-          quantity: currentQuantity,
-          unitCost: numValue,
-        },
+        [itemId]: { quantity: currentQuantity, unitCost: numValue },
       },
     }));
   };
 
-  // Check if LPO has all quantities filled (including 0)
   const isLPOComplete = (lpo: StockPurchase) => {
     const quantities = receivedQuantities[lpo.orderNumber] || {};
     return lpo.stockIntakePurchaseOrderItems.every(
@@ -213,7 +201,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     );
   };
 
-  // Check if LPO has any quantities filled (including 0)
   const hasAnyQuantity = (lpo: StockPurchase) => {
     const quantities = receivedQuantities[lpo.orderNumber] || {};
     return lpo.stockIntakePurchaseOrderItems.some(
@@ -222,7 +209,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     );
   };
 
-  // Get total received quantity for an LPO (includes 0 values)
   const getTotalReceived = (lpo: StockPurchase) => {
     const quantities = receivedQuantities[lpo.orderNumber] || {};
     return Object.values(quantities).reduce(
@@ -231,7 +217,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     );
   };
 
-  // Count how many items have received quantities (including 0)
   const getItemsWithQuantityCount = (lpo: StockPurchase) => {
     const quantities = receivedQuantities[lpo.orderNumber] || {};
     return lpo.stockIntakePurchaseOrderItems.filter(
@@ -240,7 +225,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     ).length;
   };
 
-  // Calculate total cost for dialog
   const calculateTotalCost = (lpoOrderNumber: string) => {
     const quantities = receivedQuantities[lpoOrderNumber] || {};
     return Object.values(quantities).reduce(
@@ -249,12 +233,10 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
     );
   };
 
-  // Open receipt dialog
   const handleOpenReceiptDialog = (lpoOrderNumber: string) => {
     const selectedLPOData = lpos.find(
       (lpo) => lpo.orderNumber === lpoOrderNumber,
     );
-
     if (!selectedLPOData) {
       toast({
         title: "Error",
@@ -263,12 +245,9 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       });
       return;
     }
-
-    // Validate all items have received quantities (can be 0)
     if (!isLPOComplete(selectedLPOData)) {
       const filledCount = getItemsWithQuantityCount(selectedLPOData);
       const totalCount = selectedLPOData.stockIntakePurchaseOrderItems.length;
-
       toast({
         title: "Incomplete Quantities",
         description: `Please fill in received quantities for all items before submitting. (${filledCount}/${totalCount} items filled)`,
@@ -276,35 +255,27 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       });
       return;
     }
-
-    // Check if all quantities are 0
     const quantities = receivedQuantities[lpoOrderNumber] || {};
     const allZero = selectedLPOData.stockIntakePurchaseOrderItems.every(
       (item) => quantities[item.id]?.quantity === 0,
     );
-
     if (allZero) {
       const confirmed = window.confirm(
         "All received quantities are set to 0. Are you sure you want to continue?",
       );
-
-      if (!confirmed) {
-        return;
-      }
+      if (!confirmed) return;
     }
-
-    // Set dialog data and open - USE LOCAL TIME, not UTC!
     setSelectedLPO(lpoOrderNumber);
     setReceiptData({
       lpoId: selectedLPOData.id,
       lpoOrderNumber,
       staffId: "",
-      receivedAt: getLocalDateTimeForInput(), // FIXED: Use local time function
+      receivedAt: getLocalDateTimeForInput(),
+      notes: "",
     });
     setShowReceiptDialog(true);
   };
 
-  // Handle final submission with Zod validation
   const handleFinalSubmit = async () => {
     if (!selectedLPO) {
       toast({
@@ -314,7 +285,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       });
       return;
     }
-
     if (!receiptData.staffId) {
       toast({
         title: "Missing Information",
@@ -323,9 +293,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       });
       return;
     }
-
     const selectedLPOData = lpos.find((lpo) => lpo.orderNumber === selectedLPO);
-
     if (!selectedLPOData) {
       toast({
         title: "Error",
@@ -335,21 +303,27 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
       return;
     }
 
+    // Validate notes requirement
+    const notesRequired = isNotesRequired(selectedLPO);
+    if (notesRequired && !receiptData.notes.trim()) {
+      toast({
+        title: "Notes Required",
+        description:
+          "Please provide a reason since some items were received in quantities less than ordered.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(selectedLPO);
-
       const quantities = receivedQuantities[selectedLPO] || {};
-
-      // Convert the datetime-local value (in local time) to UTC ISO string
       const receivedAtISO = localToUTCISO(receiptData.receivedAt);
 
-      console.log("Local time input:", receiptData.receivedAt);
-      console.log("Converted to UTC:", receivedAtISO);
-
-      // Prepare the payload in the exact format expected by the API
       const payload = {
         staff: receiptData.staffId,
         receivedAt: receivedAtISO,
+        notes: receiptData.notes || undefined,
         receivedItems: selectedLPOData.stockIntakePurchaseOrderItems.map(
           (item) => {
             const itemData = quantities[item.id] || {
@@ -365,12 +339,9 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
         ),
       };
 
-      // Validate payload with Zod schema
       const validatedPayload = stockIntakeReceiptSchema.parse(payload);
-
       console.log("Validated Payload:", validatedPayload);
 
-      // Call the API function with receivedAt parameter
       await receivePurchaseOrderAsStockIntake(
         {
           purchaseOrderId: receiptData.lpoId,
@@ -385,6 +356,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
               unitCost: itemData.unitCost,
             };
           }),
+          notes: receiptData.notes || undefined,
         },
         receiptData.staffId,
         receivedAtISO,
@@ -395,20 +367,16 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
         description: `Stock intake for ${selectedLPO} recorded successfully.`,
       });
 
-      // Close dialog and redirect
       setShowReceiptDialog(false);
       setSelectedLPO(null);
       setReceivedQuantities({});
       router.push("/stock-intakes");
     } catch (error) {
       console.error("Submission error:", error);
-
-      // Handle Zod validation errors
       if (error instanceof z.ZodError) {
         const errorMessages = error.errors
           .map((err) => `${err.path.join(".")}: ${err.message}`)
           .join(", ");
-
         toast({
           title: "Validation Error",
           description: errorMessages,
@@ -444,7 +412,6 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
         </div>
       </div>
 
-      {/* Results count */}
       <div className="text-sm text-muted-foreground">
         Showing {filteredLPOs.length} of {lpos.length} purchase order(s)
       </div>
@@ -475,24 +442,50 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                 }`}
               >
                 <CardHeader className="pb-3">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <CardTitle className="text-base truncate">
-                          {lpo.orderNumber}
-                        </CardTitle>
-                      </div>
-                      <Badge variant="secondary" className="text-xs">
-                        {lpo.status}
-                      </Badge>
+                  {/* Order number + status */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <CardTitle className="text-base truncate">
+                        {lpo.orderNumber}
+                      </CardTitle>
                     </div>
-                    <CardDescription className="flex items-center gap-2 text-sm">
-                      <Truck className="h-3 w-3" />
-                      <span className="truncate">{lpo.supplierName}</span>
-                    </CardDescription>
+                    <Badge variant="secondary" className="text-xs">
+                      {lpo.status}
+                    </Badge>
+                  </div>
+
+                  {/* ── Supplier info block at the top ── */}
+                  <div className="mt-3 rounded-md border bg-muted/30 px-3 py-2 space-y-2">
+                    {/* Supplier name */}
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm font-medium truncate">
+                        {lpo.supplierName}
+                      </span>
+                    </div>
+                    {/* Phone + Email in a row */}
+                    {(lpo.supplierPhoneNumber || lpo.supplierEmail) && (
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {lpo.supplierPhoneNumber && (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Phone className="h-3 w-3 flex-shrink-0" />
+                            <span>{lpo.supplierPhoneNumber}</span>
+                          </div>
+                        )}
+                        {lpo.supplierEmail && (
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Mail className="h-3 w-3 flex-shrink-0" />
+                            <span className="truncate">
+                              {lpo.supplierEmail}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
+
                 <CardContent className="space-y-3 pt-0 flex-1">
                   {/* Progress indicator */}
                   {hasQuantities && !isComplete && (
@@ -514,7 +507,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                     </div>
                   )}
 
-                  {/* Compact Order Details in 2 columns */}
+                  {/* Order stats: Delivery / Items / Ordered / Received */}
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -548,7 +541,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                     </div>
                   </div>
 
-                  {/* Warning message for incomplete quantities */}
+                  {/* Warning: incomplete quantities */}
                   {hasQuantities && !isComplete && (
                     <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-2 rounded-md text-xs">
                       <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
@@ -558,7 +551,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
 
                   <Separator />
 
-                  {/* Compact Items List */}
+                  {/* Items list */}
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-medium">Items</p>
@@ -591,99 +584,54 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                               <p className="text-xs font-medium truncate">
                                 {item.stockVariantName}
                               </p>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs text-muted-foreground">
-                                  Ordered: {item.quantity}
-                                </span>
-                              </div>
+                              <span className="text-xs text-muted-foreground">
+                                Ordered: {item.quantity}
+                              </span>
                             </div>
-                            <div className="flex items-center gap-1.5">
-                              <Input
-                                type="number"
-                                min="0"
-                                max={item.quantity}
-                                placeholder="0"
-                                value={hasQuantity ? receivedQty : ""}
-                                onChange={(e) =>
+                            <Input
+                              type="number"
+                              min="0"
+                              max={item.quantity}
+                              placeholder="0"
+                              value={hasQuantity ? receivedQty : ""}
+                              onChange={(e) =>
+                                handleQuantityChange(
+                                  lpo.orderNumber,
+                                  item.id,
+                                  e.target.value,
+                                  item.quantity,
+                                  item.unitCost || 0,
+                                )
+                              }
+                              onBlur={(e) => {
+                                const value = parseInt(e.target.value) || 0;
+                                if (value > item.quantity) {
                                   handleQuantityChange(
                                     lpo.orderNumber,
                                     item.id,
-                                    e.target.value,
+                                    item.quantity.toString(),
                                     item.quantity,
                                     item.unitCost || 0,
-                                  )
+                                  );
                                 }
-                                onBlur={(e) => {
-                                  const value = parseInt(e.target.value) || 0;
-                                  if (value > item.quantity) {
-                                    handleQuantityChange(
-                                      lpo.orderNumber,
-                                      item.id,
-                                      item.quantity.toString(),
-                                      item.quantity,
-                                      item.unitCost || 0,
-                                    );
-                                  }
-                                }}
-                                className={`w-20 text-center h-7 text-xs ${
-                                  !hasQuantity
-                                    ? "border-dashed"
-                                    : receivedQty === 0
-                                      ? "border-blue-300 bg-blue-50"
-                                      : exceedsOrdered
-                                        ? "border-red-500 bg-red-50"
-                                        : "border-green-500"
-                                }`}
-                              />
-                            </div>
+                              }}
+                              className={`w-20 text-center h-7 text-xs ${
+                                !hasQuantity
+                                  ? "border-dashed"
+                                  : receivedQty === 0
+                                    ? "border-blue-300 bg-blue-50"
+                                    : exceedsOrdered
+                                      ? "border-red-500 bg-red-50"
+                                      : "border-green-500"
+                              }`}
+                            />
                           </div>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Compact Contact Information */}
-                  {(lpo.supplierPhoneNumber || lpo.supplierEmail) && (
-                    <>
-                      <Separator />
-                      <div className="space-y-1.5 text-xs">
-                        <p className="font-medium">Contact:</p>
-                        <div className="space-y-1">
-                          {lpo.supplierPhoneNumber && (
-                            <div className="flex items-center gap-1.5 text-muted-foreground">
-                              <Phone className="h-3 w-3" />
-                              <span className="truncate">
-                                {lpo.supplierPhoneNumber}
-                              </span>
-                            </div>
-                          )}
-                          {lpo.supplierEmail && (
-                            <div className="flex items-center gap-1.5 text-muted-foreground">
-                              <Mail className="h-3 w-3" />
-                              <span className="truncate">
-                                {lpo.supplierEmail}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Compact Notes */}
-                  {lpo.notes && (
-                    <>
-                      <Separator />
-                      <div className="space-y-1.5">
-                        <p className="text-xs font-medium">Notes:</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">
-                          {lpo.notes}
-                        </p>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Confirm Button at Bottom */}
+                  {/* Confirm Receipt button — NO notes textarea here */}
                   <div className="pt-2">
                     <Button
                       onClick={() => handleOpenReceiptDialog(lpo.orderNumber)}
@@ -727,7 +675,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
         )}
       </div>
 
-      {/* Receipt Confirmation Dialog */}
+      {/* ── Receipt Confirmation Dialog ── */}
       <Dialog open={showReceiptDialog} onOpenChange={setShowReceiptDialog}>
         <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -774,7 +722,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                       receivedAt: e.target.value,
                     }))
                   }
-                  max={getMaxLocalDateTime()} // Use local time max
+                  max={getMaxLocalDateTime()}
                   className="pl-9"
                   disabled={!!isSubmitting}
                 />
@@ -818,46 +766,40 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                                 Qty: {quantity} × {unitCost.toFixed(2)}
                               </p>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <div className="text-right">
-                                <p className="text-xs text-muted-foreground">
-                                  Total
-                                </p>
-                                <p className="text-sm font-semibold">
-                                  {totalCost.toFixed(2)}
-                                </p>
-                              </div>
+                            <div className="text-right">
+                              <p className="text-xs text-muted-foreground">
+                                Total
+                              </p>
+                              <p className="text-sm font-semibold">
+                                {totalCost.toFixed(2)}
+                              </p>
                             </div>
                           </div>
-
-                          {/* Unit Cost Input */}
                           <div className="flex items-center gap-2">
                             <Label
-                              htmlFor={`unitCost-{item.id}`}
+                              htmlFor={`unitCost-${item.id}`}
                               className="text-xs min-w-fit"
                             >
                               Unit Cost:
                             </Label>
-                            <div className="flex-1">
-                              <Input
-                                id={`unitCost-{item.id}`}
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={unitCost}
-                                onChange={(e) =>
-                                  handleUnitCostChange(
-                                    selectedLPO,
-                                    item.id,
-                                    e.target.value,
-                                    quantity,
-                                  )
-                                }
-                                className="pl-6 h-8 text-xs"
-                                placeholder="0.00"
-                                disabled={!!isSubmitting}
-                              />
-                            </div>
+                            <Input
+                              id={`unitCost-${item.id}`}
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={unitCost}
+                              onChange={(e) =>
+                                handleUnitCostChange(
+                                  selectedLPO,
+                                  item.id,
+                                  e.target.value,
+                                  quantity,
+                                )
+                              }
+                              className="pl-3 h-8 text-xs"
+                              placeholder="0.00"
+                              disabled={!!isSubmitting}
+                            />
                           </div>
                         </div>
                       );
@@ -874,15 +816,76 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
                         Based on received quantities
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold">
-                        {calculateTotalCost(selectedLPO).toFixed(2)}
-                      </p>
-                    </div>
+                    <p className="text-2xl font-bold">
+                      {calculateTotalCost(selectedLPO).toFixed(2)}
+                    </p>
                   </div>
                 </div>
               )}
             </div>
+
+            <Separator />
+
+            {/* ── Notes field — ONLY in the dialog ── */}
+            {(() => {
+              const notesRequired = selectedLPO
+                ? isNotesRequired(selectedLPO)
+                : false;
+              return (
+                <div className="space-y-2">
+                  <Label htmlFor="dialog-notes">
+                    Notes{" "}
+                    {notesRequired ? (
+                      <span className="text-red-500">
+                        * (required — partial receipt)
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">(optional)</span>
+                    )}
+                  </Label>
+
+                  {notesRequired && (
+                    <div className="flex items-start gap-2 text-amber-600 bg-amber-50 p-2 rounded-md text-xs">
+                      <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
+                      <span>
+                        Some items were received in smaller quantities than
+                        ordered. Please describe the reason (e.g., damaged
+                        goods, partial shipment, supplier shortage).
+                      </span>
+                    </div>
+                  )}
+
+                  <Textarea
+                    id="dialog-notes"
+                    value={receiptData.notes}
+                    onChange={(e) =>
+                      setReceiptData((prev) => ({
+                        ...prev,
+                        notes: e.target.value,
+                      }))
+                    }
+                    placeholder={
+                      notesRequired
+                        ? "Describe why quantities are less than ordered..."
+                        : "Optional notes about this receipt..."
+                    }
+                    className={`min-h-[80px] resize-none ${
+                      notesRequired && !receiptData.notes.trim()
+                        ? "border-red-400 focus-visible:ring-red-400"
+                        : ""
+                    }`}
+                    disabled={!!isSubmitting}
+                  />
+
+                  {notesRequired && !receiptData.notes.trim() && (
+                    <p className="text-xs text-red-500">
+                      Notes are required when quantities received are less than
+                      ordered.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
 
           <DialogFooter className="sm:justify-between">
