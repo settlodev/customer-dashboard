@@ -15,6 +15,7 @@ export const getCurrentWarehouse = async (): Promise<any | undefined> => {
     return JSON.parse(warehouseCookie.value) as any;
   } catch (error) {
     console.error("Failed to parse Warehouse cookie:", error);
+
     return undefined;
   }
 };
