@@ -14,10 +14,10 @@ import {useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
-import Loading from '../../loading';
 import { staffReport } from '@/lib/actions/staff-actions';
 import { StaffSummaryReport } from '@/types/staff';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Loading from '@/app/loading';
 
 interface DatePickerProps {
     value: Date;

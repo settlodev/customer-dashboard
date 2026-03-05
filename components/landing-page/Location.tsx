@@ -71,7 +71,7 @@ export const LocationSection = () => {
                                         href="tel:+255788000000"
                                         className="text-emerald-600 hover:text-emerald-700 transition-colors"
                                     >
-                                        +255 788 000 000
+                                        +255 759 229 777
                                     </a>
                                 </div>
                             </div>

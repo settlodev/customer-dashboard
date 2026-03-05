@@ -7,14 +7,14 @@ import { downloadStockIntakeCSV } from '@/lib/actions/stock-intake-actions';
 interface TableExportProps {
   data?: StockIntake[];
   filename?: string;
-  locationId?: string;
+  // locationId?: string;
   useEndpoint?: boolean;
 }
 
 const StockIntakeExport: React.FC<TableExportProps> = ({ 
   data = [], 
   filename = 'exported-data',
-  locationId,
+  // locationId,
   useEndpoint = true
 }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -33,26 +33,26 @@ const StockIntakeExport: React.FC<TableExportProps> = ({
       'Value', 
       'Quantity', 
       'Expiry Date', 
-      'identifier (DO NOT EDIT)'  // Renamed to emphasize it should not be edited
+      'identifier (DO NOT EDIT)'  
     ];
 
     // Create rows
     const csvRows = [
       csvNote,
-      headers.join(','), // Header row
+      headers.join(','), 
       ...data.map(intake => {
         // Format date if it exists
         const expiryDate = intake.batchExpiryDate 
-          ? new Date(intake.batchExpiryDate).toISOString().split('T')[0] // Format as YYYY-MM-DD
+          ? new Date(intake.batchExpiryDate).toISOString().split('T')[0] 
           : '';
         
         return [
-          intake.stockName || '', // Stock/Product Name
-          intake.stockVariantName || '', // Variant Name
-          intake.value?.toString() || '0', // Starting Value
-          intake.quantity?.toString() || '0', // Starting Quantity  
-          expiryDate, // Expiry Date
-          `[ID:${intake.id || ''}]` // Format ID in a way that makes it clear it's a system identifier
+          intake.stockName || '', 
+          intake.stockVariantName || '', 
+          intake.value?.toString() || '0', 
+          intake.quantity?.toString() || '0', 
+          expiryDate, 
+          `[ID:${intake.id || ''}]` 
         ].map(escapeCSVValue).join(',');
       })
     ];
@@ -92,7 +92,7 @@ const StockIntakeExport: React.FC<TableExportProps> = ({
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
-      const response = await downloadStockIntakeCSV(locationId);
+      const response = await downloadStockIntakeCSV();
       
       // The response might be in different formats depending on your API implementation
       let csvData;

@@ -212,7 +212,7 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-                        <h3 className="text-2xl font-bold text-purple-700">{formatCurrency(salesData.expensesAmount)}</h3>
+                        <h3 className="text-2xl font-bold text-purple-700">{formatCurrency(salesData.expensesPaidAmount)}</h3>
                       </div>
                       <div className="bg-purple-100 p-3 rounded-full shadow-sm">
                         <ShoppingCart className="w-5 h-5 text-purple-600" />

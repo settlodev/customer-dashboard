@@ -121,6 +121,7 @@ export const  createCustomer= async (
                 "Something went wrong while processing your request, please try again",
             error: error instanceof Error ? error : new Error(String(error)),
         };
+        console.error("Formatted Error creating customer",error)
     }
 
     if ( formResponse?.responseType === "error" ) return parseStringify(formResponse)

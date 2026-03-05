@@ -47,9 +47,9 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
             address: "",
             city: "",
             phone: "",
-            image: "",
+            image: null,
             email: "",
-            description: "",
+            description: null,
             openingTime: "",
             closingTime: "",
         }
@@ -60,7 +60,7 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
                 ...form.getValues(),
                 address: business.countryName || "",
                 phone: business.notificationPhone || "",
-                image: business.image || "",
+                image: business.image || null,
                 email: business.notificationEmailAddress || "",
             });
         }
@@ -245,6 +245,7 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
                                     <FormControl>
                                         <Textarea
                                             {...field}
+                                            value={field.value || '-'}
                                             placeholder="Enter warehouse description"
                                             disabled={isPending}
                                             rows={3}

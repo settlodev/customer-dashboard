@@ -6,7 +6,7 @@ import { getStockIntake } from "@/lib/actions/stock-intake-actions";
 import StockIntakeDetails from "@/components/widgets/stock-intake-details";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Loading from "@/app/(protected)/loading";
+import Loading from "@/app/loading";
 
 type Params = Promise<{
     id: string;

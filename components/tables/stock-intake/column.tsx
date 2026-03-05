@@ -73,22 +73,13 @@ export const columns: ColumnDef<StockIntake>[] = [
         }
        
     },
-    {
+     {
         id: "costPerItem",
         header: "Cost Per Item",
         enableHiding: true,
-        enableSorting: true,
-        sortingFn: (rowA, rowB) => {
-            const costA = rowA.original.value / rowA.original.quantity;
-            const costB = rowB.original.value / rowB.original.quantity;
-            return costA - costB;
-        },
+        
         cell: ({ row }) => {
-            const quantity = row.original.quantity;
-            const value = row.original.value;
-            
-            const costPerItem = quantity > 0 ? value / quantity : 0;
-            
+            const costPerItem = row.original.valuePerItem
             const formatted = new Intl.NumberFormat("en-US", {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2

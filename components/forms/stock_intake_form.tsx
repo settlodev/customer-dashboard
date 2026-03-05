@@ -31,6 +31,7 @@ import { useRouter } from "next/navigation";
 import { Calendar, Clock } from "lucide-react";
 import { useSearchParams } from 'next/navigation';
 import { getStockVariantById } from "@/lib/actions/stock-actions";
+import { NumericFormat } from "react-number-format";
 
 function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     const [isPending, startTransition] = useTransition();
@@ -59,7 +60,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
         },
     });
 
-    // Load stock variant info when ID changes or on initial load with ID
+    
     useEffect(() => {
         async function loadVariantInfo() {
             const currentVariantId = form.getValues('stockVariant');
@@ -249,23 +250,19 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                 <FormItem>
                                     <FormLabel className="font-medium">Quantity</FormLabel>
                                     <FormControl>
-                                        <input
-                                            type="text"
+                                    <NumericFormat
                                             className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                            value={field.value || ""}
-                                            disabled={!!item || isPending}
-                                            placeholder="Enter quantity"
-                                            onChange={(e) => {
-                                                const rawValue = e.target.value.replace(/,/g, ""); // Remove commas
-                                                if (/^\d*$/.test(rawValue)) {
-                                                    field.onChange(rawValue ? parseInt(rawValue) : "");
-                                                }
-                                            }}
-                                            onBlur={(e) => {
-                                                const formattedValue = Number(e.target.value).toLocaleString();
-                                                e.target.value = formattedValue;
-                                            }}
-                                        />
+                                            value={field.value}
+                                    disabled={isPending}
+                                    placeholder=""
+                                    thousandSeparator={true}
+                                    allowNegative={false}
+                                    onValueChange={(values) => {
+                                    const rawValue = Number(values.value.replace(/,/g, ""));
+                                    field.onChange(rawValue);
+                                    }}
+                                />
+                                        
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -279,23 +276,18 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                                 <FormItem>
                                     <FormLabel className="font-medium">Value</FormLabel>
                                     <FormControl>
-                                        <input
-                                            type="text"
+                                    <NumericFormat
                                             className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                                            value={field.value || ""}
-                                            disabled={isPending}
-                                            placeholder="Enter value"
-                                            onChange={(e) => {
-                                                const rawValue = e.target.value.replace(/,/g, "");
-                                                if (/^\d*$/.test(rawValue)) {
-                                                    field.onChange(rawValue ? parseInt(rawValue) : "");
-                                                }
-                                            }}
-                                            onBlur={(e) => {
-                                                const formattedValue = Number(e.target.value).toLocaleString();
-                                                e.target.value = formattedValue;
-                                            }}
-                                        />
+                                            value={field.value}
+                                    disabled={isPending}
+                                    placeholder=""
+                                    thousandSeparator={true}
+                                    allowNegative={false}
+                                    onValueChange={(values) => {
+                                    const rawValue = Number(values.value.replace(/,/g, ""));
+                                    field.onChange(rawValue);
+                                    }}
+                                />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

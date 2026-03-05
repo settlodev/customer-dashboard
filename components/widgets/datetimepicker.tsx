@@ -14,15 +14,15 @@ type FieldType = {
 };
 
 const DateTimePicker = ({
-                          field,
-                          date,
-                          setDate,
-                          handleTimeChange,
-                          onDateSelect,
-                          minDate,
-                          maxDate,
-                          disabled
-                        }: {
+  field,
+  date,
+  setDate,
+  handleTimeChange,
+  onDateSelect,
+  minDate,
+  maxDate,
+  disabled,
+}: {
   field: FieldType;
   date: Date | undefined;
   setDate: (date: Date | undefined) => void;
@@ -41,16 +41,20 @@ const DateTimePicker = ({
 
     if (minDate) {
       const minDateTime = new Date(minDate);
-      if (currentDate.toDateString() === minDateTime.toDateString() &&
-          hour < minDateTime.getHours()) {
+      if (
+        currentDate.toDateString() === minDateTime.toDateString() &&
+        hour < minDateTime.getHours()
+      ) {
         return true;
       }
     }
 
     if (maxDate) {
       const maxDateTime = new Date(maxDate);
-      if (currentDate.toDateString() === maxDateTime.toDateString() &&
-          hour > maxDateTime.getHours()) {
+      if (
+        currentDate.toDateString() === maxDateTime.toDateString() &&
+        hour > maxDateTime.getHours()
+      ) {
         return true;
       }
     }
@@ -67,18 +71,22 @@ const DateTimePicker = ({
 
     if (minDate) {
       const minDateTime = new Date(minDate);
-      if (currentDate.toDateString() === minDateTime.toDateString() &&
-          currentHour === minDateTime.getHours() &&
-          minute < minDateTime.getMinutes()) {
+      if (
+        currentDate.toDateString() === minDateTime.toDateString() &&
+        currentHour === minDateTime.getHours() &&
+        minute < minDateTime.getMinutes()
+      ) {
         return true;
       }
     }
 
     if (maxDate) {
       const maxDateTime = new Date(maxDate);
-      if (currentDate.toDateString() === maxDateTime.toDateString() &&
-          currentHour === maxDateTime.getHours() &&
-          minute > maxDateTime.getMinutes()) {
+      if (
+        currentDate.toDateString() === maxDateTime.toDateString() &&
+        currentHour === maxDateTime.getHours() &&
+        minute > maxDateTime.getMinutes()
+      ) {
         return true;
       }
     }
@@ -87,103 +95,104 @@ const DateTimePicker = ({
   };
 
   return (
-      <Popover>
-        <PopoverTrigger asChild>
-  <Button
-    variant={"outline"}
-    className={cn(
-      "w-full pl-3 text-left font-normal",
-      !field.value && "text-muted-foreground"
-    )}
-  >
-    {field.value ? (
-      format(new Date(field.value), "MM/dd/yyyy HH:mm")
-    ) : (
-      format(new Date(), "MM/dd/yyyy HH:mm") 
-    )}
-    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-  </Button>
-</PopoverTrigger>
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant={"outline"}
+          className={cn(
+            "w-full pl-3 text-left font-normal",
+            !field.value && "text-muted-foreground",
+          )}
+        >
+          {field.value
+            ? format(new Date(field.value), "MM/dd/yyyy HH:mm")
+            : format(new Date(), "MM/dd/yyyy HH:mm")}
+          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+        </Button>
+      </PopoverTrigger>
 
-       {!disabled && (
-          <PopoverContent className="w-auto p-0">
+      {!disabled && (
+        <PopoverContent className="w-auto p-0">
           <div className="sm:flex">
             <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(selectedDate) => {
-                  if (selectedDate) {
-                    const formattedDate = selectedDate.toISOString();
-                    setDate(selectedDate);
-                    onDateSelect(selectedDate);
-                    field.onChange(formattedDate);
-                  }
-                }}
-                disabled={(date) => {
-                  if (minDate && date < minDate) return true;
-                  if (maxDate && date > maxDate) return true;
-                  return false;
-                }}
-                initialFocus
+              mode="single"
+              selected={date}
+              onSelect={(selectedDate) => {
+                if (selectedDate) {
+                  const formattedDate = selectedDate.toISOString();
+                  setDate(selectedDate);
+                  onDateSelect(selectedDate);
+                  field.onChange(formattedDate);
+                }
+              }}
+              disabled={(date) => {
+                if (minDate && date < minDate) return true;
+                if (maxDate && date > maxDate) return true;
+                return false;
+              }}
+              initialFocus
             />
             <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
               <ScrollArea className="w-64 sm:w-auto">
                 <div className="flex sm:flex-col p-2">
                   {Array.from({ length: 24 }, (_, i) => i)
-                      .reverse()
-                      .map((hour) => (
-                          <Button
-                              key={hour}
-                              size="icon"
-                              variant={
-                                field.value && new Date(field.value).getHours() === hour
-                                    ? "default"
-                                    : "ghost"
-                              }
-                              className={cn(
-                                  "sm:w-full shrink-0 aspect-square",
-                                  isHourDisabled(hour) && "opacity-50 cursor-not-allowed"
-                              )}
-                              disabled={isHourDisabled(hour)}
-                              onClick={() => {
-                                handleTimeChange("hour", hour.toString());
-                                const newDate = new Date(date || new Date());
-                                newDate.setHours(hour);
-                                field.onChange(newDate.toISOString());
-                              }}
-                          >
-                            {hour}
-                          </Button>
-                      ))}
+                    .reverse()
+                    .map((hour) => (
+                      <Button
+                        key={hour}
+                        size="icon"
+                        variant={
+                          field.value &&
+                          new Date(field.value).getHours() === hour
+                            ? "default"
+                            : "ghost"
+                        }
+                        className={cn(
+                          "sm:w-full shrink-0 aspect-square",
+                          isHourDisabled(hour) &&
+                            "opacity-50 cursor-not-allowed",
+                        )}
+                        disabled={isHourDisabled(hour)}
+                        onClick={() => {
+                          handleTimeChange("hour", hour.toString());
+                          const newDate = new Date(date || new Date());
+                          newDate.setHours(hour);
+                          field.onChange(newDate.toISOString());
+                        }}
+                      >
+                        {hour}
+                      </Button>
+                    ))}
                 </div>
                 <ScrollBar orientation="horizontal" className="sm:hidden" />
               </ScrollArea>
               <ScrollArea className="w-64 sm:w-auto">
                 <div className="flex sm:flex-col p-2">
                   {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
-                      <Button
-                          key={minute}
-                          size="icon"
-                          variant={
-                            field.value &&
-                            new Date(field.value).getMinutes() === minute
-                                ? "default"
-                                : "ghost"
-                          }
-                          className={cn(
-                              "sm:w-full shrink-0 aspect-square",
-                              isMinuteDisabled(minute) && "opacity-50 cursor-not-allowed"
-                          )}
-                          disabled={isMinuteDisabled(minute)}
-                          onClick={() => {
-                            handleTimeChange("minutes", minute.toString());
-                            const newDate = new Date(date || new Date());
-                            newDate.setMinutes(minute);
-                            field.onChange(newDate.toISOString());
-                          }}
-                      >
-                        {minute.toString().padStart(2, "0")}
-                      </Button>
+                    <Button
+                      key={minute}
+                      size="icon"
+                      variant={
+                        field.value &&
+                        new Date(field.value).getMinutes() === minute
+                          ? "default"
+                          : "ghost"
+                      }
+                      className={cn(
+                        "sm:w-full shrink-0 aspect-square",
+                        isMinuteDisabled(minute) &&
+                          "opacity-50 cursor-not-allowed",
+                      )}
+                      disabled={isMinuteDisabled(minute)}
+                      onClick={() => {
+                        handleTimeChange("minutes", minute.toString());
+                        const newDate = new Date(date || new Date());
+                        newDate.setMinutes(minute);
+                        field.onChange(newDate.toISOString());
+                      }}
+                    >
+                      {minute.toString().padStart(2, "0")}
+                    </Button>
                   ))}
                 </div>
                 <ScrollBar orientation="horizontal" className="sm:hidden" />
@@ -191,8 +200,8 @@ const DateTimePicker = ({
             </div>
           </div>
         </PopoverContent>
-       )}
-      </Popover>
+      )}
+    </Popover>
   );
 };
 

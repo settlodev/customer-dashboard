@@ -328,7 +328,7 @@ const [uploadError, setUploadError] = useState<string | null>(null);
             </div>
           )}
           
-          {/* Display validation errors if any */}
+        
           {validationResult?.errors && validationResult.errors.length > 0 && !isUploading && (
             <div className="border border-red-300 rounded-md p-3 bg-red-50">
               <h3 className="text-sm font-medium text-red-800 mb-2">Validation Errors:</h3>

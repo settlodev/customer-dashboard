@@ -23,6 +23,7 @@ import DepartmentSelector from "@/components/widgets/department-selector";
 import RoleSelector from "@/components/widgets/role-selector";
 import CountrySelector from "@/components/widgets/country-selector";
 import { Separator } from "../ui/separator";
+import { useRouter } from "next/navigation";
 
 interface StaffFormProps {
     item: Staff | null | undefined;
@@ -37,6 +38,8 @@ const StaffForm: React.FC<StaffFormProps> = ({
     const [isSubmitting, startTransition] = useTransition();
     const [, setResponse] = useState<FormResponse | undefined>();
     const [isDashboardEnabled, setIsDashboardEnabled] = useState(item?.dashboardAccess ?? false);
+    const router = useRouter();
+
 
     const form = useForm<z.infer<typeof StaffSchema>>({
         resolver: zodResolver(StaffSchema),
@@ -87,7 +90,7 @@ const StaffForm: React.FC<StaffFormProps> = ({
                         form.reset();
                         setIsDashboardEnabled(false);
                         form.setValue("status", false);
-                        window.location.href = "/staff";
+                        router.push("/staff"); // Fixed: use router instead of window.location
                     } else if (result.responseType === "error") {
                         // Handle error from server action
                         toast({
@@ -100,14 +103,11 @@ const StaffForm: React.FC<StaffFormProps> = ({
             } catch (error: any) {
                 console.error("Form submission error:", error);
                 
-                // This catch block handles any errors that weren't caught by the server action
                 let errorMessage = "There was an issue with your request, please try again later";
                 
-                // Try to extract error message
                 if (error?.message) {
                     errorMessage = error.message;
                 } else if (error?.digest) {
-                    // This is a Next.js production error with digest
                     errorMessage = "A server error occurred. Please try again later.";
                 }
                 
@@ -117,7 +117,6 @@ const StaffForm: React.FC<StaffFormProps> = ({
                     description: errorMessage
                 });
     
-                // Set error response for form state
                 const errorResponse: FormResponse = {
                     responseType: "error",
                     message: errorMessage,

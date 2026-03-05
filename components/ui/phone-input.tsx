@@ -35,21 +35,15 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
       return (
         <RPNInput.default
           ref={ref}
-          className={cn("flex", className)}
+          className={cn(
+            "flex  bg-white border-gray-200 focus:border-emerald-500 transition-colors border-1 rounded-sm text-sm",
+            className,
+          )}
           flagComponent={FlagComponent}
           countrySelectComponent={CountrySelect}
-          inputComponent={InputComponent} 
+          inputComponent={InputComponent}
           defaultCountry={"TZ"}
-          /**
-           * Handles the onChange event.
-           *
-           * react-phone-number-input might trigger the onChange event as undefined
-           * when a valid phone number is not entered. To prevent this,
-           * the value is coerced to an empty string.
-           *
-           * @param {E164Number | undefined} value - The entered value
-           */
-          onChange={(value) => onChange?.(value as  E164Number)}
+          onChange={(value) => onChange?.(value as E164Number)}
           {...props}
         />
       );
@@ -60,7 +54,7 @@ PhoneInput.displayName = "PhoneInput";
 const InputComponent = React.forwardRef<HTMLInputElement, InputProps>(
   ({ className, ...props }, ref) => (
     <Input
-      className={cn("rounded-e-lg rounded-s-none", className)}
+      className={cn("rounded-e-md rounded-s-none", className)}
       {...props}
       ref={ref}
     />
@@ -83,7 +77,8 @@ const CountrySelect = ({
   onChange,
   options,
 }: CountrySelectProps) => {
-  const handleSelect = React.useCallback((country: RPNInput.Country) => {
+  const handleSelect = React.useCallback(
+    (country: RPNInput.Country) => {
       onChange(country);
     },
     [onChange],
@@ -94,7 +89,9 @@ const CountrySelect = ({
         <Button
           type="button"
           variant={"outline"}
-          className={cn("flex gap-1 rounded-e-none rounded-s-lg px-3")}
+          className={cn(
+            "flex gap-1 border-t-0 border-b-0 border-l-0 rounded-e-none px-3",
+          )}
           disabled={disabled}
         >
           <FlagComponent country={value} countryName={value} />

@@ -83,31 +83,14 @@ export const columns: ColumnDef<Product>[] = [
             return <span>{category ? category : "None"}</span>;
         }
     },
+
     {
-        accessorKey: "departmentName",
-        header: "Department",
+        accessorKey: "quantity",
         enableHiding: true,
+        header: 'Stock Quantity',
         cell: ({ row }) => {
-            const department = row.original.departmentName;
-            return <span>{department ? department : "None"}</span>;
-        }
-    },
-    {
-        accessorKey: "brandName",
-        header: "Brand",
-        enableHiding: true,
-        cell: ({ row }) => {
-            const brand = row.original.brandName;
-            return <span>{brand ? brand : "None"}</span>;
-        }
-    },
-    {
-        accessorKey: "variants",
-        enableHiding: true,
-        header: 'Variants',
-        cell: ({ row }) => {
-            const variants = row.original.variants;
-            return <span>{variants.length}</span>;
+            const quantity = row.original.quantity;
+            return <span>{quantity}</span>;
         },
     },
     {
