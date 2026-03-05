@@ -202,40 +202,43 @@ const LocationList = ({
     [selectedWarehouse, toast],
   );
 
-  const handleLocationSelect = async (item: any, index: number) => {
-    // Prevent multiple clicks/redirects
-    if (isRedirecting || pendingIndex !== null) {
-      return;
+  const getSubscriptionState = (
+    subscriptionStatus: string | null | undefined,
+  ) => {
+    switch (subscriptionStatus) {
+      case "EXPIRED":
+      case "EXPIRED_TRIAL":
+      case "DUE":
+      case "PAST_DUE":
+      case null:
+      case undefined:
+      case "":
+        return "inactive";
+      default:
+        return "active";
     }
+  };
+
+  const handleLocationSelect = async (item: any, index: number) => {
+    if (isRedirecting || pendingIndex !== null) return;
     setPendingIndex(index);
 
     const isWarehouse = locationType === "warehouse";
+    const isInactive =
+      getSubscriptionState(item.subscriptionStatus) === "inactive";
 
     if (isWarehouse) {
-      // Check warehouse subscription status
-      if (
-        item.subscriptionStatus === "EXPIRED" ||
-        item.subscriptionStatus === null ||
-        item.subscriptionStatus === "" ||
-        item.subscriptionStatus === undefined
-      ) {
+      if (isInactive) {
         setSelectedWarehouse(item);
         setShowSubscriptionModal(true);
         setPendingIndex(null);
         return;
       }
-
       setIsRedirecting(true);
       await refreshWarehouse(item);
       window.location.href = "/warehouse";
     } else {
-      if (
-        item.subscriptionStatus === "EXPIRED" ||
-        item.subscriptionStatus === "EXPIRED_TRIAL" ||
-        item.subscriptionStatus === null ||
-        item.subscriptionStatus === "" ||
-        item.subscriptionStatus === undefined
-      ) {
+      if (isInactive) {
         toast({
           variant: "destructive",
           title: "Subscription Expired",
@@ -290,45 +293,35 @@ const LocationList = ({
   };
 
   const getButtonStyle = (item: any, index: number) => {
-    if (pendingIndex === index) {
-      return "bg-gray-100 text-gray-400";
-    }
+    if (pendingIndex === index) return "bg-gray-100 text-gray-400";
 
     const isWarehouse = locationType === "warehouse";
-    const hasExpiredSubscription =
-      item.subscriptionStatus === "EXPIRED" ||
-      item.subscriptionStatus === null ||
-      item.subscriptionStatus === "" ||
-      item.subscriptionStatus === undefined;
+    const isInactive =
+      getSubscriptionState(item.subscriptionStatus) === "inactive";
 
-    if (isWarehouse && hasExpiredSubscription) {
-      return "bg-orange-500 text-white hover:bg-orange-600";
+    switch (true) {
+      case isWarehouse && isInactive:
+        return "bg-orange-500 text-white hover:bg-orange-600";
+      case isWarehouse:
+        return "bg-blue-600 text-white hover:bg-blue-700";
+      case !isWarehouse && isInactive:
+        return "bg-red-100 text-red-800 hover:bg-red-200";
+      default:
+        return "bg-emerald-500 text-white hover:bg-emerald-600";
     }
-
-    if (isWarehouse) {
-      return "bg-blue-600 text-white hover:bg-blue-700";
-    }
-
-    if (!isWarehouse && hasExpiredSubscription) {
-      return "bg-red-100 text-red-800 hover:bg-red-200";
-    }
-
-    return "bg-emerald-500 text-white hover:bg-emerald-600";
   };
 
   const getButtonText = (item: any) => {
     const isWarehouse = locationType === "warehouse";
-    const hasExpiredSubscription =
-      item.subscriptionStatus === "EXPIRED" ||
-      item.subscriptionStatus === null ||
-      item.subscriptionStatus === "" ||
-      item.subscriptionStatus === undefined;
+    const isInactive =
+      getSubscriptionState(item.subscriptionStatus) === "inactive";
 
-    if (isWarehouse && hasExpiredSubscription) {
-      return "Subscribe";
+    switch (true) {
+      case isWarehouse && isInactive:
+        return "Subscribe";
+      default:
+        return "Select";
     }
-
-    return "Select";
   };
 
   return (
