@@ -8,15 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-intake-receivable/column";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
 import { searchStockIntakeReceived } from "@/lib/actions/stock-purchase-actions";
-import { StockPurchase } from "@/types/stock-purchases/type";
-import { Loader2 } from "lucide-react";
+import { Loader2, PackageOpen, Plus } from "lucide-react";
 import { StockReceipt } from "@/types/stock-intake-receipt/type";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
 
 const breadCrumbItems = [
   { title: "Goods Received", link: "/receivable-goods" },
@@ -42,7 +41,6 @@ function Page({ searchParams }: Params) {
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
 
   const { toast } = useToast();
-  const router = useRouter();
 
   // Resolve search params
   useEffect(() => {
@@ -150,10 +148,30 @@ function Page({ searchParams }: Params) {
           </CardContent>
         </Card>
       ) : (
-        <NoItems
-          itemName="Goods Received"
-          newItemUrl={`/stock-purchases/new`}
-        />
+        <div className="flex flex-col items-center justify-center h-[calc(100vh-240px)] border border-dashed rounded-lg bg-muted/10">
+          <div className="flex flex-col items-center max-w-md text-center space-y-6 px-4">
+            <div className="p-4 bg-primary/10 rounded-full">
+              <PackageOpen className="h-12 w-12 text-primary" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="text-2xl font-semibold tracking-tight">
+                No Goods Receivable at the moment
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                There are no goods received records found. Start by creating
+                your first local purchase now.
+              </p>
+            </div>
+
+            <Button asChild>
+              <Link href="/stock-purchases/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Add Local Purchase
+              </Link>
+            </Button>
+          </div>
+        </div>
       )}
     </div>
   );
