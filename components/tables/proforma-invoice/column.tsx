@@ -162,12 +162,12 @@ export const columns: ColumnDef<Proforma>[] = [
     ),
   },
   {
-    accessorKey: "appliedDiscountAmount",
+    accessorKey: "totalDiscountAmount",
     header: "Discount",
     cell: ({ row }) => (
       <span className="text-sm text-red-500 whitespace-nowrap">
-        {row.original.appliedDiscountAmount > 0
-          ? `− ${formatCurrency(row.original.appliedDiscountAmount)}`
+        {row.original.totalDiscountAmount > 0
+          ? `− ${formatCurrency(row.original.totalDiscountAmount)}`
           : "—"}
       </span>
     ),

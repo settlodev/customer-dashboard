@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect, useTransition } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,21 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   X,
   Search,
@@ -23,22 +38,30 @@ import {
   CalendarDays,
   FileText,
   PercentIcon,
+  UserPlus,
+  Phone,
+  Mail,
+  UserCircle2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { searchCustomer } from "@/lib/actions/customer-actions";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { isValidPhoneNumber } from "libphonenumber-js";
+import { searchCustomer, createCustomer } from "@/lib/actions/customer-actions";
 import { searchProducts } from "@/lib/actions/product-actions";
 import {
   createProforma,
   addItemsToProforma,
   removeItemsToProforma,
   updateProforma,
-  updateProformaStatusAsCompleted,
 } from "@/lib/actions/proforma-actions";
 import { searchDiscount } from "@/lib/actions/discount-actions";
 import { Proforma } from "@/types/proforma/type";
 import { Customer } from "@/types/customer/type";
 import { FormResponse } from "@/types/types";
 import { Discount } from "@/types/discount/type";
+import { Gender } from "@/types/enums";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -93,6 +116,28 @@ interface ProformaState {
 interface ProformaInvoiceFormProps {
   item?: Proforma | null;
 }
+
+// ─── Customer Schema (inline, mirrors your server schema) ─────────────────────
+
+const CustomerSchema = z.object({
+  firstName: z
+    .string({ required_error: "First name is required" })
+    .min(3, "Please enter a valid name"),
+  lastName: z
+    .string({ required_error: "Last name is required" })
+    .min(3, "Please enter a valid name"),
+  email: z
+    .string()
+    .email("Please enter a valid email address")
+    .optional()
+    .or(z.literal("")),
+  phoneNumber: z
+    .string({ message: "Phone number is required" })
+    .refine(isValidPhoneNumber, { message: "Invalid phone number" }),
+  gender: z.nativeEnum(Gender),
+});
+
+type CustomerFormValues = z.infer<typeof CustomerSchema>;
 
 // ─── Step Indicator ───────────────────────────────────────────────────────────
 
@@ -153,37 +198,490 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-// ─── Customer Search ──────────────────────────────────────────────────────────
+// ─── Skeleton Helpers ─────────────────────────────────────────────────────────
 
-function CustomerSearch({ onSelect }: { onSelect: (c: Customer) => void }) {
+function Skeleton({
+  className = "",
+  style,
+}: {
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <div
+      className={`bg-gray-100 rounded-md animate-pulse ${className}`}
+      style={style}
+    />
+  );
+}
+
+// ─── Proforma Preview Skeleton ────────────────────────────────────────────────
+
+function ProformaPreviewSkeleton() {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sticky top-4">
+      <div className="flex justify-between items-start mb-5">
+        <div className="flex items-start gap-3">
+          <Skeleton className="w-10 h-10 rounded-lg shrink-0" />
+          <div className="space-y-2 pt-0.5">
+            <Skeleton className="h-3.5 w-28" />
+            <Skeleton className="h-2.5 w-20" />
+            <Skeleton className="h-2.5 w-24" />
+            <Skeleton className="h-2.5 w-16" />
+          </div>
+        </div>
+        <div className="space-y-2 items-end flex flex-col">
+          <Skeleton className="h-6 w-28 rounded-md" />
+          <Skeleton className="h-2.5 w-20" />
+        </div>
+      </div>
+      <Separator className="mb-4" />
+      <div className="mb-5">
+        <Skeleton className="h-2 w-12 mb-2.5" />
+        <div className="h-14 flex items-center justify-center border-2 border-dashed border-gray-100 rounded-lg">
+          <p className="text-gray-200 italic text-xs">
+            Customer details will appear here
+          </p>
+        </div>
+      </div>
+      <div className="mb-3">
+        <div className="flex justify-between pb-2 border-b border-gray-100 gap-2">
+          <Skeleton className="h-2.5 w-12" />
+          <Skeleton className="h-2.5 w-10" />
+          <Skeleton className="h-2.5 w-8" />
+          <Skeleton className="h-2.5 w-12" />
+        </div>
+        {[70, 85, 55].map((w, i) => (
+          <div
+            key={i}
+            className="flex justify-between items-center py-2.5 border-b border-gray-50 gap-2"
+          >
+            <Skeleton className="h-2.5" style={{ width: `${w}px` }} />
+            <Skeleton className="h-2.5 w-8" />
+            <Skeleton className="h-2.5 w-12" />
+            <Skeleton className="h-2.5 w-14" />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end mb-5 mt-3">
+        <div className="w-52 space-y-2">
+          <div className="flex justify-between gap-4">
+            <Skeleton className="h-2.5 w-14" />
+            <Skeleton className="h-2.5 w-16" />
+          </div>
+          <div className="flex justify-between gap-4 border-t border-gray-100 pt-2">
+            <Skeleton className="h-3 w-10" />
+            <Skeleton className="h-3 w-20" />
+          </div>
+        </div>
+      </div>
+      <Separator className="mb-3" />
+      <div className="flex justify-between">
+        <Skeleton className="h-2.5 w-36" />
+        <Skeleton className="h-2.5 w-8" />
+      </div>
+    </div>
+  );
+}
+
+// ─── Create Customer Modal ────────────────────────────────────────────────────
+
+// onCreated is async — it runs createProforma internally and resolves only
+// after both server actions complete successfully. The modal stays open and
+// locked until the full chain is done, preventing any race condition.
+function CreateCustomerModal({
+  onCreated,
+}: {
+  onCreated: (customer: Customer) => Promise<{ error?: string }>;
+}) {
+  const [open, setOpen] = useState(false);
+  // "customer" = createCustomer in-flight, "proforma" = createProforma in-flight
+  const [loadingPhase, setLoadingPhase] = useState<
+    "idle" | "customer" | "proforma"
+  >("idle");
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const isSubmitting = loadingPhase !== "idle";
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<CustomerFormValues>({
+    resolver: zodResolver(CustomerSchema),
+    defaultValues: { gender: Gender.MALE },
+  });
+
+  const onSubmit = async (values: CustomerFormValues) => {
+    setServerError(null);
+
+    // ── Step A: create the customer ──────────────────────────────────────────
+    setLoadingPhase("customer");
+    let customerId: string;
+    try {
+      const result = await createCustomer({
+        ...values,
+        email: values.email || undefined,
+        allowNotifications: false,
+        status: true,
+      });
+
+      if (result?.responseType === "error") {
+        setServerError(result.message ?? "Failed to create customer");
+        setLoadingPhase("idle");
+        return;
+      }
+
+      customerId = result?.data?.id;
+      if (!customerId) {
+        setServerError(
+          "Customer was created but no ID was returned — please search for them manually.",
+        );
+        setLoadingPhase("idle");
+        return;
+      }
+    } catch (e: any) {
+      setServerError(
+        e?.message ?? "Something went wrong creating the customer",
+      );
+      setLoadingPhase("idle");
+      return;
+    }
+
+    // ── Step B: create the proforma (customer is fully committed by now) ─────
+    setLoadingPhase("proforma");
+    const newCustomer: Customer = {
+      id: customerId,
+      firstName: values.firstName,
+      lastName: values.lastName,
+      email: values.email || null,
+      phoneNumber: values.phoneNumber,
+      physicalAddress: null,
+      customerAccountNumber: "",
+      gender: values.gender,
+      status: true,
+      allowNotifications: false,
+      creditLimit: 0,
+    } as Customer;
+
+    try {
+      const { error } = await onCreated(newCustomer);
+      if (error) {
+        setServerError(error);
+        setLoadingPhase("idle");
+        return;
+      }
+    } catch (e: any) {
+      setServerError(
+        e?.message ?? "Something went wrong creating the proforma",
+      );
+      setLoadingPhase("idle");
+      return;
+    }
+
+    // Both succeeded — close and reset
+    toast.success(`Customer ${values.firstName} created`);
+    reset();
+    setLoadingPhase("idle");
+    setOpen(false);
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) {
+          reset();
+          setServerError(null);
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0 h-11 w-11 border-dashed border-blue-300 text-blue-500 hover:bg-blue-50 hover:border-blue-400"
+          title="Create new customer"
+        >
+          <UserPlus className="w-4 h-4" />
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <UserCircle2 className="w-5 h-5 text-blue-500" />
+            New Customer
+          </DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+          {serverError && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              {serverError}
+            </div>
+          )}
+
+          {/* Name row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="firstName"
+                className="text-xs font-medium text-gray-700"
+              >
+                First Name <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="firstName"
+                placeholder="John"
+                {...register("firstName")}
+                className={errors.firstName ? "border-red-300" : ""}
+              />
+              {errors.firstName && (
+                <p className="text-xs text-red-500">
+                  {errors.firstName.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="lastName"
+                className="text-xs font-medium text-gray-700"
+              >
+                Last Name <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="lastName"
+                placeholder="Doe"
+                {...register("lastName")}
+                className={errors.lastName ? "border-red-300" : ""}
+              />
+              {errors.lastName && (
+                <p className="text-xs text-red-500">
+                  {errors.lastName.message}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="phoneNumber"
+              className="text-xs font-medium text-gray-700"
+            >
+              Phone Number <span className="text-red-400">*</span>
+            </Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                id="phoneNumber"
+                placeholder="+255 712 345 678"
+                {...register("phoneNumber")}
+                className={`pl-9 ${errors.phoneNumber ? "border-red-300" : ""}`}
+              />
+            </div>
+            {errors.phoneNumber && (
+              <p className="text-xs text-red-500">
+                {errors.phoneNumber.message}
+              </p>
+            )}
+          </div>
+
+          {/* Email */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="email"
+              className="text-xs font-medium text-gray-700"
+            >
+              Email{" "}
+              <span className="text-gray-400 font-normal">(optional)</span>
+            </Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                id="email"
+                type="email"
+                placeholder="john@example.com"
+                {...register("email")}
+                className={`pl-9 ${errors.email ? "border-red-300" : ""}`}
+              />
+            </div>
+            {errors.email && (
+              <p className="text-xs text-red-500">{errors.email.message}</p>
+            )}
+          </div>
+
+          {/* Gender */}
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium text-gray-700">
+              Gender <span className="text-red-400">*</span>
+            </Label>
+            <Select
+              value={watch("gender")}
+              onValueChange={(v) => setValue("gender", v as Gender)}
+            >
+              <SelectTrigger className={errors.gender ? "border-red-300" : ""}>
+                <SelectValue placeholder="Select gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={Gender.MALE}>Male</SelectItem>
+                <SelectItem value={Gender.FEMALE}>Female</SelectItem>
+              </SelectContent>
+            </Select>
+            {errors.gender && (
+              <p className="text-xs text-red-500">{errors.gender.message}</p>
+            )}
+          </div>
+
+          <Separator />
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="bg-blue-600 hover:bg-blue-700 text-white min-w-[170px]"
+            >
+              {loadingPhase === "customer" ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving
+                  customer…
+                </>
+              ) : loadingPhase === "proforma" ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating
+                  proforma…
+                </>
+              ) : (
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" /> Create Customer
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Existing Customer Row (with per-row loading state) ───────────────────────
+
+function ExistingCustomerRow({
+  customer,
+  onSelect,
+}: {
+  customer: Customer;
+  onSelect: () => Promise<void>;
+}) {
+  const [selecting, setSelecting] = useState(false);
+  return (
+    <button
+      type="button"
+      disabled={selecting}
+      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-left border-b border-gray-50 last:border-0 transition-colors disabled:opacity-60"
+      onClick={async () => {
+        setSelecting(true);
+        await onSelect();
+        setSelecting(false);
+      }}
+    >
+      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600 shrink-0">
+        {selecting ? (
+          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+        ) : (
+          <>
+            {customer.firstName?.[0]}
+            {customer.lastName?.[0]}
+          </>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900 truncate">
+          {customer.firstName} {customer.lastName}
+        </p>
+        <p className="text-xs text-gray-400 truncate">
+          {customer.phoneNumber}
+          {customer.email ? ` · ${customer.email}` : ""}
+        </p>
+      </div>
+      {selecting ? (
+        <span className="text-[11px] text-blue-500 shrink-0">
+          Creating proforma…
+        </span>
+      ) : (
+        <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+      )}
+    </button>
+  );
+}
+
+// ─── Customer Search (with pagination + inline create) ────────────────────────
+
+const PAGE_SIZE = 15;
+
+function CustomerSearch({
+  onSelect,
+}: {
+  onSelect: (c: Customer) => Promise<{ error?: string }>;
+}) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Customer[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
+
   const debounceRef = useRef<NodeJS.Timeout>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const search = useCallback(async (q: string) => {
-    if (!q.trim()) {
-      setResults([]);
-      return;
-    }
-    setLoading(true);
+  const search = useCallback(async (q: string, pageNum = 1, append = false) => {
+    if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
+
     try {
-      const res = await searchCustomer(q, 1, 10);
-      setResults(res.content ?? []);
+      const res = await searchCustomer(q, pageNum, PAGE_SIZE);
+      const content = res.content ?? [];
+      const total = res.totalElements ?? content.length;
+
+      setTotalCount(total);
+      setResults((prev) => (append ? [...prev, ...content] : content));
+      setHasMore(pageNum * PAGE_SIZE < total);
+      setPage(pageNum);
     } catch {
-      setResults([]);
+      if (!append) setResults([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
+  // Debounced search on query change
   useEffect(() => {
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(query), 300);
+    debounceRef.current = setTimeout(() => {
+      setPage(1);
+      search(query, 1, false);
+    }, 300);
   }, [query, search]);
 
+  // Close on outside click
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (
@@ -196,60 +694,139 @@ function CustomerSearch({ onSelect }: { onSelect: (c: Customer) => void }) {
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
+  // Infinite scroll inside dropdown
+  const handleDropdownScroll = useCallback(() => {
+    const el = dropdownRef.current;
+    if (!el || loadingMore || !hasMore) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+    if (nearBottom) search(query, page + 1, true);
+  }, [loadingMore, hasMore, query, page, search]);
+
+  // Called by the modal after both createCustomer + createProforma have resolved.
+  // We just update the dropdown list — navigation is handled inside the modal.
+  const handleNewCustomer = useCallback(
+    async (customer: Customer): Promise<{ error?: string }> => {
+      setResults((prev) => [customer, ...prev]);
+      return onSelect(customer);
+    },
+    [onSelect],
+  );
+
   return (
-    <div ref={containerRef} className="relative">
-      <div className="relative">
+    <div ref={containerRef} className="relative flex gap-2 items-start">
+      {/* Search input */}
+      <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input
-          placeholder="Search customer by name…"
+          placeholder="Search customer by name or phone…"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => {
+            setOpen(true);
+            if (results.length === 0) search(query, 1, false);
+          }}
           className="pl-9 h-11"
         />
+        {loading && (
+          <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+        )}
       </div>
-      {open && (query || results.length > 0) && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-auto">
+
+      {/* Create customer button */}
+      <CreateCustomerModal onCreated={handleNewCustomer} />
+
+      {/* Dropdown */}
+      {open && (
+        <div
+          ref={dropdownRef}
+          onScroll={handleDropdownScroll}
+          className="absolute left-0 z-50 w-[calc(100%-52px)] top-12 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-auto"
+        >
+          {/* Result count */}
+          {!loading && totalCount > 0 && (
+            <div className="px-4 py-2 border-b border-gray-50 flex items-center justify-between">
+              <span className="text-[11px] text-gray-400">
+                {totalCount.toLocaleString()} customer
+                {totalCount !== 1 ? "s" : ""} found
+              </span>
+              {query && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuery("");
+                    search("", 1, false);
+                  }}
+                  className="text-[11px] text-blue-500 hover:underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Initial loading skeleton */}
           {loading && (
-            <div className="p-4 text-sm text-gray-500 text-center">
-              Searching…
+            <div className="p-2 space-y-1">
+              {[1, 2, 3].map((n) => (
+                <div key={n} className="flex items-center gap-3 px-2 py-2">
+                  <Skeleton className="w-9 h-9 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-3 w-32" />
+                    <Skeleton className="h-2.5 w-24" />
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-          {!loading && results.length === 0 && query && (
-            <div className="p-4 text-sm text-gray-500 text-center">
-              No customers found
+
+          {/* No results */}
+          {!loading && results.length === 0 && (
+            <div className="py-8 flex flex-col items-center gap-2">
+              <User className="w-8 h-8 text-gray-200" />
+              <p className="text-sm text-gray-400">
+                {query
+                  ? `No customers matching "${query}"`
+                  : "No customers yet"}
+              </p>
+              <p className="text-xs text-gray-300">
+                Use the{" "}
+                <span className="inline-flex items-center gap-0.5 text-blue-400">
+                  <UserPlus className="w-3 h-3" /> button
+                </span>{" "}
+                to create one
+              </p>
             </div>
           )}
+
+          {/* Results list */}
           {results.map((c) => (
-            <button
+            <ExistingCustomerRow
               key={c.id}
-              type="button"
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-left border-b border-gray-50 last:border-0 transition-colors"
-              onClick={() => {
-                onSelect(c);
-                setQuery("");
+              customer={c}
+              onSelect={async () => {
                 setOpen(false);
+                setQuery("");
+                await onSelect(c);
               }}
-            >
-              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600 shrink-0">
-                {c.firstName?.[0]}
-                {c.lastName?.[0]}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {c.firstName}
-                </p>
-                <p className="text-xs text-gray-400 truncate">
-                  {c.phoneNumber}
-                  {c.email ? ` · ${c.email}` : ""}
-                </p>
-              </div>
-              <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
-            </button>
+            />
           ))}
+
+          {/* Load more spinner (infinite scroll sentinel) */}
+          {loadingMore && (
+            <div className="py-3 flex justify-center border-t border-gray-50">
+              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+            </div>
+          )}
+
+          {/* End of list indicator */}
+          {!loadingMore && !hasMore && results.length > PAGE_SIZE && (
+            <div className="py-2 text-center text-[11px] text-gray-300 border-t border-gray-50">
+              All {totalCount.toLocaleString()} customers loaded
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -257,6 +834,8 @@ function CustomerSearch({ onSelect }: { onSelect: (c: Customer) => void }) {
 }
 
 // ─── Product Variant Search ───────────────────────────────────────────────────
+
+const PRODUCT_PAGE_SIZE = 15;
 
 function ProductVariantSearch({
   onAdd,
@@ -270,32 +849,49 @@ function ProductVariantSearch({
   const [results, setResults] = useState<Product[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalCount, setTotalCount] = useState(0);
   const [adding, setAdding] = useState(false);
   const [pending, setPending] = useState<Omit<
     LineItem,
     "quantity" | "itemId"
   > | null>(null);
   const [qty, setQty] = useState(1);
+
   const debounceRef = useRef<NodeJS.Timeout>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const search = useCallback(async (q: string) => {
-    setLoading(true);
+  const search = useCallback(async (q: string, pageNum = 1, append = false) => {
+    if (pageNum === 1) setLoading(true);
+    else setLoadingMore(true);
     try {
-      const res = await searchProducts(q, 1, 10);
-      setResults(res.content ?? []);
+      const res = await searchProducts(q, pageNum, PRODUCT_PAGE_SIZE);
+      const content = res.content ?? [];
+      const total = res.totalElements ?? content.length;
+      setTotalCount(total);
+      setResults((prev) => (append ? [...prev, ...content] : content));
+      setHasMore(pageNum * PRODUCT_PAGE_SIZE < total);
+      setPage(pageNum);
     } catch {
-      setResults([]);
+      if (!append) setResults([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
+  // Debounced query search
   useEffect(() => {
     clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => search(query), 300);
-  }, [query, search]);
+    debounceRef.current = setTimeout(() => {
+      if (open) search(query, 1, false);
+    }, 300);
+  }, [query, search, open]);
 
+  // Click-outside close
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (
@@ -307,6 +903,14 @@ function ProductVariantSearch({
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
   }, []);
+
+  // Infinite scroll
+  const handleDropdownScroll = useCallback(() => {
+    const el = dropdownRef.current;
+    if (!el || loadingMore || !hasMore) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+    if (nearBottom) search(query, page + 1, true);
+  }, [loadingMore, hasMore, query, page, search]);
 
   const selectVariant = (p: Product, v: ProductVariant) => {
     setPending({
@@ -336,10 +940,19 @@ function ProductVariantSearch({
       minimumFractionDigits: 0,
     }).format(n);
 
+  // Flatten products → variant rows for rendering
+  const rows: { product: Product; variant: ProductVariant }[] = results.flatMap(
+    (p) =>
+      p.variants && p.variants.length > 0
+        ? p.variants.map((v) => ({ product: p, variant: v }))
+        : [{ product: p, variant: { id: p.id } as ProductVariant }],
+  );
+
   return (
     <div ref={containerRef} className="space-y-3">
       {!pending ? (
         <>
+          {/* Search input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
@@ -351,72 +964,116 @@ function ProductVariantSearch({
               }}
               onFocus={() => {
                 setOpen(true);
-                if (!query) search("");
+                if (results.length === 0) search(query, 1, false);
               }}
               className="pl-9 h-11"
             />
+            {loading && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
+            )}
           </div>
+
           {open && (
-            <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-auto">
+            <div
+              ref={dropdownRef}
+              onScroll={handleDropdownScroll}
+              className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-auto"
+            >
+              {/* Result count badge */}
+              {!loading && totalCount > 0 && (
+                <div className="px-4 py-2 border-b border-gray-50 flex items-center justify-between">
+                  <span className="text-[11px] text-gray-400">
+                    {totalCount.toLocaleString()} product
+                    {totalCount !== 1 ? "s" : ""}
+                    {query ? ` matching "${query}"` : ""}
+                  </span>
+                  {hasMore && (
+                    <span className="text-[11px] text-blue-400">
+                      Scroll for more
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Skeleton rows during initial load */}
               {loading && (
-                <div className="p-3 text-xs text-gray-500 text-center">
-                  Searching…
-                </div>
-              )}
-              {!loading && results.length === 0 && (
-                <div className="p-3 text-xs text-gray-500 text-center">
-                  No products found
-                </div>
-              )}
-              {results.map((p) =>
-                p.variants && p.variants.length > 0 ? (
-                  p.variants.map((v) => {
-                    const price = v.sellingPrice ?? v.price ?? 0;
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        className="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-green-50 text-left border-b border-gray-50 last:border-0 transition-colors"
-                        onClick={() => selectVariant(p, v)}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Package className="w-4 h-4 text-green-500 shrink-0" />
-                          <div className="min-w-0">
-                            <p className="text-sm text-gray-900 truncate">
-                              {p.name}
-                            </p>
-                            {v.name && (
-                              <p className="text-xs text-gray-400">{v.name}</p>
-                            )}
-                          </div>
-                        </div>
-                        {price > 0 && (
-                          <span className="text-sm font-semibold text-gray-700 shrink-0">
-                            {fmt(price)}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })
-                ) : (
-                  <button
-                    key={p.id}
-                    type="button"
-                    className="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-green-50 text-left transition-colors"
-                    onClick={() => selectVariant(p, { id: p.id })}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Package className="w-4 h-4 text-green-500 shrink-0" />
-                      <span className="text-sm text-gray-900">{p.name}</span>
+                <div className="divide-y divide-gray-50">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3 px-4 py-3">
+                      <div className="w-7 h-7 rounded-md bg-gray-100 animate-pulse shrink-0" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-2.5 bg-gray-100 animate-pulse rounded w-2/3" />
+                        <div className="h-2 bg-gray-100 animate-pulse rounded w-1/3" />
+                      </div>
+                      <div className="h-2.5 bg-gray-100 animate-pulse rounded w-16 shrink-0" />
                     </div>
-                    <span className="text-xs text-gray-400">No variants</span>
-                  </button>
-                ),
+                  ))}
+                </div>
+              )}
+
+              {/* Empty state */}
+              {!loading && rows.length === 0 && (
+                <div className="py-10 flex flex-col items-center gap-2 text-gray-300">
+                  <Package className="w-8 h-8" />
+                  <p className="text-xs">
+                    No products found{query ? ` for "${query}"` : ""}
+                  </p>
+                </div>
+              )}
+
+              {/* Result rows */}
+              {!loading &&
+                rows.map(({ product: p, variant: v }) => {
+                  const price = v.sellingPrice ?? v.price ?? 0;
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      className="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-green-50 text-left border-b border-gray-50 last:border-0 transition-colors"
+                      onClick={() => selectVariant(p, v)}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center shrink-0">
+                          <Package className="w-3.5 h-3.5 text-green-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm text-gray-900 truncate font-medium">
+                            {p.name}
+                          </p>
+                          {v.name && (
+                            <p className="text-xs text-gray-400 truncate">
+                              {v.name}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {price > 0 && (
+                        <span className="text-sm font-semibold text-gray-700 shrink-0">
+                          {fmt(price)}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+
+              {/* Infinite scroll sentinel */}
+              {loadingMore && (
+                <div className="py-3 flex justify-center border-t border-gray-50">
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                </div>
+              )}
+
+              {/* End of list */}
+              {!loadingMore && !hasMore && rows.length > PRODUCT_PAGE_SIZE && (
+                <div className="py-2 text-center text-[11px] text-gray-300 border-t border-gray-50">
+                  All {totalCount.toLocaleString()} products loaded
+                </div>
               )}
             </div>
           )}
         </>
       ) : (
+        /* ── Confirm panel ── */
         <div className="border-2 border-green-200 bg-green-50 rounded-xl p-4 space-y-4">
           <div className="flex items-start justify-between">
             <div>
@@ -437,16 +1094,20 @@ function ProductVariantSearch({
             <button
               type="button"
               onClick={() => setPending(null)}
-              className="text-gray-400 hover:text-gray-600"
+              disabled={adding}
+              className="text-gray-400 hover:text-gray-600 disabled:opacity-40"
             >
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Quantity selector */}
           <div className="flex items-center gap-4">
             <div className="flex items-center border bg-white rounded-lg overflow-hidden shadow-sm">
               <button
                 type="button"
-                className="px-3 py-2 text-gray-500 hover:bg-gray-50 text-lg font-medium"
+                disabled={adding}
+                className="px-3 py-2 text-gray-500 hover:bg-gray-50 text-lg font-medium disabled:opacity-40"
                 onClick={() => setQty(Math.max(1, qty - 1))}
               >
                 −
@@ -455,14 +1116,16 @@ function ProductVariantSearch({
                 type="number"
                 min={1}
                 value={qty}
+                disabled={adding}
                 onChange={(e) =>
                   setQty(Math.max(1, parseInt(e.target.value) || 1))
                 }
-                className="w-14 text-center text-sm font-bold border-x py-2 focus:outline-none"
+                className="w-14 text-center text-sm font-bold border-x py-2 focus:outline-none disabled:bg-gray-50"
               />
               <button
                 type="button"
-                className="px-3 py-2 text-gray-500 hover:bg-gray-50 text-lg font-medium"
+                disabled={adding}
+                className="px-3 py-2 text-gray-500 hover:bg-gray-50 text-lg font-medium disabled:opacity-40"
                 onClick={() => setQty(qty + 1)}
               >
                 +
@@ -475,6 +1138,8 @@ function ProductVariantSearch({
               </span>
             </div>
           </div>
+
+          {/* Confirm button */}
           <Button
             type="button"
             className="w-full bg-green-600 hover:bg-green-700 text-white"
@@ -483,7 +1148,8 @@ function ProductVariantSearch({
           >
             {adding ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding…
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Adding to
+                proforma…
               </>
             ) : (
               <>
@@ -497,7 +1163,7 @@ function ProductVariantSearch({
   );
 }
 
-// ─── Discount Search Dropdown ─────────────────────────────────────────────────
+// ─── Discount Search ──────────────────────────────────────────────────────────
 
 function DiscountSearch({ onSelect }: { onSelect: (d: Discount) => void }) {
   const [query, setQuery] = useState("");
@@ -607,17 +1273,16 @@ function DiscountSearch({ onSelect }: { onSelect: (d: Discount) => void }) {
 function DetailsStep({
   grossTotal,
   pending,
-  finalisePending,
+  isEditing,
   initialNote,
   initialExpiresAt,
   initialDiscount,
   onSave,
   onBack,
-  onFinish,
 }: {
   grossTotal: number;
   pending: boolean;
-  finalisePending: boolean;
+  isEditing: boolean;
   initialNote: string;
   initialExpiresAt: string;
   initialDiscount: number;
@@ -628,7 +1293,6 @@ function DetailsStep({
     manualDiscountAmount: number;
   }) => Promise<void>;
   onBack: () => void;
-  onFinish: () => void;
 }) {
   const [note, setNote] = useState(initialNote);
   const [expiresAt, setExpiresAt] = useState(initialExpiresAt);
@@ -664,12 +1328,10 @@ function DetailsStep({
   })();
 
   const netTotal = Math.max(0, grossTotal - effectiveDiscountAmount);
-
   const hasValidDiscount =
     discountSource === "api"
       ? !!selectedDiscount
       : (parseFloat(manualAmount) || 0) > 0;
-
   const canSave = !applyDiscount || (applyDiscount && hasValidDiscount);
 
   const handleSave = async () => {
@@ -693,7 +1355,6 @@ function DetailsStep({
         </p>
       </div>
 
-      {/* Note */}
       <div className="space-y-1.5">
         <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
           <FileText className="w-4 h-4 text-gray-400" /> Note{" "}
@@ -711,7 +1372,6 @@ function DetailsStep({
         />
       </div>
 
-      {/* Expires At */}
       <div className="space-y-1.5">
         <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
           <CalendarDays className="w-4 h-4 text-gray-400" /> Expires At{" "}
@@ -730,7 +1390,6 @@ function DetailsStep({
 
       <Separator />
 
-      {/* Apply Discount */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-gray-700">Apply a discount?</p>
         <div className="grid grid-cols-2 gap-3">
@@ -753,13 +1412,7 @@ function DetailsStep({
                 setApplyDiscount(opt.value);
                 setSaved(false);
               }}
-              className={`p-3.5 rounded-xl border-2 text-left transition-all ${
-                applyDiscount === opt.value
-                  ? opt.value
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-gray-400 bg-gray-50"
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
+              className={`p-3.5 rounded-xl border-2 text-left transition-all ${applyDiscount === opt.value ? (opt.value ? "border-blue-500 bg-blue-50" : "border-gray-400 bg-gray-50") : "border-gray-200 hover:border-gray-300"}`}
             >
               <p
                 className={`text-sm font-semibold ${applyDiscount === opt.value ? (opt.value ? "text-blue-700" : "text-gray-800") : "text-gray-600"}`}
@@ -772,7 +1425,6 @@ function DetailsStep({
         </div>
       </div>
 
-      {/* Discount selector */}
       {applyDiscount === true && (
         <div className="space-y-4">
           <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
@@ -786,11 +1438,7 @@ function DetailsStep({
                   setManualAmount("");
                   setSaved(false);
                 }}
-                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  discountSource === src
-                    ? "bg-white shadow text-gray-900"
-                    : "text-gray-500"
-                }`}
+                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${discountSource === src ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
               >
                 {src === "api"
                   ? "From available discounts"
@@ -872,48 +1520,32 @@ function DetailsStep({
         </div>
       )}
 
-      {/* Save + status */}
-      {!saved ? (
-        <Button
-          type="button"
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11"
-          disabled={pending || !canSave}
-          onClick={handleSave}
-        >
-          {pending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…
-            </>
-          ) : (
-            "Save Details"
-          )}
-        </Button>
-      ) : (
+      <Button
+        type="button"
+        className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11"
+        disabled={pending || !canSave}
+        onClick={handleSave}
+      >
+        {pending ? (
+          <>
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving…
+          </>
+        ) : isEditing ? (
+          "Update Details"
+        ) : (
+          "Save Details"
+        )}
+      </Button>
+      {saved && (
         <div className="flex items-center gap-2 text-green-600 text-sm font-medium bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
-          <Check className="w-4 h-4" /> Details saved successfully
+          <Check className="w-4 h-4" /> Details{" "}
+          {isEditing ? "updated" : "saved"} successfully
         </div>
       )}
 
-      {/* Navigation */}
       <div className="flex justify-between pt-1">
         <Button variant="outline" type="button" onClick={onBack}>
           Back
-        </Button>
-        <Button
-          type="button"
-          disabled={!saved || finalisePending}
-          onClick={onFinish}
-          className="bg-green-600 hover:bg-green-700 text-white"
-        >
-          {finalisePending ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Finalising…
-            </>
-          ) : (
-            <>
-              <Check className="w-4 h-4 mr-2" /> Finalise Proforma
-            </>
-          )}
         </Button>
       </div>
     </div>
@@ -923,19 +1555,19 @@ function DetailsStep({
 // ─── Live Preview ─────────────────────────────────────────────────────────────
 
 function ProformaPreview({ state }: { state: ProformaState }) {
+  if (!state.customer) return <ProformaPreviewSkeleton />;
+
   const fmt = (n: number) =>
     new Intl.NumberFormat("en", {
       style: "currency",
       currency: "TZS",
       minimumFractionDigits: 2,
     }).format(n);
-
   const grossTotal = state.items.reduce(
     (s, it) => s + it.unitPrice * it.quantity,
     0,
   );
   const discountedTotal = Math.max(0, grossTotal - (state.discount ?? 0));
-
   const fmtDate = (d: string) => {
     if (!d) return "";
     try {
@@ -950,7 +1582,7 @@ function ProformaPreview({ state }: { state: ProformaState }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-[12.5px] sticky top-4">
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-[12.5px] sticky top-4 transition-all duration-300">
       <div className="flex justify-between items-start mb-5">
         <div className="flex items-start gap-3">
           {state.business?.locationLogo && (
@@ -1016,25 +1648,17 @@ function ProformaPreview({ state }: { state: ProformaState }) {
         <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-1.5">
           Bill To
         </p>
-        {state.customer ? (
-          <div className="space-y-0.5">
-            <p className="font-bold text-gray-900">
-              {state.customer.firstName}
-            </p>
-            {state.customer.email && (
-              <p className="text-gray-500">{state.customer.email}</p>
-            )}
-            {state.customer.phoneNumber && (
-              <p className="text-gray-500">{state.customer.phoneNumber}</p>
-            )}
-          </div>
-        ) : (
-          <div className="h-14 flex items-center justify-center border-2 border-dashed border-gray-100 rounded-lg">
-            <p className="text-gray-300 italic text-xs">
-              Customer details will appear here
-            </p>
-          </div>
-        )}
+        <div className="space-y-0.5">
+          <p className="font-bold text-gray-900">
+            {state.customer.firstName} {state.customer.lastName}
+          </p>
+          {state.customer.email && (
+            <p className="text-gray-500">{state.customer.email}</p>
+          )}
+          {state.customer.phoneNumber && (
+            <p className="text-gray-500">{state.customer.phoneNumber}</p>
+          )}
+        </div>
       </div>
 
       <div className="mb-5">
@@ -1127,11 +1751,9 @@ function ProformaPreview({ state }: { state: ProformaState }) {
 
 export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
   const [step, setStep] = useState(item ? 3 : 1);
   const [error, setError] = useState<string | null>(null);
   const [detailsPending, setDetailsPending] = useState(false);
-  const [finalisePending, setFinalisePending] = useState(false);
   const [removingIndex, setRemovingIndex] = useState<number | null>(null);
 
   const [state, setState] = useState<ProformaState>(() => {
@@ -1149,20 +1771,16 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         business: null,
       };
     }
-
     return {
       id: item.id,
       proformaNumber: item.proformaNumber,
       proformaStatus: item.proformaStatus,
       customer: {
         id: item.customer,
-        name: `${item.customerFirstName} ${item.customerLastName}`,
         firstName: item.customerFirstName,
         lastName: item.customerLastName,
         email: item.customerEmail,
         phoneNumber: item.customerPhoneNumber,
-        physicalAddress: null,
-        customerAccountNumber: "",
       },
       items: item.items.map((i) => ({
         itemId: i.id,
@@ -1172,8 +1790,9 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         unitPrice: i.unitPrice,
         quantity: i.quantity,
       })),
-      discount: item.appliedDiscountAmount ?? 0,
-      discountId: null,
+      discount:
+        (item as any).totalDiscountAmount ?? item.appliedDiscountAmount ?? 0,
+      discountId: (item as any).appliedDiscountId ?? null,
       note: item.notes ?? "",
       expiresAt: item.expiresAt ? String(item.expiresAt).split("T")[0] : "",
       business: {
@@ -1186,25 +1805,26 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
     };
   });
 
-  // ── Step 1: Customer → createProforma ─────────────────────────────────────
-  const handleCustomerSelect = useCallback((customer: Customer) => {
-    setError(null);
-    startTransition(async () => {
+  // Returns { error } so CustomerSearch / CreateCustomerModal can surface failures.
+  const handleCustomerSelect = useCallback(
+    async (customer: Customer): Promise<{ error?: string }> => {
+      setError(null);
+
       const result: void | FormResponse<any> = await createProforma({
         customer: customer.id,
       });
 
       if (result?.responseType === "error") {
         setError(result.message);
-        return;
+        return { error: result.message };
       }
 
       const proformaId = result?.data?.id;
       const proformaNumber = result?.data?.proformaNumber;
-
       if (!proformaId) {
-        setError("Could not retrieve proforma ID — please try again");
-        return;
+        const msg = "Could not retrieve proforma ID — please try again";
+        setError(msg);
+        return { error: msg };
       }
 
       const business: BusinessInfo = {
@@ -1224,11 +1844,11 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         business,
       }));
       setStep(2);
-      toast.success(`Proforma created for ${customer.firstName}`);
-    });
-  }, []);
+      return {};
+    },
+    [],
+  );
 
-  // ── Step 2: Add item → addItemsToProforma ─────────────────────────────────
   const handleAddItem = useCallback(
     async (
       newItem: Omit<LineItem, "quantity" | "itemId">,
@@ -1236,19 +1856,15 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
     ) => {
       if (!state.id) return;
       setError(null);
-
       const result = await addItemsToProforma(state.id, {
         productVariantId: newItem.variantId,
         quantity,
       });
-
       if (result?.responseType === "error") {
         setError(result.message);
         toast.error(result.message);
         return;
       }
-
-      // Prefer the server-returned line item ID; fall back to variantId
       const itemId: string =
         (result?.data as { id?: string })?.id ?? newItem.variantId;
       setState((prev) => ({
@@ -1260,24 +1876,19 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
     [state.id],
   );
 
-  // ── Step 2: Remove item → removeItemsToProforma ───────────────────────────
   const handleRemoveItem = useCallback(
     async (index: number) => {
       const lineItem = state.items[index];
       if (!state.id || !lineItem) return;
       setError(null);
       setRemovingIndex(index);
-
       const result = await removeItemsToProforma(state.id, lineItem.itemId);
-
       setRemovingIndex(null);
-
       if (result?.responseType === "error") {
         setError(result.message);
         toast.error(result.message);
         return;
       }
-
       setState((prev) => ({
         ...prev,
         items: prev.items.filter((_, i) => i !== index),
@@ -1287,7 +1898,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
     [state.id, state.items],
   );
 
-  // ── Step 3: Save details → updateProforma ────────────────────────────────
   const handleSaveDetails = useCallback(
     async (opts: {
       note: string;
@@ -1298,7 +1908,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       if (!state.id) return;
       setError(null);
       setDetailsPending(true);
-
       const result = await updateProforma(
         state.id,
         opts.note,
@@ -1306,23 +1915,23 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         opts.manualDiscountAmount,
         opts.expiresAt,
       );
-
-      console.log("The result is", result);
-
       setDetailsPending(false);
-
       if (result?.responseType === "error") {
         setError(result.message);
         return;
       }
 
       const data = result?.data as Record<string, unknown> | undefined;
-      const apiApplied =
-        typeof data?.appliedDiscountAmount === "number"
-          ? data.appliedDiscountAmount
-          : undefined;
+
+      // Server returns:
+      //   appliedDiscountAmount = API discount portion (0 for manual)
+      //   manualDiscountAmount  = manual discount portion
+      //   totalDiscountAmount   = the sum of both — always correct for the preview
       const appliedDiscount =
-        typeof apiApplied === "number" ? apiApplied : opts.manualDiscountAmount;
+        typeof data?.totalDiscountAmount === "number" &&
+        data.totalDiscountAmount > 0
+          ? data.totalDiscountAmount
+          : opts.manualDiscountAmount;
 
       setState((prev) => ({
         ...prev,
@@ -1331,31 +1940,11 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         discountId: opts.discountId,
         discount: appliedDiscount,
       }));
-
       toast.success("Proforma updated successfully");
+      router.push(`/proforma-invoice/details/${state.id}`);
     },
     [state.id],
   );
-
-  // ── Finalise ──────────────────────────────────────────────────────────────
-  const handleFinish = useCallback(async () => {
-    if (!state.id) return;
-    setError(null);
-    setFinalisePending(true);
-
-    const result = await updateProformaStatusAsCompleted(state.id);
-
-    setFinalisePending(false);
-
-    if (result?.responseType === "error") {
-      setError(result.message);
-      toast.error(result.message);
-      return;
-    }
-
-    toast.success("Proforma invoice finalised!");
-    router.push(`/proforma-invoices/details/${state.id}`);
-  }, [state.id, router]);
 
   const grossTotal = state.items.reduce(
     (s, it) => s + it.unitPrice * it.quantity,
@@ -1374,7 +1963,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
             </Alert>
           )}
 
-          {/* Step 1 */}
+          {/* ── Step 1 ── */}
           {step === 1 && (
             <div className="space-y-4">
               <div>
@@ -1382,54 +1971,83 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                   Select Customer
                 </h2>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Search and select the customer to bill
+                  Search from your customer list or create a new one
                 </p>
               </div>
-              <CustomerSearch onSelect={handleCustomerSelect} />
+              <div className="relative">
+                <CustomerSearch onSelect={handleCustomerSelect} />
+              </div>
             </div>
           )}
 
-          {/* Step 2 */}
+          {/* ── Step 2 ── */}
           {step === 2 && (
             <div className="space-y-5">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-base font-semibold text-gray-900">
-                    Add Items
-                  </h2>
-                  <p className="text-sm text-gray-500 mt-0.5">
-                    Search and add products — repeat for each item
-                  </p>
-                </div>
-                {state.customer && (
-                  <div className="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-3 py-1.5 shrink-0">
-                    <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-bold">
-                      {state.customer.firstName?.[0]}
-                      {state.customer.lastName?.[0]}
-                    </div>
-                    <span className="text-xs font-medium text-blue-800">
-                      {state.customer.firstName}
-                    </span>
-                  </div>
-                )}
+              <div>
+                <h2 className="text-base font-semibold text-gray-900">
+                  Add Items
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  Search and add products — repeat for each item
+                </p>
               </div>
+
+              {/* Selected customer — same card style as line items */}
+              {state.customer && (
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-blue-50 border-blue-100">
+                  <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center shrink-0">
+                    <User className="w-3.5 h-3.5 text-white" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {state.customer.firstName} {state.customer.lastName}
+                    </p>
+                    <p className="text-xs text-gray-400 truncate">
+                      {state.customer.phoneNumber}
+                      {state.customer.email ? ` · ${state.customer.email}` : ""}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-500 bg-blue-100 rounded px-1.5 py-0.5 shrink-0">
+                    Customer
+                  </span>
+                </div>
+              )}
 
               <div className="relative">
                 <ProductVariantSearch onAdd={handleAddItem} />
               </div>
 
-              {state.items.length > 0 && (
-                <div className="space-y-2">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
-                    Added items ({state.items.length})
+              {/* Items list */}
+              {state.items.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-8 border-2 border-dashed border-gray-100 rounded-xl text-gray-300">
+                  <ShoppingCart className="w-8 h-8" />
+                  <p className="text-xs">
+                    No items yet — search above to add products
                   </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                      Added items
+                    </p>
+                    <span className="text-xs font-bold text-blue-600 bg-blue-50 rounded-full px-2.5 py-0.5">
+                      {state.items.length}
+                    </span>
+                  </div>
                   {state.items.map((it, i) => (
                     <div
                       key={it.itemId}
-                      className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg border border-gray-100"
+                      className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition-all duration-300 ${
+                        removingIndex === i
+                          ? "opacity-40 bg-red-50 border-red-100 scale-95"
+                          : "bg-gray-50 border-gray-100"
+                      }`}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Package className="w-4 h-4 text-green-500 shrink-0" />
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center shrink-0">
+                          <Package className="w-3.5 h-3.5 text-green-600" />
+                        </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
                             {it.productName}
@@ -1461,18 +2079,19 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                       <button
                         type="button"
                         onClick={() => handleRemoveItem(i)}
-                        disabled={removingIndex === i}
-                        className="text-gray-300 hover:text-red-500 transition-colors shrink-0 disabled:opacity-50"
+                        disabled={removingIndex !== null}
+                        className="text-gray-300 hover:text-red-500 transition-colors shrink-0 disabled:opacity-40"
+                        title="Remove item"
                       >
                         {removingIndex === i ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                          <Loader2 className="w-4 h-4 animate-spin text-red-400" />
                         ) : (
                           <Trash2 className="w-4 h-4" />
                         )}
                       </button>
                     </div>
                   ))}
-                  <div className="flex justify-between items-center pt-1 border-t border-gray-100 text-sm">
+                  <div className="flex justify-between items-center pt-2 border-t border-gray-100 text-sm">
                     <span className="text-gray-500">Gross Total</span>
                     <span className="font-bold text-gray-900">
                       {new Intl.NumberFormat("en", {
@@ -1497,7 +2116,12 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                   type="button"
                   disabled={state.items.length === 0 || removingIndex !== null}
                   onClick={() => setStep(3)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-black text-white"
+                  title={
+                    state.items.length === 0
+                      ? "Add at least one item to continue"
+                      : undefined
+                  }
                 >
                   Continue <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
@@ -1505,18 +2129,17 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
             </div>
           )}
 
-          {/* Step 3 */}
+          {/* ── Step 3 ── */}
           {step === 3 && (
             <DetailsStep
               grossTotal={grossTotal}
               pending={detailsPending}
-              finalisePending={finalisePending}
+              isEditing={!!item}
               initialNote={state.note}
               initialExpiresAt={state.expiresAt}
               initialDiscount={state.discount}
               onSave={handleSaveDetails}
               onBack={() => setStep(2)}
-              onFinish={handleFinish}
             />
           )}
         </CardContent>
