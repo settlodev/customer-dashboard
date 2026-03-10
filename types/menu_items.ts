@@ -224,6 +224,12 @@ const getNormalMenuItems = (
           icon: "shopping-cart",
         },
         {
+          title: "Proforma",
+          link: "/proforma-invoice",
+          current: args?.isCurrentItem,
+          icon: "rotate-ccw",
+        },
+        {
           title: "Refunds",
           link: "/refunds",
           current: args?.isCurrentItem,
