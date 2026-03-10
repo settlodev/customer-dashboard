@@ -1,4 +1,4 @@
-import { Bell, Bolt, Receipt } from "lucide-react";
+import { Bell, Bolt, CalendarClock, Receipt } from "lucide-react";
 
 export const taxClasses=
     [
@@ -76,24 +76,28 @@ export const ItemStatuses = [
 ];
 
 export const settingsNavItems = [
-
     {
         id: 'preferences',
         label: 'Preferences',
         icon: Bolt,
-        description: 'Personal preferences'
+        description: 'Location & general settings'
     },
     {
         id: 'notifications',
         label: 'Notifications',
         icon: Bell,
-        description: 'Email and push notifications'
+        description: 'Email, SMS & push alerts'
+    },
+    {
+        id: 'reservations',
+        label: 'Reservations',
+        icon: CalendarClock,
+        description: 'Booking rules & questions'
     },
     {
         id: 'efd',
         label: 'EFD',
         icon: Receipt,
-        description: 'Efd Settings'
+        description: 'Tax & fiscal compliance'
     },
-   
 ];

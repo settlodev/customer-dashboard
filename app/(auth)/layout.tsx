@@ -11,7 +11,7 @@ export default async function RootLayout({children}: {
 
     return (
         <SessionProvider session={session}>
-            <div className="flex flex-col min-h-screen bg-gray-100">
+            <div className="flex flex-col min-h-screen bg-secondary">
                 <LoggedOutNavbar hideLogin={true} />
 
                 <main className="flex-grow flex items-center">

@@ -2,6 +2,7 @@
 
 import {Button} from "@/components/ui/button";
 import Link from "next/link";
+import { Users } from "lucide-react";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {searchCustomer} from "@/lib/actions/customer-actions";
 import {Customer} from "@/types/customer/type";
@@ -40,8 +41,14 @@ type Params = {
                     <BreadcrumbsNav items={breadCrumbItems} />
                 </div>
                 <div className={`flex items-center space-x-2`}>
-                    <Button>
-                        <Link href={`/customers/new`}>
+                    <Button variant="outline" asChild>
+                        <Link href="/customers/groups">
+                            <Users className="h-4 w-4 mr-2" />
+                            Groups
+                        </Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/customers/new">
                             Add Customer
                         </Link>
                     </Button>

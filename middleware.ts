@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import NextAuth from "next-auth";
 import authConfig from "@/auth.config";
-import type { Session } from "next-auth";
 import {
   apiAuthPrefix,
   authRoutes,
@@ -15,12 +14,6 @@ import {
 } from "@/routes";
 import { cookies } from "next/headers";
 import { AuthToken } from "./types/types";
-
-
-// Extend NextRequest to include auth property
-interface RequestWithAuth extends NextRequest {
-  auth: Session | null;
-}
 
 const { auth } = NextAuth(authConfig);
 

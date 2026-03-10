@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
-import { EditIcon, EyeIcon } from "@nextui-org/shared-icons";
+import { Pencil as EditIcon, Eye as EyeIcon } from "lucide-react";
 import { Recipe } from "@/types/recipe/type";
 import RecipeModal from "../recipe-modal";
 

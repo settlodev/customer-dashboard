@@ -3,7 +3,7 @@
 import { Edit, Eye, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { useDisclosure } from "@nextui-org/react";
+import { useDisclosure } from "@/hooks/use-disclosure";
 
 import { Button } from "@/components/ui/button";
 import {
