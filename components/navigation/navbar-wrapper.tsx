@@ -3,25 +3,40 @@
 import React, {useState} from "react";
 import {Session} from "next-auth";
 import Header from "@/components/navigation/header";
+import {MobileSidebar} from "@/components/sidebar/sidebar";
+import {BusinessPropsType} from "@/types/business/business-props-type";
+import {MenuType} from "@/types/menu-item-type";
 
 interface Props {
     children: React.ReactNode;
     session: Session | null;
+    businessData?: BusinessPropsType;
+    menuType?: MenuType;
 }
 
-export const NavbarWrapper = ({children, session}: Props) => {
-    const [sidebarOpen, setSidebarOpen] = useState(false);
-    return (
-        <div className="relative flex flex-col flex-1 overflow-y-auto overflow-x-hidden">
-            <div className="fixed top-0 z-[55] w-full lg:w-[85%] ">
+export const NavbarWrapper = ({children, session, businessData, menuType}: Props) => {
+    const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
-            <Header
-                sidebarOpen={sidebarOpen}
-                setSidebarOpen={setSidebarOpen}
-                session={session}
-            />
+    return (
+        <div className="relative flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+            <div className="sticky top-0 z-[55] p-2">
+                <Header
+                    session={session}
+                    onMenuClick={() => setMobileSidebarOpen(true)}
+                />
             </div>
-            {children}
+            <div className="flex-1 pt-2">
+                {children}
+            </div>
+
+            {businessData && (
+                <MobileSidebar
+                    data={businessData}
+                    menuType={menuType}
+                    isOpen={mobileSidebarOpen}
+                    onOpenChange={setMobileSidebarOpen}
+                />
+            )}
         </div>
     );
 };

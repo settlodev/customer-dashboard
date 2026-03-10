@@ -36,25 +36,23 @@ export default async function RootLayout({
 
     return (
         <SessionProvider session={session}>
-            <div className="flex h-screen w-full overflow-hidden">
+            <div className="flex h-screen overflow-hidden">
                 <SidebarWrapper data={businessData}/>
 
-                <main className="flex h-screen w-full flex-col overflow-hidden">
-                    <div className="relative flex-1 overflow-y-auto">
-                        <div className="flex min-h-full w-full flex-col gap-4">
-                            <Suspense fallback={
-                                <div className="flex justify-center items-center h-full">
-                                    <Loading/>
-                                </div>
-                            }>
-                                <NavbarWrapper session={session}>
-                                    <div className="flex-1">{children}</div>
-                                </NavbarWrapper>
-                            </Suspense>
-                        </div>
+                <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden">
+                    <div className="relative flex-1 overflow-y-auto bg-primary-light">
+                        <Suspense fallback={
+                            <div className="flex justify-center items-center h-full">
+                                <Loading/>
+                            </div>
+                        }>
+                            <NavbarWrapper session={session} businessData={businessData}>
+                                <div className="flex-1">{children}</div>
+                            </NavbarWrapper>
+                        </Suspense>
                     </div>
 
-                    <div className="sticky bottom-0 z-10 w-full">
+                    <div className="sticky bottom-0 z-10">
                         <Toaster/>
                     </div>
                 </main>

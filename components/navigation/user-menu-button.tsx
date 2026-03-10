@@ -98,7 +98,7 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-12 px-2 gap-2">
+          <Button variant="ghost" className="h-full rounded-l-lg rounded-r-[0.7rem] px-3 gap-2 hover:bg-gray-50 dark:hover:bg-gray-800">
             <div className="flex items-center gap-2">
               <div className="hidden lg:block text-right">
                 <p className="text-sm font-medium leading-none">{fullName}</p>
@@ -116,14 +116,18 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
           </Button>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuItem asChild>
-            <a
-              onClick={checkCurrentLocation}
-              className="flex items-center cursor-pointer"
-            >
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              <span>Dashboard</span>
+        <DropdownMenuContent align="end" sideOffset={0} className="w-64 rounded-t-none rounded-b-xl p-1.5 border border-t-0">
+          <div className="px-3 py-2.5 mb-1">
+            <p className="text-sm font-semibold leading-none">{fullName}</p>
+            <p className="text-xs text-muted-foreground mt-1">{user?.email}</p>
+          </div>
+
+          <DropdownMenuSeparator />
+
+          <DropdownMenuItem asChild className="rounded-lg py-2 px-3 cursor-pointer">
+            <a onClick={checkCurrentLocation} className="flex items-center gap-3">
+              <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm">Dashboard</span>
             </a>
           </DropdownMenuItem>
 
@@ -131,23 +135,17 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
             currentLocation.subscriptionStatus &&
             currentLocation.subscriptionStatus !== "EXPIRED" && (
               <>
-                <DropdownMenuItem asChild>
-                  <a
-                    href="/profile"
-                    className="flex items-center cursor-pointer"
-                  >
-                    <User className="mr-2 h-4 w-4" />
-                    <span>My Profile</span>
+                <DropdownMenuItem asChild className="rounded-lg py-2 px-3 cursor-pointer">
+                  <a href="/profile" className="flex items-center gap-3">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">My Profile</span>
                   </a>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem asChild>
-                  <a
-                    href="/settings"
-                    className="flex items-center cursor-pointer"
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Account Settings</span>
+                <DropdownMenuItem asChild className="rounded-lg py-2 px-3 cursor-pointer">
+                  <a href="/settings" className="flex items-center gap-3">
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Account Settings</span>
                   </a>
                 </DropdownMenuItem>
               </>
@@ -157,10 +155,12 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
 
           <DropdownMenuItem
             onClick={() => signOut()}
-            className="text-red-600 focus:text-red-600 cursor-pointer"
+            className="rounded-lg py-2 px-3 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 cursor-pointer"
           >
-            <LogOut className="mr-2 h-4 w-4" />
-            <span>Log Out</span>
+            <div className="flex items-center gap-3">
+              <LogOut className="h-4 w-4" />
+              <span className="text-sm">Log Out</span>
+            </div>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

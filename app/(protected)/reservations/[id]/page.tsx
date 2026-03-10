@@ -1,5 +1,4 @@
 import { UUID } from "node:crypto";
-
 import { notFound } from "next/navigation";
 
 import {
@@ -9,33 +8,31 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card";
-import { ApiResponse } from "@/types/types";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Reservation } from "@/types/reservation/type";
 import ReservationForm from "@/components/forms/reservation_form";
-import { getReservation } from "@/lib/actions/reservation-actions";
+import { getReservationById } from "@/lib/actions/reservation-actions";
 
-type Params = Promise<{ id: string}>
-export default async function ReservationPage({params}: {params: Params}) {
-
+type Params = Promise<{ id: string }>
+export default async function ReservationPage({ params }: { params: Params }) {
     const resolvedParams = await params;
     const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Reservation> | null = null;
+    let item: Reservation | null = null;
 
     if (!isNewItem) {
         try {
-            item = await getReservation(resolvedParams.id as UUID);
-            if (item.totalElements == 0) notFound();
+            item = await getReservationById(resolvedParams.id as UUID);
         } catch (error) {
-            console.log(error)
+            console.log(error);
             throw new Error("Failed to load reservation data");
         }
+        if (!item) notFound();
     }
 
     const breadcrumbItems = [
         { title: "Reservations", link: "/reservations" },
         {
-            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
+            title: isNewItem ? "New" : item?.customerName || "Edit",
             link: "",
         },
     ];
@@ -48,19 +45,20 @@ export default async function ReservationPage({params}: {params: Params}) {
                 </div>
             </div>
 
-            <ReservationCard isNewItem={isNewItem} item={item?.content[0]} />
+            <ReservationCard isNewItem={isNewItem} item={item} />
         </div>
     );
 }
 
 const ReservationCard = ({
-    isNewItem, item,}: {
+    isNewItem, item,
+}: {
     isNewItem: boolean;
     item: Reservation | null | undefined;
 }) => (
     <Card>
         <CardHeader>
-            <CardTitle>{isNewItem ? "Create reservation" : "Edit reservation"}</CardTitle>
+            <CardTitle>{isNewItem ? "Create Reservation" : "Edit Reservation"}</CardTitle>
             <CardDescription>
                 {isNewItem
                     ? "Add a new reservation to your business location"

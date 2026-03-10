@@ -1,11 +1,3 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
-import { MapPin } from "lucide-react";
 import LocationSettingsForm from "../forms/location_settings_form";
 import { LocationSettings } from "@/types/settings/type";
 
@@ -17,26 +9,13 @@ const PreferenceSettings = ({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold">General</h2>
-        <p className="text-muted-foreground mt-1">
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">General</h2>
+        <p className="text-muted-foreground mt-1 text-sm">
           Configure your location and general application settings
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <MapPin className="h-5 w-5 text-emerald-600" />
-            <CardTitle>Location Settings</CardTitle>
-          </div>
-          <CardDescription>
-            Manage your location preferences and settings
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <LocationSettingsForm item={locationSettings} />
-        </CardContent>
-      </Card>
+      <LocationSettingsForm item={locationSettings} />
     </div>
   );
 };

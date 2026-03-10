@@ -13,7 +13,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
-import {useDisclosure} from "@nextui-org/modal";
+import {useDisclosure} from "@/hooks/use-disclosure";
 import {toast} from "@/hooks/use-toast";
 import {Customer} from "@/types/customer/type";
 import { deleteCustomer } from "@/lib/actions/customer-actions";

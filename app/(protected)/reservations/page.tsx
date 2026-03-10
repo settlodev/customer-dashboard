@@ -8,26 +8,26 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Clock, CalendarOff } from "lucide-react";
 import { DataTable } from "@/components/tables/data-table";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import {columns} from "@/components/tables/reservation/columns";
+import { columns } from "@/components/tables/reservation/columns";
 import { searchReservation } from "@/lib/actions/reservation-actions";
 
 const breadcrumbItems = [{ title: "Reservations", link: "/reservations" }];
 
-type Params = { 
-    searchParams: Promise<{ 
-        search?: string; 
-        page?: string; 
-        limit?: string; 
-    }> 
+type Params = {
+    searchParams: Promise<{
+        search?: string;
+        page?: string;
+        limit?: string;
+    }>
 };
 
 export default async function Page({ searchParams }: Params) {
-    
     const resolvedSearchParams = await searchParams;
-    
+
     const q = resolvedSearchParams.search || "";
     const page = Number(resolvedSearchParams.page) || 0;
     const pageLimit = Number(resolvedSearchParams.limit);
@@ -45,8 +45,20 @@ export default async function Page({ searchParams }: Params) {
                 </div>
 
                 <div className="flex items-center space-x-2">
-                    <Button>
-                        <Link key="add-reservation" href={`/reservations/new`}>Add Reservation</Link>
+                    <Button variant="outline" asChild>
+                        <Link href="/reservations/schedule">
+                            <Clock className="h-4 w-4 mr-2" />
+                            Schedule
+                        </Link>
+                    </Button>
+                    <Button variant="outline" asChild>
+                        <Link href="/reservations/exceptions">
+                            <CalendarOff className="h-4 w-4 mr-2" />
+                            Exceptions
+                        </Link>
+                    </Button>
+                    <Button asChild>
+                        <Link href="/reservations/new">Add Reservation</Link>
                     </Button>
                 </div>
             </div>
@@ -63,13 +75,13 @@ export default async function Page({ searchParams }: Params) {
                             data={data}
                             pageCount={pageCount}
                             pageNo={page}
-                            searchKey="name"
+                            searchKey="customerName"
                             total={total}
                         />
                     </CardContent>
                 </Card>
             ) : (
-                <NoItems itemName={`reservations`} newItemUrl={`/reservations/new`} />
+                <NoItems itemName="reservations" newItemUrl="/reservations/new" />
             )}
         </div>
     );
