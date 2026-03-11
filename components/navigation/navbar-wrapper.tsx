@@ -19,14 +19,16 @@ export const NavbarWrapper = ({children, session, businessData, menuType}: Props
 
     return (
         <div className="relative flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
-            <div className="sticky top-0 z-[55] p-2">
-                <Header
-                    session={session}
-                    onMenuClick={() => setMobileSidebarOpen(true)}
-                />
-            </div>
-            <div className="flex-1 pt-2">
-                {children}
+            <div className="max-w-screen-2xl mx-auto w-full flex flex-col flex-1">
+                <div className="sticky top-0 z-[55] p-2">
+                    <Header
+                        session={session}
+                        onMenuClick={() => setMobileSidebarOpen(true)}
+                    />
+                </div>
+                <div className="flex-1 pt-2">
+                    {children}
+                </div>
             </div>
 
             {businessData && (

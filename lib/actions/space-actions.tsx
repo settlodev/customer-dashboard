@@ -3,6 +3,7 @@
 import { getAuthenticatedUser } from "../auth-utils";
 import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { UUID } from "node:crypto";
 import { z } from "zod";
@@ -79,12 +80,10 @@ export const createSpace = async (
   const validSpaceData = SpaceSchema.safeParse(space);
 
   if (!validSpaceData.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validSpaceData.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validSpaceData.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -101,21 +100,12 @@ export const createSpace = async (
       `/api/tables-and-spaces/${location?.id}/create`,
       payload,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Table/space created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating table/space", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    revalidatePath("/spaces");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create table/space");
   }
   revalidatePath("/spaces");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Table/space created successfully");
 };
 
 export const getSpace = async (id: UUID): Promise<ApiResponse<Space>> => {
@@ -147,16 +137,13 @@ export const updateSpace = async (
   id: UUID,
   space: z.infer<typeof SpaceSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validSpaceData = SpaceSchema.safeParse(space);
 
   if (!validSpaceData.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validSpaceData.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validSpaceData.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -172,21 +159,12 @@ export const updateSpace = async (
       `/api/tables-and-spaces/${location?.id}/${id}`,
       payload,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Table/space updated successfully",
-    };
-  } catch (error) {
-    console.error("Error updating table/space", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    revalidatePath("/spaces");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update table/space");
   }
   revalidatePath("/spaces");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Table/space updated successfully");
 };
 
 export const deleteSpace = async (id: UUID): Promise<void> => {
@@ -221,16 +199,13 @@ export const fetchFloorPlans = async (): Promise<FloorPlan[]> => {
 export const createFloorPlan = async (
   floorPlan: z.infer<typeof FloorPlanSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = FloorPlanSchema.safeParse(floorPlan);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -241,37 +216,25 @@ export const createFloorPlan = async (
       `/api/floor-plans/${location?.id}/create`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Floor plan created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating floor plan", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    revalidatePath("/spaces");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create floor plan");
   }
   revalidatePath("/spaces");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Floor plan created successfully");
 };
 
 export const updateFloorPlan = async (
   id: UUID,
   floorPlan: z.infer<typeof FloorPlanSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = FloorPlanSchema.safeParse(floorPlan);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -282,21 +245,12 @@ export const updateFloorPlan = async (
       `/api/floor-plans/${location?.id}/${id}`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Floor plan updated successfully",
-    };
-  } catch (error) {
-    console.error("Error updating floor plan", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    revalidatePath("/spaces");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update floor plan");
   }
   revalidatePath("/spaces");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Floor plan updated successfully");
 };
 
 export const deleteFloorPlan = async (id: UUID): Promise<void> => {
@@ -333,16 +287,13 @@ export const fetchTableCombinations = async (): Promise<TableCombination[]> => {
 export const createTableCombination = async (
   combination: z.infer<typeof TableCombinationSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = TableCombinationSchema.safeParse(combination);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -353,37 +304,25 @@ export const createTableCombination = async (
       `/api/table-combinations/${location?.id}/create`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Table combination created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating table combination", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    revalidatePath("/spaces");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create table combination");
   }
   revalidatePath("/spaces");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Table combination created successfully");
 };
 
 export const updateTableCombination = async (
   id: UUID,
   combination: z.infer<typeof TableCombinationSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = TableCombinationSchema.safeParse(combination);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -394,21 +333,12 @@ export const updateTableCombination = async (
       `/api/table-combinations/${location?.id}/${id}`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Table combination updated successfully",
-    };
-  } catch (error) {
-    console.error("Error updating table combination", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    revalidatePath("/spaces");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update table combination");
   }
   revalidatePath("/spaces");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Table combination updated successfully");
 };
 
 export const deleteTableCombination = async (id: UUID): Promise<void> => {

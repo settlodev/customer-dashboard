@@ -4,6 +4,7 @@ import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { UUID } from "node:crypto";
@@ -83,16 +84,13 @@ export const searchReservation = async (
 export const createReservation = async (
   reservation: z.infer<typeof ReservationSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = ReservationSchema.safeParse(reservation);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -105,28 +103,12 @@ export const createReservation = async (
   try {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/reservations/${location?.id}/create`, payload);
-    formResponse = {
-      responseType: "success",
-      message: "Reservation created successfully",
-    };
-  } catch (error: any) {
-    console.error("Error creating reservation", error);
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message:
-        apiMessage ||
-        "Something went wrong while processing your request, please try again",
-      error:
-        error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create reservation");
   }
 
-  if (formResponse?.responseType === "error")
-    return parseStringify(formResponse);
-
   revalidatePath("/reservations");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation created successfully");
 };
 
 export const getReservation = async (
@@ -163,16 +145,13 @@ export const updateReservation = async (
   id: UUID,
   reservation: z.infer<typeof ReservationSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = ReservationSchema.safeParse(reservation);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -185,35 +164,18 @@ export const updateReservation = async (
   try {
     const apiClient = new ApiClient();
     await apiClient.put(`/api/reservations/${location?.id}/${id}`, payload);
-    formResponse = {
-      responseType: "success",
-      message: "Reservation updated successfully",
-    };
-  } catch (error: any) {
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message:
-        apiMessage ||
-        "Something went wrong while processing your request, please try again",
-      error:
-        error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update reservation");
   }
 
-  if (formResponse?.responseType === "error")
-    return parseStringify(formResponse);
-
   revalidatePath("/reservations");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation updated successfully");
 };
 
 export const updateReservationStatus = async (
   id: UUID,
   status: string,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
@@ -221,22 +183,13 @@ export const updateReservationStatus = async (
       `/api/reservations/${location?.id}/${id}/status?status=${status}`,
       {},
     );
-    formResponse = {
-      responseType: "success",
-      message: "Reservation status updated successfully",
-    };
-  } catch (error: any) {
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message: apiMessage || "Failed to update reservation status",
-      error:
-        error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+  } catch (error: unknown) {
+    revalidatePath("/reservations");
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update reservation status");
   }
 
   revalidatePath("/reservations");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation status updated successfully");
 };
 
 export const deleteReservation = async (id: UUID): Promise<void> => {
@@ -300,16 +253,13 @@ export const fetchReservationSlots = async (): Promise<ReservationSlot[]> => {
 export const createReservationSlot = async (
   slot: z.infer<typeof ReservationSlotSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = ReservationSlotSchema.safeParse(slot);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -320,38 +270,25 @@ export const createReservationSlot = async (
       `/api/reservation-slots/${location?.id}/create`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Reservation slot created successfully",
-    };
-  } catch (error: any) {
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message: apiMessage || "Failed to create reservation slot",
-      error:
-        error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create reservation slot");
   }
 
   revalidatePath("/reservations");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation slot created successfully");
 };
 
 export const updateReservationSlot = async (
   id: UUID,
   slot: z.infer<typeof ReservationSlotSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = ReservationSlotSchema.safeParse(slot);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -362,22 +299,12 @@ export const updateReservationSlot = async (
       `/api/reservation-slots/${location?.id}/${id}`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Reservation slot updated successfully",
-    };
-  } catch (error: any) {
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message: apiMessage || "Failed to update reservation slot",
-      error:
-        error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update reservation slot");
   }
 
   revalidatePath("/reservations");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation slot updated successfully");
 };
 
 export const deleteReservationSlot = async (id: UUID): Promise<void> => {
@@ -416,16 +343,13 @@ export const fetchReservationExceptions = async (): Promise<
 export const createReservationException = async (
   exception: z.infer<typeof ReservationExceptionSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = ReservationExceptionSchema.safeParse(exception);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -436,38 +360,25 @@ export const createReservationException = async (
       `/api/reservation-exceptions/${location?.id}/create`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Reservation exception created successfully",
-    };
-  } catch (error: any) {
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message: apiMessage || "Failed to create reservation exception",
-      error:
-        error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create reservation exception");
   }
 
   revalidatePath("/reservations");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation exception created successfully");
 };
 
 export const updateReservationException = async (
   id: UUID,
   exception: z.infer<typeof ReservationExceptionSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = ReservationExceptionSchema.safeParse(exception);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -478,22 +389,12 @@ export const updateReservationException = async (
       `/api/reservation-exceptions/${location?.id}/${id}`,
       validated.data,
     );
-    formResponse = {
-      responseType: "success",
-      message: "Reservation exception updated successfully",
-    };
-  } catch (error: any) {
-    const apiMessage = error?.message || error?.details?.message;
-    formResponse = {
-      responseType: "error",
-      message: apiMessage || "Failed to update reservation exception",
-      error:
-        error instanceof Error ? error : new Error(String(apiMessage || error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update reservation exception");
   }
 
   revalidatePath("/reservations");
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation exception updated successfully");
 };
 
 export const deleteReservationException = async (id: UUID): Promise<void> => {

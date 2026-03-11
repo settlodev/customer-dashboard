@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayoutGrid, Combine } from "lucide-react";
@@ -28,9 +28,9 @@ export default function SpacesManagePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  // Memoized so child components get a stable reference
+  const loadData = useCallback(async () => {
     try {
-      setIsLoading(true);
       setError(null);
       const [spacesData, plansData, combosData] = await Promise.all([
         fetchAllSpaces(),
@@ -46,11 +46,11 @@ export default function SpacesManagePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [loadData]);
 
   if (isLoading) {
     return (
@@ -86,7 +86,10 @@ export default function SpacesManagePage() {
               </h3>
               <p className="text-sm text-muted-foreground mb-4">{error}</p>
               <button
-                onClick={() => loadData()}
+                onClick={() => {
+                  setIsLoading(true);
+                  loadData();
+                }}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors"
               >
                 Retry

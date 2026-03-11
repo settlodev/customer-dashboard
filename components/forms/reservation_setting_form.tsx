@@ -36,6 +36,7 @@ import {
   createReservationSettings,
   updateReservationSettings,
 } from "@/lib/actions/reservation-setting-actions";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 const DEFAULTS: Partial<ReservationSetting> = {
   minPartySize: 1,
@@ -102,17 +103,20 @@ const ReservationSettingForm = ({
       form.reset({ ...DEFAULTS, ...item });
     }
     setIsLoading(false);
-  }, [item, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [item]);
 
   const onInvalid = useCallback((errors: FieldErrors) => {
-    console.error("Form validation errors:", errors);
+    console.error("Form validation errors:", JSON.stringify(errors, null, 2));
+    const firstError = Object.values(errors).find(
+      (e) => e && typeof e === "object" && "message" in e,
+    );
     toast({
       variant: "destructive",
-      title: "Uh oh! Something went wrong.",
+      title: "Validation Error",
       description:
-        typeof errors.message === "string"
-          ? errors.message
-          : "There was an issue submitting your form, please try later",
+        (firstError as { message?: string })?.message ||
+        "Please fill all the required fields correctly",
     });
   }, []);
 
@@ -126,17 +130,11 @@ const ReservationSettingForm = ({
       action.then((data) => {
         if (data) {
           setResponse(data);
+          const msg = SettloErrorHandler.safeMessage(data.message);
           if (data.responseType === "success") {
-            toast({
-              title: "Success",
-              description: data.message,
-            });
+            toast({ title: "Success", description: msg });
           } else {
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: data.message,
-            });
+            toast({ variant: "destructive", title: "Error", description: msg });
           }
         }
       });

@@ -49,6 +49,7 @@ import {
   updateTableCombination,
   deleteTableCombination,
 } from "@/lib/actions/space-actions";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 type CombinationFormValues = z.infer<typeof TableCombinationSchema>;
 
@@ -123,14 +124,14 @@ const CombinationDialog = ({
       const data = await action;
       if (data) {
         if (data.responseType === "success") {
-          toast({ title: "Success", description: data.message });
+          toast({ title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
           onOpenChange(false);
           onSaved();
         } else {
           toast({
             variant: "destructive",
             title: "Error",
-            description: data.message,
+            description: SettloErrorHandler.safeMessage(data.message, "Failed to save table combination"),
           });
         }
       }

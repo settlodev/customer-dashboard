@@ -44,6 +44,7 @@ import {
 } from "@/types/space/type";
 import { TableSpaceType, TableStatus } from "@/types/enums";
 import { useRouter } from "next/navigation";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 function SpaceForm({ item }: { item: Space | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -131,16 +132,20 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
         updateSpace(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({ title: "Success", description: data.message });
+            toast({ title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
             router.push("/spaces");
+          } else if (data) {
+            toast({ variant: "destructive", title: "Error", description: SettloErrorHandler.safeMessage(data.message, "Failed to update table/space") });
           }
         });
       } else {
         createSpace(values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({ title: "Success", description: data.message });
+            toast({ title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
             router.push("/spaces");
+          } else if (data) {
+            toast({ variant: "destructive", title: "Error", description: SettloErrorHandler.safeMessage(data.message, "Failed to create table/space") });
           }
         });
       }

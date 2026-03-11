@@ -10,6 +10,51 @@ export function cn(...inputs: ClassValue[]) {
 
 export const parseStringify = (value: unknown) => JSON.parse(JSON.stringify(value));
 
+/**
+ * Safely extract a human-readable error message from an API error.
+ *
+ * The Settlo API can return `message` as:
+ *  - a string:  "Something went wrong"
+ *  - an array:  [{ field: "reservationTime", message: "must not be null" }, ...]
+ *  - an object: { field: "...", message: "..." }
+ *
+ * This function normalises all shapes into a single string.
+ */
+export function extractErrorMessage(
+  error: unknown,
+  fallback = "Something went wrong while processing your request, please try again",
+): string {
+  if (!error) return fallback;
+
+  // If the error is already a string, return it
+  if (typeof error === "string") return error;
+
+  // If it's an array of {field, message} objects (validation errors)
+  if (Array.isArray(error)) {
+    const messages = error
+      .map((e) => {
+        if (typeof e === "string") return e;
+        if (e && typeof e === "object" && "message" in e) {
+          const field = "field" in e ? String(e.field) : "";
+          const msg = String(e.message);
+          return field ? `${field}: ${msg}` : msg;
+        }
+        return null;
+      })
+      .filter(Boolean);
+    return messages.length > 0 ? messages.join(", ") : fallback;
+  }
+
+  // If it's an object with a message property
+  if (typeof error === "object" && error !== null && "message" in error) {
+    const msg = (error as { message: unknown }).message;
+    // message itself could be an array (nested case)
+    return extractErrorMessage(msg, fallback);
+  }
+
+  return fallback;
+}
+
 
 export function formatNumber(value: number): string {
   const formatter = new Intl.NumberFormat("en-US", {

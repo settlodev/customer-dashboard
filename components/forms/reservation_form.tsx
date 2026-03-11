@@ -42,6 +42,7 @@ import { useRouter } from "next/navigation";
 import CustomerSelector from "../widgets/customer-selector";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 const ReservationForm = ({
   item,
@@ -108,15 +109,12 @@ const ReservationForm = ({
       const handleResponse = (data: FormResponse | void) => {
         if (!data) return;
         setResponse(data);
+        const msg = SettloErrorHandler.safeMessage(data.message);
         if (data.responseType === "success") {
-          toast({ title: "Success", description: data.message });
+          toast({ title: "Success", description: msg });
           router.push("/reservations");
         } else {
-          toast({
-            variant: "destructive",
-            title: "Error",
-            description: data.message,
-          });
+          toast({ variant: "destructive", title: "Error", description: msg });
         }
       };
 

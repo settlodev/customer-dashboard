@@ -4,6 +4,7 @@ import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 import { FormResponse } from "@/types/types";
 
 import { UUID } from "node:crypto";
@@ -33,16 +34,13 @@ export const fetchReservationSettings = async (): Promise<ReservationSetting | n
 export const createReservationSettings = async (
   settings: z.infer<typeof ReservationSettingSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = ReservationSettingSchema.safeParse(settings);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -50,36 +48,23 @@ export const createReservationSettings = async (
   try {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/reservation-settings/${location?.id}/create`, validated.data);
-    formResponse = {
-      responseType: "success",
-      message: "Reservation settings created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating reservation settings", error);
-    formResponse = {
-      responseType: "error",
-      message: "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create reservation settings");
   }
 
-
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation settings created successfully");
 };
 
 export const updateReservationSettings = async (
   settings: z.infer<typeof ReservationSettingSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = ReservationSettingSchema.safeParse(settings);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -87,21 +72,11 @@ export const updateReservationSettings = async (
   try {
     const apiClient = new ApiClient();
     await apiClient.put(`/api/reservation-settings/${location?.id}`, validated.data);
-    formResponse = {
-      responseType: "success",
-      message: "Reservation settings updated successfully",
-    };
-  } catch (error) {
-    console.error("Error updating reservation settings", error);
-    formResponse = {
-      responseType: "error",
-      message: "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update reservation settings");
   }
 
-
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Reservation settings updated successfully");
 };
 
 // ─── Booking Questions ───────────────────────────────────────────────
@@ -123,16 +98,13 @@ export const fetchBookingQuestions = async (): Promise<BookingQuestion[]> => {
 export const createBookingQuestion = async (
   question: z.infer<typeof BookingQuestionSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = BookingQuestionSchema.safeParse(question);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -140,37 +112,24 @@ export const createBookingQuestion = async (
   try {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/booking-questions/${location?.id}/create`, validated.data);
-    formResponse = {
-      responseType: "success",
-      message: "Booking question created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating booking question", error);
-    formResponse = {
-      responseType: "error",
-      message: "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to create booking question");
   }
 
-
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Booking question created successfully");
 };
 
 export const updateBookingQuestion = async (
   id: UUID,
   question: z.infer<typeof BookingQuestionSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
   const validated = BookingQuestionSchema.safeParse(question);
 
   if (!validated.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validated.error.message),
-    };
-    return parseStringify(formResponse);
+    return SettloErrorHandler.createErrorResponse(
+      validated.error,
+      "Please fill all the required fields",
+    );
   }
 
   const location = await getCurrentLocation();
@@ -178,21 +137,11 @@ export const updateBookingQuestion = async (
   try {
     const apiClient = new ApiClient();
     await apiClient.put(`/api/booking-questions/${location?.id}/${id}`, validated.data);
-    formResponse = {
-      responseType: "success",
-      message: "Booking question updated successfully",
-    };
-  } catch (error) {
-    console.error("Error updating booking question", error);
-    formResponse = {
-      responseType: "error",
-      message: "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
+  } catch (error: unknown) {
+    return SettloErrorHandler.createErrorResponse(error, "Failed to update booking question");
   }
 
-
-  return parseStringify(formResponse);
+  return SettloErrorHandler.createSuccessResponse("Booking question updated successfully");
 };
 
 export const deleteBookingQuestion = async (id: UUID): Promise<void> => {
@@ -204,7 +153,6 @@ export const deleteBookingQuestion = async (id: UUID): Promise<void> => {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
     await apiClient.delete(`/api/booking-questions/${location?.id}/${id}`);
-  
   } catch (error) {
     throw error;
   }

@@ -31,7 +31,10 @@
       "Bash(/opt/homebrew/bin/node --version)",
       "Bash(while read file)",
       "Bash(do sed -i '' \"s|from ''@/app/loading''|from ''@/components/ui/loading''|g; s|from \"\"@/app/loading\"\"|from \"\"@/components/ui/loading\"\"|g\" \"$file\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(npx tsc --noEmit --pretty)",
+      "Bash(/usr/local/bin/npx tsc --noEmit --pretty)",
+      "Bash(git checkout -- components/forms/space_form.tsx components/forms/floor_plan_form.tsx components/forms/table_combination_form.tsx lib/actions/space-actions.tsx)"
     ]
   }
 }
