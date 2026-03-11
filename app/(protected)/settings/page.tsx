@@ -7,18 +7,33 @@ import { Menu, X } from "lucide-react";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NotificationsSettings from "@/components/settings/notifications";
 import { settingsNavItems } from "@/types/constants";
-import PreferenceSettings from "@/components/settings/preference";
+import GeneralSettings from "@/components/settings/general-settings";
+import FeatureSettings from "@/components/settings/feature-settings";
+import PrintingSettings from "@/components/settings/printing-settings";
+import OrdersInventorySettings from "@/components/settings/orders-inventory-settings";
 import ReservationSettings from "@/components/settings/reservations";
 import { fetchLocationSettings } from "@/lib/actions/settings-actions";
 import Loading from "@/components/ui/loading";
 import EFDSettings from "@/components/settings/efd";
 import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
+import BusinessDetailsSettings from "@/components/settings/business-details";
+import LocationDetailsSettings from "@/components/settings/location-details";
 import { LocationSettings } from "@/types/settings/type";
+import { Business } from "@/types/business/type";
+import { Location } from "@/types/location/type";
+import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
+import { getSingleBusiness } from "@/lib/actions/business-actions";
+import { getLocationById } from "@/lib/actions/location-actions";
+import { UUID } from "node:crypto";
 
 export default function SettingsPage() {
   const [locationSettings, setLocationSettings] =
     useState<LocationSettings | null>(null);
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [location, setLocation] = useState<Location | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isBusinessLoading, setIsBusinessLoading] = useState(true);
+  const [isLocationLoading, setIsLocationLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -38,7 +53,38 @@ export default function SettingsPage() {
       }
     };
 
+    const loadBusiness = async () => {
+      try {
+        setIsBusinessLoading(true);
+        const currentBusiness = await getCurrentBusiness();
+        if (currentBusiness?.id) {
+          const fullBusiness = await getSingleBusiness(
+            currentBusiness.id as UUID,
+          );
+          setBusiness(fullBusiness);
+        }
+      } catch (error) {
+        console.error("Failed to load business:", error);
+      } finally {
+        setIsBusinessLoading(false);
+      }
+    };
+
+    const loadLocation = async () => {
+      try {
+        setIsLocationLoading(true);
+        const fullLocation = await getLocationById();
+        setLocation(fullLocation);
+      } catch (error) {
+        console.error("Failed to load location:", error);
+      } finally {
+        setIsLocationLoading(false);
+      }
+    };
+
     loadSettings();
+    loadBusiness();
+    loadLocation();
   }, []);
 
   if (isLoading) {
@@ -89,22 +135,36 @@ export default function SettingsPage() {
 
   return (
     <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen">
-      <SettingsLayout locationSettings={locationSettings} />
+      <SettingsLayout
+        locationSettings={locationSettings}
+        business={business}
+        isBusinessLoading={isBusinessLoading}
+        location={location}
+        isLocationLoading={isLocationLoading}
+      />
     </div>
   );
 }
 
 function useSettingsParams() {
   const searchParams = useSearchParams();
-  const tab = searchParams.get("tab") || "preferences";
+  const tab = searchParams.get("tab") || "business";
   const subtab = searchParams.get("subtab") || undefined;
   return { tab, subtab };
 }
 
 const SettingsLayout = ({
   locationSettings,
+  business,
+  isBusinessLoading,
+  location,
+  isLocationLoading,
 }: {
   locationSettings: LocationSettings | null;
+  business: Business | null;
+  isBusinessLoading: boolean;
+  location: Location | null;
+  isLocationLoading: boolean;
 }) => {
   const { tab: initialTab, subtab } = useSettingsParams();
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -114,8 +174,30 @@ const SettingsLayout = ({
 
   const renderContent = () => {
     switch (activeTab) {
-      case "preferences":
-        return <PreferenceSettings locationSettings={locationSettings} />;
+      case "business":
+        return (
+          <BusinessDetailsSettings
+            business={business}
+            isLoading={isBusinessLoading}
+          />
+        );
+      case "location":
+        return (
+          <LocationDetailsSettings
+            location={location}
+            isLoading={isLocationLoading}
+          />
+        );
+      case "general":
+        return <GeneralSettings locationSettings={locationSettings} />;
+      case "features":
+        return <FeatureSettings locationSettings={locationSettings} />;
+      case "printing":
+        return <PrintingSettings locationSettings={locationSettings} />;
+      case "orders-inventory":
+        return (
+          <OrdersInventorySettings locationSettings={locationSettings} />
+        );
       case "notifications":
         return <NotificationsSettings />;
       case "reservations":
@@ -125,7 +207,12 @@ const SettingsLayout = ({
       case "efd":
         return <EFDSettings />;
       default:
-        return <PreferenceSettings locationSettings={locationSettings} />;
+        return (
+          <BusinessDetailsSettings
+            business={business}
+            isLoading={isBusinessLoading}
+          />
+        );
     }
   };
 

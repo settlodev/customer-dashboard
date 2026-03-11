@@ -1,4 +1,4 @@
-import { Bell, Bolt, CalendarClock, CreditCard, Receipt } from "lucide-react";
+import { Bell, Bolt, Building2, CalendarClock, CreditCard, MapPin, Package, Printer, Receipt, ToggleRight } from "lucide-react";
 
 export const taxClasses=
     [
@@ -77,10 +77,40 @@ export const ItemStatuses = [
 
 export const settingsNavItems = [
     {
-        id: 'preferences',
-        label: 'Preferences',
+        id: 'business',
+        label: 'Business',
+        icon: Building2,
+        description: 'Business details & info'
+    },
+    {
+        id: 'location',
+        label: 'Location',
+        icon: MapPin,
+        description: 'Location details & hours'
+    },
+    {
+        id: 'general',
+        label: 'General',
         icon: Bolt,
-        description: 'Location & general settings'
+        description: 'Passcodes & system config'
+    },
+    {
+        id: 'features',
+        label: 'Features',
+        icon: ToggleRight,
+        description: 'Toggle app features'
+    },
+    {
+        id: 'printing',
+        label: 'Printing & Receipts',
+        icon: Printer,
+        description: 'Tickets, receipts & images'
+    },
+    {
+        id: 'orders-inventory',
+        label: 'Orders & Inventory',
+        icon: Package,
+        description: 'Order rules & stock deduction'
     },
     {
         id: 'notifications',

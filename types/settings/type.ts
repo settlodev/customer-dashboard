@@ -86,7 +86,6 @@ export interface SettingField {
     | "system"
     | "printing"
     | "inventory"
-    | "notifications"
     | "order";
   placeholder?: string;
   helperText?: string;
@@ -339,36 +338,6 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "switch",
     category: "inventory",
     helperText: "Deduct stock on partial payments",
-  },
-
-  // Notifications Settings
-  {
-    key: "enableNotifications",
-    label: "Enable Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Enable all notification types",
-  },
-  {
-    key: "enableEmailNotifications",
-    label: "Enable Email Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive notifications via email",
-  },
-  {
-    key: "enableSmsNotifications",
-    label: "Enable SMS Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive notifications via SMS",
-  },
-  {
-    key: "enablePushNotifications",
-    label: "Enable Push Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive push notifications",
   },
 
   // System Settings
