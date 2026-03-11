@@ -10,7 +10,7 @@ import { settingsNavItems } from "@/types/constants";
 import PreferenceSettings from "@/components/settings/preference";
 import ReservationSettings from "@/components/settings/reservations";
 import { fetchLocationSettings } from "@/lib/actions/settings-actions";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import EFDSettings from "@/components/settings/efd";
 import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
 import { LocationSettings } from "@/types/settings/type";

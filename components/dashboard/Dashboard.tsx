@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { DateRangePicker } from "../ui/date-picker-with-range";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import SalesDashboard from "./salesDashboard";
 
 const Dashboard: React.FC = () => {

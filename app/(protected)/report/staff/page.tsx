@@ -17,7 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { staffReport } from '@/lib/actions/staff-actions';
 import { StaffSummaryReport } from '@/types/staff';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import Loading from '@/app/loading';
+import Loading from '@/components/ui/loading';
 
 interface DatePickerProps {
     value: Date;

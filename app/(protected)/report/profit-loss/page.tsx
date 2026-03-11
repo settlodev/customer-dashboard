@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import ProfitLossStatement from "@/components/widgets/profit&loss";
 import { DateRangePicker } from "@/components/ui/date-picker-with-range";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";

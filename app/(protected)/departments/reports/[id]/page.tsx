@@ -1,4 +1,4 @@
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Card, CardContent, CardHeader} from "@/components/ui/card";
 import DepartmentReportPage from "@/components/widgets/department-report";

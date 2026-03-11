@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import CustomerGroupManager from "@/components/forms/customer_group_form";
 import { fetchCustomerGroups } from "@/lib/actions/customer-actions";
 import { CustomerGroup } from "@/types/customer/type";

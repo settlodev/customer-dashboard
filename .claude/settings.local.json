@@ -28,7 +28,10 @@
       "Bash(ls -la /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/settings/)",
       "mcp__Claude_Preview__preview_start",
       "Bash(lsof -i :3000 -t)",
-      "Bash(/opt/homebrew/bin/node --version)"
+      "Bash(/opt/homebrew/bin/node --version)",
+      "Bash(while read file)",
+      "Bash(do sed -i '' \"s|from ''@/app/loading''|from ''@/components/ui/loading''|g; s|from \"\"@/app/loading\"\"|from \"\"@/components/ui/loading\"\"|g\" \"$file\")",
+      "Bash(done)"
     ]
   }
 }

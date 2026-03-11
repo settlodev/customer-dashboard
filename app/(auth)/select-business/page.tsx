@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import BusinessSelector from "@/app/(auth)/select-business/business_list";
 import { fetchAllBusinesses } from "@/lib/actions/business-actions";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
 
 function BusinessPageLoading() {

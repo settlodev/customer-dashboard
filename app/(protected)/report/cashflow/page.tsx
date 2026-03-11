@@ -20,7 +20,7 @@ import SubmitButton from "@/components/widgets/submit-button";
 import { toast } from "@/hooks/use-toast";
 import { cashFlowReport } from "@/lib/actions/order-actions";
 import { CashFlow } from "@/types/orders/type";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 
 interface DatePickerProps {
   value: Date;

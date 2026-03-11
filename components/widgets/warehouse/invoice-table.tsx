@@ -10,7 +10,7 @@ import {
   Hash
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import Loading from '@/app/loading';
+import Loading from '@/components/ui/loading';
 
 // Types
 interface Invoice {

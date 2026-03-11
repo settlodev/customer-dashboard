@@ -33,7 +33,7 @@ import "jspdf-autotable";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 import { toast } from "@/hooks/use-toast";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 
 interface DatePickerProps {
   value: Date;

@@ -15,7 +15,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import Loading from "@/app/loading"
+import Loading from "@/components/ui/loading"
 
 const ITEMS_PER_PAGE = 5
 const VISIBLE_PAGES = 5
