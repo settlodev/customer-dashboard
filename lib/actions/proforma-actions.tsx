@@ -55,7 +55,7 @@ export const searchProformaInvoices = async (
       `/api/location/${location?.id}/order-proforma/paginate`,
       query,
     );
-    console.log("data of proforma", data);
+
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -65,14 +65,9 @@ export const searchProformaInvoices = async (
 export const getProforma = async (id: UUID): Promise<Proforma | null> => {
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-
-    if (!location?.id) {
-      throw new Error("No active location found");
-    }
 
     const response = await apiClient.get(
-      `/api/location/${location.id}/order-proforma/${id}`,
+      `/api/public/location/order-proforma/${id}`,
     );
     if (!response) return null;
 
@@ -296,7 +291,6 @@ export const updateProformaStatusAsCompleted = async (
   proformaId: string,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
-  const location = await getCurrentLocation();
   try {
     const apiClient = new ApiClient();
     const response = await apiClient.put(
@@ -321,5 +315,57 @@ export const updateProformaStatusAsCompleted = async (
   if (formResponse?.responseType === "error")
     return parseStringify(formResponse);
 
+  return parseStringify(formResponse);
+};
+
+export const convertProformaToInvoice = async (
+  proformaId: string,
+  staffAccepting: UUID,
+): Promise<FormResponse | void> => {
+  let formResponse: FormResponse | null = null;
+
+  const location = await getCurrentLocation();
+  const payload = {
+    staffAccepting,
+  };
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.put(
+      `/api/location/${location?.id}/order-proforma/${proformaId}/accept`,
+      payload,
+    );
+    formResponse = {
+      responseType: "success",
+      message: "Proforma converted to invoice successfully",
+    };
+  } catch (error: any) {
+    // Extract the specific error message from the backend response
+    let errorMessage =
+      "Something went wrong while processing your request, please try again";
+
+    // Check if the error has the structure from your backend
+    if (error?.response?.data?.message) {
+      // If it's an Axios error with response data
+      errorMessage = error.response.data.message;
+    } else if (error?.message) {
+      // If it's the error object you logged with the specific structure
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null) {
+      // Handle the case where the error is passed directly as shown in your console
+      errorMessage = error.message || errorMessage;
+    }
+
+    formResponse = {
+      responseType: "error",
+      message: errorMessage,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+
+  if (formResponse?.responseType === "error")
+    return parseStringify(formResponse);
+
+  revalidatePath("/orders");
   return parseStringify(formResponse);
 };

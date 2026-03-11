@@ -11,7 +11,7 @@ import { Proforma } from "@/types/proforma/type";
 import {
   DetailsSkeleton,
   InvoiceDocument,
-} from "@/app/(protected)/proforma-invoice/details/[id]/page";
+} from "@/components/proforma/proforma-details";
 
 // ─── Accept Modal ─────────────────────────────────────────────────────────────
 

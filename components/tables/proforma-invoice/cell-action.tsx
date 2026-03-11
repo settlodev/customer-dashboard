@@ -39,13 +39,16 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           >
             <EyeIcon color={"#384B70"} />
           </a>
-          <a
-            style={{ flex: 1 }}
-            onClick={() => router.push(`/proforma-invoice/${data.id}`)}
-            className="cursor-pointer"
-          >
-            <EditIcon color={"#384B70"} />
-          </a>
+          {data.proformaStatus !== "COMPLETE" &&
+            data.proformaStatus !== "ACCEPTED" && (
+              <a
+                style={{ flex: 1 }}
+                onClick={() => router.push(`/proforma-invoice/${data.id}`)}
+                className="cursor-pointer"
+              >
+                <EditIcon color={"#384B70"} />
+              </a>
+            )}
         </div>
       </div>
     </>

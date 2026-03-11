@@ -284,22 +284,15 @@ function ProformaPreviewSkeleton() {
   );
 }
 
-// ─── Create Customer Modal ────────────────────────────────────────────────────
-
-// onCreated is async — it runs createProforma internally and resolves only
-// after both server actions complete successfully. The modal stays open and
-// locked until the full chain is done, preventing any race condition.
 function CreateCustomerModal({
   onCreated,
 }: {
   onCreated: (customer: Customer) => Promise<{ error?: string }>;
 }) {
   const [open, setOpen] = useState(false);
-  // "customer" = createCustomer in-flight, "proforma" = createProforma in-flight
-  const [loadingPhase, setLoadingPhase] = useState<
-    "idle" | "customer" | "proforma"
-  >("idle");
+  const [loadingPhase, setLoadingPhase] = useState<"idle" | "customer">("idle");
   const [serverError, setServerError] = useState<string | null>(null);
+  const [successName, setSuccessName] = useState<string | null>(null);
 
   const isSubmitting = loadingPhase !== "idle";
 
@@ -317,10 +310,8 @@ function CreateCustomerModal({
 
   const onSubmit = async (values: CustomerFormValues) => {
     setServerError(null);
-
-    // ── Step A: create the customer ──────────────────────────────────────────
     setLoadingPhase("customer");
-    let customerId: string;
+
     try {
       const result = await createCustomer({
         ...values,
@@ -334,61 +325,25 @@ function CreateCustomerModal({
         setLoadingPhase("idle");
         return;
       }
-
-      customerId = result?.data?.id;
-      if (!customerId) {
-        setServerError(
-          "Customer was created but no ID was returned — please search for them manually.",
-        );
-        setLoadingPhase("idle");
-        return;
-      }
-    } catch (e: any) {
+    } catch (e: unknown) {
       setServerError(
-        e?.message ?? "Something went wrong creating the customer",
+        e instanceof Error
+          ? e.message
+          : "Something went wrong creating the customer",
       );
       setLoadingPhase("idle");
       return;
     }
 
-    // ── Step B: create the proforma (customer is fully committed by now) ─────
-    setLoadingPhase("proforma");
-    const newCustomer: Customer = {
-      id: customerId,
-      firstName: values.firstName,
-      lastName: values.lastName,
-      email: values.email || null,
-      phoneNumber: values.phoneNumber,
-      physicalAddress: null,
-      customerAccountNumber: "",
-      gender: values.gender,
-      status: true,
-      allowNotifications: false,
-      creditLimit: 0,
-    } as Customer;
-
-    try {
-      const { error } = await onCreated(newCustomer);
-      if (error) {
-        setServerError(error);
-        setLoadingPhase("idle");
-        return;
-      }
-    } catch (e: any) {
-      setServerError(
-        e?.message ?? "Something went wrong creating the proforma",
-      );
-      setLoadingPhase("idle");
-      return;
-    }
-
-    // Both succeeded — close and reset
-    toast.success(`Customer ${values.firstName} created`);
-    reset();
+    // Success — show message, auto-close after 4s
     setLoadingPhase("idle");
-    setOpen(false);
+    setSuccessName(values.firstName);
+    reset();
+    setTimeout(() => {
+      setSuccessName(null);
+      setOpen(false);
+    }, 4000);
   };
-
   return (
     <Dialog
       open={open}
@@ -397,6 +352,7 @@ function CreateCustomerModal({
         if (!o) {
           reset();
           setServerError(null);
+          setSuccessName(null);
         }
       }}
     >
@@ -420,159 +376,179 @@ function CreateCustomerModal({
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
-          {serverError && (
-            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-              {serverError}
+        {successName ? (
+          /* ── Success state ── */
+          <div className="flex flex-col items-center gap-4 py-8 text-center">
+            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+              <Check className="w-7 h-7 text-green-600" />
             </div>
-          )}
-
-          {/* Name row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="firstName"
-                className="text-xs font-medium text-gray-700"
-              >
-                First Name <span className="text-red-400">*</span>
-              </Label>
-              <Input
-                id="firstName"
-                placeholder="John"
-                {...register("firstName")}
-                className={errors.firstName ? "border-red-300" : ""}
-              />
-              {errors.firstName && (
-                <p className="text-xs text-red-500">
-                  {errors.firstName.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="lastName"
-                className="text-xs font-medium text-gray-700"
-              >
-                Last Name <span className="text-red-400">*</span>
-              </Label>
-              <Input
-                id="lastName"
-                placeholder="Doe"
-                {...register("lastName")}
-                className={errors.lastName ? "border-red-300" : ""}
-              />
-              {errors.lastName && (
-                <p className="text-xs text-red-500">
-                  {errors.lastName.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Phone */}
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="phoneNumber"
-              className="text-xs font-medium text-gray-700"
-            >
-              Phone Number <span className="text-red-400">*</span>
-            </Label>
-            <div className="relative">
-              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                id="phoneNumber"
-                placeholder="+255 712 345 678"
-                {...register("phoneNumber")}
-                className={`pl-9 ${errors.phoneNumber ? "border-red-300" : ""}`}
-              />
-            </div>
-            {errors.phoneNumber && (
-              <p className="text-xs text-red-500">
-                {errors.phoneNumber.message}
+            <div>
+              <p className="text-base font-semibold text-gray-900">
+                Customer created successfully!
               </p>
-            )}
-          </div>
-
-          {/* Email */}
-          <div className="space-y-1.5">
-            <Label
-              htmlFor="email"
-              className="text-xs font-medium text-gray-700"
-            >
-              Email{" "}
-              <span className="text-gray-400 font-normal">(optional)</span>
-            </Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                id="email"
-                type="email"
-                placeholder="john@example.com"
-                {...register("email")}
-                className={`pl-9 ${errors.email ? "border-red-300" : ""}`}
-              />
+              <p className="text-sm text-gray-500 mt-1">
+                Please search for{" "}
+                <span className="font-medium text-gray-700">{successName}</span>{" "}
+                in the search box to select them.
+              </p>
             </div>
-            {errors.email && (
-              <p className="text-xs text-red-500">{errors.email.message}</p>
-            )}
+            <p className="text-xs text-gray-400">
+              This dialog will close automatically…
+            </p>
           </div>
-
-          {/* Gender */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-medium text-gray-700">
-              Gender <span className="text-red-400">*</span>
-            </Label>
-            <Select
-              value={watch("gender")}
-              onValueChange={(v) => setValue("gender", v as Gender)}
-            >
-              <SelectTrigger className={errors.gender ? "border-red-300" : ""}>
-                <SelectValue placeholder="Select gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={Gender.MALE}>Male</SelectItem>
-                <SelectItem value={Gender.FEMALE}>Female</SelectItem>
-              </SelectContent>
-            </Select>
-            {errors.gender && (
-              <p className="text-xs text-red-500">{errors.gender.message}</p>
+        ) : (
+          /* ── Form state ── */
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
+            {serverError && (
+              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                {serverError}
+              </div>
             )}
-          </div>
 
-          <Separator />
+            {/* Name row */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="firstName"
+                  className="text-xs font-medium text-gray-700"
+                >
+                  First Name <span className="text-red-400">*</span>
+                </Label>
+                <Input
+                  id="firstName"
+                  placeholder="John"
+                  {...register("firstName")}
+                  className={errors.firstName ? "border-red-300" : ""}
+                />
+                {errors.firstName && (
+                  <p className="text-xs text-red-500">
+                    {errors.firstName.message}
+                  </p>
+                )}
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="lastName"
+                  className="text-xs font-medium text-gray-700"
+                >
+                  Last Name <span className="text-red-400">*</span>
+                </Label>
+                <Input
+                  id="lastName"
+                  placeholder="Doe"
+                  {...register("lastName")}
+                  className={errors.lastName ? "border-red-300" : ""}
+                />
+                {errors.lastName && (
+                  <p className="text-xs text-red-500">
+                    {errors.lastName.message}
+                  </p>
+                )}
+              </div>
+            </div>
 
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="bg-blue-600 hover:bg-blue-700 text-white min-w-[170px]"
-            >
-              {loadingPhase === "customer" ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving
-                  customer…
-                </>
-              ) : loadingPhase === "proforma" ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating
-                  proforma…
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4 mr-2" /> Create Customer
-                </>
+            {/* Phone */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="phoneNumber"
+                className="text-xs font-medium text-gray-700"
+              >
+                Phone Number <span className="text-red-400">*</span>
+              </Label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  id="phoneNumber"
+                  placeholder="+255 712 345 678"
+                  {...register("phoneNumber")}
+                  className={`pl-9 ${errors.phoneNumber ? "border-red-300" : ""}`}
+                />
+              </div>
+              {errors.phoneNumber && (
+                <p className="text-xs text-red-500">
+                  {errors.phoneNumber.message}
+                </p>
               )}
-            </Button>
-          </div>
-        </form>
+            </div>
+
+            {/* Email */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="email"
+                className="text-xs font-medium text-gray-700"
+              >
+                Email{" "}
+                <span className="text-gray-400 font-normal">(optional)</span>
+              </Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  {...register("email")}
+                  className={`pl-9 ${errors.email ? "border-red-300" : ""}`}
+                />
+              </div>
+              {errors.email && (
+                <p className="text-xs text-red-500">{errors.email.message}</p>
+              )}
+            </div>
+
+            {/* Gender */}
+            <div className="space-y-1.5">
+              <Label className="text-xs font-medium text-gray-700">
+                Gender <span className="text-red-400">*</span>
+              </Label>
+              <Select
+                value={watch("gender")}
+                onValueChange={(v) => setValue("gender", v as Gender)}
+              >
+                <SelectTrigger
+                  className={errors.gender ? "border-red-300" : ""}
+                >
+                  <SelectValue placeholder="Select gender" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={Gender.MALE}>Male</SelectItem>
+                  <SelectItem value={Gender.FEMALE}>Female</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.gender && (
+                <p className="text-xs text-red-500">{errors.gender.message}</p>
+              )}
+            </div>
+
+            <Separator />
+
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px]"
+              >
+                {loadingPhase === "customer" ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving
+                    customer…
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4 mr-2" /> Create Customer
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
