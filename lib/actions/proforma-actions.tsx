@@ -55,7 +55,7 @@ export const searchProformaInvoices = async (
       `/api/location/${location?.id}/order-proforma/paginate`,
       query,
     );
-    console.log("data of proforma", data);
+
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -65,14 +65,9 @@ export const searchProformaInvoices = async (
 export const getProforma = async (id: UUID): Promise<Proforma | null> => {
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-
-    if (!location?.id) {
-      throw new Error("No active location found");
-    }
 
     const response = await apiClient.get(
-      `/api/location/${location.id}/order-proforma/${id}`,
+      `/api/public/location/order-proforma/${id}`,
     );
     if (!response) return null;
 
