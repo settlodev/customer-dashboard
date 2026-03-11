@@ -205,7 +205,7 @@ export function InvoiceDocument({
 
             {/* Right — invoice meta */}
             <div className="flex flex-row items-start justify-between sm:flex-col sm:items-end gap-2 sm:gap-1.5">
-              <span className="inline-block text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-emerald-600 bg-emerald-50 px-2.5 sm:px-3 py-1 rounded-md whitespace-nowrap">
+              <span className="inline-block text-[10px] sm:text-[11px] font-bold uppercase tracking-widest text-black bg-emerald-50 px-2.5 sm:px-3 py-1 rounded-md whitespace-nowrap">
                 Proforma Invoice
               </span>
               <div className="text-right sm:space-y-1">

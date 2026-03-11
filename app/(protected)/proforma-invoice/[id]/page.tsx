@@ -25,7 +25,7 @@ export default async function ProformaInvoicePage({
   const item = isNewItem ? null : await fetchProforma(id as UUID);
 
   const breadcrumbItems = [
-    { title: "Proforma Invoices", link: "/proforma-invoices" },
+    { title: "Proforma Invoices", link: "/proforma-invoice" },
     {
       title: isNewItem ? "New" : (item?.proformaNumber ?? "Edit"),
       link: "",
