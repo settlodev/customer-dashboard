@@ -15,10 +15,10 @@ interface HeaderProps {
 
 const Header = ({ session, onMenuClick }: HeaderProps) => {
   return (
-    <header className="z-50 w-full rounded-xl border border-primary/10 bg-white/80 dark:bg-gray-900">
+    <header className="z-50 w-full rounded-xl bg-white dark:bg-gray-900">
       <div className="flex h-16 items-center">
-        {/* Left: hamburger + logo (mobile) */}
-        <div className="flex items-center gap-3 pl-4 lg:hidden">
+        {/* Left: hamburger (mobile) + logo (always) */}
+        <div className="flex items-center gap-3 pl-4">
           <Button
             variant="ghost"
             size="icon"

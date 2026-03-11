@@ -4,6 +4,7 @@ import { SessionProvider } from "next-auth/react";
 import { auth } from "@/auth";
 import { NavbarWrapper } from "@/components/navigation/navbar-wrapper";
 import { SidebarWrapper } from "@/components/sidebar/sidebar";
+import { LoadingBarProvider } from "@/components/navigation/loading-bar-provider";
 import {
   getBusinessDropDown,
   getCurrentBusiness,
@@ -34,33 +35,35 @@ export default async function RootLayout({
 
   return (
     <SessionProvider session={session}>
-      <div className="flex h-screen overflow-hidden">
-        <SidebarWrapper data={businessData} />
+      <LoadingBarProvider>
+        <div className="flex h-screen overflow-hidden">
+          <SidebarWrapper data={businessData} />
 
-        <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden bg-gray-200">
-          <div className="relative flex-1 overflow-y-auto">
-            <Suspense
-              fallback={
-                <div className="flex justify-center items-center h-full">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" />
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+          <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden bg-gray-200">
+            <div className="relative flex-1 overflow-y-auto">
+              <Suspense
+                fallback={
+                  <div className="flex justify-center items-center h-full">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" />
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                    </div>
                   </div>
-                </div>
-              }
-            >
-              <NavbarWrapper session={session} businessData={businessData}>
-                <div className="flex-1">{children}</div>
-              </NavbarWrapper>
-            </Suspense>
-          </div>
+                }
+              >
+                <NavbarWrapper session={session} businessData={businessData}>
+                  <div className="flex-1">{children}</div>
+                </NavbarWrapper>
+              </Suspense>
+            </div>
 
-          <div className="sticky bottom-0 z-10">
-            <Toaster />
-          </div>
-        </main>
-      </div>
+            <div className="sticky bottom-0 z-10">
+              <Toaster />
+            </div>
+          </main>
+        </div>
+      </LoadingBarProvider>
     </SessionProvider>
   );
 }
