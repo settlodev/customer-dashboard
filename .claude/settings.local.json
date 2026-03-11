@@ -24,7 +24,14 @@
       "Bash(npm outdated --json)",
       "Bash(node -e \"const d=JSON.parse\\(require\\(''fs''\\).readFileSync\\(''/dev/stdin'',''utf8''\\)\\); Object.entries\\(d\\).filter\\(\\([k]\\)=>k.includes\\(''radix''\\)||k.includes\\(''class-variance''\\)||k.includes\\(''tailwind-merge''\\)||k.includes\\(''clsx''\\)\\).forEach\\(\\([k,v]\\)=>console.log\\(k, ''current:'', v.current, ''latest:'', v.latest\\)\\)\")",
       "Bash(ls -la /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/reservations/)",
-      "Bash(ls -la /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/reservations/settings/)"
+      "Bash(ls -la /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/reservations/settings/)",
+      "Bash(ls -la /Users/Peter/Settlo/Customer-Dashboard/app/\\\\\\(protected\\\\\\)/settings/)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(lsof -i :3000 -t)",
+      "Bash(/opt/homebrew/bin/node --version)",
+      "Bash(while read file)",
+      "Bash(do sed -i '' \"s|from ''@/app/loading''|from ''@/components/ui/loading''|g; s|from \"\"@/app/loading\"\"|from \"\"@/components/ui/loading\"\"|g\" \"$file\")",
+      "Bash(done)"
     ]
   }
 }

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { warehouseInvoices } from '@/lib/actions/warehouse/subscription';
 import WarehouseInvoiceTable from '@/components/widgets/warehouse/invoice-table';
 import { useRouter } from 'next/navigation';
-import Loading from '@/app/loading';
+import Loading from '@/components/ui/loading';
 
 
 

@@ -15,7 +15,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
-import Loading from "@/app/loading"
+import Loading from "@/components/ui/loading"
 
 const ITEMS_PER_PAGE = 5
 const VISIBLE_PAGES = 5
@@ -195,10 +195,8 @@ const StockHistoryDashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">
-          <Loading />
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <Loading />
       </div>
     )
   }

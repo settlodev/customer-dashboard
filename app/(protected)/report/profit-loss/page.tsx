@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import ProfitLossStatement from "@/components/widgets/profit&loss";
 import { DateRangePicker } from "@/components/ui/date-picker-with-range";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
@@ -52,17 +52,15 @@ const ProfitAndLossPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">
-          <Loading />
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <Loading />
       </div>
     );
   }
 
   if (!summaries || !location) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="text-lg mb-2">Loading data...</div>
           <Loading />

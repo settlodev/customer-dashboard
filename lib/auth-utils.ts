@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { User } from "next-auth";
 import { redirect } from "next/navigation";
 
-import { auth, signOut } from "@/auth";
+import { auth } from "@/auth";
 import {
   activeBusiness,
   AuthToken,
@@ -109,9 +109,9 @@ export const deleteAuthCookie = async () => {
     cookieStore.delete("authjs.callback-url");
     cookieStore.delete("authjs.session-token");
   } catch (e) {
-    // Do not throw error
+    // Do not throw error - do NOT call signOut here as it triggers
+    // the signOut event which calls deleteAuthCookie again, causing an infinite loop
     console.log("Error deleting auth cookie", e);
-    await signOut({ redirect: false });
   }
 };
 

@@ -17,7 +17,7 @@ import { Input } from '@/components/ui/input';
 import { TopItems, TopSellingProduct } from '@/types/product/type';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
-import Loading from '@/app/loading';
+import Loading from '@/components/ui/loading';
 
 
 interface DatePickerProps {
@@ -197,10 +197,8 @@ const SalesDashboard = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg">
-                    <Loading />
-                </div>
+            <div className="flex items-center justify-center h-full">
+                <Loading />
             </div>
         );
     }

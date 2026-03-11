@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import { DateRangePicker } from "../ui/date-picker-with-range";
 import { fetchSummaries } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import SalesDashboard from "./salesDashboard";
 
 const Dashboard: React.FC = () => {
@@ -43,10 +43,8 @@ const Dashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">
-          <Loading />
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <Loading />
       </div>
     );
   }

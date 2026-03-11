@@ -1,4 +1,4 @@
-import { Bell, Bolt, CalendarClock, Receipt } from "lucide-react";
+import { Bell, Bolt, CalendarClock, CreditCard, Receipt } from "lucide-react";
 
 export const taxClasses=
     [
@@ -93,6 +93,12 @@ export const settingsNavItems = [
         label: 'Reservations',
         icon: CalendarClock,
         description: 'Booking rules & questions'
+    },
+    {
+        id: 'payments',
+        label: 'Payments',
+        icon: CreditCard,
+        description: 'Accepted payment methods'
     },
     {
         id: 'efd',

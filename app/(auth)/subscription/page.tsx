@@ -28,7 +28,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { Input } from "@/components/ui/input";
 import { NumericFormat } from "react-number-format";
 import { isValidPhoneNumber } from "libphonenumber-js";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 
 
 

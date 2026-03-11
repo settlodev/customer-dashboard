@@ -21,7 +21,7 @@ import {
 } from "@/types/site/type";
 import { LocationDetails } from "@/types/menu/type";
 
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import { useCart } from "@/context/cartContext";
 import CartSidebar from "@/components/site/cartSidebar";
 

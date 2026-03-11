@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Menu, X } from "lucide-react";
 
@@ -9,8 +10,9 @@ import { settingsNavItems } from "@/types/constants";
 import PreferenceSettings from "@/components/settings/preference";
 import ReservationSettings from "@/components/settings/reservations";
 import { fetchLocationSettings } from "@/lib/actions/settings-actions";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import EFDSettings from "@/components/settings/efd";
+import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
 import { LocationSettings } from "@/types/settings/type";
 
 export default function SettingsPage() {
@@ -41,7 +43,7 @@ export default function SettingsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <Loading />
       </div>
     );
@@ -86,10 +88,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 p-4 md:p-8 pt-6">
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen">
       <SettingsLayout locationSettings={locationSettings} />
     </div>
   );
+}
+
+function useSettingsParams() {
+  const searchParams = useSearchParams();
+  const tab = searchParams.get("tab") || "preferences";
+  const subtab = searchParams.get("subtab") || undefined;
+  return { tab, subtab };
 }
 
 const SettingsLayout = ({
@@ -97,7 +106,8 @@ const SettingsLayout = ({
 }: {
   locationSettings: LocationSettings | null;
 }) => {
-  const [activeTab, setActiveTab] = useState("preferences");
+  const { tab: initialTab, subtab } = useSettingsParams();
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const breadcrumbItems = [{ title: "Settings", link: "/settings" }];
@@ -109,7 +119,9 @@ const SettingsLayout = ({
       case "notifications":
         return <NotificationsSettings />;
       case "reservations":
-        return <ReservationSettings />;
+        return <ReservationSettings defaultTab={subtab} />;
+      case "payments":
+        return <AcceptedPaymentMethodsPage />;
       case "efd":
         return <EFDSettings />;
       default:
@@ -157,7 +169,9 @@ const SettingsLayout = ({
               }
               return null;
             })()}
-            <span className="font-medium text-gray-900 dark:text-gray-100">{currentTabLabel}</span>
+            <span className="font-medium text-gray-900 dark:text-gray-100">
+              {currentTabLabel}
+            </span>
           </div>
           {isMobileMenuOpen ? (
             <X className="h-5 w-5 text-gray-400" />
@@ -169,7 +183,11 @@ const SettingsLayout = ({
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
           <div className="absolute z-50 left-4 right-4 mt-2 bg-white dark:bg-gray-900 border rounded-xl shadow-lg overflow-hidden">
-            <nav className="py-1" role="navigation" aria-label="Settings navigation">
+            <nav
+              className="py-1"
+              role="navigation"
+              aria-label="Settings navigation"
+            >
               {settingsNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -184,10 +202,14 @@ const SettingsLayout = ({
                     }`}
                     aria-current={isActive ? "page" : undefined}
                   >
-                    <Icon className={`h-5 w-5 flex-shrink-0 ${isActive ? "text-primary" : "text-gray-400"}`} />
+                    <Icon
+                      className={`h-5 w-5 flex-shrink-0 ${isActive ? "text-primary" : "text-gray-400"}`}
+                    />
                     <div>
                       <span className="font-medium text-sm">{item.label}</span>
-                      <p className={`text-xs mt-0.5 ${isActive ? "text-primary/70" : "text-gray-400"}`}>
+                      <p
+                        className={`text-xs mt-0.5 ${isActive ? "text-primary/70" : "text-gray-400"}`}
+                      >
                         {item.description}
                       </p>
                     </div>
@@ -207,7 +229,7 @@ const SettingsLayout = ({
           role="navigation"
           aria-label="Settings navigation"
         >
-          <div className="bg-white dark:bg-gray-900 border border-primary/10 rounded-xl p-2 space-y-1 sticky top-24 overflow-hidden">
+          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-2 space-y-1 sticky top-24 overflow-hidden shadow-sm">
             {settingsNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.id;
@@ -222,14 +244,28 @@ const SettingsLayout = ({
                   }`}
                   aria-current={isActive ? "page" : undefined}
                 >
-                  <div className={`flex items-center justify-center w-8 h-8 rounded-lg ${
-                    isActive ? "bg-primary/15" : "bg-gray-100 dark:bg-gray-800"
-                  }`}>
-                    <Icon className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-primary" : "text-gray-500 dark:text-gray-400"}`} />
+                  <div
+                    className={`flex items-center justify-center w-8 h-8 rounded-lg ${
+                      isActive
+                        ? "bg-primary/15"
+                        : "bg-gray-100 dark:bg-gray-800"
+                    }`}
+                  >
+                    <Icon
+                      className={`h-4 w-4 flex-shrink-0 ${isActive ? "text-primary" : "text-gray-500 dark:text-gray-400"}`}
+                    />
                   </div>
                   <div className="min-w-0">
-                    <span className={`text-sm font-medium block ${isActive ? "text-primary" : ""}`}>{item.label}</span>
-                    <span className={`text-xs block truncate ${isActive ? "text-primary/60" : "text-gray-400"}`}>{item.description}</span>
+                    <span
+                      className={`text-sm font-medium block ${isActive ? "text-primary" : ""}`}
+                    >
+                      {item.label}
+                    </span>
+                    <span
+                      className={`text-xs block truncate ${isActive ? "text-primary/60" : "text-gray-400"}`}
+                    >
+                      {item.description}
+                    </span>
                   </div>
                 </button>
               );
@@ -239,9 +275,7 @@ const SettingsLayout = ({
 
         {/* Content Area */}
         <main className="flex-1 min-w-0" role="main">
-          <div className="w-full rounded-xl p-4 md:p-6">
-            {renderContent()}
-          </div>
+          {renderContent()}
         </main>
       </div>
 

@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LayoutGrid, Combine } from "lucide-react";
 
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import FloorPlanManager from "@/components/forms/floor_plan_form";
 import TableCombinationManager from "@/components/forms/table_combination_form";
 import {
@@ -54,7 +54,7 @@ export default function SpacesManagePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="h-full flex items-center justify-center">
         <Loading />
       </div>
     );

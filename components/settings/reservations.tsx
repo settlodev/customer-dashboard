@@ -23,7 +23,7 @@ import {
 } from "@/types/reservation-setting/type";
 import { ReservationSlot, ReservationException } from "@/types/reservation/type";
 
-const ReservationSettings = () => {
+const ReservationSettings = ({ defaultTab }: { defaultTab?: string }) => {
   const [settings, setSettings] = useState<ReservationSetting | null>(null);
   const [questions, setQuestions] = useState<BookingQuestion[]>([]);
   const [slots, setSlots] = useState<ReservationSlot[]>([]);
@@ -146,7 +146,7 @@ const ReservationSettings = () => {
         </p>
       </div>
 
-      <Tabs defaultValue="settings" className="w-full">
+      <Tabs defaultValue={defaultTab || "settings"} className="w-full">
         <TabsList className="flex w-full max-w-2xl bg-primary/10 dark:bg-gray-800 rounded-lg p-1">
           <TabsTrigger
             value="settings"
