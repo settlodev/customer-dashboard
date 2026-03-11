@@ -13,6 +13,7 @@ export const publicRoutes = [
   "/auth-error",
   "/update-password",
   "/item/[id]",
+  "/reserve/[id]",
 ];
 
 export const authRoutes = ["/login", "/register"];
