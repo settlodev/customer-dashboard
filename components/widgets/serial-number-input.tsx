@@ -8,6 +8,8 @@ import {
   XCircle,
   AlertCircle,
   Keyboard,
+  ScanLine,
+  X,
 } from "lucide-react";
 
 interface SerialNumberInputProps {
@@ -26,20 +28,25 @@ export function SerialNumberInput({
   const [serials, setSerials] = useState<string[]>(() =>
     Array.from({ length: quantity }, (_, i) => value[i] ?? ""),
   );
-  const [scanMode, setScanMode] = useState<"manual" | "scan">("manual");
+  const [scanMode, setScanMode] = useState<"manual" | "usb" | "camera">(
+    "manual",
+  );
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [scanBuffer, setScanBuffer] = useState("");
-  const [lastScanTime, setLastScanTime] = useState(0);
+  const [cameraOpen, setCameraOpen] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const scanBufferRef = useRef("");
   const lastKeyTimeRef = useRef(0);
+  const html5QrcodeRef = useRef<any>(null);
+  const scannerDivId = "serial-qr-scanner";
 
   // Resize serials array when quantity changes
   useEffect(() => {
-    setSerials((prev) => {
-      const next = Array.from({ length: quantity }, (_, i) => prev[i] ?? "");
-      return next;
-    });
+    setSerials((prev) =>
+      Array.from({ length: quantity }, (_, i) => prev[i] ?? ""),
+    );
     inputRefs.current = inputRefs.current.slice(0, quantity);
   }, [quantity]);
 
@@ -48,26 +55,26 @@ export function SerialNumberInput({
     onChange(serials);
   }, [serials, onChange]);
 
-  // Global keydown listener for barcode scanner (fast keyboard input)
+  // ── USB scanner: global keydown listener ──
   useEffect(() => {
-    if (scanMode !== "scan" || activeIndex === null || disabled) return;
+    if (scanMode !== "usb" || activeIndex === null || disabled) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const now = Date.now();
       const timeDiff = now - lastKeyTimeRef.current;
       lastKeyTimeRef.current = now;
 
-      // Barcode scanners type very fast (< 50ms between chars)
       if (e.key === "Enter") {
         const scanned = scanBufferRef.current.trim();
         if (scanned && activeIndex !== null) {
-          const next = [...serials];
-          next[activeIndex] = scanned;
-          setSerials(next);
+          setSerials((prev) => {
+            const next = [...prev];
+            next[activeIndex] = scanned;
+            return next;
+          });
           scanBufferRef.current = "";
           setScanBuffer("");
-          // Move to next empty slot
-          const nextEmpty = next.findIndex(
+          const nextEmpty = serials.findIndex(
             (s, i) => i > activeIndex && s === "",
           );
           if (nextEmpty !== -1) {
@@ -80,12 +87,12 @@ export function SerialNumberInput({
         return;
       }
 
-      if (e.key.length === 1) {
-        // If fast input (scanner), accumulate
-        if (timeDiff < 80 || scanBufferRef.current.length > 0) {
-          scanBufferRef.current += e.key;
-          setScanBuffer(scanBufferRef.current);
-        }
+      if (
+        e.key.length === 1 &&
+        (timeDiff < 80 || scanBufferRef.current.length > 0)
+      ) {
+        scanBufferRef.current += e.key;
+        setScanBuffer(scanBufferRef.current);
       }
     };
 
@@ -93,14 +100,91 @@ export function SerialNumberInput({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [scanMode, activeIndex, serials, disabled]);
 
-  const handleManualChange = useCallback(
-    (index: number, val: string) => {
-      const next = [...serials];
+  // ── Camera scanner: start/stop html5-qrcode ──
+  useEffect(() => {
+    if (!cameraOpen) {
+      stopCamera();
+      return;
+    }
+
+    startCamera();
+    return () => {
+      stopCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraOpen]);
+
+  const startCamera = async () => {
+    setCameraError(null);
+    try {
+      const { Html5Qrcode } = await import("html5-qrcode");
+      // Wait for DOM element to be mounted
+      await new Promise((r) => setTimeout(r, 100));
+      const scanner = new Html5Qrcode(scannerDivId);
+      html5QrcodeRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 150 } },
+        (decodedText: string) => {
+          handleCameraScan(decodedText);
+        },
+        () => {},
+      );
+    } catch (err: any) {
+      setCameraError(
+        err?.message?.includes("Permission")
+          ? "Camera permission denied. Please allow camera access."
+          : "Could not start camera. Try USB scan mode instead.",
+      );
+    }
+  };
+
+  const stopCamera = async () => {
+    try {
+      if (html5QrcodeRef.current?.isScanning) {
+        await html5QrcodeRef.current.stop();
+      }
+      html5QrcodeRef.current = null;
+    } catch (_) {}
+  };
+
+  const handleCameraScan = useCallback((code: string) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+
+    setSerials((prev) => {
+      // Find current active or first empty slot
+      const targetIdx =
+        prev.findIndex((s) => s === "") !== -1
+          ? prev.findIndex((s) => s === "")
+          : null;
+
+      if (targetIdx === null) return prev; // all filled
+
+      const next = [...prev];
+      next[targetIdx] = trimmed;
+
+      // Advance activeIndex to next empty
+      const nextEmpty = next.findIndex((s, i) => i > targetIdx && s === "");
+      setActiveIndex(nextEmpty !== -1 ? nextEmpty : null);
+
+      // If all filled, close camera
+      if (next.every((s) => s.trim() !== "")) {
+        setCameraOpen(false);
+      }
+
+      return next;
+    });
+  }, []);
+
+  const handleManualChange = useCallback((index: number, val: string) => {
+    setSerials((prev) => {
+      const next = [...prev];
       next[index] = val;
-      setSerials(next);
-    },
-    [serials],
-  );
+      return next;
+    });
+  }, []);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
@@ -117,14 +201,13 @@ export function SerialNumberInput({
     [serials, quantity],
   );
 
-  const clearSerial = useCallback(
-    (index: number) => {
-      const next = [...serials];
+  const clearSerial = useCallback((index: number) => {
+    setSerials((prev) => {
+      const next = [...prev];
       next[index] = "";
-      setSerials(next);
-    },
-    [serials],
-  );
+      return next;
+    });
+  }, []);
 
   const clearAll = useCallback(() => {
     setSerials(Array.from({ length: quantity }, () => ""));
@@ -163,7 +246,10 @@ export function SerialNumberInput({
           <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5 gap-0.5">
             <button
               type="button"
-              onClick={() => setScanMode("manual")}
+              onClick={() => {
+                setScanMode("manual");
+                setCameraOpen(false);
+              }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
                 scanMode === "manual"
                   ? "bg-blue-600 text-white shadow-sm"
@@ -176,21 +262,38 @@ export function SerialNumberInput({
             <button
               type="button"
               onClick={() => {
-                setScanMode("scan");
-                // focus first empty
+                setScanMode("usb");
+                setCameraOpen(false);
                 const firstEmpty = serials.findIndex((s) => s === "");
                 const idx = firstEmpty !== -1 ? firstEmpty : 0;
                 setActiveIndex(idx);
                 setTimeout(() => inputRefs.current[idx]?.focus(), 50);
               }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                scanMode === "scan"
+                scanMode === "usb"
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              <Barcode className="h-3.5 w-3.5" />
+              USB
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setScanMode("camera");
+                setCameraOpen(true);
+                const firstEmpty = serials.findIndex((s) => s === "");
+                setActiveIndex(firstEmpty !== -1 ? firstEmpty : 0);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                scanMode === "camera"
                   ? "bg-blue-600 text-white shadow-sm"
                   : "text-gray-500 hover:text-gray-700"
               }`}
             >
               <Camera className="h-3.5 w-3.5" />
-              Scan
+              Camera
             </button>
           </div>
 
@@ -205,12 +308,12 @@ export function SerialNumberInput({
         </div>
       </div>
 
-      {/* Scan mode banner */}
-      {scanMode === "scan" && (
+      {/* USB scan mode banner */}
+      {scanMode === "usb" && (
         <div className="bg-amber-50 border-b border-amber-200 px-4 py-2 flex items-center gap-2 text-sm text-amber-800">
-          <Camera className="h-4 w-4 shrink-0" />
+          <Barcode className="h-4 w-4 shrink-0" />
           <span>
-            Scan mode active — point scanner at barcode.
+            USB scanner mode — scan barcode with USB scanner.
             {activeIndex !== null && (
               <strong> Scanning into field #{activeIndex + 1}</strong>
             )}
@@ -220,6 +323,64 @@ export function SerialNumberInput({
               </span>
             )}
           </span>
+        </div>
+      )}
+
+      {/* Camera scanner panel */}
+      {scanMode === "camera" && cameraOpen && (
+        <div className="border-b border-blue-200 bg-blue-50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2 text-sm text-blue-800 font-medium">
+              <ScanLine className="h-4 w-4" />
+              Camera scanning
+              {activeIndex !== null && (
+                <span className="text-blue-600">
+                  {" "}
+                  → filling field #{activeIndex + 1}
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setCameraOpen(false)}
+              className="text-blue-400 hover:text-blue-600 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {cameraError ? (
+            <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {cameraError}
+            </div>
+          ) : (
+            <div
+              id={scannerDivId}
+              className="rounded-lg overflow-hidden max-w-sm mx-auto"
+              style={{ minHeight: 200 }}
+            />
+          )}
+
+          <p className="text-xs text-blue-600 mt-2 text-center">
+            Point your phone camera at a barcode — it will auto-fill and advance
+            to the next field
+          </p>
+        </div>
+      )}
+
+      {/* Re-open camera button if closed mid-session */}
+      {scanMode === "camera" && !cameraOpen && filled < quantity && (
+        <div className="border-b border-gray-200 bg-gray-50 px-4 py-2 flex items-center justify-between">
+          <span className="text-sm text-gray-500">Camera scanner paused</span>
+          <button
+            type="button"
+            onClick={() => setCameraOpen(true)}
+            className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 transition-colors flex items-center gap-1.5"
+          >
+            <Camera className="h-3.5 w-3.5" />
+            Resume scanning
+          </button>
         </div>
       )}
 
@@ -249,7 +410,7 @@ export function SerialNumberInput({
                 className={`flex items-center gap-1 border rounded-lg overflow-hidden transition-all ${
                   isDuplicate
                     ? "border-red-400 bg-red-50"
-                    : isActive && scanMode === "scan"
+                    : isActive && scanMode !== "manual"
                       ? "border-blue-500 ring-2 ring-blue-200 bg-blue-50"
                       : isFilled
                         ? "border-green-400 bg-green-50"
@@ -267,7 +428,7 @@ export function SerialNumberInput({
                   onKeyDown={(e) => handleKeyDown(e, index)}
                   disabled={disabled}
                   placeholder={
-                    scanMode === "scan" && isActive
+                    isActive && scanMode !== "manual"
                       ? "Awaiting scan..."
                       : `Serial #${index + 1}`
                   }

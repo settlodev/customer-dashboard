@@ -59,7 +59,7 @@
     "file-saver": "^2.0.5",
     "framer-motion": "^11.8.0",
     "html2pdf.js": "^0.9.0",
-    "html5-qrcode": "^2.2.7",
+    "html5-qrcode": "^2.3.8",
     "jspdf": "3.0.1",
     "jspdf-autotable": "^3.8.4",
     "jsvectormap": "^1.6.0",
