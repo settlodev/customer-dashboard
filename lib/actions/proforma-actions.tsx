@@ -55,6 +55,7 @@ export const searchProformaInvoices = async (
       `/api/location/${location?.id}/order-proforma/paginate`,
       query,
     );
+    console.log("data of proforma", data);
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -246,7 +247,7 @@ export const updateProforma = async (
   // Only include discount or manualDiscountAmount — not both.
   const payload: Record<string, unknown> = {
     notes: validData.data.notes || null,
-    dueDate: formattedDueDate,
+    expiresAt: formattedDueDate,
   };
 
   if (validData.data.discount) {
@@ -258,17 +259,18 @@ export const updateProforma = async (
     payload.manualDiscountAmount = validData.data.manualDiscountAmount;
   }
 
-  console.log("payload to update proforma", payload);
+  // console.log("payload to update proforma", payload);
 
   const location = await getCurrentLocation();
 
   try {
     const apiClient = new ApiClient();
-    const response = await apiClient.put(
+    const response = await apiClient.patch(
       `/api/location/${location?.id}/order-proforma/${proformaId}`,
       payload,
     );
 
+    // console.log("response after updating", response);
     formResponse = {
       responseType: "success",
       message: "Proforma updated successfully",
@@ -298,7 +300,7 @@ export const updateProformaStatusAsCompleted = async (
   try {
     const apiClient = new ApiClient();
     const response = await apiClient.put(
-      `/api/location/${location?.id}/order-proforma/${proformaId}/mark-complete`,
+      `/api/public/location/order-proforma/${proformaId}/mark-complete`,
       {},
     );
     formResponse = {
@@ -319,6 +321,5 @@ export const updateProformaStatusAsCompleted = async (
   if (formResponse?.responseType === "error")
     return parseStringify(formResponse);
 
-  revalidatePath(`/proforma-invoice/details/${proformaId}`);
   return parseStringify(formResponse);
 };

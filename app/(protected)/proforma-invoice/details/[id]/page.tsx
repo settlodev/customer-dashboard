@@ -102,7 +102,7 @@ function Skeleton({ className }: { className?: string }) {
   return <div className={`animate-pulse bg-gray-100 rounded ${className}`} />;
 }
 
-function DetailsSkeleton() {
+export function DetailsSkeleton() {
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6 lg:p-8 space-y-5">
@@ -139,7 +139,7 @@ function DetailsSkeleton() {
 
 // ─── Invoice Document ─────────────────────────────────────────────────────────
 
-function InvoiceDocument({
+export function InvoiceDocument({
   data,
   printRef,
 }: {
@@ -493,7 +493,7 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
     }
   }, []);
 
-  const pageUrl = typeof window !== "undefined" ? window.location.href : "";
+  const pageUrl = `${window.location.origin}/proforma/shared/${id}`;
 
   return (
     <div className="min-h-screen bg-gray-50/60">

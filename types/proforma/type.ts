@@ -9,6 +9,7 @@ export interface Proforma {
   manualDiscountAmount: number;
   appliedDiscountAmount: number;
   totalDiscountAmount: number;
+  appliedDiscountId: string | null;
   netAmount: number;
   expiresAt: string;
   dateCreated: string;
