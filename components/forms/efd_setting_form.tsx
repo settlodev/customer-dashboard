@@ -14,6 +14,7 @@ import { Business } from "@/types/business/type";
 import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import { RequestEfd, EfdStatus } from "@/lib/actions/efd-action";
 import { useToast } from "@/hooks/use-toast";
+import { Card, CardContent } from "../ui/card";
 import { CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { formatTinForDisplay } from "../helpers/tin_formatter";
 
@@ -211,22 +212,24 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
     // Show loading state while fetching status
     if (isStatusLoading) {
         return (
-            <div className="space-y-6 p-2">
-                <div className="flex items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-2 flex-1">
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 animate-pulse"></div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse"></div>
+            <Card>
+                <CardContent className="pt-6 space-y-6">
+                    <div className="flex items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-2 flex-1">
+                            <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24 animate-pulse"></div>
+                            <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-48 animate-pulse"></div>
+                        </div>
+                        <div className="h-6 w-11 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
                     </div>
-                    <div className="h-6 w-11 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
-                </div>
-                <div className="space-y-4">
-                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-40 animate-pulse"></div>
-                    <div className="space-y-3">
-                        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
-                        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                    <div className="space-y-4">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-40 animate-pulse"></div>
+                        <div className="space-y-3">
+                            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                            <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         );
     }
 
@@ -249,8 +252,8 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
     // Show status if user is already onboarded
     if (efdStatus?.isOnboarded) {
         return (
-            <div className="space-y-6">
-                <div className="rounded-lg border p-6">
+            <Card>
+                <CardContent className="pt-6">
                     <div className="flex items-center space-x-3 mb-4">
                         {efdStatus.isVerified && efdStatus.completelyValid ? (
                             <CheckCircle className="h-6 w-6 text-green-600" />
@@ -331,7 +334,7 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                                 <AlertCircle className="h-5 w-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" />
                                 <div className="text-sm">
                                     <p className="text-yellow-800">
-                                        {!efdStatus.isVerified 
+                                        {!efdStatus.isVerified
                                             ? "Verification typically takes 1-3 business days. You'll be notified once approved."
                                             : "Final setup is being completed. Your EFD will be fully active soon."
                                         }
@@ -340,147 +343,151 @@ const EfdSettingsForm = ({ initialData }: EfdSettingsFormProps) => {
                             </div>
                         </div>
                     )}
-                </div>
-            </div>
+                </CardContent>
+            </Card>
         );
     }
     
     // Show onboarding form if user is not onboarded
     return (
-        <Form {...form}>
-            <div className="space-y-6">
-                <FormField
-                    control={form.control}
-                    name="isEfdEnabled"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                            <div className="space-y-0.5">
-                                <FormLabel className="text-base font-medium">
-                                    Enable EFD
-                                </FormLabel>
-                                <div className="text-sm text-muted-foreground">
-                                    Turn on Electronic Fiscal Device for this location
-                                </div>
-                            </div>
-                            <FormControl>
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                    disabled={isPending}
-                                />
-                            </FormControl>
-                        </FormItem>
-                    )}
-                />
-
-                {isEfdEnabled && (
-                    <>
-                        <Separator />
-                        <div className="space-y-4">
-                            <div className="mb-4">
-                                <h4 className="text-lg font-medium">Business Information</h4>
-                                <p className="text-sm text-muted-foreground">
-                                    Please provide your business details for EFD registration.
-                                </p>
-                            </div>
-
-                            <FormField
-                                control={form.control}
-                                name="businessName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Business Name *</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="Enter your business name"
-                                                {...field}
-                                                disabled={isPending}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="tinNumber"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>TIN (Tax Identification Number) *</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                placeholder="xxx-xxx-xxx"
-                                                value={tinDisplayValue}
-                                                onChange={(e) => {
-                                                    const input = e.target.value;
-                                                    const digits = input.replace(/\D/g, '');
-                                                    
-                                                    if (digits.length <= 9) {
-                                                        const formatted = formatTinForDisplay(digits);
-                                                        setTinDisplayValue(formatted);
-                                                        field.onChange(digits);
-                                                    }
-                                                }}
-                                                disabled={isPending}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="emailAddress"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Email Address *</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                type="email"
-                                                placeholder="Enter business email address"
-                                                {...field}
-                                                disabled={isPending}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="phoneNumber"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Phone Number *</FormLabel>
-                                        <FormControl>
-                                            <PhoneInput
-                                                placeholder="Enter phone number"
-                                                {...field}
-                                                disabled={isPending}
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                    </>
-                )}
-
-                <div className="flex justify-end pt-4">
-                    <div onClick={form.handleSubmit(handleSubmit)}>
-                        <SubmitButton 
-                            isPending={isPending}
-                            className="w-auto"
-                            label="Save EFD Settings"
+        <Card>
+            <CardContent className="pt-6">
+                <Form {...form}>
+                    <div className="space-y-6">
+                        <FormField
+                            control={form.control}
+                            name="isEfdEnabled"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel className="text-base font-medium">
+                                            Enable EFD
+                                        </FormLabel>
+                                        <div className="text-sm text-muted-foreground">
+                                            Turn on Electronic Fiscal Device for this location
+                                        </div>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                            disabled={isPending}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
                         />
+
+                        {isEfdEnabled && (
+                            <>
+                                <Separator />
+                                <div className="space-y-4">
+                                    <div className="mb-4">
+                                        <h3 className="text-lg font-medium">Business Information</h3>
+                                        <p className="text-sm text-muted-foreground">
+                                            Please provide your business details for EFD registration.
+                                        </p>
+                                    </div>
+
+                                    <FormField
+                                        control={form.control}
+                                        name="businessName"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Business Name *</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="Enter your business name"
+                                                        {...field}
+                                                        disabled={isPending}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="tinNumber"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>TIN (Tax Identification Number) *</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        placeholder="xxx-xxx-xxx"
+                                                        value={tinDisplayValue}
+                                                        onChange={(e) => {
+                                                            const input = e.target.value;
+                                                            const digits = input.replace(/\D/g, '');
+
+                                                            if (digits.length <= 9) {
+                                                                const formatted = formatTinForDisplay(digits);
+                                                                setTinDisplayValue(formatted);
+                                                                field.onChange(digits);
+                                                            }
+                                                        }}
+                                                        disabled={isPending}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="emailAddress"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Email Address *</FormLabel>
+                                                <FormControl>
+                                                    <Input
+                                                        type="email"
+                                                        placeholder="Enter business email address"
+                                                        {...field}
+                                                        disabled={isPending}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+
+                                    <FormField
+                                        control={form.control}
+                                        name="phoneNumber"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Phone Number *</FormLabel>
+                                                <FormControl>
+                                                    <PhoneInput
+                                                        placeholder="Enter phone number"
+                                                        {...field}
+                                                        disabled={isPending}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        <div className="flex justify-end pt-4">
+                            <div onClick={form.handleSubmit(handleSubmit)}>
+                                <SubmitButton
+                                    isPending={isPending}
+                                    className="w-auto"
+                                    label="Save EFD Settings"
+                                />
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </Form>
+                </Form>
+            </CardContent>
+        </Card>
     );
 };
 

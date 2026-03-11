@@ -336,12 +336,6 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
-          title: "Accepted Payment Method",
-          link: "/payments",
-          current: args?.isCurrentItem,
-          icon: "card",
-        },
-        {
           title: "Devices",
           link: "/devices",
           current: args?.isCurrentItem,

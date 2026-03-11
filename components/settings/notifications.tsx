@@ -1,6 +1,6 @@
 'use client'
 import { useState, useTransition, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader} from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { Switch } from "../ui/switch";
 import { useForm } from "react-hook-form";
@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel } from "../ui/form";
 import SubmitButton from "../widgets/submit-button";
 import { updateNotificationSetting } from "@/lib/actions/settings-actions";
 import { fetchLocationSettings } from "@/lib/actions/settings-actions";
-import { Bell, Mail, MessageSquare, Smartphone } from "lucide-react";
+import { Mail, MessageSquare, Smartphone } from "lucide-react";
 
 const NotificationSettings = () => {
     const [isPending, startTransition] = useTransition();
@@ -88,19 +88,8 @@ const NotificationSettings = () => {
 
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
-                    <Card className="rounded-xl border border-primary/10 shadow-sm overflow-hidden">
-                        <div className="h-1 bg-gradient-to-r from-primary to-primary/60" />
-                        <CardHeader className="pb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10">
-                                    <Bell className="h-5 w-5 text-primary" />
-                                </div>
-                                <CardDescription className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                                    We can send you email, SMS, and push notifications for new direct messages
-                                </CardDescription>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-1">
+                    <Card className="rounded-xl border shadow-sm">
+                        <CardContent className="pt-6 space-y-1">
                             <FormField
                                 control={form.control}
                                 name="enableEmailNotification"

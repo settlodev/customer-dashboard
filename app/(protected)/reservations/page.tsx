@@ -46,13 +46,13 @@ export default async function Page({ searchParams }: Params) {
 
                 <div className="flex items-center space-x-2">
                     <Button variant="outline" asChild>
-                        <Link href="/reservations/schedule">
+                        <Link href="/settings?tab=reservations&subtab=schedule">
                             <Clock className="h-4 w-4 mr-2" />
                             Schedule
                         </Link>
                     </Button>
                     <Button variant="outline" asChild>
-                        <Link href="/reservations/exceptions">
+                        <Link href="/settings?tab=reservations&subtab=exceptions">
                             <CalendarOff className="h-4 w-4 mr-2" />
                             Exceptions
                         </Link>

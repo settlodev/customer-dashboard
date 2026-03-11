@@ -43,10 +43,8 @@ const Dashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">
-          <Loading />
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <Loading />
       </div>
     );
   }

@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 
 const Loading = () => {
   return (
-    <div className="flex h-full w-full items-center justify-center">
+    <div className="flex h-full items-center justify-center">
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
         animate={{ opacity: 1, scale: 1 }}

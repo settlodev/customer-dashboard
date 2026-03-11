@@ -52,17 +52,15 @@ const ProfitAndLossPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">
-          <Loading />
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <Loading />
       </div>
     );
   }
 
   if (!summaries || !location) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="text-lg mb-2">Loading data...</div>
           <Loading />
