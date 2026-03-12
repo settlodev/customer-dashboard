@@ -47,7 +47,7 @@ async function Page({ searchParams }: Params) {
         </div>
         <div className="flex items-center space-x-2">
           <Button>
-            <Link href="/proforma-invoice/new">New Proforma Invoice</Link>
+            <Link href="/proforma-invoice/new">Add Proforma Invoice</Link>
           </Button>
         </div>
       </div>
@@ -72,7 +72,7 @@ async function Page({ searchParams }: Params) {
         </Card>
       ) : (
         <NoItems
-          newItemUrl="/proforma-invoices/new"
+          newItemUrl="/proforma-invoice/new"
           itemName="proforma invoices"
         />
       )}

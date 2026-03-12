@@ -43,7 +43,7 @@ export const searchProformaInvoices = async (
       sorts: [
         {
           key: "dateCreated",
-          direction: "ASC",
+          direction: "DESC",
         },
       ],
       page: page ? page - 1 : 0,
@@ -63,17 +63,28 @@ export const searchProformaInvoices = async (
 };
 
 export const getProforma = async (id: UUID): Promise<Proforma | null> => {
+  const location = await getCurrentLocation();
+
   try {
     const apiClient = new ApiClient();
 
     const response = await apiClient.get(
-      `/api/public/location/order-proforma/${id}`,
+      `/api/location/${location?.id}/order-proforma/${id}`,
     );
-    if (!response) return null;
-
     return parseStringify(response) as Proforma;
   } catch (error) {
     console.error(`[getProforma] Error fetching proforma ${id}:`, error);
+    throw error;
+  }
+};
+export const sharedProforma = async (id: UUID) => {
+  const apiClient = new ApiClient();
+  try {
+    const proforma = await apiClient.get(
+      `/api/public/location/order-proforma/${id}`,
+    );
+    return parseStringify(proforma);
+  } catch (error) {
     throw error;
   }
 };
@@ -194,11 +205,22 @@ export const removeItemsToProforma = async (
       message: "Proforma items removed successfully",
       data: response,
     };
-  } catch (error) {
+  } catch (error: any) {
+    let errorMessage =
+      "Something went wrong while processing your request, please try again";
+
+    if (error?.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null) {
+      errorMessage = error.message || errorMessage;
+    }
+
+    console.log("The error occuring is", error);
     formResponse = {
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: errorMessage,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
@@ -206,7 +228,6 @@ export const removeItemsToProforma = async (
   if (formResponse?.responseType === "error")
     return parseStringify(formResponse);
 
-  revalidatePath("/proforma-invoice");
   return parseStringify(formResponse);
 };
 
@@ -239,22 +260,17 @@ export const updateProforma = async (
     ? new Date(validData.data.expiresAt).toISOString()
     : null;
 
-  // Only include discount or manualDiscountAmount — not both.
   const payload: Record<string, unknown> = {
     notes: validData.data.notes || null,
     expiresAt: formattedDueDate,
   };
 
   if (validData.data.discount) {
-    // API-side discount: pass the discount ID
     payload.discount = validData.data.discount;
     payload.manualDiscountAmount = 0;
   } else if (validData.data.manualDiscountAmount > 0) {
-    // Manual TZS amount: omit discount ID, send the amount
     payload.manualDiscountAmount = validData.data.manualDiscountAmount;
   }
-
-  // console.log("payload to update proforma", payload);
 
   const location = await getCurrentLocation();
 
@@ -265,36 +281,44 @@ export const updateProforma = async (
       payload,
     );
 
-    // console.log("response after updating", response);
     formResponse = {
       responseType: "success",
       message: "Proforma updated successfully",
       data: response,
     };
-  } catch (error) {
+  } catch (error: any) {
+    let errorMessage =
+      "Something went wrong while processing your request, please try again";
+
+    if (error?.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null) {
+      errorMessage = error.message || errorMessage;
+    }
     console.log("The error occuring is", error);
     formResponse = {
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: errorMessage,
       error: error instanceof Error ? error : new Error(String(error)),
     };
-    console.log("The error occuring is", formResponse);
-    return parseStringify(formResponse);
   }
 
-  revalidatePath("/proforma-invoices");
+  if (formResponse?.responseType === "error")
+    return parseStringify(formResponse);
+
   return parseStringify(formResponse);
 };
 
-export const updateProformaStatusAsCompleted = async (
+export const updateProformaStatusAsConfirmed = async (
   proformaId: string,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
   try {
     const apiClient = new ApiClient();
-    const response = await apiClient.put(
-      `/api/public/location/order-proforma/${proformaId}/mark-complete`,
+    const response = await apiClient.post(
+      `/api/public/location/order-proforma/${proformaId}/confirmed-proformas`,
       {},
     );
     formResponse = {
@@ -302,12 +326,22 @@ export const updateProformaStatusAsCompleted = async (
       message: "Proforma is completed",
       data: response,
     };
-  } catch (error) {
+  } catch (error: any) {
+    let errorMessage =
+      "Something went wrong while processing your request, please try again";
+
+    if (error?.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null) {
+      errorMessage = error.message || errorMessage;
+    }
+
     console.log("The error occuring is", error);
     formResponse = {
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: errorMessage,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
@@ -331,8 +365,8 @@ export const convertProformaToInvoice = async (
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.put(
-      `/api/location/${location?.id}/order-proforma/${proformaId}/accept`,
+    await apiClient.post(
+      `/api/location/${location?.id}/order-proforma/${proformaId}/completed-proformas`,
       payload,
     );
     formResponse = {
@@ -340,19 +374,14 @@ export const convertProformaToInvoice = async (
       message: "Proforma converted to invoice successfully",
     };
   } catch (error: any) {
-    // Extract the specific error message from the backend response
     let errorMessage =
       "Something went wrong while processing your request, please try again";
 
-    // Check if the error has the structure from your backend
     if (error?.response?.data?.message) {
-      // If it's an Axios error with response data
       errorMessage = error.response.data.message;
     } else if (error?.message) {
-      // If it's the error object you logged with the specific structure
       errorMessage = error.message;
     } else if (typeof error === "object" && error !== null) {
-      // Handle the case where the error is passed directly as shown in your console
       errorMessage = error.message || errorMessage;
     }
 
@@ -367,5 +396,54 @@ export const convertProformaToInvoice = async (
     return parseStringify(formResponse);
 
   revalidatePath("/orders");
+  return parseStringify(formResponse);
+};
+
+export const editItemPriceOrQuantityToProforma = async (
+  proformaId: string,
+  itemId: string,
+  quantity: number,
+  unitCustomPrice: number,
+): Promise<FormResponse | void> => {
+  let formResponse: FormResponse | null = null;
+
+  const payload = {
+    quantity,
+    unitCustomPrice,
+  };
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.put(
+      `/api/order-proforma/${proformaId}/order-proforma-items/${itemId}`,
+      payload,
+    );
+    formResponse = {
+      responseType: "success",
+      message: "Proforma item edited successfully",
+    };
+  } catch (error: any) {
+    let errorMessage =
+      "Something went wrong while processing your request, please try again";
+
+    if (error?.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error?.message) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null) {
+      errorMessage = error.message || errorMessage;
+    }
+
+    console.log("The error occuring is", error);
+    formResponse = {
+      responseType: "error",
+      message: errorMessage,
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+
+  if (formResponse?.responseType === "error")
+    return parseStringify(formResponse);
+
   return parseStringify(formResponse);
 };
