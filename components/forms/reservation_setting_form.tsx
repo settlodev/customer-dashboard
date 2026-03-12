@@ -120,7 +120,6 @@ const ReservationSettingForm = ({
   const [, setResponse] = useState<FormResponse | undefined>();
   const isNew = !item?.id;
 
-  // Transform the item data to convert null to undefined
   const form = useForm<z.infer<typeof ReservationSettingSchema>>({
     resolver: zodResolver(ReservationSettingSchema),
     defaultValues: item ? { ...DEFAULTS, ...nullToUndefined(item) } : DEFAULTS,
