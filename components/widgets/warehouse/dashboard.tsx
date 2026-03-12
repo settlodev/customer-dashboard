@@ -6,7 +6,7 @@ import WarehouseStockReport from './stock-report'
 import UnimplementedTabContent from './helper'
 import StockRequestReport from './stock-request-report'
 import SupplierCreditReport from './supplier-credit-report'
-import Loading from '@/app/loading'
+import Loading from '@/components/ui/loading'
 
 export interface StockHistory {
   totalStockIntakes: number

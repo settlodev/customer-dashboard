@@ -53,7 +53,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 import { usePaginationState } from "@/hooks/usePaginationState";
 import TableExport from "../widgets/export";
 import StockExport from "../widgets/export-stock";

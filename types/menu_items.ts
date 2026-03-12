@@ -224,6 +224,12 @@ const getNormalMenuItems = (
           icon: "shopping-cart",
         },
         {
+          title: "Proforma",
+          link: "/proforma-invoice",
+          current: args?.isCurrentItem,
+          icon: "rotate-ccw",
+        },
+        {
           title: "Refunds",
           link: "/refunds",
           current: args?.isCurrentItem,
@@ -328,12 +334,6 @@ const getNormalMenuItems = (
           link: "/qrcode",
           current: args?.isCurrentItem,
           icon: "cart",
-        },
-        {
-          title: "Accepted Payment Method",
-          link: "/payments",
-          current: args?.isCurrentItem,
-          icon: "card",
         },
         {
           title: "Devices",

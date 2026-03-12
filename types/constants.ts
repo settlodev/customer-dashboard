@@ -1,4 +1,4 @@
-import { Bell, Bolt, Receipt } from "lucide-react";
+import { Bell, Bolt, Building2, CalendarClock, CreditCard, MapPin, Package, Printer, Receipt, ToggleRight } from "lucide-react";
 
 export const taxClasses=
     [
@@ -76,24 +76,64 @@ export const ItemStatuses = [
 ];
 
 export const settingsNavItems = [
-
     {
-        id: 'preferences',
-        label: 'Preferences',
+        id: 'business',
+        label: 'Business',
+        icon: Building2,
+        description: 'Business details & info'
+    },
+    {
+        id: 'location',
+        label: 'Location',
+        icon: MapPin,
+        description: 'Location details & hours'
+    },
+    {
+        id: 'general',
+        label: 'General',
         icon: Bolt,
-        description: 'Personal preferences'
+        description: 'Passcodes & system config'
+    },
+    {
+        id: 'features',
+        label: 'Features',
+        icon: ToggleRight,
+        description: 'Toggle app features'
+    },
+    {
+        id: 'printing',
+        label: 'Printing & Receipts',
+        icon: Printer,
+        description: 'Tickets, receipts & images'
+    },
+    {
+        id: 'orders-inventory',
+        label: 'Orders & Inventory',
+        icon: Package,
+        description: 'Order rules & stock deduction'
     },
     {
         id: 'notifications',
         label: 'Notifications',
         icon: Bell,
-        description: 'Email and push notifications'
+        description: 'Email, SMS & push alerts'
+    },
+    {
+        id: 'reservations',
+        label: 'Reservations',
+        icon: CalendarClock,
+        description: 'Booking rules & questions'
+    },
+    {
+        id: 'payments',
+        label: 'Payments',
+        icon: CreditCard,
+        description: 'Accepted payment methods'
     },
     {
         id: 'efd',
         label: 'EFD',
         icon: Receipt,
-        description: 'Efd Settings'
+        description: 'Tax & fiscal compliance'
     },
-   
 ];

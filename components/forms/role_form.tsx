@@ -5,8 +5,8 @@ import React, { useCallback, useEffect, useRef, useState, useTransition } from "
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 
-import { Switch } from "@nextui-org/switch";
-import { cn } from "@nextui-org/react";
+import { Switch } from "@/components/ui/switch";
+import { cn } from "@/lib/utils";
 
 import { Separator } from "../ui/separator";
 
@@ -159,37 +159,23 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                         render={({ field }) => (
                             <FormItem>
                                 <FormControl>
-                                    <Switch
-                                        {...field}
-                                        checked={field.value}
-                                        classNames={{
-                                            base: cn(
-                                                "inline-flex flex-row-reverse w-full max-w-full bg-content1 hover:bg-content2 items-center",
-                                                "justify-between cursor-pointer rounded-lg gap-2 p-2 border-2 border-destructive",
-                                                "data-[selected=true]:border-success",
-                                            ),
-                                            wrapper: "p-0 h-3 overflow-visible",
-                                            thumb: cn(
-                                                "w-6 h-6 border-2 shadow-lg",
-                                                "group-data-[hover=true]:border-primary",
-                                                "group-data-[selected=true]:ml-6",
-                                                "group-data-[pressed=true]:w-7",
-                                                "group-data-[selected]:group-data-[pressed]:ml-4",
-                                            ),
-                                        }}
-                                        color="success"
-                                        isDisabled={isPending}
-                                        isSelected={isActive}
-                                        value={String(field.value)}
-                                        onValueChange={setIsActive}
-                                    >
+                                    <div className={cn(
+                                        "inline-flex flex-row-reverse w-full max-w-full items-center",
+                                        "justify-between cursor-pointer rounded-lg gap-2 p-2 border-2",
+                                        isActive ? "border-success" : "border-destructive",
+                                    )}>
+                                        <Switch
+                                            checked={isActive}
+                                            onCheckedChange={setIsActive}
+                                            disabled={isPending}
+                                        />
                                         <div className="flex flex-col gap-1">
                                             <p className="text-sm">Role status</p>
-                                            <p className="text-tiny text-default-400">
+                                            <p className="text-xs text-muted-foreground">
                                                 Role will be enabled
                                             </p>
                                         </div>
-                                    </Switch>
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>

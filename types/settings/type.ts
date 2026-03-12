@@ -45,6 +45,8 @@ export interface LocationSettings {
   deductStockOnOrderClose: boolean;
   deductStockOnPartialPay: boolean;
   useKds: boolean;
+  showDateOnOrderNumber: boolean;
+  orderNumberPrefix: string;
   locationId: string | null;
   canDelete: boolean;
   status: boolean;
@@ -54,6 +56,9 @@ export interface LocationSettings {
   trackInventory?: boolean;
   enableNotifications?: boolean;
   autoCloseOrderWhenFullyPaid?: boolean;
+  autoPrintTickets: boolean;
+  autoOpenCashDrawer: boolean;
+  autoPrintReceiptAfterSale: boolean;
   receiptImageUpload: string;
   showQrCodeOnReceipt: boolean;
   showImageOnReceipt: boolean;
@@ -86,7 +91,6 @@ export interface SettingField {
     | "system"
     | "printing"
     | "inventory"
-    | "notifications"
     | "order";
   placeholder?: string;
   helperText?: string;
@@ -243,6 +247,22 @@ export const SETTINGS_CONFIG: SettingField[] = [
 
   // Order settings
   {
+    key: "orderNumberPrefix",
+    label: "Order Number Prefix",
+    type: "text",
+    category: "order",
+    placeholder: "e.g. ORD",
+    helperText: "Prefix added to the beginning of each order number",
+    inputType: "text",
+  },
+  {
+    key: "showDateOnOrderNumber",
+    label: "Show Date on Order Number",
+    type: "switch",
+    category: "order",
+    helperText: "Include the date in the order number format",
+  },
+  {
     key: "autoCloseOrderWhenFullyPaid",
     label: "Auto Close Order When Fully Paid",
     type: "switch",
@@ -285,6 +305,27 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "switch",
     category: "printing",
     helperText: "Display prices on printed tickets",
+  },
+  {
+    key: "autoPrintTickets",
+    label: "Auto Print Tickets",
+    type: "switch",
+    category: "printing",
+    helperText: "Automatically print tickets when orders are placed",
+  },
+  {
+    key: "autoOpenCashDrawer",
+    label: "Auto Open Cash Drawer",
+    type: "switch",
+    category: "printing",
+    helperText: "Automatically open the cash drawer after a sale",
+  },
+  {
+    key: "autoPrintReceiptAfterSale",
+    label: "Auto Print Receipt After Sale",
+    type: "switch",
+    category: "printing",
+    helperText: "Automatically print a receipt after completing a sale",
   },
   {
     key: "showQrCodeOnReceipt",
@@ -339,36 +380,6 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "switch",
     category: "inventory",
     helperText: "Deduct stock on partial payments",
-  },
-
-  // Notifications Settings
-  {
-    key: "enableNotifications",
-    label: "Enable Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Enable all notification types",
-  },
-  {
-    key: "enableEmailNotifications",
-    label: "Enable Email Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive notifications via email",
-  },
-  {
-    key: "enableSmsNotifications",
-    label: "Enable SMS Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive notifications via SMS",
-  },
-  {
-    key: "enablePushNotifications",
-    label: "Enable Push Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive push notifications",
   },
 
   // System Settings

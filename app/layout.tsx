@@ -271,12 +271,12 @@ export default async function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
   return (
-    <html lang="en" className="bg-whiten" suppressHydrationWarning={true}>
+    <html lang="en" className="bg-primary-light" suppressHydrationWarning={true}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#22c55e" />
+        <meta name="theme-color" content="#EB7F44" />
       </head>
-      <body className="antialiased bg-whiten dark:bg-boxdark-2 dark:text-bodydark">
+      <body className="antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark">
         <SessionProvider session={session}>
           <Providers>{children}</Providers>
         </SessionProvider>

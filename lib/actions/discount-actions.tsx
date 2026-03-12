@@ -13,23 +13,7 @@ import {
 } from "./business/get-current-business";
 import { Discount } from "@/types/discount/type";
 import { DiscountSchema } from "@/types/discount/schema";
-// import { resolveError } from "../settlo-api-error-handler";
 
-export const fectchAllDicounts = async (): Promise<Discount[]> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    const discountData = await apiClient.get(`/api/discounts/${location?.id}`);
-
-    return parseStringify(discountData);
-  } catch (error) {
-    throw error;
-  }
-};
 export const searchDiscount = async (
   q: string,
   page: number,
@@ -67,6 +51,7 @@ export const searchDiscount = async (
     throw error;
   }
 };
+
 export const createDiscount = async (
   discount: z.infer<typeof DiscountSchema>,
 ): Promise<FormResponse | void> => {

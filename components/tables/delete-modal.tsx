@@ -1,11 +1,11 @@
 import React from "react";
 import {
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
-} from "@nextui-org/modal";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {Button} from "@/components/ui/button";
 
 interface DeleteModalProps {
@@ -22,44 +22,29 @@ export default function DeleteModal({
   itemName,
 }: DeleteModalProps) {
   return (
-    <>
-      <Modal
-        backdrop="blur"
-        className="lg:w-1/4 p-4 rounded-2xl border-t-gray-300"
-        isDismissable={false}
-        isKeyboardDismissDisabled={true}
-        isOpen={isOpen}
-        placement="center"
-        radius="sm"
-        size="sm"
-        onOpenChange={onOpenChange} style={{background:'#FAFAFA'}}>
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1 mt-3">
-                Confirm Deletion
-              </ModalHeader>
-              <ModalBody>
-                <p>
-                  Are you sure you want to delete{" "}
-                  <span className="font-bold text-destructive">{itemName}</span>{" "}
-                  ?
-                  <br />
-                  This action cannot be undone!
-                </p>
-              </ModalBody>
-              <ModalFooter>
-                <Button color="secondary" onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button color="danger" onClick={onDelete}>
-                  Delete
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-    </>
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Confirm Deletion</DialogTitle>
+        </DialogHeader>
+        <div className="py-4">
+          <p>
+            Are you sure you want to delete{" "}
+            <span className="font-bold text-destructive">{itemName}</span>{" "}
+            ?
+            <br />
+            This action cannot be undone!
+          </p>
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={() => onOpenChange()}>
+            Cancel
+          </Button>
+          <Button variant="destructive" onClick={onDelete}>
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

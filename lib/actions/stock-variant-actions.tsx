@@ -12,21 +12,6 @@ import {
   stockVariantSummary,
 } from "@/types/stockVariant/type";
 
-export const fetchStockVariants = async (
-  stockId: string,
-): Promise<StockVariant[]> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-
-    const data = await apiClient.get(`/api/stock-variants/${stockId}`);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const searchStockVariants = async (
   q: string,
   page: number,
@@ -94,7 +79,6 @@ export const getStockVariantMovement = async (
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.post(`/api/stock-movements/${id}`, query);
-
     return parseStringify(data);
   } catch (error) {
     throw error;

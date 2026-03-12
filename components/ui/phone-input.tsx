@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "./scroll-area";
-import { Input, InputProps } from "@nextui-org/input";
+import { Input } from "@/components/ui/input";
 import { E164Number } from "libphonenumber-js";
 
 type PhoneInputProps = Omit<
@@ -51,7 +51,7 @@ const PhoneInput: React.ForwardRefExoticComponent<PhoneInputProps> =
   );
 PhoneInput.displayName = "PhoneInput";
 
-const InputComponent = React.forwardRef<HTMLInputElement, InputProps>(
+const InputComponent = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, ...props }, ref) => (
     <Input
       className={cn("rounded-e-md rounded-s-none", className)}

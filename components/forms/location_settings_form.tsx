@@ -40,7 +40,6 @@ const LoadingSkeleton = () => {
     "printing",
     "inventory",
     "order",
-    "notifications",
     "system",
   ];
 
@@ -82,7 +81,6 @@ const CATEGORY_TITLES = {
   feature: "Feature Settings",
   printing: "Printing Settings",
   inventory: "Inventory Settings",
-  notifications: "Notifications Settings",
   order: "Order Settings",
 } as const;
 
@@ -100,15 +98,15 @@ const getGridClass = (fields: SettingField[]): string => {
   const hasInputFields = fields.some((f) =>
     ["input", "text", "password", "number"].includes(f.type),
   );
-  return hasInputFields
-    ? "grid grid-cols-1 md:grid-cols-3 gap-4"
-    : "grid grid-cols-1 md:grid-cols-2 gap-4";
+  return "grid grid-cols-1 md:grid-cols-2 gap-4";
 };
 
 const LocationSettingsForm = ({
   item,
+  categories,
 }: {
   item: LocationSettings | null | undefined;
+  categories?: string[];
 }) => {
   const [isPending, startTransition] = useTransition();
   const [isLoading, setIsLoading] = useState(true);
@@ -176,6 +174,9 @@ const LocationSettingsForm = ({
   const getFilteredSettings = () => {
     const currentValues = form.watch();
     return SETTINGS_CONFIG.filter((setting) => {
+      if (categories && !categories.includes(setting.category)) {
+        return false;
+      }
       if (setting.dependencies?.length) {
         return setting.dependencies.every(
           (dep) => currentValues[dep as keyof typeof currentValues],
