@@ -98,9 +98,7 @@ const getGridClass = (fields: SettingField[]): string => {
   const hasInputFields = fields.some((f) =>
     ["input", "text", "password", "number"].includes(f.type),
   );
-  return hasInputFields
-    ? "grid grid-cols-1 md:grid-cols-3 gap-4"
-    : "grid grid-cols-1 md:grid-cols-2 gap-4";
+  return "grid grid-cols-1 md:grid-cols-2 gap-4";
 };
 
 const LocationSettingsForm = ({

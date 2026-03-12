@@ -25,18 +25,25 @@ export const LocationSettingsSchema = z.object({
   ticketToHaveAmount: z.boolean().default(false),
   singleTicketPrint: z.boolean().default(false),
   showPriceOnTicket: z.boolean().default(false),
+  autoPrintTickets: z.boolean().default(false),
+  autoOpenCashDrawer: z.boolean().default(false),
+  autoPrintReceiptAfterSale: z.boolean().default(false),
 
   // Inventory settings
   deductStockOnItemChange: z.boolean().default(true),
   deductStockOnOrderClose: z.boolean().default(false),
   deductStockOnPartialPay: z.boolean().default(false),
 
+  // Order settings
+  orderNumberPrefix: z.string().default(""),
+  allowTipping: z.boolean().default(false),
+  showDateOnOrderNumber: z.boolean().default(false),
+
   // Notification settings
   enableNotifications: z.boolean().default(false),
   enableEmailNotifications: z.boolean().default(true),
   enableSmsNotifications: z.boolean().default(true),
   enablePushNotifications: z.boolean().default(true),
-  allowTipping: z.boolean().default(false),
 
   // System settings
   isDefault: z.boolean().default(false),

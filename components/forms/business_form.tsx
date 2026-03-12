@@ -30,8 +30,15 @@ import {
   Youtube,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Switch } from "../ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import CancelButton from "../widgets/cancel-button";
 import { Separator } from "../ui/separator";
 import { Business } from "@/types/business/type";
@@ -52,6 +59,7 @@ const BusinessForm = ({
 }) => {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
 
   const form = useForm<z.infer<typeof BusinessSchema>>({
     resolver: zodResolver(BusinessSchema),
@@ -115,265 +123,293 @@ const BusinessForm = ({
         className="mx-auto space-y-8"
       >
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="w-5 h-5" />
-              Basic Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Business Name</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Enter business name"
+          <CardContent className="pt-6 space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Basic Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Business Name</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Enter business name"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="businessType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Business Type</FormLabel>
+                      <FormControl>
+                        <BusinessTypeSelector
+                          value={field.value}
+                          onChange={field.onChange}
+                          onBlur={field.onBlur}
+                          isRequired
+                          isDisabled={isPending}
+                          label="Business Type"
+                          placeholder="Select business type"
                         />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="businessType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Business Type</FormLabel>
-                    <FormControl>
-                      <BusinessTypeSelector
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isRequired
-                        isDisabled={isPending}
-                        label="Business Type"
-                        placeholder="Select business type"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Country</FormLabel>
+                      <FormControl>
+                        <CountrySelector
+                          {...field}
+                          isDisabled={isPending}
+                          label="Select business country"
+                          placeholder="Select country"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="country"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Country</FormLabel>
-                    <FormControl>
-                      <CountrySelector
-                        {...field}
-                        isDisabled={isPending}
-                        label="Select business country"
-                        placeholder="Select country"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="notificationEmailAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notification Email</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="notificationEmailAddress"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notification Email</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
                           {...field}
                           disabled={isPending}
                           value={field.value || ""}
-                          // onChange={}
+                          placeholder="Describe your business"
+                          className="min-h-[100px]"
                         />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        {...field}
-                        disabled={isPending}
-                        value={field.value || ""}
-                        placeholder="Describe your business location"
-                        className="min-h-[100px]"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
-          </CardContent>
-        </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Social Media Links
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="instagram"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Instagram</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Instagram className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          // onChange={}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="twitter"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Twitter</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <X className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          // onChange={}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="facebook"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Facebook</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Facebook className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          // onChange={}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="youtube"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Youtube</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Youtube className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          // onChange={}
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <Separator />
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Social Media Links</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="instagram"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Instagram</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Instagram className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="twitter"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Twitter</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <X className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="facebook"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Facebook</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Facebook className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="youtube"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Youtube</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Youtube className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-6">
+              {isPending ? (
+                <Button disabled className="w-full md:w-auto">
+                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                  {item ? "Updating..." : "Processing..."}
+                </Button>
+              ) : (
+                <Button type="submit" className="w-full md:w-auto">
+                  {item ? "Update Business" : submitButtonText}
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
 
         {item && (
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div>
-                  <FormLabel className="text-base">Business Status</FormLabel>
-                  <FormDescription>
-                    Enable or disable this business{" "}
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
-                    disabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+          <Card className="rounded-xl border border-red-200 shadow-sm">
+            <CardContent className="p-6">
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <>
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <div>
+                        <FormLabel className="text-base">Business Status</FormLabel>
+                        <FormDescription>
+                          This business is currently{" "}
+                          <span className={field.value ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                            {field.value ? "enabled" : "disabled"}
+                          </span>
+                        </FormDescription>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={field.value ? "destructive" : "default"}
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => setShowStatusDialog(true)}
+                      >
+                        {field.value ? "Disable" : "Enable"}
+                      </Button>
+                      <FormMessage />
+                    </FormItem>
 
-        <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
-          <CancelButton />
-          <Separator orientation="vertical" />
-          <Button type="submit" disabled={isPending} className="h-11">
-            {isPending ? (
-              <div className="flex items-center gap-2">
-                <Loader2Icon className="h-4 w-4 animate-spin" />
-                Processing
-              </div>
-            ) : item ? (
-              "Update business"
-            ) : (
-              submitButtonText
-            )}
-          </Button>
-        </div>
+                    <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>
+                            {field.value ? "Disable" : "Enable"} Business
+                          </DialogTitle>
+                          <DialogDescription>
+                            {field.value
+                              ? "Are you sure you want to disable this business? This will make it inactive and may affect all associated locations and services."
+                              : "Are you sure you want to enable this business? This will make it active again."}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowStatusDialog(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={field.value ? "destructive" : "default"}
+                            onClick={() => {
+                              field.onChange(!field.value);
+                              setShowStatusDialog(false);
+                            }}
+                          >
+                            {field.value ? "Disable" : "Enable"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
       </form>
     </Form>
   );

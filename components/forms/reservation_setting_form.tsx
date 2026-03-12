@@ -38,6 +38,12 @@ import {
 } from "@/lib/actions/reservation-setting-actions";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
+// Convert null values to undefined so they match the Zod schema types
+const stripNulls = <T extends Record<string, unknown>>(obj: T) =>
+  Object.fromEntries(
+    Object.entries(obj).map(([k, v]) => [k, v === null ? undefined : v]),
+  ) as { [K in keyof T]: Exclude<T[K], null> | (null extends T[K] ? undefined : never) };
+
 const DEFAULTS: Partial<ReservationSetting> = {
   minPartySize: 1,
   bookingWindowDays: 30,
@@ -95,12 +101,12 @@ const ReservationSettingForm = ({
 
   const form = useForm<z.infer<typeof ReservationSettingSchema>>({
     resolver: zodResolver(ReservationSettingSchema),
-    defaultValues: item ? { ...DEFAULTS, ...item } : DEFAULTS,
+    defaultValues: item ? { ...DEFAULTS, ...stripNulls(item) } : DEFAULTS,
   });
 
   useEffect(() => {
     if (item) {
-      form.reset({ ...DEFAULTS, ...item });
+      form.reset({ ...DEFAULTS, ...stripNulls(item) });
     }
     setIsLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
