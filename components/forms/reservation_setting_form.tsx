@@ -38,8 +38,23 @@ import {
 } from "@/lib/actions/reservation-setting-actions";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
-const DEFAULTS: Partial<ReservationSetting> = {
+// Helper function to convert null to undefined recursively
+const nullToUndefined = <T extends Record<string, any>>(
+  obj: T,
+): Partial<z.infer<typeof ReservationSettingSchema>> => {
+  if (!obj) return {};
+
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => [
+      key,
+      value === null ? undefined : value,
+    ]),
+  ) as Partial<z.infer<typeof ReservationSettingSchema>>;
+};
+
+const DEFAULTS: z.infer<typeof ReservationSettingSchema> = {
   minPartySize: 1,
+  maxPartySize: undefined,
   bookingWindowDays: 30,
   minAdvanceBookingHours: 1,
   defaultDurationMinutes: 90,
@@ -49,19 +64,31 @@ const DEFAULTS: Partial<ReservationSetting> = {
   requireGuestPhone: false,
   allowSpecialRequests: true,
   autoConfirm: false,
+  autoConfirmMaxPartySize: undefined,
   requireDeposit: false,
+  defaultDepositAmount: undefined,
   depositPerGuest: false,
+  depositRequiredMinPartySize: undefined,
+  cancellationPolicyHours: undefined,
   allowOnlineCancellation: true,
+  cancellationPolicyText: undefined,
   chargeNoShowFee: false,
+  noShowFeeAmount: undefined,
   sendConfirmationEmail: true,
   sendConfirmationSms: false,
   sendReminderNotification: true,
   reminderHoursBeforeReservation: 24,
   defaultTurnTimeMinutes: 15,
   bufferMinutesBetweenSeatings: 0,
+  maxDailyReservations: undefined,
+  maxDailyGuests: undefined,
   enableWaitlist: false,
+  maxWaitlistSize: undefined,
   autoAssignTable: true,
   allowGuestTablePreference: false,
+  confirmationMessage: undefined,
+  bookingPageWelcomeMessage: undefined,
+  termsAndConditions: undefined,
 };
 
 const groupByCategory = (fields: ReservationSettingField[]) =>
@@ -93,14 +120,15 @@ const ReservationSettingForm = ({
   const [, setResponse] = useState<FormResponse | undefined>();
   const isNew = !item?.id;
 
+  // Transform the item data to convert null to undefined
   const form = useForm<z.infer<typeof ReservationSettingSchema>>({
     resolver: zodResolver(ReservationSettingSchema),
-    defaultValues: item ? { ...DEFAULTS, ...item } : DEFAULTS,
+    defaultValues: item ? { ...DEFAULTS, ...nullToUndefined(item) } : DEFAULTS,
   });
 
   useEffect(() => {
     if (item) {
-      form.reset({ ...DEFAULTS, ...item });
+      form.reset({ ...DEFAULTS, ...nullToUndefined(item) });
     }
     setIsLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -318,7 +346,10 @@ const ReservationSettingForm = ({
 
   const orderedGroups = categoryOrder
     .filter((cat) => settingsGroups[cat])
-    .map((cat) => [cat, settingsGroups[cat]] as [string, ReservationSettingField[]]);
+    .map(
+      (cat) =>
+        [cat, settingsGroups[cat]] as [string, ReservationSettingField[]],
+    );
 
   return (
     <Card>
@@ -333,7 +364,9 @@ const ReservationSettingForm = ({
               control={form.control}
               name="enableOnlineBooking"
               render={({ field: formField }) => (
-                <FormItem className={`flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4 transition-colors ${formField.value ? "border-[#EB7F44]/30 bg-[#EB7F44]/5" : ""}`}>
+                <FormItem
+                  className={`flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4 transition-colors ${formField.value ? "border-[#EB7F44]/30 bg-[#EB7F44]/5" : ""}`}
+                >
                   <div className="space-y-0.5">
                     <FormLabel className="text-sm font-medium cursor-pointer">
                       Enable Online Booking
@@ -350,8 +383,12 @@ const ReservationSettingForm = ({
                         if (!checked) {
                           // Merge defaults with current values so required fields are always populated
                           const currentValues = form.getValues();
-                          const payload = { ...DEFAULTS, ...currentValues, enableOnlineBooking: false };
-                          submitData(payload as any);
+                          const payload = {
+                            ...DEFAULTS,
+                            ...currentValues,
+                            enableOnlineBooking: false,
+                          };
+                          submitData(payload);
                         }
                       }}
                       disabled={isPending}
@@ -364,7 +401,8 @@ const ReservationSettingForm = ({
             {!isOnlineBookingEnabled && (
               <div className="rounded-lg border border-dashed border-[#EB7F44]/30 bg-[#EB7F44]/5 p-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Online booking is disabled. Enable it to configure booking rules, policies, and more.
+                  Online booking is disabled. Enable it to configure booking
+                  rules, policies, and more.
                 </p>
               </div>
             )}
@@ -398,7 +436,10 @@ const ReservationSettingForm = ({
                   {isNew ? "Creating Settings..." : "Updating Settings..."}
                 </Button>
               ) : (
-                <Button type="submit" className="w-full md:w-auto hover:opacity-90">
+                <Button
+                  type="submit"
+                  className="w-full md:w-auto hover:opacity-90"
+                >
                   {isNew ? "Create Settings" : "Update Settings"}
                 </Button>
               )}

@@ -42,6 +42,7 @@ import {
   Phone,
   Mail,
   UserCircle2,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
@@ -55,6 +56,7 @@ import {
   addItemsToProforma,
   removeItemsToProforma,
   updateProforma,
+  editItemPriceOrQuantityToProforma,
 } from "@/lib/actions/proforma-actions";
 import { searchDiscount } from "@/lib/actions/discount-actions";
 import { Proforma } from "@/types/proforma/type";
@@ -117,7 +119,7 @@ interface ProformaInvoiceFormProps {
   item?: Proforma | null;
 }
 
-// ─── Customer Schema (inline, mirrors your server schema) ─────────────────────
+// ─── Customer Schema ──────────────────────────────────────────────────────────
 
 const CustomerSchema = z.object({
   firstName: z
@@ -160,11 +162,16 @@ function StepIndicator({ current }: { current: number }) {
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all duration-300 ${
                   done
-                    ? "bg-green-500 text-white"
+                    ? "bg-gray-700 text-white"
                     : active
-                      ? "bg-blue-600 text-white shadow-lg shadow-blue-200"
+                      ? "bg-gray-700 text-white shadow-lg"
                       : "bg-gray-100 text-gray-400"
                 }`}
+                style={
+                  active
+                    ? { boxShadow: "0 4px 14px rgba(0,0,0,0.1)" }
+                    : undefined
+                }
               >
                 {done ? (
                   <Check className="w-4 h-4" />
@@ -174,11 +181,7 @@ function StepIndicator({ current }: { current: number }) {
               </div>
               <span
                 className={`text-xs font-medium ${
-                  active
-                    ? "text-blue-600"
-                    : done
-                      ? "text-green-600"
-                      : "text-gray-400"
+                  active || done ? "text-gray-700" : "text-gray-400"
                 }`}
               >
                 {s.label}
@@ -187,7 +190,7 @@ function StepIndicator({ current }: { current: number }) {
             {i < STEPS.length - 1 && (
               <div
                 className={`h-0.5 w-16 mx-2 mb-4 transition-all duration-500 ${
-                  current > s.num ? "bg-green-400" : "bg-gray-200"
+                  current > s.num ? "bg-gray-700" : "bg-gray-200"
                 }`}
               />
             )}
@@ -198,7 +201,7 @@ function StepIndicator({ current }: { current: number }) {
   );
 }
 
-// ─── Skeleton Helpers ─────────────────────────────────────────────────────────
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 function Skeleton({
   className = "",
@@ -219,7 +222,7 @@ function Skeleton({
 
 function ProformaPreviewSkeleton() {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 sticky top-4">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sticky top-4">
       <div className="flex justify-between items-start mb-5">
         <div className="flex items-start gap-3">
           <Skeleton className="w-10 h-10 rounded-lg shrink-0" />
@@ -239,7 +242,7 @@ function ProformaPreviewSkeleton() {
       <div className="mb-5">
         <Skeleton className="h-2 w-12 mb-2.5" />
         <div className="h-14 flex items-center justify-center border-2 border-dashed border-gray-100 rounded-lg">
-          <p className="text-gray-200 italic text-xs">
+          <p className="text-gray-300 italic text-xs">
             Customer details will appear here
           </p>
         </div>
@@ -284,6 +287,8 @@ function ProformaPreviewSkeleton() {
   );
 }
 
+// ─── Create Customer Modal ────────────────────────────────────────────────────
+
 function CreateCustomerModal({
   onCreated,
 }: {
@@ -293,7 +298,6 @@ function CreateCustomerModal({
   const [loadingPhase, setLoadingPhase] = useState<"idle" | "customer">("idle");
   const [serverError, setServerError] = useState<string | null>(null);
   const [successName, setSuccessName] = useState<string | null>(null);
-
   const isSubmitting = loadingPhase !== "idle";
 
   const {
@@ -311,7 +315,6 @@ function CreateCustomerModal({
   const onSubmit = async (values: CustomerFormValues) => {
     setServerError(null);
     setLoadingPhase("customer");
-
     try {
       const result = await createCustomer({
         ...values,
@@ -319,7 +322,6 @@ function CreateCustomerModal({
         allowNotifications: false,
         status: true,
       });
-
       if (result?.responseType === "error") {
         setServerError(result.message ?? "Failed to create customer");
         setLoadingPhase("idle");
@@ -334,8 +336,6 @@ function CreateCustomerModal({
       setLoadingPhase("idle");
       return;
     }
-
-    // Success — show message, auto-close after 4s
     setLoadingPhase("idle");
     setSuccessName(values.firstName);
     reset();
@@ -344,6 +344,7 @@ function CreateCustomerModal({
       setOpen(false);
     }, 4000);
   };
+
   return (
     <Dialog
       open={open}
@@ -361,7 +362,7 @@ function CreateCustomerModal({
           type="button"
           variant="outline"
           size="icon"
-          className="shrink-0 h-11 w-11 border-dashed border-blue-300 text-blue-500 hover:bg-blue-50 hover:border-blue-400"
+          className="shrink-0 h-11 w-11 border border-gray-200 text-gray-500 hover:bg-gray-50 hover:border-gray-300 hover:text-gray-700 transition-colors"
           title="Create new customer"
         >
           <UserPlus className="w-4 h-4" />
@@ -371,15 +372,14 @@ function CreateCustomerModal({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserCircle2 className="w-5 h-5 text-blue-500" />
+            <UserCircle2 className="w-5 h-5 text-gray-700" />
             New Customer
           </DialogTitle>
         </DialogHeader>
 
         {successName ? (
-          /* ── Success state ── */
           <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center">
+            <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center">
               <Check className="w-7 h-7 text-green-600" />
             </div>
             <div>
@@ -397,15 +397,12 @@ function CreateCustomerModal({
             </p>
           </div>
         ) : (
-          /* ── Form state ── */
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 mt-2">
             {serverError && (
               <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
                 {serverError}
               </div>
             )}
-
-            {/* Name row */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label
@@ -418,7 +415,7 @@ function CreateCustomerModal({
                   id="firstName"
                   placeholder="John"
                   {...register("firstName")}
-                  className={errors.firstName ? "border-red-300" : ""}
+                  className={`focus-visible:ring-gray-400 focus-visible:border-gray-400 ${errors.firstName ? "border-red-300" : "border-gray-200"}`}
                 />
                 {errors.firstName && (
                   <p className="text-xs text-red-500">
@@ -437,7 +434,7 @@ function CreateCustomerModal({
                   id="lastName"
                   placeholder="Doe"
                   {...register("lastName")}
-                  className={errors.lastName ? "border-red-300" : ""}
+                  className={`focus-visible:ring-gray-400 focus-visible:border-gray-400 ${errors.lastName ? "border-red-300" : "border-gray-200"}`}
                 />
                 {errors.lastName && (
                   <p className="text-xs text-red-500">
@@ -446,8 +443,6 @@ function CreateCustomerModal({
                 )}
               </div>
             </div>
-
-            {/* Phone */}
             <div className="space-y-1.5">
               <Label
                 htmlFor="phoneNumber"
@@ -461,7 +456,7 @@ function CreateCustomerModal({
                   id="phoneNumber"
                   placeholder="+255 712 345 678"
                   {...register("phoneNumber")}
-                  className={`pl-9 ${errors.phoneNumber ? "border-red-300" : ""}`}
+                  className={`pl-9 focus-visible:ring-gray-400 focus-visible:border-gray-400 ${errors.phoneNumber ? "border-red-300" : "border-gray-200"}`}
                 />
               </div>
               {errors.phoneNumber && (
@@ -470,8 +465,6 @@ function CreateCustomerModal({
                 </p>
               )}
             </div>
-
-            {/* Email */}
             <div className="space-y-1.5">
               <Label
                 htmlFor="email"
@@ -487,15 +480,13 @@ function CreateCustomerModal({
                   type="email"
                   placeholder="john@example.com"
                   {...register("email")}
-                  className={`pl-9 ${errors.email ? "border-red-300" : ""}`}
+                  className={`pl-9 focus-visible:ring-gray-400 focus-visible:border-gray-400 ${errors.email ? "border-red-300" : "border-gray-200"}`}
                 />
               </div>
               {errors.email && (
                 <p className="text-xs text-red-500">{errors.email.message}</p>
               )}
             </div>
-
-            {/* Gender */}
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-gray-700">
                 Gender <span className="text-red-400">*</span>
@@ -505,7 +496,7 @@ function CreateCustomerModal({
                 onValueChange={(v) => setValue("gender", v as Gender)}
               >
                 <SelectTrigger
-                  className={errors.gender ? "border-red-300" : ""}
+                  className={`focus:ring-gray-400 focus:border-gray-400 ${errors.gender ? "border-red-300" : "border-gray-200"}`}
                 >
                   <SelectValue placeholder="Select gender" />
                 </SelectTrigger>
@@ -518,22 +509,21 @@ function CreateCustomerModal({
                 <p className="text-xs text-red-500">{errors.gender.message}</p>
               )}
             </div>
-
             <Separator />
-
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setOpen(false)}
                 disabled={isSubmitting}
+                className="border-gray-200 text-gray-600 hover:bg-gray-50"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="bg-blue-600 hover:bg-blue-700 text-white min-w-[140px]"
+                className="bg-gray-700 hover:bg-gray-800 text-white min-w-[140px] shadow-sm"
               >
                 {loadingPhase === "customer" ? (
                   <>
@@ -554,7 +544,7 @@ function CreateCustomerModal({
   );
 }
 
-// ─── Existing Customer Row (with per-row loading state) ───────────────────────
+// ─── Existing Customer Row ────────────────────────────────────────────────────
 
 function ExistingCustomerRow({
   customer,
@@ -568,16 +558,16 @@ function ExistingCustomerRow({
     <button
       type="button"
       disabled={selecting}
-      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-blue-50 text-left border-b border-gray-50 last:border-0 transition-colors disabled:opacity-60"
+      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0 transition-colors disabled:opacity-60"
       onClick={async () => {
         setSelecting(true);
         await onSelect();
         setSelecting(false);
       }}
     >
-      <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-sm font-bold text-blue-600 shrink-0">
+      <div className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold text-gray-700 shrink-0 border border-gray-200">
         {selecting ? (
-          <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+          <Loader2 className="w-4 h-4 animate-spin text-gray-700" />
         ) : (
           <>
             {customer.firstName?.[0]}
@@ -595,7 +585,7 @@ function ExistingCustomerRow({
         </p>
       </div>
       {selecting ? (
-        <span className="text-[11px] text-blue-500 shrink-0">
+        <span className="text-[11px] text-gray-700 shrink-0">
           Creating proforma…
         </span>
       ) : (
@@ -605,7 +595,7 @@ function ExistingCustomerRow({
   );
 }
 
-// ─── Customer Search (with pagination + inline create) ────────────────────────
+// ─── Customer Search ──────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 15;
 
@@ -622,7 +612,6 @@ function CustomerSearch({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   const [totalCount, setTotalCount] = useState(0);
-
   const debounceRef = useRef<NodeJS.Timeout>();
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -630,12 +619,10 @@ function CustomerSearch({
   const search = useCallback(async (q: string, pageNum = 1, append = false) => {
     if (pageNum === 1) setLoading(true);
     else setLoadingMore(true);
-
     try {
       const res = await searchCustomer(q, pageNum, PAGE_SIZE);
       const content = res.content ?? [];
       const total = res.totalElements ?? content.length;
-
       setTotalCount(total);
       setResults((prev) => (append ? [...prev, ...content] : content));
       setHasMore(pageNum * PAGE_SIZE < total);
@@ -648,7 +635,6 @@ function CustomerSearch({
     }
   }, []);
 
-  // Debounced search on query change
   useEffect(() => {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -657,7 +643,6 @@ function CustomerSearch({
     }, 300);
   }, [query, search]);
 
-  // Close on outside click
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (
@@ -670,16 +655,13 @@ function CustomerSearch({
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // Infinite scroll inside dropdown
   const handleDropdownScroll = useCallback(() => {
     const el = dropdownRef.current;
     if (!el || loadingMore || !hasMore) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-    if (nearBottom) search(query, page + 1, true);
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 60)
+      search(query, page + 1, true);
   }, [loadingMore, hasMore, query, page, search]);
 
-  // Called by the modal after both createCustomer + createProforma have resolved.
-  // We just update the dropdown list — navigation is handled inside the modal.
   const handleNewCustomer = useCallback(
     async (customer: Customer): Promise<{ error?: string }> => {
       setResults((prev) => [customer, ...prev]);
@@ -690,7 +672,6 @@ function CustomerSearch({
 
   return (
     <div ref={containerRef} className="relative flex gap-2 items-start">
-      {/* Search input */}
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <Input
@@ -704,26 +685,21 @@ function CustomerSearch({
             setOpen(true);
             if (results.length === 0) search(query, 1, false);
           }}
-          className="pl-9 h-11"
+          className="pl-9 h-11 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400"
         />
         {loading && (
           <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
         )}
       </div>
-
-      {/* Create customer button */}
       <CreateCustomerModal onCreated={handleNewCustomer} />
-
-      {/* Dropdown */}
       {open && (
         <div
           ref={dropdownRef}
           onScroll={handleDropdownScroll}
           className="absolute left-0 z-50 w-[calc(100%-52px)] top-12 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-auto"
         >
-          {/* Result count */}
           {!loading && totalCount > 0 && (
-            <div className="px-4 py-2 border-b border-gray-50 flex items-center justify-between">
+            <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
               <span className="text-[11px] text-gray-400">
                 {totalCount.toLocaleString()} customer
                 {totalCount !== 1 ? "s" : ""} found
@@ -735,15 +711,13 @@ function CustomerSearch({
                     setQuery("");
                     search("", 1, false);
                   }}
-                  className="text-[11px] text-blue-500 hover:underline"
+                  className="text-[11px] text-gray-700 hover:underline"
                 >
                   Clear
                 </button>
               )}
             </div>
           )}
-
-          {/* Initial loading skeleton */}
           {loading && (
             <div className="p-2 space-y-1">
               {[1, 2, 3].map((n) => (
@@ -757,8 +731,6 @@ function CustomerSearch({
               ))}
             </div>
           )}
-
-          {/* No results */}
           {!loading && results.length === 0 && (
             <div className="py-8 flex flex-col items-center gap-2">
               <User className="w-8 h-8 text-gray-200" />
@@ -769,15 +741,13 @@ function CustomerSearch({
               </p>
               <p className="text-xs text-gray-300">
                 Use the{" "}
-                <span className="inline-flex items-center gap-0.5 text-blue-400">
+                <span className="inline-flex items-center gap-0.5 text-gray-700">
                   <UserPlus className="w-3 h-3" /> button
                 </span>{" "}
                 to create one
               </p>
             </div>
           )}
-
-          {/* Results list */}
           {results.map((c) => (
             <ExistingCustomerRow
               key={c.id}
@@ -789,17 +759,13 @@ function CustomerSearch({
               }}
             />
           ))}
-
-          {/* Load more spinner (infinite scroll sentinel) */}
           {loadingMore && (
-            <div className="py-3 flex justify-center border-t border-gray-50">
+            <div className="py-3 flex justify-center border-t border-gray-100">
               <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
             </div>
           )}
-
-          {/* End of list indicator */}
           {!loadingMore && !hasMore && results.length > PAGE_SIZE && (
-            <div className="py-2 text-center text-[11px] text-gray-300 border-t border-gray-50">
+            <div className="py-2 text-center text-[11px] text-gray-300 border-t border-gray-100">
               All {totalCount.toLocaleString()} customers loaded
             </div>
           )}
@@ -835,7 +801,6 @@ function ProductVariantSearch({
     "quantity" | "itemId"
   > | null>(null);
   const [qty, setQty] = useState(1);
-
   const debounceRef = useRef<NodeJS.Timeout>();
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -859,7 +824,6 @@ function ProductVariantSearch({
     }
   }, []);
 
-  // Debounced query search
   useEffect(() => {
     clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
@@ -867,7 +831,6 @@ function ProductVariantSearch({
     }, 300);
   }, [query, search, open]);
 
-  // Click-outside close
   useEffect(() => {
     const h = (e: MouseEvent) => {
       if (
@@ -880,12 +843,11 @@ function ProductVariantSearch({
     return () => document.removeEventListener("mousedown", h);
   }, []);
 
-  // Infinite scroll
   const handleDropdownScroll = useCallback(() => {
     const el = dropdownRef.current;
     if (!el || loadingMore || !hasMore) return;
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 60;
-    if (nearBottom) search(query, page + 1, true);
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 60)
+      search(query, page + 1, true);
   }, [loadingMore, hasMore, query, page, search]);
 
   const selectVariant = (p: Product, v: ProductVariant) => {
@@ -916,7 +878,6 @@ function ProductVariantSearch({
       minimumFractionDigits: 0,
     }).format(n);
 
-  // Flatten products → variant rows for rendering
   const rows: { product: Product; variant: ProductVariant }[] = results.flatMap(
     (p) =>
       p.variants && p.variants.length > 0
@@ -928,7 +889,6 @@ function ProductVariantSearch({
     <div ref={containerRef} className="space-y-3">
       {!pending ? (
         <>
-          {/* Search input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <Input
@@ -942,36 +902,32 @@ function ProductVariantSearch({
                 setOpen(true);
                 if (results.length === 0) search(query, 1, false);
               }}
-              className="pl-9 h-11"
+              className="pl-9 h-11 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400"
             />
             {loading && (
               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 animate-spin" />
             )}
           </div>
-
           {open && (
             <div
               ref={dropdownRef}
               onScroll={handleDropdownScroll}
               className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl max-h-72 overflow-auto"
             >
-              {/* Result count badge */}
               {!loading && totalCount > 0 && (
-                <div className="px-4 py-2 border-b border-gray-50 flex items-center justify-between">
+                <div className="px-4 py-2 border-b border-gray-100 flex items-center justify-between">
                   <span className="text-[11px] text-gray-400">
                     {totalCount.toLocaleString()} product
                     {totalCount !== 1 ? "s" : ""}
                     {query ? ` matching "${query}"` : ""}
                   </span>
                   {hasMore && (
-                    <span className="text-[11px] text-blue-400">
+                    <span className="text-[11px] text-gray-700">
                       Scroll for more
                     </span>
                   )}
                 </div>
               )}
-
-              {/* Skeleton rows during initial load */}
               {loading && (
                 <div className="divide-y divide-gray-50">
                   {Array.from({ length: 6 }).map((_, i) => (
@@ -986,8 +942,6 @@ function ProductVariantSearch({
                   ))}
                 </div>
               )}
-
-              {/* Empty state */}
               {!loading && rows.length === 0 && (
                 <div className="py-10 flex flex-col items-center gap-2 text-gray-300">
                   <Package className="w-8 h-8" />
@@ -996,8 +950,6 @@ function ProductVariantSearch({
                   </p>
                 </div>
               )}
-
-              {/* Result rows */}
               {!loading &&
                 rows.map(({ product: p, variant: v }) => {
                   const price = v.sellingPrice ?? v.price ?? 0;
@@ -1005,12 +957,12 @@ function ProductVariantSearch({
                     <button
                       key={v.id}
                       type="button"
-                      className="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-green-50 text-left border-b border-gray-50 last:border-0 transition-colors"
+                      className="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0 transition-colors"
                       onClick={() => selectVariant(p, v)}
                     >
                       <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center shrink-0">
-                          <Package className="w-3.5 h-3.5 text-green-600" />
+                        <div className="w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center shrink-0">
+                          <Package className="w-3.5 h-3.5 text-gray-700" />
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm text-gray-900 truncate font-medium">
@@ -1031,17 +983,13 @@ function ProductVariantSearch({
                     </button>
                   );
                 })}
-
-              {/* Infinite scroll sentinel */}
               {loadingMore && (
-                <div className="py-3 flex justify-center border-t border-gray-50">
+                <div className="py-3 flex justify-center border-t border-gray-100">
                   <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                 </div>
               )}
-
-              {/* End of list */}
               {!loadingMore && !hasMore && rows.length > PRODUCT_PAGE_SIZE && (
-                <div className="py-2 text-center text-[11px] text-gray-300 border-t border-gray-50">
+                <div className="py-2 text-center text-[11px] text-gray-300 border-t border-gray-100">
                   All {totalCount.toLocaleString()} products loaded
                 </div>
               )}
@@ -1049,8 +997,7 @@ function ProductVariantSearch({
           )}
         </>
       ) : (
-        /* ── Confirm panel ── */
-        <div className="border-2 border-green-200 bg-green-50 rounded-xl p-4 space-y-4">
+        <div className="border border-gray-200 bg-gray-50 rounded-xl p-4 space-y-4">
           <div className="flex items-start justify-between">
             <div>
               <p className="font-semibold text-gray-900 text-sm">
@@ -1064,7 +1011,9 @@ function ProductVariantSearch({
               </p>
               <p className="text-xs text-gray-500 mt-0.5">
                 Unit price:{" "}
-                <span className="font-semibold">{fmt(pending.unitPrice)}</span>
+                <span className="font-semibold text-gray-700">
+                  {fmt(pending.unitPrice)}
+                </span>
               </p>
             </div>
             <button
@@ -1076,10 +1025,8 @@ function ProductVariantSearch({
               <X className="w-4 h-4" />
             </button>
           </div>
-
-          {/* Quantity selector */}
           <div className="flex items-center gap-4">
-            <div className="flex items-center border bg-white rounded-lg overflow-hidden shadow-sm">
+            <div className="flex items-center border border-gray-200 bg-white rounded-lg overflow-hidden shadow-sm">
               <button
                 type="button"
                 disabled={adding}
@@ -1114,11 +1061,9 @@ function ProductVariantSearch({
               </span>
             </div>
           </div>
-
-          {/* Confirm button */}
           <Button
             type="button"
-            className="w-full bg-green-600 hover:bg-green-700 text-white"
+            className="w-full bg-gray-700 hover:bg-gray-800 text-white shadow-sm"
             onClick={handleConfirm}
             disabled={adding}
           >
@@ -1193,7 +1138,7 @@ function DiscountSearch({ onSelect }: { onSelect: (d: Discount) => void }) {
             setOpen(true);
             if (!query) search("");
           }}
-          className="pl-9 h-10"
+          className="pl-9 h-10 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400"
         />
       </div>
       {open && (
@@ -1221,7 +1166,7 @@ function DiscountSearch({ onSelect }: { onSelect: (d: Discount) => void }) {
               <button
                 key={d.id}
                 type="button"
-                className="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-blue-50 text-left border-b border-gray-50 last:border-0 transition-colors"
+                className="w-full flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-gray-50 text-left border-b border-gray-100 last:border-0 transition-colors"
                 onClick={() => {
                   onSelect(d);
                   setQuery(d.name);
@@ -1229,10 +1174,10 @@ function DiscountSearch({ onSelect }: { onSelect: (d: Discount) => void }) {
                 }}
               >
                 <div className="flex items-center gap-2">
-                  <PercentIcon className="w-4 h-4 text-blue-400 shrink-0" />
+                  <PercentIcon className="w-4 h-4 text-gray-700 shrink-0" />
                   <span className="text-sm text-gray-900">{d.name}</span>
                 </div>
-                <span className="text-sm font-bold text-blue-600 shrink-0">
+                <span className="text-sm font-bold text-gray-700 shrink-0">
                   {valueLabel}
                 </span>
               </button>
@@ -1240,6 +1185,164 @@ function DiscountSearch({ onSelect }: { onSelect: (d: Discount) => void }) {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Edit Item Panel ──────────────────────────────────────────────────────────
+
+function EditItemPanel({
+  item,
+  onSave,
+  onCancel,
+}: {
+  item: LineItem;
+  onSave: (
+    itemId: string,
+    quantity: number,
+    unitCustomPrice: number,
+  ) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [qty, setQty] = useState(item.quantity);
+  const [customPrice, setCustomPrice] = useState<string>(
+    String(item.unitPrice),
+  );
+  const [saving, setSaving] = useState(false);
+
+  const unitPrice = parseFloat(customPrice) || 0;
+  const priceChanged = unitPrice !== item.unitPrice;
+  const qtyChanged = qty !== item.quantity;
+  const hasChanges = priceChanged || qtyChanged;
+
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: "TZS",
+      minimumFractionDigits: 0,
+    }).format(n);
+
+  const handleSave = async () => {
+    if (!hasChanges) return;
+    setSaving(true);
+    await onSave(item.itemId, qty, unitPrice);
+    setSaving(false);
+  };
+
+  return (
+    <div className="mt-1 mb-2 p-4 rounded-xl border border-gray-200 bg-gray-50 space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-md bg-white border border-gray-200 flex items-center justify-center">
+            <Pencil className="w-3 h-3 text-gray-700" />
+          </div>
+          <p className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
+            Edit Item
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onCancel}
+          disabled={saving}
+          className="text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-gray-600">Quantity</label>
+          <div className="flex items-center border border-gray-200 bg-white rounded-lg overflow-hidden shadow-sm">
+            <button
+              type="button"
+              disabled={saving || qty <= 1}
+              className="px-3 py-2 text-gray-500 hover:bg-gray-50 text-lg font-medium disabled:opacity-40 transition-colors"
+              onClick={() => setQty(Math.max(1, qty - 1))}
+            >
+              −
+            </button>
+            <input
+              type="number"
+              min={1}
+              value={qty}
+              disabled={saving}
+              onChange={(e) =>
+                setQty(Math.max(1, parseInt(e.target.value) || 1))
+              }
+              className="w-full text-center text-sm font-bold border-x py-2 focus:outline-none disabled:bg-gray-50"
+            />
+            <button
+              type="button"
+              disabled={saving}
+              className="px-3 py-2 text-gray-500 hover:bg-gray-50 text-lg font-medium disabled:opacity-40 transition-colors"
+              onClick={() => setQty(qty + 1)}
+            >
+              +
+            </button>
+          </div>
+          {qtyChanged && (
+            <p className="text-[10px] text-gray-700">Was: {item.quantity}</p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-gray-600">
+            Unit Price
+          </label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400 font-medium">
+              TZS
+            </span>
+            <Input
+              type="number"
+              min={0}
+              value={customPrice}
+              disabled={saving}
+              onChange={(e) => setCustomPrice(e.target.value)}
+              className="pl-10 h-[38px] bg-white text-sm border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400"
+              placeholder="0"
+            />
+          </div>
+          {priceChanged && (
+            <p className="text-[10px] text-gray-700">
+              Was: {fmt(item.unitPrice)}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 text-sm">
+        <span className="text-gray-500 text-xs">New Line Total</span>
+        <span className="font-bold text-gray-900">{fmt(unitPrice * qty)}</span>
+      </div>
+
+      <div className="flex gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          className="flex-1 h-9 text-sm border-gray-200 text-gray-600 hover:bg-gray-50"
+          onClick={onCancel}
+          disabled={saving}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          className="flex-1 h-9 text-sm bg-gray-700 hover:bg-gray-800 text-white shadow-sm disabled:opacity-50"
+          onClick={handleSave}
+          disabled={saving || !hasChanges}
+        >
+          {saving ? (
+            <>
+              <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving…
+            </>
+          ) : (
+            <>
+              <Check className="w-3.5 h-3.5 mr-1.5" /> Save Changes
+            </>
+          )}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -1331,6 +1434,7 @@ function DetailsStep({
         </p>
       </div>
 
+      {/* Note */}
       <div className="space-y-1.5">
         <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
           <FileText className="w-4 h-4 text-gray-400" /> Note{" "}
@@ -1343,11 +1447,12 @@ function DetailsStep({
             setNote(e.target.value);
             setSaved(false);
           }}
-          className="resize-none text-sm"
+          className="resize-none text-sm border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400"
           rows={3}
         />
       </div>
 
+      {/* Expires At */}
       <div className="space-y-1.5">
         <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700">
           <CalendarDays className="w-4 h-4 text-gray-400" /> Expires At{" "}
@@ -1360,12 +1465,13 @@ function DetailsStep({
             setExpiresAt(e.target.value);
             setSaved(false);
           }}
-          className="h-10"
+          className="h-10 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400"
         />
       </div>
 
-      <Separator />
+      <Separator className="bg-gray-200" />
 
+      {/* Discount toggle */}
       <div className="space-y-3">
         <p className="text-sm font-medium text-gray-700">Apply a discount?</p>
         <div className="grid grid-cols-2 gap-3">
@@ -1388,10 +1494,22 @@ function DetailsStep({
                 setApplyDiscount(opt.value);
                 setSaved(false);
               }}
-              className={`p-3.5 rounded-xl border-2 text-left transition-all ${applyDiscount === opt.value ? (opt.value ? "border-blue-500 bg-blue-50" : "border-gray-400 bg-gray-50") : "border-gray-200 hover:border-gray-300"}`}
+              className={`p-3.5 rounded-xl border-2 text-left transition-all ${
+                applyDiscount === opt.value
+                  ? opt.value
+                    ? "border-gray-700 bg-gray-50"
+                    : "border-gray-300 bg-gray-50"
+                  : "border-gray-200 hover:border-gray-300 bg-white"
+              }`}
             >
               <p
-                className={`text-sm font-semibold ${applyDiscount === opt.value ? (opt.value ? "text-blue-700" : "text-gray-800") : "text-gray-600"}`}
+                className={`text-sm font-semibold ${
+                  applyDiscount === opt.value
+                    ? opt.value
+                      ? "text-gray-700"
+                      : "text-gray-800"
+                    : "text-gray-600"
+                }`}
               >
                 {opt.label}
               </p>
@@ -1403,7 +1521,8 @@ function DetailsStep({
 
       {applyDiscount === true && (
         <div className="space-y-4">
-          <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+          {/* Source toggle */}
+          <div className="flex gap-1 p-1 bg-gray-100 rounded-lg">
             {(["api", "manual"] as const).map((src) => (
               <button
                 key={src}
@@ -1414,7 +1533,11 @@ function DetailsStep({
                   setManualAmount("");
                   setSaved(false);
                 }}
-                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${discountSource === src ? "bg-white shadow text-gray-900" : "text-gray-500"}`}
+                className={`flex-1 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  discountSource === src
+                    ? "bg-white shadow text-gray-900"
+                    : "text-gray-500 hover:text-gray-700"
+                }`}
               >
                 {src === "api"
                   ? "From available discounts"
@@ -1432,14 +1555,14 @@ function DetailsStep({
                 }}
               />
               {selectedDiscount && (
-                <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
                   <div className="flex items-center gap-2">
-                    <PercentIcon className="w-4 h-4 text-blue-500" />
+                    <PercentIcon className="w-4 h-4 text-gray-700" />
                     <div>
-                      <p className="text-sm font-semibold text-blue-800">
+                      <p className="text-sm font-semibold text-gray-900">
                         {selectedDiscount.name}
                       </p>
-                      <p className="text-xs text-blue-500">
+                      <p className="text-xs text-gray-700">
                         {selectedDiscount.discountType === "PERCENTAGE"
                           ? `${selectedDiscount.discountValue}% off`
                           : fmt(selectedDiscount.discountValue) + " off"}
@@ -1452,7 +1575,7 @@ function DetailsStep({
                       setSelectedDiscount(null);
                       setSaved(false);
                     }}
-                    className="text-blue-300 hover:text-blue-600"
+                    className="text-gray-400 hover:text-gray-600"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -1472,13 +1595,13 @@ function DetailsStep({
                   setManualAmount(e.target.value);
                   setSaved(false);
                 }}
-                className="pl-12 h-10"
+                className="pl-12 h-10 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400"
               />
             </div>
           )}
 
           {effectiveDiscountAmount > 0 && (
-            <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 space-y-2 text-sm">
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2 text-sm">
               <div className="flex justify-between text-gray-500">
                 <span>Gross Total</span>
                 <span>{fmt(grossTotal)}</span>
@@ -1498,7 +1621,7 @@ function DetailsStep({
 
       <Button
         type="button"
-        className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11"
+        className="w-full bg-gray-700 hover:bg-gray-800 text-white h-11 shadow-sm font-medium"
         disabled={pending || !canSave}
         onClick={handleSave}
       >
@@ -1512,15 +1635,21 @@ function DetailsStep({
           "Save Details"
         )}
       </Button>
+
       {saved && (
-        <div className="flex items-center gap-2 text-green-600 text-sm font-medium bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+        <div className="flex items-center gap-2 text-green-700 text-sm font-medium bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
           <Check className="w-4 h-4" /> Details{" "}
           {isEditing ? "updated" : "saved"} successfully
         </div>
       )}
 
       <div className="flex justify-between pt-1">
-        <Button variant="outline" type="button" onClick={onBack}>
+        <Button
+          variant="outline"
+          type="button"
+          onClick={onBack}
+          className="border-gray-200 text-gray-600 hover:bg-gray-50"
+        >
           Back
         </Button>
       </div>
@@ -1558,7 +1687,7 @@ function ProformaPreview({ state }: { state: ProformaState }) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 text-[12.5px] sticky top-4 transition-all duration-300">
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-[12.5px] sticky top-4 transition-all duration-300">
       <div className="flex justify-between items-start mb-5">
         <div className="flex items-start gap-3">
           {state.business?.locationLogo && (
@@ -1595,7 +1724,7 @@ function ProformaPreview({ state }: { state: ProformaState }) {
           </div>
         </div>
         <div className="text-right shrink-0">
-          <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-1 rounded-md">
+          <span className="inline-block text-[10px] font-bold uppercase tracking-widest text-gray-700 bg-gray-100 px-2 py-1 rounded-md border border-gray-200">
             Proforma Invoice
           </span>
           {state.proformaNumber ? (
@@ -1618,10 +1747,10 @@ function ProformaPreview({ state }: { state: ProformaState }) {
         </div>
       </div>
 
-      <Separator className="mb-4" />
+      <Separator className="mb-4 bg-gray-100" />
 
       <div className="mb-5">
-        <p className="text-[10px] uppercase tracking-widest text-gray-300 font-semibold mb-1.5">
+        <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1.5">
           Bill To
         </p>
         <div className="space-y-0.5">
@@ -1641,7 +1770,7 @@ function ProformaPreview({ state }: { state: ProformaState }) {
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-100">
-              {["Item", "Price", "Qty", "Total"].map((h, i) => (
+              {["Item", "Qty", "Price", "Total"].map((h, i) => (
                 <th
                   key={h}
                   className={`pb-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold ${i === 0 ? "text-left" : "text-right"}`}
@@ -1706,16 +1835,16 @@ function ProformaPreview({ state }: { state: ProformaState }) {
       </div>
 
       {state.note && (
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-100">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
             Note
           </p>
           <p className="text-gray-600 text-[11px]">{state.note}</p>
         </div>
       )}
 
-      <Separator className="mb-3" />
-      <div className="mt-4 flex justify-between text-[10px] text-black">
+      <Separator className="mb-3 bg-gray-100" />
+      <div className="mt-4 flex justify-between text-[10px] text-gray-400">
         <span>Powered by Settlo Technologies Ltd</span>
         <span>v1.0.0</span>
       </div>
@@ -1731,6 +1860,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [detailsPending, setDetailsPending] = useState(false);
   const [removingIndex, setRemovingIndex] = useState<number | null>(null);
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   const [state, setState] = useState<ProformaState>(() => {
     if (!item) {
@@ -1781,20 +1911,16 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
     };
   });
 
-  // Returns { error } so CustomerSearch / CreateCustomerModal can surface failures.
   const handleCustomerSelect = useCallback(
     async (customer: Customer): Promise<{ error?: string }> => {
       setError(null);
-
       const result: void | FormResponse<any> = await createProforma({
         customer: customer.id,
       });
-
       if (result?.responseType === "error") {
         setError(result.message);
         return { error: result.message };
       }
-
       const proformaId = result?.data?.id;
       const proformaNumber = result?.data?.proformaNumber;
       if (!proformaId) {
@@ -1802,7 +1928,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         setError(msg);
         return { error: msg };
       }
-
       const business: BusinessInfo = {
         businessName: result.data.businessName ?? null,
         locationName: result.data.locationName ?? null,
@@ -1811,7 +1936,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         locationLogo: result.data.locationLogo ?? null,
         tinNumber: result.data.tinNumber ?? null,
       };
-
       setState((prev) => ({
         ...prev,
         id: proformaId,
@@ -1858,6 +1982,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       if (!state.id || !lineItem) return;
       setError(null);
       setRemovingIndex(index);
+      if (editingIndex === index) setEditingIndex(null);
       const result = await removeItemsToProforma(state.id, lineItem.itemId);
       setRemovingIndex(null);
       if (result?.responseType === "error") {
@@ -1871,7 +1996,36 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       }));
       toast.success("Item removed");
     },
-    [state.id, state.items],
+    [state.id, state.items, editingIndex],
+  );
+
+  const handleEditItem = useCallback(
+    async (itemId: string, quantity: number, unitCustomPrice: number) => {
+      if (!state.id) return;
+      setError(null);
+      const result = await editItemPriceOrQuantityToProforma(
+        state.id,
+        itemId,
+        quantity,
+        unitCustomPrice,
+      );
+      if (result?.responseType === "error") {
+        setError(result.message);
+        toast.error(result.message);
+        return;
+      }
+      setState((prev) => ({
+        ...prev,
+        items: prev.items.map((it) =>
+          it.itemId === itemId
+            ? { ...it, quantity, unitPrice: unitCustomPrice }
+            : it,
+        ),
+      }));
+      setEditingIndex(null);
+      toast.success("Item updated");
+    },
+    [state.id],
   );
 
   const handleSaveDetails = useCallback(
@@ -1896,19 +2050,12 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         setError(result.message);
         return;
       }
-
       const data = result?.data as Record<string, unknown> | undefined;
-
-      // Server returns:
-      //   appliedDiscountAmount = API discount portion (0 for manual)
-      //   manualDiscountAmount  = manual discount portion
-      //   totalDiscountAmount   = the sum of both — always correct for the preview
       const appliedDiscount =
         typeof data?.totalDiscountAmount === "number" &&
         data.totalDiscountAmount > 0
           ? data.totalDiscountAmount
           : opts.manualDiscountAmount;
-
       setState((prev) => ({
         ...prev,
         note: opts.note,
@@ -1926,15 +2073,25 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
     (s, it) => s + it.unitPrice * it.quantity,
     0,
   );
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("en", {
+      style: "currency",
+      currency: "TZS",
+      minimumFractionDigits: 0,
+    }).format(n);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-      <Card>
+      {/* ── Form Card ── */}
+      <Card className="border-gray-200 shadow-sm bg-white">
         <CardContent className="pt-6">
           <StepIndicator current={step} />
 
           {error && (
-            <Alert variant="destructive" className="mb-5">
+            <Alert
+              variant="destructive"
+              className="mb-5 border-red-200 bg-red-50 text-red-700"
+            >
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -1968,14 +2125,13 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                 </p>
               </div>
 
-              {/* Selected customer — same card style as line items */}
               {state.customer && (
-                <div className="flex items-center gap-3 p-3 rounded-lg border bg-blue-50 border-blue-100">
-                  <div className="w-7 h-7 rounded-md bg-blue-600 flex items-center justify-center shrink-0">
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50">
+                  <div className="w-7 h-7 rounded-lg bg-gray-700 flex items-center justify-center shrink-0">
                     <User className="w-3.5 h-3.5 text-white" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
                       {state.customer.firstName} {state.customer.lastName}
                     </p>
                     <p className="text-xs text-gray-400 truncate">
@@ -1983,7 +2139,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                       {state.customer.email ? ` · ${state.customer.email}` : ""}
                     </p>
                   </div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-blue-500 bg-blue-100 rounded px-1.5 py-0.5 shrink-0">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-700 bg-white border border-gray-200 rounded px-1.5 py-0.5 shrink-0">
                     Customer
                   </span>
                 </div>
@@ -1993,88 +2149,108 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                 <ProductVariantSearch onAdd={handleAddItem} />
               </div>
 
-              {/* Items list */}
               {state.items.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-8 border-2 border-dashed border-gray-100 rounded-xl text-gray-300">
+                <div className="flex flex-col items-center gap-2 py-8 border-2 border-dashed border-gray-200 rounded-xl text-gray-300">
                   <ShoppingCart className="w-8 h-8" />
                   <p className="text-xs">
                     No items yet — search above to add products
                   </p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between mb-2">
                     <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                       Added items
                     </p>
-                    <span className="text-xs font-bold text-blue-600 bg-blue-50 rounded-full px-2.5 py-0.5">
+                    <span className="text-xs font-bold text-gray-700 bg-gray-100 border border-gray-200 rounded-full px-2.5 py-0.5">
                       {state.items.length}
                     </span>
                   </div>
+
                   {state.items.map((it, i) => (
-                    <div
-                      key={it.itemId}
-                      className={`flex items-center justify-between gap-3 p-3 rounded-lg border transition-all duration-300 ${
-                        removingIndex === i
-                          ? "opacity-40 bg-red-50 border-red-100 scale-95"
-                          : "bg-gray-50 border-gray-100"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-7 h-7 rounded-md bg-green-100 flex items-center justify-center shrink-0">
-                          <Package className="w-3.5 h-3.5 text-green-600" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate">
-                            {it.productName}
-                            {it.variantName && (
-                              <span className="text-gray-400 font-normal">
-                                {" "}
-                                — {it.variantName}
+                    <div key={it.itemId}>
+                      <div
+                        className={`flex items-center justify-between gap-3 p-3 rounded-xl border transition-all duration-300 ${
+                          removingIndex === i
+                            ? "opacity-40 bg-red-50 border-red-100 scale-95"
+                            : editingIndex === i
+                              ? "bg-gray-50 border-gray-300"
+                              : "bg-gray-50 border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className="w-7 h-7 rounded-lg bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+                            <Package className="w-3.5 h-3.5 text-gray-700" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {it.productName}
+                              {it.variantName && (
+                                <span className="text-gray-400 font-normal">
+                                  {" "}
+                                  — {it.variantName}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {it.quantity} × {fmt(it.unitPrice)}
+                              {" = "}
+                              <span className="font-semibold text-gray-700">
+                                {fmt(it.unitPrice * it.quantity)}
                               </span>
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setEditingIndex(editingIndex === i ? null : i)
+                            }
+                            disabled={removingIndex !== null}
+                            title={
+                              editingIndex === i
+                                ? "Close editor"
+                                : "Edit quantity or price"
+                            }
+                            className={`p-1.5 rounded-lg transition-colors disabled:opacity-40 ${
+                              editingIndex === i
+                                ? "text-gray-700 bg-gray-100 border border-gray-200"
+                                : "text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                            }`}
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(i)}
+                            disabled={removingIndex !== null}
+                            title="Remove item"
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-40"
+                          >
+                            {removingIndex === i ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
                             )}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {it.quantity} ×{" "}
-                            {new Intl.NumberFormat("en", {
-                              style: "currency",
-                              currency: "TZS",
-                              minimumFractionDigits: 0,
-                            }).format(it.unitPrice)}
-                            {" = "}
-                            <span className="font-semibold text-gray-700">
-                              {new Intl.NumberFormat("en", {
-                                style: "currency",
-                                currency: "TZS",
-                                minimumFractionDigits: 0,
-                              }).format(it.unitPrice * it.quantity)}
-                            </span>
-                          </p>
+                          </button>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveItem(i)}
-                        disabled={removingIndex !== null}
-                        className="text-gray-300 hover:text-red-500 transition-colors shrink-0 disabled:opacity-40"
-                        title="Remove item"
-                      >
-                        {removingIndex === i ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-red-400" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                      </button>
+
+                      {editingIndex === i && state.id && (
+                        <EditItemPanel
+                          item={it}
+                          onSave={handleEditItem}
+                          onCancel={() => setEditingIndex(null)}
+                        />
+                      )}
                     </div>
                   ))}
-                  <div className="flex justify-between items-center pt-2 border-t border-gray-100 text-sm">
+
+                  <div className="flex justify-between items-center pt-3 border-t border-gray-200 text-sm mt-1">
                     <span className="text-gray-500">Gross Total</span>
                     <span className="font-bold text-gray-900">
-                      {new Intl.NumberFormat("en", {
-                        style: "currency",
-                        currency: "TZS",
-                        minimumFractionDigits: 0,
-                      }).format(grossTotal)}
+                      {fmt(grossTotal)}
                     </span>
                   </div>
                 </div>
@@ -2085,6 +2261,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                   variant="outline"
                   type="button"
                   onClick={() => setStep(item ? 3 : 1)}
+                  className="border-gray-200 text-gray-600 hover:bg-gray-50"
                 >
                   Back
                 </Button>
@@ -2092,7 +2269,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
                   type="button"
                   disabled={state.items.length === 0 || removingIndex !== null}
                   onClick={() => setStep(3)}
-                  className="bg-black text-white"
+                  className="bg-gray-700 hover:bg-gray-800 text-white shadow-sm"
                   title={
                     state.items.length === 0
                       ? "Add at least one item to continue"
@@ -2121,6 +2298,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         </CardContent>
       </Card>
 
+      {/* ── Preview ── */}
       <div className="hidden lg:block">
         <ProformaPreview state={state} />
       </div>

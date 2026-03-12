@@ -76,7 +76,7 @@ export const searchSpaces = async (
 export const createSpace = async (
   space: z.infer<typeof SpaceSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
+  // let formResponse: FormResponse | null = null;
   const validSpaceData = SpaceSchema.safeParse(space);
 
   if (!validSpaceData.success) {
@@ -102,10 +102,15 @@ export const createSpace = async (
     );
   } catch (error: unknown) {
     revalidatePath("/spaces");
-    return SettloErrorHandler.createErrorResponse(error, "Failed to create table/space");
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to create table/space",
+    );
   }
   revalidatePath("/spaces");
-  return SettloErrorHandler.createSuccessResponse("Table/space created successfully");
+  return SettloErrorHandler.createSuccessResponse(
+    "Table/space created successfully",
+  );
 };
 
 export const getSpace = async (id: UUID): Promise<ApiResponse<Space>> => {
@@ -161,10 +166,15 @@ export const updateSpace = async (
     );
   } catch (error: unknown) {
     revalidatePath("/spaces");
-    return SettloErrorHandler.createErrorResponse(error, "Failed to update table/space");
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to update table/space",
+    );
   }
   revalidatePath("/spaces");
-  return SettloErrorHandler.createSuccessResponse("Table/space updated successfully");
+  return SettloErrorHandler.createSuccessResponse(
+    "Table/space updated successfully",
+  );
 };
 
 export const deleteSpace = async (id: UUID): Promise<void> => {
@@ -218,10 +228,15 @@ export const createFloorPlan = async (
     );
   } catch (error: unknown) {
     revalidatePath("/spaces");
-    return SettloErrorHandler.createErrorResponse(error, "Failed to create floor plan");
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to create floor plan",
+    );
   }
   revalidatePath("/spaces");
-  return SettloErrorHandler.createSuccessResponse("Floor plan created successfully");
+  return SettloErrorHandler.createSuccessResponse(
+    "Floor plan created successfully",
+  );
 };
 
 export const updateFloorPlan = async (
@@ -247,10 +262,15 @@ export const updateFloorPlan = async (
     );
   } catch (error: unknown) {
     revalidatePath("/spaces");
-    return SettloErrorHandler.createErrorResponse(error, "Failed to update floor plan");
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to update floor plan",
+    );
   }
   revalidatePath("/spaces");
-  return SettloErrorHandler.createSuccessResponse("Floor plan updated successfully");
+  return SettloErrorHandler.createSuccessResponse(
+    "Floor plan updated successfully",
+  );
 };
 
 export const deleteFloorPlan = async (id: UUID): Promise<void> => {
@@ -275,9 +295,7 @@ export const fetchTableCombinations = async (): Promise<TableCombination[]> => {
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    const data = await apiClient.get(
-      `/api/table-combinations/${location?.id}`,
-    );
+    const data = await apiClient.get(`/api/table-combinations/${location?.id}`);
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -306,10 +324,15 @@ export const createTableCombination = async (
     );
   } catch (error: unknown) {
     revalidatePath("/spaces");
-    return SettloErrorHandler.createErrorResponse(error, "Failed to create table combination");
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to create table combination",
+    );
   }
   revalidatePath("/spaces");
-  return SettloErrorHandler.createSuccessResponse("Table combination created successfully");
+  return SettloErrorHandler.createSuccessResponse(
+    "Table combination created successfully",
+  );
 };
 
 export const updateTableCombination = async (
@@ -335,10 +358,15 @@ export const updateTableCombination = async (
     );
   } catch (error: unknown) {
     revalidatePath("/spaces");
-    return SettloErrorHandler.createErrorResponse(error, "Failed to update table combination");
+    return SettloErrorHandler.createErrorResponse(
+      error,
+      "Failed to update table combination",
+    );
   }
   revalidatePath("/spaces");
-  return SettloErrorHandler.createSuccessResponse("Table combination updated successfully");
+  return SettloErrorHandler.createSuccessResponse(
+    "Table combination updated successfully",
+  );
 };
 
 export const deleteTableCombination = async (id: UUID): Promise<void> => {
@@ -348,9 +376,7 @@ export const deleteTableCombination = async (id: UUID): Promise<void> => {
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    await apiClient.delete(
-      `/api/table-combinations/${location?.id}/${id}`,
-    );
+    await apiClient.delete(`/api/table-combinations/${location?.id}/${id}`);
     revalidatePath("/spaces");
   } catch (error) {
     throw error;
