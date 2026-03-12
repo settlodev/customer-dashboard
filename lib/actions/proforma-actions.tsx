@@ -63,17 +63,28 @@ export const searchProformaInvoices = async (
 };
 
 export const getProforma = async (id: UUID): Promise<Proforma | null> => {
+  const location = await getCurrentLocation();
+
   try {
     const apiClient = new ApiClient();
 
     const response = await apiClient.get(
-      `/api/public/location/order-proforma/${id}`,
+      `/api/location/${location?.id}/order-proforma/${id}`,
     );
-    if (!response) return null;
-
     return parseStringify(response) as Proforma;
   } catch (error) {
     console.error(`[getProforma] Error fetching proforma ${id}:`, error);
+    throw error;
+  }
+};
+export const sharedProforma = async (id: UUID) => {
+  const apiClient = new ApiClient();
+  try {
+    const proforma = await apiClient.get(
+      `/api/public/location/order-proforma/${id}`,
+    );
+    return parseStringify(proforma);
+  } catch (error) {
     throw error;
   }
 };
@@ -300,14 +311,14 @@ export const updateProforma = async (
   return parseStringify(formResponse);
 };
 
-export const updateProformaStatusAsCompleted = async (
+export const updateProformaStatusAsConfirmed = async (
   proformaId: string,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
   try {
     const apiClient = new ApiClient();
-    const response = await apiClient.put(
-      `/api/public/location/order-proforma/${proformaId}/mark-complete`,
+    const response = await apiClient.post(
+      `/api/public/location/order-proforma/${proformaId}/confirmed-proformas`,
       {},
     );
     formResponse = {
@@ -354,8 +365,8 @@ export const convertProformaToInvoice = async (
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.put(
-      `/api/location/${location?.id}/order-proforma/${proformaId}/accept`,
+    await apiClient.post(
+      `/api/location/${location?.id}/order-proforma/${proformaId}/completed-proformas`,
       payload,
     );
     formResponse = {

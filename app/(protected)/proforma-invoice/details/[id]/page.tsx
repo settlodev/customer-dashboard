@@ -212,18 +212,18 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
     load();
   }, [load]);
 
-  const handleCopyLink = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/proforma/shared/${id}`,
-      );
-      setCopied(true);
-      toast.success("Link copied to clipboard");
-      setTimeout(() => setCopied(false), 2500);
-    } catch {
-      toast.error("Could not copy link");
-    }
-  }, [id]);
+  const generateShareLink = () => {
+    return `${window.location.origin}/proforma/shared/${id}`;
+  };
+
+  const shareLink = generateShareLink();
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(shareLink);
+    setCopied(true);
+    toast.success("Link copied to clipboard");
+    setTimeout(() => setCopied(false), 2500);
+  };
 
   // Re-fetch after conversion so status updates to ACCEPTED and buttons hide
   const handleConvertSuccess = useCallback(async () => {
@@ -231,8 +231,8 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
     await load();
   }, [load]);
 
-  const isComplete = data?.proformaStatus === "COMPLETE";
-  const isAccepted = data?.proformaStatus === "ACCEPTED";
+  const isComplete = data?.proformaStatus === "CONFIRMED";
+  const isAccepted = data?.proformaStatus === "COMPLETED";
 
   return (
     <div className="min-h-screen bg-gray-50/60">

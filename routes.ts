@@ -8,6 +8,7 @@ export const publicRoutes = [
   "/careers",
   "/menu/[id]",
   "/stock-purchases/share/[id]",
+  "/proforma/shared/[id]",
   "/email-verification",
   "/reset-password",
   "/auth-error",

@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, FileText, Loader2, AlertTriangle } from "lucide-react";
-import { getProforma } from "@/lib/actions/proforma-actions";
-import { updateProformaStatusAsCompleted } from "@/lib/actions/proforma-actions";
+import { sharedProforma } from "@/lib/actions/proforma-actions";
+import { updateProformaStatusAsConfirmed } from "@/lib/actions/proforma-actions";
 import { toast } from "sonner";
 import type { UUID } from "crypto";
 import { Proforma } from "@/types/proforma/type";
@@ -48,12 +48,11 @@ function AcceptModal({
         {/* Text */}
         <div className="text-center space-y-1.5">
           <h2 className="text-gray-900 font-bold text-base">
-            Accept Proforma?
+            Confirm Proforma?
           </h2>
           <p className="text-gray-500 text-sm leading-relaxed">
-            You are about to accept this proforma. You won&apos;t be able to
-            amend it — if there are any changes needed, consult the business
-            owner.
+            You are about to confirm this proforma. You will be able to amend it
+            — if there are any changes needed, consult the business owner.
           </p>
         </div>
 
@@ -75,12 +74,12 @@ function AcceptModal({
             {accepting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Accepting…
+                Confirming…
               </>
             ) : (
               <>
                 <CheckCircle2 className="w-4 h-4" />
-                Accept
+                Confirm
               </>
             )}
           </Button>
@@ -102,7 +101,7 @@ export default function ShareProforma({ proformaId }: { proformaId: string }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const res = await getProforma(proformaId as UUID);
+        const res = await sharedProforma(proformaId as UUID);
         setData(res as unknown as Proforma);
       } catch {
         toast.error("Failed to load proforma invoice");
@@ -116,14 +115,14 @@ export default function ShareProforma({ proformaId }: { proformaId: string }) {
   const handleConfirmAccept = async () => {
     setAccepting(true);
     try {
-      const res = await updateProformaStatusAsCompleted(proformaId);
+      const res = await updateProformaStatusAsConfirmed(proformaId);
       if (res?.responseType === "error") {
         toast.error(res.message);
         return;
       }
-      toast.success("Proforma accepted successfully");
+      toast.success("Proforma confirmed successfully");
       setData((prev) =>
-        prev ? { ...prev, proformaStatus: "COMPLETED" } : prev,
+        prev ? { ...prev, proformaStatus: "CONFIRMED" } : prev,
       );
       setModalOpen(false);
     } catch {
@@ -133,7 +132,7 @@ export default function ShareProforma({ proformaId }: { proformaId: string }) {
     }
   };
 
-  const isCompleted = data?.proformaStatus === "COMPLETED";
+  const isCompleted = data?.proformaStatus === "CONFIRMED";
 
   return (
     <div className="min-h-screen bg-gray-50/60">
@@ -160,14 +159,14 @@ export default function ShareProforma({ proformaId }: { proformaId: string }) {
               className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-2.5 sm:px-3 h-8 sm:h-9"
             >
               <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="text-sm">Accept</span>
+              <span className="text-sm">Confirm</span>
             </Button>
           )}
 
           {data && isCompleted && (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full border bg-green-50 text-green-700 border-green-200">
               <CheckCircle2 className="w-3 h-3" />
-              Accepted
+              Confirmed
             </span>
           )}
         </div>
@@ -183,10 +182,10 @@ export default function ShareProforma({ proformaId }: { proformaId: string }) {
               <FileText className="w-7 h-7 sm:w-8 sm:h-8 text-gray-300" />
             </div>
             <p className="text-gray-700 font-semibold text-sm sm:text-base">
-              Invoice not found
+              Proforma not found
             </p>
             <p className="text-gray-400 text-xs sm:text-sm mt-1 max-w-xs">
-              This proforma invoice may have been deleted or does not exist.
+              This proforma may have been deleted or does not exist.
             </p>
           </div>
         ) : (
