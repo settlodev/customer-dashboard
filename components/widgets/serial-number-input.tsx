@@ -12,19 +12,19 @@ import {
   X,
 } from "lucide-react";
 
-interface SerialNumberInputProps {
+interface UniqueIdentifierInputProps {
   quantity: number;
   value: string[];
   onChange: (serials: string[]) => void;
   disabled?: boolean;
 }
 
-export function SerialNumberInput({
+export function UniqueIdentifierInput({
   quantity,
   value,
   onChange,
   disabled = false,
-}: SerialNumberInputProps) {
+}: UniqueIdentifierInputProps) {
   const [serials, setSerials] = useState<string[]>(() =>
     Array.from({ length: quantity }, (_, i) => value[i] ?? ""),
   );
@@ -228,7 +228,7 @@ export function SerialNumberInput({
         <div className="flex items-center gap-2">
           <Barcode className="h-5 w-5 text-gray-600" />
           <span className="font-semibold text-gray-800 text-sm">
-            Serial / Batch Numbers
+            Unique Identifiers
           </span>
           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">
             {filled}/{quantity} entered
@@ -430,7 +430,7 @@ export function SerialNumberInput({
                   placeholder={
                     isActive && scanMode !== "manual"
                       ? "Awaiting scan..."
-                      : `Serial #${index + 1}`
+                      : `Identifier #${index + 1}`
                   }
                   className={`flex-1 text-sm px-3 py-2 bg-transparent outline-none placeholder:text-gray-300 font-mono ${
                     disabled ? "cursor-not-allowed opacity-60" : ""

@@ -18,24 +18,24 @@ import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { StockIntake } from "@/types/stock-intake/type";
 import { StockIntakeSchema } from "@/types/stock-intake/schema";
 import {
   createStockIntake,
   updateStockIntake,
 } from "@/lib/actions/stock-intake-actions";
-
 import SupplierSelector from "../widgets/supplier-selector";
 import DateTimePicker from "../widgets/datetimepicker";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock } from "lucide-react";
+import { Calendar, Clock, Fingerprint } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { getStockVariantById } from "@/lib/actions/stock-actions";
 import { NumericFormat } from "react-number-format";
-import { SerialNumberInput } from "../widgets/serial-number-input";
+import { UniqueIdentifierInput } from "../widgets/serial-number-input";
 
 function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
   const [isPending, startTransition] = useTransition();
@@ -53,6 +53,8 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
   const [selectedVariantInfo, setSelectedVariantInfo] = useState<any>(null);
   const [serialNumbers, setSerialNumbers] = useState<string[]>([]);
   const [currentQuantity, setCurrentQuantity] = useState<number>(0);
+  const [hasUniqueIdentifiers, setHasUniqueIdentifiers] =
+    useState<boolean>(false);
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -80,7 +82,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
         }
       }
     }
-
     if (stockVariantId || form.getValues("stockVariant")) {
       loadVariantInfo();
     }
@@ -91,6 +92,13 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
       form.setValue("stockVariant", stockVariantId);
     }
   }, [stockVariantId, form]);
+
+  // Reset serial numbers when checkbox is unchecked
+  useEffect(() => {
+    if (!hasUniqueIdentifiers) {
+      setSerialNumbers([]);
+    }
+  }, [hasUniqueIdentifiers]);
 
   const handleStockVariantChange = async (value: string) => {
     form.setValue("stockVariant", value);
@@ -108,7 +116,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
   const onInvalid = useCallback(
     (errors: any) => {
-      console.log("These errors occurred:", errors);
+      console.log("Validation errors:", errors);
       toast({
         variant: "destructive",
         title: "Uh oh! something went wrong",
@@ -121,36 +129,38 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof StockIntakeSchema>) => {
+    setError(undefined);
+
     if (deliveryDate && orderDate && deliveryDate < orderDate) {
       setError("Delivery date cannot be before order date.");
       return;
     }
 
-    // Validate serial numbers if quantity > 0
-    if (currentQuantity > 0) {
+    // Validate identifiers only when checkbox is enabled
+    if (hasUniqueIdentifiers && currentQuantity > 0) {
       const filledSerials = serialNumbers.filter((s) => s.trim() !== "");
       const uniqueSerials = new Set(filledSerials);
 
       if (filledSerials.length !== currentQuantity) {
         setError(
-          `Please enter all ${currentQuantity} serial/batch numbers before saving.`,
+          `Please enter all ${currentQuantity} unique identifiers before saving.`,
         );
         return;
       }
 
       if (uniqueSerials.size !== filledSerials.length) {
         setError(
-          "Duplicate serial numbers found. Each item must have a unique serial number.",
+          "Duplicate unique identifiers found. Each item must have a unique identifier.",
         );
         return;
       }
     }
 
-    const payload = {
-      ...values,
-      // Attach serial numbers to submission
-      serialNumbers: serialNumbers.filter((s) => s.trim() !== ""),
-    };
+    // Pass identifiers as a separate argument to avoid Next.js server action
+    // serialization dropping undefined/extra fields from the schema object
+    const identifiers = hasUniqueIdentifiers
+      ? serialNumbers.filter((s) => s.trim() !== "")
+      : [];
 
     startTransition(() => {
       if (item) {
@@ -162,7 +172,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
           }
         });
       } else {
-        createStockIntake(payload)
+        createStockIntake(values, identifiers)
           .then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
@@ -171,7 +181,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
             }
           })
           .catch((err) => {
-            console.log("Error while creating stock intake: ", err);
+            console.log("Error while creating stock intake:", err);
           });
       }
     });
@@ -448,14 +458,50 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
             )}
           </div>
 
-          {/* ── Serial / Batch Number Entry ── */}
-          {currentQuantity > 0 && !item && (
-            <SerialNumberInput
+          {/* ── Unique Identifier Checkbox ── */}
+          {!item && (
+            <div className="flex items-start gap-3 p-4 border border-gray-200 rounded-xl bg-gray-50">
+              <Checkbox
+                id="hasUniqueIdentifiers"
+                checked={hasUniqueIdentifiers}
+                onCheckedChange={(checked) =>
+                  setHasUniqueIdentifiers(checked === true)
+                }
+                disabled={isPending}
+                className="mt-0.5"
+              />
+              <div className="flex flex-col gap-0.5">
+                <label
+                  htmlFor="hasUniqueIdentifiers"
+                  className="text-sm font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
+                >
+                  <Fingerprint className="h-4 w-4 text-gray-500" />
+                  Does this stock have unique identifier(s)?
+                </label>
+                <p className="text-xs text-gray-500">
+                  Enable this if each item has a serial number, barcode, or
+                  batch code that needs to be tracked individually.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* ── Identifier Entry Component ── */}
+          {hasUniqueIdentifiers && !item && currentQuantity > 0 && (
+            <UniqueIdentifierInput
               quantity={currentQuantity}
               value={serialNumbers}
               onChange={setSerialNumbers}
               disabled={isPending}
             />
+          )}
+
+          {/* Prompt to enter quantity first */}
+          {hasUniqueIdentifiers && !item && currentQuantity === 0 && (
+            <p className="text-sm text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+              Please enter a quantity above to start entering unique
+              identifiers.
+            </p>
           )}
 
           <div className="flex h-5 items-center space-x-4">

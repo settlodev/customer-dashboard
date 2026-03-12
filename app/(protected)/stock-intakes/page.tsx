@@ -34,31 +34,34 @@ async function Page({ searchParams }: Params) {
 
   const responseData = await searchStockIntakes(q, page, pageLimit);
   const data: StockIntake[] = responseData.content;
+  console.log("The stock intakes are", responseData);
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
   return (
-    <div className="flex-1 space-y-4 md:p-8 pt-6 px-4 mt-12">
-      <div className={`flex items-center justify-between mb-2`}>
-        <div className={`relative flex-1 md:max-w-md`}>
-          <BreadcrumbsNav items={breadCrumbItems} />
-        </div>
-        <div className={`flex flex-row items-center space-x-2`}>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-12">
+      {/* Header row */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <BreadcrumbsNav items={breadCrumbItems} />
+
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
           <RecordStockIntakeButton />
-          <Button>
-            <Link href={`/stock-purchases/new`}>Create Purchase Orders</Link>
+          <Button asChild className="w-full sm:w-auto">
+            <Link href="/stock-purchases/new">Create Purchase Orders</Link>
           </Button>
         </div>
       </div>
-      {total > 0 || q != "" ? (
-        <Card x-chunk="data-table">
-          <CardHeader>
-            <CardTitle>Stock Intake</CardTitle>
+
+      {/* Content */}
+      {total > 0 || q !== "" ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg sm:text-xl">Stock Intake</CardTitle>
             <CardDescription>
               Record stock intake in your location
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-2 sm:px-6">
             <DataTable
               columns={columns}
               data={data}
@@ -70,7 +73,7 @@ async function Page({ searchParams }: Params) {
           </CardContent>
         </Card>
       ) : (
-        <NoItems newItemUrl={`/stock-intakes/new`} itemName={`Stock intakes`} />
+        <NoItems newItemUrl="/stock-intakes/new" itemName="Stock intakes" />
       )}
     </div>
   );
