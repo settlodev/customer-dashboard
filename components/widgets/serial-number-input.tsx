@@ -42,6 +42,7 @@ export function UniqueIdentifierInput({
   const scanBufferRef = useRef("");
   const lastKeyTimeRef = useRef(0);
   const html5QrcodeRef = useRef<any>(null);
+  const lastScannedRef = useRef<{ code: string; time: number }>({ code: "", time: 0 });
   const scannerDivId = "serial-qr-scanner";
 
   // Resize serials array when quantity changes
@@ -215,6 +216,16 @@ export function UniqueIdentifierInput({
   const handleCameraScan = useCallback((code: string) => {
     const trimmed = code.trim();
     if (!trimmed) return;
+
+    // Ignore repeated scans of the same code within 2 seconds
+    const now = Date.now();
+    if (
+      lastScannedRef.current.code === trimmed &&
+      now - lastScannedRef.current.time < 2000
+    ) {
+      return;
+    }
+    lastScannedRef.current = { code: trimmed, time: now };
 
     setSerials((prev) => {
       // Find current active or first empty slot
