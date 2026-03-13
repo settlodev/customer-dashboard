@@ -44,7 +44,7 @@ import { Switch } from "../ui/switch";
 import { PhoneInput } from "../ui/phone-input";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { Info } from "lucide-react";
+import { Info, Building2 } from "lucide-react";
 import { CustomerPreference } from "@/types/customer/type";
 
 function getPreferenceValue(
@@ -88,31 +88,49 @@ function CustomerForm({
   const form = useForm<z.infer<typeof CustomerSchema>>({
     resolver: zodResolver(CustomerSchema),
     defaultValues: {
+      // Personal
       firstName: item?.firstName ?? "",
       lastName: item?.lastName ?? "",
       gender: item?.gender ?? undefined,
       email: item?.email ?? "",
       phoneNumber: item?.phoneNumber ?? "",
       dateOfBirth: item?.dateOfBirth ?? undefined,
+      // Identification
       idType: item?.idType ?? undefined,
       idNumber: item?.idNumber ?? undefined,
       tinNumber: item?.tinNumber ?? undefined,
-      creditLimit: item?.creditLimit ?? undefined,
       vrn: item?.vrn ?? undefined,
-      allowNotifications: item?.allowNotifications ?? true,
-      noShowCount: item?.noShowCount ?? 0,
-      notes: item?.notes ?? undefined,
-      seatingPreference:
-        item?.seatingPreference ?? getPreferenceValue(preferences, "seatingPreference"),
+      // Financial
+      creditLimit: item?.creditLimit ?? undefined,
       loyaltyPoints: item?.loyaltyPoints ?? undefined,
+      noShowCount: item?.noShowCount ?? 0,
+      // Preferences
+      seatingPreference:
+        item?.seatingPreference ??
+        getPreferenceValue(preferences, "seatingPreference"),
       source:
-        (item?.source as any) ?? getPreferenceValue(preferences, "source") ?? undefined,
+        (item?.source as any) ??
+        getPreferenceValue(preferences, "source") ??
+        undefined,
       createdFrom:
-        (item?.createdFrom as any) ?? getPreferenceValue(preferences, "createdFrom") ?? undefined,
+        (item?.createdFrom as any) ??
+        getPreferenceValue(preferences, "createdFrom") ??
+        undefined,
       customerGroup: (item?.customerGroup as string) ?? undefined,
+      // Misc
+      notes: item?.notes ?? undefined,
+      allowNotifications: item?.allowNotifications ?? true,
       status: item?.status ?? true,
+      // Company
+      isCompanyAssociated: item?.isCompanyAssociated ?? false,
+      companyName: item?.companyName ?? "",
+      companyRegistrationNumber: item?.companyRegistrationNumber ?? "",
+      companyEmailAddress: item?.companyEmailAddress ?? "",
+      companyPhysicalAddress: item?.companyPhysicalAddress ?? "",
     },
   });
+
+  const isCompanyAssociated = form.watch("isCompanyAssociated");
 
   const formatCreditLimit = (value: string): string => {
     const numericValue = value.replace(/[^\d.]/g, "");
@@ -186,7 +204,7 @@ function CustomerForm({
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className="space-y-6"
       >
-        {/* Personal Information */}
+        {/* ── Personal Information ─────────────────────────────── */}
         <div>
           <h3 className="text-lg font-medium mb-4">Personal Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -310,7 +328,150 @@ function CustomerForm({
 
         <Separator />
 
-        {/* Identification */}
+        {/* ── Company Association ──────────────────────────────── */}
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <div className="flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-muted-foreground" />
+              <h3 className="text-lg font-medium">Company Association</h3>
+            </div>
+            <FormField
+              control={form.control}
+              name="isCompanyAssociated"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={(checked) => {
+                        field.onChange(checked);
+                        if (!checked) {
+                          form.setValue("companyName", "");
+                          form.setValue("companyRegistrationNumber", "");
+                          form.setValue("companyEmailAddress", "");
+                          form.setValue("companyPhysicalAddress", "");
+                        }
+                      }}
+                      disabled={isPending}
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            {isCompanyAssociated
+              ? "Fill in the company details this customer is associated with."
+              : "Toggle on if this customer belongs to or represents a company."}
+          </p>
+
+          {isCompanyAssociated && (
+            <div className="p-4  space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Company Name <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter company name"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="companyRegistrationNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Registration Number</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., RC123456"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="companyEmailAddress"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Email Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="e.g., tech@settlo.co.tz"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="companyPhoneNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Company Phone Number</FormLabel>
+                      <FormControl>
+                        <PhoneInput
+                          placeholder="company phone number"
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="companyPhysicalAddress"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Physical Address</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Company phyiscal address"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
+        {/* ── Identification ───────────────────────────────────── */}
         <div>
           <h3 className="text-lg font-medium mb-4">Identification</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -394,7 +555,7 @@ function CustomerForm({
 
         <Separator />
 
-        {/* Financial & Loyalty */}
+        {/* ── Financial & Loyalty ──────────────────────────────── */}
         <div>
           <h3 className="text-lg font-medium mb-4">Financial & Loyalty</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -496,7 +657,7 @@ function CustomerForm({
 
         <Separator />
 
-        {/* Preferences & Group */}
+        {/* ── Preferences & Group ──────────────────────────────── */}
         <div>
           <h3 className="text-lg font-medium mb-4">Preferences & Group</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -537,10 +698,7 @@ function CustomerForm({
                     </FormControl>
                     <SelectContent>
                       {groups.map((group) => (
-                        <SelectItem
-                          key={group.id}
-                          value={group.id as string}
-                        >
+                        <SelectItem key={group.id} value={group.id as string}>
                           {group.name}
                         </SelectItem>
                       ))}
@@ -617,7 +775,7 @@ function CustomerForm({
 
         <Separator />
 
-        {/* Notes */}
+        {/* ── Notes ────────────────────────────────────────────── */}
         <FormField
           control={form.control}
           name="notes"
@@ -643,7 +801,7 @@ function CustomerForm({
 
         <Separator />
 
-        {/* Toggles */}
+        {/* ── Toggles ──────────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <FormField
             control={form.control}
@@ -703,7 +861,7 @@ function CustomerForm({
           )}
         </div>
 
-        {/* Read-only info for existing customers */}
+        {/* ── Read-only info (edit mode only) ──────────────────── */}
         {item && (
           <>
             <Separator />
@@ -749,7 +907,7 @@ function CustomerForm({
           </>
         )}
 
-        {/* Actions */}
+        {/* ── Actions ──────────────────────────────────────────── */}
         <div className="flex h-5 items-center space-x-4 mt-10">
           <CancelButton />
           <Separator orientation="vertical" />

@@ -6,6 +6,15 @@ import { UUID } from "node:crypto";
 import { getStockIntakeReceipt } from "@/lib/actions/stock-purchase-actions";
 import { StockReceipt } from "@/types/stock-intake-receipt/type";
 import { GRNDownloadButton } from "@/components/widgets/grn-download-button";
+import {
+  Package,
+  MapPin,
+  Building2,
+  FileText,
+  ShieldCheck,
+  ClipboardList,
+  CheckCircle2,
+} from "lucide-react";
 
 type Params = Promise<{ id: string }>;
 
@@ -25,12 +34,79 @@ interface EnhancedStockPurchaseItem {
   code?: string;
 }
 
+// ── Meta tile ────────────────────────────────────────────────────────────────
+function MetaTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="bg-white border border-zinc-200 rounded-xl p-3 sm:p-4">
+      <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-400 mb-1.5">
+        {label}
+      </p>
+      <p className="text-xs sm:text-sm font-semibold text-zinc-800 leading-snug break-words">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+// ── Info panel ───────────────────────────────────────────────────────────────
+function InfoPanel({
+  icon: Icon,
+  title,
+  rows,
+}: {
+  icon: React.ElementType;
+  title: string;
+  rows: { label: string; value: string }[];
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-200 overflow-hidden">
+      <div className="flex items-center gap-2.5 bg-zinc-100 border-b border-zinc-200 px-4 py-3">
+        <Icon className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+        <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-600">
+          {title}
+        </p>
+      </div>
+      <div className="bg-white p-4 space-y-3">
+        {rows.map(({ label, value }) => (
+          <div key={label} className="flex gap-3">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 w-16 shrink-0 pt-0.5">
+              {label}
+            </span>
+            <span className="text-xs text-zinc-700 font-medium leading-snug break-words flex-1">
+              {value}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Section heading ──────────────────────────────────────────────────────────
+function SectionHeading({
+  icon: Icon,
+  label,
+}: {
+  icon: React.ElementType;
+  label: string;
+}) {
+  return (
+    <div className="flex items-center gap-2.5 mb-4">
+      <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-zinc-100 border border-zinc-200">
+        <Icon className="w-3.5 h-3.5 text-zinc-500" />
+      </div>
+      <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-zinc-500">
+        {label}
+      </p>
+    </div>
+  );
+}
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 export default async function StockReceiptPage({ params }: { params: Params }) {
   const paramsData = await params;
   const { id } = paramsData;
-  const isNewItem = id === "new";
-
-  if (isNewItem) notFound();
+  if (id === "new") notFound();
 
   let receiptData: StockReceipt;
   try {
@@ -59,36 +135,65 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
       maximumFractionDigits: 2,
     });
 
-  return (
-    <div className="flex-1 p-3 sm:p-4 md:p-6 lg:p-8 bg-emerald-50 min-h-screen mt-4">
-      <Card className="shadow-none border border-emerald-200 mt-4 bg-white w-full max-w-7xl mx-auto overflow-hidden">
-        <CardContent className="p-0">
-          {/* ── HEADER ── */}
-          <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 px-4 sm:px-6 md:px-8 py-4 sm:py-5">
-            <div className="flex flex-col sm:flex-row items-start justify-between gap-4 sm:gap-6">
-              <div className="w-full sm:w-auto">
-                <p className="text-[8px] sm:text-[9px] font-black text-emerald-400 uppercase tracking-[0.3em] mb-1">
-                  {receiptData.businessName}
-                </p>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-none">
-                  Goods Received Note
-                </h1>
-                <p className="text-xs sm:text-sm text-emerald-300/70 mt-1.5 font-medium">
-                  {receiptData.locationName}
-                </p>
-              </div>
+  const supplierRows: { label: string; value: string }[] = [
+    { label: "Name", value: receiptData.supplierName ?? "—" },
+    ...(receiptData.supplierEmail
+      ? [{ label: "Email", value: receiptData.supplierEmail }]
+      : []),
+    ...(receiptData.supplierPhoneNumber
+      ? [{ label: "Phone", value: receiptData.supplierPhoneNumber }]
+      : []),
+  ];
 
-              <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3">
-                {/* GRN Badge */}
-                <div className="bg-emerald-500 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-right">
-                  <p className="text-[7px] sm:text-[8px] font-black uppercase tracking-[0.25em] text-emerald-100 mb-0.5">
-                    GRN No.
-                  </p>
-                  <p className="text-sm sm:text-base font-black font-mono text-white break-all leading-tight">
-                    {receiptData.receiptNumber}
+  const locationRows: { label: string; value: string }[] = [
+    { label: "Business", value: receiptData.businessName ?? "—" },
+    { label: "Location", value: receiptData.locationName ?? "—" },
+    ...(receiptData.locationEmail
+      ? [{ label: "Email", value: receiptData.locationEmail }]
+      : []),
+    ...(receiptData.locationPhone
+      ? [{ label: "Phone", value: receiptData.locationPhone }]
+      : []),
+    ...(receiptData.locationAddress
+      ? [{ label: "Address", value: receiptData.locationAddress }]
+      : []),
+  ];
+
+  return (
+    <div className="min-h-screen bg-zinc-100 p-3 sm:p-6 md:p-8 mt-4">
+      <div className="w-full max-w-5xl mx-auto">
+        <Card className="border border-zinc-200 shadow-sm rounded-2xl overflow-hidden bg-white">
+          <CardContent className="p-0">
+            {/* ── HEADER ─────────────────────────────────────────────────── */}
+            <div className="bg-white border-b border-zinc-200 px-5 sm:px-8 md:px-10 py-6 sm:py-8">
+              <div className="flex flex-col sm:flex-row items-start justify-between gap-5">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-6 h-6 rounded-md bg-zinc-200 flex items-center justify-center">
+                      <ClipboardList className="w-3.5 h-3.5 text-zinc-600" />
+                    </div>
+                    <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-zinc-400">
+                      {receiptData.businessName}
+                    </span>
+                  </div>
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-zinc-900 tracking-tight leading-none mb-2">
+                    Goods Received Note
+                  </h1>
+                  <p className="text-xs text-zinc-400 font-medium flex items-center gap-1.5 mt-2">
+                    <MapPin className="w-3 h-3 shrink-0" />
+                    {receiptData.locationName}
                   </p>
                 </div>
-                <div className="sm:mt-1">
+
+                <div className="flex flex-row sm:flex-col items-center sm:items-end gap-3 sm:gap-4 w-full sm:w-auto">
+                  <div className="border-2 border-zinc-200 rounded-xl px-4 py-3 text-right bg-zinc-50 min-w-[120px]">
+                    <p className="text-[8px] font-bold uppercase tracking-[0.25em] text-zinc-400 mb-1">
+                      GRN No.
+                    </p>
+                    <p className="text-sm font-black font-mono text-zinc-900 tracking-wide">
+                      {receiptData.receiptNumber}
+                    </p>
+                  </div>
                   <GRNDownloadButton
                     receiptData={receiptData}
                     items={items}
@@ -98,413 +203,170 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* ── EMERALD ACCENT BAR ── */}
-          <div className="h-1 bg-gradient-to-r from-emerald-400 via-emerald-500 to-emerald-400" />
-
-          {/* ── META ROW ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 border-b border-emerald-100 bg-emerald-50/50">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {[
-                {
-                  label: "PO Reference",
-                  value: receiptData.purchaseOrderNumber || "—",
-                },
-                {
-                  label: "GRN Date",
-                  value: receiptData.dateReceived
-                    ? format(new Date(receiptData.dateReceived), "dd-MMM-yyyy")
-                    : format(new Date(), "dd-MMM-yyyy"),
-                },
-                {
-                  label: "Invoice No.",
-                  value: (receiptData as any).invoiceNumber || "—",
-                },
-                {
-                  label: "Prepared By",
-                  value: `${receiptData.staffFirstName} ${receiptData.staffLastName}`,
-                },
-              ].map(({ label, value }) => (
-                <div
-                  key={label}
-                  className="border border-emerald-200 p-2.5 sm:p-3 rounded-lg bg-white shadow-sm"
-                >
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 mb-1">
-                    {label}
-                  </p>
-                  <p className="text-xs sm:text-sm font-bold text-gray-800 break-words">
-                    {value}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── SUPPLIER & RECEIVING LOCATION ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-b border-emerald-100">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-              {/* Supplier */}
-              <div className="border border-emerald-200 rounded-lg overflow-hidden">
-                <div className="bg-emerald-500 px-4 py-2">
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-white">
-                    Supplier Information
-                  </p>
-                </div>
-                <div className="p-3 sm:p-4 space-y-2.5 bg-white">
-                  {[
-                    { label: "Supplier", value: receiptData.supplierName },
-                    receiptData.supplierEmail && {
-                      label: "Email",
-                      value: receiptData.supplierEmail,
-                    },
-                    receiptData.supplierPhoneNumber && {
-                      label: "Phone",
-                      value: receiptData.supplierPhoneNumber,
-                    },
-                  ]
-                    .filter(Boolean)
-                    .map(({ label, value }: any) => (
-                      <div
-                        key={label}
-                        className="flex flex-col sm:flex-row sm:gap-3"
-                      >
-                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-600 sm:w-16 shrink-0">
-                          {label}
-                        </span>
-                        <span className="text-xs sm:text-sm text-gray-700 font-medium break-words">
-                          {value}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </div>
-
-              {/* Receiving Location */}
-              <div className="border border-emerald-200 rounded-lg overflow-hidden">
-                <div className="bg-emerald-500 px-4 py-2">
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-white">
-                    Receiving Location
-                  </p>
-                </div>
-                <div className="p-3 sm:p-4 space-y-2.5 bg-white">
-                  {[
-                    { label: "Business", value: receiptData.businessName },
-                    { label: "Location", value: receiptData.locationName },
-                    receiptData.locationEmail && {
-                      label: "Email",
-                      value: receiptData.locationEmail,
-                    },
-                    receiptData.locationPhone && {
-                      label: "Phone",
-                      value: receiptData.locationPhone,
-                    },
-                    receiptData.locationAddress && {
-                      label: "Address",
-                      value: receiptData.locationAddress,
-                    },
-                  ]
-                    .filter(Boolean)
-                    .map(({ label, value }: any) => (
-                      <div
-                        key={label}
-                        className="flex flex-col sm:flex-row sm:gap-3"
-                      >
-                        <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-emerald-600 sm:w-16 shrink-0">
-                          {label}
-                        </span>
-                        <span className="text-xs sm:text-sm text-gray-700 font-medium break-words">
-                          {value}
-                        </span>
-                      </div>
-                    ))}
-                </div>
+            {/* ── META TILES ─────────────────────────────────────────────── */}
+            <div className="px-5 sm:px-8 md:px-10 py-5 bg-zinc-50 border-b border-zinc-200">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                <MetaTile
+                  label="PO Reference"
+                  value={receiptData.purchaseOrderNumber || "—"}
+                />
+                <MetaTile
+                  label="GRN Date"
+                  value={
+                    receiptData.dateReceived
+                      ? format(
+                          new Date(receiptData.dateReceived),
+                          "dd MMM yyyy",
+                        )
+                      : format(new Date(), "dd MMM yyyy")
+                  }
+                />
+                <MetaTile
+                  label="Invoice No."
+                  value={(receiptData as any).invoiceNumber || "—"}
+                />
+                <MetaTile
+                  label="Prepared By"
+                  value={`${receiptData.staffFirstName} ${receiptData.staffLastName}`}
+                />
               </div>
             </div>
-          </div>
 
-          {/* ── ITEMS TABLE ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 md:py-6">
-            {/* Section heading */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-5 w-1 bg-emerald-500 rounded-full" />
-              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] text-gray-700">
-                Received Items
-              </p>
+            {/* ── SUPPLIER & LOCATION ────────────────────────────────────── */}
+            <div className="px-5 sm:px-8 md:px-10 py-6 border-b border-zinc-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <InfoPanel
+                  icon={Building2}
+                  title="Supplier Information"
+                  rows={supplierRows}
+                />
+                <InfoPanel
+                  icon={MapPin}
+                  title="Receiving Location"
+                  rows={locationRows}
+                />
+              </div>
             </div>
 
-            {/* Mobile Card View */}
-            <div className="block lg:hidden space-y-3">
-              {items.map((item, index) => (
-                <div
-                  key={item.id || index}
-                  className="border border-emerald-200 rounded-lg overflow-hidden shadow-sm"
-                >
-                  <div className="bg-emerald-50 px-3 py-2 border-b border-emerald-200 flex items-center gap-2">
-                    <span className="bg-emerald-500 text-white text-[9px] font-black rounded-full w-5 h-5 flex items-center justify-center shrink-0">
-                      {index + 1}
-                    </span>
-                    <span className="text-xs font-bold text-gray-700">
-                      {item.stockName}
-                    </span>
-                  </div>
-                  <div className="p-3 bg-white">
-                    {item.stockVariantName &&
-                      item.stockVariantName !== item.stockName && (
-                        <p className="text-xs text-gray-500 mb-2">
-                          {item.stockVariantName}
-                        </p>
-                      )}
-                    <div className="grid grid-cols-2 gap-3">
-                      {[
-                        {
-                          k: "Qty",
-                          v: item.quantityReceived?.toLocaleString(),
-                        },
-                        {
-                          k: "Cost Price",
-                          v:
-                            item.previousCostPerItem != null
-                              ? formatCurrency(item.previousCostPerItem)
-                              : "—",
-                        },
-                        {
-                          k: "Last CP",
-                          v:
-                            item.lastCostPerItem != null
-                              ? formatCurrency(item.lastCostPerItem)
-                              : item.previousCostPerItem != null
+            {/* ── ITEMS ──────────────────────────────────────────────────── */}
+            <div className="px-5 sm:px-8 md:px-10 py-6">
+              <SectionHeading icon={Package} label="Received Items" />
+
+              {/* Mobile cards */}
+              <div className="block lg:hidden space-y-3">
+                {items.map((item, index) => (
+                  <div
+                    key={item.id || index}
+                    className="rounded-xl border border-zinc-200 overflow-hidden"
+                  >
+                    <div className="flex items-center gap-3 bg-zinc-50 px-4 py-2.5 border-b border-zinc-200">
+                      <span className="w-5 h-5 rounded-full bg-zinc-200 text-zinc-600 text-[10px] font-black flex items-center justify-center shrink-0">
+                        {index + 1}
+                      </span>
+                      <span className="text-sm font-semibold text-zinc-800 truncate">
+                        {item.stockName}
+                      </span>
+                    </div>
+                    <div className="p-4 bg-white">
+                      {item.stockVariantName &&
+                        item.stockVariantName !== item.stockName && (
+                          <p className="text-xs text-zinc-400 mb-3">
+                            {item.stockVariantName}
+                          </p>
+                        )}
+                      <div className="grid grid-cols-2 gap-4">
+                        {[
+                          {
+                            k: "Qty Received",
+                            v: item.quantityReceived?.toLocaleString(),
+                          },
+                          {
+                            k: "Cost Price",
+                            v:
+                              item.previousCostPerItem != null
                                 ? formatCurrency(item.previousCostPerItem)
                                 : "—",
-                        },
-                        { k: "Amount", v: formatCurrency(item.totalCost || 0) },
-                      ].map(({ k, v }) => (
-                        <div key={k}>
-                          <p className="text-[9px] font-black uppercase tracking-wider text-emerald-600">
-                            {k}
-                          </p>
-                          <p className="text-sm font-bold text-gray-800">{v}</p>
-                        </div>
-                      ))}
+                          },
+                          {
+                            k: "Last Cost",
+                            v:
+                              item.lastCostPerItem != null
+                                ? formatCurrency(item.lastCostPerItem)
+                                : item.previousCostPerItem != null
+                                  ? formatCurrency(item.previousCostPerItem)
+                                  : "—",
+                          },
+                          {
+                            k: "Total Amount",
+                            v: formatCurrency(item.totalCost || 0),
+                          },
+                        ].map(({ k, v }) => (
+                          <div key={k}>
+                            <p className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 mb-0.5">
+                              {k}
+                            </p>
+                            <p className="text-sm font-bold text-zinc-800">
+                              {v}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
 
-              {/* Mobile Totals */}
-              <div className="border border-emerald-300 bg-emerald-50 p-3 rounded-lg mt-2">
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-xs font-black uppercase tracking-wider text-emerald-700">
-                    Total Items
-                  </span>
-                  <span className="font-bold text-gray-800">
-                    {items.length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-xs font-black uppercase tracking-wider text-emerald-700">
-                    Total Quantity
-                  </span>
-                  <span className="font-bold text-gray-800">
-                    {totalQuantityReceived.toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mt-1 pt-2 border-t border-emerald-300">
-                  <span className="text-sm font-black uppercase tracking-wider text-emerald-700">
-                    Total Value
-                  </span>
-                  <span className="text-lg font-black text-gray-900">
-                    {formatCurrency(totalValue)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto rounded-lg border border-emerald-200 shadow-sm">
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-gray-900">
-                    {[
-                      "#",
-                      "Product Description",
-                      "Qty",
-                      "Cost Price",
-                      "Last Cost",
-                      "Amount",
-                    ].map((h, i) => (
-                      <th
-                        key={h}
-                        className={cn(
-                          "py-3 px-4 text-[9px] font-black uppercase tracking-[0.15em] text-emerald-400 whitespace-nowrap",
-                          i === 0
-                            ? "text-center"
-                            : i === 1
-                              ? "text-left"
-                              : "text-right",
-                        )}
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((item, index) => (
-                    <tr
-                      key={item.id || index}
-                      className={cn(
-                        "border-b border-emerald-100 hover:bg-emerald-50/60 transition-colors",
-                        index % 2 === 0 ? "bg-white" : "bg-emerald-50/30",
-                      )}
-                    >
-                      <td className="py-3 px-4 text-center">
-                        <span className="bg-emerald-100 text-emerald-700 text-xs font-black rounded-full w-6 h-6 inline-flex items-center justify-center">
-                          {index + 1}
-                        </span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <p className="font-bold text-gray-800">
-                          {item.stockName}
-                        </p>
-                        {item.stockVariantName &&
-                          item.stockVariantName !== item.stockName && (
-                            <p className="text-xs text-gray-500 mt-0.5">
-                              {item.stockVariantName}
-                            </p>
-                          )}
-                      </td>
-                      <td className="py-3 px-4 text-right font-black text-gray-800 whitespace-nowrap">
-                        {item.quantityReceived?.toLocaleString()}
-                      </td>
-                      <td className="py-3 px-4 text-right text-gray-600 font-medium whitespace-nowrap">
-                        {item.previousCostPerItem != null
-                          ? formatCurrency(item.previousCostPerItem)
-                          : "—"}
-                      </td>
-                      <td className="py-3 px-4 text-right text-gray-600 font-medium whitespace-nowrap">
-                        {item.lastCostPerItem != null
-                          ? formatCurrency(item.lastCostPerItem)
-                          : item.previousCostPerItem != null
-                            ? formatCurrency(item.previousCostPerItem)
-                            : "—"}
-                      </td>
-                      <td className="py-3 px-4 text-right font-black text-gray-900 whitespace-nowrap">
-                        {formatCurrency(item.totalCost || 0)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr className="bg-emerald-500">
-                    <td
-                      colSpan={2}
-                      className="py-3 px-4 text-[9px] font-black uppercase tracking-widest text-white"
-                    >
-                      Totals
-                    </td>
-                    <td className="py-3 px-4 text-right font-black text-white whitespace-nowrap">
-                      {totalQuantityReceived.toLocaleString()}
-                    </td>
-                    <td colSpan={2} />
-                    <td className="py-3 px-4 text-right font-black text-white whitespace-nowrap">
-                      {formatCurrency(totalValue)}
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            {/* ── SUMMARY BOX ── */}
-            <div className="mt-6 sm:mt-8 flex justify-end">
-              <div className="w-full sm:w-80 md:w-72 rounded-lg border border-emerald-200 overflow-hidden shadow-sm">
-                <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2.5">
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                    Summary
-                  </p>
-                </div>
-                <div className="divide-y divide-emerald-100 bg-white">
+                {/* Mobile totals */}
+                <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-4 space-y-2">
                   {[
-                    { label: "Net Amount", value: formatCurrency(totalValue) },
-                    { label: "VAT Amount", value: "0.00" },
-                    { label: "Rounding Amount", value: "0.00" },
+                    { label: "Total Lines", value: items.length.toString() },
+                    {
+                      label: "Total Quantity",
+                      value: totalQuantityReceived.toLocaleString(),
+                    },
                   ].map(({ label, value }) => (
                     <div
                       key={label}
-                      className="flex justify-between px-4 py-2.5"
+                      className="flex justify-between text-sm text-zinc-600 font-semibold"
                     >
-                      <span className="text-xs sm:text-sm text-gray-600 font-medium">
-                        {label}
-                      </span>
-                      <span className="text-sm sm:text-base font-bold text-gray-800">
-                        {value}
-                      </span>
+                      <span>{label}</span>
+                      <span>{value}</span>
                     </div>
                   ))}
-                  <div className="flex justify-between px-4 py-3 bg-emerald-500">
-                    <span className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.15em] text-emerald-100">
-                      Total Amount
+                  <div className="pt-2 border-t border-zinc-200 flex justify-between items-center">
+                    <span className="text-sm font-black text-zinc-700 uppercase tracking-wide">
+                      Total Value
                     </span>
-                    <span className="text-sm sm:text-base font-black text-white">
+                    <span className="text-lg font-black text-zinc-900">
                       {formatCurrency(totalValue)}
                     </span>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* ── SIGNATURES ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-t border-emerald-100 bg-emerald-50/30">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-5 w-1 bg-emerald-500 rounded-full" />
-              <p className="text-[9px] sm:text-[10px] font-black uppercase tracking-[0.25em] text-gray-700">
-                Authorisation & Signatures
-              </p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
-              {[
-                {
-                  label: "Prepared By",
-                  value: `${receiptData.staffFirstName} ${receiptData.staffLastName}`,
-                },
-                { label: "Checked By", value: "" },
-                { label: "Authorised By", value: "" },
-                { label: "Accounts", value: "" },
-              ].map(({ label, value }) => (
-                <div key={label} className="text-center">
-                  <div className="h-12 flex items-end justify-center pb-1.5">
-                    {value && (
-                      <span className="text-xs sm:text-sm text-gray-700 font-bold truncate max-w-full px-1">
-                        {value}
-                      </span>
-                    )}
-                  </div>
-                  <div className="border-b-2 border-gray-400 mx-2 mb-2" />
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-emerald-700">
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* Approval + VAT Summary */}
-            <div className="mt-6 sm:mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="overflow-x-auto">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-3.5 w-0.5 bg-emerald-500 rounded-full" />
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
-                    Approval
-                  </p>
-                </div>
-                <table className="w-full min-w-[300px] border border-emerald-200 text-xs text-center rounded-lg overflow-hidden">
+              {/* Desktop table */}
+              <div className="hidden lg:block rounded-xl border border-zinc-200 overflow-hidden">
+                <table className="w-full text-sm border-collapse">
                   <thead>
-                    <tr className="bg-gray-900">
-                      {["Approved By", "Date", "Amount"].map((h) => (
+                    <tr className="bg-zinc-100 border-b border-zinc-200">
+                      {[
+                        "#",
+                        "Product",
+                        "Qty",
+                        "Cost Price",
+                        "Last Cost",
+                        "Amount",
+                      ].map((h, i) => (
                         <th
                           key={h}
-                          className="py-2.5 px-3 text-emerald-400 font-black border-r border-gray-700 last:border-r-0 text-xs"
+                          className={cn(
+                            "py-3 px-5 text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-500 whitespace-nowrap",
+                            i === 0
+                              ? "text-center w-12"
+                              : i === 1
+                                ? "text-left"
+                                : "text-right",
+                          )}
                         >
                           {h}
                         </th>
@@ -512,138 +374,280 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {[1, 2].map((r) => (
+                    {items.map((item, index) => (
                       <tr
-                        key={r}
-                        className="border-t border-emerald-100 bg-white"
-                      >
-                        <td className="py-4 border-r border-emerald-100" />
-                        <td className="py-4 border-r border-emerald-100" />
-                        <td className="py-4" />
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="overflow-x-auto">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="h-3.5 w-0.5 bg-emerald-500 rounded-full" />
-                  <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
-                    VAT Summary
-                  </p>
-                </div>
-                <table className="w-full min-w-[250px] border border-emerald-200 text-xs rounded-lg overflow-hidden">
-                  <thead>
-                    <tr className="bg-gray-900">
-                      {["Type", "VAT", "Goods Value"].map((h) => (
-                        <th
-                          key={h}
-                          className="py-2.5 px-3 text-emerald-400 font-black border-r border-gray-700 last:border-r-0 text-right first:text-left text-xs"
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {
-                        type: "VAT",
-                        vat: "0",
-                        goods: formatCurrency(totalValue),
-                      },
-                      { type: "EXEM", vat: "0", goods: "0.00" },
-                    ].map(({ type, vat, goods }, i) => (
-                      <tr
-                        key={type}
+                        key={item.id || index}
                         className={cn(
-                          "border-t border-emerald-100",
-                          i % 2 === 0 ? "bg-white" : "bg-emerald-50/40",
+                          "border-b border-zinc-100 transition-colors hover:bg-zinc-50",
+                          index % 2 === 0 ? "bg-white" : "bg-zinc-50/40",
                         )}
                       >
-                        <td className="py-2.5 px-3 border-r border-emerald-100 font-bold text-gray-700">
-                          {type}
+                        <td className="py-3.5 px-5 text-center">
+                          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-zinc-100 text-zinc-500 text-[10px] font-black">
+                            {index + 1}
+                          </span>
                         </td>
-                        <td className="py-2.5 px-3 border-r border-emerald-100 text-right text-gray-600">
-                          {vat}
+                        <td className="py-3.5 px-5">
+                          <p className="font-semibold text-zinc-800">
+                            {item.stockName}
+                          </p>
+                          {item.stockVariantName &&
+                            item.stockVariantName !== item.stockName && (
+                              <p className="text-xs text-zinc-400 mt-0.5">
+                                {item.stockVariantName}
+                              </p>
+                            )}
                         </td>
-                        <td className="py-2.5 px-3 text-right font-bold text-gray-800">
-                          {goods}
+                        <td className="py-3.5 px-5 text-right font-bold text-zinc-800 whitespace-nowrap">
+                          {item.quantityReceived?.toLocaleString()}
+                        </td>
+                        <td className="py-3.5 px-5 text-right text-zinc-500 font-medium whitespace-nowrap">
+                          {item.previousCostPerItem != null
+                            ? formatCurrency(item.previousCostPerItem)
+                            : "—"}
+                        </td>
+                        <td className="py-3.5 px-5 text-right text-zinc-500 font-medium whitespace-nowrap">
+                          {item.lastCostPerItem != null
+                            ? formatCurrency(item.lastCostPerItem)
+                            : item.previousCostPerItem != null
+                              ? formatCurrency(item.previousCostPerItem)
+                              : "—"}
+                        </td>
+                        <td className="py-3.5 px-5 text-right font-bold text-zinc-900 whitespace-nowrap">
+                          {formatCurrency(item.totalCost || 0)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
+                  <tfoot>
+                    <tr className="bg-zinc-100 border-t-2 border-zinc-200">
+                      <td
+                        colSpan={2}
+                        className="py-3.5 px-5 text-[9px] font-bold uppercase tracking-widest text-zinc-500"
+                      >
+                        Totals — {items.length}{" "}
+                        {items.length === 1 ? "line" : "lines"}
+                      </td>
+                      <td className="py-3.5 px-5 text-right font-bold text-zinc-800 whitespace-nowrap">
+                        {totalQuantityReceived.toLocaleString()}
+                      </td>
+                      <td colSpan={2} />
+                      <td className="py-3.5 px-5 text-right font-black text-zinc-900 whitespace-nowrap text-base">
+                        {formatCurrency(totalValue)}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
               </div>
-            </div>
-          </div>
 
-          {/* ── NOTES ── */}
-          {receiptData.notes && (
-            <div className="px-4 sm:px-6 md:px-8 py-3 sm:py-4 border-t border-emerald-100">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-3.5 w-0.5 bg-emerald-500 rounded-full" />
-                <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
-                  Notes
+              {/* Summary box */}
+              <div className="mt-6 flex justify-end">
+                <div className="w-full sm:w-72 rounded-xl border border-zinc-200 overflow-hidden">
+                  <div className="bg-zinc-50 border-b border-zinc-200 px-5 py-3">
+                    <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                      Invoice Summary
+                    </p>
+                  </div>
+                  <div className="bg-white divide-y divide-zinc-100">
+                    {[
+                      {
+                        label: "Net Amount",
+                        value: formatCurrency(totalValue),
+                      },
+                      { label: "VAT Amount", value: "0.00" },
+                      { label: "Rounding", value: "0.00" },
+                    ].map(({ label, value }) => (
+                      <div
+                        key={label}
+                        className="flex justify-between px-5 py-3"
+                      >
+                        <span className="text-sm text-zinc-500">{label}</span>
+                        <span className="text-sm font-semibold text-zinc-700">
+                          {value}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex justify-between px-5 py-4 bg-zinc-900 rounded-b-xl">
+                      <span className="text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-400">
+                        Total Amount
+                      </span>
+                      <span className="text-base font-black text-white">
+                        {formatCurrency(totalValue)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── SIGNATURES ─────────────────────────────────────────────── */}
+            <div className="px-5 sm:px-8 md:px-10 py-6 border-t border-zinc-200 bg-zinc-50">
+              <SectionHeading
+                icon={ShieldCheck}
+                label="Authorisation & Signatures"
+              />
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-5 sm:gap-8">
+                {[
+                  {
+                    label: "Prepared By",
+                    value: `${receiptData.staffFirstName} ${receiptData.staffLastName}`,
+                  },
+                  { label: "Checked By", value: "" },
+                  { label: "Authorised By", value: "" },
+                  { label: "Accounts", value: "" },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex flex-col items-center">
+                    <div className="h-12 flex items-end justify-center pb-2 w-full">
+                      {value && (
+                        <span className="text-xs font-semibold text-zinc-700 truncate">
+                          {value}
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-full border-b-2 border-zinc-300 mb-2" />
+                    <p className="text-[8px] font-bold uppercase tracking-[0.2em] text-zinc-500 text-center">
+                      {label}
+                    </p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Approval + VAT tables */}
+              <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2.5">
+                    Approval
+                  </p>
+                  <div className="rounded-xl border border-zinc-200 overflow-hidden">
+                    <table className="w-full text-xs text-center">
+                      <thead>
+                        <tr className="bg-zinc-100 border-b border-zinc-200">
+                          {["Approved By", "Date", "Amount"].map((h) => (
+                            <th
+                              key={h}
+                              className="py-3 px-4 text-zinc-500 font-bold border-r border-zinc-200 last:border-r-0"
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[1, 2].map((r) => (
+                          <tr
+                            key={r}
+                            className="border-t border-zinc-100 bg-white"
+                          >
+                            <td className="py-5 border-r border-zinc-100" />
+                            <td className="py-5 border-r border-zinc-100" />
+                            <td className="py-5" />
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500 mb-2.5">
+                    VAT Summary
+                  </p>
+                  <div className="rounded-xl border border-zinc-200 overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="bg-zinc-100 border-b border-zinc-200">
+                          {["Type", "VAT", "Goods Value"].map((h, i) => (
+                            <th
+                              key={h}
+                              className={cn(
+                                "py-3 px-4 text-zinc-500 font-bold border-r border-zinc-200 last:border-r-0",
+                                i === 0 ? "text-left" : "text-right",
+                              )}
+                            >
+                              {h}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[
+                          {
+                            type: "VAT",
+                            vat: "0.00",
+                            goods: formatCurrency(totalValue),
+                          },
+                          { type: "EXEMPT", vat: "0.00", goods: "0.00" },
+                        ].map(({ type, vat, goods }, i) => (
+                          <tr
+                            key={type}
+                            className={cn(
+                              "border-t border-zinc-100",
+                              i % 2 === 0 ? "bg-white" : "bg-zinc-50",
+                            )}
+                          >
+                            <td className="py-3 px-4 border-r border-zinc-100 font-semibold text-zinc-700">
+                              {type}
+                            </td>
+                            <td className="py-3 px-4 border-r border-zinc-100 text-right text-zinc-500">
+                              {vat}
+                            </td>
+                            <td className="py-3 px-4 text-right font-semibold text-zinc-800">
+                              {goods}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ── NOTES ──────────────────────────────────────────────────── */}
+            {receiptData.notes && (
+              <div className="px-5 sm:px-8 md:px-10 py-5 border-t border-zinc-200">
+                <SectionHeading icon={FileText} label="Notes" />
+                <p className="text-sm text-zinc-700 bg-zinc-50 border border-zinc-200 rounded-xl p-4 leading-relaxed">
+                  {receiptData.notes}
                 </p>
               </div>
-              <p className="text-xs sm:text-sm text-gray-700 border border-emerald-200 rounded-lg p-3 bg-emerald-50/50">
-                {receiptData.notes}
+            )}
+
+            {/* ── TERMS ──────────────────────────────────────────────────── */}
+            <div className="px-5 sm:px-8 md:px-10 py-5 border-t border-zinc-200">
+              <SectionHeading icon={CheckCircle2} label="Terms & Conditions" />
+              <ol className="space-y-2 list-decimal list-inside text-[11px] text-zinc-500 leading-relaxed bg-zinc-50 border border-zinc-200 rounded-xl p-4 sm:p-5">
+                {[
+                  "This goods receipt note confirms receipt of items listed above in the specified quantities and condition.",
+                  "Any discrepancies or damages must be reported within 48 hours of receipt.",
+                  "The receiver confirms all items have been inspected and meet required quality standards.",
+                  "This document serves as proof of delivery and acceptance of goods.",
+                  "The supplier's invoice should reference this receipt number for payment processing.",
+                  "Payment will be processed based on quantities received and accepted as per this note.",
+                ].map((term, i) => (
+                  <li key={i} className="pl-1">
+                    {term}
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* ── FOOTER ─────────────────────────────────────────────────── */}
+            <div className="px-5 sm:px-8 md:px-10 py-4 bg-zinc-100 border-t border-zinc-200 flex flex-col sm:flex-row items-center justify-between gap-2">
+              <p className="text-[10px] text-zinc-400 font-medium text-center sm:text-left">
+                System-generated document — do not alter
+              </p>
+              <p className="text-[10px] text-zinc-400 font-medium">
+                {format(new Date(), "dd MMM yyyy, hh:mm:ss a")}
+              </p>
+              <p className="text-[10px] font-black text-zinc-600 uppercase tracking-widest">
+                Powered by Settlo
               </p>
             </div>
-          )}
-
-          {/* ── TERMS ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-4 sm:py-5 border-t border-emerald-100">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-3.5 w-0.5 bg-emerald-500 rounded-full" />
-              <p className="text-[8px] sm:text-[9px] font-black uppercase tracking-[0.2em] text-gray-600">
-                Terms & Conditions
-              </p>
-            </div>
-            <ol className="space-y-1.5 list-decimal list-inside text-[10px] sm:text-[11px] text-gray-600 leading-relaxed bg-emerald-50/40 border border-emerald-100 rounded-lg p-3 sm:p-4">
-              <li>
-                This goods receipt note confirms the receipt of items listed
-                above in the specified quantities and conditions.
-              </li>
-              <li>
-                Any discrepancies or damages must be reported within 48 hours of
-                receipt.
-              </li>
-              <li>
-                The receiver confirms that all items have been inspected and
-                meet the required quality standards.
-              </li>
-              <li>
-                This document serves as proof of delivery and acceptance of
-                goods.
-              </li>
-              <li>
-                The supplier&apos;s invoice should reference this receipt number
-                for payment processing.
-              </li>
-              <li>
-                Payment will be processed based on quantities received and
-                accepted as per this note.
-              </li>
-            </ol>
-          </div>
-
-          {/* ── FOOTER ── */}
-          <div className="px-4 sm:px-6 md:px-8 py-3 bg-emerald-500 flex flex-col sm:flex-row items-center justify-between gap-2">
-            <p className="text-[10px] sm:text-[12px] text-emerald-100 font-medium text-center sm:text-left">
-              This is a system-generated document
-            </p>
-            <p className="text-[10px] sm:text-[12px] text-emerald-100 font-medium text-center">
-              {format(new Date(), "dd MMM yyyy, hh:mm:ss a")}
-            </p>
-            <p className="text-[10px] sm:text-[12px] text-white font-black tracking-wider text-center">
-              Powered by Settlo
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
