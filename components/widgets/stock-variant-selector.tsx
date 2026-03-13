@@ -230,7 +230,6 @@ const StockVariantSelector: React.FC<Props> = ({
     return placeholder;
   }, [isLoadingVariant, selectedOption, placeholder]);
 
-  // Popover width: at least match the trigger, min 300px on mobile
   const popoverWidth = Math.max(triggerWidth, 300);
 
   return (
@@ -242,25 +241,21 @@ const StockVariantSelector: React.FC<Props> = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            // ✅ overflow-hidden stops the button growing past its container
             className="w-full justify-between overflow-hidden"
             disabled={isDisabled}
           >
-            {/* ✅ min-w-0 + flex-1 allows the text area to shrink and truncate */}
             <span className="flex items-center gap-2 min-w-0 flex-1">
               {isLoadingVariant && (
-                // ✅ shrink-0 keeps the spinner from being squished
                 <Loader2 className="h-4 w-4 animate-spin shrink-0" />
               )}
-              {/* ✅ truncate clips long text with ellipsis */}
+
               <span className="truncate text-left">{displayText}</span>
             </span>
-            {/* ✅ shrink-0 keeps the chevron always visible on the right */}
+
             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
           </Button>
         </PopoverTrigger>
 
-        {/* ✅ Popover width matches trigger width responsively */}
         <PopoverContent
           className="p-0"
           style={{ width: popoverWidth }}
@@ -291,7 +286,6 @@ const StockVariantSelector: React.FC<Props> = ({
                       value={option.searchString}
                       disabled={option.disabled}
                       onSelect={() => handleSelect(option)}
-                      // ✅ Ensure long names wrap cleanly inside the dropdown
                       className="items-start gap-2"
                     >
                       <Check
@@ -300,7 +294,7 @@ const StockVariantSelector: React.FC<Props> = ({
                           value === option.id ? "opacity-100" : "opacity-0",
                         )}
                       />
-                      {/* ✅ break-words allows long names to wrap in the list */}
+
                       <span className="break-words">{option.displayName}</span>
                     </CommandItem>
                   ))
