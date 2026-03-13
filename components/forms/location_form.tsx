@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { businessTimes } from "@/types/constants";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import {
   Dialog,
   DialogContent,
@@ -42,12 +42,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import CancelButton from "../widgets/cancel-button";
+
 import { Separator } from "../ui/separator";
 
 export const LocationForm = ({
   item,
-  onSubmit,
+  onSubmit: _onSubmit,
   multipleStep = false,
   businessId,
 }: {

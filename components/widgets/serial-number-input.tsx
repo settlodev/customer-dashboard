@@ -206,7 +206,7 @@ export function UniqueIdentifierInput({
         }
         html5QrcodeRef.current.clear();
       }
-    } catch (_) {}
+    } catch {}
     html5QrcodeRef.current = null;
   };
 

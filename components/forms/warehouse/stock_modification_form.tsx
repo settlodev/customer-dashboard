@@ -66,7 +66,7 @@ function WarehouseStockModificationForm({
   item: StockModification | null | undefined;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | undefined>("");
+  const [, setError] = useState<string | undefined>("");
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -188,7 +188,7 @@ function WarehouseStockModificationForm({
             description: response.message,
           });
         }
-      } catch (error) {
+      } catch (_error) {
         toast({
           variant: "destructive",
           title: "Error",

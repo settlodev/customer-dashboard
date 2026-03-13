@@ -44,10 +44,10 @@ interface WarehouseInvoiceTableProps {
   fetchInvoices: (page: number, pageSize: number, searchQuery: string) => Promise<ApiResponse<Invoice>>;
 }
 
-const WarehouseInvoiceTable: React.FC<WarehouseInvoiceTableProps> = ({ 
-  warehouseId, 
-  onInvoiceSelect,
-  fetchInvoices 
+const WarehouseInvoiceTable: React.FC<WarehouseInvoiceTableProps> = ({
+  warehouseId: _warehouseId,
+  onInvoiceSelect: _onInvoiceSelect,
+  fetchInvoices
 }) => {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);

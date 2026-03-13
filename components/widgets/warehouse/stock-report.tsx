@@ -21,7 +21,7 @@ const SummaryCard = ({
   title, 
   value, 
   colorClass = "", 
-  progress = null, 
+  progress: _progress = null,
   icon: Icon,
   subtitle = ""
 }: { 

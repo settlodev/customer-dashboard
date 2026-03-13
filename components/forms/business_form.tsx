@@ -25,12 +25,11 @@ import {
   Instagram,
   Loader2Icon,
   Mail,
-  MapPin,
   X,
   Youtube,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import {
   Dialog,
   DialogContent,
@@ -39,7 +38,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import CancelButton from "../widgets/cancel-button";
+
 import { Separator } from "../ui/separator";
 import { Business } from "@/types/business/type";
 import { BusinessSchema } from "@/types/business/schema";

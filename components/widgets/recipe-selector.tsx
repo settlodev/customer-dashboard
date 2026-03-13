@@ -35,7 +35,7 @@ function RecipeSelector({
         setIsLoading(true);
         const fetchedRecipes = await fetchRecipes();
         setRecipes(fetchedRecipes);
-      } catch (error: any) {
+      } catch (_error: any) {
       } finally {
         setIsLoading(false);
       }

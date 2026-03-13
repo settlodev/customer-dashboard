@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { FileText, Search, Calendar, ChevronLeft, ChevronRight, Loader2, Eye } from 'lucide-react';
+import { FileText, Search, Calendar, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { searchInvoices } from '@/lib/actions/invoice-actions';
 
 import { useToast } from '@/hooks/use-toast';

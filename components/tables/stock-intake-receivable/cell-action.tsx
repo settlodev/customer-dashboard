@@ -2,10 +2,8 @@
 
 import React from "react";
 
-import { StockTransfer } from "@/types/stock-transfer/type";
-import { StockPurchase } from "@/types/stock-purchases/type";
 import { useRouter } from "next/navigation";
-import { EyeIcon, Receipt } from "lucide-react";
+import { EyeIcon } from "lucide-react";
 import { StockReceipt } from "@/types/stock-intake-receipt/type";
 
 interface CellActionProps {

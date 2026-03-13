@@ -27,7 +27,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
   onSave,
   currentImage,
 }) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>(currentImage || "");
   const [isUploading, setIsUploading] = useState(false);
 
@@ -88,7 +88,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
         description: "Receipt image uploaded successfully",
       });
       onClose();
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Upload failed",

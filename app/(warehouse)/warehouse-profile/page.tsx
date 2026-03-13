@@ -4,8 +4,6 @@ import { Edit, MapPin, Phone, Mail, Clock, Building, Calendar, Plus } from 'luci
 import { getWarehouse} from '@/lib/actions/warehouse/list-warehouse';
 import { Warehouses } from '@/types/warehouse/warehouse/type';
 import { Button } from '@/components/ui/button';
-import { warehouseInvoices } from '@/lib/actions/warehouse/subscription';
-import WarehouseInvoiceTable from '@/components/widgets/warehouse/invoice-table';
 import { useRouter } from 'next/navigation';
 import Loading from '@/components/ui/loading';
 
@@ -35,23 +33,6 @@ const WarehouseProfile = () => {
     fetchWarehouses();
   }, []);
 
-  
-const fetchWarehouseInvoices = async (page: number, pageSize: number, searchQuery: string) => {
-
-  const response = await warehouseInvoices(page, pageSize, searchQuery);
-  
-  return {
-    content: response.content,
-    totalElements: response.totalElements,
-    totalPages: response.totalPages,
-    size: response.size,
-    number: response.number,
-    first: response.first,
-    last: response.last,
-    numberOfElements: response.numberOfElements,
-    empty: response.empty
-  };
-};
 
   const formatTime = (time: string) => {
     return new Date(`1970-01-01T${time}`).toLocaleTimeString([], { 

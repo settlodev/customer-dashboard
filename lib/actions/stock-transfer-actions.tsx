@@ -128,7 +128,7 @@ export const createStockTransfer = async (
 };
 
 
-export const getStockTransferred= async (id:UUID, stockVariant:UUID) : Promise<ApiResponse<StockTransfer>> => {
+export const getStockTransferred= async (id:UUID, _stockVariant:UUID) : Promise<ApiResponse<StockTransfer>> => {
 
     const apiClient = new ApiClient();
     const query ={

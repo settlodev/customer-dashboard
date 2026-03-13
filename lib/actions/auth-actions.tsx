@@ -19,7 +19,7 @@ import {
   getUser,
 } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
-import { sendPasswordResetEmail } from "./emails/send";
+
 import { revalidatePath } from "next/cache";
 import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
 

@@ -29,7 +29,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import DateTimePicker from "../widgets/datetimepicker";
 import { useRouter } from "next/navigation";
 import StaffSelectorWidget from "@/components/widgets/staff_selector_widget";
-import { CalendarDays, Receipt, Tags, User2, DollarSign, CreditCard, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { CalendarDays, Receipt, Tags, User2, DollarSign, CreditCard } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { NumericFormat } from "react-number-format";
 

@@ -186,7 +186,7 @@ const LocationList = ({
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSuccessfulPayment = useCallback(
-    (response: any) => {
+    (_response: any) => {
       toast({
         title: "Subscription Successful",
         description: "Your warehouse subscription has been activated.",

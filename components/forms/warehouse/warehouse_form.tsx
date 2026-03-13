@@ -17,17 +17,15 @@ import { useToast } from "@/hooks/use-toast";
 import { BusinessTimeType } from "@/types/types";
 import { Separator } from "@/components/ui/separator";
 import {
-  Building2,
   Loader2Icon,
   Mail,
   MapPin,
   Phone,
-  User,
   Clock,
   Store,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { PhoneInput } from "@/components/ui/phone-input";
 import CancelButton from "@/components/widgets/cancel-button";
 import SubmitButton from "@/components/widgets/submit-button";

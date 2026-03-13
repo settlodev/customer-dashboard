@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockIntake } from "@/types/stock-intake/type";
 
-import { FormResponse } from "@/types/types";
+
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -28,7 +28,6 @@ import {
   Plus,
   Trash2,
   Package,
-  TrendingUp,
   Copy,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -249,7 +248,7 @@ function WarehouseStockIntakeForm({
     });
   };
 
-  const validateDates = (orderDate: string, deliveryDate: string) => {
+  const _validateDates = (orderDate: string, deliveryDate: string) => {
     const order = new Date(orderDate);
     const delivery = new Date(deliveryDate);
 

@@ -156,7 +156,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
                     <FormField
                         control={form.control}
                         name="status"
-                        render={({ field }) => (
+                        render={({ field: _field }) => (
                             <FormItem>
                                 <FormControl>
                                     <div className={cn(

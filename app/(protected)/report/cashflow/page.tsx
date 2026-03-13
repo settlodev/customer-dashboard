@@ -81,7 +81,7 @@ const CashFlowReportDashboard = () => {
     }).format(value);
   };
 
-  const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
+  const DateTimePicker = ({ value, onChange, label: _label }: DatePickerProps) => {
     function handleDateSelect(date: Date | undefined) {
       if (date) {
         const newDate = new Date(date);

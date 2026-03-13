@@ -10,8 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { StockModification } from "@/types/stock-modification/type";
-import { getStockModified } from "@/lib/actions/stock-modification-actions";
-import StockModificationForm from "@/components/forms/stock_modification_form";
+
 import { getStockModifiedInWarehouse } from "@/lib/actions/warehouse/stock-modification-actions";
 import WarehouseStockModificationForm from "@/components/forms/warehouse/stock_modification_form";
 
