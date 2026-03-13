@@ -39,10 +39,10 @@ import {
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 // Convert null values to undefined so they match the Zod schema types
-const stripNulls = <T extends Record<string, unknown>>(obj: T) =>
+const stripNulls = (obj: Record<string, unknown>) =>
   Object.fromEntries(
     Object.entries(obj).map(([k, v]) => [k, v === null ? undefined : v]),
-  ) as { [K in keyof T]: Exclude<T[K], null> | (null extends T[K] ? undefined : never) };
+  );
 
 const DEFAULTS: Partial<ReservationSetting> = {
   minPartySize: 1,
