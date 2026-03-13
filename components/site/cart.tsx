@@ -83,7 +83,7 @@ const CartPage: React.FC<CartPageProps> = ({
 
   const subtotal = getTotalPrice();
   const discountAmount = subtotal * discount;
-  const total = subtotal - discountAmount;
+  const _total = subtotal - discountAmount;
   const deliveryFee = subtotal > 50000 ? 0 : 5000; 
 
   if (state.orderRequestitems.length === 0) {

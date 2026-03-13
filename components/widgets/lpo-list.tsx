@@ -328,7 +328,7 @@ export function LPOSelectionList({ lpos }: LPOSelectionListProps) {
         ),
       };
 
-      const validatedPayload = stockIntakeReceiptSchema.parse(payload);
+      stockIntakeReceiptSchema.parse(payload);
       // console.log("Validated Payload:", validatedPayload);
 
       await receivePurchaseOrderAsStockIntake(

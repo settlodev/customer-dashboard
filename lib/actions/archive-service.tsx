@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import ApiClient from "../settlo-api-client";
-import { getCurrentBusiness, getCurrentLocation } from "./business/get-current-business";
+import { getCurrentLocation } from "./business/get-current-business";
 
 interface ArchiveEntityProps {
   ids: string[];
@@ -27,8 +27,6 @@ export async function archiveEntity({
     
    
 const location = locationId ? { id: locationId } : await getCurrentLocation();
-const business = await getCurrentBusiness();
-
 const actualLocationId = locationId || location?.id;
  
 

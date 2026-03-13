@@ -242,7 +242,6 @@ const ProductGrid: React.FC<ProductGridProps> = ({
           const productHasVariants = hasVariants(extendedProduct);
           const needsSelection = needsVariantSelection(extendedProduct);
           const isHovered = hoveredProduct === product.id;
-          const quantity = getDisplayQuantity(extendedProduct);
           // const quantityInfo = getQuantityDisplayInfo(quantity);
           // const isOutOfStock = quantity === 0;
           const stockStatus = getProductStockStatus(extendedProduct);

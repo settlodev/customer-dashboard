@@ -18,9 +18,9 @@ export const NavbarWrapper = ({children, session, businessData, menuType}: Props
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     return (
-        <div className="relative flex flex-col flex-1 min-w-0 overflow-y-auto overflow-x-hidden">
+        <div className="relative flex flex-col flex-1 min-w-0">
             <div className="max-w-screen-2xl mx-auto w-full flex flex-col flex-1">
-                <div className="sticky top-0 z-[55] p-2">
+                <div className="sticky top-0 z-[55] px-4 pt-2 md:px-8">
                     <Header
                         session={session}
                         onMenuClick={() => setMobileSidebarOpen(true)}

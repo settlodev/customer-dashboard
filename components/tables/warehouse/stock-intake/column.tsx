@@ -1,8 +1,6 @@
 "use client";
 import {ColumnDef} from "@tanstack/react-table";
-import {ArrowUpDown} from "lucide-react";
 import {Checkbox} from "@/components/ui/checkbox";
-import {Button} from "@/components/ui/button";
 // import {StateColumn} from "@/components/tables/state-column";
 // import {CellAction} from "@/components/tables/stock-intake/cell-action";
 import { StockIntake } from "@/types/stock-intake/type";

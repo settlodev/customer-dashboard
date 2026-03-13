@@ -290,7 +290,7 @@ function ProformaPreviewSkeleton() {
 // ─── Create Customer Modal ────────────────────────────────────────────────────
 
 function CreateCustomerModal({
-  onCreated,
+  onCreated: _onCreated,
 }: {
   onCreated: (customer: Customer) => Promise<{ error?: string }>;
 }) {

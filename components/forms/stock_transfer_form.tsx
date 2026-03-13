@@ -33,8 +33,8 @@ import { FormResponse } from "@/types/types";
 import { useRouter, useSearchParams } from "next/navigation";
 import { StockVariant } from "@/types/stockVariant/type";
 import StockVariantSelector from "../widgets/stock-variant-selector";
-import DepartmentSelector from "@/components/widgets/department-selector";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import LocationDepartmentSelector from "@/components/widgets/location-department-selector";
@@ -49,7 +49,7 @@ function StockTransferForm({
   const [success, setSuccess] = useState<string | undefined>("");
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
-  const [response, setResponse] = useState<FormResponse | undefined>();
+  const [, setResponse] = useState<FormResponse | undefined>();
   const [selectedVariant, setSelectedVariant] = useState<StockVariant>();
   const { toast } = useToast();
   const router = useRouter();

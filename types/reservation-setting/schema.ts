@@ -1,5 +1,16 @@
 import { boolean, number, object, string, array, enum as zenum, preprocess } from "zod";
 
+// Helpers that accept null from the API and convert to undefined
+const optionalBoolean = preprocess(
+  (val) => (val === null ? undefined : val),
+  boolean().optional(),
+);
+
+const optionalString = preprocess(
+  (val) => (val === null || val === "" ? undefined : val),
+  string().optional(),
+);
+
 const optionalNumber = preprocess(
   (val) => {
     if (val === null || val === undefined || val === "") return undefined;
@@ -41,32 +52,32 @@ export const ReservationSettingSchema = object({
   minAdvanceBookingHours: requiredNumber("Minimum advance booking hours is required"),
   defaultDurationMinutes: requiredNumber("Default duration is required"),
   slotIntervalMinutes: requiredNumber("Slot interval is required"),
-  enableOnlineBooking: boolean().optional(),
-  requireGuestEmail: boolean().optional(),
-  requireGuestPhone: boolean().optional(),
-  allowSpecialRequests: boolean().optional(),
+  enableOnlineBooking: optionalBoolean,
+  requireGuestEmail: optionalBoolean,
+  requireGuestPhone: optionalBoolean,
+  allowSpecialRequests: optionalBoolean,
 
   // Confirmation
-  autoConfirm: boolean().optional(),
+  autoConfirm: optionalBoolean,
   autoConfirmMaxPartySize: optionalNumber,
 
   // Deposit & Payment
-  requireDeposit: boolean().optional(),
+  requireDeposit: optionalBoolean,
   defaultDepositAmount: optionalNonNegativeNumber,
-  depositPerGuest: boolean().optional(),
+  depositPerGuest: optionalBoolean,
   depositRequiredMinPartySize: optionalNumber,
 
   // Cancellation & No-Show
   cancellationPolicyHours: optionalNonNegativeNumber,
-  allowOnlineCancellation: boolean().optional(),
-  cancellationPolicyText: string().optional(),
-  chargeNoShowFee: boolean().optional(),
+  allowOnlineCancellation: optionalBoolean,
+  cancellationPolicyText: optionalString,
+  chargeNoShowFee: optionalBoolean,
   noShowFeeAmount: optionalNonNegativeNumber,
 
   // Notifications & Reminders
-  sendConfirmationEmail: boolean().optional(),
-  sendConfirmationSms: boolean().optional(),
-  sendReminderNotification: boolean().optional(),
+  sendConfirmationEmail: optionalBoolean,
+  sendConfirmationSms: optionalBoolean,
+  sendReminderNotification: optionalBoolean,
   reminderHoursBeforeReservation: optionalNumber,
 
   // Pacing & Capacity
@@ -76,17 +87,17 @@ export const ReservationSettingSchema = object({
   maxDailyGuests: optionalNumber,
 
   // Waitlist
-  enableWaitlist: boolean().optional(),
+  enableWaitlist: optionalBoolean,
   maxWaitlistSize: optionalNumber,
 
   // Table Assignment
-  autoAssignTable: boolean().optional(),
-  allowGuestTablePreference: boolean().optional(),
+  autoAssignTable: optionalBoolean,
+  allowGuestTablePreference: optionalBoolean,
 
   // Guest-Facing Messages
-  confirmationMessage: string().optional(),
-  bookingPageWelcomeMessage: string().optional(),
-  termsAndConditions: string().optional(),
+  confirmationMessage: optionalString,
+  bookingPageWelcomeMessage: optionalString,
+  termsAndConditions: optionalString,
 }).refine(
   (data) => {
     if (data.maxPartySize && data.minPartySize > data.maxPartySize) return false;

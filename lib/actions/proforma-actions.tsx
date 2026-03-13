@@ -14,7 +14,7 @@ import {
   ProformaSchema,
   UpdateProformaSchema,
 } from "@/types/proforma/schema";
-import { Product } from "@/types/product/type";
+
 
 export const searchProformaInvoices = async (
   q: string,

@@ -131,7 +131,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     item?.orderDate ? new Date(item.orderDate) : undefined,
   );
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(
-    item?.deliveryDate ? new Date(item.deliveryDate) : undefined,
+    item?.deliveryDate ? new Date(item.deliveryDate) : new Date(),
   );
 
   const [lineStates, setLineStates] = useState<LineState[]>([

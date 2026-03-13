@@ -104,7 +104,7 @@ function RegisterForm({ step }: { step: string }) {
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
   const [, setIsRegistrationComplete] = useState<boolean>(false);
-  const [stepsDone, setStepsDone] = useState<SignUpStepItemType[]>(() => {
+  const [stepsDone, _setStepsDone] = useState<SignUpStepItemType[]>(() => {
     const currentStepIndex = signUpSteps.findIndex((s) => s.id === step);
     if (currentStepIndex <= 0) return [];
     return signUpSteps.slice(0, currentStepIndex);
@@ -116,7 +116,7 @@ function RegisterForm({ step }: { step: string }) {
   const [emailVerified] = useState<boolean>(false);
   const [emailSent, setEmailSent] = useState<boolean>(false);
   const [businessImageUrl, setBusinessImageUrl] = useState<string>("");
-  const [locationImageUrl, setLocationImageUrl] = useState<string>("");
+  const [locationImageUrl, _setLocationImageUrl] = useState<string>("");
   const router = useRouter();
   const session = useSession();
   const searchParams = useSearchParams();

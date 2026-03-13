@@ -95,9 +95,6 @@ const groupSettingsByCategory = (settings: SettingField[]) =>
   );
 
 const getGridClass = (fields: SettingField[]): string => {
-  const hasInputFields = fields.some((f) =>
-    ["input", "text", "password", "number"].includes(f.type),
-  );
   return "grid grid-cols-1 md:grid-cols-2 gap-4";
 };
 

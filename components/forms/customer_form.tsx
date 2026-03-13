@@ -44,7 +44,6 @@ import { Switch } from "../ui/switch";
 import { PhoneInput } from "../ui/phone-input";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { CustomerSource, CustomerCreatedFrom } from "@/types/enums";
 import { Info } from "lucide-react";
 import { CustomerPreference } from "@/types/customer/type";
 

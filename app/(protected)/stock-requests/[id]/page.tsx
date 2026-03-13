@@ -1,6 +1,6 @@
 import {UUID} from "node:crypto";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {Card, CardContent} from "@/components/ui/card";
 import { getStockRequest } from "@/lib/actions/request-actions";
 import { StockRequests } from "@/types/warehouse/purchase/request/type";
 import StockRequestForm from "@/components/forms/stock_request_form";
@@ -39,8 +39,8 @@ export default async function StockRequestPage({params}: {params: Params}){
     )
 }
 
-const StockRequestCard =({isNewItem,item}:{
-    isNewItem:boolean,
+const StockRequestCard =({item}:{
+    isNewItem?:boolean,
     item: StockRequests
 }) =>(
     <Card>

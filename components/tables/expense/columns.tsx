@@ -7,7 +7,7 @@ import { CellAction } from "@/components/tables/expense/cell-action";
 import { Expense } from "@/types/expense/type";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { StateColumn } from "../state-column";
+
 
 export const columns: ColumnDef<Expense>[] = [
   {

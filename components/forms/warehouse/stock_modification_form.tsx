@@ -188,7 +188,7 @@ function WarehouseStockModificationForm({
             description: response.message,
           });
         }
-      } catch (error) {
+      } catch (_error) {
         toast({
           variant: "destructive",
           title: "Error",

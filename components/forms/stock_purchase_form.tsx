@@ -45,7 +45,7 @@ import DateTimePicker from "@/components/widgets/datetimepicker";
 import { StockPurchaseSchema } from "@/types/stock-purchases/schema";
 import { Button } from "@/components/ui/button";
 import { createStockPurchase } from "@/lib/actions/stock-purchase-actions";
-import { Badge } from "@/components/ui/badge";
+
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +57,7 @@ function StockPurchaseForm({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
-  const [stocks, setStocks] = useState<Stock[]>([]);
+  const [, setStocks] = useState<Stock[]>([]);
   const [shareLink, setShareLink] = useState<string>("");
   const [showPreview, setShowPreview] = useState<boolean>(false);
   const [purchaseData, setPurchaseData] = useState<any>();
@@ -202,7 +202,7 @@ function StockPurchaseForm({
         title: "Copied!",
         description: "Share link copied to clipboard.",
       });
-    } catch (err) {
+    } catch (_err) {
       toast({
         variant: "destructive",
         title: "Error",

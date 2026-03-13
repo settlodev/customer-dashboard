@@ -271,7 +271,7 @@
 
 "use client";
 
-import { LogOut, Key, X, Copy, Check, AlertCircle } from "lucide-react";
+import { LogOut, Key, Copy, Check, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -357,7 +357,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       } else {
         setLogoutError(result.error ?? "Something went wrong");
       }
-    } catch (error) {
+    } catch (_error) {
       setLogoutError("Unexpected error occurred");
     } finally {
       setIsLoggingOut(false);

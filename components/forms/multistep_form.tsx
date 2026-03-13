@@ -14,7 +14,7 @@ const MultiStepBusinessForm = ({
   item: Business | null | undefined;
 }) => {
   const [step, setStep] = useState(1);
-  const [businessData, setBusinessData] = useState<Business | null>(null);
+  const [, setBusinessData] = useState<Business | null>(null);
   const [createdBusinessId, setCreatedBusinessId] = useState<string | null>(
     null,
   );

@@ -16,7 +16,6 @@ import {
     ChevronDown,
     X,
     CreditCard,
-    MenuIcon,
     AlertTriangle,
     Warehouse
 } from "lucide-react";
@@ -25,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import {
     Sheet,
     SheetContent,
-    SheetTrigger
 } from "@/components/ui/sheet";
 
 import VersionDisplay from "../widgets/versioning";
@@ -74,7 +72,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                 if (isMounted) {
                     setSubscription(activeSubscription);
                 }
-            } catch (err) {
+            } catch (_err) {
                
                 if (isMounted) {
                     setError('Failed to load subscription data');
@@ -230,7 +228,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                                 </Link>
                                             </div>
                                         ) : (
-                                            section.items.map((item: MenuItem, index: React.Key | null | undefined) => (
+                                            section.items.map((item: MenuItem, _index: React.Key | null | undefined) => (
                                                 <Link
                                                     key={item.title}
                                                     href={item.link}

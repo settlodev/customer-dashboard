@@ -1,15 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React, { useState } from "react";
+import React from "react";
 
-import DeleteModal from "@/components/tables/delete-modal";
-import { toast } from "@/hooks/use-toast";
-import { Trash2 as DeleteIcon, Pencil as EditIcon, Eye as EyeIcon } from "lucide-react";
+import { Pencil as EditIcon, Eye as EyeIcon } from "lucide-react";
 
-import { deleteProduct } from "@/lib/actions/product-actions";
-import { Product } from "@/types/product/type";
-import ProductModal from "../product-modal";
 import { Proforma } from "@/types/proforma/type";
 
 interface CellActionProps {

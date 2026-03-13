@@ -3,7 +3,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
 import { CellAction } from "@/components/tables/stock-purchases/cell-action";
 import { StockPurchase } from "@/types/stock-purchases/type";
 
@@ -132,7 +132,7 @@ export const columns: ColumnDef<StockPurchase>[] = [
     enableHiding: true,
     cell: ({ row }) => {
       const status = row.original.status;
-      const getStatusVariant = (status: string) => {
+      const _getStatusVariant = (status: string) => {
         switch (status?.toLowerCase()) {
           case "submitted":
             return "default";

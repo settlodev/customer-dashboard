@@ -10,7 +10,7 @@ import { ApiResponse, FormResponse } from "@/types/types";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { RoleSchema, WarehouseRoleSchema } from "@/types/roles/schema";
+import { WarehouseRoleSchema } from "@/types/roles/schema";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
 

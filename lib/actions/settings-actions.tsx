@@ -67,7 +67,7 @@ export const updateLocationSettings = async (
   try {
     const apiClient = new ApiClient();
 
-    const response = await apiClient.put(
+    await apiClient.put(
       `/api/location-settings/${locationId?.id}/${id}`,
       payload,
     );
