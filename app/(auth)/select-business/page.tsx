@@ -6,6 +6,8 @@ import BusinessSelector from "@/app/(auth)/select-business/business_list";
 import Loading from "@/components/ui/loading";
 import { getBusinessDropDown } from "@/lib/actions/business/get-current-business";
 
+export const dynamic = "force-dynamic";
+
 function BusinessPageLoading() {
   return (
     <div className="flex items-center justify-center min-h-screen">

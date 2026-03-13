@@ -66,7 +66,7 @@ function WarehouseStockModificationForm({
   item: StockModification | null | undefined;
 }) {
   const [isPending, startTransition] = useTransition();
-  const [, setError] = useState<string | undefined>("");
+  const [error, setError] = useState<string | undefined>("");
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
