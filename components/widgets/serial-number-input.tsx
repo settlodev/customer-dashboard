@@ -117,36 +117,97 @@ export function UniqueIdentifierInput({
   const startCamera = async () => {
     setCameraError(null);
     try {
+      // Clean up any existing scanner first
+      await stopCamera();
+
       const { Html5Qrcode } = await import("html5-qrcode");
       // Wait for DOM element to be mounted
-      await new Promise((r) => setTimeout(r, 100));
-      const scanner = new Html5Qrcode(scannerDivId);
+      await new Promise((r) => setTimeout(r, 300));
+
+      const scanner = new Html5Qrcode(scannerDivId, { verbose: false });
       html5QrcodeRef.current = scanner;
 
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 250, height: 150 } },
-        (decodedText: string) => {
-          handleCameraScan(decodedText);
-        },
-        () => {},
-      );
+      const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+      const onSuccess = (decodedText: string) => {
+        handleCameraScan(decodedText);
+      };
+
+      // Check if camera APIs are available (requires HTTPS or localhost)
+      if (!navigator?.mediaDevices?.getUserMedia) {
+        setCameraError(
+          window.location.protocol === "http:" && window.location.hostname !== "localhost"
+            ? "Camera requires a secure (HTTPS) connection."
+            : "Camera is not supported in this browser."
+        );
+        return;
+      }
+
+      // Request camera permission explicitly first
+      let stream: MediaStream | null = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+      } catch (mediaErr: any) {
+        console.error("[Camera Scanner] getUserMedia failed:", mediaErr);
+        setCameraError(
+          mediaErr?.name === "NotAllowedError"
+            ? "Camera permission denied. Please allow camera access in your browser settings."
+            : mediaErr?.name === "NotFoundError"
+              ? "No camera found on this device."
+              : `Camera error: ${mediaErr?.message || mediaErr}`
+        );
+        return;
+      } finally {
+        // Release the stream — html5-qrcode will request its own
+        if (stream) {
+          stream.getTracks().forEach((t) => t.stop());
+        }
+      }
+
+      // Enumerate cameras (labels only available after permission is granted)
+      const cameras = await Html5Qrcode.getCameras();
+      console.log("[Camera Scanner] Available cameras:", cameras);
+
+      if (cameras.length === 0) {
+        setCameraError("No camera found on this device.");
+        return;
+      }
+
+      // Pick the back/environment camera if available
+      const backCamera = cameras.find(
+        (c) => /back|rear|environment/i.test(c.label)
+      ) || cameras[cameras.length - 1];
+
+      console.log("[Camera Scanner] Using camera:", backCamera);
+
+      try {
+        await scanner.start(backCamera.id, config, onSuccess, () => {});
+      } catch (startErr) {
+        console.error("[Camera Scanner] start with cameraId failed:", startErr);
+        await scanner.start(
+          { facingMode: "environment" },
+          config,
+          onSuccess,
+          () => {},
+        );
+      }
     } catch (err: any) {
-      setCameraError(
-        err?.message?.includes("Permission")
-          ? "Camera permission denied. Please allow camera access."
-          : "Could not start camera. Try USB scan mode instead.",
-      );
+      console.error("[Camera Scanner] Fatal error:", err);
+      setCameraError(`Camera error: ${err?.message || err}`);
     }
   };
 
   const stopCamera = async () => {
     try {
-      if (html5QrcodeRef.current?.isScanning) {
-        await html5QrcodeRef.current.stop();
+      if (html5QrcodeRef.current) {
+        if (html5QrcodeRef.current.isScanning) {
+          await html5QrcodeRef.current.stop();
+        }
+        html5QrcodeRef.current.clear();
       }
-      html5QrcodeRef.current = null;
     } catch (_) {}
+    html5QrcodeRef.current = null;
   };
 
   const handleCameraScan = useCallback((code: string) => {

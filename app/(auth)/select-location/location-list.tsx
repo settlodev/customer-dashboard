@@ -257,8 +257,7 @@ const LocationList = ({
     setPendingIndex(null);
   };
 
-  const handleSuccessfulCreation = (location: Location) => {
-    console.log("Location created successfully:", location);
+  const handleSuccessfulCreation = () => {
     setIsRedirecting(true);
     toast({
       title: "Warehouse Created",
