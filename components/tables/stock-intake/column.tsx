@@ -30,7 +30,7 @@ export const columns: ColumnDef<StockIntake>[] = [
         enableHiding: false,
     },
      {
-        accessorKey: "stockVariantName",
+        accessorKey: "stockAndStockVariantName",
         enableHiding: false,
         header: ({ column }) => {
             return (
@@ -38,16 +38,11 @@ export const columns: ColumnDef<StockIntake>[] = [
                     className="text-left p-0"
                     variant="ghost"
                     onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                    Stock
+                    Item
                     <ArrowUpDown className="ml-2 h-4 w-4" />
                 </Button>
             );
         },
-    },
-    {
-        accessorKey: "stockAndStockVariantName",
-        enableHiding: false,
-        header: 'Item',
     },
  
     {
@@ -69,7 +64,7 @@ export const columns: ColumnDef<StockIntake>[] = [
         cell: ({ row }) => {
             const value = row.original.value;
             const formatted = new Intl.NumberFormat("en-US").format(value);
-            return <div>{formatted}</div>;
+            return <div>{formatted}<span className="text-sm ml-1">Tsh</span></div>;
         }
        
     },
@@ -86,9 +81,9 @@ export const columns: ColumnDef<StockIntake>[] = [
             }).format(costPerItem);
             
             return (
-                <div className="text-black p-2 rounded-sm bg-emerald-400">
+                <div>
                     {formatted}
-                    <span className="text-black text-sm ml-1">TSH</span>
+                    <span className="text-sm ml-1">Tsh</span>
                 </div>
             );
         }
@@ -102,7 +97,7 @@ export const columns: ColumnDef<StockIntake>[] = [
         enableHiding: true,
         cell: ({ row }) => {
             const orderDate = row.original.orderDate;
-            const formatted = new Intl.DateTimeFormat("en-US").format(new Date(orderDate));
+            const formatted = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(orderDate));
             return <div className="hidden md:block lg:block">{formatted}</div>;
         }
        
@@ -116,7 +111,7 @@ export const columns: ColumnDef<StockIntake>[] = [
         enableHiding: true,
         cell: ({ row }) => {
             const deliveryDate = row.original.deliveryDate;
-            const formatted = new Intl.DateTimeFormat("en-US").format(new Date(deliveryDate));
+            const formatted = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(deliveryDate));
             return <div className="hidden md:block lg:block">{formatted}</div>;
         }
        
@@ -130,7 +125,7 @@ export const columns: ColumnDef<StockIntake>[] = [
         enableHiding: true,
         cell: ({ row }) => {
             const batchExpiryDate = row.original.batchExpiryDate;
-            const formatted = new Intl.DateTimeFormat("en-US").format(new Date(batchExpiryDate));
+            const formatted = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(batchExpiryDate));
             return (
                 <div className="hidden md:block lg:block">
                     {batchExpiryDate !== null ? formatted : "-"}
@@ -141,8 +136,9 @@ export const columns: ColumnDef<StockIntake>[] = [
    
     {
         id: "actions",
-        accessorKey: "actions",
         enableHiding: false,
+        header: () => null,
+        size: 40,
         cell: ({ row }) => <CellAction data={row.original} />,
     },
 ];

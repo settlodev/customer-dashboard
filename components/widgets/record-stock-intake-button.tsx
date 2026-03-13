@@ -9,8 +9,8 @@ export function RecordStockIntakeButton() {
 
   return (
     <>
-      <Button className="w-full sm:w-auto" onClick={() => setDialogOpen(true)}>
-        Record Stock Intake
+      <Button onClick={() => setDialogOpen(true)}>
+        Record stock intake
       </Button>
       <StockIntakeSelectionDialog
         open={dialogOpen}

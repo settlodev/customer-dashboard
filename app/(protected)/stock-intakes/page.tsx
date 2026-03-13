@@ -39,15 +39,15 @@ async function Page({ searchParams }: Params) {
   const pageCount = responseData.totalPages;
 
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 mt-12">
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
       {/* Header row */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BreadcrumbsNav items={breadCrumbItems} />
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
+        <div className="flex items-center gap-2">
           <RecordStockIntakeButton />
-          <Button asChild className="w-full sm:w-auto">
-            <Link href="/stock-purchases/new">Create Purchase Orders</Link>
+          <Button asChild>
+            <Link href="/stock-purchases/new">Create purchase order</Link>
           </Button>
         </div>
       </div>

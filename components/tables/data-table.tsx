@@ -506,7 +506,7 @@ export function DataTable<TData, TValue>({
           <Loading />
         </div>
       ) : (
-        <ScrollArea className="rounded-md border h-[calc(80vh-220px)]">
+        <div className="rounded-md border">
           <Table className="relative">
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
@@ -555,8 +555,7 @@ export function DataTable<TData, TValue>({
               )}
             </TableBody>
           </Table>
-          <ScrollBar orientation="horizontal" />
-        </ScrollArea>
+        </div>
       )}
 
       <div className="flex flex-col gap-2 sm:flex-row items-center justify-end space-x-2 py-4">
