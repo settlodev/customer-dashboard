@@ -908,7 +908,7 @@ const StockVariantSelector: React.FC<Props> = ({
             variant="outline"
             role="combobox"
             aria-expanded={open}
-            className="w-full justify-between"
+            className="w-full justify-between border-0 bg-muted hover:bg-muted/80"
             disabled={isDisabled}
           >
             <span className="flex items-center gap-2">

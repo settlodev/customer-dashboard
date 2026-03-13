@@ -31,7 +31,7 @@ import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
-import { Calendar, Clock, Fingerprint } from "lucide-react";
+import { Box, Hash, DollarSign, User, Calendar, Clock, CalendarClock, Truck, Fingerprint } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { getStockVariantById } from "@/lib/actions/stock-actions";
 import { NumericFormat } from "react-number-format";
@@ -44,7 +44,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     item?.orderDate ? new Date(item.orderDate) : undefined,
   );
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(
-    item?.deliveryDate ? new Date(item.deliveryDate) : undefined,
+    item?.deliveryDate ? new Date(item.deliveryDate) : new Date(),
   );
   const [batchExpiryDate, setBatchExpiryDate] = useState<Date | undefined>(
     item?.batchExpiryDate ? new Date(item.batchExpiryDate) : undefined,
@@ -54,6 +54,8 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
   const [serialNumbers, setSerialNumbers] = useState<string[]>([]);
   const [currentQuantity, setCurrentQuantity] = useState<number>(0);
   const [hasUniqueIdentifiers, setHasUniqueIdentifiers] =
+    useState<boolean>(false);
+  const [showIdentifierErrors, setShowIdentifierErrors] =
     useState<boolean>(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -66,6 +68,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
       ? item
       : {
           status: true,
+          deliveryDate: new Date().toISOString(),
           ...(stockVariantId ? { stockVariant: stockVariantId } : {}),
         },
   });
@@ -97,8 +100,18 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
   useEffect(() => {
     if (!hasUniqueIdentifiers) {
       setSerialNumbers([]);
+      setShowIdentifierErrors(false);
     }
   }, [hasUniqueIdentifiers]);
+
+  // Clear identifier errors when user starts filling them in
+  useEffect(() => {
+    if (showIdentifierErrors) {
+      setShowIdentifierErrors(false);
+      setError(undefined);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serialNumbers]);
 
   const handleStockVariantChange = async (value: string) => {
     form.setValue("stockVariant", value);
@@ -134,26 +147,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     if (deliveryDate && orderDate && deliveryDate < orderDate) {
       setError("Delivery date cannot be before order date.");
       return;
-    }
-
-    // Validate identifiers only when checkbox is enabled
-    if (hasUniqueIdentifiers && currentQuantity > 0) {
-      const filledSerials = serialNumbers.filter((s) => s.trim() !== "");
-      const uniqueSerials = new Set(filledSerials);
-
-      if (filledSerials.length !== currentQuantity) {
-        setError(
-          `Please enter all ${currentQuantity} unique identifiers before saving.`,
-        );
-        return;
-      }
-
-      if (uniqueSerials.size !== filledSerials.length) {
-        setError(
-          "Duplicate unique identifiers found. Each item must have a unique identifier.",
-        );
-        return;
-      }
     }
 
     // Pass identifiers as a separate argument to avoid Next.js server action
@@ -235,8 +228,35 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     <>
       <Form {...form}>
         <form
-          onSubmit={form.handleSubmit(submitData, onInvalid)}
-          className="space-y-8"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setShowIdentifierErrors(false);
+
+            // Validate identifiers before running Zod validation
+            if (hasUniqueIdentifiers && currentQuantity > 0) {
+              const filledSerials = serialNumbers.filter((s) => s.trim() !== "");
+              const uniqueSerials = new Set(filledSerials);
+
+              if (filledSerials.length !== currentQuantity) {
+                setShowIdentifierErrors(true);
+                setError(
+                  `Please enter all ${currentQuantity} unique identifiers before saving.`,
+                );
+                return;
+              }
+
+              if (uniqueSerials.size !== filledSerials.length) {
+                setShowIdentifierErrors(true);
+                setError(
+                  "Duplicate unique identifiers found. Each item must have a unique identifier.",
+                );
+                return;
+              }
+            }
+
+            form.handleSubmit(submitData, onInvalid)(e);
+          }}
+          className="space-y-5 sm:space-y-6"
         >
           <FormError message={error} />
 
@@ -250,13 +270,16 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
             <FormField
               control={form.control}
               name="stockVariant"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-medium">Stock Item</FormLabel>
+                  <FormLabel className="font-medium flex items-center gap-2">
+                    <Box className="h-4 w-4" />
+                    Stock Item <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <StockVariantSelector
                       {...field}
@@ -276,10 +299,13 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
               name="quantity"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-medium">Quantity</FormLabel>
+                  <FormLabel className="font-medium flex items-center gap-2">
+                    <Hash className="h-4 w-4" />
+                    Quantity <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <NumericFormat
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                       value={field.value}
                       disabled={isPending}
                       placeholder=""
@@ -302,10 +328,13 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
               name="value"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-medium">Value</FormLabel>
+                  <FormLabel className="font-medium flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Value <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <NumericFormat
-                      className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                       value={field.value}
                       disabled={isPending}
                       placeholder=""
@@ -327,7 +356,10 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
               name="staff"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-medium">Staff Member</FormLabel>
+                  <FormLabel className="font-medium flex items-center gap-2">
+                    <User className="h-4 w-4" />
+                    Staff Member <span className="text-red-500">*</span>
+                  </FormLabel>
                   <FormControl>
                     <StaffSelectorWidget
                       {...field}
@@ -349,7 +381,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                 <FormItem>
                   <FormLabel className="font-medium flex items-center gap-2">
                     <Calendar className="h-4 w-4" />
-                    Order Date
+                    Order Date <span className="text-red-500">*</span>
                   </FormLabel>
                   <DateTimePicker
                     field={field}
@@ -371,8 +403,8 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Delivery Date
+                    <Truck className="h-4 w-4" />
+                    Delivery Date <span className="text-red-500">*</span>
                   </FormLabel>
                   <DateTimePicker
                     field={field}
@@ -395,7 +427,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="font-medium flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
+                    <CalendarClock className="h-4 w-4" />
                     Batch Expiry
                   </FormLabel>
                   <DateTimePicker
@@ -416,9 +448,10 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
               name="supplier"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-medium">
-                    Supplier{" "}
-                    <span className="text-sm text-gray-500">(optional)</span>
+                  <FormLabel className="font-medium flex items-center gap-2">
+                    <Truck className="h-4 w-4" />
+                    Supplier
+                    <span className="text-xs text-muted-foreground font-normal">(optional)</span>
                   </FormLabel>
                   <FormControl>
                     <SupplierSelector
@@ -441,7 +474,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                   <FormItem className="flex items-center justify-between">
                     <div>
                       <FormLabel className="font-medium">Status</FormLabel>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         Toggle the current status of this stock intake
                       </p>
                     </div>
@@ -493,6 +526,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
               value={serialNumbers}
               onChange={setSerialNumbers}
               disabled={isPending}
+              showErrors={showIdentifierErrors}
             />
           )}
 
@@ -504,9 +538,9 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
             </p>
           )}
 
-          <div className="flex h-5 items-center space-x-4">
+          <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
             <CancelButton />
-            <Separator orientation="vertical" />
+            <Separator orientation="vertical" className="h-5" />
             <SubmitButton
               label={item ? "Update stock intake" : "Record stock intake"}
               isPending={isPending}
