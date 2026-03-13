@@ -31,16 +31,7 @@ import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import StockVariantSelector from "../widgets/stock-variant-selector";
 import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
-import {
-  Box,
-  Hash,
-  DollarSign,
-  User,
-  Calendar,
-  CalendarClock,
-  Truck,
-  Fingerprint,
-} from "lucide-react";
+import { Box, Hash, DollarSign, User, Calendar, Clock, CalendarClock, Truck, Fingerprint } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { getStockVariantById } from "@/lib/actions/stock-actions";
 import { NumericFormat } from "react-number-format";
@@ -243,9 +234,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
 
             // Validate identifiers before running Zod validation
             if (hasUniqueIdentifiers && currentQuantity > 0) {
-              const filledSerials = serialNumbers.filter(
-                (s) => s.trim() !== "",
-              );
+              const filledSerials = serialNumbers.filter((s) => s.trim() !== "");
               const uniqueSerials = new Set(filledSerials);
 
               if (filledSerials.length !== currentQuantity) {
@@ -462,9 +451,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                   <FormLabel className="font-medium flex items-center gap-2">
                     <Truck className="h-4 w-4" />
                     Supplier
-                    <span className="text-xs text-muted-foreground font-normal">
-                      (optional)
-                    </span>
+                    <span className="text-xs text-muted-foreground font-normal">(optional)</span>
                   </FormLabel>
                   <FormControl>
                     <SupplierSelector
