@@ -1,4 +1,5 @@
 import { AxiosError } from "axios";
+import { redirect } from "next/navigation";
 import {ErrorResponseType} from "@/types/types";
 
 export const ErrorCodes = {
@@ -79,12 +80,8 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                     );
 
                 case 401:
-                    return createErrorResponse(
-                        status,
-                        ErrorCodes.UNAUTHORIZED,
-                        serverMessage || 'Unauthorized, please log in again.',
-                        errorDetails
-                    );
+                    console.error("[API] 401 Unauthorized — redirecting to login");
+                    redirect("/login");
 
                 case 403:
                     // console.log("Creating 403 error response with message:", serverMessage);

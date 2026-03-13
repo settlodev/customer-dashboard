@@ -28,8 +28,17 @@ export async function logout() {
     //Make sure token does not exist
     await deleteAuthCookie();
 
-    await signOut();
+    await signOut({ redirectTo: "/login" });
   } catch (error) {
+    // Always re-throw redirect errors so Next.js can handle navigation
+    if (
+      error instanceof Error &&
+      "digest" in error &&
+      typeof (error as any).digest === "string" &&
+      (error as any).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
     if (error instanceof AuthError) {
       throw error;
     }
