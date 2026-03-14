@@ -51,8 +51,15 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-center lg:justify-between pt-12 mt-12">
-        <div className="hidden md:block"></div>
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            Dashboard
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Financial overview and sales performance
+          </p>
+        </div>
         <DateRangePicker
           setSummaries={
             setSummaries as React.Dispatch<
