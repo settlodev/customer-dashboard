@@ -318,6 +318,7 @@ function CreateCustomerModal({
     try {
       const result = await createCustomer({
         ...values,
+        isCompanyAssociated: false,
         email: values.email || undefined,
         allowNotifications: false,
         status: true,

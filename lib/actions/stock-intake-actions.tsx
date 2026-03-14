@@ -71,53 +71,11 @@ export const searchStockIntakes = async (
     throw error;
   }
 };
-// export const createStockIntake = async (
-//   stockIntake: z.infer<typeof StockIntakeSchema>,
-// ): Promise<FormResponse | void> => {
-//   let formResponse: FormResponse | null = null;
-//
-//   const validData = StockIntakeSchema.safeParse(stockIntake);
-//
-//   if (!validData.success) {
-//     formResponse = {
-//       responseType: "error",
-//       message: "Please fill all the required fields",
-//       error: new Error(validData.error.message),
-//     };
-//     return parseStringify(formResponse);
-//   }
-//
-//   const stockVariantId = validData.data.stockVariant;
-//   const payload = {
-//     ...validData.data,
-//   };
-//   console.log("The payload passed with unique identifiers", payload);
-//   try {
-//     const apiClient = new ApiClient();
-//     await apiClient.post(
-//       `/api/stock-intakes/${stockVariantId}/create`,
-//       payload,
-//     );
-//     formResponse = {
-//       responseType: "success",
-//       message: "Stock Intake recorded successfully",
-//     };
-//   } catch (error) {
-//     // console.error("Error creating product", error);
-//     formResponse = {
-//       responseType: "error",
-//       message:
-//         "Something went wrong while processing your request, please try again",
-//       error: error instanceof Error ? error : new Error(String(error)),
-//     };
-//   }
-//   revalidatePath("/stock-intakes");
-//   return parseStringify(formResponse);
-// };
 
 export const createStockIntake = async (
   stockIntake: z.infer<typeof StockIntakeSchema>,
   identifiers: string[] = [],
+  goodReceiveNote: boolean,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
@@ -143,9 +101,6 @@ export const createStockIntake = async (
     supplier,
   } = validData.data;
 
-  // Build payload that matches exactly what the API expects.
-  // Optional fields (batchExpiryDate, supplier) are only included when present
-  // so we never send null/undefined to the API.
   const payload: Record<string, unknown> = {
     quantity,
     value,
@@ -154,6 +109,7 @@ export const createStockIntake = async (
     stockVariant,
     staff,
     identifiers,
+    goodReceiveNote,
     ...(batchExpiryDate ? { batchExpiryDate } : {}),
     ...(supplier ? { supplier } : {}),
   };

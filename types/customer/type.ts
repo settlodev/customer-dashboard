@@ -1,4 +1,9 @@
-import { Gender, CustomerSource, CustomerCreatedFrom, AddressType } from "@/types/enums";
+import {
+  Gender,
+  CustomerSource,
+  CustomerCreatedFrom,
+  AddressType,
+} from "@/types/enums";
 import { UUID } from "node:crypto";
 
 export declare interface Customer {
@@ -31,6 +36,11 @@ export declare interface Customer {
   lastVisit: string | null;
   addresses: CustomerAddress[];
   preferences: CustomerPreference[];
+  isCompanyAssociated: boolean;
+  companyName: string | null;
+  companyRegistrationNumber: string | null;
+  companyEmailAddress: string | null;
+  companyPhysicalAddress: string | null;
   location: UUID;
   status: boolean;
   canDelete: boolean;
@@ -68,12 +78,13 @@ export const CUSTOMER_SOURCE_LABELS: Record<CustomerSource, string> = {
   [CustomerSource.WALK_IN]: "Walk-in",
 };
 
-export const CUSTOMER_CREATED_FROM_LABELS: Record<CustomerCreatedFrom, string> = {
-  [CustomerCreatedFrom.POS]: "POS",
-  [CustomerCreatedFrom.MOBILE_APP]: "Mobile App",
-  [CustomerCreatedFrom.WEBSITE]: "Website",
-  [CustomerCreatedFrom.RESERVATION]: "Reservation",
-};
+export const CUSTOMER_CREATED_FROM_LABELS: Record<CustomerCreatedFrom, string> =
+  {
+    [CustomerCreatedFrom.POS]: "POS",
+    [CustomerCreatedFrom.MOBILE_APP]: "Mobile App",
+    [CustomerCreatedFrom.WEBSITE]: "Website",
+    [CustomerCreatedFrom.RESERVATION]: "Reservation",
+  };
 
 export const ADDRESS_TYPE_LABELS: Record<AddressType, string> = {
   [AddressType.HOME]: "Home",
