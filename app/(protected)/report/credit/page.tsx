@@ -460,7 +460,7 @@ const CreditReportDashboard = () => {
     }
 
     return (
-        <div className="p-4 md:p-6 bg-gray-50 min-h-screen mt-12 md:mt-16">
+        <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen">
             <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-6">
                 <div className="flex-1">
                     <h1 className="text-2xl font-bold text-gray-800">Credit Report</h1>

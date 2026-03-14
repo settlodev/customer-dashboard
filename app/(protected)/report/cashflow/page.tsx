@@ -195,7 +195,7 @@ const CashFlowReportDashboard = () => {
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen mt-12">
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Cash Flow Report</h1>

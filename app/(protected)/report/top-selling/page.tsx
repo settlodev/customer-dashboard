@@ -204,7 +204,7 @@ const SalesDashboard = () => {
     }
 
     return (
-        <div className="p-6 space-y-6 bg-gray-50 min-h-screen mt-16">
+        <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 space-y-6 min-h-screen">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <Card className='shadow-md'>
                     <CardHeader className='bg-slate-50 border-b'>

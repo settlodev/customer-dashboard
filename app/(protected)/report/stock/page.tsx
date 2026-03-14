@@ -27,38 +27,6 @@ const StockHistoryDashboard = () => {
   const [lowStockPage, setLowStockPage] = useState(1)
   const [outOfStockPage, setOutOfStockPage] = useState(1)
 
-  const cardColors = {
-    totalStock: {
-      bg: "bg-blue-50",
-      accent: "#0088FE",
-      icon: <Package2 className="h-5 w-5" style={{ color: "#0088FE" }} />,
-    },
-    stockValue: {
-      bg: "bg-green-50",
-      accent: "#00C49F",
-      icon: <DollarSign className="h-5 w-5" style={{ color: "#00C49F" }} />,
-    },
-    estimatedProfit: {
-      bg: "bg-purple-50",
-      accent: "#8884D8",
-      icon: <TrendingUp className="h-5 w-5" style={{ color: "#8884D8" }} />,
-    },
-    stockIntakes: {
-      bg: "bg-indigo-50",
-      accent: "#8884D8",
-      icon: <ClipboardList className="h-5 w-5" style={{ color: "#8884D8" }} />,
-    },
-    lowStock: {
-      bg: "bg-yellow-50",
-      accent: "#FFBB28",
-      icon: <PackageMinus className="h-5 w-5" style={{ color: "#FFBB28" }} />,
-    },
-    outOfStock: {
-      bg: "bg-red-50",
-      accent: "#FF8042",
-      icon: <PackageX className="h-5 w-5" style={{ color: "#FF8042" }} />,
-    },
-  }
   useEffect(() => {
     const fetchStockHistory = async () => {
       try {
@@ -73,11 +41,11 @@ const StockHistoryDashboard = () => {
 
     fetchStockHistory()
   }, [])
+
   const getPageRange = (currentPage: number, totalPages: number) => {
     let start = Math.max(1, currentPage - Math.floor(VISIBLE_PAGES / 2))
     const end = Math.min(totalPages, start + VISIBLE_PAGES - 1)
 
-    
     if (end === totalPages) {
       start = Math.max(1, end - VISIBLE_PAGES + 1)
     }
@@ -101,7 +69,6 @@ const StockHistoryDashboard = () => {
     return pages
   }
 
-  // Pagination calculations
   const getLowStockItems = () => {
     if (!history?.lowStockItems) return []
     const startIndex = (lowStockPage - 1) * ITEMS_PER_PAGE
@@ -123,28 +90,21 @@ const StockHistoryDashboard = () => {
   const getOutOfStockPageCount = () => {
     return Math.ceil((history?.outOfStockItems?.length || 0) / ITEMS_PER_PAGE)
   }
+
   const handlePrevLowStock = () => {
-    if (lowStockPage > 1) {
-      setLowStockPage((p) => p - 1)
-    }
+    if (lowStockPage > 1) setLowStockPage((p) => p - 1)
   }
 
   const handleNextLowStock = () => {
-    if (lowStockPage < getLowStockPageCount()) {
-      setLowStockPage((p) => p + 1)
-    }
+    if (lowStockPage < getLowStockPageCount()) setLowStockPage((p) => p + 1)
   }
 
   const handlePrevOutOfStock = () => {
-    if (outOfStockPage > 1) {
-      setOutOfStockPage((p) => p - 1)
-    }
+    if (outOfStockPage > 1) setOutOfStockPage((p) => p - 1)
   }
 
   const handleNextOutOfStock = () => {
-    if (outOfStockPage < getOutOfStockPageCount()) {
-      setOutOfStockPage((p) => p + 1)
-    }
+    if (outOfStockPage < getOutOfStockPageCount()) setOutOfStockPage((p) => p + 1)
   }
 
   const renderPagination = (
@@ -202,163 +162,129 @@ const StockHistoryDashboard = () => {
   }
 
   return (
-    <div className="space-y-8 p-6 bg-gray-50 rounded-lg">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold text-gray-800">Stock History</h2>
-        <div className="flex space-x-2">
-          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: "#0088FE" }}></div>
-          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: "#00C49F" }}></div>
-          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: "#FFBB28" }}></div>
-          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: "#FF8042" }}></div>
-          <div className="h-3 w-3 rounded-full" style={{ backgroundColor: "#8884D8" }}></div>
-        </div>
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 space-y-6 min-h-screen">
+      <div>
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+          Stock report summary
+        </h1>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Overview of your current stock levels and inventory status
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {/* Total Available Stock */}
-        <Card className={`shadow-md hover:shadow-lg transition-shadow ${cardColors.totalStock.bg} border-0`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(0, 136, 254, 0.1)" }}
-            >
-              <Package2 className="h-4 w-4" style={{ color: "#0088FE" }} />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total available stock</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <Package2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </div>
-            <CardTitle className="text-xs font-medium text-gray-600">Total Available Stock</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 pb-4">
-            <div className="text-2xl font-bold" style={{ color: cardColors.totalStock.accent }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {Intl.NumberFormat().format(history?.totalStockRemaining || 0)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Total items currently in stock</p>
           </CardContent>
         </Card>
 
-        {/* Total Stock Value */}
-        <Card className={`shadow-md hover:shadow-lg transition-shadow ${cardColors.stockValue.bg} border-0`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(0, 196, 159, 0.1)" }}
-            >
-              <DollarSign className="h-4 w-4" style={{ color: "#00C49F" }} />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total stock value</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <DollarSign className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </div>
-            <CardTitle className="text-xs font-medium text-gray-600">Total Stock Value</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 pb-4">
-            <div className="text-2xl font-bold" style={{ color: cardColors.stockValue.accent }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {Intl.NumberFormat().format(history?.totalStockValue || 0)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Total value of stock items</p>
           </CardContent>
         </Card>
 
-        {/* Estimated profit */}
-        <Card className={`shadow-md hover:shadow-lg transition-shadow ${cardColors.estimatedProfit.bg} border-0`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(136, 132, 216, 0.1)" }}
-            >
-              <TrendingUp className="h-4 w-4" style={{ color: "#8884D8" }} />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Estimated profit</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </div>
-            <CardTitle className="text-xs font-medium text-gray-600">Estimated Profit</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 pb-4">
-            <div className="text-2xl font-bold" style={{ color: cardColors.estimatedProfit.accent }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {Intl.NumberFormat().format(history?.totalEstimatedProfit || 0)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Total estimated profit</p>
           </CardContent>
         </Card>
 
-        {/* Total Stock Intakes */}
-        <Card className={`shadow-md hover:shadow-lg transition-shadow ${cardColors.stockIntakes.bg} border-0`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(136, 132, 216, 0.1)" }}
-            >
-              <ClipboardList className="h-4 w-4" style={{ color: "#8884D8" }} />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total stock intakes</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <ClipboardList className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </div>
-            <CardTitle className="text-xs font-medium text-gray-600">Total Stock Intakes</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 pb-4">
-            <div className="text-2xl font-bold" style={{ color: cardColors.stockIntakes.accent }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
               {Intl.NumberFormat().format(history?.totalStockIntakes || 0)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Total number of stock intake records</p>
           </CardContent>
         </Card>
 
-        {/* Low Stock Items */}
-        <Card className={`shadow-md hover:shadow-lg transition-shadow ${cardColors.lowStock.bg} border-0`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(255, 187, 40, 0.1)" }}
-            >
-              <PackageMinus className="h-4 w-4" style={{ color: "#FFBB28" }} />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Low stock items</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <PackageMinus className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </div>
-            <CardTitle className="text-xs font-medium text-gray-600">Low Stock Items</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 pb-4">
-            <div className="text-2xl font-bold" style={{ color: cardColors.lowStock.accent }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
               {Intl.NumberFormat().format(history?.lowStockItems.length || 0)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Items below minimum stock level</p>
           </CardContent>
         </Card>
 
-        {/* Out of Stock Items */}
-        <Card className={`shadow-md hover:shadow-lg transition-shadow ${cardColors.outOfStock.bg} border-0`}>
-          <CardHeader className="flex flex-row items-center justify-between pb-1 pt-4">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "rgba(255, 128, 66, 0.1)" }}
-            >
-              <PackageX className="h-4 w-4" style={{ color: "#FF8042" }} />
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Out of stock items</CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <PackageX className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </div>
-            <CardTitle className="text-xs font-medium text-gray-600">Out of Stock Items</CardTitle>
           </CardHeader>
-          <CardContent className="pt-1 pb-4">
-            <div className="text-2xl font-bold" style={{ color: cardColors.outOfStock.accent }}>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
               {Intl.NumberFormat().format(history?.outOfStockItems.length || 0)}
             </div>
-            <p className="text-xs text-gray-500 mt-1">Items completely out of stock</p>
           </CardContent>
         </Card>
       </div>
 
       {(history?.lowStockItems?.length ?? 0) + (history?.outOfStockItems?.length ?? 0) > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-          {/* Low Stock Items List */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {(history?.lowStockItems?.length ?? 0) > 0 && (
-            <Card className="shadow-md border-t-4" style={{ borderTopColor: "#FFBB28" }}>
-              <CardHeader className="bg-yellow-50">
-                <div className="flex items-center space-x-2">
-                  <PackageMinus className="h-5 w-5" style={{ color: "#FFBB28" }} />
-                  <CardTitle className="text-lg font-bold">Low Stock Items</CardTitle>
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <PackageMinus className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Low stock items</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <Table>
-                  <TableCaption>Items below minimum stock level</TableCaption>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="font-bold text-gray-700">#</TableHead>
-                      <TableHead className="font-bold text-gray-700">Stock Item</TableHead>
-                      <TableHead className="font-bold text-gray-700">Quantity</TableHead>
+                      <TableHead>#</TableHead>
+                      <TableHead>Stock item</TableHead>
+                      <TableHead>Quantity</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {getLowStockItems().map((item, index) => (
-                      <TableRow key={item.stockName} className="hover:bg-yellow-50">
-                        <TableCell className="font-medium">{(lowStockPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
+                      <TableRow key={`${item.stockName}-${item.stockVariantName}-${index}`}>
+                        <TableCell className="text-muted-foreground">{(lowStockPage - 1) * ITEMS_PER_PAGE + index + 1}</TableCell>
                         <TableCell className="font-medium">
                           {item.stockName} - {item.stockVariantName}
                         </TableCell>
-                        <TableCell className="font-medium text-amber-600">
+                        <TableCell className="font-medium text-amber-600 dark:text-amber-400">
                           {Intl.NumberFormat().format(item.remainingAmount)}
                         </TableCell>
                       </TableRow>
@@ -376,31 +302,29 @@ const StockHistoryDashboard = () => {
             </Card>
           )}
 
-          {/* Out of Stock Items List */}
           {(history?.outOfStockItems?.length ?? 0) > 0 && (
-            <Card className="shadow-md border-t-4" style={{ borderTopColor: "#FF8042" }}>
-              <CardHeader className="bg-red-50">
-                <div className="flex items-center space-x-2">
-                  <PackageX className="h-5 w-5" style={{ color: "#FF8042" }} />
-                  <CardTitle className="text-lg font-bold">Out of Stock Items</CardTitle>
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <PackageX className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">Out of stock items</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <Table>
-                  <TableCaption>Items completely out of stock</TableCaption>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="font-bold text-gray-700">#</TableHead>
-                      <TableHead className="font-bold text-gray-700">Stock Item</TableHead>
+                      <TableHead>#</TableHead>
+                      <TableHead>Stock item</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {getOutOfStockItems().map((item, index) => (
-                      <TableRow key={item.stockName} className="hover:bg-red-50">
-                        <TableCell className="font-medium">
+                      <TableRow key={`${item.stockName}-${item.stockVariantName}-${index}`}>
+                        <TableCell className="text-muted-foreground">
                           {(outOfStockPage - 1) * ITEMS_PER_PAGE + index + 1}
                         </TableCell>
-                        <TableCell className="font-medium text-red-600">
+                        <TableCell className="font-medium text-red-600 dark:text-red-400">
                           {item.stockName} - {item.stockVariantName}
                         </TableCell>
                       </TableRow>

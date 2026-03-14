@@ -596,7 +596,7 @@ const SoldItemsDashboard = () => {
 
   return (
     <TooltipProvider>
-      <div className="p-6 space-y-6 bg-gray-50 min-h-screen mt-16">
+      <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 space-y-6 min-h-screen">
         <div className="w-full flex justify-end mb-4">
           <div className="w-full md:w-auto">
             <Form {...form}>

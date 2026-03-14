@@ -70,8 +70,8 @@ const ProfitAndLossPage: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex justify-center lg:justify-between pt-12 mt-12">
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 flex flex-col gap-6 min-h-screen">
+      <div className="flex justify-center lg:justify-between">
         <div className="hidden md:block"></div>
         <DateRangePicker
           setSummaries={

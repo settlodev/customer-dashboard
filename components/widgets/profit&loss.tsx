@@ -304,7 +304,7 @@ const ProfitLossStatement = ({
   };
 
   return (
-    <div className="w-full bg-gray-50 py-4 md:py-8 px-2 sm:px-4">
+    <div className="w-full py-4 md:py-8 px-2 sm:px-4">
       <div className="max-w-5xl mx-auto">
         {/* Action Buttons */}
         <div className="flex justify-end gap-2 mb-4 md:mb-6 no-print">
