@@ -1,4 +1,4 @@
-import { Bell, Bolt, Building2, CalendarClock, CreditCard, MapPin, Package, Printer, Receipt, ToggleRight } from "lucide-react";
+import { Bell, Building2, CalendarClock, CreditCard, MapPin, Package, Printer, Receipt, ToggleRight, UtensilsCrossed } from "lucide-react";
 
 export const taxClasses=
     [
@@ -89,12 +89,6 @@ export const settingsNavItems = [
         description: 'Location details & hours'
     },
     {
-        id: 'general',
-        label: 'General',
-        icon: Bolt,
-        description: 'Passcodes & system config'
-    },
-    {
         id: 'features',
         label: 'Features',
         icon: ToggleRight,
@@ -123,6 +117,12 @@ export const settingsNavItems = [
         label: 'Reservations',
         icon: CalendarClock,
         description: 'Booking rules & questions'
+    },
+    {
+        id: 'digital-menu',
+        label: 'Digital Menu',
+        icon: UtensilsCrossed,
+        description: 'Online ordering menus'
     },
     {
         id: 'payments',

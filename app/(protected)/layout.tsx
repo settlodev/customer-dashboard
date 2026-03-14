@@ -39,7 +39,7 @@ export default async function RootLayout({
         <div className="flex h-screen overflow-hidden">
           <SidebarWrapper data={businessData} />
 
-          <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden bg-gray-200">
+          <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden bg-gray-200 dark:bg-gray-950">
             <div className="relative flex-1 overflow-y-auto">
               <Suspense
                 fallback={

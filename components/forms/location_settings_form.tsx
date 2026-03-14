@@ -31,6 +31,7 @@ import {
 import { LocationSettingsSchema } from "@/types/settings/schema";
 import { ImageUploadModal } from "@/components/settings/uploadImage";
 import { PaymentDetailsModal } from "@/components/settings/paymentDetailsModal";
+import CountrySelector from "@/components/widgets/country-selector";
 
 const LoadingSkeleton = () => {
   const categories = [
@@ -330,6 +331,31 @@ const LocationSettingsForm = ({
                         formField.onChange(e.target.value);
                       }
                     }}
+                  />
+                </FormControl>
+                {helperText && <FormDescription>{helperText}</FormDescription>}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case "country-select":
+        return (
+          <FormField
+            key={key as any}
+            control={form.control}
+            name={key as any}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  <CountrySelector
+                    value={formField.value ?? ""}
+                    onChange={formField.onChange}
+                    isDisabled={isPending || field.disabled}
+                    placeholder={placeholder}
+                    valueKey="currencyCode"
                   />
                 </FormControl>
                 {helperText && <FormDescription>{helperText}</FormDescription>}

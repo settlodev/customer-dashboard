@@ -7,7 +7,6 @@ import { Menu, X } from "lucide-react";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NotificationsSettings from "@/components/settings/notifications";
 import { settingsNavItems } from "@/types/constants";
-import GeneralSettings from "@/components/settings/general-settings";
 import FeatureSettings from "@/components/settings/feature-settings";
 import PrintingSettings from "@/components/settings/printing-settings";
 import OrdersInventorySettings from "@/components/settings/orders-inventory-settings";
@@ -15,6 +14,7 @@ import ReservationSettings from "@/components/settings/reservations";
 import { fetchLocationSettings } from "@/lib/actions/settings-actions";
 import Loading from "@/components/ui/loading";
 import EFDSettings from "@/components/settings/efd";
+import DigitalMenuSettings from "@/components/settings/digital-menu-settings";
 import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
 import BusinessDetailsSettings from "@/components/settings/business-details";
 import LocationDetailsSettings from "@/components/settings/location-details";
@@ -186,10 +186,9 @@ const SettingsLayout = ({
           <LocationDetailsSettings
             location={location}
             isLoading={isLocationLoading}
+            locationSettings={locationSettings}
           />
         );
-      case "general":
-        return <GeneralSettings locationSettings={locationSettings} />;
       case "features":
         return <FeatureSettings locationSettings={locationSettings} />;
       case "printing":
@@ -202,6 +201,8 @@ const SettingsLayout = ({
         return <NotificationsSettings />;
       case "reservations":
         return <ReservationSettings defaultTab={subtab} />;
+      case "digital-menu":
+        return <DigitalMenuSettings />;
       case "payments":
         return <AcceptedPaymentMethodsPage />;
       case "efd":

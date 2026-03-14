@@ -19,6 +19,7 @@ interface Props {
   isDisabled?: boolean;
   description?: string;
   onChange: (value: string) => void;
+  valueKey?: keyof Country;
 }
 
 const CountrySelector: React.FC<Props> = ({
@@ -28,6 +29,7 @@ const CountrySelector: React.FC<Props> = ({
   isDisabled,
   description,
   onChange,
+  valueKey = "id",
 }) => {
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -61,8 +63,8 @@ const CountrySelector: React.FC<Props> = ({
         </SelectTrigger>
         <SelectContent>
           {countries.map((country) => (
-            <SelectItem key={country.id} value={country.id}>
-              {country.name}
+            <SelectItem key={country.id} value={String(country[valueKey])}>
+              {country.name}{valueKey === "currencyCode" ? ` (${country.currencyCode})` : ""}
             </SelectItem>
           ))}
         </SelectContent>

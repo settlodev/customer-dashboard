@@ -2,6 +2,7 @@ import * as z from "zod";
 
 export const LocationSettingsSchema = z.object({
   // Basic settings
+  currencyCode: z.string().min(1).max(5).default("TZS"),
   minimumSettlementAmount: z.number().min(0).default(0),
   systemPasscode: z.string().min(4).max(10).default("0000"),
   reportsPasscode: z.string().min(4).max(10).default("0000"),
@@ -35,9 +36,13 @@ export const LocationSettingsSchema = z.object({
   deductStockOnPartialPay: z.boolean().default(false),
 
   // Order settings
-  orderNumberPrefix: z.string().default(""),
-  allowTipping: z.boolean().default(false),
+  orderNumberPrefix: z.string().default("Order"),
   showDateOnOrderNumber: z.boolean().default(false),
+  showOrderNumberPrefix: z.boolean().default(true),
+  acceptOrderRequests: z.boolean().default(true),
+  orderRequestAcceptStartTime: z.string().nullable().default(null),
+  orderRequestAcceptEndTime: z.string().nullable().default(null),
+  allowTipping: z.boolean().default(false),
 
   // Notification settings
   enableNotifications: z.boolean().default(false),
