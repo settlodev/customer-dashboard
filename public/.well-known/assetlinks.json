@@ -8,5 +8,18 @@
         "48:F9:2B:04:E1:89:97:CA:D9:60:02:ED:3E:26:A7:32:84:C3:74:7B:CB:81:3D:DF:84:E5:27:DE:B7:4C:8F:E8"
       ]
     }
+  },
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "tz.co.settlo.v3",
+      "sha256_cert_fingerprints": [
+        "9B:84:31:5F:2A:4B:B6:74:CB:17:D3:C5:DA:6F:A3:9A:46:6B:B1:60:85:02:81:6B:8A:5A:C6:7A:AE:7C:7C:E6"
+      ]
+    }
   }
 ]
