@@ -187,7 +187,8 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     getStockVariantById(stockVariantId)
       .then((info) => updateLineState(0, { variantInfo: info }))
       .catch(console.error);
-  }, [stockVariantId, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stockVariantId]);
 
   // ── Line state helpers ──────────────────────────────────────────────────────
 

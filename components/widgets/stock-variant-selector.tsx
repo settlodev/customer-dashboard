@@ -107,16 +107,18 @@ const StockVariantSelector: React.FC<Props> = ({
       const variantExists = stocks.some((stock) =>
         stock.stockVariants.some((variant) => variant.id === value),
       );
-      if (
-        !variantExists &&
-        (!selectedVariantInfo || selectedVariantInfo.id !== value)
-      ) {
-        loadSpecificVariantInfo(value);
+      if (!variantExists) {
+        setSelectedVariantInfo((prev) => {
+          if (prev && prev.id === value) return prev;
+          loadSpecificVariantInfo(value);
+          return prev;
+        });
       }
     } else {
       setSelectedVariantInfo(null);
     }
-  }, [value, stocks, selectedVariantInfo, loadSpecificVariantInfo]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, stocks]);
 
   // Load stocks when popover opens (only once)
   useEffect(() => {
