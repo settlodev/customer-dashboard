@@ -80,8 +80,8 @@ const OrderReceipt = async ({
     orderData.customerTinNumber;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 ">
+      <div className="max-w-4xl mx-auto rounded-lg">
         <div className="hidden lg:flex justify-end items-end mr-12 mb-4">
           {/* Show EFD Generate button if EFD is not printed */}
           {!orderData.efdPrinted && (
@@ -93,7 +93,7 @@ const OrderReceipt = async ({
 
         <div
           id="receipt-content"
-          className="bg-white shadow-sm border border-gray-200 mx-auto"
+          className="bg-white rounded-lg shadow-sm border border-gray-200 mx-auto "
           style={{
             maxWidth: "794px",
             pageBreakInside: "avoid",

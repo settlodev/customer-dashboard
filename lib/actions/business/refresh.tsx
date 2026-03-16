@@ -7,7 +7,7 @@ import { Location } from "@/types/location/type";
 import { redirect } from "next/navigation";
 import { activeBusiness } from "@/types/types";
 import { deleteActiveWarehouseCookie } from "../warehouse/current-warehouse-action";
-
+import { Warehouses } from "@/types/warehouse/warehouse/type";
 
 const createMinimalBusiness = (business: Business): MinimalBusiness => {
   return {
@@ -79,10 +79,13 @@ export const switchLocation = async (data: Location): Promise<void> => {
   redirect("/dashboard");
 };
 
-export const refreshLocation = async (data: Location): Promise<void> => {
-  if (!data) throw new Error("Location data is required to perform this request");
+export const refreshLocation = async (
+  data: Location | Warehouses,
+): Promise<void> => {
+  if (!data)
+    throw new Error("Location data is required to perform this request");
 
-  await deleteActiveWarehouseCookie()
+  await deleteActiveWarehouseCookie();
 
   const cookieStore = await cookies();
   cookieStore.set({

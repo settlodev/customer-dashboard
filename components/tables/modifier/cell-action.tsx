@@ -5,7 +5,7 @@ import React, { useState } from "react";
 
 import DeleteModal from "@/components/tables/delete-modal";
 import {toast} from "@/hooks/use-toast";
-import {DeleteIcon, EditIcon, EyeIcon} from "@nextui-org/shared-icons";
+import { Trash2 as DeleteIcon, Pencil as EditIcon, Eye as EyeIcon } from "lucide-react";
 
 import { Modifier } from "@/types/modifiers/type";
 import { deleteModifier } from "@/lib/actions/modifier-actions";

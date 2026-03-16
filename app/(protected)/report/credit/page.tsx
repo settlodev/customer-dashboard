@@ -23,7 +23,7 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { getCurrentLocation } from '@/lib/actions/business/get-current-business';
 import { Location } from '@/types/location/type';
-import Loading from '@/app/loading';
+import Loading from '@/components/ui/loading';
 
 interface DatePickerProps {
     value: Date;
@@ -453,14 +453,14 @@ const CreditReportDashboard = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center h-full">
                 <Loading />
             </div>
         );
     }
 
     return (
-        <div className="p-4 md:p-6 bg-gray-50 min-h-screen mt-12 md:mt-16">
+        <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen">
             <div className="flex flex-col lg:flex-row justify-between items-start gap-4 mb-6">
                 <div className="flex-1">
                     <h1 className="text-2xl font-bold text-gray-800">Credit Report</h1>

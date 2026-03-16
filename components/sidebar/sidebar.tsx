@@ -16,7 +16,6 @@ import {
     ChevronDown,
     X,
     CreditCard,
-    MenuIcon,
     AlertTriangle,
     Warehouse
 } from "lucide-react";
@@ -25,7 +24,6 @@ import { Button } from "@/components/ui/button";
 import {
     Sheet,
     SheetContent,
-    SheetTrigger
 } from "@/components/ui/sheet";
 
 import VersionDisplay from "../widgets/versioning";
@@ -74,7 +72,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                 if (isMounted) {
                     setSubscription(activeSubscription);
                 }
-            } catch (err) {
+            } catch (_err) {
                
                 if (isMounted) {
                     setError('Failed to load subscription data');
@@ -230,7 +228,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                                 </Link>
                                             </div>
                                         ) : (
-                                            section.items.map((item: MenuItem, index: React.Key | null | undefined) => (
+                                            section.items.map((item: MenuItem, _index: React.Key | null | undefined) => (
                                                 <Link
                                                     key={item.title}
                                                     href={item.link}
@@ -296,39 +294,30 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     );
 };
 
-export const SidebarWrapper = ({ data, menuType = 'normal' }: { data: BusinessPropsType, menuType?: MenuType }) => {
-
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
+export const MobileSidebar = ({ data, menuType = 'normal', isOpen, onOpenChange }: {
+    data: BusinessPropsType;
+    menuType?: MenuType;
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+}) => {
     return (
-        <>
-            {/* Desktop Sidebar */}
-            <aside className="hidden lg:block left-0 top-0 h-screen w-80 bg-gray-800">
-                <SidebarContent data={data} menuType={menuType} />
-            </aside>
+        <Sheet open={isOpen} onOpenChange={onOpenChange}>
+            <SheetContent side="left" className="w-64 p-0 bg-gray-800">
+                <SidebarContent
+                    data={data}
+                    isMobile={true}
+                    onClose={() => onOpenChange(false)}
+                    menuType={menuType}
+                />
+            </SheetContent>
+        </Sheet>
+    );
+};
 
-            {/* Mobile Sidebar */}
-           <div className="fixed top-0 z-[60] p-4 lg:hidden">
-           <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
-                <SheetTrigger asChild>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="fixed top-4 left-4 z-40 lg:hidden"
-                    >
-                        <MenuIcon className="h-6 w-6" />
-                    </Button>
-                </SheetTrigger>
-                <SheetContent side="left" className="w-64 p-0 bg-gray-800">
-                    <SidebarContent
-                        data={data}
-                        isMobile={true}
-                        onClose={() => setIsSidebarOpen(false)}
-                        menuType={menuType}
-                    />
-                </SheetContent>
-            </Sheet>
-           </div>
-        </>
+export const SidebarWrapper = ({ data, menuType = 'normal' }: { data: BusinessPropsType, menuType?: MenuType }) => {
+    return (
+        <aside className="hidden lg:block left-0 top-0 h-screen w-80 flex-shrink-0 bg-gray-800">
+            <SidebarContent data={data} menuType={menuType} />
+        </aside>
     );
 };

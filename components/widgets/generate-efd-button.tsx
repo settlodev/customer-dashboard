@@ -15,10 +15,10 @@ const GenerateEfdButton = ({
   onSuccess,
 }: GenerateEfdButtonProps) => {
   const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [_isLoading, _setIsLoading] = useState(false);
 
-  const handleGenerateEfd = async () => {
-    setIsLoading(true);
+  const _handleGenerateEfd = async () => {
+    _setIsLoading(true);
     setError(null);
     try {
       const efdGenerated = await generateEfd(orderId, location);
@@ -61,7 +61,7 @@ const GenerateEfdButton = ({
 
       setError(errorMessage);
     } finally {
-      setIsLoading(false);
+      _setIsLoading(false);
     }
   };
 

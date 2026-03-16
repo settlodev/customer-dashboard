@@ -95,7 +95,6 @@ export const searchProducts = async (
     const location = (await getCurrentLocation()) || { id: locationId };
 
     const data = await apiClient.post(`/api/products/${location?.id}`, query);
-    // console.log("Products are as follow:", data);
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -397,7 +396,7 @@ export const uploadProductCSV = async ({
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    const upload = await apiClient.post(
+    await apiClient.post(
       `/rust/csv-uploading/upload-products-csv?location_id=${location?.id}`,
       formattedCSVData,
       {

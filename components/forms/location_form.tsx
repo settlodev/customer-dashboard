@@ -33,14 +33,21 @@ import {
   SelectValue,
 } from "../ui/select";
 import { businessTimes } from "@/types/constants";
-import { Switch } from "../ui/switch";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import CancelButton from "../widgets/cancel-button";
+import { Card, CardContent } from "../ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 import { Separator } from "../ui/separator";
 
 export const LocationForm = ({
   item,
-  onSubmit,
+  onSubmit: _onSubmit,
   multipleStep = false,
   businessId,
 }: {
@@ -52,6 +59,7 @@ export const LocationForm = ({
   console.log("Business Id passed is", businessId);
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
+  const [showStatusDialog, setShowStatusDialog] = useState(false);
 
   const formatTimeForSelect = (timeString: string | null | undefined) => {
     if (!timeString) return undefined;
@@ -130,306 +138,336 @@ export const LocationForm = ({
         className="mx-auto space-y-8"
       >
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="w-5 h-5" />
-              Basic Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location Name</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
+          <CardContent className="pt-6 space-y-6">
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Basic Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location Name</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Enter location name"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <PhoneInput
                           {...field}
                           disabled={isPending}
-                          placeholder="Enter location name"
+                          onChange={(value) => field.onChange(value)}
+                          placeholder="Enter business location phone number"
                         />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone Number</FormLabel>
-                    <FormControl>
-                      <PhoneInput
-                        {...field}
-                        disabled={isPending}
-                        onChange={(value) => field.onChange(value)}
-                        placeholder="Enter business location phone number"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            value={field.value || ""}
+                            disabled={isPending}
+                            type="email"
+                            placeholder="Enter business location email"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location Address</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Enter business location address"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Business Hours</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="openingTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Opening Time</FormLabel>
+                      <FormControl>
+                        <Select
+                          disabled={isPending}
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <SelectTrigger className="pl-10">
+                            <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                            <SelectValue placeholder="Select opening time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {businessTimes.map(
+                              (item: BusinessTimeType, index: number) => (
+                                <SelectItem key={index} value={item.name}>
+                                  {item.label}
+                                </SelectItem>
+                              ),
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        When do you open your business location?
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="closingTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Closing Time</FormLabel>
+                      <FormControl>
+                        <Select
+                          disabled={isPending}
+                          onValueChange={field.onChange}
+                          value={field.value}
+                        >
+                          <SelectTrigger className="pl-10">
+                            <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                            <SelectValue placeholder="Select closing time" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {businessTimes.map(
+                              (item: BusinessTimeType, index: number) => (
+                                <SelectItem key={index} value={item.name}>
+                                  {item.label}
+                                </SelectItem>
+                              ),
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        When do you close your business location?
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Address Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City / Region</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Which city do you operate?"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="street"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Street</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            value={field.value || ""}
+                            disabled={isPending}
+                            placeholder="Enter business location street"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
                           {...field}
+                          disabled={isPending}
                           value={field.value || ""}
-                          disabled={isPending}
-                          type="email"
-                          placeholder="Enter business location email"
+                          placeholder="Describe your business location"
+                          className="min-h-[100px]"
                         />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Location Address</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Enter business location address"
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5" />
-              Business Hours
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="openingTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Opening Time</FormLabel>
-                    <FormControl>
-                      <Select
-                        disabled={isPending}
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger className="pl-10">
-                          <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <SelectValue placeholder="Select opening time" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {businessTimes.map(
-                            (item: BusinessTimeType, index: number) => (
-                              <SelectItem key={index} value={item.name}>
-                                {item.label}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormDescription>
-                      When do you open your business location?
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="closingTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Closing Time</FormLabel>
-                    <FormControl>
-                      <Select
-                        disabled={isPending}
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <SelectTrigger className="pl-10">
-                          <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <SelectValue placeholder="Select closing time" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {businessTimes.map(
-                            (item: BusinessTimeType, index: number) => (
-                              <SelectItem key={index} value={item.name}>
-                                {item.label}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </FormControl>
-                    <FormDescription>
-                      When do you close your business location?
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="w-5 h-5" />
-              Address Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="city"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>City / Region</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Which city do you operate?"
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="street"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Street</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                        <Input
-                          className="pl-10"
-                          {...field}
-                          value={field.value || ""}
-                          disabled={isPending}
-                          placeholder="Enter business location street"
-                        />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      {...field}
-                      disabled={isPending}
-                      value={field.value || ""}
-                      placeholder="Describe your business location"
-                      className="min-h-[100px]"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
+            <div className="flex justify-end pt-6">
+              {isPending ? (
+                <Button disabled className="w-full md:w-auto">
+                  <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                  {item ? "Updating..." : "Processing..."}
+                </Button>
+              ) : (
+                <Button type="submit" className="w-full md:w-auto">
+                  {item
+                    ? "Update Location"
+                    : multipleStep
+                      ? "Complete Setup"
+                      : "Add Location"}
+                </Button>
               )}
-            />
+            </div>
           </CardContent>
         </Card>
 
         {item && (
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                <div>
-                  <FormLabel className="text-base">Location Status</FormLabel>
-                  <FormDescription>
-                    Enable or disable this business location
-                  </FormDescription>
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={field.value ?? false}
-                    onCheckedChange={field.onChange}
-                    disabled={isPending}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
+          <Card className="rounded-xl border border-red-200 shadow-sm">
+            <CardContent className="p-6">
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <>
+                    <FormItem className="flex flex-row items-center justify-between">
+                      <div>
+                        <FormLabel className="text-base">Location Status</FormLabel>
+                        <FormDescription>
+                          This location is currently{" "}
+                          <span className={field.value ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                            {field.value ? "enabled" : "disabled"}
+                          </span>
+                        </FormDescription>
+                      </div>
+                      <Button
+                        type="button"
+                        variant={field.value ? "destructive" : "default"}
+                        size="sm"
+                        disabled={isPending}
+                        onClick={() => setShowStatusDialog(true)}
+                      >
+                        {field.value ? "Disable" : "Enable"}
+                      </Button>
+                      <FormMessage />
+                    </FormItem>
 
-        <div className="flex items-center space-x-4 mt-4 border-t-1 border-t-gray-200 pt-5">
-          <CancelButton />
-          <Separator orientation="vertical" />
-          <Button type="submit" disabled={isPending} className="h-11">
-            {isPending ? (
-              <div className="flex items-center gap-2">
-                <Loader2Icon className="h-4 w-4 animate-spin" />
-                Processing
-              </div>
-            ) : item ? (
-              "Update business location"
-            ) : multipleStep ? (
-              "Complete Setup"
-            ) : (
-              "Add location"
-            )}
-          </Button>
-        </div>
+                    <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>
+                            {field.value ? "Disable" : "Enable"} Location
+                          </DialogTitle>
+                          <DialogDescription>
+                            {field.value
+                              ? "Are you sure you want to disable this location? This will make it inactive and may affect all associated services."
+                              : "Are you sure you want to enable this location? This will make it active again."}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setShowStatusDialog(false)}
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={field.value ? "destructive" : "default"}
+                            onClick={() => {
+                              field.onChange(!field.value);
+                              setShowStatusDialog(false);
+                            }}
+                          >
+                            {field.value ? "Disable" : "Enable"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
       </form>
     </Form>
   );

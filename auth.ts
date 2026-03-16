@@ -7,7 +7,7 @@ import NextAuth from "next-auth";
 import authConfig from "@/auth.config";
 import { SpringAuthAdapter } from "@/lib/spring-auth-adapter";
 import { ExtendedUser } from "@/types/types";
-import { createAuthToken, deleteAuthCookie } from "@/lib/auth-utils";
+import { createAuthToken } from "@/lib/auth-utils";
 
 declare module "next-auth" {
   interface Session {
@@ -33,7 +33,9 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       await createAuthToken(user);
     },
     async signOut() {
-      await deleteAuthCookie();
+      // Cookie deletion is handled in the logout() server action (auth-actions.tsx)
+      // Deleting cookies here fails because NextAuth events don't run
+      // in a Server Action or Route Handler context
     },
   },
   callbacks: {

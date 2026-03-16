@@ -23,7 +23,7 @@ import { z } from "zod";
 
 interface Props {
     setShowCreateModal: React.Dispatch<React.SetStateAction<boolean>>;
-    onSuccess?: (warehouse: Warehouses) => void;
+    onSuccess?: (warehouse?: Warehouses) => void;
 }
 
 function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {

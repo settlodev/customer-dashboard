@@ -3,7 +3,7 @@
 import { Edit, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React from "react";
-import { useDisclosure } from "@nextui-org/react";
+import { useDisclosure } from "@/hooks/use-disclosure";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -87,7 +87,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       {data.canDelete && (
         <DeleteModal
           isOpen={isOpen}
-          itemName={data.name}
+          itemName={data.customerName || "this reservation"}
           onDelete={onDelete}
           onOpenChange={onOpenChange}
         />

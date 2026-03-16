@@ -33,7 +33,7 @@ import "jspdf-autotable";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 import { toast } from "@/hooks/use-toast";
-import Loading from "@/app/loading";
+import Loading from "@/components/ui/loading";
 
 interface DatePickerProps {
   value: Date;
@@ -588,17 +588,15 @@ const SoldItemsDashboard = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">
-          <Loading />
-        </div>
+      <div className="flex items-center justify-center h-full">
+        <Loading />
       </div>
     );
   }
 
   return (
     <TooltipProvider>
-      <div className="p-6 space-y-6 bg-gray-50 min-h-screen mt-16">
+      <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 space-y-6 min-h-screen">
         <div className="w-full flex justify-end mb-4">
           <div className="w-full md:w-auto">
             <Form {...form}>

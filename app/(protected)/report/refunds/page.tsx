@@ -256,8 +256,8 @@ export default function RefundReportPage() {
   };
 
   return (
-    <div className="container mx-auto p-4 max-w-7xl">
-      <Card className="w-full mt-16">
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen">
+      <Card className="w-full">
         <CardHeader className="border-b pb-4">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>

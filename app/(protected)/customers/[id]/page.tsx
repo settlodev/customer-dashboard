@@ -1,6 +1,5 @@
-import {ApiResponse} from "@/types/types";
-import {Customer} from "@/types/customer/type";
-import {getCustomer} from "@/lib/actions/customer-actions";
+import {Customer, CustomerPreference} from "@/types/customer/type";
+import {getCustomerById, fetchCustomerPreferences} from "@/lib/actions/customer-actions";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
@@ -12,21 +11,28 @@ export default async function CustomerPage({params}: {params: Params}){
 
     const resolvedParams = await params;
     const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Customer> | null = null;
+    let item: Customer | null = null;
+    let preferences: CustomerPreference[] = [];
 
     if(!isNewItem){
         try{
-            item = await  getCustomer(resolvedParams.id as UUID);
-            if(item.totalElements == 0) notFound();
+            const customerId = resolvedParams.id as UUID;
+            const [customer, prefs] = await Promise.all([
+                getCustomerById(customerId),
+                fetchCustomerPreferences(customerId),
+            ]);
+            item = customer;
+            preferences = prefs ?? [];
         }
         catch (error){
             console.log(error)
             throw new Error("Failed to load customer details");
         }
+        if(!item) notFound();
     }
 
     const breadCrumbItems=[{title:"Customer",link:"/customers"},
-        {title: isNewItem ? "New":item?.content[0].firstName || "Edit",link:""}]
+        {title: isNewItem ? "New": item?.firstName || "Edit",link:""}]
 
     return(
         <div className={`flex-1 space-y-4 p-4 md:p-8 pt-6`}>
@@ -35,14 +41,15 @@ export default async function CustomerPage({params}: {params: Params}){
                     <BreadcrumbsNav items={breadCrumbItems}/>
                 </div>
             </div>
-            <CustomerCard isNewItem={isNewItem} item={item?.content[0]}/>
+            <CustomerCard isNewItem={isNewItem} item={item} preferences={preferences}/>
         </div>
     )
 }
 
-const CustomerCard =({isNewItem,item}:{
+const CustomerCard =({isNewItem,item, preferences}:{
     isNewItem:boolean,
-    item: Customer | null | undefined
+    item: Customer | null | undefined,
+    preferences: CustomerPreference[],
 }) =>(
     <Card>
        <CardHeader>
@@ -54,7 +61,7 @@ const CustomerCard =({isNewItem,item}:{
            </CardDescription>
        </CardHeader>
         <CardContent>
-            <CustomerForm item={item}/>
+            <CustomerForm item={item} preferences={preferences}/>
         </CardContent>
     </Card>
 )

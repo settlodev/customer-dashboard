@@ -1,6 +1,5 @@
 "use server";
 
-import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
@@ -10,7 +9,7 @@ import { UUID } from "node:crypto";
 import { console } from "node:inspector";
 import { StockModification } from "@/types/stock-modification/type";
 import { StockModificationSchema } from "@/types/stock-modification/schema";
-import { getCurrentLocation } from "../business/get-current-business";
+
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/register-action";
 
 export const searchStockModificationsInWarehouse = async (
@@ -139,7 +138,7 @@ export const createStockModificationInWarehouse = async (
 
 export const getStockModifiedInWarehouse = async (
   id: UUID,
-  stockVariant: UUID,
+  _stockVariant: UUID,
 ): Promise<ApiResponse<StockModification>> => {
   const apiClient = new ApiClient();
   const query = {

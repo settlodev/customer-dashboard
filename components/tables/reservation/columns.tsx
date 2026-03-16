@@ -4,10 +4,11 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 
 import { CellAction } from "@/components/tables/reservation/cell-action";
-import { StateColumn } from "@/components/tables/state-column";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Reservation } from "@/types/reservation/type";
+import { Badge } from "@/components/ui/badge";
+import { Reservation, RESERVATION_STATUS_LABELS, RESERVATION_STATUS_COLORS, DEPOSIT_STATUS_LABELS } from "@/types/reservation/type";
+import { ReservationStatus, DepositPaymentStatus } from "@/types/enums";
 
 export const columns: ColumnDef<Reservation>[] = [
   {
@@ -30,85 +31,93 @@ export const columns: ColumnDef<Reservation>[] = [
     enableHiding: false,
   },
   {
-    accessorKey: "name",
+    accessorKey: "reservationDate",
     enableHiding: false,
-    header: ({ column }) => {
+    header: ({ column }) => (
+      <Button
+        className="text-left p-0"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Date & Time
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
+    cell: ({ row }) => {
+      const date = row.original.reservationDate;
+      const time = row.original.reservationTime;
+      const formatted = date
+        ? new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
+            new Date(date),
+          )
+        : "";
+      const timeStr = time ? time.substring(0, 5) : "";
       return (
-        <Button
-          className="text-left p-0"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Name of Reserver
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <div>
+          <div className="font-medium">{formatted}</div>
+          {timeStr && (
+            <div className="text-sm text-muted-foreground">{timeStr}</div>
+          )}
+        </div>
       );
     },
   },
   {
     accessorKey: "customerName",
-    header: "Customer Name",
-  },
-  {
-    accessorKey: "phone",
-    header: "Phone",
-  },
-  {
-    accessorKey: "email",
-    header: "Email address",
-  },
-  {
-    accessorKey: "numberOfPeople",
-    header: "No of Guest",
-  },
-  {
-    accessorKey: "date",
-    header: "Reservation Date",
+    header: "Customer",
     cell: ({ row }) => {
-      const date = row.original.date;
-      const format = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(date))
-      return <div>{format}</div>
-    }
+      const name = row.original.customerName;
+      return <div>{name || "Walk-in"}</div>;
+    },
   },
   {
-    accessorKey: "productName",
-    header: "Room",
+    accessorKey: "peopleCount",
+    header: "Guests",
+    cell: ({ row }) => (
+      <div className="text-center">{row.original.peopleCount}</div>
+    ),
   },
   {
-    accessorKey: "startDate",
-    header: "Date In",
+    accessorKey: "tableAndSpaceName",
+    header: "Table",
     cell: ({ row }) => {
-      const date = row.original.startDate;
-      const format = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(date))
-      return <div>{format}</div>
-    }
+      const name = row.original.tableAndSpaceName;
+      return <div>{name || "Unassigned"}</div>;
+    },
   },
   {
-    accessorKey: "endDate",
-    header: "Date Out",
+    accessorKey: "reservationStatus",
+    header: "Status",
     cell: ({ row }) => {
-      const date = row.original.endDate;
-      const format = new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(date))
-      return <div>{format}</div>
-    }
-  },
-  {
-    id: "status",
-    accessorKey: "status",
-    header: ({ column }) => {
+      const status = row.original.reservationStatus as ReservationStatus;
+      const label =
+        RESERVATION_STATUS_LABELS[status] || status;
+      const colorClass =
+        RESERVATION_STATUS_COLORS[status] || "bg-gray-100 text-gray-800";
       return (
-        <Button
-          className="text-left p-0"
-          variant="ghost"
-          onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
-        >
-          Status
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
+        <Badge variant="outline" className={colorClass}>
+          {label}
+        </Badge>
       );
     },
-    cell: ({ row }) => <StateColumn state={row.original.status} />,
-    enableHiding: false,
+  },
+  {
+    accessorKey: "depositPaymentStatus",
+    header: "Deposit",
+    cell: ({ row }) => {
+      const status = row.original.depositPaymentStatus as DepositPaymentStatus | null;
+      if (!status) return <div className="text-muted-foreground">—</div>;
+      const label = DEPOSIT_STATUS_LABELS[status] || status;
+      return <div className="text-sm">{label}</div>;
+    },
+  },
+  {
+    accessorKey: "source",
+    header: "Source",
+    cell: ({ row }) => {
+      const source = row.original.source;
+      return <div className="text-sm">{source || "—"}</div>;
+    },
   },
   {
     id: "actions",

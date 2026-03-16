@@ -117,7 +117,7 @@ export const createStockModification = async (
 
 export const getStockModified = async (
   id: UUID,
-  stockVariant: UUID,
+  _stockVariant: UUID,
 ): Promise<ApiResponse<StockModification>> => {
   const apiClient = new ApiClient();
   const query = {

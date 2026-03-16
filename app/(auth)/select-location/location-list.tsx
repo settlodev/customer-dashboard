@@ -186,7 +186,7 @@ const LocationList = ({
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const handleSuccessfulPayment = useCallback(
-    (response: any) => {
+    (_response: any) => {
       toast({
         title: "Subscription Successful",
         description: "Your warehouse subscription has been activated.",
@@ -257,8 +257,7 @@ const LocationList = ({
     setPendingIndex(null);
   };
 
-  const handleSuccessfulCreation = (location: Location) => {
-    console.log("Location created successfully:", location);
+  const handleSuccessfulCreation = () => {
     setIsRedirecting(true);
     toast({
       title: "Warehouse Created",

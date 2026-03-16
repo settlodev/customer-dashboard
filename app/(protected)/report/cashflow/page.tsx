@@ -3,8 +3,14 @@ import React, { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CalendarIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  ArrowUpCircle,
+  CalendarIcon,
+  DollarSign,
+  Receipt,
+  RefreshCcw,
+  TrendingDown,
+} from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -12,334 +18,306 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Form, FormField, FormItem } from "@/components/ui/form";
-import { z } from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import SubmitButton from "@/components/widgets/submit-button";
-import { toast } from "@/hooks/use-toast";
 import { cashFlowReport } from "@/lib/actions/order-actions";
 import { CashFlow } from "@/types/orders/type";
-import Loading from "@/app/loading";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import Loading from "@/components/ui/loading";
 
-interface DatePickerProps {
+function DateTimePicker({
+  value,
+  onChange,
+}: {
   value: Date;
-  onChange: (date: Date | undefined) => void;
-  label: string;
+  onChange: (date: Date) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  const handleDateSelect = (selected: Date | undefined) => {
+    if (selected) {
+      const newDate = new Date(selected);
+      newDate.setHours(value.getHours());
+      newDate.setMinutes(value.getMinutes());
+      onChange(newDate);
+    }
+  };
+
+  const handleTimeChange = (type: "hour" | "minute", val: string) => {
+    const newDate = new Date(value);
+    if (type === "hour") {
+      newDate.setHours(parseInt(val, 10));
+    } else {
+      newDate.setMinutes(parseInt(val, 10));
+    }
+    onChange(newDate);
+  };
+
+  return (
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="w-full justify-start text-left font-normal"
+        >
+          <CalendarIcon className="hidden mr-2 h-4 w-4" />
+          {format(value, "MM/dd/yyyy HH:mm")}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <div className="sm:flex">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={handleDateSelect}
+            initialFocus
+          />
+          <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
+            <ScrollArea className="w-64 sm:w-auto">
+              <div className="flex sm:flex-col p-2">
+                {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                  <Button
+                    key={hour}
+                    size="icon"
+                    variant={value.getHours() === hour ? "default" : "ghost"}
+                    onClick={() => handleTimeChange("hour", hour.toString())}
+                  >
+                    {hour}
+                  </Button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="sm:hidden" />
+            </ScrollArea>
+            <ScrollArea className="w-64 sm:w-auto">
+              <div className="flex sm:flex-col p-2">
+                {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
+                  <Button
+                    key={minute}
+                    size="icon"
+                    variant={
+                      value.getMinutes() === minute ? "default" : "ghost"
+                    }
+                    onClick={() =>
+                      handleTimeChange("minute", minute.toString())
+                    }
+                  >
+                    {minute.toString().padStart(2, "0")}
+                  </Button>
+                ))}
+              </div>
+              <ScrollBar orientation="horizontal" className="sm:hidden" />
+            </ScrollArea>
+          </div>
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
-const FormSchema = z.object({
-  startDate: z.date({ required_error: "Start date and time are required." }),
-  endDate: z.date({ required_error: "End date and time are required." }),
-});
-
 const CashFlowReportDashboard = () => {
+  const [startDate, setStartDate] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+  });
+  const [endDate, setEndDate] = useState(new Date());
   const [cashfData, setCashData] = useState<CashFlow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
 
-  const form = useForm({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      startDate: (() => {
-        const now = new Date();
-        now.setHours(0, 0, 0, 1);
-        return now;
-      })(),
-      endDate: new Date(),
-    },
-  });
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await cashFlowReport(startDate, endDate);
+        console.log("Cash flow report:", response);
+        setCashData(response);
+      } catch (error) {
+        console.error("Error fetching cash flow report:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const fetchCashFlowReport = async (startDate: Date, endDate: Date) => {
-    setIsLoading(true);
+  const handleFilter = async () => {
+    setIsFiltering(true);
     try {
       const response = await cashFlowReport(startDate, endDate);
       setCashData(response);
     } catch (error) {
       console.error("Error fetching cash flow report:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to fetch cash flow report",
-      });
     } finally {
-      setIsLoading(false);
+      setIsFiltering(false);
     }
-  };
-
-  useEffect(() => {
-    fetchCashFlowReport(form.getValues("startDate"), form.getValues("endDate"));
-  }, [form]);
-
-  const onSubmit = async (values: z.infer<typeof FormSchema>) => {
-    await fetchCashFlowReport(values.startDate, values.endDate);
   };
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "TZS",
-    }).format(value);
-  };
-
-  const DateTimePicker = ({ value, onChange, label }: DatePickerProps) => {
-    function handleDateSelect(date: Date | undefined) {
-      if (date) {
-        const newDate = new Date(date);
-        // Check if value exists before using it
-        newDate.setHours(value?.getHours() || 0);
-        newDate.setMinutes(value?.getMinutes() || 0);
-        onChange(newDate);
-      } else {
-        onChange(undefined);
-      }
-    }
-
-    function handleTimeChange(type: "hour" | "minute", val: string) {
-      if (!value) return;
-
-      const newDate = new Date(value);
-      if (type === "hour") {
-        newDate.setHours(parseInt(val, 10));
-      } else if (type === "minute") {
-        newDate.setMinutes(parseInt(val, 10));
-      }
-      onChange(newDate);
-    }
-
-    return (
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            className={cn(
-              "w-full justify-start text-left font-normal",
-              !value && "text-muted-foreground",
-            )}
-          >
-            <CalendarIcon className="mr-2 h-4 w-4" />
-            {value ? (
-              format(value, "MM/dd/yyyy HH:mm")
-            ) : (
-              <span>Pick date and time</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0">
-          <div className="sm:flex">
-            <Calendar
-              mode="single"
-              selected={value}
-              onSelect={handleDateSelect}
-              initialFocus
-            />
-            <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
-              <ScrollArea className="w-64 sm:w-auto">
-                <div className="flex sm:flex-col p-2">
-                  {Array.from({ length: 24 }, (_, i) => i)
-                    .reverse()
-                    .map((hour) => (
-                      <Button
-                        key={hour}
-                        size="icon"
-                        variant={
-                          value && value.getHours() === hour
-                            ? "default"
-                            : "ghost"
-                        }
-                        className="sm:w-full shrink-0 aspect-square"
-                        onClick={() =>
-                          handleTimeChange("hour", hour.toString())
-                        }
-                      >
-                        {hour}
-                      </Button>
-                    ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="sm:hidden" />
-              </ScrollArea>
-              <ScrollArea className="w-64 sm:w-auto">
-                <div className="flex sm:flex-col p-2">
-                  {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
-                    <Button
-                      key={minute}
-                      size="icon"
-                      variant={
-                        value && value.getMinutes() === minute
-                          ? "default"
-                          : "ghost"
-                      }
-                      className="sm:w-full shrink-0 aspect-square"
-                      onClick={() =>
-                        handleTimeChange("minute", minute.toString())
-                      }
-                    >
-                      {minute.toString().padStart(2, "0")}
-                    </Button>
-                  ))}
-                </div>
-                <ScrollBar orientation="horizontal" className="sm:hidden" />
-              </ScrollArea>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
-    );
+    return `${new Intl.NumberFormat().format(value)} TZS`;
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-full">
         <Loading />
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gray-50 min-h-screen mt-12">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 space-y-6 min-h-screen">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">Cash Flow Report</h1>
-          <p className="text-gray-500 mt-1">
-            Report from {format(new Date(cashfData?.startDate || ""), "PPp")}
-            {" to "}
-            {format(new Date(cashfData?.endDate || ""), "PPp")}
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+            Cash flow report
+          </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Overview of transactions, expenses and refunds
           </p>
         </div>
-
-        <Card className="w-full md:w-auto shadow-sm">
-          <CardContent className="p-4">
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="flex flex-col sm:flex-row gap-4"
-              >
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem className="w-full sm:w-auto">
-                      <DateTimePicker
-                        value={field.value}
-                        onChange={field.onChange}
-                        label="Start Date"
-                      />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem className="w-full sm:w-auto">
-                      <DateTimePicker
-                        value={field.value}
-                        onChange={field.onChange}
-                        label="End Date"
-                      />
-                    </FormItem>
-                  )}
-                />
-
-                <SubmitButton
-                  isPending={form.formState.isSubmitting}
-                  label="Apply Filter"
-                />
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+          <DateTimePicker value={startDate} onChange={setStartDate} />
+          <DateTimePicker value={endDate} onChange={setEndDate} />
+          <Button onClick={handleFilter} disabled={isFiltering}>
+            {isFiltering ? (
+              <div className="border-t-transparent border-4 border-green-500 w-[20px] h-[20px] rounded-full animate-spin" />
+            ) : (
+              "Filter"
+            )}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <Card>
-          <CardHeader>
-            <CardTitle>Transactions</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Transactions
+            </CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <Receipt className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center">
-              <span>Total Transactions</span>
-              <span className="font-bold">{cashfData?.transactions || 0}</span>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {formatCurrency(cashfData?.transactionsAmount || 0)}
             </div>
-            <div className="flex justify-between items-center mt-2">
-              <span>Total Amount</span>
-              <span className="font-bold text-green-600">
-                {formatCurrency(cashfData?.transactionsAmount || 0)}
-              </span>
-            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {cashfData?.transactions || 0} transactions
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Expenses</CardTitle>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Expenses
+            </CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <DollarSign className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center">
-              <span>Total Expenses</span>
-              <span className="font-bold">
-                {cashfData?.expensePayments || 0}
-              </span>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+              {formatCurrency(cashfData?.expensesPaidAmount || 0)}
             </div>
-            <div className="flex justify-between items-center mt-2">
-              <span>Total Amount</span>
-              <span className="font-bold text-red-600">
-                {formatCurrency(cashfData?.expensesPaidAmount || 0)}
-              </span>
-            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {cashfData?.expensePayments || 0} expenses
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Refunds</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex justify-between items-center">
-              <span>Total Refunds</span>
-              <span className="font-bold">{cashfData?.refunds || 0}</span>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Refunds
+            </CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <RefreshCcw className="h-4 w-4 text-gray-500 dark:text-gray-400" />
             </div>
-            <div className="flex justify-between items-center mt-2">
-              <span>Total Amount</span>
-              <span className="font-bold text-orange-600">
-                {formatCurrency(cashfData?.refundsAmount || 0)}
-              </span>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+              {formatCurrency(cashfData?.refundsAmount || 0)}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {cashfData?.refunds || 0} refunds
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Closing balance
+            </CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              {(cashfData?.closingBalance || 0) >= 0 ? (
+                <ArrowUpCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className={`text-2xl font-bold ${(cashfData?.closingBalance || 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+              {formatCurrency(cashfData?.closingBalance || 0)}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Payment Methods</CardTitle>
+      {/* Payment methods table */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Breakdown by payment method
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {cashfData?.paymentMethodTotals?.map((method, index) => (
-              <div
-                key={index}
-                className="flex justify-between items-center border-b pb-2 last:border-b-0"
-              >
-                <span>{method.paymentMethodName}</span>
-                <span className="font-bold">
-                  {formatCurrency(method.amount)}
-                </span>
-              </div>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-10">#</TableHead>
+                <TableHead>Payment method</TableHead>
+                <TableHead className="text-right">Amount</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cashfData?.paymentMethodTotals?.length ? (
+                cashfData.paymentMethodTotals.map((method, index) => (
+                  <TableRow key={`${method.paymentMethodName}-${index}`}>
+                    <TableCell className="text-muted-foreground">
+                      {index + 1}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {method.paymentMethodName}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {formatCurrency(method.amount)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={3}
+                    className="text-center py-8 text-muted-foreground"
+                  >
+                    No payment data available
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Closing Balance</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold text-start lg:text-center">
-            {formatCurrency(cashfData?.closingBalance || 0)}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };

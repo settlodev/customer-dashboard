@@ -104,7 +104,7 @@ export default function ProductForm({ item }: ProductFormProps) {
   });
 
   useEffect(() => {
-    const trackingType = form.watch("trackingType");
+    form.watch("trackingType");
   }, [form.watch("trackingType")]);
 
   useEffect(() => {
@@ -160,7 +160,7 @@ export default function ProductForm({ item }: ProductFormProps) {
 
     // Verify the values were set
     setTimeout(() => {
-      const trackingType = form.getValues("trackingType");
+      form.getValues("trackingType");
       fields.forEach((_, index) => {
         const variantTrackingType = form.getValues(
           `variants.${index}.trackingType`,

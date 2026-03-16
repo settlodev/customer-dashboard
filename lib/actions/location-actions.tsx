@@ -3,7 +3,7 @@
 import { UUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
+
 import * as z from "zod";
 
 import { getAuthenticatedUser } from "@/lib/auth-utils";

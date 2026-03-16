@@ -9,7 +9,9 @@ export function RecordStockIntakeButton() {
 
   return (
     <>
-      <Button onClick={() => setDialogOpen(true)}>Record Stock Intake</Button>
+      <Button onClick={() => setDialogOpen(true)}>
+        Record stock intake
+      </Button>
       <StockIntakeSelectionDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}

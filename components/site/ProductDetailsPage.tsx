@@ -36,7 +36,7 @@ const ProductDetailsPage: React.FC<ProductDetailsPageProps> = ({
   businessType,
   onAddToCart,
   relatedProducts = [],
-  backPath = "/products",
+  backPath: _backPath = "/products",
 }) => {
   const router = useRouter();
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");

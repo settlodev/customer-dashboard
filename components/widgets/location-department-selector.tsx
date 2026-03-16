@@ -8,26 +8,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Plus, Tag } from "lucide-react";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
 import { Department } from "@/types/department/type";
 import {
   fetchDepartmentsByLocation,
-  createDepartment,
 } from "@/lib/actions/department-actions";
-import { FormError } from "@/components/widgets/form-error";
-import { usePathname } from "next/navigation";
-import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-import { Card, CardContent } from "../ui/card";
 
 interface LocationDepartmentSelectorProps {
   label?: string;
@@ -51,14 +35,6 @@ const LocationDepartmentSelector: React.FC<LocationDepartmentSelectorProps> = ({
 }) => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newDepartmentName, setNewDepartmentName] = useState("");
-  const [color, setColor] = useState("#000000");
-  const [imageUrl, setImageUrl] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const pathname = usePathname();
-
   const loadDepartments = async () => {
     if (!locationId) {
       setDepartments([]);

@@ -6,8 +6,27 @@ import { ArrowUpDown } from "lucide-react";
 import { CellAction } from "@/components/tables/space/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { StateColumn } from "@/components/tables/state-column";
-import { Space } from "@/types/space/type";
+import { Space, TABLE_SPACE_TYPE_LABELS, TABLE_STATUS_LABELS } from "@/types/space/type";
+import { TableSpaceType, TableStatus } from "@/types/enums";
+
+const tableStatusVariant = (status: TableStatus | null) => {
+  switch (status) {
+    case TableStatus.AVAILABLE:
+      return "default";
+    case TableStatus.RESERVED:
+      return "secondary";
+    case TableStatus.SEATED:
+    case TableStatus.OCCUPIED:
+      return "outline";
+    case TableStatus.DIRTY:
+    case TableStatus.OUT_OF_SERVICE:
+      return "destructive";
+    default:
+      return "outline";
+  }
+};
 
 export const columns: ColumnDef<Space>[] = [
   {
@@ -39,20 +58,57 @@ export const columns: ColumnDef<Space>[] = [
           variant="ghost"
           onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
         >
-          Space / Table name
+          Name
           <ArrowUpDown className="ml-2 h-4 w-4" />
         </Button>
       );
     },
+    cell: ({ row }) => (
+      <div>
+        <span className="font-medium">{row.original.name}</span>
+        {row.original.code && (
+          <span className="text-muted-foreground text-xs ml-2">
+            ({row.original.code})
+          </span>
+        )}
+      </div>
+    ),
   },
-
   {
-    accessorKey: "totalOrders",
-    header: "Total Orders",
+    accessorKey: "type",
+    header: "Type",
+    cell: ({ row }) => (
+      <Badge variant="outline">
+        {TABLE_SPACE_TYPE_LABELS[row.original.type as TableSpaceType] || row.original.type}
+      </Badge>
+    ),
   },
   {
-    accessorKey: "currentOrders",
-    header: "Current Orders",
+    accessorKey: "capacity",
+    header: "Capacity",
+    cell: ({ row }) => {
+      const min = row.original.minCapacity;
+      const max = row.original.capacity;
+      return min ? `${min}–${max}` : `${max}`;
+    },
+  },
+  {
+    accessorKey: "tableStatus",
+    header: "Table Status",
+    cell: ({ row }) => {
+      const status = row.original.tableStatus as TableStatus | null;
+      if (!status) return <span className="text-muted-foreground text-xs">—</span>;
+      return (
+        <Badge variant={tableStatusVariant(status)}>
+          {TABLE_STATUS_LABELS[status]}
+        </Badge>
+      );
+    },
+  },
+  {
+    accessorKey: "parentSpaceName",
+    header: "Parent",
+    cell: ({ row }) => row.original.parentSpaceName || <span className="text-muted-foreground text-xs">—</span>,
   },
   {
     id: "status",

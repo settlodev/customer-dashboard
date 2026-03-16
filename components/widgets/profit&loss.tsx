@@ -1,23 +1,39 @@
 import React, { useState } from "react";
-import { FileText, Calendar, Download, Printer } from "lucide-react";
+import {
+  ArrowUpCircle,
+  Download,
+  DollarSign,
+  ShoppingCart,
+  TrendingDown,
+  TrendingUp,
+  BarChart,
+  RefreshCcw,
+  Receipt,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
 import SummaryResponse from "@/types/dashboard/type";
+import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
+import ReportLetterhead from "@/components/widgets/report-letterhead";
 
 const ProfitLossStatement = ({
   salesData,
+  business,
   location,
 }: {
   salesData: SummaryResponse;
+  business: Business;
   location: Location;
 }) => {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const formatCurrency = (value: any) => {
-    if (value === undefined || value === null) return "TZS 0.00";
-    return `TZS ${value.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (value === undefined || value === null) return "0 TZS";
+    return `${value.toLocaleString()} TZS`;
   };
 
-  // Calculate percentages
   const grossMargin = salesData.netSales
     ? ((salesData.grossProfit / salesData.netSales) * 100).toFixed(1)
     : 0;
@@ -28,28 +44,23 @@ const ProfitLossStatement = ({
   const formatDateTime = (dateStr: any) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
-    const month = date.toLocaleString("en-US", { month: "short" });
-    const day = date.getDate();
-    const year = date.getFullYear();
-    const hours = date.getHours().toString().padStart(2, "0");
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    return `${month} ${day}, ${year} ${hours}:${minutes}`;
-  };
-
-  const handlePrint = () => {
-    window.print();
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }) + " " + date.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
   };
 
   const generatePDF = async () => {
-    if (!salesData) {
-      alert("No data available to generate PDF");
-      return;
-    }
+    if (!salesData) return;
 
     setDownloadingPdf(true);
 
     try {
-      // Dynamic import for jsPDF
       const { default: jsPDF } = await import("jspdf");
       await import("jspdf-autotable");
 
@@ -57,239 +68,272 @@ const ProfitLossStatement = ({
       const pageWidth = doc.internal.pageSize.width;
       const pageHeight = doc.internal.pageSize.height;
       const margin = 20;
+      const contentWidth = pageWidth - 2 * margin;
 
-      // Title
-      doc.setFontSize(20);
+      // === HEADER BLOCK ===
+      // Top border line
+      doc.setDrawColor(50, 50, 50);
+      doc.setLineWidth(0.8);
+      doc.line(margin, 20, pageWidth - margin, 20);
+
+      // Business name (left)
+      doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text("Profit & Loss Statement", margin, 30);
+      doc.setTextColor(30, 30, 30);
+      doc.text(business.name || "Business", margin, 28);
 
-      // Location Details (Right side)
-      if (location) {
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "normal");
-        const rightMargin = pageWidth - margin;
-        let yPos = 30;
+      // Location details (left, below business)
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      let headerY = 33;
 
-        doc.setFont("helvetica", "bold");
-        doc.text(location.name || "", rightMargin, yPos, { align: "right" });
-        yPos += 5;
-
-        if (location.address) {
-          doc.setFont("helvetica", "normal");
-          const addressLines = doc.splitTextToSize(location.address, 80);
-          addressLines.forEach((line: any) => {
-            doc.text(line, rightMargin, yPos, { align: "right" });
-            yPos += 5;
-          });
-        }
-
-        if (location.phone) {
-          doc.text(`Phone: ${location.phone}`, rightMargin, yPos, {
-            align: "right",
-          });
-          yPos += 5;
-        }
-
-        if (location.email) {
-          doc.text(`Email: ${location.email}`, rightMargin, yPos, {
-            align: "right",
-          });
-        }
+      if (location.name) {
+        doc.text(location.name, margin, headerY);
+        headerY += 4;
       }
 
-      doc.setFontSize(11);
-      doc.setFont("helvetica", "normal");
-      doc.text("Financial Performance Report", margin, 38);
+      const addressParts = [location.address, location.city, location.region].filter(Boolean);
+      if (addressParts.length) {
+        doc.text(addressParts.join(", "), margin, headerY);
+        headerY += 4;
+      }
 
-      doc.setFontSize(10);
-      const dateRange = `Period: ${formatDateTime(salesData.startDate)} - ${formatDateTime(salesData.endDate)}`;
-      doc.text(dateRange, margin, 50);
+      const contactParts = [];
+      if (location.phone) contactParts.push(`Tel: ${location.phone}`);
+      if (location.email) contactParts.push(location.email);
+      if (contactParts.length) {
+        doc.text(contactParts.join("  |  "), margin, headerY);
+      }
 
-      const now = new Date();
-      const genDate = `Generated: ${formatDateTime(now.toISOString())}`;
-      doc.text(genDate, margin, 57);
+      // Tax details (right side)
+      const rightX = pageWidth - margin;
+      let taxY = 28;
 
-      // Revenue Section
-      let yPosition = 75;
+      if (business.identificationNumber) {
+        doc.setFontSize(9);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(30, 30, 30);
+        doc.text(`TIN: ${business.identificationNumber}`, rightX, taxY, { align: "right" });
+        taxY += 4;
+      }
+      if (business.vrn) {
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(100, 100, 100);
+        doc.text(`VRN: ${business.vrn}`, rightX, taxY, { align: "right" });
+        taxY += 4;
+      }
+      if (business.serial) {
+        doc.text(`Serial: ${business.serial}`, rightX, taxY, { align: "right" });
+        taxY += 4;
+      }
+      if (business.uin) {
+        doc.text(`UIN: ${business.uin}`, rightX, taxY, { align: "right" });
+      }
+
+      // Thin separator after header
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.3);
+      doc.line(margin, 45, pageWidth - margin, 45);
+
+      // === TITLE ===
       doc.setFontSize(14);
       doc.setFont("helvetica", "bold");
-      doc.text("REVENUE", margin, yPosition);
-      yPosition += 8;
+      doc.setTextColor(30, 30, 30);
+      doc.text("PROFIT & LOSS STATEMENT", pageWidth / 2, 54, { align: "center" });
 
-      const revenueData = [
-        ["Gross Sales", formatCurrency(salesData.grossSales)],
-        ["Less: Discounts", `(${formatCurrency(salesData.discountsAmount)})`],
-        ["Less: Refunds", `(${formatCurrency(salesData.refundsAmount)})`],
-      ];
+      // Period and generated date
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(100, 100, 100);
+      const periodText = `Period: ${formatDateTime(salesData.startDate)} - ${formatDateTime(salesData.endDate)}`;
+      doc.text(periodText, pageWidth / 2, 60, { align: "center" });
+
+      const genText = `Generated: ${formatDateTime(new Date().toISOString())}`;
+      doc.text(genText, pageWidth / 2, 65, { align: "center" });
+
+      // === REVENUE SECTION ===
+      let yPosition = 78;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 30, 30);
+      doc.text("REVENUE", margin, yPosition);
+      doc.setDrawColor(180, 180, 180);
+      doc.setLineWidth(0.2);
+      doc.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
+      yPosition += 8;
 
       doc.autoTable({
         startY: yPosition,
-        body: revenueData,
+        body: [
+          ["Gross Sales", formatCurrency(salesData.grossSales)],
+          ["    Less: Discounts", `(${formatCurrency(salesData.discountsAmount)})`],
+          ["    Less: Refunds", `(${formatCurrency(salesData.refundsAmount)})`],
+        ],
         margin: { left: margin, right: margin },
-        styles: { fontSize: 10, cellPadding: 3 },
+        styles: { fontSize: 9, cellPadding: 3, textColor: [60, 60, 60] },
         columnStyles: {
-          0: { cellWidth: 100 },
+          0: { cellWidth: contentWidth * 0.65 },
           1: { halign: "right", fontStyle: "bold" },
         },
         theme: "plain",
       });
 
-      yPosition = (doc as any).lastAutoTable?.finalY + 5;
+      yPosition = (doc as any).lastAutoTable?.finalY + 2;
 
+      // Net Sales summary row
       doc.autoTable({
         startY: yPosition,
         body: [["Net Sales", formatCurrency(salesData.netSales)]],
         margin: { left: margin, right: margin },
         styles: {
-          fontSize: 11,
+          fontSize: 10,
           cellPadding: 4,
           fontStyle: "bold",
-          fillColor: [219, 234, 254],
+          fillColor: [245, 245, 245],
+          textColor: [30, 30, 30],
         },
         columnStyles: {
-          0: { cellWidth: 100 },
+          0: { cellWidth: contentWidth * 0.65 },
           1: { halign: "right" },
         },
       });
 
-      yPosition = (doc as any).lastAutoTable?.finalY + 15;
+      // === COST OF SALES ===
+      yPosition = (doc as any).lastAutoTable?.finalY + 12;
 
-      // Cost of Sales Section
-      doc.setFontSize(14);
+      doc.setFontSize(10);
       doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 30, 30);
       doc.text("COST OF SALES", margin, yPosition);
+      doc.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
       yPosition += 8;
 
-      const costData = [
-        ["Cost Of Goods Sold", formatCurrency(salesData.costsAmount)],
-      ];
-
       doc.autoTable({
         startY: yPosition,
-        body: costData,
+        body: [["Cost of Goods Sold (COGS)", formatCurrency(salesData.costsAmount)]],
         margin: { left: margin, right: margin },
-        styles: { fontSize: 10, cellPadding: 3 },
+        styles: { fontSize: 9, cellPadding: 3, textColor: [60, 60, 60] },
         columnStyles: {
-          0: { cellWidth: 100 },
-          1: { halign: "right", fontStyle: "bold", textColor: [220, 38, 38] },
-        },
-        theme: "plain",
-      });
-
-      yPosition = (doc as any).lastAutoTable?.finalY + 5;
-
-      doc.autoTable({
-        startY: yPosition,
-        body: [
-          [
-            `Gross Profit (Margin: ${grossMargin}%)`,
-            formatCurrency(salesData.grossProfit),
-          ],
-        ],
-        margin: { left: margin, right: margin },
-        styles: {
-          fontSize: 11,
-          cellPadding: 4,
-          fontStyle: "bold",
-          fillColor: [220, 252, 231],
-        },
-        columnStyles: {
-          0: { cellWidth: 100 },
-          1: { halign: "right", textColor: [21, 128, 61] },
-        },
-      });
-
-      yPosition = (doc as any).lastAutoTable?.finalY + 15;
-
-      // Operating Expenses Section
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.text("OPERATING EXPENSES", margin, yPosition);
-      yPosition += 8;
-
-      const expenseData = [
-        ["Total Expenses", formatCurrency(salesData.expensesPaidAmount)],
-      ];
-
-      doc.autoTable({
-        startY: yPosition,
-        body: expenseData,
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 10, cellPadding: 3 },
-        columnStyles: {
-          0: { cellWidth: 100 },
+          0: { cellWidth: contentWidth * 0.65 },
           1: { halign: "right", fontStyle: "bold" },
         },
         theme: "plain",
       });
 
-      yPosition = (doc as any).lastAutoTable?.finalY + 15;
+      yPosition = (doc as any).lastAutoTable?.finalY + 2;
 
-      // Net Profit Section
-      const netProfitColor =
-        salesData.netProfit >= 0 ? [220, 252, 231] : [254, 226, 226];
-      const netProfitTextColor =
-        salesData.netProfit >= 0 ? [21, 128, 61] : [220, 38, 38];
+      doc.autoTable({
+        startY: yPosition,
+        body: [[`Gross Profit (${grossMargin}% margin)`, formatCurrency(salesData.grossProfit)]],
+        margin: { left: margin, right: margin },
+        styles: {
+          fontSize: 10,
+          cellPadding: 4,
+          fontStyle: "bold",
+          fillColor: [236, 253, 245],
+          textColor: [21, 128, 61],
+        },
+        columnStyles: {
+          0: { cellWidth: contentWidth * 0.65 },
+          1: { halign: "right" },
+        },
+      });
+
+      // === OPERATING EXPENSES ===
+      yPosition = (doc as any).lastAutoTable?.finalY + 12;
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(30, 30, 30);
+      doc.text("OPERATING EXPENSES", margin, yPosition);
+      doc.line(margin, yPosition + 2, pageWidth - margin, yPosition + 2);
+      yPosition += 8;
+
+      doc.autoTable({
+        startY: yPosition,
+        body: [["Total Operating Expenses", formatCurrency(salesData.expensesPaidAmount)]],
+        margin: { left: margin, right: margin },
+        styles: { fontSize: 9, cellPadding: 3, textColor: [60, 60, 60] },
+        columnStyles: {
+          0: { cellWidth: contentWidth * 0.65 },
+          1: { halign: "right", fontStyle: "bold" },
+        },
+        theme: "plain",
+      });
+
+      // === NET PROFIT / LOSS ===
+      yPosition = (doc as any).lastAutoTable?.finalY + 8;
+
+      // Double line above net profit
+      doc.setDrawColor(30, 30, 30);
+      doc.setLineWidth(0.5);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      doc.setLineWidth(0.2);
+      doc.line(margin, yPosition + 1.5, pageWidth - margin, yPosition + 1.5);
+
+      yPosition += 4;
+
+      const isProfit = salesData.netProfit >= 0;
+      const netFillColor = isProfit ? [236, 253, 245] : [254, 242, 242];
+      const netTextColor = isProfit ? [21, 128, 61] : [220, 38, 38];
 
       doc.autoTable({
         startY: yPosition,
         body: [
           [
-            `${salesData.netProfit >= 0 ? "Net Profit" : "Net Loss"} (Net Margin: ${netMargin}%)`,
+            `${isProfit ? "NET PROFIT" : "NET LOSS"} (Net Margin: ${netMargin}%)`,
             formatCurrency(salesData.netProfit),
           ],
         ],
         margin: { left: margin, right: margin },
         styles: {
-          fontSize: 13,
+          fontSize: 12,
           cellPadding: 6,
           fontStyle: "bold",
-          fillColor: netProfitColor,
+          fillColor: netFillColor,
+          textColor: netTextColor,
         },
         columnStyles: {
-          0: { cellWidth: 100 },
-          1: { halign: "right", textColor: netProfitTextColor },
+          0: { cellWidth: contentWidth * 0.65 },
+          1: { halign: "right" },
         },
       });
 
-      // FIXED: Calculate final position and ensure everything fits on one page
+      // === FOOTER ===
       const finalY = (doc as any).lastAutoTable?.finalY || yPosition + 50;
 
-      // Calculate available space for footer
-      const footerStartY = Math.min(finalY + 20, pageHeight - 40);
+      // Separator before footer
+      const footerSepY = Math.min(finalY + 15, pageHeight - 35);
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
+      doc.line(margin, footerSepY, pageWidth - margin, footerSepY);
 
-      // Footer disclaimer
-      doc.setFontSize(8);
-      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(7);
+      doc.setTextColor(140, 140, 140);
+      doc.setFont("helvetica", "normal");
+
       const disclaimerText =
-        "This report was generated automatically by the system. Any changes made to the data will not be reflected in this report and any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.";
+        "This report was generated automatically by the system. Any changes made to the data will not be reflected in this report. Any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.";
+      const disclaimerLines = doc.splitTextToSize(disclaimerText, contentWidth);
 
-      const maxWidth = pageWidth - 2 * margin;
-      const disclaimerLines = doc.splitTextToSize(disclaimerText, maxWidth);
-
-      const lineHeight = 3;
-      const disclaimerHeight = disclaimerLines.length * lineHeight;
-      const poweredByHeight = lineHeight;
-
-      // Check if we need to adjust footer position to fit on page
-      let footerY = footerStartY;
-      if (footerY + disclaimerHeight + poweredByHeight > pageHeight - margin) {
-        footerY = pageHeight - margin - disclaimerHeight - poweredByHeight - 5;
-      }
-
+      const disclaimerStartY = footerSepY + 5;
       disclaimerLines.forEach((line: any, index: any) => {
-        const textWidth = doc.getTextWidth(line);
-        const centerX = (pageWidth - textWidth) / 2;
-        doc.text(line, centerX, footerY + index * lineHeight);
+        doc.text(line, pageWidth / 2, disclaimerStartY + index * 3, { align: "center" });
       });
 
-      const poweredByText = "Powered by Settlo";
-      const poweredByWidth = doc.getTextWidth(poweredByText);
-      const poweredByCenterX = (pageWidth - poweredByWidth) / 2;
-      const poweredByY = footerY + disclaimerHeight + 2;
+      const poweredByY = disclaimerStartY + disclaimerLines.length * 3 + 3;
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(160, 160, 160);
+      doc.text("Powered by Settlo", pageWidth / 2, poweredByY, { align: "center" });
 
-      doc.text(poweredByText, poweredByCenterX, poweredByY);
+      // Bottom border
+      doc.setDrawColor(50, 50, 50);
+      doc.setLineWidth(0.8);
+      doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
 
+      // Save
       const startDate = new Date(salesData.startDate);
       const endDate = new Date(salesData.endDate);
       const filename = `profit-loss-statement-${startDate.getFullYear()}-${(startDate.getMonth() + 1).toString().padStart(2, "0")}-${startDate.getDate().toString().padStart(2, "0")}-to-${endDate.getFullYear()}-${(endDate.getMonth() + 1).toString().padStart(2, "0")}-${endDate.getDate().toString().padStart(2, "0")}.pdf`;
@@ -297,219 +341,258 @@ const ProfitLossStatement = ({
       doc.save(filename);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("There was an error generating the PDF. Please try again.");
     } finally {
       setDownloadingPdf(false);
     }
   };
 
   return (
-    <div className="w-full bg-gray-50 py-4 md:py-8 px-2 sm:px-4">
-      <div className="max-w-5xl mx-auto">
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-2 mb-4 md:mb-6 no-print">
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-xs sm:text-sm"
-          >
-            <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-            <span className="font-medium">Print</span>
-          </button>
-          <button
-            onClick={generatePDF}
-            disabled={downloadingPdf}
-            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+    <div className="space-y-6">
+      {/* Key metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Gross sales
+            </CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <DollarSign className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {formatCurrency(salesData.grossSales)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Net sales
+            </CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <Receipt className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+              {formatCurrency(salesData.netSales)}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Gross profit
+            </CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              <TrendingUp className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+              {formatCurrency(salesData.grossProfit)}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {grossMargin}% margin
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {salesData.netProfit >= 0 ? "Net profit" : "Net loss"}
+            </CardTitle>
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              {salesData.netProfit >= 0 ? (
+                <ArrowUpCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="px-4 pb-4 pt-0">
+            <div
+              className={`text-2xl font-bold ${salesData.netProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+            >
+              {formatCurrency(salesData.netProfit)}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {netMargin}% margin
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Detailed statement */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            Detailed statement
+          </CardTitle>
+          <Button size="sm" onClick={generatePDF} disabled={downloadingPdf}>
             {downloadingPdf ? (
               <>
-                <div className="animate-spin rounded-full h-3.5 w-3.5 sm:h-4 sm:w-4 border-2 border-white border-t-transparent"></div>
-                <span className="font-medium">Generating...</span>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-1.5" />
+                Generating...
               </>
             ) : (
               <>
-                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                <span className="font-medium">PDF</span>
+                <Download className="w-4 h-4 mr-1.5" />
+                Download PDF
               </>
             )}
-          </button>
-        </div>
+          </Button>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <ReportLetterhead business={business} location={location} />
 
-        {/* Statement Container */}
-        <div
-          id="profit-loss-statement"
-          className="bg-white shadow-lg rounded-lg overflow-hidden"
-        >
-          {/* Header */}
-          <div className="bg-gradient-to-r from-gray-800 to-gray-700 text-white px-3 sm:px-6 md:px-8 py-3 sm:py-4">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="bg-white/10 p-1.5 sm:p-2 rounded-lg">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-              </div>
-              <div>
-                <h1 className="text-base sm:text-xl md:text-2xl font-bold">
-                  Profit & Loss Statement
-                </h1>
-                <p className="text-xs sm:text-sm text-gray-300 mt-0.5 sm:mt-1 hidden sm:block">
-                  Financial Performance Report
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Date Range Info */}
-          <div className="bg-blue-50 px-3 sm:px-6 md:px-8 py-2.5 sm:py-4 border-b border-blue-100">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
-              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-gray-700">
-                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-blue-600 flex-shrink-0" />
-                <span className="font-medium">Period:</span>
-                <span className="break-all">
-                  {formatDateTime(salesData.startDate)} -{" "}
-                  {formatDateTime(salesData.endDate)}
+          {/* Revenue */}
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              Revenue
+            </h3>
+            <div className="rounded-lg border border-gray-100 dark:border-gray-800 divide-y divide-gray-100 dark:divide-gray-800">
+              <div className="flex justify-between items-center py-3 px-4">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    Gross sales
+                  </span>
+                </div>
+                <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  {formatCurrency(salesData.grossSales)}
                 </span>
               </div>
-              <div className="text-xs sm:text-sm text-gray-600">
-                Generated{" "}
-                {new Date().toLocaleDateString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="px-3 sm:px-6 md:px-8 py-4 sm:py-6 md:py-8">
-            {/* Revenue Section */}
-            <div className="mb-6 sm:mb-8">
-              <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-800 mb-3 sm:mb-4 pb-2 border-b-2 border-gray-300 uppercase tracking-wide">
-                Revenue
-              </h2>
-              <div className="space-y-1">
-                <div className="flex justify-between py-2 sm:py-2.5 hover:bg-gray-50 px-2 sm:px-4 rounded text-xs sm:text-sm md:text-base">
-                  <span className="text-gray-700">Gross Sales</span>
-                  <span className="font-semibold text-gray-900 text-right">
-                    {formatCurrency(salesData.grossSales)}
-                  </span>
-                </div>
-                <div className="flex justify-between py-1.5 sm:py-2 px-2 sm:px-4 text-xs sm:text-sm">
-                  <span className="text-gray-600 pl-3 sm:pl-6">
+              <div className="flex justify-between items-center py-3 px-4">
+                <div className="flex items-center gap-2 pl-6">
+                  <RefreshCcw className="h-3.5 w-3.5 text-gray-400" />
+                  <span className="text-sm text-muted-foreground">
                     Less: Discounts
                   </span>
-                  <span className="text-gray-700 text-right">
-                    ({formatCurrency(salesData.discountsAmount)})
-                  </span>
                 </div>
-                <div className="flex justify-between py-1.5 sm:py-2 px-2 sm:px-4 text-xs sm:text-sm">
-                  <span className="text-gray-600 pl-3 sm:pl-6">
+                <span className="text-sm text-muted-foreground">
+                  ({formatCurrency(salesData.discountsAmount)})
+                </span>
+              </div>
+              <div className="flex justify-between items-center py-3 px-4">
+                <div className="flex items-center gap-2 pl-6">
+                  <RefreshCcw className="h-3.5 w-3.5 text-gray-400" />
+                  <span className="text-sm text-muted-foreground">
                     Less: Refunds
                   </span>
-                  <span className="text-gray-700 text-right">
-                    ({formatCurrency(salesData.refundsAmount)})
-                  </span>
                 </div>
-                <div className="flex justify-between py-2.5 sm:py-3 mt-2 sm:mt-3 pt-3 sm:pt-4 border-t-2 border-gray-400 px-2 sm:px-4 bg-blue-50 rounded">
-                  <span className="font-bold text-gray-800 text-xs sm:text-sm md:text-base">
-                    Net Sales
-                  </span>
-                  <span className="font-bold text-blue-700 text-sm sm:text-base md:text-lg text-right">
-                    {formatCurrency(salesData.netSales)}
-                  </span>
-                </div>
+                <span className="text-sm text-muted-foreground">
+                  ({formatCurrency(salesData.refundsAmount)})
+                </span>
               </div>
             </div>
-
-            {/* Cost of Sales Section */}
-            <div className="mb-6 sm:mb-8">
-              <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-800 mb-3 sm:mb-4 pb-2 border-b-2 border-gray-300 uppercase tracking-wide">
-                Cost of Sales
-              </h2>
-              <div className="space-y-1">
-                <div className="flex justify-between py-2 sm:py-2.5 hover:bg-gray-50 px-2 sm:px-4 rounded text-xs sm:text-sm md:text-base">
-                  <span className="text-gray-700">Cost Of Goods Sold</span>
-                  <span className="font-semibold text-red-600 text-right">
-                    {formatCurrency(salesData.costsAmount)}
-                  </span>
-                </div>
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 sm:gap-0 py-3 sm:py-4 mt-2 sm:mt-3 pt-3 sm:pt-4 border-t-2 border-gray-400 px-2 sm:px-4 bg-green-50 rounded">
-                  <div>
-                    <span className="font-bold text-gray-800 block text-xs sm:text-sm md:text-base">
-                      Gross Profit
-                    </span>
-                    <span className="text-xs text-green-700 font-medium">
-                      Gross Margin: {grossMargin}%
-                    </span>
-                  </div>
-                  <span className="font-bold text-green-700 text-sm sm:text-base md:text-lg text-right sm:text-left">
-                    {formatCurrency(salesData.grossProfit)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Operating Expenses Section */}
-            <div className="mb-6 sm:mb-8">
-              <h2 className="text-sm sm:text-base md:text-lg font-bold text-gray-800 mb-3 sm:mb-4 pb-2 border-b-2 border-gray-300 uppercase tracking-wide">
-                Operating Expenses
-              </h2>
-              <div className="space-y-1">
-                <div className="flex justify-between py-2 sm:py-2.5 hover:bg-gray-50 px-2 sm:px-4 rounded text-xs sm:text-sm md:text-base">
-                  <span className="text-gray-700">Total Expenses</span>
-                  <span className="font-semibold text-gray-900 text-right">
-                    {formatCurrency(salesData.expensesPaidAmount)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Net Profit Section */}
-            <div className="pt-4 sm:pt-6 border-t-4 border-gray-800">
-              <div
-                className={`${salesData.netProfit >= 0 ? "bg-gradient-to-r from-green-50 to-emerald-50" : "bg-gradient-to-r from-red-50 to-orange-50"} p-4 sm:p-6 rounded-lg border-2 ${salesData.netProfit >= 0 ? "border-green-200" : "border-red-200"}`}
-              >
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0">
-                  <div>
-                    <span className="text-base sm:text-lg md:text-xl font-bold text-gray-800 block mb-1">
-                      {salesData.netProfit >= 0 ? "Net Profit" : "Net Loss"}
-                    </span>
-                    <span
-                      className={`text-xs sm:text-sm font-medium ${salesData.netProfit >= 0 ? "text-green-700" : "text-red-700"}`}
-                    >
-                      Net Margin: {netMargin}%
-                    </span>
-                  </div>
-                  <span
-                    className={`text-2xl sm:text-3xl md:text-4xl font-bold ${salesData.netProfit >= 0 ? "text-green-700" : "text-red-700"} text-left sm:text-right break-all`}
-                  >
-                    {formatCurrency(salesData.netProfit)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer Note */}
-            <div className="mt-6 sm:mt-8 pt-4 sm:pt-6 border-t border-gray-200">
-              <p className="text-xs text-gray-500 text-center leading-relaxed">
-                This report was generated automatically by the system. Any
-                changes made to the data will not be reflected in this report
-                and any discrepancies should be reported to the Settlo Team
-                through support@settlo.co.tz.
-              </p>
+            <div className="mt-2 flex justify-between items-center rounded-lg bg-gray-100 dark:bg-gray-800 px-4 py-3">
+              <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                Net sales
+              </span>
+              <span className="text-base font-bold text-gray-900 dark:text-gray-100">
+                {formatCurrency(salesData.netSales)}
+              </span>
             </div>
           </div>
-        </div>
-      </div>
 
-      <style jsx>{`
-        @media print {
-          .no-print {
-            display: none !important;
-          }
-          body {
-            background: white;
-          }
-        }
-      `}</style>
+          <Separator />
+
+          {/* Cost of sales */}
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              Cost of sales
+            </h3>
+            <div className="rounded-lg border border-gray-100 dark:border-gray-800">
+              <div className="flex justify-between items-center py-3 px-4">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    Cost of goods sold
+                  </span>
+                </div>
+                <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  {formatCurrency(salesData.costsAmount)}
+                </span>
+              </div>
+            </div>
+            <div className="mt-2 flex justify-between items-center rounded-lg bg-green-50 dark:bg-green-950/30 px-4 py-3">
+              <div>
+                <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  Gross profit
+                </span>
+                <span className="text-xs text-muted-foreground ml-2">
+                  {grossMargin}% margin
+                </span>
+              </div>
+              <span className="text-base font-bold text-green-600 dark:text-green-400">
+                {formatCurrency(salesData.grossProfit)}
+              </span>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Operating expenses */}
+          <div className="space-y-1">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider mb-3">
+              Operating expenses
+            </h3>
+            <div className="rounded-lg border border-gray-100 dark:border-gray-800">
+              <div className="flex justify-between items-center py-3 px-4">
+                <div className="flex items-center gap-2">
+                  <BarChart className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    Total expenses
+                  </span>
+                </div>
+                <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
+                  {formatCurrency(salesData.expensesPaidAmount)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Net profit / loss */}
+          <div
+            className={`flex justify-between items-center rounded-lg p-5 ${
+              salesData.netProfit >= 0
+                ? "bg-green-50 dark:bg-green-950/30"
+                : "bg-red-50 dark:bg-red-950/30"
+            }`}
+          >
+            <div>
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                {salesData.netProfit >= 0 ? "Net profit" : "Net loss"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Net margin: {netMargin}%
+              </p>
+            </div>
+            <p
+              className={`text-2xl font-bold ${
+                salesData.netProfit >= 0
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {formatCurrency(salesData.netProfit)}
+            </p>
+          </div>
+
+          {/* Footer */}
+          <p className="text-xs text-muted-foreground text-center pt-2">
+            This report was generated automatically. Any discrepancies should be
+            reported to the Settlo Team through support@settlo.co.tz.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 };

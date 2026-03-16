@@ -32,12 +32,8 @@ export default async function StockIntakePage({params}: {params: Params}){
         {title: isNewItem ? "New":item?.content[0].id || "Edit",link:""}]
 
     return(
-        <div className={`flex-1 space-y-4 p-4 md:p-8 pt-6`}>
-            <div className={`flex items-center justify-between mb-2`}>
-                <div className={`relative flex-1 `}>
-                    <BreadcrumbsNav items={breadCrumbItems}/>
-                </div>
-            </div>
+        <div className="flex-1 space-y-4 p-4 pt-4 md:px-8 md:pt-6">
+            <BreadcrumbsNav items={breadCrumbItems}/>
             <StockIntakeCard isNewItem={isNewItem} item={item?.content[0]}/>
         </div>
     )
@@ -47,7 +43,7 @@ const StockIntakeCard =({isNewItem, item}:{
     isNewItem:boolean,
     item: StockIntake | null | undefined
 }) =>(
-    <Card className="mt-12" >
+    <Card>
        <CardHeader>
            <CardTitle>
                {isNewItem ? "Record Stock Intake" : "Edit stock intake"}

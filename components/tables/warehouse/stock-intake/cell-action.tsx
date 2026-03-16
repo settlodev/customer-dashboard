@@ -1,8 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { useDisclosure } from "@nextui-org/modal";
-// import { EyeIcon } from "@nextui-org/shared-icons";
+import { useDisclosure } from "@/hooks/use-disclosure";
 import { Calculator, EditIcon, Info} from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

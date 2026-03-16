@@ -45,6 +45,12 @@ export interface LocationSettings {
   deductStockOnOrderClose: boolean;
   deductStockOnPartialPay: boolean;
   useKds: boolean;
+  showDateOnOrderNumber: boolean;
+  showOrderNumberPrefix: boolean;
+  orderNumberPrefix: string;
+  acceptOrderRequests: boolean;
+  orderRequestAcceptStartTime: string | null;
+  orderRequestAcceptEndTime: string | null;
   locationId: string | null;
   canDelete: boolean;
   status: boolean;
@@ -54,6 +60,9 @@ export interface LocationSettings {
   trackInventory?: boolean;
   enableNotifications?: boolean;
   autoCloseOrderWhenFullyPaid?: boolean;
+  autoPrintTickets: boolean;
+  autoOpenCashDrawer: boolean;
+  autoPrintReceiptAfterSale: boolean;
   receiptImageUpload: string;
   showQrCodeOnReceipt: boolean;
   showImageOnReceipt: boolean;
@@ -73,7 +82,8 @@ export type SettingType =
   | "number"
   | "text"
   | "password"
-  | "button";
+  | "button"
+  | "country-select";
 
 export interface SettingField {
   key: keyof LocationSettings;
@@ -86,7 +96,6 @@ export interface SettingField {
     | "system"
     | "printing"
     | "inventory"
-    | "notifications"
     | "order";
   placeholder?: string;
   helperText?: string;
@@ -102,6 +111,14 @@ export interface SettingField {
 // Complete settings configuration
 export const SETTINGS_CONFIG: SettingField[] = [
   // Basic Settings
+  {
+    key: "currencyCode",
+    label: "Currency",
+    type: "country-select",
+    category: "basic",
+    placeholder: "Select country",
+    helperText: "Country and currency for this location",
+  },
   {
     key: "minimumSettlementAmount",
     label: "Minimum Settlement Amount",
@@ -181,7 +198,7 @@ export const SETTINGS_CONFIG: SettingField[] = [
     key: "usePasscode",
     label: "Use Passcode",
     type: "switch",
-    category: "feature",
+    category: "basic",
     helperText: "Require passcode for system access",
   },
   {
@@ -223,7 +240,7 @@ export const SETTINGS_CONFIG: SettingField[] = [
     key: "enableOrdersPrintsCount",
     label: "Enable Orders Prints Count",
     type: "switch",
-    category: "feature",
+    category: "order",
     helperText: "Track number of times orders are printed",
   },
   {
@@ -242,6 +259,57 @@ export const SETTINGS_CONFIG: SettingField[] = [
   },
 
   // Order settings
+  {
+    key: "acceptOrderRequests",
+    label: "Accept Order Requests",
+    type: "switch",
+    category: "order",
+    helperText: "Enable or disable accepting order requests",
+  },
+  {
+    key: "orderRequestAcceptStartTime",
+    label: "Order Accept Start Time",
+    type: "text",
+    category: "order",
+    placeholder: "e.g. 08:00",
+    helperText: "Start time for accepting order requests (HH:mm)",
+    inputType: "text",
+    dependencies: ["acceptOrderRequests"],
+  },
+  {
+    key: "orderRequestAcceptEndTime",
+    label: "Order Accept End Time",
+    type: "text",
+    category: "order",
+    placeholder: "e.g. 22:00",
+    helperText: "End time for accepting order requests (HH:mm)",
+    inputType: "text",
+    dependencies: ["acceptOrderRequests"],
+  },
+  {
+    key: "showOrderNumberPrefix",
+    label: "Show Order Number Prefix",
+    type: "switch",
+    category: "order",
+    helperText: "Display the prefix on order numbers",
+  },
+  {
+    key: "orderNumberPrefix",
+    label: "Order Number Prefix",
+    type: "text",
+    category: "order",
+    placeholder: "e.g. Order",
+    helperText: "Prefix added to the beginning of each order number",
+    inputType: "text",
+    dependencies: ["showOrderNumberPrefix"],
+  },
+  {
+    key: "showDateOnOrderNumber",
+    label: "Show Date on Order Number",
+    type: "switch",
+    category: "order",
+    helperText: "Include the date in the order number format",
+  },
   {
     key: "autoCloseOrderWhenFullyPaid",
     label: "Auto Close Order When Fully Paid",
@@ -285,6 +353,27 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "switch",
     category: "printing",
     helperText: "Display prices on printed tickets",
+  },
+  {
+    key: "autoPrintTickets",
+    label: "Auto Print Tickets",
+    type: "switch",
+    category: "printing",
+    helperText: "Automatically print tickets when orders are placed",
+  },
+  {
+    key: "autoOpenCashDrawer",
+    label: "Auto Open Cash Drawer",
+    type: "switch",
+    category: "order",
+    helperText: "Automatically open the cash drawer after a sale",
+  },
+  {
+    key: "autoPrintReceiptAfterSale",
+    label: "Auto Print Receipt After Sale",
+    type: "switch",
+    category: "printing",
+    helperText: "Automatically print a receipt after completing a sale",
   },
   {
     key: "showQrCodeOnReceipt",
@@ -341,49 +430,12 @@ export const SETTINGS_CONFIG: SettingField[] = [
     helperText: "Deduct stock on partial payments",
   },
 
-  // Notifications Settings
-  {
-    key: "enableNotifications",
-    label: "Enable Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Enable all notification types",
-  },
-  {
-    key: "enableEmailNotifications",
-    label: "Enable Email Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive notifications via email",
-  },
-  {
-    key: "enableSmsNotifications",
-    label: "Enable SMS Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive notifications via SMS",
-  },
-  {
-    key: "enablePushNotifications",
-    label: "Enable Push Notifications",
-    type: "switch",
-    category: "notifications",
-    helperText: "Receive push notifications",
-  },
-
-  // System Settings
+  // General Settings
   {
     key: "isDefault",
     label: "Set as Main Location",
     type: "switch",
-    category: "system",
+    category: "basic",
     helperText: "Set this location as the main/default location",
-  },
-  {
-    key: "isActive",
-    label: "Is Active",
-    type: "switch",
-    category: "system",
-    helperText: "Activate/deactivate this location",
   },
 ];

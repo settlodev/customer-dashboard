@@ -4,7 +4,7 @@ import React, {useCallback, useState, useTransition} from "react";
 import Image from "next/image";
 import {Loader2Icon, PhoneCallIcon, UploadIcon, UserIcon, VerifiedIcon} from "lucide-react";
 import {EnvelopeClosedIcon} from "@radix-ui/react-icons";
-import {EditIcon} from "@nextui-org/shared-icons";
+import { Pencil as EditIcon } from "lucide-react";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 import {useSession} from "next-auth/react";
 import {FieldErrors, useForm} from "react-hook-form";

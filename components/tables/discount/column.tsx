@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { StateColumn } from "@/components/tables/state-column";
 import { CellAction } from "@/components/tables/discount/cell-action";
 import { Discount } from "@/types/discount/type";
-import moment from "moment";
+
 
 export const columns: ColumnDef<Discount>[] = [
   {

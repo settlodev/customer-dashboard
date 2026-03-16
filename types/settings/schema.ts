@@ -2,6 +2,7 @@ import * as z from "zod";
 
 export const LocationSettingsSchema = z.object({
   // Basic settings
+  currencyCode: z.string().min(1).max(5).default("TZS"),
   minimumSettlementAmount: z.number().min(0).default(0),
   systemPasscode: z.string().min(4).max(10).default("0000"),
   reportsPasscode: z.string().min(4).max(10).default("0000"),
@@ -25,18 +26,29 @@ export const LocationSettingsSchema = z.object({
   ticketToHaveAmount: z.boolean().default(false),
   singleTicketPrint: z.boolean().default(false),
   showPriceOnTicket: z.boolean().default(false),
+  autoPrintTickets: z.boolean().default(false),
+  autoOpenCashDrawer: z.boolean().default(false),
+  autoPrintReceiptAfterSale: z.boolean().default(false),
 
   // Inventory settings
   deductStockOnItemChange: z.boolean().default(true),
   deductStockOnOrderClose: z.boolean().default(false),
   deductStockOnPartialPay: z.boolean().default(false),
 
+  // Order settings
+  orderNumberPrefix: z.string().default("Order"),
+  showDateOnOrderNumber: z.boolean().default(false),
+  showOrderNumberPrefix: z.boolean().default(true),
+  acceptOrderRequests: z.boolean().default(true),
+  orderRequestAcceptStartTime: z.string().nullable().default(null),
+  orderRequestAcceptEndTime: z.string().nullable().default(null),
+  allowTipping: z.boolean().default(false),
+
   // Notification settings
   enableNotifications: z.boolean().default(false),
   enableEmailNotifications: z.boolean().default(true),
   enableSmsNotifications: z.boolean().default(true),
   enablePushNotifications: z.boolean().default(true),
-  allowTipping: z.boolean().default(false),
 
   // System settings
   isDefault: z.boolean().default(false),

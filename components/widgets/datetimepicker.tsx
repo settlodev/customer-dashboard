@@ -100,7 +100,7 @@ const DateTimePicker = ({
         <Button
           variant={"outline"}
           className={cn(
-            "w-full pl-3 text-left font-normal",
+            "w-full pl-3 text-left font-normal border-0 bg-muted hover:bg-muted/80",
             !field.value && "text-muted-foreground",
           )}
         >

@@ -182,7 +182,7 @@ const PaginatedStockTable = ({
     ? Math.ceil(filteredMovements.length / itemsPerPage)
     : serverTotalPages || Math.ceil(filteredMovements.length / itemsPerPage);
 
-  const totalItems = filterActive
+  const _totalItems = filterActive
     ? filteredMovements.length
     : serverTotalElements || filteredMovements.length;
 
