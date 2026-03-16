@@ -4,6 +4,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { CellAction } from "@/components/tables/staff/cell-action";
 import { Staff } from "@/types/staff";
 
@@ -130,6 +131,23 @@ export const columns: ColumnDef<Staff>[] = [
           {!pos && !dashboard && (
             <span className="text-xs text-muted-foreground">None</span>
           )}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "loyaltyPoints",
+    header: () => <div className="text-center">Points</div>,
+    enableHiding: true,
+    cell: ({ row }) => {
+      const points = row.original.loyaltyPoints;
+      if (points == null || points === 0)
+        return <div className="text-center"><span className="text-muted-foreground text-xs">0</span></div>;
+      return (
+        <div className="text-center">
+          <Badge variant="secondary" className="text-xs font-mono">
+            {points.toLocaleString()}
+          </Badge>
         </div>
       );
     },

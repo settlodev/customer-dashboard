@@ -1,94 +1,130 @@
 "use client";
 
-import { Edit, MoreHorizontal, Trash } from "lucide-react";
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useState } from "react";
+import {
+  MoreVertical,
+  Eye,
+  Pencil as EditIcon,
+  Archive as ArchiveIcon,
+  ArchiveRestore,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import DeleteModal from "@/components/tables/delete-modal";
-import {useDisclosure} from "@/hooks/use-disclosure";
-import {toast} from "@/hooks/use-toast";
-import {Customer} from "@/types/customer/type";
-import { deleteCustomer } from "@/lib/actions/customer-actions";
+import { toast } from "@/hooks/use-toast";
+import { Customer } from "@/types/customer/type";
+import { archiveCustomer, unarchiveCustomer } from "@/lib/actions/customer-actions";
 
 interface CellActionProps {
-    data: Customer;
+  data: Customer;
 }
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
-    const router = useRouter();
-    const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const router = useRouter();
+  const [isArchiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [isUnarchiving, setIsUnarchiving] = useState(false);
 
-    const onDelete = async () => {
-        try {
-            if (data) {
-                await deleteCustomer(data.id);
-                toast({
-                    variant: "default",
-                    title: "Success",
-                    description: "Customer deleted successfully!",
-                });
-            } else {
-                toast({
-                    variant: "destructive",
-                    title: "Uh oh! Something went wrong.",
-                    description:
-                        "There was an issue with your request, please try again later",
-                });
-            }
-        } catch (error) {
-            toast({
-                variant: "destructive",
-                title: "Uh oh! Something went wrong.",
-                description:
-                (error as Error).message ||
-                    "There was an issue with your request, please try again later",
-            });
-        } finally {
-            onOpenChange();
-        }
-    };
+  const fullName = `${data.firstName} ${data.lastName}`;
 
-    return (
-        <>
-            <div className="relative flex items-center gap-2">
-                <DropdownMenu modal={false}>
-                    <DropdownMenuTrigger asChild>
-                        <Button className="h-8 w-8 p-0" variant="ghost">
-                            <span className="sr-only">Actions</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => router.push(`/customers/${data.id}`)}>
-                            <Edit className="mr-2 h-4 w-4" /> Update
-                        </DropdownMenuItem>
-                        {data.canDelete && (
-                            <>
-                                <DropdownMenuItem onClick={onOpen}>
-                                    <Trash className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                            </>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </div>
-            {data.canDelete && (
-                <DeleteModal
-                    isOpen={isOpen}
-                    itemName={data.firstName}
-                    onDelete={onDelete}
-                    onOpenChange={onOpenChange}
-                />
-            )}
-        </>
-    );
+  const handleArchive = async () => {
+    try {
+      await archiveCustomer(data.id);
+      toast({
+        title: "Archived",
+        description: `${fullName} has been archived successfully.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description:
+          (error as Error).message ||
+          "There was an issue with your request, please try again later",
+      });
+    } finally {
+      setArchiveModalOpen(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    setIsUnarchiving(true);
+    try {
+      await unarchiveCustomer(data.id);
+      toast({
+        title: "Restored",
+        description: `${fullName} has been restored successfully.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description:
+          (error as Error).message ||
+          "There was an issue with your request, please try again later",
+      });
+    } finally {
+      setIsUnarchiving(false);
+    }
+  };
+
+  return (
+    <>
+      <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild>
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreVertical className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem
+            onClick={() => router.push(`/customers/${data.id}`)}
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            View
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => router.push(`/customers/${data.id}/edit`)}
+          >
+            <EditIcon className="mr-2 h-4 w-4" />
+            Edit
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {data.isArchived ? (
+            <DropdownMenuItem
+              onClick={handleUnarchive}
+              disabled={isUnarchiving}
+              className="text-green-600 focus:text-green-600"
+            >
+              <ArchiveRestore className="mr-2 h-4 w-4" />
+              {isUnarchiving ? "Restoring..." : "Unarchive"}
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={() => setArchiveModalOpen(true)}
+              className="text-red-600 focus:text-red-600"
+            >
+              <ArchiveIcon className="mr-2 h-4 w-4" />
+              Archive
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* Archive Confirmation Modal */}
+      <DeleteModal
+        isOpen={isArchiveModalOpen}
+        itemName={fullName}
+        onDelete={handleArchive}
+        onOpenChange={() => setArchiveModalOpen(false)}
+      />
+    </>
+  );
 };

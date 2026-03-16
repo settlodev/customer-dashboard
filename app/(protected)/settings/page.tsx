@@ -13,6 +13,7 @@ import OrdersInventorySettings from "@/components/settings/orders-inventory-sett
 import ReservationSettings from "@/components/settings/reservations";
 import { fetchLocationSettings } from "@/lib/actions/settings-actions";
 import Loading from "@/components/ui/loading";
+import LoyaltyPointsSettings from "@/components/settings/loyalty-points-settings";
 import EFDSettings from "@/components/settings/efd";
 import DigitalMenuSettings from "@/components/settings/digital-menu-settings";
 import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
@@ -205,6 +206,10 @@ const SettingsLayout = ({
         return <DigitalMenuSettings />;
       case "payments":
         return <AcceptedPaymentMethodsPage />;
+      case "loyalty-points":
+        return (
+          <LoyaltyPointsSettings locationSettings={locationSettings} />
+        );
       case "efd":
         return <EFDSettings />;
       default:

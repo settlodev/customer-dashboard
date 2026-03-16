@@ -62,4 +62,21 @@ export const LocationSettingsSchema = z.object({
   showImageOnReceipt: z.boolean().default(false),
   showAdditionalDetailsOnPhysicalReceipt: z.boolean().default(false),
   showAdditionalDetailsOnDigitalReceipt: z.boolean().default(false),
+
+  // Customer Loyalty Points
+  enableCustomerLoyaltyPoints: z.boolean().default(false),
+  customerLoyaltyAwardType: z.string().default("PER_ORDER"),
+  customerLoyaltyPointsPerOrder: z.number().min(0).default(0),
+  customerLoyaltyPointsPerValue: z.number().min(0).default(0),
+  customerLoyaltyValueThreshold: z.number().min(0).default(0),
+  customerLoyaltyMinimumRedeemablePoints: z.number().min(0).default(0),
+
+  // Staff Points
+  enableStaffPoints: z.boolean().default(false),
+  staffPointsAwardType: z.string().default("PER_ORDER"),
+  staffPointsPerOrder: z.number().min(0).default(0),
+  staffPointsPerValue: z.number().min(0).default(0),
+  staffPointsValueThreshold: z.number().min(0).default(0),
+  staffMinimumRedeemablePoints: z.number().min(0).default(0),
+  staffPointsRecipient: z.string().default("FINISHED_BY"),
 });

@@ -861,52 +861,6 @@ function CustomerForm({
           )}
         </div>
 
-        {/* ── Read-only info (edit mode only) ──────────────────── */}
-        {item && (
-          <>
-            <Separator />
-            <div>
-              <h3 className="text-lg font-medium mb-4">Customer Info</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                {item.customerAccountNumber && (
-                  <div className="rounded-lg border p-4">
-                    <p className="text-xs text-muted-foreground">
-                      Account Number
-                    </p>
-                    <p className="font-mono font-medium mt-1">
-                      {item.customerAccountNumber}
-                    </p>
-                  </div>
-                )}
-                {item.totalSpend != null && (
-                  <div className="rounded-lg border p-4">
-                    <p className="text-xs text-muted-foreground">Total Spend</p>
-                    <p className="font-medium mt-1">
-                      {item.totalSpend.toLocaleString()}
-                    </p>
-                  </div>
-                )}
-                {item.totalOrders != null && (
-                  <div className="rounded-lg border p-4">
-                    <p className="text-xs text-muted-foreground">
-                      Total Orders
-                    </p>
-                    <p className="font-medium mt-1">{item.totalOrders}</p>
-                  </div>
-                )}
-                {item.lastVisit && (
-                  <div className="rounded-lg border p-4">
-                    <p className="text-xs text-muted-foreground">Last Visit</p>
-                    <p className="font-medium mt-1">
-                      {new Date(item.lastVisit).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </>
-        )}
-
         {/* ── Actions ──────────────────────────────────────────── */}
         <div className="flex h-5 items-center space-x-4 mt-10">
           <CancelButton />

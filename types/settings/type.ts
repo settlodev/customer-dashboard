@@ -69,6 +69,23 @@ export interface LocationSettings {
   showAdditionalDetailsOnPhysicalReceipt: boolean;
   showAdditionalDetailsOnDigitalReceipt: boolean;
 
+  // Customer Loyalty Points
+  enableCustomerLoyaltyPoints: boolean;
+  customerLoyaltyAwardType: string;
+  customerLoyaltyPointsPerOrder: number;
+  customerLoyaltyPointsPerValue: number;
+  customerLoyaltyValueThreshold: number;
+  customerLoyaltyMinimumRedeemablePoints: number;
+
+  // Staff Points
+  enableStaffPoints: boolean;
+  staffPointsAwardType: string;
+  staffPointsPerOrder: number;
+  staffPointsPerValue: number;
+  staffPointsValueThreshold: number;
+  staffMinimumRedeemablePoints: number;
+  staffPointsRecipient: string;
+
   // New fields for extended functionality
   receiptImage?: string;
   physicalReceiptPaymentDetails?: PaymentDetails;
@@ -96,7 +113,9 @@ export interface SettingField {
     | "system"
     | "printing"
     | "inventory"
-    | "order";
+    | "order"
+    | "loyalty"
+    | "staff-points";
   placeholder?: string;
   helperText?: string;
   inputType?: "text" | "number" | "password" | "tel" | "email";
@@ -106,6 +125,7 @@ export interface SettingField {
   max?: number;
   step?: number;
   required?: boolean;
+  options?: { value: string; label: string }[];
 }
 
 // Complete settings configuration
@@ -437,5 +457,156 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "switch",
     category: "basic",
     helperText: "Set this location as the main/default location",
+  },
+
+  // Customer Loyalty Points
+  {
+    key: "enableCustomerLoyaltyPoints",
+    label: "Enable Customer Loyalty Points",
+    type: "switch",
+    category: "loyalty",
+    helperText: "Enable loyalty points program for customers",
+  },
+  {
+    key: "customerLoyaltyAwardType",
+    label: "Award Type",
+    type: "select",
+    category: "loyalty",
+    helperText: "How customers earn loyalty points",
+    dependencies: ["enableCustomerLoyaltyPoints"],
+    options: [
+      { value: "PER_ORDER", label: "Per Order (flat points per order)" },
+      { value: "PER_ORDER_VALUE", label: "Per Order Value (based on amount)" },
+    ],
+  },
+  {
+    key: "customerLoyaltyPointsPerOrder",
+    label: "Points Per Order",
+    type: "number",
+    category: "loyalty",
+    placeholder: "e.g. 10",
+    helperText: "Flat points awarded per closed order",
+    inputType: "number",
+    min: 0,
+    step: 1,
+    dependencies: ["enableCustomerLoyaltyPoints"],
+  },
+  {
+    key: "customerLoyaltyPointsPerValue",
+    label: "Points Per Value Threshold",
+    type: "number",
+    category: "loyalty",
+    placeholder: "e.g. 1",
+    helperText: "Points earned each time the value threshold is reached",
+    inputType: "number",
+    min: 0,
+    step: 1,
+    dependencies: ["enableCustomerLoyaltyPoints"],
+  },
+  {
+    key: "customerLoyaltyValueThreshold",
+    label: "Value Threshold",
+    type: "number",
+    category: "loyalty",
+    placeholder: "e.g. 1000",
+    helperText: "Order amount needed to earn points (e.g. 1000 = 1 point per 1000 spent)",
+    inputType: "number",
+    min: 0,
+    step: 0.01,
+    dependencies: ["enableCustomerLoyaltyPoints"],
+  },
+  {
+    key: "customerLoyaltyMinimumRedeemablePoints",
+    label: "Minimum Redeemable Points",
+    type: "number",
+    category: "loyalty",
+    placeholder: "e.g. 50",
+    helperText: "Minimum points a customer must accumulate before redeeming",
+    inputType: "number",
+    min: 0,
+    step: 1,
+    dependencies: ["enableCustomerLoyaltyPoints"],
+  },
+
+  // Staff Points
+  {
+    key: "enableStaffPoints",
+    label: "Enable Staff Points",
+    type: "switch",
+    category: "staff-points",
+    helperText: "Enable points program for staff members",
+  },
+  {
+    key: "staffPointsAwardType",
+    label: "Award Type",
+    type: "select",
+    category: "staff-points",
+    helperText: "How staff members earn points",
+    dependencies: ["enableStaffPoints"],
+    options: [
+      { value: "PER_ORDER", label: "Per Order (flat points per order)" },
+      { value: "PER_ORDER_VALUE", label: "Per Order Value (based on amount)" },
+    ],
+  },
+  {
+    key: "staffPointsPerOrder",
+    label: "Points Per Order",
+    type: "number",
+    category: "staff-points",
+    placeholder: "e.g. 5",
+    helperText: "Flat points awarded per closed order",
+    inputType: "number",
+    min: 0,
+    step: 1,
+    dependencies: ["enableStaffPoints"],
+  },
+  {
+    key: "staffPointsPerValue",
+    label: "Points Per Value Threshold",
+    type: "number",
+    category: "staff-points",
+    placeholder: "e.g. 1",
+    helperText: "Points earned each time the value threshold is reached",
+    inputType: "number",
+    min: 0,
+    step: 1,
+    dependencies: ["enableStaffPoints"],
+  },
+  {
+    key: "staffPointsValueThreshold",
+    label: "Value Threshold",
+    type: "number",
+    category: "staff-points",
+    placeholder: "e.g. 5000",
+    helperText: "Order amount needed to earn points",
+    inputType: "number",
+    min: 0,
+    step: 0.01,
+    dependencies: ["enableStaffPoints"],
+  },
+  {
+    key: "staffMinimumRedeemablePoints",
+    label: "Minimum Redeemable Points",
+    type: "number",
+    category: "staff-points",
+    placeholder: "e.g. 100",
+    helperText: "Minimum points staff must accumulate before redeeming",
+    inputType: "number",
+    min: 0,
+    step: 1,
+    dependencies: ["enableStaffPoints"],
+  },
+  {
+    key: "staffPointsRecipient",
+    label: "Points Recipient",
+    type: "select",
+    category: "staff-points",
+    helperText: "Which staff member receives the points for an order",
+    dependencies: ["enableStaffPoints"],
+    options: [
+      { value: "FINISHED_BY", label: "Finished By (staff who closed the order)" },
+      { value: "ASSIGNED_TO", label: "Assigned To (staff assigned to the order)" },
+      { value: "SPLIT", label: "Split (divide between both)" },
+    ],
   },
 ];

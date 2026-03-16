@@ -137,6 +137,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                         <Input
                           placeholder="Enter first name"
                           {...field}
+                          value={field.value ?? ""}
                           disabled={isSubmitting}
                         />
                       </FormControl>
@@ -157,6 +158,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                         <Input
                           placeholder="Enter last name"
                           {...field}
+                          value={field.value ?? ""}
                           disabled={isSubmitting}
                         />
                       </FormControl>
@@ -239,6 +241,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                         <Input
                           placeholder="Enter job title"
                           {...field}
+                          value={field.value ?? ""}
                           disabled={isSubmitting}
                         />
                       </FormControl>
@@ -390,6 +393,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                         <Input
                           placeholder="Enter contact name"
                           {...field}
+                          value={field.value ?? ""}
                           disabled={isSubmitting}
                         />
                       </FormControl>
@@ -426,6 +430,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                         <Input
                           placeholder="Enter relationship"
                           {...field}
+                          value={field.value ?? ""}
                           disabled={isSubmitting}
                         />
                       </FormControl>
@@ -450,6 +455,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                       <Textarea
                         placeholder="Enter any additional notes"
                         {...field}
+                        value={field.value ?? ""}
                         disabled={isSubmitting}
                         className="min-h-[100px]"
                       />
@@ -459,6 +465,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
                 )}
               />
             </div>
+
           </CardContent>
         </Card>
 

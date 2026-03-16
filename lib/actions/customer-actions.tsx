@@ -221,6 +221,26 @@ export const deleteCustomer = async (id: UUID): Promise<void> => {
   }
 };
 
+export const archiveCustomer = async (ids: string | string[]): Promise<void> => {
+  const apiClient = new ApiClient();
+  const location = await getCurrentLocation();
+
+  const customerIds = Array.isArray(ids) ? ids : [ids];
+
+  await apiClient.put(`/api/customers/${location?.id}/archive`, customerIds);
+  revalidatePath("/customers");
+};
+
+export const unarchiveCustomer = async (ids: string | string[]): Promise<void> => {
+  const apiClient = new ApiClient();
+  const location = await getCurrentLocation();
+
+  const customerIds = Array.isArray(ids) ? ids : [ids];
+
+  await apiClient.put(`/api/customers/${location?.id}/unarchive`, customerIds);
+  revalidatePath("/customers");
+};
+
 // ─── Customer Groups ─────────────────────────────────────────────────
 
 export const fetchCustomerGroups = async (): Promise<CustomerGroup[]> => {
