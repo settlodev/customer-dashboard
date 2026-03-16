@@ -23,4 +23,5 @@ export const LocationSchema = object({
   closingTime: string({ required_error: "Closing time is required" }),
   status: boolean().optional(),
   subscription: string().optional().nullish(),
+  image: string().nullable().optional(),
 });
