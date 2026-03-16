@@ -251,13 +251,11 @@ const [uploadError, setUploadError] = useState<string | null>(null);
     >
       <DialogTrigger asChild>
         <Button
-          className="h-10 gap-2 bg-white border border-gray-600 text-black hover:bg-gray-300 hover:text-black"
-          size="sm"
-          variant="default"
+          variant="outline"
           onClick={() => setIsOpen(true)}
         >
-          <Upload className="h-4 w-4" />
-          <span>Import CSV</span>
+          <Upload className="h-4 w-4 mr-1.5" />
+          Import CSV
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[90vw] lg:max-w-[1000px]">

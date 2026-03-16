@@ -119,7 +119,7 @@ function ResetPasswordForm() {
                 delay: 0.2,
               }}
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 p-0.5">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-orange-600 p-0.5">
                 <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
                   <motion.div
                     key={emailSent ? "mail" : "key"}
@@ -134,9 +134,9 @@ function ResetPasswordForm() {
                     }}
                   >
                     {emailSent ? (
-                      <Mail className="w-8 h-8 text-green-600" />
+                      <Mail className="w-8 h-8 text-primary" />
                     ) : (
-                      <KeyRound className="w-8 h-8 text-green-600" />
+                      <KeyRound className="w-8 h-8 text-primary" />
                     )}
                   </motion.div>
                 </div>
@@ -185,22 +185,22 @@ function ResetPasswordForm() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700 flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-gray-500" />
-                            Email address *
-                          </FormLabel>
+                          <FormLabel>Email address *</FormLabel>
                           <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="Enter your email address"
-                              {...field}
-                              disabled={isPending}
-                              className="h-12 border-gray-200 focus:border-emerald-500 transition-all duration-300 bg-gray-50/50 hover:bg-white"
-                              autoComplete="email"
-                            />
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input
+                                className="pl-10"
+                                type="email"
+                                placeholder="Enter your email address"
+                                {...field}
+                                disabled={isPending}
+                                autoComplete="email"
+                              />
+                            </div>
                           </FormControl>
                           <FormDescription className="text-gray-500 flex items-start gap-2 mt-2">
-                            <Sparkles className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" />
+                            <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                             <span>
                               We&#39;ll send you a secure link to reset your
                               password
@@ -215,7 +215,7 @@ function ResetPasswordForm() {
                       <Button
                         type="submit"
                         disabled={isPending}
-                        className="w-full h-12 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/25"
+                        className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                       >
                         {isPending ? (
                           <span className="flex items-center gap-2">
@@ -239,22 +239,22 @@ function ResetPasswordForm() {
                   transition={{ delay: 0.3 }}
                   className="space-y-6"
                 >
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 text-left space-y-3">
-                    <p className="text-sm text-emerald-800 font-medium flex items-center gap-2">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left space-y-3">
+                    <p className="text-sm text-orange-800 font-medium flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4" />
                       What happens next?
                     </p>
-                    <ul className="text-sm text-emerald-700 space-y-2 ml-6">
+                    <ul className="text-sm text-orange-700 space-y-2 ml-6">
                       <li className="flex items-start gap-2">
-                        <span className="text-emerald-500 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         Check your inbox for an email from us
                       </li>
                       <li className="flex items-start gap-2">
-                        <span className="text-emerald-500 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         Click the secure link in the email
                       </li>
                       <li className="flex items-start gap-2">
-                        <span className="text-emerald-500 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         Create your new password
                       </li>
                     </ul>
@@ -277,7 +277,7 @@ function ResetPasswordForm() {
               Remember your password ?{" "}
               <Link
                 href="/login"
-                className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                className="font-semibold text-primary hover:text-orange-700 transition-colors"
               >
                 Sign in instead
               </Link>
