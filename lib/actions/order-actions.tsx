@@ -92,6 +92,7 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
     const response = (await apiClient.get(
       `/api/order-receipts/with-additional-details/${identifier}`,
     )) as OrderReceiptResponse;
+    // console.log("The tax invoice is", response);
     return parseStringify({
       ...response.order,
       digitalReceiptPaymentDetails: response.digitalReceiptPaymentDetails ?? [],
