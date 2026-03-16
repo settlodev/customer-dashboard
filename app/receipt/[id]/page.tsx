@@ -169,17 +169,22 @@ const OrderReceipt = async ({
                     {orderData.businessName}
                   </h1>
                   <div className="text-sm text-gray-600 space-y-1">
-                    <div className="flex gap-2">
+                    <div className="flex flex-col gap-2">
                       <p className="font-medium capitalize">
                         {orderData.locationName}
                       </p>
                       <p>
                         {orderData.locationAddress
-                          ? `${orderData.locationAddress}, ${orderData.locationCity}`
+                          ? `${orderData.locationAddress},`
                           : orderData.locationCity}
                       </p>
+                      <p>
+                        {orderData.locationStreetAddress
+                          ? `${orderData.locationStreetAddress},`
+                          : "-"}
+                      </p>
                     </div>
-                    <p>Phone: {orderData.locationPhone}</p>
+                    <p>Phone Number: {orderData.locationPhone}</p>
                   </div>
                 </div>
               )}
@@ -197,7 +202,7 @@ const OrderReceipt = async ({
                 <p className="text-sm text-gray-600 mt-2">
                   {orderData.paidAmount === orderData.amount
                     ? "Receipt"
-                    : "Invoice"}{" "}
+                    : " Tax Invoice"}{" "}
                   Date: {formatDisplayDate(orderData.openedDate)}
                 </p>
                 {orderData.closedDate && (
@@ -253,6 +258,14 @@ const OrderReceipt = async ({
                           Customer Phone Number:
                         </span>{" "}
                         {orderData.customerPhoneNumber}
+                      </p>
+                    )}
+                    {orderData.customerEmail && (
+                      <p>
+                        <span className="font-medium text-gray-900">
+                          Customer Email:
+                        </span>{" "}
+                        {orderData.customerEmail}
                       </p>
                     )}
                     {orderData.customerTinNumber && (
