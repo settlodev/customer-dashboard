@@ -13,7 +13,6 @@ import {
 } from "./business/get-current-business";
 import { Department, Report } from "@/types/department/type";
 import { DepartmentSchema } from "@/types/department/schema";
-// import { isRedirectError } from "next/dist/client/components/redirect";
 
 export const fectchAllDepartments = async (): Promise<Department[]> => {
   await getAuthenticatedUser();
@@ -64,6 +63,7 @@ export const searchDepartment = async (
       `/api/departments/${location?.id}`,
       query,
     );
+    console.log("The department data is", parseStringify(departmentData));
     return parseStringify(departmentData);
   } catch (error) {
     throw error;
