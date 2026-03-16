@@ -209,7 +209,6 @@ export const updateLocation = async (
       ...validatedData.data,
       business: business.id,
     };
-
     // Make the API call to update location
     await apiClient.put(`/api/locations/${business.id}/${id}`, payload);
 
