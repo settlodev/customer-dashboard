@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState, useCallback } from "react";
+import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import {
   Barcode,
   Camera,
@@ -53,10 +53,13 @@ export function UniqueIdentifierInput({
     inputRefs.current = inputRefs.current.slice(0, quantity);
   }, [quantity]);
 
-  // Sync upward
+  // Sync upward — use a ref to avoid onChange identity triggering re-renders
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
   useEffect(() => {
-    onChange(serials);
-  }, [serials, onChange]);
+    onChangeRef.current(serials);
+  }, [serials]);
 
   // ── USB scanner: global keydown listener ──
   useEffect(() => {
