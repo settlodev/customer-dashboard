@@ -30,24 +30,24 @@ export default async function RootLayout({
     businessList: businessList || [],
     locationList: locationList || [],
     currentLocation: currentLocation,
-    currentWarehouse: currentWarehouse,
+    warehouse: currentWarehouse,
   };
 
   return (
     <SessionProvider session={session}>
       <LoadingBarProvider>
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen overflow-hidden bg-gray-200 dark:bg-gray-950">
           <SidebarWrapper data={businessData} />
 
-          <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden bg-gray-200 dark:bg-gray-950">
+          <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden">
             <div className="relative flex-1 overflow-y-auto">
               <Suspense
                 fallback={
                   <div className="flex justify-center items-center h-full">
                     <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
                     </div>
                   </div>
                 }

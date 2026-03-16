@@ -46,7 +46,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
 
         {!hideLogin && (
           <Button
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-sm"
+            className="w-full bg-primary hover:bg-orange-600 text-white rounded-sm"
             asChild
           >
             <Link href="/login" className="flex items-center justify-center">
@@ -85,7 +85,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                   priority
                 />
               </div>
-              <span className="hidden md:inline-block font-bold bg-gradient-to-r from-emerald-500 to-emerald-400 bg-clip-text text-transparent">
+              <span className="hidden md:inline-block font-bold bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent">
                 Settlo
               </span>
             </Link>
@@ -108,14 +108,14 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
               href="mailto:support@settlo.co.tz"
               className="hidden md:flex items-center text-muted-foreground hover:text-foreground transition-colors group"
             >
-              <ShieldQuestion className="h-5 w-5 group-hover:text-emerald-500" />
+              <ShieldQuestion className="h-5 w-5 group-hover:text-primary" />
               <span className="ml-2 font-medium">Help</span>
             </Link>
 
             {!session?.user && !hideLogin && (
               <Button
                 asChild
-                className="hidden md:inline-flex bg-emerald-500 hover:bg-emerald-600 text-white rounded-sm transition-all duration-200 ease-in-out transform hover:scale-105"
+                className="hidden md:inline-flex bg-primary hover:bg-orange-600 text-white rounded-sm transition-all duration-200 ease-in-out transform hover:scale-105"
               >
                 <Link href="/login" className="flex items-center">
                   Login

@@ -24,6 +24,7 @@ export const NavbarWrapper = ({children, session, businessData, menuType}: Props
                     <Header
                         session={session}
                         onMenuClick={() => setMobileSidebarOpen(true)}
+                        businessData={businessData}
                     />
                 </div>
                 <div className="flex-1 pt-2">

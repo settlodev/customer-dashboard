@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { CompaniesDropdown } from "./companies-dropdown";
+import { BusinessSwitcher } from "./business-switcher";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { menuItems} from "@/types/menu_items";
 import Link from "next/link";
@@ -107,7 +107,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
 
     const getIcon = (iconName: string) => {
         const size = 20;
-        const color = '#A3FFD6';
+        const color = '#EB7F44';
         const icons = {
             dashboard: <ChartNoAxesColumn size={size} color={color} />,
             inventory: <Package2 size={size} color={color} />,
@@ -131,11 +131,11 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
     return (
         <div className="flex h-full flex-col">
             <div className="flex items-center justify-between border-b border-gray-700 p-4">
-                <div className="flex items-center">
-                    <CompaniesDropdown data={data}/>
-                    <span className="ml-2 text-xs px-2 py-1 bg-gray-700 rounded-md text-gray-200">
-                        {menuTypeLabel}
-                    </span>
+                <div className="flex items-center flex-1 min-w-0">
+                    <BusinessSwitcher
+                        currentBusiness={business}
+                        businessList={data.businessList || []}
+                    />
                 </div>
                 {isMobile && (
                     <Button
@@ -316,7 +316,7 @@ export const MobileSidebar = ({ data, menuType = 'normal', isOpen, onOpenChange 
 
 export const SidebarWrapper = ({ data, menuType = 'normal' }: { data: BusinessPropsType, menuType?: MenuType }) => {
     return (
-        <aside className="hidden lg:block left-0 top-0 h-screen w-80 flex-shrink-0 bg-gray-800">
+        <aside className="hidden lg:flex lg:flex-col mt-2 mb-3 ml-3 mr-3 h-[calc(100vh-20px)] w-[22rem] flex-shrink-0 bg-gray-800 rounded-2xl shadow-xl">
             <SidebarContent data={data} menuType={menuType} />
         </aside>
     );

@@ -265,6 +265,26 @@ export const deleteStaff = async (id: UUID): Promise<void> => {
   }
 };
 
+export const archiveStaff = async (ids: string | string[]): Promise<void> => {
+  const apiClient = new ApiClient();
+  const location = await getCurrentLocation();
+
+  const staffIds = Array.isArray(ids) ? ids : [ids];
+
+  await apiClient.put(`/api/staff/${location?.id}/archive`, staffIds);
+  revalidatePath("/staff");
+};
+
+export const unarchiveStaff = async (ids: string | string[]): Promise<void> => {
+  const apiClient = new ApiClient();
+  const location = await getCurrentLocation();
+
+  const staffIds = Array.isArray(ids) ? ids : [ids];
+
+  await apiClient.put(`/api/staff/${location?.id}/unarchive`, staffIds);
+  revalidatePath("/staff");
+};
+
 const inviteStaff = async (staffId: UUID, businessId: UUID): Promise<void> => {
   await getAuthenticatedUser();
 

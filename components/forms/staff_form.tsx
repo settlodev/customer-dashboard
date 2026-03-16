@@ -5,8 +5,14 @@ import React, { useCallback, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, } from "@/components/ui/card";
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage, } from "@/components/ui/form";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { createStaff, updateStaff } from "@/lib/actions/staff-actions";
 import { Staff, StaffSchema } from "@/types/staff";
 import { FormResponse } from "@/types/types";
@@ -15,7 +21,7 @@ import { Textarea } from "@/components/ui/textarea";
 import CancelButton from "@/components/widgets/cancel-button";
 import { SubmitButton } from "@/components/widgets/submit-button";
 import GenderSelector from "@/components/widgets/gender-selector";
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/hooks/use-toast";
 import { PhoneInput } from "../ui/phone-input";
 import { Switch } from "../ui/switch";
 import { DefaultCountry } from "@/types/constants";
@@ -24,474 +30,450 @@ import RoleSelector from "@/components/widgets/role-selector";
 import CountrySelector from "@/components/widgets/country-selector";
 import { Separator } from "../ui/separator";
 import { useRouter } from "next/navigation";
+import { Card, CardContent } from "../ui/card";
+import { FormError } from "../widgets/form-error";
 
 interface StaffFormProps {
-    item: Staff | null | undefined;
-    onFormSubmitted?: (response: FormResponse) => void;
+  item: Staff | null | undefined;
+  onFormSubmitted?: (response: FormResponse) => void;
 }
 
-const StaffForm: React.FC<StaffFormProps> = ({
-    item,
-    onFormSubmitted,
-}) => {
-    const { toast } = useToast();
-    const [isSubmitting, startTransition] = useTransition();
-    const [, setResponse] = useState<FormResponse | undefined>();
-    const [isDashboardEnabled, setIsDashboardEnabled] = useState(item?.dashboardAccess ?? false);
-    const router = useRouter();
+const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
+  const { toast } = useToast();
+  const [isSubmitting, startTransition] = useTransition();
+  const [response, setResponse] = useState<FormResponse | undefined>();
+  const [isDashboardEnabled, setIsDashboardEnabled] = useState(
+    item?.dashboardAccess ?? false,
+  );
+  const router = useRouter();
 
+  const form = useForm<z.infer<typeof StaffSchema>>({
+    resolver: zodResolver(StaffSchema),
+    defaultValues: {
+      ...item,
+      nationality: item?.nationality || DefaultCountry,
+      status: item ? item.status : true,
+    },
+  });
 
-    const form = useForm<z.infer<typeof StaffSchema>>({
-        resolver: zodResolver(StaffSchema),
-        defaultValues: {
-            ...item,
-            nationality: item?.nationality || DefaultCountry,
-            status: item ? item.status : true,
-        },
-    });
+  const onInvalid = useCallback(
+    (errors: FieldErrors) => {
+      toast({
+        variant: "destructive",
+        title: "Form validation failed",
+        description:
+          typeof errors.message === "string" && errors.message
+            ? errors.message
+            : "Please check your inputs and try again.",
+      });
+    },
+    [toast],
+  );
 
-    const onInvalid = useCallback(
-        (errors: FieldErrors) => {
-            console.log("onInvalid errors are ", errors);
+  const submitData = async (values: z.infer<typeof StaffSchema>) => {
+    setResponse(undefined);
+
+    startTransition(async () => {
+      try {
+        let result: FormResponse | void;
+
+        if (item) {
+          result = await updateStaff(item.id, values);
+        } else {
+          result = await createStaff(values);
+        }
+
+        if (result) {
+          setResponse(result);
+
+          if (result.responseType === "success") {
+            toast({ title: "Success", description: result.message });
+            onFormSubmitted?.(result);
+            router.push("/staff");
+          } else if (result.responseType === "error") {
             toast({
-                variant: "destructive",
-                title: "Uh oh! Something went wrong.",
-                description: typeof errors.message === 'string' && errors.message
-                    ? errors.message
-                    : "There was an issue submitting your form, please try later",
+              variant: "destructive",
+              title: "Error",
+              description:
+                result.message || "An error occurred while processing your request.",
             });
-        },
-        [toast],
-    );
+          }
+        }
+      } catch (error: any) {
+        const errorMessage =
+          error?.message || "There was an issue with your request, please try again later";
 
-    const submitData = async (values: z.infer<typeof StaffSchema>) => {
-        setResponse(undefined);
-    
-        startTransition(async () => {
-            try {
-                let result: FormResponse | void;
-                
-                if (item) {
-                    result = await updateStaff(item.id, values);
-                } else {
-                    result = await createStaff(values);
-                }
-    
-                if (result) {
-                    setResponse(result);
-                    
-                    if (result.responseType === "success") {
-                        // Handle success
-                        toast({
-                            title: "Success!",
-                            description: result.message,
-                        });
-                        onFormSubmitted?.(result);
-                        form.reset();
-                        setIsDashboardEnabled(false);
-                        form.setValue("status", false);
-                        router.push("/staff"); // Fixed: use router instead of window.location
-                    } else if (result.responseType === "error") {
-                        // Handle error from server action
-                        toast({
-                            variant: "destructive",
-                            title: "Error",
-                            description: result.message || "An error occurred while processing your request.",
-                        });
-                    }
-                }
-            } catch (error: any) {
-                console.error("Form submission error:", error);
-                
-                let errorMessage = "There was an issue with your request, please try again later";
-                
-                if (error?.message) {
-                    errorMessage = error.message;
-                } else if (error?.digest) {
-                    errorMessage = "A server error occurred. Please try again later.";
-                }
-                
-                toast({
-                    variant: "destructive",
-                    title: "Uh oh! Something went wrong.",
-                    description: errorMessage
-                });
-    
-                const errorResponse: FormResponse = {
-                    responseType: "error",
-                    message: errorMessage,
-                    error: error instanceof Error ? error : new Error(errorMessage),
-                };
-                setResponse(errorResponse);
-            }
+        toast({
+          variant: "destructive",
+          title: "Uh oh! Something went wrong.",
+          description: errorMessage,
         });
-    };
-    return (
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-8">
-                <div className="grid gap-6">
-                    {/* Basic Information */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Basic Information</CardTitle>
-                            <CardDescription>
-                                Enter the staff members basic details
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            <FormField
-                                control={form.control}
-                                name="firstName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Full Name</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter first name"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+      }
+    });
+  };
 
-                            <FormField
-                                control={form.control}
-                                name="lastName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Last name</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter last name"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+  return (
+    <Form {...form}>
+      <FormError message={response?.message} />
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className="space-y-6"
+      >
+        {/* Basic Information */}
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-4">Basic Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="firstName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        First Name <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter first name"
+                          {...field}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                            <FormField
-                                control={form.control}
-                                name="phone"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Phone Number</FormLabel>
-                                        <FormControl>
-                                            <PhoneInput
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter phone number"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                <FormField
+                  control={form.control}
+                  name="lastName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Last Name <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter last name"
+                          {...field}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                            <FormField
-                                control={form.control}
-                                name="gender"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Gender</FormLabel>
-                                        <FormControl>
-                                            <GenderSelector
-                                                {...field}
-                                                isDisabled={isSubmitting}
-                                                label="Select staff gender"
-                                                placeholder="Select gender"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <PhoneInput
+                          placeholder="Enter phone number"
+                          {...field}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                            <FormField
-                                control={form.control}
-                                name="nationality"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Nationality</FormLabel>
-                                        <FormControl>
-                                            <CountrySelector
-                                                {...field}
-                                                isDisabled={isSubmitting}
-                                                label="Select staff nationality"
-                                                placeholder="Select nationality"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                <FormField
+                  control={form.control}
+                  name="gender"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Gender</FormLabel>
+                      <FormControl>
+                        <GenderSelector
+                          {...field}
+                          isDisabled={isSubmitting}
+                          label="Select staff gender"
+                          placeholder="Select gender"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                        </CardContent>
-                    </Card>
+                <FormField
+                  control={form.control}
+                  name="nationality"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Nationality</FormLabel>
+                      <FormControl>
+                        <CountrySelector
+                          {...field}
+                          isDisabled={isSubmitting}
+                          label="Select staff nationality"
+                          placeholder="Select nationality"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
-                    {/* Work Details */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Work Details</CardTitle>
-                            <CardDescription>
-                                Staff role and department information
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            <FormField
-                                control={form.control}
-                                name="jobTitle"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Job Title</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter job title"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+            <Separator />
 
-                            <FormField
-                                control={form.control}
-                                name="department"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Department</FormLabel>
-                                        <FormControl>
-                                            <DepartmentSelector
-                                                {...field}
-                                                isDisabled={isSubmitting}
-                                                placeholder="Select department"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+            {/* Work Details */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Work Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="jobTitle"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Job Title</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter job title"
+                          {...field}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                            <FormField
-                                control={form.control}
-                                name="role"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Role</FormLabel>
-                                        <FormControl>
-                                            <RoleSelector
-                                                {...field}
-                                                isDisabled={isSubmitting}
-                                                placeholder="Select role"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
+                <FormField
+                  control={form.control}
+                  name="department"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department</FormLabel>
+                      <FormControl>
+                        <DepartmentSelector
+                          {...field}
+                          isDisabled={isSubmitting}
+                          placeholder="Select department"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                    {/* System Access */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>System Access</CardTitle>
-                            <CardDescription>
-                                Manage staff access permissions
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-6">
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <FormField
-                                    control={form.control}
-                                    name="dashboardAccess"
-                                    render={({ field }) => (
-                                        <FormItem
-                                            className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                            <div className="space-y-0.5">
-                                                <FormLabel className="text-base">Dashboard Access</FormLabel>
-                                                <FormDescription>
-                                                    Allow access to admin dashboard
-                                                </FormDescription>
-                                            </div>
-                                            <FormControl>
-                                                <Switch
-                                                    checked={field.value}
-                                                    onCheckedChange={(checked) => {
-                                                        field.onChange(checked);
-                                                        setIsDashboardEnabled(checked);
-                                                    }}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Role</FormLabel>
+                      <FormControl>
+                        <RoleSelector
+                          {...field}
+                          isDisabled={isSubmitting}
+                          placeholder="Select role"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
 
-                                <FormField
-                                    control={form.control}
-                                    name="posAccess"
-                                    render={({ field }) => (
-                                        <FormItem
-                                            className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                            <div className="space-y-0.5">
-                                                <FormLabel className="text-base">POS Access</FormLabel>
-                                                <FormDescription>
-                                                    Allow access to POS system
-                                                </FormDescription>
-                                            </div>
-                                            <FormControl>
-                                                <Switch
-                                                    checked={field.value}
-                                                    onCheckedChange={field.onChange}
-                                                    disabled={isSubmitting}
-                                                />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
+            <Separator />
 
-                            {isDashboardEnabled && (
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Email Address</FormLabel>
-                                            <FormControl>
-                                                <Input
-                                                    {...field}
-                                                    disabled={isSubmitting}
-                                                    type="email"
-                                                    value={field.value ?? ''}
-                                                    placeholder="Enter email address"
-                                                />
-                                            </FormControl>
-                                            <FormDescription>
-                                                Required for dashboard login
-                                            </FormDescription>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            )}
-                        </CardContent>
-                    </Card>
+            {/* System Access */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">System Access</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="dashboardAccess"
+                  render={({ field }) => (
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm font-medium cursor-pointer">
+                          Dashboard Access
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Allow access to admin dashboard
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={(checked) => {
+                            field.onChange(checked);
+                            setIsDashboardEnabled(checked);
+                          }}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-                    {/* Emergency Contact */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Emergency Contact</CardTitle>
-                            <CardDescription>
-                                Contact person in case of emergency
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                            <FormField
-                                control={form.control}
-                                name="emergencyName"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Contact Name</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter contact name"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                <FormField
+                  control={form.control}
+                  name="posAccess"
+                  render={({ field }) => (
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm font-medium cursor-pointer">
+                          POS Access
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Allow access to POS system
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-                            <FormField
-                                control={form.control}
-                                name="emergencyNumber"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Contact Phone</FormLabel>
-                                        <FormControl>
-                                            <PhoneInput
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter contact number"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-
-                            <FormField
-                                control={form.control}
-                                name="emergencyRelationship"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Relationship</FormLabel>
-                                        <FormControl>
-                                            <Input
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter relationship"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
-
-                    {/* Notes */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Additional Notes</CardTitle>
-                            <CardDescription>
-                                Any other relevant information about the staff member
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <FormField
-                                control={form.control}
-                                name="notes"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormControl>
-                                            <Textarea
-                                                {...field}
-                                                disabled={isSubmitting}
-                                                placeholder="Enter any additional notes"
-                                                className="min-h-[100px]"
-                                            />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </CardContent>
-                    </Card>
+              {isDashboardEnabled && (
+                <div className="mt-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          Email Address{" "}
+                          <span className="text-red-500">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder="Enter email address"
+                            {...field}
+                            disabled={isSubmitting}
+                            value={field.value ?? ""}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Required for dashboard login
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
+              )}
+            </div>
 
-                <div className="flex h-5 items-center space-x-4">
-                    <CancelButton />
-                    <Separator orientation="vertical" />
-                    <SubmitButton
-                        isPending={isSubmitting}
-                        label={item ? "Update staff details" : "Create staff"}
-                    />
-                </div>
-            </form>
-        </Form>
-    );
+            <Separator />
+
+            {/* Emergency Contact */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Emergency Contact</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="emergencyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Name</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter contact name"
+                          {...field}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="emergencyNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Phone</FormLabel>
+                      <FormControl>
+                        <PhoneInput
+                          placeholder="Enter contact number"
+                          {...field}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="emergencyRelationship"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Relationship</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Enter relationship"
+                          {...field}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Notes */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Additional Notes</h3>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter any additional notes"
+                        {...field}
+                        disabled={isSubmitting}
+                        className="min-h-[100px]"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
+          <CancelButton />
+          <Separator orientation="vertical" className="h-5" />
+          <SubmitButton
+            isPending={isSubmitting}
+            label={item ? "Update staff" : "Create staff"}
+          />
+        </div>
+      </form>
+    </Form>
+  );
 };
 
 export default StaffForm;
