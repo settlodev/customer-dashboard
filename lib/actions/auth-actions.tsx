@@ -19,6 +19,7 @@ import {
   getUser,
 } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
+import { cookies } from "next/headers";
 
 import { revalidatePath } from "next/cache";
 import { deleteActiveWarehouseCookie } from "./warehouse/current-warehouse-action";
@@ -47,6 +48,7 @@ export async function logout() {
 
 export const login = async (
   credentials: z.infer<typeof LoginSchema>,
+  rememberMe: boolean = false,
 ): Promise<FormResponse> => {
   const validatedData = LoginSchema.safeParse(credentials);
   if (!validatedData.success) {
@@ -99,6 +101,9 @@ export const login = async (
       });
     }
 
+    // Set cookie persistence based on rememberMe
+    await setSessionPersistence(rememberMe);
+
     return parseStringify({
       responseType: "success",
       message: "Login successful",
@@ -135,6 +140,50 @@ export const login = async (
     });
   }
 };
+
+/**
+ * Re-sets auth cookies with appropriate persistence based on rememberMe.
+ * - rememberMe true: persistent cookies (30 days)
+ * - rememberMe false: session cookies (expire when browser closes)
+ */
+async function setSessionPersistence(rememberMe: boolean) {
+  const cookieStore = await cookies();
+  const isProduction = process.env.NODE_ENV === "production";
+  const THIRTY_DAYS = 30 * 24 * 60 * 60;
+
+  // Re-set the authToken cookie
+  const authTokenValue = cookieStore.get("authToken")?.value;
+  if (authTokenValue) {
+    cookieStore.set({
+      name: "authToken",
+      value: authTokenValue,
+      httpOnly: true,
+      secure: isProduction,
+      sameSite: isProduction ? "strict" : "lax",
+      ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
+    });
+  }
+
+  // Re-set NextAuth session cookies
+  const sessionCookieNames = [
+    "authjs.session-token",
+    "next-auth.session-token",
+  ];
+  for (const name of sessionCookieNames) {
+    const value = cookieStore.get(name)?.value;
+    if (value) {
+      cookieStore.set({
+        name,
+        value,
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: "lax",
+        path: "/",
+        ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
+      });
+    }
+  }
+}
 
 export const getUserById = async (
   userId: string | undefined,

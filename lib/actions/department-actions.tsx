@@ -63,7 +63,6 @@ export const searchDepartment = async (
       `/api/departments/${location?.id}`,
       query,
     );
-    console.log("The department data is", parseStringify(departmentData));
     return parseStringify(departmentData);
   } catch (error) {
     throw error;
