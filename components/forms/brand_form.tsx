@@ -19,98 +19,94 @@ import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
-import { FormSuccess } from "../widgets/form-success";
 import { Brand } from "@/types/brand/type";
 import { BrandSchema } from "@/types/brand/schema";
 import { createBrand, updateBrand } from "@/lib/actions/brand-actions";
 import { useRouter } from "next/navigation";
 import { Switch } from "../ui/switch";
+import { Card, CardContent } from "../ui/card";
 
 function BrandForm({ item }: { item: Brand | null | undefined }) {
   const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
-  const [error, ] = useState<string | undefined>("");
-  const [success, ] = useState<string | undefined>("");
+  const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof BrandSchema>>({
     resolver: zodResolver(BrandSchema),
     defaultValues: {
-          ...item,
-          name: item ? item.name : "",
-          status: item ? item.status : true
-    }
+      ...item,
+      name: item ? item.name : "",
+      status: item ? item.status : true,
+    },
   });
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log(errors);
       toast({
         variant: "destructive",
-        title: "Uh oh! something went wrong",
-        description:typeof errors.message === 'string' && errors.message
-          ? errors.message
-          : "There was an issue submitting your form, please try later",
+        title: "Form validation failed",
+        description:
+          typeof errors.message === "string" && errors.message
+            ? errors.message
+            : "Please check your inputs and try again.",
       });
     },
-    [toast]
+    [toast],
   );
 
   const submitData = (values: z.infer<typeof BrandSchema>) => {
-    console.log("Submitting data:", values);
     startTransition(() => {
       if (item) {
         updateBrand(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({
-              title: "Success",
-              description: data.message,
-              duration:5000
-            });
+            toast({ title: "Success", description: data.message });
             router.push("/brands");
           }
         });
       } else {
         createBrand(values)
-
           .then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
-              toast({
-                title: "Success",
-                description: data.message,
-                duration:5000
-              });
+              toast({ title: "Success", description: data.message });
               router.push("/brands");
             }
           })
-          .catch((err) => {
-            console.log(err);
+          .catch(() => {
+            toast({
+              variant: "destructive",
+              title: "Error",
+              description: "An unexpected error occurred.",
+            });
           });
       }
     });
   };
+
   return (
     <Form {...form}>
+      <FormError message={response?.message} />
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className={`gap-1`}
+        className="space-y-6"
       >
-        <div >
-            <FormError message={error}/>
-            <FormSuccess message={success}/>
-              <div className="flex flex-col gap-3">
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-6">
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Brand Name</FormLabel>
+                      <FormLabel>
+                        Brand Name <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="Enter brand name "
+                          placeholder="Enter brand name"
                           {...field}
                           disabled={isPending}
                         />
@@ -119,40 +115,55 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
                     </FormItem>
                   )}
                 />
-                 {item && (
-                  <div className="grid gap-2">
-                    <FormField
-                      control={form.control}
-                      name="status"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                          <FormLabel>Brand Status</FormLabel>
-                          <FormControl>
-                            <Switch
-
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              disabled={isPending}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                )
-                }
+              </div>
             </div>
-          <div className="flex h-5 items-center space-x-4 mt-10">
-            <CancelButton />
-            <Separator orientation="vertical" />
-            <SubmitButton
-              isPending={isPending}
-              label={item ? "Update brand details" : "Add brand"}
-            />
-          </div>
-        </div>
 
+            {/* Status (edit only) */}
+            {item && (
+              <>
+                <Separator />
+                <div>
+                  <h3 className="text-lg font-medium mb-4">Settings</h3>
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-medium cursor-pointer">
+                            Brand Status
+                          </FormLabel>
+                          <p className="text-xs text-muted-foreground">
+                            {field.value
+                              ? "This brand is currently active and visible"
+                              : "This brand is currently inactive and hidden"}
+                          </p>
+                        </div>
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
+          <CancelButton />
+          <Separator orientation="vertical" className="h-5" />
+          <SubmitButton
+            isPending={isPending}
+            label={item ? "Update brand" : "Create brand"}
+          />
+        </div>
       </form>
     </Form>
   );

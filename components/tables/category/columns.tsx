@@ -1,7 +1,7 @@
 "use client";
 
 import { ColumnDef } from "@tanstack/react-table";
-import { ArrowUpDown, Tag } from "lucide-react";
+import { ArrowUpDown, CornerDownRight } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { CellAction } from "@/components/tables/category/cell-action";
@@ -54,7 +54,8 @@ export const columns: ColumnDef<Category>[] = [
     cell: ({ row }) => {
       const image = row.original.image;
       const name = row.original.name;
-      const initial = name?.charAt(0)?.toUpperCase() || "C";
+      const parentName = row.original.parentCategoryName;
+      const hasParent = !!parentName;
 
       const isValidImageUrl =
         image &&
@@ -63,8 +64,11 @@ export const columns: ColumnDef<Category>[] = [
           image.startsWith("/"));
 
       return (
-        <div className="flex items-center gap-3">
-          {isValidImageUrl ? (
+        <div className={`flex items-center gap-3 ${hasParent ? "pl-6" : ""}`}>
+          {hasParent && (
+            <CornerDownRight className="h-3.5 w-3.5 text-gray-300 dark:text-gray-600 shrink-0 -ml-6" />
+          )}
+          {isValidImageUrl && (
             <Image
               src={image}
               alt={name}
@@ -73,28 +77,18 @@ export const columns: ColumnDef<Category>[] = [
               height={32}
               loading="lazy"
             />
-          ) : (
-            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center shrink-0">
-              <Tag className="h-4 w-4 text-gray-400" />
-            </div>
           )}
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
-            {name}
-          </span>
+          <div className="min-w-0">
+            <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
+              {name}
+            </span>
+            {hasParent && (
+              <span className="text-xs text-muted-foreground block truncate">
+                {parentName}
+              </span>
+            )}
+          </div>
         </div>
-      );
-    },
-  },
-  {
-    accessorKey: "parentCategoryName",
-    header: "Parent",
-    enableHiding: true,
-    cell: ({ row }) => {
-      const parent = row.original.parentCategoryName;
-      return (
-        <span className="text-sm text-gray-600 dark:text-gray-400">
-          {parent || "—"}
-        </span>
       );
     },
   },
