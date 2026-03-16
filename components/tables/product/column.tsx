@@ -36,7 +36,7 @@ export const columns: ColumnDef<Product>[] = [
     header: ({ column }) => {
       return (
         <Button
-          className="text-left p-0"
+          className="text-left p-0 font-semibold"
           variant="ghost"
           onClick={() =>
             column.toggleSorting(column.getIsSorted() === "asc")
@@ -83,7 +83,7 @@ export const columns: ColumnDef<Product>[] = [
     enableHiding: true,
     header: ({ column }) => (
       <Button
-        className="text-left p-0"
+        className="text-left p-0 font-semibold"
         variant="ghost"
         onClick={() =>
           column.toggleSorting(column.getIsSorted() === "asc")

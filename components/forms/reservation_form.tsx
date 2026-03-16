@@ -23,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
 
 import { FormResponse } from "@/types/types";
 import {
@@ -91,14 +92,13 @@ const ReservationForm = ({
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log("Errors during form submission:", errors);
       toast({
         variant: "destructive",
-        title: "Uh oh! something went wrong",
+        title: "Form validation failed",
         description:
           typeof errors.message === "string"
             ? errors.message
-            : "There was an issue submitting your form, please try later",
+            : "Please check your inputs and try again.",
       });
     },
     [toast],
@@ -128,223 +128,234 @@ const ReservationForm = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-        <div className="space-y-6">
-          {/* Date & Time */}
-          <div>
-            <h3 className="text-lg font-medium mb-4">Date & Time</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="reservationDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reservation Date</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="date"
-                        {...field}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="reservationTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Start Time</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="time"
-                        {...field}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="reservationEndTime"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>End Time (Optional)</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="time"
-                        {...field}
-                        value={field.value ?? ""}
-                        disabled={isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
-
-          <Separator />
-
-          {/* Guest & Table */}
-          <div>
-            <h3 className="text-lg font-medium mb-4">Guest & Table</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="peopleCount"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Guests</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        placeholder="Party size"
-                        {...field}
-                        value={field.value ?? ""}
-                        disabled={isPending}
-                        onChange={(e) =>
-                          field.onChange(
-                            e.target.value === ""
-                              ? undefined
-                              : parseInt(e.target.value),
-                          )
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="customer"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Customer (Optional)</FormLabel>
-                    <FormControl>
-                      <CustomerSelector
-                        value={field.value}
-                        onChange={(id) => field.onChange(id)}
-                        placeholder="Select customer"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="tableAndSpace"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Table (Optional)</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    >
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className="space-y-6"
+      >
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-6">
+            {/* Date & Time */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Date & Time</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="reservationDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Reservation Date{" "}
+                        <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Auto-assign or select" />
-                        </SelectTrigger>
+                        <Input
+                          type="date"
+                          {...field}
+                          disabled={isPending}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {spaces.map((space) => (
-                          <SelectItem
-                            key={space.id}
-                            value={space.id as string}
-                          >
-                            {space.name}
-                            {space.capacity
-                              ? ` (${space.capacity} seats)`
-                              : ""}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-          <Separator />
-
-          {/* Source & Requests */}
-          <div>
-            <h3 className="text-lg font-medium mb-4">Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="source"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Booking Source (Optional)</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      value={field.value ?? ""}
-                      disabled={isPending}
-                    >
+                <FormField
+                  control={form.control}
+                  name="reservationTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Start Time <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select source" />
-                        </SelectTrigger>
+                        <Input
+                          type="time"
+                          {...field}
+                          disabled={isPending}
+                        />
                       </FormControl>
-                      <SelectContent>
-                        {RESERVATION_SOURCES.map((src) => (
-                          <SelectItem key={src} value={src}>
-                            {RESERVATION_SOURCE_LABELS[src]}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="specialRequests"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Special Requests (Optional)</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Any special requests or notes"
-                        {...field}
+                <FormField
+                  control={form.control}
+                  name="reservationEndTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Time</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Guest & Table */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Guest & Table</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="peopleCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Number of Guests</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="Party size"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === ""
+                                ? undefined
+                                : parseInt(e.target.value),
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="customer"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Customer</FormLabel>
+                      <FormControl>
+                        <CustomerSelector
+                          value={field.value}
+                          onChange={(id) => field.onChange(id)}
+                          placeholder="Select customer"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="tableAndSpace"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Table</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
                         value={field.value ?? ""}
                         disabled={isPending}
-                        rows={3}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Auto-assign or select" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {spaces.map((space) => (
+                            <SelectItem
+                              key={space.id}
+                              value={space.id as string}
+                            >
+                              {space.name}
+                              {space.capacity
+                                ? ` (${space.capacity} seats)`
+                                : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
-          </div>
 
-          <div className="flex h-5 items-center space-x-4 mt-7">
-            <CancelButton />
-            <Separator orientation="vertical" />
-            <SubmitButton
-              isPending={isPending}
-              label={item ? "Update Reservation" : "Create Reservation"}
-            />
-          </div>
+            <Separator />
+
+            {/* Details */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="source"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Booking Source</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select source" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {RESERVATION_SOURCES.map((src) => (
+                            <SelectItem key={src} value={src}>
+                              {RESERVATION_SOURCE_LABELS[src]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="specialRequests"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Special Requests</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Any special requests or notes"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                          rows={3}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
+          <CancelButton />
+          <Separator orientation="vertical" className="h-5" />
+          <SubmitButton
+            isPending={isPending}
+            label={item ? "Update Reservation" : "Create Reservation"}
+          />
         </div>
       </form>
     </Form>

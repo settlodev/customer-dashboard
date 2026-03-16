@@ -95,7 +95,6 @@ export const searchProducts = async (
     const location = (await getCurrentLocation()) || { id: locationId };
 
     const data = await apiClient.post(`/api/products/${location?.id}`, query);
-    console.log("Products response data", parseStringify(data));
     return parseStringify(data);
   } catch (error) {
     throw error;

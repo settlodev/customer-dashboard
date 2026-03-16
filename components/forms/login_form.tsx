@@ -69,7 +69,7 @@ function LoginForm() {
 
     startTransition(async () => {
       try {
-        const data: FormResponse = await login(values);
+        const data: FormResponse = await login(values, rememberMe);
 
         if (data) {
           if (data.error === Error("Unexpected")) {
@@ -102,7 +102,7 @@ function LoginForm() {
         setPersistentError(errorMsg);
       }
     });
-  }, []);
+  }, [rememberMe]);
 
   return (
     <section className="flex items-center justify-center">
