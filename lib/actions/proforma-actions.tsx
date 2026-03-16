@@ -15,7 +15,6 @@ import {
   UpdateProformaSchema,
 } from "@/types/proforma/schema";
 
-
 export const searchProformaInvoices = async (
   q: string,
   page: number,
@@ -83,6 +82,7 @@ export const sharedProforma = async (id: UUID) => {
     const proforma = await apiClient.get(
       `/api/public/location/order-proforma/${id}`,
     );
+    console.log("The proforma details are", proforma);
     return parseStringify(proforma);
   } catch (error) {
     throw error;

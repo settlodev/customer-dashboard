@@ -212,13 +212,8 @@ const ProformaInvoiceDetails = ({ params }: { params: Params }) => {
     load();
   }, [load]);
 
-  const generateShareLink = () => {
-    return `${window.location.origin}/proforma/shared/${id}`;
-  };
-
-  const shareLink = generateShareLink();
-
   const handleCopyLink = () => {
+    const shareLink = `${window.location.origin}/proforma/shared/${id}`;
     navigator.clipboard.writeText(shareLink);
     setCopied(true);
     toast.success("Link copied to clipboard");

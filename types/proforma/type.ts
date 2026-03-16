@@ -18,10 +18,15 @@ export interface Proforma {
   customerLastName: string;
   customerEmail: string;
   customerPhoneNumber: string;
+  customerCity: string;
+  customerAddress: string;
+  customerTin: string;
   businessName: string | null;
   locationName: string | null;
   locationLogo: string | null;
   locationAddress: string | null;
+  locationCity: string | null;
+  locationEmail: string | null;
   locationPhoneNumber: string | null;
   tinNumber?: string | null;
   items: ProformaItem[];
