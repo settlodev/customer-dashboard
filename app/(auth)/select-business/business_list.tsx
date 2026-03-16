@@ -89,8 +89,8 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
   if (businesses.length === 1 && (isLoading || isRedirecting)) {
     return (
       <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center flex-col gap-4">
-        <Loader2Icon className="w-8 h-8 text-emerald-600 animate-spin" />
-        <p className="text-emerald-600 font-medium">
+        <Loader2Icon className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-primary font-medium">
           Setting up your business...
         </p>
       </div>
@@ -101,8 +101,8 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
     <section className="relative">
       {isRedirecting && (
         <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center flex-col gap-4">
-          <Loader2Icon className="w-8 h-8 text-emerald-600 animate-spin" />
-          <p className="text-emerald-600 font-medium">Redirecting...</p>
+          <Loader2Icon className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-primary font-medium">Redirecting...</p>
         </div>
       )}
 
@@ -145,7 +145,7 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
                         {bus.logo ? (
                           <Image
                             src={bus.logo}
@@ -155,7 +155,7 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
                             className="rounded-full object-cover"
                           />
                         ) : (
-                          <Building2 className="w-6 h-6 text-emerald-600" />
+                          <Building2 className="w-6 h-6 text-primary" />
                         )}
                       </div>
                       <div>
@@ -184,7 +184,7 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
                         "flex items-center space-x-2",
                         pendingIndex === index
                           ? "bg-gray-100 text-gray-400"
-                          : "bg-emerald-500 text-white hover:bg-emerald-600",
+                          : "bg-primary text-white hover:bg-orange-600",
                       )}
                     >
                       {pendingIndex === index ? (

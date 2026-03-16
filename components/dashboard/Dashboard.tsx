@@ -18,8 +18,6 @@ const Dashboard: React.FC = () => {
         setIsLoading(true);
         const summary = await fetchSummaries();
 
-        console.log("Summaries loaded:", summary);
-
         if (isMounted) {
           setSummaries(summary as SummaryResponse);
         }

@@ -5,13 +5,23 @@ import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
+  Archive,
   Trash2,
   Plus,
-  ListPlus,
+  Package,
   Settings,
-  Building2,
-  Info,
+  Tag,
   Sparkles,
+  Type,
+  DollarSign,
+  Hash,
+  Barcode,
+  Ruler,
+  Box,
+  ChefHat,
+  ChevronDown,
+  ChevronUp,
+  ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +33,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { CardContent, Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
@@ -34,9 +44,11 @@ import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import {
   createProduct,
+  deleteVariant,
   generateAIDescription,
   updateProduct,
 } from "@/lib/actions/product-actions";
+import DeleteModal from "@/components/tables/delete-modal";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +72,16 @@ type ProductFormProps = {
   item: Product | null | undefined;
 };
 
+// ─── Shared style constants ──────────────────────────────────────────────────
+
+const inputClass =
+  "flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
+
+const numericInputClass =
+  "flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 pl-10";
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export default function ProductForm({ item }: ProductFormProps) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
@@ -67,6 +89,12 @@ export default function ProductForm({ item }: ProductFormProps) {
   const [imageUrl, setImageUrl] = useState(item?.image || "");
   const { toast } = useToast();
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
+  const [collapsedVariants, setCollapsedVariants] = useState<
+    Record<number, boolean>
+  >({});
+  const [archiveVariantIndex, setArchiveVariantIndex] = useState<number | null>(
+    null,
+  );
 
   const form = useForm<z.infer<typeof ProductSchema>>({
     resolver: zodResolver(ProductSchema),
@@ -111,18 +139,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     const subscription = form.watch((value, { name }) => {
       if (name === "trackingType") {
         fields.forEach((_, index) => {
-          const currentStockItem = form.getValues(
-            `variants.${index}.stockItem`,
-          );
-          const currentRecipeItem = form.getValues(
-            `variants.${index}.recipeItem`,
-          );
-
-          console.log(`🧹 [FORM] Variant ${index} before clear:`, {
-            stockItem: currentStockItem,
-            recipeItem: currentRecipeItem,
-          });
-
           form.setValue(`variants.${index}.stockItem`, null);
           form.setValue(`variants.${index}.recipeItem`, null);
         });
@@ -134,7 +150,6 @@ export default function ProductForm({ item }: ProductFormProps) {
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log("❌ [FORM] Validation errors:", errors);
       toast({
         variant: "destructive",
         title: "Form validation failed",
@@ -157,20 +172,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     });
 
     setShowTrackingModal(false);
-
-    // Verify the values were set
-    setTimeout(() => {
-      form.getValues("trackingType");
-      fields.forEach((_, index) => {
-        const variantTrackingType = form.getValues(
-          `variants.${index}.trackingType`,
-        );
-        console.log(
-          `✅ [FORM] Verified variant ${index} trackingType:`,
-          variantTrackingType,
-        );
-      });
-    }, 100);
   };
 
   const handleTrackingDisable = () => {
@@ -189,11 +190,6 @@ export default function ProductForm({ item }: ProductFormProps) {
     const currentTrackInventory = form.getValues("trackInventory");
     const currentTrackingType = form.getValues("trackingType");
 
-    console.log("➕ [FORM] Adding variant with:", {
-      trackInventory: currentTrackInventory,
-      trackingType: currentTrackingType,
-    });
-
     append({
       name: "",
       price: 0,
@@ -211,14 +207,54 @@ export default function ProductForm({ item }: ProductFormProps) {
     });
   };
 
+  const toggleVariantCollapse = (index: number) => {
+    setCollapsedVariants((prev) => ({
+      ...prev,
+      [index]: !prev[index],
+    }));
+  };
+
+  const handleVariantRemove = (index: number) => {
+    if (item) {
+      // Editing — show archive confirmation
+      setArchiveVariantIndex(index);
+    } else {
+      // Creating — just remove from the field array
+      remove(index);
+    }
+  };
+
+  const handleVariantArchive = async () => {
+    if (archiveVariantIndex === null) return;
+
+    const variant = item?.variants?.[archiveVariantIndex];
+    if (!variant || !item) return;
+
+    try {
+      await deleteVariant(item.id, variant.id);
+      remove(archiveVariantIndex);
+      toast({
+        title: "Archived",
+        description: `${variant.name} has been archived successfully.`,
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Failed to archive variant",
+        description:
+          (error as Error).message || "Please try again later.",
+      });
+    } finally {
+      setArchiveVariantIndex(null);
+    }
+  };
+
   const submitData = (values: z.infer<typeof ProductSchema>) => {
-    // First, update the form values with trackItem
     const updatedValues = { ...values };
 
     updatedValues.variants = updatedValues.variants.map((variant, index) => {
       const trackingType = form.getValues(`variants.${index}.trackingType`);
 
-      // Get the correct trackItem from the form fields
       const trackItem =
         trackingType === "STOCK"
           ? form.getValues(`variants.${index}.stockItem`)
@@ -226,32 +262,15 @@ export default function ProductForm({ item }: ProductFormProps) {
             ? form.getValues(`variants.${index}.recipeItem`)
             : null;
 
-      // console.log(`Variant ${index}:`, {
-      //   trackingType,
-      //   stockItem: form.getValues(`variants.${index}.stockItem`),
-      //   recipeItem: form.getValues(`variants.${index}.recipeItem`),
-      //   trackItem,
-      // });
-
       return {
         ...variant,
         trackItem: trackItem || variant.trackItem,
       };
     });
 
-    // console.log(
-    //   "Updated values with trackItem:",
-    //   JSON.stringify(updatedValues, null, 2),
-    // );
-
-    // Now validate
     const result = ProductSchema.safeParse(updatedValues);
 
     if (!result.success) {
-      console.log(
-        "Zod validation errors:",
-        JSON.stringify(result.error, null, 2),
-      );
       toast({
         variant: "destructive",
         title: "Form validation failed",
@@ -268,11 +287,6 @@ export default function ProductForm({ item }: ProductFormProps) {
       ...result.data,
       image: imageUrl,
     };
-
-    // console.log(
-    //   "🚀 [SUBMIT] Sending to API:",
-    //   JSON.stringify(productData, null, 2),
-    // );
 
     startTransition(() => {
       if (item) {
@@ -307,7 +321,8 @@ export default function ProductForm({ item }: ProductFormProps) {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description: "Please enter a product name and select a category first.",
+        description:
+          "Please enter a product name and select a category first.",
       });
       return;
     }
@@ -316,8 +331,7 @@ export default function ProductForm({ item }: ProductFormProps) {
     try {
       const aiDescription = await generateAIDescription(name, category);
       form.setValue("description", aiDescription);
-    } catch (error) {
-      console.error("Error generating description:", error);
+    } catch {
       toast({
         variant: "destructive",
         title: "Description Generation Failed",
@@ -328,39 +342,44 @@ export default function ProductForm({ item }: ProductFormProps) {
     }
   };
 
+  // ─── Render ──────────────────────────────────────────────────────────────────
+
   return (
     <Form {...form}>
       <FormError message={response?.message} />
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className="space-y-6 max-w-[1400px] mx-auto"
+        className="space-y-6"
       >
-        {/* Top Section - Basic Info and Settings */}
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Left Column - Basic Info */}
-          <Card className=" mt-4 lg:col-span-2">
-            <CardContent className="pt-6">
-              <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                <Info className="w-5 h-5" />
-                Basic Information
-              </h2>
+        {/* ── Basic Information ──────────────────────────────────────────── */}
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-6">
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                  Basic Information
+                </h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Product name, image, and description
+                </p>
+              </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                <div className="col-span-1">
-                  <div className="flex flex-col items-center mb-6">
-                    <UploadImageWidget
-                      imagePath="products"
-                      displayStyle="default"
-                      displayImage={true}
-                      showLabel={true}
-                      label="Upload product image"
-                      setImage={setImageUrl}
-                      image={imageUrl}
-                    />
-                  </div>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Image */}
+                <div className="flex flex-col items-center">
+                  <UploadImageWidget
+                    imagePath="products"
+                    displayStyle="default"
+                    displayImage={true}
+                    showLabel={true}
+                    label="Upload product image"
+                    setImage={setImageUrl}
+                    image={imageUrl}
+                  />
                 </div>
 
-                <div className="col-span-2 space-y-4">
+                {/* Name & Description */}
+                <div className="lg:col-span-2 space-y-4">
                   <FormField
                     control={form.control}
                     name="name"
@@ -368,11 +387,15 @@ export default function ProductForm({ item }: ProductFormProps) {
                       <FormItem>
                         <FormLabel>Product Name</FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder="Enter product name"
-                            {...field}
-                            disabled={isPending}
-                          />
+                          <div className="relative">
+                            <Type className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                            <Input
+                              className="pl-10"
+                              placeholder="Enter product name"
+                              {...field}
+                              disabled={isPending}
+                            />
+                          </div>
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -388,13 +411,16 @@ export default function ProductForm({ item }: ProductFormProps) {
                           <FormLabel>Description</FormLabel>
                           <Button
                             type="button"
-                            variant="default"
+                            variant="ghost"
                             size="sm"
                             onClick={handleGenerateDescription}
                             disabled={isGeneratingDescription || isPending}
+                            className="text-xs h-7 gap-1.5"
                           >
-                            <Sparkles className="w-4 h-4 mr-2" />
-                            Generate AI Description
+                            <Sparkles className="w-3.5 h-3.5" />
+                            {isGeneratingDescription
+                              ? "Generating..."
+                              : "AI Generate"}
                           </Button>
                         </div>
                         <FormControl>
@@ -403,7 +429,7 @@ export default function ProductForm({ item }: ProductFormProps) {
                             value={field.value ?? ""}
                             placeholder="Enter product description"
                             disabled={isPending}
-                            className="resize-none h-32"
+                            className="resize-none h-28"
                           />
                         </FormControl>
                         <FormMessage />
@@ -412,79 +438,94 @@ export default function ProductForm({ item }: ProductFormProps) {
                   />
                 </div>
               </div>
+            </div>
 
-              <Separator className="lg:my-6" />
+            <Separator />
 
-              <div className="mt-4">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
+            {/* ── Classification ─────────────────────────────────────────── */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                   Classification
                 </h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Category</FormLabel>
-                        <CategorySelector
-                          {...field}
-                          placeholder="Select category"
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="department"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Department</FormLabel>
-                        <DepartmentSelector
-                          {...field}
-                          value={field.value ?? ""}
-                        />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="brand"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Brand</FormLabel>
-                        <BrandSelector {...field} value={field.value ?? ""} />
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Organize your product by category, department, and brand
+                </p>
               </div>
-            </CardContent>
-          </Card>
 
-          {/* Right Column - Settings */}
-          <Card>
-            <CardContent className="pt-6">
-              <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-                <Settings className="w-5 h-5" />
-                Settings
-              </h2>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Category <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <CategorySelector
+                        {...field}
+                        placeholder="Select category"
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="department"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department</FormLabel>
+                      <DepartmentSelector
+                        {...field}
+                        value={field.value ?? ""}
+                      />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="brand"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Brand</FormLabel>
+                      <BrandSelector {...field} value={field.value ?? ""} />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* ── Settings ───────────────────────────────────────────────── */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
+                  Settings
+                </h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Inventory tracking, tax, and online sales options
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="trackInventory"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between p-3 rounded-lg border">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Track Inventory</FormLabel>
-                        <div className="text-sm text-muted-foreground">
-                          Enable inventory tracking
-                        </div>
+                        <FormLabel className="text-sm font-medium cursor-pointer">
+                          Track Inventory
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Enable stock or recipe tracking for this product
+                        </p>
                       </div>
                       <FormControl>
                         <Switch
@@ -507,12 +548,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                   control={form.control}
                   name="sellOnline"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between p-3 rounded-lg border">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Sell Online</FormLabel>
-                        <div className="text-sm text-muted-foreground">
-                          Make available in online store
-                        </div>
+                        <FormLabel className="text-sm font-medium cursor-pointer">
+                          Sell Online
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Make available in your online store
+                        </p>
                       </div>
                       <FormControl>
                         <Switch
@@ -528,9 +571,11 @@ export default function ProductForm({ item }: ProductFormProps) {
                   control={form.control}
                   name="taxClass"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between p-3 rounded-lg border">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Tax class</FormLabel>
+                        <FormLabel className="text-sm font-medium cursor-pointer">
+                          Tax Class
+                        </FormLabel>
                       </div>
                       <FormControl>
                         <TaxClassSelector
@@ -549,12 +594,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                   control={form.control}
                   name="taxIncluded"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between p-3 rounded-lg border">
+                    <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
                       <div className="space-y-0.5">
-                        <FormLabel>Tax Included</FormLabel>
-                        <div className="text-sm text-muted-foreground">
-                          Include tax in price
-                        </div>
+                        <FormLabel className="text-sm font-medium cursor-pointer">
+                          Tax Included
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Include tax in the selling price
+                        </p>
                       </div>
                       <FormControl>
                         <Switch
@@ -566,20 +613,20 @@ export default function ProductForm({ item }: ProductFormProps) {
                   )}
                 />
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Bottom Section - Variants */}
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between mb-6">
+        {/* ── Product Variants ──────────────────────────────────────────── */}
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-6">
+            <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold flex items-center gap-2">
-                  <ListPlus className="w-5 h-5" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                  <Package className="h-5 w-5 text-gray-400" />
                   Product Variants
-                </h2>
-                <p className="text-sm text-muted-foreground mt-1">
+                </h3>
+                <p className="text-sm text-muted-foreground mt-0.5">
                   Add at least one variant for this product
                 </p>
               </div>
@@ -589,248 +636,293 @@ export default function ProductForm({ item }: ProductFormProps) {
                 size="sm"
                 onClick={handleAppendVariant}
                 disabled={isPending}
+                className="h-9"
               >
-                <Plus className="w-4 h-4 mr-2" />
+                <Plus className="w-4 h-4 mr-1.5" />
                 Add Variant
               </Button>
             </div>
 
-            <div className="space-y-6">
-              {fields.map((field, index) => (
-                <Card key={field.id} className="border-dashed">
-                  <CardContent className="pt-6">
-                    <div className="flex justify-between items-center mb-4">
-                      <h4 className="font-medium">Variant {index + 1}</h4>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => remove(index)}
-                        disabled={fields.length === 1 || isPending}
-                        className="text-red-500 hover:text-red-600"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </Button>
-                    </div>
+            <div className="space-y-4">
+              {fields.map((field, index) => {
+                const variantName = form.watch(`variants.${index}.name`);
+                const isCollapsed = collapsedVariants[index] ?? false;
 
-                    <div className="grid md:grid-cols-4 gap-4">
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Variant Name</FormLabel>
-                            <FormControl>
-                              <Input
-                                placeholder="Enter variant name"
-                                {...field}
-                                disabled={isPending}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
+                return (
+                  <div
+                    key={field.id}
+                    className="border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden"
+                  >
+                    {/* Variant header */}
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate max-w-xs">
+                        {variantName || `Variant ${index + 1}`}
+                      </span>
+                      <div className="flex items-center gap-1">
+                        {fields.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleVariantCollapse(index)}
+                            className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 transition-colors"
+                          >
+                            {isCollapsed ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronUp className="w-4 h-4" />
+                            )}
+                          </button>
                         )}
-                      />
-
-                      {!form.watch("trackInventory") && (
-                        <FormField
-                          control={form.control}
-                          name={`variants.${index}.purchasingPrice`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Purchasing Price</FormLabel>
-                              <FormControl>
-                                <NumericFormat
-                                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                  value={field.value ?? 0}
-                                  onValueChange={(values) => {
-                                    field.onChange(Number(values.value));
-                                  }}
-                                  thousandSeparator={true}
-                                  placeholder="Enter purchase price"
-                                  disabled={isPending}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
+                        <button
+                          type="button"
+                          onClick={() => handleVariantRemove(index)}
+                          disabled={fields.length === 1 || isPending}
+                          className="p-1.5 rounded-md hover:bg-amber-50 dark:hover:bg-amber-950/30 text-gray-400 hover:text-amber-600 transition-colors disabled:opacity-40 disabled:pointer-events-none"
+                        >
+                          {item ? (
+                            <Archive className="w-4 h-4" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
                           )}
-                        />
-                      )}
-
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.price`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Selling Price</FormLabel>
-                            <FormControl>
-                              <NumericFormat
-                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background"
-                                value={field.value}
-                                onValueChange={(values) => {
-                                  field.onChange(Number(values.value));
-                                }}
-                                thousandSeparator={true}
-                                placeholder="Enter selling price"
-                                disabled={isPending}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.sku`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>SKU</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="Enter SKU"
-                                disabled={isPending}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.barcode`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Barcode</FormLabel>
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder="Enter barcode"
-                                disabled={isPending}
-                                value={field.value ?? ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name={`variants.${index}.unit`}
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Unit</FormLabel>
-                            <FormControl>
-                              <UnitSelector
-                                {...field}
-                                value={field.value ?? ""}
-                                placeholder="Select unit"
-                                isDisabled={isPending}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* SEPARATE FIELDS - Stock Item */}
-                      {form.watch("trackingType") === "STOCK" && (
-                        <FormField
-                          control={form.control}
-                          name={`variants.${index}.stockItem`}
-                          render={({ field: formField }) => {
-                            console.log(
-                              `🏪 [RENDER] StockVariantSelector rendering for variant ${index}:`,
-                              {
-                                trackingType: form.watch("trackingType"),
-                                value: formField.value,
-                              },
-                            );
-
-                            return (
-                              <FormItem>
-                                <FormLabel>Stock Item</FormLabel>
-                                <FormControl>
-                                  <StockVariantSelector
-                                    value={formField.value ?? ""}
-                                    isDisabled={isPending}
-                                    placeholder="Select stock item"
-                                    onChange={(value) => {
-                                      console.log(
-                                        `🏪 [SELECTOR] StockVariantSelector onChange:`,
-                                        {
-                                          variantIndex: index,
-                                          newValue: value,
-                                        },
-                                      );
-                                      formField.onChange(value);
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      )}
-
-                      {/* SEPARATE FIELDS - Recipe Item */}
-                      {form.watch("trackingType") === "RECIPE" && (
-                        <FormField
-                          control={form.control}
-                          name={`variants.${index}.recipeItem`}
-                          render={({ field: formField }) => {
-                            console.log(
-                              `📋 [RENDER] RecipeSelector rendering for variant ${index}:`,
-                              {
-                                trackingType: form.watch("trackingType"),
-                                value: formField.value,
-                              },
-                            );
-
-                            return (
-                              <FormItem>
-                                <FormLabel>Recipe</FormLabel>
-                                <FormControl>
-                                  <RecipeSelector
-                                    value={formField.value ?? ""}
-                                    placeholder="Select recipe"
-                                    isDisabled={isPending}
-                                    onChange={(value) => {
-                                      console.log(
-                                        `📋 [SELECTOR] RecipeSelector onChange:`,
-                                        {
-                                          variantIndex: index,
-                                          newValue: value,
-                                        },
-                                      );
-                                      formField.onChange(value);
-                                    }}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            );
-                          }}
-                        />
-                      )}
+                        </button>
+                      </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+
+                    {/* Variant body */}
+                    {!isCollapsed && (
+                      <div className="p-5 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {/* Variant Name */}
+                          <FormField
+                            control={form.control}
+                            name={`variants.${index}.name`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  Variant Name{" "}
+                                  <span className="text-red-500">*</span>
+                                </FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Tag className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                    <Input
+                                      className="pl-10"
+                                      placeholder="e.g. Small, Regular, Large"
+                                      {...field}
+                                      disabled={isPending}
+                                    />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Selling Price */}
+                          <FormField
+                            control={form.control}
+                            name={`variants.${index}.price`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>
+                                  Selling Price{" "}
+                                  <span className="text-red-500">*</span>
+                                </FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                    <NumericFormat
+                                      className={numericInputClass}
+                                      value={field.value}
+                                      onValueChange={(values) => {
+                                        field.onChange(Number(values.value));
+                                      }}
+                                      thousandSeparator={true}
+                                      placeholder="0"
+                                      disabled={isPending}
+                                    />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Purchasing Price (only when NOT tracking inventory) */}
+                          {!form.watch("trackInventory") && (
+                            <FormField
+                              control={form.control}
+                              name={`variants.${index}.purchasingPrice`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Purchasing Price</FormLabel>
+                                  <FormControl>
+                                    <div className="relative">
+                                      <DollarSign className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                      <NumericFormat
+                                        className={numericInputClass}
+                                        value={field.value ?? 0}
+                                        onValueChange={(values) => {
+                                          field.onChange(Number(values.value));
+                                        }}
+                                        thousandSeparator={true}
+                                        placeholder="0"
+                                        disabled={isPending}
+                                      />
+                                    </div>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+
+                          {/* SKU */}
+                          <FormField
+                            control={form.control}
+                            name={`variants.${index}.sku`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>SKU</FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Hash className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                    <Input
+                                      className="pl-10"
+                                      {...field}
+                                      placeholder="Enter SKU"
+                                      disabled={isPending}
+                                      value={field.value ?? ""}
+                                    />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Barcode */}
+                          <FormField
+                            control={form.control}
+                            name={`variants.${index}.barcode`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Barcode</FormLabel>
+                                <FormControl>
+                                  <div className="relative">
+                                    <Barcode className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                    <Input
+                                      className="pl-10"
+                                      {...field}
+                                      placeholder="Enter barcode"
+                                      disabled={isPending}
+                                      value={field.value ?? ""}
+                                    />
+                                  </div>
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Unit */}
+                          <FormField
+                            control={form.control}
+                            name={`variants.${index}.unit`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Unit</FormLabel>
+                                <FormControl>
+                                  <UnitSelector
+                                    {...field}
+                                    value={field.value ?? ""}
+                                    placeholder="Select unit"
+                                    isDisabled={isPending}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Stock Item (when tracking as STOCK) */}
+                          {form.watch("trackingType") === "STOCK" && (
+                            <FormField
+                              control={form.control}
+                              name={`variants.${index}.stockItem`}
+                              render={({ field: formField }) => (
+                                <FormItem>
+                                  <FormLabel>
+                                    Stock Item{" "}
+                                    <span className="text-red-500">*</span>
+                                  </FormLabel>
+                                  <FormControl>
+                                    <StockVariantSelector
+                                      value={formField.value ?? ""}
+                                      isDisabled={isPending}
+                                      placeholder="Select stock item"
+                                      onChange={(value) => {
+                                        formField.onChange(value);
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+
+                          {/* Recipe Item (when tracking as RECIPE) */}
+                          {form.watch("trackingType") === "RECIPE" && (
+                            <FormField
+                              control={form.control}
+                              name={`variants.${index}.recipeItem`}
+                              render={({ field: formField }) => (
+                                <FormItem>
+                                  <FormLabel>
+                                    Recipe{" "}
+                                    <span className="text-red-500">*</span>
+                                  </FormLabel>
+                                  <FormControl>
+                                    <RecipeSelector
+                                      value={formField.value ?? ""}
+                                      placeholder="Select recipe"
+                                      isDisabled={isPending}
+                                      onChange={(value) => {
+                                        formField.onChange(value);
+                                      }}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
+
+            {/* Add another variant (dashed button) */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAppendVariant}
+              disabled={isPending}
+              className="w-full border-dashed h-10 text-sm text-muted-foreground hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add another variant
+            </Button>
           </CardContent>
         </Card>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-end space-x-4">
+        {/* ── Actions ───────────────────────────────────────────────────── */}
+        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
           <CancelButton />
-          <Separator orientation="vertical" className="h-4" />
+          <Separator orientation="vertical" className="h-5" />
           <SubmitButton
             isPending={isPending}
             label={item ? "Update product" : "Create product"}
@@ -838,33 +930,67 @@ export default function ProductForm({ item }: ProductFormProps) {
         </div>
       </form>
 
-      {/* Tracking Modal */}
+      {/* ── Tracking Type Modal ───────────────────────────────────────── */}
       <Dialog open={showTrackingModal} onOpenChange={setShowTrackingModal}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Select Tracking Type</DialogTitle>
             <DialogDescription>
-              Choose how you want to track this item in inventory
+              Choose how you want to track this product&apos;s inventory
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col gap-4 mt-4">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => handleTrackingTypeSelect("RECIPE")}
-            >
-              Track as Recipe
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full"
+          <div className="flex flex-col gap-3 mt-2">
+            <button
+              type="button"
               onClick={() => handleTrackingTypeSelect("STOCK")}
+              className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-primary hover:bg-primary/5 transition-all text-left"
             >
-              Track as Stock Item
-            </Button>
+              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                <Box className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Track as Stock Item
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Link to an existing stock item for quantity tracking
+                </p>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleTrackingTypeSelect("RECIPE")}
+              className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-primary hover:bg-primary/5 transition-all text-left"
+            >
+              <div className="w-10 h-10 rounded-lg bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center">
+                <ChefHat className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                  Track as Recipe
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Link to a recipe to auto-deduct ingredients on sale
+                </p>
+              </div>
+            </button>
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ── Variant Archive Modal ─────────────────────────────────────── */}
+      <DeleteModal
+        isOpen={archiveVariantIndex !== null}
+        itemName={
+          archiveVariantIndex !== null
+            ? form.watch(`variants.${archiveVariantIndex}.name`) ||
+              `Variant ${archiveVariantIndex + 1}`
+            : ""
+        }
+        onDelete={handleVariantArchive}
+        onOpenChange={() => setArchiveVariantIndex(null)}
+      />
     </Form>
   );
 }

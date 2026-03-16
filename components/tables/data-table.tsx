@@ -66,8 +66,8 @@ import { WarehouseBulkArchive } from "../widgets/warehouse/bulk-archive";
 const pageSpecificComponents = {
   "/products": {
     entityType: "product" as const,
-    importComponent: <ProductCSVDialog />,
-    exportComponent: <TableExport filename="products-csv" />,
+    importComponent: null,
+    exportComponent: null,
     entityNames: { singular: "Product", plural: "Products" },
     allowArchive: true,
     isWarehouse: false,
@@ -445,9 +445,9 @@ export function DataTable<TData, TValue>({
     <motion.div>
       <div className="flex items-center justify-between mb-2">
         <div className="relative flex-1 md:max-w-md">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
           <Input
-            className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+            className="w-full rounded-md border-0 bg-muted pl-10 md:w-[200px] lg:w-[320px] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             placeholder="Search..."
             type="search"
             value={

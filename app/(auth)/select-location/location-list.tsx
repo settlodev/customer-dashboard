@@ -278,7 +278,7 @@ const LocationList = ({
       case "warehouse":
         return <Warehouse className="w-6 h-6 text-blue-600" />;
       default:
-        return <MapPin className="w-6 h-6 text-emerald-600" />;
+        return <MapPin className="w-6 h-6 text-primary" />;
     }
   };
 
@@ -287,7 +287,7 @@ const LocationList = ({
       case "warehouse":
         return "bg-blue-100";
       default:
-        return "bg-emerald-100";
+        return "bg-orange-100";
     }
   };
 
@@ -306,7 +306,7 @@ const LocationList = ({
       case !isWarehouse && isInactive:
         return "bg-red-100 text-red-800 hover:bg-red-200";
       default:
-        return "bg-emerald-500 text-white hover:bg-emerald-600";
+        return "bg-primary text-white hover:bg-orange-600";
     }
   };
 
@@ -327,8 +327,8 @@ const LocationList = ({
     <section className="relative">
       {isRedirecting && (
         <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center flex-col gap-4">
-          <Loader2Icon className="w-8 h-8 text-emerald-600 animate-spin" />
-          <p className="text-emerald-600 font-medium">Redirecting...</p>
+          <Loader2Icon className="w-8 h-8 text-primary animate-spin" />
+          <p className="text-primary font-medium">Redirecting...</p>
         </div>
       )}
 
@@ -378,7 +378,7 @@ const LocationList = ({
               className={cn(
                 "flex-1 py-2 text-sm font-medium",
                 locationType === "all"
-                  ? "bg-emerald-100 text-emerald-800"
+                  ? "bg-orange-100 text-orange-800"
                   : "bg-white text-gray-600 hover:bg-gray-50",
               )}
             >
