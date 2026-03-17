@@ -82,12 +82,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                   style={{ border: `1px solid ${SECONDARY}` }}
                 />
               ) : (
-                <div
-                  className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
-                  style={{ backgroundColor: PRIMARY }}
-                >
-                  {receiptData.businessName?.charAt(0)}
-                </div>
+                <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"></div>
               )}
             </div>
 
@@ -108,7 +103,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                 )}
                 {receiptData.locationName && <p>{receiptData.locationName}</p>}
                 {receiptData.locationPhone && (
-                  <p>Mobile: {receiptData.locationPhone}</p>
+                  <p>Phone number: {receiptData.locationPhone}</p>
                 )}
                 {receiptData.locationEmail && (
                   <p>{receiptData.locationEmail}</p>
@@ -135,10 +130,13 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                   {receiptData.supplierName}
                 </p>
                 {receiptData.supplierPhoneNumber && (
-                  <p>{receiptData.supplierPhoneNumber}</p>
+                  <p>Phone number: {receiptData.supplierPhoneNumber}</p>
                 )}
                 {receiptData.supplierEmail && (
-                  <p>{receiptData.supplierEmail}</p>
+                  <p>Email: {receiptData.supplierEmail}</p>
+                )}
+                {receiptData.supplierPhysicalAddress && (
+                  <p>Physical address: {receiptData.supplierPhysicalAddress}</p>
                 )}
               </div>
             </div>
@@ -187,10 +185,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                     <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
                       Total Value:
                     </td>
-                    <td
-                      className="py-2 font-bold text-right"
-                      style={{ color: PRIMARY }}
-                    >
+                    <td className="py-2 font-bold text-right">
                       TZS {formatCurrency(totalValue)}
                     </td>
                   </tr>
@@ -269,26 +264,19 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                   </tr>
                 ))}
                 {/* Total row */}
-                <tr style={{ backgroundColor: PRIMARY_LIGHT }}>
+                <tr>
                   <td
                     colSpan={2}
                     className="px-3 py-3 text-sm font-semibold text-right"
-                    style={{ color: PRIMARY }}
                   >
                     Total — {items.length}{" "}
                     {items.length === 1 ? "line" : "lines"}
                   </td>
-                  <td
-                    className="px-3 py-3 text-center font-bold"
-                    style={{ color: PRIMARY }}
-                  >
+                  <td className="px-3 py-3 text-center font-bold">
                     {totalQty.toLocaleString()}
                   </td>
                   <td colSpan={2} />
-                  <td
-                    className="px-3 py-3 text-right font-bold"
-                    style={{ color: PRIMARY }}
-                  >
+                  <td className="px-3 py-3 text-right font-bold">
                     TZS {formatCurrency(totalValue)}
                   </td>
                 </tr>
@@ -328,10 +316,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                         </p>
                       )}
                   </div>
-                  <p
-                    className="text-sm font-bold whitespace-nowrap"
-                    style={{ color: PRIMARY }}
-                  >
+                  <p className="text-sm font-bold whitespace-nowrap">
                     TZS {formatCurrency(item.totalCost || 0)}
                   </p>
                 </div>
@@ -348,7 +333,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                     <p className="text-gray-400 uppercase tracking-wider mb-0.5">
                       Total Amount
                     </p>
-                    <p className="font-bold" style={{ color: PRIMARY }}>
+                    <p className="font-bold">
                       TZS {formatCurrency(item.totalCost || 0)}
                     </p>
                   </div>
@@ -378,16 +363,9 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
               </div>
             ))}
             {/* Mobile total */}
-            <div
-              className="flex justify-between items-center px-4 py-3 rounded-lg font-semibold text-sm"
-              style={{ backgroundColor: PRIMARY_LIGHT }}
-            >
-              <span style={{ color: PRIMARY }}>
-                Total ({totalQty.toLocaleString()} units)
-              </span>
-              <span style={{ color: PRIMARY }}>
-                TZS {formatCurrency(totalValue)}
-              </span>
+            <div className="flex justify-between items-center px-4 py-3 rounded-lg font-semibold text-sm">
+              <span>Total ({totalQty.toLocaleString()} units)</span>
+              <span>TZS {formatCurrency(totalValue)}</span>
             </div>
           </div>
 
@@ -409,14 +387,9 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                   <span>VAT Amount:</span>
                   <span>TZS 0.00</span>
                 </div>
-                <div
-                  className="flex justify-between font-bold py-3 mt-1 rounded px-3"
-                  style={{ backgroundColor: PRIMARY_LIGHT }}
-                >
-                  <span style={{ color: PRIMARY }}>Total Amount (TZS):</span>
-                  <span style={{ color: PRIMARY }}>
-                    TZS {formatCurrency(totalValue)}
-                  </span>
+                <div className="flex justify-between font-bold py-3 mt-1 rounded px-3">
+                  <span>Total Amount (TZS):</span>
+                  <span>TZS {formatCurrency(totalValue)}</span>
                 </div>
               </div>
             </div>
@@ -427,10 +400,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
             className="px-6 lg:px-10 py-6"
             style={{ borderTop: `1px solid ${SECONDARY}` }}
           >
-            <p
-              className="text-xs uppercase tracking-widest mb-5 font-semibold"
-              style={{ color: PRIMARY }}
-            >
+            <p className="text-xs uppercase tracking-widest mb-5 font-semibold">
               Authorisation & Signatures
             </p>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
@@ -464,10 +434,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
             <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Approval table */}
               <div>
-                <p
-                  className="text-xs uppercase tracking-widest mb-2 font-semibold"
-                  style={{ color: PRIMARY }}
-                >
+                <p className="text-xs uppercase tracking-widest mb-2 font-semibold">
                   Approval
                 </p>
                 <table
@@ -510,10 +477,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
 
               {/* VAT summary */}
               <div>
-                <p
-                  className="text-xs uppercase tracking-widest mb-2 font-semibold"
-                  style={{ color: PRIMARY }}
-                >
+                <p className="text-xs uppercase tracking-widest mb-2 font-semibold">
                   VAT Summary
                 </p>
                 <table
@@ -596,10 +560,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
             className="px-6 lg:px-10 pb-6"
             style={{ borderTop: `1px solid ${SECONDARY}` }}
           >
-            <p
-              className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold"
-              style={{ color: PRIMARY }}
-            >
+            <p className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold">
               Terms & Conditions
             </p>
             <ol
@@ -631,7 +592,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
           >
             <div className="flex justify-center items-center gap-4">
               <div className="text-center flex-shrink-0">
-                <p className="text-sm text-gray-400 font-semibold">
+                <p className="text-xs lg:text-sm text-gray-400 font-semibold">
                   Thank you for your business and continued support
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">
@@ -643,7 +604,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
         </div>
 
         {/* ── Action Buttons ── */}
-        <div className="hidden lg:flex justify-center items-center mt-6 mb-4 gap-3">
+        <div className="hidden lg:flex w-full justify-center items-center mt-6 mb-4 gap-3">
           <GRNDownloadButton
             receiptData={receiptData}
             items={items}

@@ -66,9 +66,6 @@ const DeliveryNote = async ({
           className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
           style={{ maxWidth: "794px", border: `1px solid ${SECONDARY}` }}
         >
-          {/* Top accent bar */}
-          <div style={{ height: 8, backgroundColor: PRIMARY }} />
-
           {/* ── HEADER: Logo+Name left · Title+Address right ── */}
           <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
             {/* Left: logo + business name */}
@@ -268,18 +265,14 @@ const DeliveryNote = async ({
                   </tr>
                 ))}
                 {/* Total row */}
-                <tr style={{ backgroundColor: PRIMARY_LIGHT }}>
+                <tr>
                   <td
                     colSpan={2}
                     className="px-4 py-3 text-sm font-semibold text-right"
-                    style={{ color: PRIMARY }}
                   >
                     Total Items:
                   </td>
-                  <td
-                    className="px-4 py-3 text-sm font-bold text-center"
-                    style={{ color: PRIMARY }}
-                  >
+                  <td className="px-4 py-3 text-sm font-bold text-center">
                     {totalQty}
                   </td>
                   <td colSpan={2} />
@@ -378,10 +371,7 @@ const DeliveryNote = async ({
               className="rounded-lg p-5"
               style={{ border: `1px solid ${SECONDARY}` }}
             >
-              <p
-                className="text-xs font-semibold uppercase tracking-wider mb-5"
-                style={{ color: PRIMARY }}
-              >
+              <p className="text-xs font-semibold uppercase tracking-wider mb-5">
                 Acknowledgement
               </p>
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -444,8 +434,11 @@ const DeliveryNote = async ({
             </div>
           </div>
 
-          <div className="px-6 lg:px-10 mb-8 justify-center items-center">
-            <div className="text-left lg:text-center flex-shrink-0">
+          <div
+            className="px-6 lg:px-10 mb-8 justify-center items-center"
+            style={{ borderTop: `1px solid ${SECONDARY}` }}
+          >
+            <div className="text-left lg:text-center flex-shrink-0 mt-2">
               <p className="text-sm font-semibold text-gray-400">
                 Thank you for your business and continued support
               </p>

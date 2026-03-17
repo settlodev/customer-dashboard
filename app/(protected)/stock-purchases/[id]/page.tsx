@@ -78,15 +78,16 @@ export default async function StockPurchasePage({
         <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
           {/* Left: business name (no logo available in LPO data) */}
           <div className="flex items-center gap-4">
-            <div
-              className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
-              style={{ backgroundColor: PRIMARY }}
-            >
-              {purchaseData.businessName?.charAt(0)}
-            </div>
-            <h1 className="text-lg font-bold text-gray-900 leading-tight">
-              {purchaseData.businessName}
-            </h1>
+            {(purchaseData as any).locationLogo ? (
+              <img
+                src={(purchaseData as any).locationLogo}
+                alt={`${purchaseData.businessName} logo`}
+                className="h-16 w-auto object-contain flex-shrink-0 rounded"
+                style={{ border: `1px solid ${SECONDARY}` }}
+              />
+            ) : (
+              <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"></div>
+            )}
           </div>
 
           {/* Right: doc title + location details */}
@@ -136,25 +137,6 @@ export default async function StockPurchasePage({
                 <p>{purchaseData.supplierEmail}</p>
               )}
             </div>
-
-            {/* Ship To */}
-            <div className="mt-5">
-              <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
-                Ship To
-              </p>
-              <div className="text-sm text-gray-700 space-y-0.5">
-                <p className="font-semibold text-gray-900">
-                  {purchaseData.businessName}
-                </p>
-                <p>{purchaseData.locationName}</p>
-                {purchaseData.locationPhone && (
-                  <p>{purchaseData.locationPhone}</p>
-                )}
-                {purchaseData.locationEmail && (
-                  <p>{purchaseData.locationEmail}</p>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* Right: PO meta */}
@@ -201,24 +183,8 @@ export default async function StockPurchasePage({
                   <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
                     Total Quantity:
                   </td>
-                  <td
-                    className="py-2 font-bold text-right"
-                    style={{ color: PRIMARY }}
-                  >
+                  <td className="py-2 font-bold text-right">
                     {totalQuantity.toLocaleString()}
-                  </td>
-                </tr>
-                <tr>
-                  <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
-                    Status:
-                  </td>
-                  <td className="py-2 text-right">
-                    <span
-                      className="px-3 py-1 rounded-full text-xs font-semibold"
-                      style={{ backgroundColor: ss.bg, color: ss.color }}
-                    >
-                      {purchaseData.status?.replace("_", " ") || "SUBMITTED"}
-                    </span>
                   </td>
                 </tr>
               </tbody>
@@ -273,18 +239,14 @@ export default async function StockPurchasePage({
                 </tr>
               ))}
               {/* Total row */}
-              <tr style={{ backgroundColor: PRIMARY_LIGHT }}>
+              <tr>
                 <td
                   colSpan={3}
                   className="px-4 py-3 text-sm font-semibold text-right"
-                  style={{ color: PRIMARY }}
                 >
                   Total Quantity:
                 </td>
-                <td
-                  className="px-4 py-3 text-right font-bold"
-                  style={{ color: PRIMARY }}
-                >
+                <td className="px-4 py-3 text-right font-bold">
                   {totalQuantity.toLocaleString()}
                 </td>
               </tr>
@@ -294,10 +256,7 @@ export default async function StockPurchasePage({
 
         {/* ── ITEMS CARDS — mobile ── */}
         <div className="lg:hidden px-4 mb-6 space-y-3">
-          <div
-            className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider"
-            style={{ backgroundColor: PRIMARY }}
-          >
+          <div className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider">
             <span>Item</span>
             <span>Qty</span>
           </div>
@@ -323,26 +282,18 @@ export default async function StockPurchasePage({
                       </p>
                     )}
                 </div>
-                <p
-                  className="text-sm font-bold whitespace-nowrap"
-                  style={{ color: PRIMARY }}
-                >
+                <p className="text-sm font-bold whitespace-nowrap">
                   {item.quantity?.toLocaleString()} units
                 </p>
               </div>
             </div>
           ))}
           {/* Mobile total */}
-          <div
-            className="flex justify-between items-center px-4 py-3 rounded-lg font-semibold text-sm"
-            style={{ backgroundColor: PRIMARY_LIGHT }}
-          >
-            <span style={{ color: PRIMARY }}>
+          <div className="flex justify-between items-center px-4 py-3 rounded-lg font-semibold text-sm">
+            <span>
               Total — {totalItems} {totalItems === 1 ? "item" : "items"}
             </span>
-            <span style={{ color: PRIMARY }}>
-              {totalQuantity.toLocaleString()} units
-            </span>
+            <span>{totalQuantity.toLocaleString()} units</span>
           </div>
         </div>
 
@@ -352,10 +303,7 @@ export default async function StockPurchasePage({
             className="px-6 lg:px-10 pb-6"
             style={{ borderTop: `1px solid ${SECONDARY}` }}
           >
-            <p
-              className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold"
-              style={{ color: PRIMARY }}
-            >
+            <p className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold">
               Special Instructions / Notes
             </p>
             <p
@@ -375,10 +323,7 @@ export default async function StockPurchasePage({
           className="px-6 lg:px-10 pb-6"
           style={{ borderTop: `1px solid ${SECONDARY}` }}
         >
-          <p
-            className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold"
-            style={{ color: PRIMARY }}
-          >
+          <p className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold">
             Terms & Conditions
           </p>
           <ol
@@ -405,15 +350,11 @@ export default async function StockPurchasePage({
 
         {/* ── FOOTER ── */}
         <div
-          className="px-6 lg:px-10 py-6 flex flex-col lg:flex-row justify-between items-start gap-4"
+          className="px-6 lg:px-10 py-6 flex justify-center items-center gap-4"
           style={{ borderTop: `1px solid ${SECONDARY}` }}
         >
-          <div className="text-sm text-gray-500 space-y-0.5">
-            <p className="font-bold text-gray-800 text-sm">Notes / Terms</p>
-            <p>Generated on {formatDateTime(new Date())}</p>
-          </div>
-          <div className="text-left lg:text-right flex-shrink-0">
-            <p className="text-sm font-semibold" style={{ color: PRIMARY }}>
+          <div className="text-center flex-shrink-0">
+            <p className="text-xs lg:text-sm font-semibold">
               Thank you for your business and continued support
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -421,9 +362,6 @@ export default async function StockPurchasePage({
             </p>
           </div>
         </div>
-
-        {/* Bottom accent bar */}
-        <div style={{ height: 8, backgroundColor: PRIMARY }} />
       </div>
 
       <SharePurchaseOrder />

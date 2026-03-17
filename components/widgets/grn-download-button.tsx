@@ -389,7 +389,7 @@ export function GRNDownloadButton({
     <button
       onClick={generatePDF}
       disabled={isDownloading}
-      className="flex justify-center items-center gap-2 lg:w-[50%] w-full px-4 py-3 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex justify-center items-center gap-2 lg:w-[90%] w-full px-4 py-3 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       style={{ backgroundColor: PRIMARY }}
       onMouseEnter={(e) =>
         ((e.currentTarget as HTMLButtonElement).style.backgroundColor =
