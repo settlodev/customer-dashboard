@@ -17,11 +17,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import {Clock, Mail, MapPin, Phone} from "lucide-react";
+import { Clock, Mail, MapPin, Phone } from "lucide-react";
 
-// Define the form schema with validation
 const formSchema = z.object({
     name: z.string().min(2, {
         message: "Name must be at least 2 characters.",
@@ -37,11 +35,52 @@ const formSchema = z.object({
     }),
 });
 
+const contactInfo = [
+    {
+        icon: MapPin,
+        label: "Address",
+        content: (
+            <>
+                8th Floor Noble Center Building,<br />
+                Plot # 89 Block 45B, P.O. Box 8059,<br />
+                Dar Es Salaam, United Republic of Tanzania
+            </>
+        ),
+    },
+    {
+        icon: Clock,
+        label: "Business Hours",
+        content: (
+            <>
+                Monday &ndash; Friday: 9:00 AM &ndash; 5:00 PM<br />
+                Saturday &ndash; Sunday: Closed
+            </>
+        ),
+    },
+    {
+        icon: Phone,
+        label: "Phone",
+        content: (
+            <a href="tel:+255759229777" className="text-primary hover:text-primary/80 transition-colors">
+                +255 759 229 777
+            </a>
+        ),
+    },
+    {
+        icon: Mail,
+        label: "Email",
+        content: (
+            <a href="mailto:support@settlo.co.tz" className="text-primary hover:text-primary/80 transition-colors">
+                support@settlo.co.tz
+            </a>
+        ),
+    },
+];
+
 export default function ContactUsForm() {
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const { toast } = useToast()
+    const { toast } = useToast();
 
-    // Initialize the form
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -52,25 +91,20 @@ export default function ContactUsForm() {
         },
     });
 
-    // Handle form submission
     async function onSubmit(values: z.infer<typeof formSchema>) {
         setIsSubmitting(true);
 
         try {
-            // Replace with your actual API endpoint
             await axios.post("/api/contact", values);
 
-            // Show success toast
             toast({
                 title: "Message Sent",
-                description: "Thank you for your message. Someone from our team will get in touch with you withing 24 hours.",
+                description: "Thank you for your message. Someone from our team will get in touch with you within 24 hours.",
                 variant: "default",
             });
 
-            // Reset the form
             form.reset();
         } catch (error) {
-            // Show error toast
             toast({
                 title: "Error",
                 description: "Failed to send your message. Please try again later.",
@@ -83,125 +117,51 @@ export default function ContactUsForm() {
     }
 
     return (
-        <div className="grid md:grid-cols-3 gap-6 w-full">
-            {/* Contact Information Card */}
-            <Card className="md:col-span-1 bg-primary text-primary-foreground">
-                <CardHeader>
-                    <CardTitle>Get in touch</CardTitle>
-                    <CardDescription className="text-primary-foreground/80">
-                        We&#39;d love to hear from you. Fill out the form and we&#39;ll be in touch as soon as possible.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="space-y-6">
-                        <div className="flex items-start gap-4">
-                            <div className="rounded-full p-2 bg-emerald-100 mt-1">
-                                <MapPin className="w-5 h-5 text-emerald-600" />
+        <div className="grid md:grid-cols-3 gap-8 w-full">
+            {/* Contact Info */}
+            <div className="md:col-span-1 space-y-6">
+                {contactInfo.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                        <div key={item.label} className="flex gap-4">
+                            <div className="flex-shrink-0 mt-0.5">
+                                <span className="block w-2.5 h-2.5 rounded-full bg-primary mt-1.5" />
                             </div>
-                            <div className="space-y-1">
-                                <h3 className="font-semibold text-primary-foreground/80">Address</h3>
-                                <p className="text-emerald-600 leading-relaxed">
-                                    8th Floor Noble Center Building,<br />
-                                    Plot # 89 Block 45B,<br />
-                                    P.O. Box 8059,<br />
-                                    Dar Es Salaam, United Republic of Tanzania
+                            <div>
+                                <h3 className="text-base font-bold text-gray-900 dark:text-gray-100 mb-1">
+                                    {item.label}
+                                </h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                                    {item.content}
                                 </p>
                             </div>
                         </div>
+                    );
+                })}
+            </div>
 
-                        <div className="flex items-start gap-4">
-                            <div className="rounded-full p-2 bg-emerald-100 mt-1">
-                                <Clock className="w-5 h-5 text-emerald-600" />
-                            </div>
-                            <div className="space-y-1">
-                                <h3 className="font-semibold text-primary-foreground/80">Business Hours</h3>
-                                <p className="text-emerald-600">
-                                    Monday - Friday: 9:00 AM - 5:00 PM<br />
-                                    Saturday - Sunday: Closed
-                                </p>
-                            </div>
-                        </div>
+            {/* Form */}
+            <div className="md:col-span-2 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-6 md:p-8">
+                <div className="mb-6">
+                    <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-1">
+                        Send us a message
+                    </h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Fill out the form below and we&#39;ll get back to you as soon as possible.
+                    </p>
+                </div>
 
-                        <div className="flex items-start gap-4">
-                            <div className="rounded-full p-2 bg-emerald-100 mt-1">
-                                <Phone className="w-5 h-5 text-emerald-600" />
-                            </div>
-                            <div className="space-y-1">
-                                <h3 className="font-semibold text-primary-foreground/80">Phone</h3>
-                                <a
-                                    href="tel:+255788000000"
-                                    className="text-emerald-600 hover:text-emerald-700 transition-colors"
-                                >
-                                    +255 759 229 777
-                                </a>
-                            </div>
-                        </div>
-
-                        <div className="flex items-start gap-4">
-                            <div className="rounded-full p-2 bg-emerald-100 mt-1">
-                                <Mail className="w-5 h-5 text-emerald-600" />
-                            </div>
-                            <div className="space-y-1">
-                                <h3 className="font-semibold text-primary-foreground/80">Email</h3>
-                                <a
-                                    href="mailto:support@settlo.co.tz"
-                                    className="text-emerald-600 hover:text-emerald-700 transition-colors"
-                                >
-                                    support@settlo.co.tz
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Contact Form Card */}
-            <Card className="md:col-span-2">
-                <CardHeader>
-                    <CardTitle>Send us a Message</CardTitle>
-                    <CardDescription>
-                        Fill out the form below to send us a message and we&#39;ll get back to you as soon as possible.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                            <div className="grid md:grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name="name"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Name</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Your name" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Email</FormLabel>
-                                            <FormControl>
-                                                <Input placeholder="Your email address" {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                        <div className="grid md:grid-cols-2 gap-4">
                             <FormField
                                 control={form.control}
-                                name="subject"
+                                name="name"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Subject</FormLabel>
+                                        <FormLabel className="text-sm text-gray-700 dark:text-gray-300">Name</FormLabel>
                                         <FormControl>
-                                            <Input placeholder="Message subject" {...field} />
+                                            <Input placeholder="Your name" className="rounded-xl" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -209,28 +169,58 @@ export default function ContactUsForm() {
                             />
                             <FormField
                                 control={form.control}
-                                name="message"
+                                name="email"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Message</FormLabel>
+                                        <FormLabel className="text-sm text-gray-700 dark:text-gray-300">Email</FormLabel>
                                         <FormControl>
-                                            <Textarea
-                                                placeholder="Tell us how we can help..."
-                                                className="min-h-32"
-                                                {...field}
-                                            />
+                                            <Input placeholder="Your email address" className="rounded-xl" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
-                            <Button type="submit" className="w-full" disabled={isSubmitting}>
-                                {isSubmitting ? "Sending..." : "Send Message"}
-                            </Button>
-                        </form>
-                    </Form>
-                </CardContent>
-            </Card>
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="subject"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-sm text-gray-700 dark:text-gray-300">Subject</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Message subject" className="rounded-xl" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="message"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="text-sm text-gray-700 dark:text-gray-300">Message</FormLabel>
+                                    <FormControl>
+                                        <Textarea
+                                            placeholder="Tell us how we can help..."
+                                            className="min-h-32 rounded-xl"
+                                            {...field}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <Button
+                            type="submit"
+                            className="w-full rounded-xl bg-primary hover:bg-primary/90 text-white"
+                            disabled={isSubmitting}
+                        >
+                            {isSubmitting ? "Sending..." : "Send Message"}
+                        </Button>
+                    </form>
+                </Form>
+            </div>
         </div>
     );
 }

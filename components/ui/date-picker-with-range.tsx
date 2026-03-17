@@ -6,9 +6,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { useEffect, useState, useTransition } from "react";
-import { fetchSummaries } from "@/lib/actions/dashboard-action";
-import SummaryResponse from "@/types/dashboard/type";
+import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { CalendarIcon } from "lucide-react";
 import { ScrollArea, ScrollBar } from "./scroll-area";
@@ -20,7 +18,7 @@ const FormSchema = z.object({
 });
 
 interface DateRangePickerProps {
-  setSummaries: React.Dispatch<React.SetStateAction<SummaryResponse>>;
+  onFilterChange: (startDate: string, endDate: string) => void;
 }
 
 function DateTimePicker({ value, onChange }: { value?: Date; onChange: (date: Date) => void }) {
@@ -118,11 +116,7 @@ function DateTimePicker({ value, onChange }: { value?: Date; onChange: (date: Da
   );
 }
 
-export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
-  const [, startTransition] = useTransition();
-  const [loading, setLoading] = useState(false);
-
-
+export function DateRangePicker({ onFilterChange }: DateRangePickerProps) {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -136,20 +130,10 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
   });
 
   function onSubmit(data: z.infer<typeof FormSchema>) {
-    setLoading(true);
-    // console.log("Submitting data:", data);
-    startTransition(() => {
-      fetchSummaries(data.from.toISOString(), data.to.toISOString())
-        .then((response) => {
-          setSummaries(response as SummaryResponse);
-        })
-        .catch((error) => {
-          console.error("Error fetching summaries:", error);
-        })
-        .finally(() => {
-          setLoading(false);
-        })
-    });
+    onFilterChange(
+      format(data.from, "yyyy-MM-dd"),
+      format(data.to, "yyyy-MM-dd")
+    );
   }
 
   return (
@@ -183,11 +167,7 @@ export function DateRangePicker({ setSummaries }: DateRangePickerProps) {
             )}
           />
           <Button type="submit" className="text-sm">
-            {loading ? (
-              <div className="border-t-transparent border-4 border-green-500 w-[20px] h-[20px] rounded-full animate-spin"></div> // Replace with your loading spinner component
-            ) : (
-              'Filter'
-            )}
+            Filter
           </Button>
         </form>
       </Form>

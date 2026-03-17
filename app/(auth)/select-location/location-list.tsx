@@ -44,12 +44,25 @@ const LocationList = ({
   const { toast } = useToast();
 
   const displayedItems = useMemo(() => {
-    if (locationType === "warehouse") {
-      return warehouses;
-    } else {
-      return locations;
-    }
+    return locationType === "warehouse" ? warehouses : locations;
   }, [locations, warehouses, locationType]);
+
+  const getSubscriptionState = (
+    subscriptionStatus: string | null | undefined,
+  ) => {
+    switch (subscriptionStatus) {
+      case "EXPIRED":
+      case "EXPIRED_TRIAL":
+      case "DUE":
+      case "PAST_DUE":
+      case null:
+      case undefined:
+      case "":
+        return "inactive";
+      default:
+        return "active";
+    }
+  };
 
   const handlePendingPayment = useCallback(
     (transactionId: string, invoice: string) => {
@@ -68,33 +81,25 @@ const LocationList = ({
             setPaymentStatus("FAILED");
             toast({
               title: "Payment Timeout",
-              description:
-                "Payment verification timed out. Please check your payment status.",
+              description: "Payment verification timed out. Please check your payment status.",
               variant: "destructive",
             });
             return;
           }
 
           try {
-            const verificationResult = await verifyPayment(
-              transactionId,
-              invoice,
-            );
+            const verificationResult = await verifyPayment(transactionId, invoice);
             setPaymentStatus(verificationResult.invoicePaymentStatus);
 
             if (verificationResult.invoicePaymentStatus === "SUCCESS") {
               clearInterval(verificationInterval);
               handleSuccessfulPayment(verificationResult);
-            } else if (
-              verificationResult.invoicePaymentStatus === "PROCESSING"
-            ) {
+            } else if (verificationResult.invoicePaymentStatus === "PROCESSING") {
               setPaymentStatus("PROCESSING");
             } else if (verificationResult.invoicePaymentStatus === "FAILED") {
               clearInterval(verificationInterval);
               setPaymentStatus("FAILED");
-              setTimeout(() => {
-                setIsModalOpen(false);
-              }, 2000);
+              setTimeout(() => setIsModalOpen(false), 2000);
             } else if (attemptCount >= maxAttempts) {
               clearInterval(verificationInterval);
               setPaymentStatus("FAILED");
@@ -133,8 +138,6 @@ const LocationList = ({
         phone,
       };
 
-      console.log("The invoice payload to for warehouse is", invoicePayload);
-
       const response = await createInvoice(invoicePayload);
 
       if (response && typeof response === "object" && "id" in response) {
@@ -143,15 +146,12 @@ const LocationList = ({
         try {
           setPaymentStatus("PENDING");
           const paymentResponse = await payInvoice(invoiceId, email, phone);
-
           setPaymentStatus("PROCESSING");
           handlePendingPayment(paymentResponse.id, paymentResponse.invoice);
         } catch (error) {
           console.error("Error paying invoice:", error);
           setPaymentStatus("FAILED");
-          setTimeout(() => {
-            setIsModalOpen(false);
-          }, 3000);
+          setTimeout(() => setIsModalOpen(false), 3000);
         }
       }
 
@@ -160,15 +160,12 @@ const LocationList = ({
     } catch (error: any) {
       console.error("Error creating invoice:", error);
       setPaymentStatus("FAILED");
-      setTimeout(() => {
-        setIsModalOpen(false);
-      }, 3000);
+      setTimeout(() => setIsModalOpen(false), 3000);
 
       toast({
         variant: "destructive",
         title: "Subscription Failed",
-        description:
-          "There was an error processing your subscription. Please try again.",
+        description: "There was an error processing your subscription. Please try again.",
       });
     }
   };
@@ -185,36 +182,18 @@ const LocationList = ({
         setIsModalOpen(false);
         setIsRedirecting(true);
         await refreshWarehouse(selectedWarehouse);
-        window.location.href = `/warehouse`;
+        window.location.href = "/warehouse";
       }, 2000);
     },
     [selectedWarehouse, toast],
   );
-
-  const getSubscriptionState = (
-    subscriptionStatus: string | null | undefined,
-  ) => {
-    switch (subscriptionStatus) {
-      case "EXPIRED":
-      case "EXPIRED_TRIAL":
-      case "DUE":
-      case "PAST_DUE":
-      case null:
-      case undefined:
-      case "":
-        return "inactive";
-      default:
-        return "active";
-    }
-  };
 
   const handleLocationSelect = async (item: any, index: number) => {
     if (isRedirecting || pendingIndex !== null) return;
     setPendingIndex(index);
 
     const isWarehouse = locationType === "warehouse";
-    const isInactive =
-      getSubscriptionState(item.subscriptionStatus) === "inactive";
+    const isInactive = getSubscriptionState(item.subscriptionStatus) === "inactive";
 
     if (isWarehouse) {
       if (isInactive) {
@@ -252,17 +231,13 @@ const LocationList = ({
       title: "Warehouse Created",
       description: "Your warehouse has been created successfully.",
     });
-
     setTimeout(() => {
       window.location.href = "/select-location";
     }, 1500);
   };
 
-  const filteredItems = displayedItems;
-
   const getStatusBadge = (item: any) => {
-    const isInactive =
-      getSubscriptionState(item.subscriptionStatus) === "inactive";
+    const isInactive = getSubscriptionState(item.subscriptionStatus) === "inactive";
     if (!isInactive) return null;
 
     const isWarehouse = locationType === "warehouse";
@@ -280,10 +255,8 @@ const LocationList = ({
     );
   };
 
-
   return (
     <section className="relative">
-
       {showCreateModal && (
         <WareHouseRegisterForm
           setShowCreateModal={setShowCreateModal}
@@ -309,14 +282,13 @@ const LocationList = ({
             <p className="text-sm text-primary font-medium">Redirecting...</p>
           </div>
         )}
-        {/* Header */}
+
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
             {businessName}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Choose a {locationType === "warehouse" ? "warehouse" : "location"}{" "}
-            to continue
+            Choose a {locationType === "warehouse" ? "warehouse" : "location"} to continue
           </p>
         </div>
 
@@ -348,10 +320,9 @@ const LocationList = ({
           </button>
         </div>
 
-
         {/* List */}
         <div className="space-y-3 max-h-[60vh] overflow-y-auto">
-          {filteredItems.length === 0 ? (
+          {displayedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 px-4">
               <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
                 {locationType === "warehouse" ? (
@@ -361,12 +332,10 @@ const LocationList = ({
                 )}
               </div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                No {locationType === "warehouse" ? "warehouses" : "locations"}{" "}
-                found
+                No {locationType === "warehouse" ? "warehouses" : "locations"} found
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Try adjusting your search or create a new{" "}
-                {locationType === "warehouse" ? "warehouse" : "location"}
+                Create a new {locationType === "warehouse" ? "warehouse" : "location"} to get started
               </p>
               {locationType === "warehouse" && (
                 <Button
@@ -379,65 +348,63 @@ const LocationList = ({
               )}
             </div>
           ) : (
-            <div className="space-y-3">
-              {filteredItems.map((item, index) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleLocationSelect(item, index)}
-                  disabled={pendingIndex === index || isRedirecting}
+            displayedItems.map((item, index) => (
+              <button
+                key={item.id}
+                onClick={() => handleLocationSelect(item, index)}
+                disabled={pendingIndex === index || isRedirecting}
+                className={cn(
+                  "w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left",
+                  pendingIndex === index
+                    ? "border-primary/30 bg-primary/5"
+                    : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-primary/30 hover:shadow-sm",
+                )}
+              >
+                <div
                   className={cn(
-                    "w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left",
-                    pendingIndex === index
-                      ? "border-primary/30 bg-primary/5"
-                      : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-primary/30 hover:shadow-sm",
+                    "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
+                    locationType === "warehouse"
+                      ? "bg-blue-50 dark:bg-blue-900/20"
+                      : "bg-primary/10",
                   )}
                 >
-                  <div
-                    className={cn(
-                      "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
-                      locationType === "warehouse"
-                        ? "bg-blue-50 dark:bg-blue-900/20"
-                        : "bg-primary/10",
-                    )}
-                  >
-                    {locationType === "warehouse" ? (
-                      <Warehouse className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    ) : (
-                      <MapPin className="w-5 h-5 text-primary" />
-                    )}
+                  {locationType === "warehouse" ? (
+                    <Warehouse className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <MapPin className="w-5 h-5 text-primary" />
+                  )}
+                </div>
+                <div className="flex-grow min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                      {item.name}
+                    </h3>
+                    {getStatusBadge(item)}
                   </div>
-                  <div className="flex-grow min-w-0">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
-                        {item.name}
-                      </h3>
-                      {getStatusBadge(item)}
+                  {item.city && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                      <MapPin className="w-3 h-3" />
+                      <span className="truncate">
+                        {item.city}
+                        {item.address ? ` · ${item.address}` : ""}
+                      </span>
                     </div>
-                    {item.city && (
-                      <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
-                        <MapPin className="w-3 h-3" />
-                        <span className="truncate">
-                          {item.city}
-                          {item.address ? ` · ${item.address}` : ""}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-shrink-0">
-                    {pendingIndex === index ? (
-                      <Loader2Icon className="w-5 h-5 text-primary animate-spin" />
-                    ) : (
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
+                  )}
+                </div>
+                <div className="flex-shrink-0">
+                  {pendingIndex === index ? (
+                    <Loader2Icon className="w-5 h-5 text-primary animate-spin" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
+              </button>
+            ))
           )}
         </div>
 
-        {/* Create warehouse button */}
-        {locationType === "warehouse" && filteredItems.length > 0 && (
+        {/* Create warehouse */}
+        {locationType === "warehouse" && displayedItems.length > 0 && (
           <div className="mt-5">
             <Button
               variant="outline"
