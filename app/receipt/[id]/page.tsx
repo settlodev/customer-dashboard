@@ -651,8 +651,8 @@ const OrderReceipt = async ({
 
           {/* ── FOOTER — centered ── */}
           <div className="px-6 lg:px-10 pb-8 pt-4 text-center">
-            <div className="text-left lg:text-right flex-shrink-0">
-              <p className="text-sm font-semibold" style={{ color: "#EB7F44" }}>
+            <div className="text-center flex-shrink-0">
+              <p className="text-sm font-semibold">
                 Thank you for your business and continued support
               </p>
               <p className="text-xs text-gray-400 mt-0.5">

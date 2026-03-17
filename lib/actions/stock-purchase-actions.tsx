@@ -250,6 +250,7 @@ export const getStockIntakeReceipt = async (
       `/api/stock-intake-receipts/${location.id}/${id}`,
     );
 
+    // console.log("The good receive note is", stockIntakeReceipt);
     return parseStringify(stockIntakeReceipt);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);
