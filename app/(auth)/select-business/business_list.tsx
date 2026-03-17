@@ -2,25 +2,15 @@
 
 import * as Sentry from "@sentry/nextjs";
 import React, { useState, useCallback, useEffect } from "react";
-import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import {
   Building2,
   Loader2Icon,
-  Search,
   ChevronRight,
   Globe2,
 } from "lucide-react";
 import { Business } from "@/types/business/type";
 import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 import { refreshBusiness } from "@/lib/actions/business/refresh";
@@ -29,15 +19,12 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
   const router = useRouter();
 
   // Auto-redirect if only one business
   useEffect(() => {
-    
     if (businesses.length === 1 && !isLoading && !isRedirecting) {
-      
       handleBusinessSelect(businesses[0], 0);
     }
   }, [businesses]);
@@ -58,15 +45,11 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
 
       try {
         setIsRedirecting(true);
-
         await refreshBusiness(selectedBusiness);
-
         router.push(`/select-location`);
         return;
       } catch (error) {
         Sentry.captureException(error);
-
-        // Reset states only if there's an error
         setIsRedirecting(false);
         setIsLoading(false);
         setPendingIndex(null);
@@ -81,16 +64,14 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
     [isLoading, isRedirecting, toast, router],
   );
 
-  const filteredBusinesses = businesses.filter((bus) =>
-    bus.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
+  const filteredBusinesses = businesses;
 
   // Show loading state when auto-redirecting single business
   if (businesses.length === 1 && (isLoading || isRedirecting)) {
     return (
-      <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center flex-col gap-4">
-        <Loader2Icon className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-primary font-medium">
+      <div className="flex items-center justify-center flex-col gap-3 py-20">
+        <Loader2Icon className="w-6 h-6 text-primary animate-spin" />
+        <p className="text-sm text-primary font-medium">
           Setting up your business...
         </p>
       </div>
@@ -99,110 +80,76 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
 
   return (
     <section className="relative">
-      {isRedirecting && (
-        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center flex-col gap-4">
-          <Loader2Icon className="w-8 h-8 text-primary animate-spin" />
-          <p className="text-primary font-medium">Redirecting...</p>
-        </div>
-      )}
-
-      <Card className="w-full mx-auto max-w-md mt-10 lg:mt-0 md:mt-0">
-        <CardHeader className="text-center pb-2">
-          <CardTitle>Select Your Business</CardTitle>
-          <CardDescription>
+      <div className="relative w-full max-w-md mx-auto">
+        {isRedirecting && (
+          <div className="absolute inset-0 bg-white/60 dark:bg-gray-950/60 backdrop-blur-sm z-30 rounded-xl flex items-center justify-center flex-col gap-3">
+            <Loader2Icon className="w-6 h-6 text-primary animate-spin" />
+            <p className="text-sm text-primary font-medium">Redirecting...</p>
+          </div>
+        )}
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            Select Your Business
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             Get started by selecting your business
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="relative flex-1 mb-6">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search businesses..."
-              className="pl-10 w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
+          </p>
+        </div>
 
-          <div className="max-h-[60vh] overflow-y-auto rounded-lg border border-gray-100">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="divide-y divide-gray-100"
-            >
-              {filteredBusinesses.map((bus, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{
-                    opacity: 1,
-                    y: 0,
-                    transition: { delay: index * 0.1 },
-                  }}
-                  className="p-4 hover:bg-gray-50"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center">
-                        {bus.logo ? (
-                          <Image
-                            src={bus.logo}
-                            alt={bus.name}
-                            width={48}
-                            height={48}
-                            className="rounded-full object-cover"
-                          />
-                        ) : (
-                          <Building2 className="w-6 h-6 text-primary" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">
-                          {bus.name}
-                        </h3>
-                        <div className="flex items-center text-sm text-gray-500">
-                          <Globe2 className="w-4 h-4 mr-1" />
-                          <span>
-                            {bus.countryName} • {bus.totalLocations}{" "}
-                            {bus.totalLocations === 1
-                              ? "location"
-                              : "locations"}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
 
-                    <button
-                      onClick={() => handleBusinessSelect(bus, index)}
-                      disabled={isLoading || isRedirecting}
-                      className={cn(
-                        "px-4 py-2 rounded-sm",
-                        "text-sm font-medium",
-                        "transition-all duration-200",
-                        "flex items-center space-x-2",
-                        pendingIndex === index
-                          ? "bg-gray-100 text-gray-400"
-                          : "bg-primary text-white hover:bg-orange-600",
-                      )}
-                    >
-                      {pendingIndex === index ? (
-                        <Loader2Icon className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <span>Select</span>
-                          <ChevronRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
+        {/* Business list */}
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          <div className="space-y-3">
+            {filteredBusinesses.map((bus, index) => (
+              <button
+                key={index}
+                onClick={() => handleBusinessSelect(bus, index)}
+                disabled={isLoading || isRedirecting}
+                className={cn(
+                  "w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left",
+                  pendingIndex === index
+                    ? "border-primary/30 bg-primary/5"
+                    : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-primary/30 hover:shadow-sm",
+                )}
+              >
+                <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  {bus.logo ? (
+                    <Image
+                      src={bus.logo}
+                      alt={bus.name}
+                      width={44}
+                      height={44}
+                      className="rounded-xl object-cover"
+                    />
+                  ) : (
+                    <Building2 className="w-5 h-5 text-primary" />
+                  )}
+                </div>
+                <div className="flex-grow min-w-0">
+                  <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                    {bus.name}
+                  </h3>
+                  <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    <Globe2 className="w-3.5 h-3.5" />
+                    <span>
+                      {bus.countryName} &middot; {bus.totalLocations}{" "}
+                      {bus.totalLocations === 1 ? "location" : "locations"}
+                    </span>
                   </div>
-                </motion.div>
-              ))}
-            </motion.div>
+                </div>
+                <div className="flex-shrink-0">
+                  {pendingIndex === index ? (
+                    <Loader2Icon className="w-5 h-5 text-primary animate-spin" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </section>
   );
 };

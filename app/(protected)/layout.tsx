@@ -36,7 +36,7 @@ export default async function RootLayout({
   return (
     <SessionProvider session={session}>
       <LoadingBarProvider>
-        <div className="flex h-screen overflow-hidden bg-gray-200 dark:bg-gray-950">
+        <div className="flex h-screen overflow-hidden bg-primary-light dark:bg-gray-950">
           <SidebarWrapper data={businessData} />
 
           <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden">

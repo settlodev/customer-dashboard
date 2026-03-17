@@ -377,7 +377,7 @@ const config: Config = {
         },
         primary: {
           DEFAULT: "#EB7F44",
-          light: "#FEFAF7",
+          light: "#F8F0E9",
           dark: "#3700b3",
           foreground: "#FFFFFF",
         },
