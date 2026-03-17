@@ -1,28 +1,36 @@
 import Link from "next/link";
-import { HomeIcon } from "@radix-ui/react-icons";
+import { Button } from "@/components/ui/button";
+import { Home, SearchX } from "lucide-react";
 
-import { buttonVariants } from "@/components/ui/button";
-import {cn} from "@/lib/utils";
-
-export default async function NotFound() {
-    return (
-        <div className="h-svh">
-            <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
-                <h1 className="text-[7rem] font-bold leading-tight">404</h1>
-                <span className="font-medium">Oops! Page Not Found!</span>
-                <p className="text-center text-muted-foreground">
-                    It seems like the page you&#39;re looking for <br />
-                    does not exist or might have been removed.
-                </p>
-                <div className="mt-6 flex gap-4">
-                    <Link
-                        className={cn(buttonVariants({ variant: "default" }))}
-                        href={`/dashboard`}
-                    >
-                        <HomeIcon className="mr-2 h-4 w-4" /> Go home
-                    </Link>
-                </div>
-            </div>
+export default function NotFound() {
+  return (
+    <div className="flex min-h-[80vh] items-center justify-center px-4">
+      <div className="w-full max-w-md text-center space-y-6">
+        {/* Icon */}
+        <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+          <SearchX className="h-8 w-8 text-muted-foreground" />
         </div>
-    );
+
+        {/* 404 */}
+        <div className="space-y-2">
+          <p className="text-6xl font-bold text-primary">404</p>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Page not found
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            The page you&#39;re looking for doesn&#39;t exist or may have been
+            moved.
+          </p>
+        </div>
+
+        {/* Action */}
+        <Button asChild className="w-full sm:w-auto">
+          <Link href="/dashboard">
+            <Home className="mr-2 h-4 w-4" />
+            Go to Dashboard
+          </Link>
+        </Button>
+      </div>
+    </div>
+  );
 }

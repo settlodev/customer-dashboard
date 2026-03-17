@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { Providers } from "./providers";
@@ -260,10 +261,16 @@ export const metadata: Metadata = {
   },
 };
 
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  display: "swap",
+});
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#EB7F44",
 };
 
 export default async function RootLayout({
@@ -274,9 +281,8 @@ export default async function RootLayout({
     <html lang="en" className="bg-primary-light" suppressHydrationWarning={true}>
       <head>
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#EB7F44" />
       </head>
-      <body className="antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark">
+      <body className={`${openSans.className} antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark`}>
         <SessionProvider session={session}>
           <Providers>{children}</Providers>
         </SessionProvider>

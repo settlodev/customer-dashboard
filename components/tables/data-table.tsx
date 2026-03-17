@@ -155,6 +155,8 @@ interface DataTableProps<TData, TValue> {
   filterKey?: string;
   filterOptions?: { label: string; value: string }[];
   disableArchive?: boolean;
+  onRowClick?: (row: TData) => void;
+  rowClickBasePath?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -166,6 +168,8 @@ export function DataTable<TData, TValue>({
   filterKey,
   filterOptions,
   disableArchive = false,
+  onRowClick,
+  rowClickBasePath,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
@@ -532,6 +536,24 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
+                    className={onRowClick || rowClickBasePath ? "cursor-pointer hover:bg-muted/50" : ""}
+                    onClick={(e) => {
+                      if (!onRowClick && !rowClickBasePath) return;
+                      const target = e.target as HTMLElement;
+                      if (
+                        target.closest("button") ||
+                        target.closest("[role='menuitem']") ||
+                        target.closest("[role='checkbox']") ||
+                        target.closest("a") ||
+                        target.closest("[data-no-row-click]")
+                      ) return;
+                      if (onRowClick) {
+                        onRowClick(row.original);
+                      } else if (rowClickBasePath) {
+                        const id = (row.original as any).id;
+                        if (id) router.push(`${rowClickBasePath}/${id}`);
+                      }
+                    }}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>

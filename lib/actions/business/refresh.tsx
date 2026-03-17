@@ -24,6 +24,14 @@ const createMinimalBusiness = (business: Business): MinimalBusiness => {
   };
 };
 
+export const clearBusiness = async (): Promise<void> => {
+  const cookieStore = await cookies();
+  cookieStore.delete("currentBusiness");
+  cookieStore.delete("activeBusiness");
+  cookieStore.delete("currentLocation");
+  revalidatePath("/", "layout");
+};
+
 export const refreshBusiness = async (data: Business): Promise<void> => {
   if (!data)
     throw new Error("Business data is required to perform this request");

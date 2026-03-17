@@ -59,6 +59,7 @@ export default async function Page({ searchParams }: Params) {
               pageNo={page}
               searchKey="firstName"
               total={total}
+              rowClickBasePath="/staff"
             />
           </CardContent>
         </Card>

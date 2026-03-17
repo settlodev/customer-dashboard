@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import {
   MoreVertical,
-  Eye,
   Pencil as EditIcon,
   Archive as ArchiveIcon,
   ArchiveRestore,
@@ -84,12 +83,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onClick={() => router.push(`/customers/${data.id}`)}
-          >
-            <Eye className="mr-2 h-4 w-4" />
-            View
-          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => router.push(`/customers/${data.id}/edit`)}
           >
