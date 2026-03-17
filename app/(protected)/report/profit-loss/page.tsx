@@ -126,7 +126,7 @@ const ProfitAndLossPage: React.FC = () => {
     const fetchData = async () => {
       try {
         const [summary, loc, biz] = await Promise.all([
-          fetchSummaries(startDate.toISOString(), endDate.toISOString()),
+          fetchSummaries(format(startDate, "yyyy-MM-dd"), format(endDate, "yyyy-MM-dd")),
           getCurrentLocation(),
           getCurrentBusiness(),
         ]);
@@ -146,8 +146,8 @@ const ProfitAndLossPage: React.FC = () => {
     setIsFiltering(true);
     try {
       const summary = await fetchSummaries(
-        startDate.toISOString(),
-        endDate.toISOString(),
+        format(startDate, "yyyy-MM-dd"),
+        format(endDate, "yyyy-MM-dd"),
       );
       setSummaries(summary as SummaryResponse);
     } catch (error) {

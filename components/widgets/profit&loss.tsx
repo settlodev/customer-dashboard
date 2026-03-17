@@ -38,7 +38,7 @@ const ProfitLossStatement = ({
     ? ((salesData.grossProfit / salesData.netSales) * 100).toFixed(1)
     : 0;
   const netMargin = salesData.netSales
-    ? ((salesData.netProfit / salesData.netSales) * 100).toFixed(1)
+    ? (((salesData.closingBalance ?? 0) / salesData.netSales) * 100).toFixed(1)
     : 0;
 
   const formatDateTime = (dateStr: any) => {
@@ -168,7 +168,7 @@ const ProfitLossStatement = ({
         startY: yPosition,
         body: [
           ["Gross Sales", formatCurrency(salesData.grossSales)],
-          ["    Less: Discounts", `(${formatCurrency(salesData.discountsAmount)})`],
+          ["    Less: Discounts", `(${formatCurrency(salesData.totalDiscount)})`],
           ["    Less: Refunds", `(${formatCurrency(salesData.refundsAmount)})`],
         ],
         margin: { left: margin, right: margin },
@@ -212,7 +212,7 @@ const ProfitLossStatement = ({
 
       doc.autoTable({
         startY: yPosition,
-        body: [["Cost of Goods Sold (COGS)", formatCurrency(salesData.costsAmount)]],
+        body: [["Cost of Goods Sold (COGS)", formatCurrency(salesData.totalCost)]],
         margin: { left: margin, right: margin },
         styles: { fontSize: 9, cellPadding: 3, textColor: [60, 60, 60] },
         columnStyles: {
@@ -253,7 +253,7 @@ const ProfitLossStatement = ({
 
       doc.autoTable({
         startY: yPosition,
-        body: [["Total Operating Expenses", formatCurrency(salesData.expensesPaidAmount)]],
+        body: [["Total Operating Expenses", formatCurrency(salesData.totalExpensePaidAmount)]],
         margin: { left: margin, right: margin },
         styles: { fontSize: 9, cellPadding: 3, textColor: [60, 60, 60] },
         columnStyles: {
@@ -275,7 +275,7 @@ const ProfitLossStatement = ({
 
       yPosition += 4;
 
-      const isProfit = salesData.netProfit >= 0;
+      const isProfit = salesData.closingBalance >= 0;
       const netFillColor = isProfit ? [236, 253, 245] : [254, 242, 242];
       const netTextColor = isProfit ? [21, 128, 61] : [220, 38, 38];
 
@@ -284,7 +284,7 @@ const ProfitLossStatement = ({
         body: [
           [
             `${isProfit ? "NET PROFIT" : "NET LOSS"} (Net Margin: ${netMargin}%)`,
-            formatCurrency(salesData.netProfit),
+            formatCurrency(salesData.closingBalance),
           ],
         ],
         margin: { left: margin, right: margin },
@@ -404,10 +404,10 @@ const ProfitLossStatement = ({
         <Card>
           <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              {salesData.netProfit >= 0 ? "Net profit" : "Net loss"}
+              {salesData.closingBalance >= 0 ? "Net profit" : "Net loss"}
             </CardTitle>
             <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              {salesData.netProfit >= 0 ? (
+              {salesData.closingBalance >= 0 ? (
                 <ArrowUpCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
               ) : (
                 <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
@@ -416,9 +416,9 @@ const ProfitLossStatement = ({
           </CardHeader>
           <CardContent className="px-4 pb-4 pt-0">
             <div
-              className={`text-2xl font-bold ${salesData.netProfit >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
+              className={`text-2xl font-bold ${salesData.closingBalance >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}
             >
-              {formatCurrency(salesData.netProfit)}
+              {formatCurrency(salesData.closingBalance)}
             </div>
             <p className="text-sm text-muted-foreground mt-1">
               {netMargin}% margin
@@ -475,7 +475,7 @@ const ProfitLossStatement = ({
                   </span>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  ({formatCurrency(salesData.discountsAmount)})
+                  ({formatCurrency(salesData.totalDiscount)})
                 </span>
               </div>
               <div className="flex justify-between items-center py-3 px-4">
@@ -516,7 +516,7 @@ const ProfitLossStatement = ({
                   </span>
                 </div>
                 <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                  {formatCurrency(salesData.costsAmount)}
+                  {formatCurrency(salesData.totalCost)}
                 </span>
               </div>
             </div>
@@ -551,7 +551,7 @@ const ProfitLossStatement = ({
                   </span>
                 </div>
                 <span className="text-sm font-medium text-amber-600 dark:text-amber-400">
-                  {formatCurrency(salesData.expensesPaidAmount)}
+                  {formatCurrency(salesData.totalExpensePaidAmount)}
                 </span>
               </div>
             </div>
@@ -562,14 +562,14 @@ const ProfitLossStatement = ({
           {/* Net profit / loss */}
           <div
             className={`flex justify-between items-center rounded-lg p-5 ${
-              salesData.netProfit >= 0
+              salesData.closingBalance >= 0
                 ? "bg-green-50 dark:bg-green-950/30"
                 : "bg-red-50 dark:bg-red-950/30"
             }`}
           >
             <div>
               <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                {salesData.netProfit >= 0 ? "Net profit" : "Net loss"}
+                {salesData.closingBalance >= 0 ? "Net profit" : "Net loss"}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 Net margin: {netMargin}%
@@ -577,12 +577,12 @@ const ProfitLossStatement = ({
             </div>
             <p
               className={`text-2xl font-bold ${
-                salesData.netProfit >= 0
+                salesData.closingBalance >= 0
                   ? "text-green-600 dark:text-green-400"
                   : "text-red-600 dark:text-red-400"
               }`}
             >
-              {formatCurrency(salesData.netProfit)}
+              {formatCurrency(salesData.closingBalance)}
             </p>
           </div>
 
