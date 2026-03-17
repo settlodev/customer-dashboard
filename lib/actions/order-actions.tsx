@@ -97,7 +97,7 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
 
     return parseStringify({
       ...response.order,
-      locationDetails: response.locationDetails ?? null, // ← add this
+      locationDetails: response.locationDetails ?? null,
       digitalReceiptPaymentDetails: response.digitalReceiptPaymentDetails ?? [],
     });
   } catch (error) {

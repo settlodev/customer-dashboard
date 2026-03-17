@@ -1,13 +1,15 @@
 import { format } from "date-fns";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { notFound } from "next/navigation";
 import { getStockPurchases } from "@/lib/actions/stock-purchase-actions";
 import { UUID } from "node:crypto";
 import { StockPurchase } from "@/types/stock-purchases/type";
 import SharePurchaseOrder from "@/components/local-purchase-order/order-purchase";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+
+// ─── Brand tokens ─────────────────────────────────────────────────────────────
+const PRIMARY = "#EB7F44";
+const PRIMARY_LIGHT = "#fde8d8";
+const SECONDARY = "#EAEAE5";
 
 type Params = Promise<{ id: string }>;
 
@@ -18,11 +20,7 @@ export default async function StockPurchasePage({
 }) {
   const paramsData = await params;
   const { id } = paramsData;
-  const isNewItem = id === "new";
-
-  if (isNewItem) {
-    notFound();
-  }
+  if (id === "new") notFound();
 
   let purchaseData: StockPurchase;
   try {
@@ -33,323 +31,338 @@ export default async function StockPurchasePage({
     notFound();
   }
 
-  const totalItems = purchaseData.stockIntakePurchaseOrderItems?.length || 0;
-  const totalQuantity =
-    purchaseData.stockIntakePurchaseOrderItems?.reduce(
-      (sum, item) => sum + (item.quantity || 0),
-      0,
-    ) || 0;
+  const items = purchaseData.stockIntakePurchaseOrderItems ?? [];
+  const totalItems = items.length;
+  const totalQuantity = items.reduce(
+    (sum, item) => sum + (item.quantity || 0),
+    0,
+  );
 
-  const statusColorMap: Record<string, string> = {
-    SUBMITTED:
-      "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
-    APPROVED:
-      "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300",
-    DELIVERED:
-      "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
-    PARTIALLY_RECEIVED:
-      "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
-    RECEIVED:
-      "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+  const formatDate = (d: string | Date) => format(new Date(d), "MMMM dd, yyyy");
+
+  const formatDateTime = (d: string | Date) =>
+    format(new Date(d), "dd MMM yyyy, hh:mm a");
+
+  // Status badge colors
+  const statusStyle: Record<string, { bg: string; color: string }> = {
+    SUBMITTED: { bg: "#dbeafe", color: "#1d4ed8" },
+    APPROVED: { bg: "#dcfce7", color: "#15803d" },
+    DELIVERED: { bg: "#ede9fe", color: "#7c3aed" },
+    PARTIALLY_RECEIVED: { bg: PRIMARY_LIGHT, color: PRIMARY },
+    RECEIVED: { bg: "#d1fae5", color: "#065f46" },
+  };
+  const ss = statusStyle[purchaseData.status] ?? {
+    bg: SECONDARY,
+    color: "#374151",
   };
 
   const breadCrumbItems = [
     { title: "Stock Purchases", link: "/stock-purchases" },
-    {
-      title: purchaseData.orderNumber || "Purchase Order",
-      link: "",
-    },
+    { title: purchaseData.orderNumber || "Purchase Order", link: "" },
   ];
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between mb-2">
-        <div className="relative flex-1">
-          <BreadcrumbsNav items={breadCrumbItems} />
+      <BreadcrumbsNav items={breadCrumbItems} />
+
+      {/* ─── Document ─── */}
+      <div
+        id="lpo-content"
+        className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
+        style={{ border: `1px solid ${SECONDARY}` }}
+      >
+        {/* Top accent bar */}
+        <div style={{ height: 8, backgroundColor: PRIMARY }} />
+
+        {/* ── HEADER: Logo/Name left · Title+Address right ── */}
+        <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
+          {/* Left: business name (no logo available in LPO data) */}
+          <div className="flex items-center gap-4">
+            {(purchaseData as any).locationLogo ? (
+              <img
+                src={(purchaseData as any).locationLogo}
+                alt={`${purchaseData.businessName} logo`}
+                className="h-16 w-auto object-contain flex-shrink-0 rounded"
+                style={{ border: `1px solid ${SECONDARY}` }}
+              />
+            ) : (
+              <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"></div>
+            )}
+          </div>
+
+          {/* Right: doc title + location details */}
+          <div className="lg:text-right">
+            <h2
+              className="text-3xl lg:text-4xl font-light tracking-wide mb-2"
+              style={{ color: PRIMARY }}
+            >
+              LOCAL PURCHASE ORDER
+            </h2>
+            <div className="text-sm text-gray-600 space-y-0.5">
+              <p className="font-semibold text-gray-800">
+                {purchaseData.businessName}
+              </p>
+              <p>{purchaseData.locationName}</p>
+              {purchaseData.locationPhone && (
+                <p>Mobile: {purchaseData.locationPhone}</p>
+              )}
+              {purchaseData.locationEmail && (
+                <p>{purchaseData.locationEmail}</p>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <Card className="shadow-xl print:shadow-none">
-        <CardContent className="p-0">
-          {/* LPO Header */}
-          <div className="border-b-4 border-gray-900 dark:border-gray-100 bg-gray-50 dark:bg-gray-900 px-8 py-6">
-            <div className="flex items-start justify-between">
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
-                  LOCAL PURCHASE ORDER
-                </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {purchaseData.businessName} &mdash;{" "}
-                  {purchaseData.locationName}
-                </p>
-              </div>
-              <Badge
-                className={cn(
-                  "text-sm px-4 py-1",
-                  statusColorMap[purchaseData.status] ||
-                    "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
-                )}
-              >
-                {purchaseData.status?.replace("_", " ") || "SUBMITTED"}
-              </Badge>
+        {/* Divider */}
+        <div
+          className="mx-6 lg:mx-10"
+          style={{ height: 1, backgroundColor: SECONDARY }}
+        />
+
+        {/* ── SUPPLIER + META TABLE ── */}
+        <div className="px-6 lg:px-10 py-6 flex flex-col lg:flex-row justify-between gap-6">
+          {/* Left: Supplier */}
+          <div className="flex-1">
+            <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
+              Supplier
+            </p>
+            <div className="text-sm text-gray-700 space-y-0.5">
+              <p className="font-semibold text-gray-900">
+                {purchaseData.supplierName}
+              </p>
+              {purchaseData.supplierPhoneNumber && (
+                <p>{purchaseData.supplierPhoneNumber}</p>
+              )}
+              {purchaseData.supplierEmail && (
+                <p>{purchaseData.supplierEmail}</p>
+              )}
             </div>
           </div>
 
-          {/* Order Number and Dates */}
-          <div className="px-8 py-6 bg-white dark:bg-gray-800 border-b">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 font-semibold">
-                  Order Number
-                </p>
-                <p className="text-xl font-mono font-bold text-gray-900 dark:text-white">
-                  {purchaseData.orderNumber}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 font-semibold">
-                  Date Created
-                </p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {purchaseData.dateCreated
-                    ? format(
-                        new Date(purchaseData.dateCreated),
-                        "MMMM dd, yyyy",
-                      )
-                    : "—"}
-                </p>
-              </div>
-              <div className="md:text-right">
-                <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1 font-semibold">
-                  Expected Delivery
-                </p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {purchaseData.deliveryDate
-                    ? format(
-                        new Date(purchaseData.deliveryDate),
-                        "MMMM dd, yyyy",
-                      )
-                    : "Not specified"}
-                </p>
-              </div>
-            </div>
+          {/* Right: PO meta */}
+          <div className="w-full lg:w-80">
+            <table className="w-full text-sm">
+              <tbody>
+                <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
+                  <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
+                    Order Number:
+                  </td>
+                  <td className="py-2 text-gray-900 text-right font-mono text-xs">
+                    {purchaseData.orderNumber}
+                  </td>
+                </tr>
+                <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
+                  <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
+                    Date Created:
+                  </td>
+                  <td className="py-2 text-gray-900 text-right">
+                    {purchaseData.dateCreated
+                      ? formatDate(purchaseData.dateCreated)
+                      : "—"}
+                  </td>
+                </tr>
+                <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
+                  <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
+                    Expected Delivery:
+                  </td>
+                  <td className="py-2 text-gray-900 text-right">
+                    {purchaseData.deliveryDate
+                      ? formatDate(purchaseData.deliveryDate)
+                      : "Not specified"}
+                  </td>
+                </tr>
+                <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
+                  <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
+                    Total Items:
+                  </td>
+                  <td className="py-2 text-gray-900 text-right font-bold">
+                    {totalItems}
+                  </td>
+                </tr>
+                <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
+                  <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
+                    Total Quantity:
+                  </td>
+                  <td className="py-2 font-bold text-right">
+                    {totalQuantity.toLocaleString()}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+        </div>
 
-          {/* Supplier & Business/Location Information */}
-          <div className="px-8 py-6 border-b bg-gray-50 dark:bg-gray-900/50">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {/* Supplier Details */}
-              <div>
-                <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-300 dark:border-gray-700 pb-1">
-                  Supplier Information
-                </h2>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Company Name
-                    </p>
-                    <p className="text-base font-semibold text-gray-900 dark:text-white">
-                      {purchaseData.supplierName}
-                    </p>
-                  </div>
-                  {purchaseData.supplierEmail && (
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Email
+        {/* ── ITEMS TABLE — desktop ── */}
+        <div className="hidden lg:block px-10 mb-6">
+          <table className="w-full text-sm">
+            <thead>
+              <tr style={{ backgroundColor: PRIMARY }}>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white w-10">
+                  #
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
+                  Item Description
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
+                  Variant
+                </th>
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white w-32">
+                  Quantity
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((item, index) => (
+                <tr
+                  key={item.id}
+                  style={{
+                    backgroundColor:
+                      index % 2 === 0 ? "#ffffff" : `${SECONDARY}40`,
+                    borderBottom: `1px solid ${SECONDARY}`,
+                  }}
+                >
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    {index + 1}
+                  </td>
+                  <td className="px-4 py-3 font-medium text-gray-900">
+                    {item.stockName}
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 text-sm">
+                    {item.stockVariantName &&
+                    item.stockVariantName !== item.stockName
+                      ? item.stockVariantName
+                      : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right font-bold text-gray-900">
+                    {item.quantity?.toLocaleString()}
+                  </td>
+                </tr>
+              ))}
+              {/* Total row */}
+              <tr>
+                <td
+                  colSpan={3}
+                  className="px-4 py-3 text-sm font-semibold text-right"
+                >
+                  Total Quantity:
+                </td>
+                <td className="px-4 py-3 text-right font-bold">
+                  {totalQuantity.toLocaleString()}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        {/* ── ITEMS CARDS — mobile ── */}
+        <div className="lg:hidden px-4 mb-6 space-y-3">
+          <div className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider">
+            <span>Item</span>
+            <span>Qty</span>
+          </div>
+          {items.map((item, index) => (
+            <div
+              key={item.id}
+              className="rounded-lg p-4"
+              style={{
+                border: `1px solid ${SECONDARY}`,
+                backgroundColor: index % 2 === 0 ? "#ffffff" : `${SECONDARY}20`,
+              }}
+            >
+              <div className="flex justify-between items-start gap-3">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-900">
+                    <span className="text-gray-400 mr-1">{index + 1}.</span>
+                    {item.stockName}
+                  </p>
+                  {item.stockVariantName &&
+                    item.stockVariantName !== item.stockName && (
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {item.stockVariantName}
                       </p>
-                      <p className="text-base text-gray-900 dark:text-white">
-                        {purchaseData.supplierEmail}
-                      </p>
-                    </div>
-                  )}
-                  {purchaseData.supplierPhoneNumber && (
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Phone
-                      </p>
-                      <p className="text-base text-gray-900 dark:text-white">
-                        {purchaseData.supplierPhoneNumber}
-                      </p>
-                    </div>
-                  )}
+                    )}
                 </div>
-              </div>
-
-              {/* Business / Location Details */}
-              <div>
-                <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-300 dark:border-gray-700 pb-1">
-                  Ship To
-                </h2>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Business
-                    </p>
-                    <p className="text-base font-semibold text-gray-900 dark:text-white">
-                      {purchaseData.businessName}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Location
-                    </p>
-                    <p className="text-base font-semibold text-gray-900 dark:text-white">
-                      {purchaseData.locationName}
-                    </p>
-                  </div>
-                  {purchaseData.locationEmail && (
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Email
-                      </p>
-                      <p className="text-base text-gray-900 dark:text-white">
-                        {purchaseData.locationEmail}
-                      </p>
-                    </div>
-                  )}
-                  {purchaseData.locationPhone && (
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Phone
-                      </p>
-                      <p className="text-base text-gray-900 dark:text-white">
-                        {purchaseData.locationPhone}
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <p className="text-sm font-bold whitespace-nowrap">
+                  {item.quantity?.toLocaleString()} units
+                </p>
               </div>
             </div>
+          ))}
+          {/* Mobile total */}
+          <div className="flex justify-between items-center px-4 py-3 rounded-lg font-semibold text-sm">
+            <span>
+              Total — {totalItems} {totalItems === 1 ? "item" : "items"}
+            </span>
+            <span>{totalQuantity.toLocaleString()} units</span>
           </div>
+        </div>
 
-          {/* Items Table */}
-          <div className="px-8 py-6">
-            <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4 border-b border-gray-300 dark:border-gray-700 pb-1">
-              Order Items
-            </h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b-2 border-gray-300 dark:border-gray-700">
-                    <th className="text-left py-3 px-2 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      #
-                    </th>
-                    <th className="text-left py-3 px-2 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Item Description
-                    </th>
-                    <th className="text-left py-3 px-2 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Variant
-                    </th>
-                    <th className="text-right py-3 px-2 text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Quantity
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {purchaseData.stockIntakePurchaseOrderItems?.map(
-                    (item, index: number) => (
-                      <tr
-                        key={item.id}
-                        className="hover:bg-gray-50 dark:hover:bg-gray-800/50"
-                      >
-                        <td className="py-4 px-2 text-sm text-gray-600 dark:text-gray-400">
-                          {index + 1}
-                        </td>
-                        <td className="py-4 px-2">
-                          <p className="text-sm font-medium text-gray-900 dark:text-white">
-                            {item.stockName}
-                          </p>
-                        </td>
-                        <td className="py-4 px-2">
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {item.stockVariantName}
-                          </p>
-                        </td>
-                        <td className="py-4 px-2 text-right">
-                          <p className="text-sm font-semibold text-gray-900 dark:text-white">
-                            {item.quantity?.toLocaleString()}
-                          </p>
-                        </td>
-                      </tr>
-                    ),
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Summary */}
-            <div className="mt-8 pt-6 border-t-2 border-gray-300 dark:border-gray-700">
-              <div className="flex justify-end">
-                <div className="w-64 space-y-2">
-                  <div className="flex justify-between py-1">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Total Items:
-                    </span>
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                      {totalItems}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-1 border-t border-gray-300 dark:border-gray-700 mt-2 pt-2">
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300 uppercase">
-                      Total Quantity:
-                    </span>
-                    <span className="text-sm font-bold text-gray-900 dark:text-white">
-                      {totalQuantity.toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          {purchaseData.notes && (
-            <div className="px-8 py-6 border-t bg-gray-50 dark:bg-gray-900/50">
-              <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-300 dark:border-gray-700 pb-1">
-                Special Instructions / Notes
-              </h2>
-              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
-                {purchaseData.notes}
-              </p>
-            </div>
-          )}
-
-          {/* Terms and Conditions */}
-          <div className="px-8 py-6 border-t">
-            <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 border-b border-gray-300 dark:border-gray-700 pb-1">
-              Terms & Conditions
-            </h2>
-            <div className="text-xs text-gray-600 dark:text-gray-400 space-y-2">
-              <p>
-                1. Please confirm receipt of this purchase order within 24
-                hours.
-              </p>
-              <p>
-                2. Delivery must be made on or before the specified delivery
-                date.
-              </p>
-              <p>
-                3. All items must meet the specified quality standards and match
-                the descriptions provided.
-              </p>
-              <p>
-                4. Invoice should reference the purchase order number for
-                processing.
-              </p>
-              <p>5. Goods received are subject to inspection and approval.</p>
-              <p>6. Payment terms: Net 30 days from date of invoice.</p>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-8 py-4 bg-emerald-500 text-center">
-            <p className="text-xs text-white">
-              Powered by{" "}
-              <span className="font-semibold text-white">Settlo</span>
+        {/* ── NOTES ── */}
+        {purchaseData.notes && (
+          <div
+            className="px-6 lg:px-10 pb-6"
+            style={{ borderTop: `1px solid ${SECONDARY}` }}
+          >
+            <p className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold">
+              Special Instructions / Notes
+            </p>
+            <p
+              className="text-sm text-gray-600 p-4 rounded-lg leading-relaxed whitespace-pre-wrap"
+              style={{
+                backgroundColor: `${SECONDARY}40`,
+                border: `1px solid ${SECONDARY}`,
+              }}
+            >
+              {purchaseData.notes}
             </p>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {/* ── TERMS ── */}
+        <div
+          className="px-6 lg:px-10 pb-6"
+          style={{ borderTop: `1px solid ${SECONDARY}` }}
+        >
+          <p className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold">
+            Terms & Conditions
+          </p>
+          <ol
+            className="space-y-1.5 list-decimal list-inside text-xs text-gray-500 leading-relaxed p-4 rounded-lg"
+            style={{
+              backgroundColor: `${SECONDARY}40`,
+              border: `1px solid ${SECONDARY}`,
+            }}
+          >
+            {[
+              "Please confirm receipt of this purchase order within 24 hours.",
+              "Delivery must be made on or before the specified delivery date.",
+              "All items must meet the specified quality standards and match the descriptions provided.",
+              "Invoice should reference the purchase order number for processing.",
+              "Goods received are subject to inspection and approval.",
+              "Payment terms: Net 30 days from date of invoice.",
+            ].map((term, i) => (
+              <li key={i} className="pl-1">
+                {term}
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* ── FOOTER ── */}
+        <div
+          className="px-6 lg:px-10 py-6 flex justify-center items-center gap-4"
+          style={{ borderTop: `1px solid ${SECONDARY}` }}
+        >
+          <div className="text-center flex-shrink-0">
+            <p className="text-xs lg:text-sm font-semibold">
+              Thank you for your business and continued support
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Powered by Settlo Technologies
+            </p>
+          </div>
+        </div>
+      </div>
 
       <SharePurchaseOrder />
     </div>

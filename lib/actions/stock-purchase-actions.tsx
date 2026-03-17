@@ -60,7 +60,6 @@ export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
       `/api/stock-intake-purchase-order/${location.id}/lookup?orderNumber=${id}`,
     );
 
-    console.log("The stock purchase is", stockPurchaseOrder);
     return parseStringify(stockPurchaseOrder);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);
@@ -250,6 +249,7 @@ export const getStockIntakeReceipt = async (
       `/api/stock-intake-receipts/${location.id}/${id}`,
     );
 
+    // console.log("The good receive note is", stockIntakeReceipt);
     return parseStringify(stockIntakeReceipt);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);

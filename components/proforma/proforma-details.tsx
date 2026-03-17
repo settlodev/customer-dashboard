@@ -149,9 +149,6 @@ export function InvoiceDocument({
         className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
         style={{ maxWidth: 794, border: `1px solid ${SECONDARY}` }}
       >
-        {/* ── Top accent bar ── */}
-        <div style={{ height: 8, backgroundColor: PRIMARY }} />
-
         {/* ── HEADER: Logo+Name left · Title+Address right ── */}
         <div className="px-8 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
           {/* Left: logo + business name */}
@@ -164,12 +161,7 @@ export function InvoiceDocument({
                 style={{ border: `1px solid ${SECONDARY}`, borderRadius: 4 }}
               />
             ) : (
-              <div
-                className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
-                style={{ backgroundColor: PRIMARY }}
-              >
-                {data.businessName?.[0] ?? "B"}
-              </div>
+              <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"></div>
             )}
           </div>
 
@@ -255,12 +247,9 @@ export function InvoiceDocument({
                 )}
                 <tr>
                   <td className="py-2 font-semibold text-gray-700 pr-4">
-                    Grand Total (TZS):
+                    Grand Total:
                   </td>
-                  <td
-                    className="py-2 font-bold text-right"
-                    style={{ color: PRIMARY }}
-                  >
+                  <td className="py-2 font-bold text-right">
                     {fmt(amountDue)}
                   </td>
                 </tr>
@@ -350,10 +339,7 @@ export function InvoiceDocument({
                     </span>
                   )}
                 </p>
-                <p
-                  className="text-sm font-bold whitespace-nowrap"
-                  style={{ color: PRIMARY }}
-                >
+                <p className="text-sm font-bold whitespace-nowrap">
                   {fmt(it.unitPrice * it.quantity)}
                 </p>
               </div>
@@ -395,12 +381,9 @@ export function InvoiceDocument({
               )}
 
               {/* Grand Total highlighted row */}
-              <div
-                className="flex justify-between font-bold py-3 mt-1 rounded px-3"
-                style={{ backgroundColor: PRIMARY_LIGHT }}
-              >
-                <span style={{ color: PRIMARY }}>Grand Total (TZS):</span>
-                <span style={{ color: PRIMARY }}>{fmt(amountDue)}</span>
+              <div className="flex justify-between font-bold py-3 mt-1 rounded px-3">
+                <span>Grand Total (TZS):</span>
+                <span>{fmt(amountDue)}</span>
               </div>
             </div>
           </div>
@@ -426,12 +409,11 @@ export function InvoiceDocument({
           </>
         )}
 
-        {/* ── FOOTER ── */}
+        {/* ── Note ── */}
         <div
           className="px-8 py-6 flex flex-col lg:flex-row justify-between items-start gap-4"
           style={{ borderTop: `1px solid ${SECONDARY}` }}
         >
-          {/* Left: generation info */}
           <div className="text-sm text-gray-500 space-y-0.5">
             {!data.notes && (
               <p className="font-bold text-gray-800 mb-1">Notes / Terms</p>
@@ -443,10 +425,15 @@ export function InvoiceDocument({
               </p>
             )}
           </div>
+        </div>
 
+        <div
+          className="px-8 py-6 flex justify-center items-center gap-4"
+          style={{ borderTop: `1px solid ${SECONDARY}` }}
+        >
           {/* Right: thank you */}
-          <div className="text-left lg:text-right flex-shrink-0">
-            <p className="text-sm font-semibold" style={{ color: PRIMARY }}>
+          <div className="text-center flex-shrink-0">
+            <p className="text-xs lg:text-sm text-gray-400 font-semibold">
               Thank you for your business and continued support
             </p>
             <p className="text-xs text-gray-400 mt-0.5">
@@ -454,9 +441,6 @@ export function InvoiceDocument({
             </p>
           </div>
         </div>
-
-        {/* ── Bottom accent bar ── */}
-        <div style={{ height: 8, backgroundColor: PRIMARY }} />
       </div>
     </>
   );

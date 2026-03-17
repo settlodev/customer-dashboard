@@ -27,6 +27,7 @@ export interface StockReceipt {
   supplierName: string;
   supplierPhoneNumber?: string;
   supplierEmail?: string;
+  supplierPhysicalAddress?: string;
   staff: string;
   staffFirstName: string;
   staffLastName: string;
