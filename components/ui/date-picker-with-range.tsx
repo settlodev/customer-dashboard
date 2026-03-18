@@ -1,61 +1,34 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { format } from "date-fns";
+import { useState } from "react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import { DateRange } from "react-day-picker";
 import { Button } from "@/components/ui/button";
-import { Form, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { useEffect, useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { CalendarIcon } from "lucide-react";
-import { ScrollArea, ScrollBar } from "./scroll-area";
 import { Calendar } from "./calendar";
-
-const FormSchema = z.object({
-  from: z.date({ required_error: "Start date and time are required." }),
-  to: z.date({ required_error: "End date and time are required." }),
-});
+import { cn } from "@/lib/utils";
 
 interface DateRangePickerProps {
   onFilterChange: (startDate: string, endDate: string) => void;
 }
 
-function DateTimePicker({ value, onChange }: { value?: Date; onChange: (date: Date) => void }) {
-  const [date, setDate] = useState<Date | undefined>(value);
+export function DateRangePicker({ onFilterChange }: DateRangePickerProps) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const [date, setDate] = useState<DateRange | undefined>({
+    from: startOfMonth(now),
+    to: today,
+  });
   const [isOpen, setIsOpen] = useState(false);
 
-
-  useEffect(() => {
-    if (value) {
-      setDate(value);
-    }
-  }, [value]);
-
-  const hours = Array.from({ length: 24 }, (_, i) => i);
-
-  const handleDateSelect = (selectedDate: Date | undefined) => {
-    if (selectedDate) {
-      const newDate = new Date(selectedDate);
-      if (date) {
-        newDate.setHours(date.getHours());
-        newDate.setMinutes(date.getMinutes());
-      }
-      setDate(newDate);
-      onChange(newDate);
-    }
-  };
-
-  const handleTimeChange = (type: "hour" | "minute", value: string) => {
-    if (date) {
-      const newDate = new Date(date);
-      if (type === "hour") {
-        newDate.setHours(parseInt(value));
-      } else if (type === "minute") {
-        newDate.setMinutes(parseInt(value));
-      }
-      setDate(newDate);
-      onChange(newDate);
+  const handleApply = () => {
+    if (date?.from) {
+      onFilterChange(
+        format(date.from, "yyyy-MM-dd"),
+        format(date.to ?? date.from, "yyyy-MM-dd"),
+      );
+      setIsOpen(false);
     }
   };
 
@@ -64,113 +37,52 @@ function DateTimePicker({ value, onChange }: { value?: Date; onChange: (date: Da
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-start text-left font-normal"
+          className={cn(
+            "justify-start text-left font-normal",
+            !date && "text-muted-foreground",
+          )}
         >
-          <CalendarIcon className="hidden mr-2 h-4 w-4" />
-          {date ? format(date, "MM/dd/yyyy HH:mm") : <span>MM/DD/YYYY HH:mm</span>}
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date?.from ? (
+            date.to ? (
+              <>
+                {format(date.from, "MMM d, yyyy")} –{" "}
+                {format(date.to, "MMM d, yyyy")}
+              </>
+            ) : (
+              format(date.from, "MMM d, yyyy")
+            )
+          ) : (
+            <span>Pick a date range</span>
+          )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
-        <div className="sm:flex">
-          <Calendar
-            mode="single"
-            selected={date}
-            onSelect={handleDateSelect}
-            initialFocus
-          />
-          <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {hours.map((hour) => (
-                  <Button
-                    key={hour}
-                    size="icon"
-                    variant={date && date.getHours() === hour ? "default" : "ghost"}
-                    onClick={() => handleTimeChange("hour", hour.toString())}
-                  >
-                    {hour}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
-            <ScrollArea className="w-64 sm:w-auto">
-              <div className="flex sm:flex-col p-2">
-                {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
-                  <Button
-                    key={minute}
-                    size="icon"
-                    variant={date && date.getMinutes() === minute ? "default" : "ghost"}
-                    onClick={() => handleTimeChange("minute", minute.toString())}
-                  >
-                    {minute.toString().padStart(2, '0')}
-                  </Button>
-                ))}
-              </div>
-              <ScrollBar orientation="horizontal" className="sm:hidden" />
-            </ScrollArea>
-          </div>
+      <PopoverContent className="w-auto p-0" align="end">
+        <Calendar
+          mode="range"
+          defaultMonth={date?.from}
+          selected={date}
+          onSelect={setDate}
+          numberOfMonths={2}
+          disabled={{ after: today }}
+          toDate={today}
+          initialFocus
+        />
+        <div className="flex items-center justify-end gap-2 p-3 pt-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setDate({ from: startOfMonth(now), to: today });
+            }}
+          >
+            This Month
+          </Button>
+          <Button size="sm" onClick={handleApply} disabled={!date?.from}>
+            Apply
+          </Button>
         </div>
       </PopoverContent>
     </Popover>
-  );
-}
-
-export function DateRangePicker({ onFilterChange }: DateRangePickerProps) {
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      from: (() => {
-        const now = new Date();
-        now.setHours(0, 0, 0, 0);
-        return now;
-      })(),
-      to: new Date(),
-    },
-  });
-
-  function onSubmit(data: z.infer<typeof FormSchema>) {
-    onFilterChange(
-      format(data.from, "yyyy-MM-dd"),
-      format(data.to, "yyyy-MM-dd")
-    );
-  }
-
-  return (
-    <div className="">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="flex lg:gap-4 gap-1 items-center justify-center">
-          <FormField
-            control={form.control}
-            name="from"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <DateTimePicker
-                  value={field.value}
-                  onChange={(date) => form.setValue("from", date)}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <FormField
-            control={form.control}
-            name="to"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <DateTimePicker
-                  value={field.value}
-                  onChange={(date) => form.setValue("to", date)}
-                />
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" className="text-sm">
-            Filter
-          </Button>
-        </form>
-      </Form>
-    </div>
   );
 }

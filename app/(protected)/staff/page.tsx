@@ -40,7 +40,7 @@ export default async function Page({ searchParams }: Params) {
 
         <div className="flex items-center gap-2">
           <Button asChild>
-            <Link href="/staff/new">
+            <Link href="/staff/new/edit">
               <Plus className="mr-1.5 h-4 w-4" />
               Add Staff
             </Link>
@@ -64,7 +64,7 @@ export default async function Page({ searchParams }: Params) {
           </CardContent>
         </Card>
       ) : (
-        <NoItems itemName="staff" newItemUrl="/staff/new" />
+        <NoItems itemName="staff" newItemUrl="/staff/new/edit" />
       )}
     </div>
   );

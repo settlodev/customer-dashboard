@@ -53,7 +53,7 @@ async function Page({ searchParams }: Params) {
           <TableExport filename="products" useEndpoint />
           <ProductCSVDialog />
           <Button asChild>
-            <Link href="/products/new">
+            <Link href="/products/new/edit">
               <Plus className="mr-1.5 h-4 w-4" />
               Add Product
             </Link>
@@ -75,11 +75,12 @@ async function Page({ searchParams }: Params) {
               pageNo={page}
               total={total}
               pageCount={pageCount}
+              rowClickBasePath="/products"
             />
           </CardContent>
         </Card>
       ) : (
-        <NoItems newItemUrl="/products/new" itemName="products" />
+        <NoItems newItemUrl="/products/new/edit" itemName="products" />
       )}
     </div>
   );
