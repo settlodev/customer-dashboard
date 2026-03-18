@@ -148,7 +148,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             general: <Sliders size={size} color={color} />,
         };
 
-        return icons[iconName as keyof typeof icons] || <Info size={size} color={color} />;
+        return icons[iconName as keyof typeof icons] || <Sliders size={size} color={color} />;
     };
 
     const { business } = data;
