@@ -36,7 +36,7 @@ const StatCard = ({
   </Card>
 );
 
-const SalesDashboard = ({ salesData }: { salesData: any }) => {
+const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, departmentName, children }: { salesData: any; variant?: "location" | "staff"; loyaltyPoints?: number | null; departmentName?: string | null; children?: React.ReactNode }) => {
   const formatAmount = (value: number | undefined | null): string => {
     if (value === undefined || value === null) return '0';
     return value.toLocaleString();
@@ -55,59 +55,115 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
   return (
     <div className="space-y-6">
       {/* Analysis Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Net Profit Hero Card */}
-        <div
-          className="relative rounded-xl overflow-hidden shadow-none"
-          style={{
-            backgroundImage: "url('/images/bg.png')",
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <div className="absolute inset-0 bg-black/50" />
-          <div className="relative p-6">
-            <p className="text-sm font-bold uppercase tracking-widest text-white/80">
-              {salesData?.closingBalance >= 0 ? 'Net Profit' : 'Net Loss'}
-            </p>
-            <p className="text-4xl font-extrabold mt-2 text-primary">
-              <CurrencyValue value={salesData?.closingBalance} />
-            </p>
-          </div>
-        </div>
-
-        {/* Cost of Goods Sold */}
-        <Card className="rounded-xl shadow-none">
-          <CardContent className="p-6">
-            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Cost of Goods Sold
-            </p>
-            <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
-              <CurrencyValue value={salesData?.totalCost} />
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Expenses */}
-        <Card className="rounded-xl shadow-none">
-          <CardContent className="p-6">
-            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-              Expenses
-            </p>
-            <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
-              <CurrencyValue value={salesData?.totalExpenseRecordedAmount} />
-            </p>
-            <div className="flex items-center gap-4 mt-3 text-xs">
-              <span className="text-emerald-600 font-medium">
-                Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
-              </span>
-              <span className="text-amber-600 font-medium">
-                Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)} TZS
-              </span>
+      {variant === "staff" ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Net Sales Hero Card */}
+          <div
+            className="relative rounded-xl overflow-hidden shadow-none"
+            style={{
+              backgroundImage: "url('/images/bg.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="relative p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-white/80">
+                Net Sales
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-primary">
+                <CurrencyValue value={salesData?.netSales} />
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+
+          {/* Expenses */}
+          <Card className="rounded-xl shadow-none">
+            <CardContent className="p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Expenses
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
+                <CurrencyValue value={salesData?.totalExpenseRecordedAmount} />
+              </p>
+              <div className="flex items-center gap-4 mt-3 text-xs">
+                <span className="text-emerald-600 font-medium">
+                  Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
+                </span>
+                <span className="text-amber-600 font-medium">
+                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)} TZS
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Refunds */}
+          <Card className="rounded-xl shadow-none">
+            <CardContent className="p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Refunds
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
+                <CurrencyValue value={salesData?.totalRefundedAmount} />
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Net Profit Hero Card */}
+          <div
+            className="relative rounded-xl overflow-hidden shadow-none"
+            style={{
+              backgroundImage: "url('/images/bg.png')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="relative p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-white/80">
+                {salesData?.closingBalance >= 0 ? 'Net Profit' : 'Net Loss'}
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-primary">
+                <CurrencyValue value={salesData?.closingBalance} />
+              </p>
+            </div>
+          </div>
+
+          {/* Cost of Goods Sold */}
+          <Card className="rounded-xl shadow-none">
+            <CardContent className="p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Cost of Goods Sold
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
+                <CurrencyValue value={salesData?.totalCost} />
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Expenses */}
+          <Card className="rounded-xl shadow-none">
+            <CardContent className="p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Expenses
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
+                <CurrencyValue value={salesData?.totalExpenseRecordedAmount} />
+              </p>
+              <div className="flex items-center gap-4 mt-3 text-xs">
+                <span className="text-emerald-600 font-medium">
+                  Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
+                </span>
+                <span className="text-amber-600 font-medium">
+                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)} TZS
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Order & Sales Summary — compact inline */}
       <Card className="shadow-none">
@@ -149,11 +205,23 @@ const SalesDashboard = ({ salesData }: { salesData: any }) => {
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Revenue stream</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard label="Gross sales" value={formatCurrency(salesData?.grossSales)} icon={DollarSign} />
-          <StatCard label="Refunds" value={formatCurrency(salesData?.totalRefundedAmount)} icon={RefreshCcw} />
           <StatCard label="Discounts" value={formatCurrency(salesData?.totalDiscount)} icon={RefreshCcw} />
-          <StatCard label="Net sales" value={formatCurrency(salesData?.netSales)} icon={DollarSign} />
+          {variant === "staff" ? (
+            <>
+              <StatCard label="Points" value={loyaltyPoints?.toLocaleString() ?? "0"} icon={DollarSign} />
+              <StatCard label="Department" value={departmentName ?? "—"} icon={DollarSign} />
+            </>
+          ) : (
+            <>
+              <StatCard label="Refunds" value={formatCurrency(salesData?.totalRefundedAmount)} icon={RefreshCcw} />
+              <StatCard label="Net sales" value={formatCurrency(salesData?.netSales)} icon={DollarSign} />
+            </>
+          )}
         </div>
       </div>
+
+      {/* Extra content (e.g. staff summary cards) */}
+      {children}
 
       {/* Charts Row 1: Daily Revenue + Payment Methods */}
       <div className="flex flex-col lg:flex-row gap-4">

@@ -1,24 +1,53 @@
 "use client";
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Client, StompSubscription } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
-import { DateRangePicker } from "../ui/date-picker-with-range";
-import { fetchSummaries, getLocationId } from "@/lib/actions/dashboard-action";
+import Link from "next/link";
+import { Edit } from "lucide-react";
+import { DateRangePicker } from "@/components/ui/date-picker-with-range";
+import { fetchStaffSummary, getLocationId } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import SalesDashboard from "./salesDashboard";
 
 const WS_URL = process.env.NEXT_PUBLIC_REPORTS_WS_URL;
 
-export type SummaryFilter = {
+type SummaryFilter = {
   filter: string;
   customStart?: string | null;
   customEnd?: string | null;
 };
 
-const Dashboard: React.FC = () => {
-  const [summaries, setSummaries] = useState<SummaryResponse | null>(null);
+export default function StaffDetailDashboard({
+  staffId,
+  staffName,
+  jobTitle,
+  status,
+  isArchived,
+  posAccess,
+  dashboardAccess,
+  editUrl,
+  loyaltyPoints,
+  departmentName,
+  children,
+}: {
+  staffId: string;
+  staffName: string;
+  jobTitle: string | null;
+  status: boolean;
+  isArchived: boolean;
+  posAccess: boolean;
+  dashboardAccess: boolean;
+  editUrl: string;
+  loyaltyPoints?: number | null;
+  departmentName?: string | null;
+  children?: React.ReactNode;
+}) {
+  const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const stompClientRef = useRef<Client | null>(null);
   const subscriptionRef = useRef<StompSubscription | null>(null);
@@ -33,31 +62,33 @@ const Dashboard: React.FC = () => {
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
     const lastDay = String(
-      new Date(y, now.getMonth() + 1, 0).getDate()
+      new Date(y, now.getMonth() + 1, 0).getDate(),
     ).padStart(2, "0");
     return { startDate: `${y}-${m}-01`, endDate: `${y}-${m}-${lastDay}` };
   }, []);
 
-  // Publish the active filter to the server
-  const publishFilter = useCallback((filterOverride?: SummaryFilter) => {
-    const client = stompClientRef.current;
-    const locationId = locationIdRef.current;
-    if (!client?.connected || !locationId) return;
+  const publishFilter = useCallback(
+    (filterOverride?: SummaryFilter) => {
+      const client = stompClientRef.current;
+      const locationId = locationIdRef.current;
+      if (!client?.connected || !locationId) return;
 
-    const filter = filterOverride || activeFilterRef.current;
-    client.publish({
-      destination: "/app/subscribe-summary",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        locationId,
-        filter: filter.filter,
-        customStart: filter.customStart ?? null,
-        customEnd: filter.customEnd ?? null,
-      }),
-    });
-  }, []);
+      const filter = filterOverride || activeFilterRef.current;
+      client.publish({
+        destination: "/app/subscribe-staff-summary",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          locationId,
+          staffId,
+          filter: filter.filter,
+          customStart: filter.customStart ?? null,
+          customEnd: filter.customEnd ?? null,
+        }),
+      });
+    },
+    [staffId],
+  );
 
-  // Called by DateRangePicker when user applies a custom date range
   const handleFilterChange = useCallback(
     (startDate: string, endDate: string) => {
       const newFilter: SummaryFilter = {
@@ -70,16 +101,15 @@ const Dashboard: React.FC = () => {
       if (stompClientRef.current?.connected) {
         publishFilter(newFilter);
       } else {
-        // Fallback to REST if WebSocket is not connected
-        fetchSummaries(startDate, endDate)
-          .then((response) => setSummaries(response as SummaryResponse))
-          .catch((error) => console.error("Error fetching summaries:", error));
+        fetchStaffSummary(staffId, startDate, endDate)
+          .then((response) => setSummary(response as SummaryResponse))
+          .catch((error) =>
+            console.error("Error fetching staff summary:", error),
+          );
       }
     },
-    [publishFilter]
+    [publishFilter, staffId],
   );
-
-  // -- WebSocket lifecycle --
 
   const disconnectWs = useCallback(() => {
     if (reconnectTimeoutRef.current) {
@@ -88,7 +118,6 @@ const Dashboard: React.FC = () => {
     }
     const client = stompClientRef.current;
     if (client) {
-      // Prevent onWebSocketClose from scheduling reconnects for this dead client
       client.onWebSocketClose = () => {};
       subscriptionRef.current?.unsubscribe();
       subscriptionRef.current = null;
@@ -101,9 +130,7 @@ const Dashboard: React.FC = () => {
   const connectWs = useCallback(
     (locationId: string) => {
       if (!WS_URL) return;
-      // Guard: already connected or connecting
       if (stompClientRef.current) return;
-      // Guard: component unmounted (React strict mode cleanup)
       if (!mountedRef.current) return;
 
       const client = new Client({
@@ -128,27 +155,24 @@ const Dashboard: React.FC = () => {
           retryCountRef.current = 0;
 
           subscriptionRef.current = client.subscribe(
-            "/user/queue/location-summary",
+            "/user/queue/staff-summary",
             (message) => {
               if (!mountedRef.current) return;
               const update = JSON.parse(message.body);
-              console.log("WebSocket summary data:", update);
-              // Ignore empty or acknowledgment-only messages
-              if (!update || !update.locationId) return;
-              setSummaries(update as SummaryResponse);
+              if (!update || !update.staffId) return;
+              setSummary(update as SummaryResponse);
             },
-            { "content-type": "application/json" }
+            { "content-type": "application/json" },
           );
 
           publishFilter();
         },
 
         onStompError: (frame) => {
-          console.error("Dashboard STOMP error:", frame.headers.message);
+          console.error("Staff summary STOMP error:", frame.headers.message);
         },
 
         onWebSocketClose: () => {
-          // Only reconnect if still mounted and visible
           if (
             !mountedRef.current ||
             document.visibilityState !== "visible" ||
@@ -157,13 +181,11 @@ const Dashboard: React.FC = () => {
             return;
           }
 
-          // Exponential backoff with jitter
           const base = 2000 * Math.pow(1.5, retryCountRef.current);
           const jitter = Math.random() * 1000;
           const delay = Math.min(base + jitter, 30_000);
           retryCountRef.current += 1;
 
-          // Clear the ref so connectWs guard passes on retry
           stompClientRef.current = null;
           reconnectTimeoutRef.current = setTimeout(() => {
             if (mountedRef.current) {
@@ -176,10 +198,8 @@ const Dashboard: React.FC = () => {
       stompClientRef.current = client;
       client.activate();
     },
-    [publishFilter]
+    [publishFilter],
   );
-
-  // -- Tab visibility: disconnect when hidden, reconnect when visible --
 
   useEffect(() => {
     const handleVisibility = () => {
@@ -195,25 +215,23 @@ const Dashboard: React.FC = () => {
       document.removeEventListener("visibilitychange", handleVisibility);
   }, [connectWs, disconnectWs]);
 
-  // -- Initial load --
-
   useEffect(() => {
     mountedRef.current = true;
 
     const init = async () => {
       try {
         setIsLoading(true);
+        const { startDate, endDate } = getMonthRange();
 
-        const [locationId, summary] = await Promise.all([
+        const [locationId, summaryData] = await Promise.all([
           getLocationId(),
-          fetchSummaries(getMonthRange().startDate, getMonthRange().endDate),
+          fetchStaffSummary(staffId, startDate, endDate),
         ]);
 
         locationIdRef.current = locationId;
-        console.log("REST summary data:", summary);
 
         if (mountedRef.current) {
-          setSummaries(summary as SummaryResponse);
+          setSummary(summaryData as SummaryResponse);
         }
 
         if (locationId && mountedRef.current) {
@@ -221,7 +239,7 @@ const Dashboard: React.FC = () => {
         }
       } catch (error) {
         if (mountedRef.current) {
-          console.error("Error initializing dashboard:", error);
+          console.error("Error initializing staff summary:", error);
         }
       } finally {
         if (mountedRef.current) {
@@ -236,41 +254,96 @@ const Dashboard: React.FC = () => {
       mountedRef.current = false;
       disconnectWs();
     };
-  }, [getMonthRange, connectWs, disconnectWs]);
+  }, [staffId, getMonthRange, connectWs, disconnectWs]);
 
-  return (
-    <div className="flex flex-col gap-6">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-            Dashboard
+  const renderHeader = () => (
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            {staffName}
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Financial overview and sales performance
-          </p>
+          <span
+            className={`h-2.5 w-2.5 rounded-full ${status ? "bg-green-500" : "bg-red-500"}`}
+          />
+          {isArchived && (
+            <Badge
+              variant="outline"
+              className="text-orange-600 border-orange-300"
+            >
+              Archived
+            </Badge>
+          )}
         </div>
-        <DateRangePicker onFilterChange={handleFilterChange} />
+        <div className="flex items-center gap-1.5 mt-1">
+          {posAccess && (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
+              POS
+            </span>
+          )}
+          {dashboardAccess && (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400">
+              Dashboard
+            </span>
+          )}
+        </div>
       </div>
 
-      {isLoading ? <DashboardSkeleton /> : <SalesDashboard salesData={summaries} />}
+      <div className="flex items-center gap-2">
+        <DateRangePicker onFilterChange={handleFilterChange} />
+        <Link href={editUrl}>
+          <Button size="sm">
+            <Edit className="h-4 w-4 mr-2" />
+            Edit Staff
+          </Button>
+        </Link>
+      </div>
     </div>
   );
-};
 
-function DashboardSkeleton() {
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {renderHeader()}
+        <StaffSummarySkeleton />
+      </div>
+    );
+  }
+
+  if (!summary) {
+    return (
+      <div className="space-y-6">
+        {renderHeader()}
+        <Card className="shadow-none">
+          <CardContent className="flex items-center justify-center h-48">
+            <p className="text-sm text-muted-foreground">
+              No sales data available for this staff member
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {/* Hero Cards */}
+      {renderHeader()}
+      <SalesDashboard salesData={summary} variant="staff" loyaltyPoints={loyaltyPoints} departmentName={departmentName}>
+        {children}
+      </SalesDashboard>
+    </div>
+  );
+}
+
+function StaffSummarySkeleton() {
+  return (
+    <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Skeleton className="h-[100px] rounded-xl" />
         <Skeleton className="h-[100px] rounded-xl" />
         <Skeleton className="h-[100px] rounded-xl" />
       </div>
-
-      {/* Order Summary Bar */}
       <Skeleton className="h-[56px] rounded-xl" />
-
-      {/* Revenue Stream */}
       <div className="space-y-3">
         <Skeleton className="h-4 w-32" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -279,14 +352,10 @@ function DashboardSkeleton() {
           ))}
         </div>
       </div>
-
-      {/* Charts Row 1 */}
       <div className="flex flex-col lg:flex-row gap-4">
         <Skeleton className="flex-1 h-[300px] rounded-xl" />
         <Skeleton className="lg:w-[350px] h-[300px] rounded-xl" />
       </div>
-
-      {/* Charts Row 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Skeleton className="h-[300px] rounded-xl" />
         <Skeleton className="h-[300px] rounded-xl" />
@@ -294,5 +363,3 @@ function DashboardSkeleton() {
     </div>
   );
 }
-
-export default Dashboard;

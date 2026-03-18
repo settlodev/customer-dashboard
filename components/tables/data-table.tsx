@@ -194,6 +194,7 @@ export function DataTable<TData, TValue>({
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = React.useState<string>("");
   const [loading, setLoading] = React.useState<boolean>(false);
+  const [navigatingRowId, setNavigatingRowId] = React.useState<string | null>(null);
   const [isInitialized, setIsInitialized] = React.useState(false);
 
   // Initialize pagination state once
@@ -315,6 +316,7 @@ export function DataTable<TData, TValue>({
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
+      setNavigatingRowId(null);
     }, 200);
 
     return () => clearTimeout(timer);
@@ -532,12 +534,16 @@ export function DataTable<TData, TValue>({
             </TableHeader>
             <TableBody>
               {table.getRowModel().rows?.length ? (
-                table.getRowModel().rows.map((row) => (
+                table.getRowModel().rows.map((row) => {
+                  const rowId = (row.original as any).id;
+                  const isNavigating = navigatingRowId === rowId;
+                  return (
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
-                    className={onRowClick || rowClickBasePath ? "cursor-pointer hover:bg-muted/50" : ""}
+                    className={`relative ${onRowClick || rowClickBasePath ? "cursor-pointer hover:bg-muted/50" : ""} ${isNavigating ? "opacity-60 pointer-events-none" : ""}`}
                     onClick={(e) => {
+                      if (navigatingRowId) return;
                       if (!onRowClick && !rowClickBasePath) return;
                       const target = e.target as HTMLElement;
                       if (
@@ -550,8 +556,10 @@ export function DataTable<TData, TValue>({
                       if (onRowClick) {
                         onRowClick(row.original);
                       } else if (rowClickBasePath) {
-                        const id = (row.original as any).id;
-                        if (id) router.push(`${rowClickBasePath}/${id}`);
+                        if (rowId) {
+                          setNavigatingRowId(rowId);
+                          router.push(`${rowClickBasePath}/${rowId}`);
+                        }
                       }
                     }}
                   >
@@ -563,8 +571,14 @@ export function DataTable<TData, TValue>({
                         )}
                       </TableCell>
                     ))}
+                    {isNavigating && (
+                      <TableCell className="absolute inset-0 flex items-center justify-center bg-background/50">
+                        <Loading />
+                      </TableCell>
+                    )}
                   </TableRow>
-                ))
+                  );
+                })
               ) : (
                 <TableRow>
                   <TableCell

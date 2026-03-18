@@ -1,21 +1,21 @@
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-variants/column";
 import { searchStockVariants } from "@/lib/actions/stock-variant-actions";
 import { StockVariant } from "@/types/stockVariant/type";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-import { CSVStockDialog } from "@/components/csv/stockCsvImport";
-import { ProductWithStockCSVDialog } from "@/components/csv/ProductWithStockCsvImport";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import NoItems from "@/components/layouts/no-items";
+import {
+  Plus,
+  ArrowDownToLine,
+  FileSignature,
+  ArrowLeftRight,
+} from "lucide-react";
 
-const breadCrumbItems = [{ title: "Stock Items", link: "/stock-variants" }];
+const breadcrumbItems = [{ title: "Stock Items", link: "/stock-variants" }];
+
 type Params = {
   searchParams: Promise<{
     search?: string;
@@ -23,7 +23,8 @@ type Params = {
     limit?: string;
   }>;
 };
-async function StockVariantPage({ searchParams }: Params) {
+
+export default async function StockVariantPage({ searchParams }: Params) {
   const resolvedSearchParams = await searchParams;
 
   const q = resolvedSearchParams.search || "";
@@ -32,35 +33,48 @@ async function StockVariantPage({ searchParams }: Params) {
 
   const responseData = await searchStockVariants(q, page, pageLimit);
 
-  //  console.log("The stock present is: ", responseData );
-
   const data: StockVariant[] = responseData.content;
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
   return (
-    <div className="flex-1 space-y-4 md:p-8 pt-6 mt-12">
-      <div className="flex items-center justify-between mb-2 p-2">
-        <div className="relative flex-1 md:max-w-md">
-          <BreadcrumbsNav items={breadCrumbItems} />
-        </div>
-        <div className={`flex items-center space-x-2`}>
-          <Button>
-            <Link href={`/stocks/new`}>Add Stock</Link>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
+      {/* Header row */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <BreadcrumbsNav items={breadcrumbItems} />
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/stock-intakes/new">
+              <ArrowDownToLine className="mr-1.5 h-4 w-4" />
+              Intake
+            </Link>
           </Button>
-          <div>
-            {total === 0 ? <CSVStockDialog uploadType="location" /> : null}
-            {total === 0 ? <ProductWithStockCSVDialog /> : null}
-          </div>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/stock-modifications/new">
+              <FileSignature className="mr-1.5 h-4 w-4" />
+              Modify
+            </Link>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/stock-transfers/new">
+              <ArrowLeftRight className="mr-1.5 h-4 w-4" />
+              Transfer
+            </Link>
+          </Button>
+          <Button size="sm" asChild>
+            <Link href="/stocks/new">
+              <Plus className="mr-1.5 h-4 w-4" />
+              Add Stock
+            </Link>
+          </Button>
         </div>
       </div>
-      {total > 0 || q != "" ? (
-        <Card x-chunk="data-table">
-          <CardHeader>
-            <CardTitle>Stock Items</CardTitle>
-            <CardDescription>A list of all stock items</CardDescription>
-          </CardHeader>
-          <CardContent>
+
+      {/* Content */}
+      {total > 0 || q !== "" ? (
+        <Card>
+          <CardContent className="px-2 sm:px-6 pt-6">
             <DataTable
               columns={columns}
               data={data}
@@ -68,23 +82,13 @@ async function StockVariantPage({ searchParams }: Params) {
               pageNo={page}
               total={total}
               pageCount={pageCount}
+              rowClickBasePath="/stock-variants"
             />
           </CardContent>
         </Card>
       ) : (
-        <div className="h-[calc(100vh-240px)] border border-dashed">
-          <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
-            <h1 className="text-[1.5rem] font-bold leading-tight">
-              No stock variant data found
-            </h1>
-            <p className="text-sm text-center text-muted-foreground">
-              There are no stock variant records found at the moment.
-            </p>
-          </div>
-        </div>
+        <NoItems newItemUrl="/stocks/new" itemName="stock items" />
       )}
     </div>
   );
 }
-
-export default StockVariantPage;

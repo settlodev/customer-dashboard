@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import {
   MoreVertical,
-  Eye as EyeIcon,
   Pencil as EditIcon,
   Archive as ArchiveIcon,
 } from "lucide-react";
@@ -13,7 +12,6 @@ import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
 import { archiveProduct } from "@/lib/actions/product-actions";
 import { Product } from "@/types/product/type";
-import ProductModal from "../product-modal";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -31,7 +29,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
 
   const [isArchiveModalOpen, setArchiveModalOpen] = useState(false);
-  const [isProductModalOpen, setProductModalOpen] = useState(false);
 
   const handleArchive = async () => {
     try {
@@ -64,12 +61,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setProductModalOpen(true)}>
-            <EyeIcon className="mr-2 h-4 w-4" />
-            View
-          </DropdownMenuItem>
           <DropdownMenuItem
-            onClick={() => router.push(`/products/${data.id}`)}
+            onClick={() => router.push(`/products/${data.id}/edit`)}
           >
             <EditIcon className="mr-2 h-4 w-4" />
             Edit
@@ -98,13 +91,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           onOpenChange={() => setArchiveModalOpen(false)}
         />
       )}
-
-      {/* Product Modal */}
-      <ProductModal
-        isOpen={isProductModalOpen}
-        onOpenChange={() => setProductModalOpen(false)}
-        data={data}
-      />
     </>
   );
 };
