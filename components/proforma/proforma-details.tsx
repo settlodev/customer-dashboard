@@ -121,9 +121,14 @@ export function InvoiceDocument({
   const customerName =
     `${data.customerFirstName ?? ""} ${data.customerLastName ?? ""}`.trim();
 
-  const amountDue = data.netAmount ?? 0;
-  const isPending =
-    data.proformaStatus !== "CONFIRMED" && data.proformaStatus !== "COMPLETED";
+  const taxExclusiveGross: number = (data as any).taxExclusiveGrossAmount ?? 0;
+  const taxAmount: number = (data as any).taxAmount ?? 0;
+  const grossAmount: number = (data as any).grossAmount ?? 0;
+  const discountAmount: number = data.totalDiscountAmount ?? 0;
+  const netAmount: number = data.netAmount ?? 0;
+
+  // Only render the tax breakdown when the payload actually carries tax data.
+  const hasTax = taxAmount > 0;
 
   return (
     <>
@@ -161,7 +166,7 @@ export function InvoiceDocument({
                 style={{ border: `1px solid ${SECONDARY}`, borderRadius: 4 }}
               />
             ) : (
-              <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"></div>
+              <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0" />
             )}
           </div>
 
@@ -181,11 +186,15 @@ export function InvoiceDocument({
               )}
               <p className="font-semibold text-gray-800">{data.businessName}</p>
               {data.locationAddress && <p>{data.locationAddress}</p>}
-              {data.locationCity && <p>{data.locationCity}</p>}
+              {(data as any).locationCity && (
+                <p>{(data as any).locationCity}</p>
+              )}
               {data.locationPhoneNumber && (
                 <p>Mobile: {data.locationPhoneNumber}</p>
               )}
-              {data.locationEmail && <p>{data.locationEmail}</p>}
+              {(data as any).locationEmail && (
+                <p>{(data as any).locationEmail}</p>
+              )}
             </div>
           </div>
         </div>
@@ -207,11 +216,17 @@ export function InvoiceDocument({
               {customerName && (
                 <p className="font-semibold text-gray-900">{customerName}</p>
               )}
-              {data.customerAddress && <p>{data.customerAddress}</p>}
-              {data.customerCity && <p>{data.customerCity}</p>}
+              {(data as any).customerAddress && (
+                <p>{(data as any).customerAddress}</p>
+              )}
+              {(data as any).customerCity && (
+                <p>{(data as any).customerCity}</p>
+              )}
               {data.customerPhoneNumber && <p>{data.customerPhoneNumber}</p>}
               {data.customerEmail && <p>{data.customerEmail}</p>}
-              {data.customerTin && <p>TIN: {data.customerTin}</p>}
+              {(data as any).customerTin && (
+                <p>TIN: {(data as any).customerTin}</p>
+              )}
             </div>
           </div>
 
@@ -250,7 +265,7 @@ export function InvoiceDocument({
                     Grand Total:
                   </td>
                   <td className="py-2 font-bold text-right">
-                    {fmt(amountDue)}
+                    {fmt(netAmount)}
                   </td>
                 </tr>
               </tbody>
@@ -269,8 +284,9 @@ export function InvoiceDocument({
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white">
                   Quantity
                 </th>
+
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white">
-                  Price
+                  {hasTax ? "Unit Price " : "Price"}
                 </th>
                 <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white">
                   Amount
@@ -299,6 +315,7 @@ export function InvoiceDocument({
                   <td className="px-4 py-3 text-gray-600 text-center">
                     {it.quantity.toLocaleString()}
                   </td>
+
                   <td className="px-4 py-3 text-gray-600 text-right">
                     {fmt(it.unitPrice)}
                   </td>
@@ -343,15 +360,25 @@ export function InvoiceDocument({
                   {fmt(it.unitPrice * it.quantity)}
                 </p>
               </div>
-              <div className="flex gap-4 text-xs text-gray-500">
+              <div className="flex flex-wrap gap-4 text-xs text-gray-500">
                 <span>
                   <span className="font-medium text-gray-700">Qty:</span>{" "}
                   {it.quantity.toLocaleString()}
                 </span>
                 <span>
-                  <span className="font-medium text-gray-700">Unit price:</span>{" "}
+                  <span className="font-medium text-gray-700">
+                    Unit price {hasTax ? "(incl. VAT)" : ""}:
+                  </span>{" "}
                   {fmt(it.unitPrice)}
                 </span>
+                {hasTax && (it as any).unitTaxExclusivePrice != null && (
+                  <span>
+                    <span className="font-medium text-gray-700">
+                      Unit price (excl. VAT):
+                    </span>{" "}
+                    {fmt((it as any).unitTaxExclusivePrice)}
+                  </span>
+                )}
               </div>
             </div>
           ))}
@@ -361,30 +388,78 @@ export function InvoiceDocument({
         <div className="px-6 lg:px-8 mb-6">
           <div className="flex justify-end">
             <div className="w-full lg:max-w-xs">
-              {/* VAT line if applicable */}
-              <div
-                className="flex justify-between text-sm text-gray-600 py-2"
-                style={{ borderBottom: `1px solid ${SECONDARY}` }}
-              >
-                <span>VAT 0%:</span>
-                <span>{fmt(0)}</span>
-              </div>
+              {hasTax ? (
+                <>
+                  {/* Subtotal before VAT */}
+                  <div
+                    className="flex justify-between text-sm text-gray-600 py-2"
+                    style={{ borderBottom: `1px solid ${SECONDARY}` }}
+                  >
+                    <span>Subtotal (excl. VAT):</span>
+                    <span>{fmt(taxExclusiveGross)}</span>
+                  </div>
 
-              {data.totalDiscountAmount > 0 && (
+                  {/* VAT amount from payload */}
+                  <div
+                    className="flex justify-between text-sm py-2"
+                    style={{
+                      borderBottom: `1px solid ${SECONDARY}`,
+                      color: "#059669",
+                    }}
+                  >
+                    <span className="font-medium">VAT (18%):</span>
+                    <span className="font-medium">+ {fmt(taxAmount)}</span>
+                  </div>
+
+                  {/* Gross including VAT */}
+                  <div
+                    className="flex justify-between text-sm text-gray-600 py-2"
+                    style={{ borderBottom: `1px solid ${SECONDARY}` }}
+                  >
+                    <span>Gross (incl. VAT):</span>
+                    <span>{fmt(grossAmount)}</span>
+                  </div>
+                </>
+              ) : (
+                /* No tax data — show the old gross subtotal row */
                 <div
                   className="flex justify-between text-sm text-gray-600 py-2"
                   style={{ borderBottom: `1px solid ${SECONDARY}` }}
                 >
-                  <span>Discount:</span>
-                  <span>-{fmt(data.totalDiscountAmount)}</span>
+                  <span>Subtotal:</span>
+                  <span>{fmt(grossAmount || netAmount)}</span>
                 </div>
               )}
 
-              {/* Grand Total highlighted row */}
-              <div className="flex justify-between font-bold py-3 mt-1 rounded px-3">
+              {/* Discount — always shown when non-zero */}
+              {discountAmount > 0 && (
+                <div
+                  className="flex justify-between text-sm py-2"
+                  style={{
+                    borderBottom: `1px solid ${SECONDARY}`,
+                    color: "#ef4444",
+                  }}
+                >
+                  <span className="font-medium">Discount:</span>
+                  <span className="font-medium">- {fmt(discountAmount)}</span>
+                </div>
+              )}
+
+              {/* Grand Total */}
+              <div
+                className="flex justify-between font-bold py-3 mt-1 rounded px-3"
+                style={{ backgroundColor: `${PRIMARY_LIGHT}`, color: PRIMARY }}
+              >
                 <span>Grand Total (TZS):</span>
-                <span>{fmt(amountDue)}</span>
+                <span>{fmt(netAmount)}</span>
               </div>
+
+              {/* VAT note */}
+              {hasTax && (
+                <p className="text-[11px] text-gray-400 mt-2 text-right">
+                  VAT of {fmt(taxAmount)} is included in the grand total
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -409,15 +484,22 @@ export function InvoiceDocument({
           </>
         )}
 
-        {/* ── Note ── */}
+        {/* ── Footer ── */}
         <div
           className="px-8 py-6 flex flex-col lg:flex-row justify-between items-start gap-4"
           style={{ borderTop: `1px solid ${SECONDARY}` }}
         >
           <div className="text-sm text-gray-500 space-y-0.5">
-            {!data.notes && (
-              <p className="font-bold text-gray-800 mb-1">Notes / Terms</p>
+            {/* Only show notes section if notes exist */}
+            {data.notes && (
+              <>
+                <p className="font-bold text-gray-800 mb-1">Notes / Terms</p>
+                <p className="text-gray-600 whitespace-pre-wrap mb-3">
+                  {data.notes}
+                </p>
+              </>
             )}
+
             <p>Generated on {fmtDateShort(new Date().toISOString())}</p>
             {data.proformaStatus === "CONFIRMED" && (
               <p className="font-medium" style={{ color: PRIMARY }}>
@@ -431,7 +513,6 @@ export function InvoiceDocument({
           className="px-8 py-6 flex justify-center items-center gap-4"
           style={{ borderTop: `1px solid ${SECONDARY}` }}
         >
-          {/* Right: thank you */}
           <div className="text-center flex-shrink-0">
             <p className="text-xs lg:text-sm text-gray-400 font-semibold">
               Thank you for your business and continued support

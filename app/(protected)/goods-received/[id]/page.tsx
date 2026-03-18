@@ -555,36 +555,6 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
             </div>
           )}
 
-          {/* ── TERMS ── */}
-          <div
-            className="px-6 lg:px-10 pb-6"
-            style={{ borderTop: `1px solid ${SECONDARY}` }}
-          >
-            <p className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold">
-              Terms & Conditions
-            </p>
-            <ol
-              className="space-y-1.5 list-decimal list-inside text-xs text-gray-500 leading-relaxed p-4 rounded-lg"
-              style={{
-                backgroundColor: `${SECONDARY}40`,
-                border: `1px solid ${SECONDARY}`,
-              }}
-            >
-              {[
-                "This goods receipt note confirms receipt of items listed above in the specified quantities and condition.",
-                "Any discrepancies or damages must be reported within 48 hours of receipt.",
-                "The receiver confirms all items have been inspected and meet required quality standards.",
-                "This document serves as proof of delivery and acceptance of goods.",
-                "The supplier's invoice should reference this receipt number for payment processing.",
-                "Payment will be processed based on quantities received and accepted as per this note.",
-              ].map((term, i) => (
-                <li key={i} className="pl-1">
-                  {term}
-                </li>
-              ))}
-            </ol>
-          </div>
-
           {/* ── FOOTER ── */}
           <div
             className="px-6 lg:px-10 py-6 flex  justify-center items-center gap-4"

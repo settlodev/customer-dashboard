@@ -33,8 +33,6 @@ import {
 } from "@/components/proforma/proforma-details";
 import StaffSelectorWidget from "@/components/widgets/staff_selector_widget";
 
-// ─── Convert Modal ────────────────────────────────────────────────────────────
-
 function ConvertToInvoiceModal({
   proformaId,
   proformaNumber,

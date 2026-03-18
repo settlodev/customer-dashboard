@@ -70,6 +70,7 @@ export const getProforma = async (id: UUID): Promise<Proforma | null> => {
     const response = await apiClient.get(
       `/api/location/${location?.id}/order-proforma/${id}`,
     );
+
     return parseStringify(response) as Proforma;
   } catch (error) {
     console.error(`[getProforma] Error fetching proforma ${id}:`, error);
@@ -123,6 +124,7 @@ export const createProforma = async (
       message: "Proforma created successfully",
       data: response,
     };
+    console.log("The proforma details are", response);
     return parseStringify(formResponse);
   } catch (error) {
     console.error("Error creating proforma", error);
@@ -173,6 +175,7 @@ export const addItemsToProforma = async (
       message: "Proforma items added successfully",
       data: response,
     };
+    console.log("The response after adding items", response);
   } catch (error) {
     formResponse = {
       responseType: "error",
@@ -180,6 +183,7 @@ export const addItemsToProforma = async (
         "Something went wrong while processing your request, please try again",
       error: error instanceof Error ? error : new Error(String(error)),
     };
+    console.error("Formatted Error creating proforma", error);
   }
 
   if (formResponse?.responseType === "error")

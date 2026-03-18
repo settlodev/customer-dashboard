@@ -5,6 +5,8 @@ export interface Proforma {
   proformaNumber: string;
   proformaStatus: "DRAFT" | "COMPLETED" | "CANCELLED" | string;
   notes: string | null;
+  taxExclusiveGrossAmount: number;
+  taxAmount: number;
   grossAmount: number;
   manualDiscountAmount: number;
   appliedDiscountAmount: number;
@@ -38,4 +40,5 @@ export interface ProformaItem {
   quantity: number;
   productName: string;
   productVariantName: string;
+  unitTaxExclusivePrice: number;
 }

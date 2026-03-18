@@ -7,7 +7,6 @@ import jsPDF from "jspdf";
 
 interface ProformaDownloadButtonProps {
   proformaNumber: string;
-  /** Set to true to auto-trigger download on mount (e.g. /receipt/:id?download=1) */
   autoDownload?: boolean;
   className?: string;
 }
@@ -56,7 +55,7 @@ const ProformaDownloadButton = ({
       });
 
       // Wait for layout to settle + images to load
-      await new Promise((r) => setTimeout(r, 120));
+      await new Promise((r) => setTimeout(r, 150));
       const imgs = el.querySelectorAll("img");
       await Promise.all(
         Array.from(imgs).map((img) => {
@@ -71,7 +70,7 @@ const ProformaDownloadButton = ({
 
       // ── 3. Render to canvas ─────────────────────────────────────────────
       const canvas = await html2canvas(el, {
-        scale: 2,
+        scale: 3, // higher DPI → sharper print output
         useCORS: true,
         allowTaint: false,
         logging: false,
@@ -85,11 +84,8 @@ const ProformaDownloadButton = ({
         imageTimeout: 15000,
         removeContainer: true,
         foreignObjectRendering: false,
-        onclone: (doc) => {
-          const clone = doc.getElementById("receipt-content");
-          if (!clone) return;
-
-          // Base reset
+        onclone: (_doc, clone) => {
+          // ── Base reset ──────────────────────────────────────────────────
           Object.assign(clone.style, {
             width: "794px",
             maxWidth: "794px",
@@ -97,216 +93,221 @@ const ProformaDownloadButton = ({
             padding: "0",
             transform: "none",
             position: "relative",
-            backgroundColor: "white",
+            backgroundColor: "#ffffff",
             fontFamily:
               "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             color: "#111827",
           });
 
-          // Force all elements visible
-          clone.querySelectorAll<HTMLElement>("*").forEach((el) => {
-            el.style.visibility = "visible";
-            el.style.opacity = "1";
-            (el.style as any).printColorAdjust = "exact";
-            (el.style as any).webkitPrintColorAdjust = "exact";
-            el.style.fontFamily = "inherit";
+          // Make every element fully visible and honour color-adjust
+          clone.querySelectorAll<HTMLElement>("*").forEach((node) => {
+            node.style.visibility = "visible";
+            node.style.opacity = "1";
+            (node.style as any).printColorAdjust = "exact";
+            (node.style as any).webkitPrintColorAdjust = "exact";
+            node.style.fontFamily = "inherit";
           });
 
-          // ── Accent gradient bar ──
-          const accentBar = clone.querySelector<HTMLElement>(".h-1\\.5");
-          if (accentBar) {
-            accentBar.style.height = "6px";
-            accentBar.style.background =
-              "linear-gradient(to right, #10b981, #34d399, #6366f1)";
-            accentBar.style.printColorAdjust = "exact";
-            (accentBar.style as any).webkitPrintColorAdjust = "exact";
-          }
-
-          // ── Headings ──
-          clone.querySelectorAll<HTMLElement>("h1,h2,h3,h4").forEach((h) => {
-            h.style.fontSize = "13px";
-            h.style.fontWeight = "700";
-            h.style.color = "#111827";
-            h.style.lineHeight = "1.3";
-            h.style.margin = "0 0 4px";
-          });
-
-          // ── Body copy ──
-          clone.querySelectorAll<HTMLElement>("p, span, li").forEach((el) => {
-            if (!el.closest("h1,h2,h3,h4,th")) {
-              el.style.fontSize = "10px";
-              el.style.lineHeight = "1.5";
-              if (
-                el.classList.contains("text-gray-400") ||
-                el.classList.contains("text-gray-500") ||
-                el.classList.contains("text-gray-600")
-              ) {
-                el.style.color = "#6b7280";
-              } else if (
-                el.classList.contains("text-emerald-600") ||
-                el.classList.contains("text-emerald-700")
-              ) {
-                el.style.color = "#059669";
-              } else if (el.classList.contains("text-red-500")) {
-                el.style.color = "#ef4444";
-              } else {
-                el.style.color = "#374151";
-              }
+          // ── PROFORMA INVOICE large heading ──────────────────────────────
+          // The h2 that contains "PROFORMA INVOICE" — keep it big & colored
+          clone.querySelectorAll<HTMLElement>("h2").forEach((h) => {
+            if (h.textContent?.toUpperCase().includes("PROFORMA INVOICE")) {
+              h.style.fontSize = "28px";
+              h.style.fontWeight = "300";
+              h.style.letterSpacing = "0.05em";
+              h.style.color = "#EB7F44";
+              h.style.marginBottom = "8px";
             }
           });
 
-          // ── "PROFORMA INVOICE" label ──
-          clone
-            .querySelectorAll<HTMLElement>("[class*='text-emerald']")
-            .forEach((el) => {
-              if (el.textContent?.toUpperCase().includes("PROFORMA INVOICE")) {
-                el.style.fontSize = "9px";
-                el.style.fontWeight = "800";
-                el.style.letterSpacing = "0.1em";
-                el.style.color = "#059669";
-                el.style.backgroundColor = "#ecfdf5";
-                el.style.padding = "3px 8px";
-                el.style.borderRadius = "4px";
-                el.style.display = "inline-block";
-              }
-            });
-
-          // ── Status badge ──
-          clone
-            .querySelectorAll<HTMLElement>("[class*='rounded-full']")
-            .forEach((badge) => {
-              badge.style.fontSize = "8px";
-              badge.style.fontWeight = "600";
-              badge.style.padding = "2px 8px";
-              badge.style.borderRadius = "9999px";
-              badge.style.display = "inline-flex";
-              badge.style.alignItems = "center";
-              badge.style.gap = "4px";
-              badge.style.lineHeight = "1.6";
-
-              if (
-                badge.classList.contains("bg-green-50") ||
-                badge.classList.contains("text-green-700")
-              ) {
-                badge.style.backgroundColor = "#f0fdf4";
-                badge.style.color = "#15803d";
-                badge.style.border = "1px solid #bbf7d0";
-              } else if (
-                badge.classList.contains("bg-amber-50") ||
-                badge.classList.contains("text-amber-700")
-              ) {
-                badge.style.backgroundColor = "#fffbeb";
-                badge.style.color = "#b45309";
-                badge.style.border = "1px solid #fde68a";
-              } else if (
-                badge.classList.contains("bg-red-50") ||
-                badge.classList.contains("text-red-700")
-              ) {
-                badge.style.backgroundColor = "#fef2f2";
-                badge.style.color = "#b91c1c";
-                badge.style.border = "1px solid #fecaca";
-              } else if (badge.classList.contains("bg-gray-50")) {
-                badge.style.backgroundColor = "#f9fafb";
-                badge.style.color = "#4b5563";
-                badge.style.border = "1px solid #e5e7eb";
-              }
-            });
-
-          // ── Business logo placeholder ──
-          clone
-            .querySelectorAll<HTMLElement>(
-              "[class*='bg-emerald-500'][class*='rounded-xl']",
-            )
-            .forEach((el) => {
-              el.style.backgroundColor = "#10b981";
-              el.style.borderRadius = "8px";
-              el.style.width = "40px";
-              el.style.height = "40px";
-              el.style.display = "flex";
-              el.style.alignItems = "center";
-              el.style.justifyContent = "center";
-              (el.style as any).printColorAdjust = "exact";
-              (el.style as any).webkitPrintColorAdjust = "exact";
-            });
-
-          // ── Items table ──
-          clone.querySelectorAll<HTMLTableElement>("table").forEach((table) => {
-            table.style.width = "100%";
-            table.style.borderCollapse = "collapse";
-            table.style.fontSize = "10px";
-
-            table
-              .querySelectorAll<HTMLElement>("tr.bg-gray-50, thead tr")
-              .forEach((row) => {
-                row.style.backgroundColor = "#f9fafb";
-                (row.style as any).printColorAdjust = "exact";
-                (row.style as any).webkitPrintColorAdjust = "exact";
-              });
-
-            table.querySelectorAll<HTMLElement>("th").forEach((th) => {
-              th.style.fontSize = "8px";
+          // ── Table header rows (orange background) ──────────────────────
+          // Find thead > tr elements and any tr that had a style backgroundColor
+          // matching our PRIMARY color and restore it strongly.
+          clone.querySelectorAll<HTMLElement>("thead tr").forEach((tr) => {
+            tr.style.backgroundColor = "#EB7F44";
+            (tr.style as any).printColorAdjust = "exact";
+            (tr.style as any).webkitPrintColorAdjust = "exact";
+            tr.querySelectorAll<HTMLElement>("th").forEach((th) => {
+              th.style.backgroundColor = "#EB7F44";
+              th.style.color = "#ffffff";
               th.style.fontWeight = "700";
-              th.style.color = "#9ca3af";
+              th.style.fontSize = "11px";
               th.style.textTransform = "uppercase";
-              th.style.letterSpacing = "0.08em";
-              th.style.padding = "8px 10px";
-              th.style.backgroundColor = "#f9fafb";
-              th.style.borderBottom = "1px solid #f3f4f6";
+              th.style.letterSpacing = "0.06em";
+              th.style.padding = "10px 14px";
               (th.style as any).printColorAdjust = "exact";
               (th.style as any).webkitPrintColorAdjust = "exact";
             });
+          });
 
-            table.querySelectorAll<HTMLTableCellElement>("td").forEach((td) => {
-              td.style.padding = "9px 10px";
-              td.style.fontSize = "10px";
-              td.style.color = "#374151";
-              td.style.borderBottom = "1px solid #f9fafb";
+          // ── Zebra rows ──────────────────────────────────────────────────
+          clone.querySelectorAll<HTMLElement>("tbody tr").forEach((tr, i) => {
+            if (i % 2 !== 0) {
+              tr.style.backgroundColor = "#F5F5F0"; // slightly deeper than SECONDARY
+              (tr.style as any).printColorAdjust = "exact";
+              (tr.style as any).webkitPrintColorAdjust = "exact";
+            }
+          });
 
-              // Last column (totals) — bold
-              const row = td.parentElement;
-              if (row && td.cellIndex === row.children.length - 1) {
-                td.style.fontWeight = "600";
-                td.style.color = "#111827";
+          // ── Table cells ─────────────────────────────────────────────────
+          clone.querySelectorAll<HTMLElement>("td").forEach((td) => {
+            td.style.padding = "10px 14px";
+            td.style.fontSize = "11px";
+            td.style.color = "#1f2937"; // near-black, not gray
+            td.style.borderBottom = "1px solid #D9D9D4";
+          });
+
+          // Last column (amount) — extra bold
+          clone.querySelectorAll<HTMLElement>("tbody tr").forEach((tr) => {
+            const cells = tr.querySelectorAll<HTMLElement>("td");
+            if (cells.length > 0) {
+              const last = cells[cells.length - 1];
+              last.style.fontWeight = "700";
+              last.style.color = "#111827";
+            }
+          });
+
+          // ── Totals block rows ───────────────────────────────────────────
+          // Make all text in the totals section darker and heavier
+          clone
+            .querySelectorAll<HTMLElement>(".flex.justify-between")
+            .forEach((row) => {
+              row.querySelectorAll<HTMLElement>("span").forEach((s) => {
+                s.style.fontSize = "12px";
+                s.style.color = "#1f2937";
+              });
+            });
+
+          // Grand total row — strong highlight
+          clone
+            .querySelectorAll<HTMLElement>(".flex.justify-between.font-bold")
+            .forEach((row) => {
+              row.style.backgroundColor = "#fde8d8";
+              row.style.borderRadius = "6px";
+              row.style.padding = "10px 12px";
+              (row.style as any).printColorAdjust = "exact";
+              (row.style as any).webkitPrintColorAdjust = "exact";
+              row.querySelectorAll<HTMLElement>("span").forEach((s) => {
+                s.style.fontSize = "14px";
+                s.style.fontWeight = "800";
+                s.style.color = "#EB7F44";
+              });
+            });
+
+          // VAT line — green, readable
+          clone
+            .querySelectorAll<HTMLElement>(".flex.justify-between")
+            .forEach((row) => {
+              const text = row.textContent ?? "";
+              if (text.includes("VAT") && text.includes("%")) {
+                row.querySelectorAll<HTMLElement>("span").forEach((s) => {
+                  s.style.color = "#047857"; // emerald-800 — dark enough to print
+                  s.style.fontWeight = "600";
+                  s.style.fontSize = "12px";
+                });
               }
             });
-          });
 
-          // ── Totals block ──
-          clone.querySelectorAll<HTMLElement>(".border-t").forEach((el) => {
-            el.style.borderTop = "1px solid #e5e7eb";
-          });
-
-          // ── Notes block ──
+          // Discount line — red, readable
           clone
-            .querySelectorAll<HTMLElement>("[class*='bg-amber-50']")
-            .forEach((el) => {
-              el.style.backgroundColor = "#fffbeb";
-              el.style.border = "1px solid #fde68a";
-              el.style.borderRadius = "10px";
-              el.style.padding = "12px 14px";
-              (el.style as any).printColorAdjust = "exact";
-              (el.style as any).webkitPrintColorAdjust = "exact";
+            .querySelectorAll<HTMLElement>(".flex.justify-between")
+            .forEach((row) => {
+              const text = row.textContent ?? "";
+              if (text.includes("Discount")) {
+                row.querySelectorAll<HTMLElement>("span").forEach((s) => {
+                  s.style.color = "#b91c1c"; // red-700 — dark enough to print
+                  s.style.fontWeight = "600";
+                  s.style.fontSize = "12px";
+                });
+              }
             });
 
-          // ── Background colours ──
-          clone
-            .querySelectorAll<HTMLElement>("[class*='bg-gray-50']")
-            .forEach((el) => {
-              el.style.backgroundColor = "#f9fafb";
-              (el.style as any).printColorAdjust = "exact";
-              (el.style as any).webkitPrintColorAdjust = "exact";
-            });
+          // ── Business name / address text ────────────────────────────────
+          clone.querySelectorAll<HTMLElement>("p, span").forEach((node) => {
+            // Don't touch nodes we've already explicitly styled above
+            if (
+              node.closest("thead") ||
+              node.closest(".flex.justify-between.font-bold")
+            )
+              return;
+            // Upgrade any light-gray text to something that prints clearly
+            const computed = node.style.color;
+            if (!computed || computed === "" || computed === "inherit") return;
+            if (
+              computed.includes("156") || // gray-400 rgb(156,163,175)
+              computed.includes("107") || // gray-500 rgb(107,114,128)
+              node.classList.contains("text-gray-400") ||
+              node.classList.contains("text-gray-500")
+            ) {
+              node.style.color = "#4b5563"; // gray-600 — legible when printed
+            }
+          });
 
-          // ── Separators ──
+          // ── Separator lines ─────────────────────────────────────────────
           clone
             .querySelectorAll<HTMLElement>(
               "[role='none'], [data-orientation='horizontal']",
             )
-            .forEach((el) => {
-              el.style.height = "1px";
-              el.style.backgroundColor = "#e5e7eb";
-              el.style.border = "none";
-              el.style.margin = "0";
+            .forEach((sep) => {
+              sep.style.height = "1px";
+              sep.style.backgroundColor = "#D1D5DB";
+              sep.style.border = "none";
+              sep.style.margin = "0";
+              (sep.style as any).printColorAdjust = "exact";
+              (sep.style as any).webkitPrintColorAdjust = "exact";
+            });
+
+          // Inline divider divs (mx-8 h-px style dividers in the invoice)
+          clone.querySelectorAll<HTMLElement>("div").forEach((div) => {
+            if (div.style.height === "1px") {
+              div.style.backgroundColor = "#D1D5DB";
+              (div.style as any).printColorAdjust = "exact";
+              (div.style as any).webkitPrintColorAdjust = "exact";
+            }
+          });
+
+          // ── VAT note line at bottom of totals ───────────────────────────
+          clone.querySelectorAll<HTMLElement>("p").forEach((p) => {
+            if (
+              p.textContent?.includes("VAT of") &&
+              p.textContent?.includes("included")
+            ) {
+              p.style.fontSize = "10px";
+              p.style.color = "#374151";
+              p.style.fontStyle = "italic";
+            }
+          });
+
+          // ── Meta table (Estimate Number / Date etc.) ────────────────────
+          clone
+            .querySelectorAll<HTMLElement>("table td, table th")
+            .forEach((cell) => {
+              if (!(cell as HTMLTableCellElement).closest?.("thead")) {
+                cell.style.fontSize = "11px";
+                cell.style.color = "#1f2937";
+              }
+            });
+
+          // ── Bill-To section ─────────────────────────────────────────────
+          clone
+            .querySelectorAll<HTMLElement>(
+              "[class*='text-xs'][class*='uppercase'][class*='tracking-widest']",
+            )
+            .forEach((label) => {
+              label.style.fontSize = "9px";
+              label.style.color = "#6b7280";
+              label.style.letterSpacing = "0.12em";
+              label.style.textTransform = "uppercase";
+            });
+
+          // ── Footer text ─────────────────────────────────────────────────
+          clone
+            .querySelectorAll<HTMLElement>(
+              "[class*='text-center'] p, [class*='text-center'] span",
+            )
+            .forEach((node) => {
+              node.style.fontSize = "10px";
+              node.style.color = "#6b7280";
             });
         },
       });
@@ -317,7 +318,7 @@ const ProformaDownloadButton = ({
       // ── 5. Build PDF (A4, tight margins) ──────────────────────────────
       const A4_W_MM = 210;
       const A4_H_MM = 297;
-      const MARGIN_MM = 8;
+      const MARGIN_MM = 10;
       const printW = A4_W_MM - MARGIN_MM * 2;
       const imgH = (canvas.height * printW) / canvas.width;
 
@@ -331,7 +332,7 @@ const ProformaDownloadButton = ({
       if (imgH <= A4_H_MM - MARGIN_MM * 2) {
         // ── Single page ──
         pdf.addImage(
-          canvas.toDataURL("image/jpeg", 0.97),
+          canvas.toDataURL("image/jpeg", 1.0), // max quality
           "JPEG",
           MARGIN_MM,
           MARGIN_MM,
@@ -372,7 +373,7 @@ const ProformaDownloadButton = ({
             );
             const sliceH = (srcH * printW) / canvas.width;
             pdf.addImage(
-              sliceCanvas.toDataURL("image/jpeg", 0.97),
+              sliceCanvas.toDataURL("image/jpeg", 1.0),
               "JPEG",
               MARGIN_MM,
               MARGIN_MM,

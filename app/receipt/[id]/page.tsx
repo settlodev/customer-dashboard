@@ -28,6 +28,8 @@ const OrderReceipt = async ({
   const orderData = await getOrderReceipt(id);
   const location = resolvedSearchParams.location || orderData.location;
 
+  console.log("OrderReceipt", orderData);
+
   let efdData = null;
   if (orderData.efdPrinted) {
     efdData = await isEfdPrinted(id, location);
@@ -114,16 +116,8 @@ const OrderReceipt = async ({
                   className="h-14 lg:h-16 w-auto object-contain flex-shrink-0"
                 />
               ) : (
-                <div
-                  className="h-12 w-12 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"
-                  style={{ backgroundColor: "#EB7F44" }}
-                >
-                  {orderData.businessName?.charAt(0)}
-                </div>
+                <div className="h-12 w-12 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"></div>
               )}
-              <h1 className="text-lg lg:text-xl font-bold text-gray-900 leading-tight">
-                {orderData.businessName}
-              </h1>
             </div>
 
             {/* Right: Document type + company details */}
@@ -197,31 +191,43 @@ const OrderReceipt = async ({
           />
 
           {/* ── BILL TO + INVOICE META ── */}
+          {/* Always render the two-column layout regardless of whether
+              customer info exists. Left column shows customer details or
+              stays empty; right column always shows the meta table. This
+              ensures consistent alignment between receipts with and without
+              a customer attached. */}
           <div className="px-6 lg:px-10 py-6 flex flex-col lg:flex-row justify-between gap-6">
-            {/* Bill To */}
-            {hasCustomerInfo && (
-              <div className="flex-1">
-                <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
-                  Bill To
-                </p>
-                <div className="text-sm text-gray-700 space-y-0.5">
-                  {orderData.customerName && (
-                    <p className="font-semibold text-gray-900">
-                      {orderData.customerName}
-                    </p>
-                  )}
-                  {orderData.customerPhoneNumber && (
-                    <p>{orderData.customerPhoneNumber}</p>
-                  )}
-                  {orderData.customerEmail && <p>{orderData.customerEmail}</p>}
-                  {orderData.customerTinNumber && (
-                    <p>TIN: {orderData.customerTinNumber}</p>
-                  )}
-                </div>
-              </div>
-            )}
+            {/* Left column — always present to hold the layout */}
+            <div className="flex-1">
+              {hasCustomerInfo ? (
+                <>
+                  <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
+                    Bill To
+                  </p>
+                  <div className="text-sm text-gray-700 space-y-0.5">
+                    {orderData.customerName && (
+                      <p className="font-semibold text-gray-900">
+                        {orderData.customerName}
+                      </p>
+                    )}
+                    {orderData.customerPhoneNumber && (
+                      <p>{orderData.customerPhoneNumber}</p>
+                    )}
+                    {orderData.customerEmail && (
+                      <p>{orderData.customerEmail}</p>
+                    )}
+                    {orderData.customerTinNumber && (
+                      <p>TIN: {orderData.customerTinNumber}</p>
+                    )}
+                  </div>
+                </>
+              ) : (
+                /* Empty placeholder keeps the meta table right-aligned */
+                <div aria-hidden="true" />
+              )}
+            </div>
 
-            {/* Invoice Meta */}
+            {/* Right column — meta table, always right-aligned */}
             <div className="w-full lg:w-72">
               <table className="w-full text-sm">
                 <tbody>
@@ -333,7 +339,7 @@ const OrderReceipt = async ({
                   >
                     <td className="px-4 py-3 text-gray-900">
                       <span className="text-gray-400 mr-2">{index + 1}.</span>
-                      {item.name.split(" - ").pop()}
+                      {item.name}
                     </td>
                     <td className="px-4 py-3 text-gray-600 text-center">
                       {item.quantity}
@@ -352,7 +358,6 @@ const OrderReceipt = async ({
 
           {/* ── ITEMS CARDS — mobile ── */}
           <div className="lg:hidden px-4 mb-6 space-y-3">
-            {/* Mobile header */}
             <div
               className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider"
               style={{ backgroundColor: "#EB7F44" }}
@@ -370,11 +375,10 @@ const OrderReceipt = async ({
                   backgroundColor: index % 2 === 0 ? "#ffffff" : "#EAEAE520",
                 }}
               >
-                {/* Item name */}
                 <div className="flex justify-between items-start gap-3 mb-3">
                   <p className="text-sm font-medium text-gray-900 flex-1">
                     <span className="text-gray-400 mr-1">{index + 1}.</span>
-                    {item.name.split(" - ").pop()}
+                    {item.name}
                   </p>
                   <p
                     className="text-sm font-bold text-gray-900 whitespace-nowrap"
@@ -383,8 +387,6 @@ const OrderReceipt = async ({
                     {formatCurrency(item.totalPrice)}
                   </p>
                 </div>
-
-                {/* Qty + unit price */}
                 <div className="flex gap-4 text-xs text-gray-500">
                   <span>
                     <span className="font-medium text-gray-700">Qty:</span>{" "}
@@ -601,7 +603,6 @@ const OrderReceipt = async ({
             className="px-6 lg:px-10 pt-6 pb-4 flex flex-col lg:flex-row justify-between items-start gap-6"
             style={{ borderTop: "1px solid #EAEAE5" }}
           >
-            {/* Left: Notes / Terms — plain text */}
             <div className="flex-1">
               <p className="font-bold text-gray-800 text-sm mb-1">
                 Notes / Terms
@@ -649,16 +650,14 @@ const OrderReceipt = async ({
             </div>
           </div>
 
-          {/* ── FOOTER — centered ── */}
+          {/* ── FOOTER ── */}
           <div className="px-6 lg:px-10 pb-8 pt-4 text-center">
-            <div className="text-center flex-shrink-0">
-              <p className="text-sm font-semibold">
-                Thank you for your business and continued support
-              </p>
-              <p className="text-xs text-gray-400 mt-0.5">
-                Powered by Settlo Technologies
-              </p>
-            </div>
+            <p className="text-sm font-semibold">
+              Thank you for your business and continued support
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Powered by Settlo Technologies
+            </p>
           </div>
         </div>
 
