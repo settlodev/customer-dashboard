@@ -2,16 +2,20 @@ export interface PublicReservationPayload {
   reservationDate: string;
   reservationTime: string;
   peopleCount: number;
+  customerFirstName: string;
+  customerLastName: string;
+  customerEmail?: string;
+  customerPhone?: string;
   specialRequests?: string;
-  customer?: string;
-  answers?: { questionId: string; answerText: string }[];
+  tableAndSpace?: string;
+  answers?: { bookingQuestionId: string; answerValue: string }[];
 }
 
 export interface GuestInfo {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
+  customerFirstName: string;
+  customerLastName: string;
+  customerEmail: string;
+  customerPhone: string;
 }
 
-export type ReservationStep = "booking" | "details" | "confirmation";
+export type ReservationStep = "booking" | "details" | "extras" | "confirmation";
