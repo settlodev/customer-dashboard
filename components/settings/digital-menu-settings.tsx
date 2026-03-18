@@ -32,7 +32,6 @@ import {
   Truck,
   Clock,
   Shield,
-  Palette,
   UtensilsCrossed,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -1123,35 +1122,6 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
         min: 5,
         step: 5,
         placeholder: "15",
-      },
-    ],
-  },
-  {
-    id: "branding",
-    title: "Branding & SEO",
-    description: "Public-facing branding and search engine settings",
-    icon: Palette,
-    fields: [
-      {
-        key: "themeColor",
-        label: "Theme Color",
-        helperText: "Primary color for your menu (hex code)",
-        type: "text",
-        placeholder: "#EB7F44",
-      },
-      {
-        key: "metaTitle",
-        label: "SEO Title",
-        helperText: "Title shown in search engine results",
-        type: "text",
-        placeholder: "Your Business - Order Online",
-      },
-      {
-        key: "metaDescription",
-        label: "SEO Description",
-        helperText: "Description shown in search engine results",
-        type: "text",
-        placeholder: "Order online from...",
       },
     ],
   },

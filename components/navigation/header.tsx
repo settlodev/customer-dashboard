@@ -37,7 +37,7 @@ const Header = ({ session, onMenuClick, businessData }: HeaderProps) => {
               alt="Settlo"
               width={120}
               height={40}
-              className="h-10 w-auto object-contain"
+              className="h-10 w-auto object-contain dark:brightness-0 dark:invert"
             />
           </Link>
 

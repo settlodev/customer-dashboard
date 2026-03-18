@@ -12,18 +12,30 @@ export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
     const session = await auth();
-    const  currentBusiness = await getCurrentBusiness();
-    const  currentWarehouse = await getCurrentWarehouse();
-    const  currentLocation = await getCurrentLocation();
-    const  businessList = await getBusinessDropDown();
-    const  locationList = await fetchAllLocations();
+
+    let currentBusiness, currentLocation, businessList, locationList, currentWarehouse;
+    try {
+        [currentBusiness, currentLocation, businessList, locationList, currentWarehouse] =
+            await Promise.all([
+                getCurrentBusiness(),
+                getCurrentLocation(),
+                getBusinessDropDown(),
+                fetchAllLocations(),
+                getCurrentWarehouse(),
+            ]);
+    } catch (error: unknown) {
+        const message = (error && typeof error === "object" && "message" in error)
+            ? (error as { message: string }).message
+            : "Unknown error";
+        console.error("Error loading layout data:", message);
+    }
 
     const businessData = {
-        business: currentBusiness,
+        business: currentBusiness ?? null,
         businessList: businessList || [],
         locationList: locationList || [],
-        currentLocation: currentLocation,
-        warehouse: currentWarehouse,
+        currentLocation: currentLocation ?? null,
+        warehouse: currentWarehouse ?? null,
     }
 
     return (

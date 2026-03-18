@@ -58,7 +58,7 @@ export default function ReservationWidget({
   const [error, setError] = useState<string | null>(null);
 
   // --- form state ---
-  const [step, setStep] = useState<ReservationStep>("guests");
+  const [step, setStep] = useState<ReservationStep>("booking");
   const [partySize, setPartySize] = useState(2);
   const [selectedDate, setSelectedDate] = useState("");
   const [selectedSlot, setSelectedSlot] = useState<AvailableSlot | null>(null);
@@ -234,8 +234,7 @@ export default function ReservationWidget({
   }
 
   const steps: { key: ReservationStep; label: string }[] = [
-    { key: "guests", label: "Guests" },
-    { key: "datetime", label: "Date & Time" },
+    { key: "booking", label: "Booking" },
     { key: "details", label: "Details" },
     { key: "confirmation", label: "Confirmed" },
   ];
@@ -271,7 +270,7 @@ export default function ReservationWidget({
       {/* Progress */}
       {step !== "confirmation" && (
         <div className="flex items-center justify-center gap-1 mb-6">
-          {steps.slice(0, 3).map((s, i) => (
+          {steps.slice(0, 2).map((s, i) => (
             <React.Fragment key={s.key}>
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
@@ -288,7 +287,7 @@ export default function ReservationWidget({
                   i + 1
                 )}
               </div>
-              {i < 2 && (
+              {i < 1 && (
                 <div
                   className={`w-12 h-0.5 ${
                     i < currentStepIndex ? "bg-[#EB7F44]" : "bg-gray-200"
@@ -308,67 +307,8 @@ export default function ReservationWidget({
         </div>
       )}
 
-      {/* ========= STEP 1: PARTY SIZE ========= */}
-      {step === "guests" && (
-        <div className="space-y-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
-              <Users className="w-4 h-4 inline mr-1.5" />
-              Number of Guests
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {partySizeOptions.map((n) => (
-                <button
-                  key={n}
-                  onClick={() => setPartySize(n)}
-                  className={`w-11 h-11 rounded-full text-sm font-medium transition-colors ${
-                    partySize === n
-                      ? "bg-[#EB7F44] text-white"
-                      : "bg-white border border-gray-300 text-gray-700 hover:border-[#EB7F44]"
-                  }`}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
-            {showLargerPartyInput && partySize > 10 && (
-              <div className="mt-3">
-                <Input
-                  type="number"
-                  min={minParty}
-                  max={maxParty}
-                  value={partySize}
-                  onChange={(e) =>
-                    setPartySize(
-                      Math.max(minParty, Math.min(maxParty, Number(e.target.value))),
-                    )
-                  }
-                  className="w-24"
-                />
-              </div>
-            )}
-            {showLargerPartyInput && partySize <= 10 && (
-              <button
-                onClick={() => setPartySize(11)}
-                className="mt-2 text-sm text-[#EB7F44] hover:underline"
-              >
-                Larger party?
-              </button>
-            )}
-          </div>
-
-          <Button
-            onClick={() => setStep("datetime")}
-            className="w-full bg-[#EB7F44] hover:bg-[#d9703b] text-white"
-          >
-            Continue
-            <ChevronRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
-      )}
-
-      {/* ========= STEP 2: DATE & TIME ========= */}
-      {step === "datetime" && (
+      {/* ========= STEP 1: GUESTS, DATE & TIME ========= */}
+      {step === "booking" && (
         <div className="space-y-6">
           {/* Date picker */}
           <div>
@@ -389,6 +329,65 @@ export default function ReservationWidget({
               }}
               className="w-full"
             />
+          </div>
+
+          {/* Number of guests */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-3">
+              <Users className="w-4 h-4 inline mr-1.5" />
+              Number of Guests
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {partySizeOptions.map((n) => (
+                <button
+                  key={n}
+                  onClick={() => {
+                    setPartySize(n);
+                    if (selectedDate) {
+                      loadAvailability(selectedDate, n);
+                    }
+                  }}
+                  className={`w-11 h-11 rounded-full text-sm font-medium transition-colors ${
+                    partySize === n
+                      ? "bg-[#EB7F44] text-white"
+                      : "bg-white border border-gray-300 text-gray-700 hover:border-[#EB7F44]"
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            {showLargerPartyInput && partySize > 10 && (
+              <div className="mt-3">
+                <Input
+                  type="number"
+                  min={minParty}
+                  max={maxParty}
+                  value={partySize}
+                  onChange={(e) => {
+                    const size = Math.max(minParty, Math.min(maxParty, Number(e.target.value)));
+                    setPartySize(size);
+                    if (selectedDate) {
+                      loadAvailability(selectedDate, size);
+                    }
+                  }}
+                  className="w-24"
+                />
+              </div>
+            )}
+            {showLargerPartyInput && partySize <= 10 && (
+              <button
+                onClick={() => {
+                  setPartySize(11);
+                  if (selectedDate) {
+                    loadAvailability(selectedDate, 11);
+                  }
+                }}
+                className="mt-2 text-sm text-[#EB7F44] hover:underline"
+              >
+                Larger party?
+              </button>
+            )}
           </div>
 
           {/* Time slots */}
@@ -458,28 +457,18 @@ export default function ReservationWidget({
             </div>
           )}
 
-          {/* Navigation */}
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={() => setStep("guests")}
-              className="flex-1"
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Back
-            </Button>
-            <Button
-              onClick={() => {
-                setError(null);
-                setStep("details");
-              }}
-              disabled={!selectedSlot}
-              className="flex-1 bg-[#EB7F44] hover:bg-[#d9703b] text-white"
-            >
-              Continue
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          </div>
+          {/* Continue button */}
+          <Button
+            onClick={() => {
+              setError(null);
+              setStep("details");
+            }}
+            disabled={!selectedSlot}
+            className="w-full bg-[#EB7F44] hover:bg-[#d9703b] text-white"
+          >
+            Continue
+            <ChevronRight className="w-4 h-4 ml-1" />
+          </Button>
         </div>
       )}
 
@@ -639,7 +628,7 @@ export default function ReservationWidget({
           <div className="flex gap-3">
             <Button
               variant="outline"
-              onClick={() => setStep("datetime")}
+              onClick={() => setStep("booking")}
               className="flex-1"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
@@ -706,7 +695,7 @@ export default function ReservationWidget({
 
           <Button
             onClick={() => {
-              setStep("guests");
+              setStep("booking");
               setSelectedDate("");
               setSelectedSlot(null);
               setGuestInfo({ firstName: "", lastName: "", email: "", phone: "" });

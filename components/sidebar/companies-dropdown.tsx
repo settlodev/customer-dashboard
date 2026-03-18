@@ -280,7 +280,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full px-2 hover:bg-gray-700/50"
+            className="w-full px-2 hover:bg-gray-100 dark:hover:bg-gray-800"
             disabled={loadingLocationId !== null}
           >
             <div className="flex items-center gap-3 w-full">

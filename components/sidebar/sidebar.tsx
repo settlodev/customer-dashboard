@@ -6,12 +6,12 @@ import { BusinessPropsType } from "@/types/business/business-props-type";
 import { menuItems} from "@/types/menu_items";
 import Link from "next/link";
 import {
-    UsersIcon,
-    Contact as ContactIcon,
-    BarChart3 as ChartNoAxesColumn,
-    Package2,
-    Info,
-    ReceiptText,
+    UserCog,
+    Users,
+    LayoutDashboard,
+    Boxes,
+    ShoppingBag,
+    Sliders,
     Settings,
     ChevronDown,
     X,
@@ -19,6 +19,7 @@ import {
     AlertTriangle,
     Warehouse
 } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -47,7 +48,8 @@ interface MenuItem {
 }
 
 const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: SidebarProps) => {
-    const [visibleIndex, setVisibleIndex] = useState<number>(0);
+    const pathname = usePathname();
+    const [visibleIndex, setVisibleIndex] = useState<number>(-1);
     const [subscription, setSubscription] = useState<ActiveSubscription | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [, setError] = useState<string | null>(null);
@@ -105,17 +107,45 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
         isCurrentItem: false
     });
 
+    // Auto-expand the section that contains the current page (only on navigation)
+    const prevPathRef = React.useRef(pathname);
+    useEffect(() => {
+        if (prevPathRef.current === pathname) return;
+        prevPathRef.current = pathname;
+        const activeIndex = myMenuItems.findIndex((section) =>
+            section.items.some(
+                (item: MenuItem) => pathname === item.link || pathname.startsWith(item.link + "/")
+            )
+        );
+        if (activeIndex !== -1) {
+            setVisibleIndex(activeIndex);
+        }
+    }, [pathname, myMenuItems]);
+
+    // Set initial open section on first load
+    useEffect(() => {
+        const activeIndex = myMenuItems.findIndex((section) =>
+            section.items.some(
+                (item: MenuItem) => pathname === item.link || pathname.startsWith(item.link + "/")
+            )
+        );
+        if (activeIndex !== -1) {
+            setVisibleIndex(activeIndex);
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     const getIcon = (iconName: string) => {
         const size = 20;
         const color = '#EB7F44';
         const icons = {
-            dashboard: <ChartNoAxesColumn size={size} color={color} />,
-            inventory: <Package2 size={size} color={color} />,
+            dashboard: <LayoutDashboard size={size} color={color} />,
+            inventory: <Boxes size={size} color={color} />,
             stock: <Warehouse size={size} color={color} />,
-            sales: <ReceiptText size={size} color={color} />,
-            customers: <ContactIcon size={size} color={color} />,
-            users: <UsersIcon size={size} color={color} />,
-            general: <Info size={size} color={color} />,
+            sales: <ShoppingBag size={size} color={color} />,
+            customers: <Users size={size} color={color} />,
+            users: <UserCog size={size} color={color} />,
+            general: <Sliders size={size} color={color} />,
         };
 
         return icons[iconName as keyof typeof icons] || <Info size={size} color={color} />;
@@ -130,7 +160,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
 
     return (
         <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between border-b border-gray-700 p-4">
+            <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 px-2 py-2">
                 <div className="flex items-center flex-1 min-w-0">
                     <BusinessSwitcher
                         currentBusiness={business}
@@ -142,7 +172,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                         variant="ghost"
                         size="icon"
                         onClick={onClose}
-                        className="lg:hidden text-gray-400 hover:text-gray-100"
+                        className="lg:hidden text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
                         aria-label="Close sidebar"
                     >
                         <X className="h-5 w-5" />
@@ -161,7 +191,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                     <div className="p-4">
                         <div className="text-center mb-6">
                             <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-3" />
-                            <h3 className="text-lg font-semibold text-white mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
                                 Subscription Required
                             </h3>
                             <p className="text-sm text-gray-400 mb-4">
@@ -187,15 +217,20 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                     </div>
                 ) : (
                     // Show full navigation when subscription is active
-                    <nav className="flex-1 space-y-1 px-2 py-4">
-                        {myMenuItems.map((section, sectionIndex) => (
-                            <div key={sectionIndex} className="py-2">
+                    <nav className="flex-1 space-y-1 px-3 py-4">
+                        {myMenuItems.map((section, sectionIndex) => {
+                            const sectionHasActive = section.items.some(
+                                (item: MenuItem) => pathname === item.link || pathname.startsWith(item.link + "/")
+                            );
+                            return (
+                            <div key={sectionIndex} className="py-1">
                                 <button
                                     onClick={() => setVisibleIndex(visibleIndex === sectionIndex ? -1 : sectionIndex)}
                                     className={cn(
                                         "flex w-full items-center justify-between rounded-lg p-2",
-                                        "text-gray-100 hover:bg-gray-700",
-                                        "transition-colors duration-200"
+                                        "text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800",
+                                        "transition-colors duration-200",
+                                        sectionHasActive && "border-l-2 border-primary rounded-l-none text-gray-900 dark:text-white font-semibold"
                                     )}
                                 >
                                     <div className="flex items-center">
@@ -207,14 +242,14 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                     </div>
                                     <ChevronDown
                                         className={cn(
-                                            "h-4 w-4 transition-transform duration-200",
+                                            "h-4 w-4 text-gray-400 transition-transform duration-200",
                                             visibleIndex === sectionIndex && "rotate-180"
                                         )}
                                     />
                                 </button>
 
                                 {visibleIndex === sectionIndex && (
-                                    <div className="mt-2 space-y-1">
+                                    <div className="mt-1 space-y-0.5">
                                         {section.items.length === 0 ? (
                                             <div className="px-2 py-1.5 pl-10">
                                                 <p className="text-xs text-gray-500">
@@ -222,36 +257,42 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                                 </p>
                                                 <Link
                                                     href="/renew-subscription"
-                                                    className="text-blue-400 hover:text-blue-300 text-xs underline"
+                                                    className="text-primary hover:text-primary/80 text-xs underline"
                                                 >
                                                     Upgrade to unlock
                                                 </Link>
                                             </div>
                                         ) : (
-                                            section.items.map((item: MenuItem, _index: React.Key | null | undefined) => (
+                                            section.items.map((item: MenuItem, _index: React.Key | null | undefined) => {
+                                                const isActive = pathname === item.link || pathname.startsWith(item.link + "/");
+                                                return (
                                                 <Link
                                                     key={item.title}
                                                     href={item.link}
                                                     onClick={isMobile ? onClose : undefined}
                                                     className={cn(
                                                         "block w-full rounded-lg px-2 py-1.5 pl-10",
-                                                        "text-sm text-gray-200 hover:bg-gray-700",
-                                                        "transition-colors duration-200"
+                                                        "text-sm transition-colors duration-200",
+                                                        isActive
+                                                            ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
+                                                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
                                                     )}
                                                 >
                                                     {item.title}
                                                 </Link>
-                                            ))
+                                                );
+                                            })
                                         )}
                                     </div>
                                 )}
                             </div>
-                        ))}
+                            );
+                        })}
                     </nav>
                 )}
             </div>
 
-            <div className="border-t border-gray-700 p-4">
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4">
             {menuTypeLabel === 'Location' && (
     <>
         <Link
@@ -259,8 +300,10 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             onClick={isMobile ? onClose : undefined}
             className={cn(
                 "flex items-center rounded-lg px-2 py-1.5",
-                "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
-                "transition-colors duration-200"
+                "text-sm transition-colors duration-200",
+                pathname === "/renew-subscription"
+                    ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
+                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200"
             )}
         >
             <CreditCard className="mr-2 h-4 w-4"/>
@@ -275,8 +318,10 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             onClick={isMobile ? onClose : undefined}
             className={cn(
                 "flex items-center rounded-lg px-2 py-1.5",
-                "text-sm text-gray-400 hover:bg-gray-700 hover:text-gray-200",
-                "transition-colors duration-200"
+                "text-sm transition-colors duration-200",
+                pathname === "/settings" || pathname.startsWith("/settings/")
+                    ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
+                    : "text-gray-500 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200"
             )}
         >
             <Settings className="mr-2 h-4 w-4"/>
@@ -302,7 +347,7 @@ export const MobileSidebar = ({ data, menuType = 'normal', isOpen, onOpenChange 
 }) => {
     return (
         <Sheet open={isOpen} onOpenChange={onOpenChange}>
-            <SheetContent side="left" className="w-64 p-0 bg-gray-800">
+            <SheetContent side="left" className="w-64 p-0 bg-gray-50 dark:bg-gray-900">
                 <SidebarContent
                     data={data}
                     isMobile={true}
@@ -316,7 +361,7 @@ export const MobileSidebar = ({ data, menuType = 'normal', isOpen, onOpenChange 
 
 export const SidebarWrapper = ({ data, menuType = 'normal' }: { data: BusinessPropsType, menuType?: MenuType }) => {
     return (
-        <aside className="hidden lg:flex lg:flex-col mt-2 mb-3 ml-3 mr-3 h-[calc(100vh-20px)] w-[22rem] flex-shrink-0 bg-gray-800 rounded-2xl shadow-xl">
+        <aside className="hidden lg:flex lg:flex-col mt-2 mb-3 ml-3 mr-3 h-[calc(100vh-20px)] w-[18rem] flex-shrink-0 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">
             <SidebarContent data={data} menuType={menuType} />
         </aside>
     );

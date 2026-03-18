@@ -56,8 +56,8 @@ export const SpaceSchema = object({
   needsCleaning: boolean().default(false),
   description: string().optional(),
   sortOrder: optionalNonNegativeNumber,
-  parent: string().uuid("Please select a valid parent space").optional(),
-  floorPlan: string().uuid("Please select a valid floor plan").optional(),
+  parentSpaceId: string().uuid("Please select a valid parent space").optional(),
+  floorPlanId: string().uuid("Please select a valid floor plan").optional(),
   status: boolean().optional(),
 }).refine(
   (data) => {

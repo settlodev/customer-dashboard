@@ -9,12 +9,48 @@ import { UUID } from "node:crypto";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { getCurrentLocation } from "./business/get-current-business";
-import { Space, FloorPlan, TableCombination } from "@/types/space/type";
+import {
+  Space,
+  SpaceDTO,
+  FloorPlan,
+  TableCombination,
+} from "@/types/space/type";
 import {
   SpaceSchema,
   FloorPlanSchema,
   TableCombinationSchema,
 } from "@/types/space/schema";
+
+// ─── Helpers ────────────────────────────────────────────────────────
+
+function buildSpacePayload(
+  d: z.infer<typeof SpaceSchema>,
+  locationId: UUID,
+): SpaceDTO {
+  return {
+    name: d.name,
+    code: d.code ?? "",
+    capacity: d.capacity,
+    minCapacity: d.minCapacity ?? null,
+    type: d.type,
+    tableStatus: d.tableStatus ?? null,
+    active: d.active,
+    reservable: d.reservable,
+    turnTimeMinutes: d.turnTimeMinutes ?? null,
+    posX: d.posX ?? null,
+    posY: d.posY ?? null,
+    color: d.color ?? "",
+    needsCleaning: d.needsCleaning,
+    description: d.description ?? null,
+    sortOrder: d.sortOrder ?? null,
+    parentSpaceId: d.parentSpaceId ?? null,
+    floorPlanId: d.floorPlanId ?? null,
+    status: d.status ?? true,
+    canDelete: true,
+    isArchived: false,
+    location: locationId,
+  };
+}
 
 // ─── Tables & Spaces ─────────────────────────────────────────────────
 
@@ -67,6 +103,7 @@ export const searchSpaces = async (
       `/api/tables-and-spaces/${location?.id}`,
       query,
     );
+
     return parseStringify(spaceData);
   } catch (error) {
     throw error;
@@ -89,10 +126,7 @@ export const createSpace = async (
   const location = await getCurrentLocation();
   await getAuthenticatedUser();
 
-  const payload = {
-    ...validSpaceData.data,
-    location: location?.id,
-  };
+  const payload = buildSpacePayload(validSpaceData.data, location!.id);
 
   try {
     const apiClient = new ApiClient();
@@ -135,6 +169,8 @@ export const getSpace = async (id: UUID): Promise<ApiResponse<Space>> => {
     `/api/tables-and-spaces/${location?.id}`,
     query,
   );
+
+  console.log("Space data", parseStringify(spaceResponse));
   return parseStringify(spaceResponse);
 };
 
@@ -153,10 +189,7 @@ export const updateSpace = async (
 
   const location = await getCurrentLocation();
 
-  const payload = {
-    ...validSpaceData.data,
-    location: location?.id,
-  };
+  const payload = buildSpacePayload(validSpaceData.data, location!.id);
 
   try {
     const apiClient = new ApiClient();

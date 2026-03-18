@@ -89,8 +89,8 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
           needsCleaning: item.needsCleaning,
           description: item.description ?? undefined,
           sortOrder: item.sortOrder ?? undefined,
-          parent: item.parentSpaceId ?? undefined,
-          floorPlan: item.floorPlanId ?? undefined,
+          parentSpaceId: item.parentSpaceId ?? undefined,
+          floorPlanId: item.floorPlanId ?? undefined,
           status: item.status,
         }
       : {
@@ -341,7 +341,7 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <FormField
               control={form.control}
-              name="parent"
+              name="parentSpaceId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Parent Space</FormLabel>
@@ -376,7 +376,7 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
 
             <FormField
               control={form.control}
-              name="floorPlan"
+              name="floorPlanId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Floor Plan</FormLabel>
