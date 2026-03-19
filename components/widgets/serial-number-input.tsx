@@ -136,16 +136,21 @@ export function UniqueIdentifierInput({
           return next;
         });
 
-        // ── Advance to next empty slot ──────────────────────────────
-        // Search from index 0 in the updated array (using the just-written
-        // serialsRef so we have the latest values without waiting for a
-        // re-render).
+        // Advance to next empty slot — always sequential (index > current first,
+        // then wrap to any earlier empty if needed).
         const updatedSerials = [...serialsRef.current];
         updatedSerials[currentActiveIndex] = scanned;
 
-        const nextEmpty = updatedSerials.findIndex(
-          (s, i) => i !== currentActiveIndex && s.trim() === "",
+        // Search AFTER the current index first to maintain order
+        let nextEmpty = updatedSerials.findIndex(
+          (s, i) => i > currentActiveIndex && s.trim() === "",
         );
+        // Nothing after — wrap around to any empty slot before it
+        if (nextEmpty === -1) {
+          nextEmpty = updatedSerials.findIndex(
+            (s, i) => i < currentActiveIndex && s.trim() === "",
+          );
+        }
 
         const nextIdx = nextEmpty !== -1 ? nextEmpty : null;
         setActiveIndex(nextIdx);
