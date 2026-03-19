@@ -11,6 +11,7 @@ import { getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
 import {
+  StockIntakePayload,
   StockIntakeSchema,
   UpdatedStockIntakeSchema,
 } from "@/types/stock-intake/schema";
@@ -73,44 +74,27 @@ export const searchStockIntakes = async (
 };
 
 export const createStockIntake = async (
-  stockIntake: z.infer<typeof StockIntakeSchema>,
-  identifiers: string[] = [],
+  stockIntake: StockIntakePayload,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
   const validData = StockIntakeSchema.safeParse(stockIntake);
 
   if (!validData.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validData.error.message),
-    };
-    return parseStringify(formResponse);
+    });
   }
 
-  const {
-    stockVariant,
-    quantity,
-    value,
-    batchExpiryDate,
-    deliveryDate,
-    orderDate,
-    staff,
-    supplier,
-    createDirectStockIntakeReceipt,
-  } = validData.data;
+  const location = await getCurrentLocation();
+  const { supplier, staff, deliveryDate, items } = validData.data;
 
   const payload: Record<string, unknown> = {
-    quantity,
-    value,
-    deliveryDate,
-    orderDate,
-    stockVariant,
     staff,
-    identifiers,
-    createDirectStockIntakeReceipt,
-    ...(batchExpiryDate ? { batchExpiryDate } : {}),
+    deliveryDate,
+    items,
     ...(supplier ? { supplier } : {}),
   };
 
@@ -119,17 +103,15 @@ export const createStockIntake = async (
   try {
     const apiClient = new ApiClient();
     const response = await apiClient.post(
-      `/api/stock-intakes/${stockVariant}/create`,
+      `/api/location/${location?.id}/direct-stock-intake-receipts`,
       payload,
     );
-    console.log("The list of Stock Intakes in this location: ", response);
     formResponse = {
       responseType: "success",
       message: "Stock Intake recorded successfully",
       data: response,
     };
   } catch (error) {
-    console.log("API Error payload:", error);
     formResponse = {
       responseType: "error",
       message:

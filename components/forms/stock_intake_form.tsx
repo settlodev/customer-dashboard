@@ -51,6 +51,7 @@ import { NumericFormat } from "react-number-format";
 import { UniqueIdentifierInput } from "../widgets/serial-number-input";
 import { Button } from "@/components/ui/button";
 import { LpoPrefill } from "@/components/forms/stock-intake/lpo-form";
+import { StockIntakePayload } from "@/types/stock-intake/schema";
 
 const StockLineItemSchema = object({
   stockVariant: string({ message: "Please select a stock item" }).uuid(),
@@ -71,7 +72,6 @@ const StockLineItemSchema = object({
   orderDate: string({ required_error: "Order date is required" }),
   batchExpiryDate: string().optional(),
   status: boolean().optional(),
-  createDirectStockIntakeReceipt: boolean().default(true),
 });
 
 const FormSchema = object({
@@ -138,7 +138,6 @@ function StockIntakeForm({
     defaultLineState(),
   ]);
 
-  const [, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -306,7 +305,6 @@ function StockIntakeForm({
         updateStockIntake(item.id, {
           value: values.stockIntakes[0].value,
         }).then((data) => {
-          if (data) setResponse(data);
           if (data?.responseType === "success") {
             toast({ title: "Success", description: data.message });
             router.push("/stock-intakes");
@@ -315,44 +313,43 @@ function StockIntakeForm({
         return;
       }
 
-      const shared = {
+      const payload: StockIntakePayload = {
         staff: values.staff,
         supplier: values.supplier,
         deliveryDate: values.deliveryDate,
+        items: values.stockIntakes.map((lineItem, index) => {
+          const state = ls(index);
+          const identifiers = state.hasUniqueIdentifiers
+            ? state.serialNumbers.filter((s) => s.trim() !== "")
+            : [];
+          return {
+            stockVariantId: lineItem.stockVariant,
+            quantity: lineItem.quantity,
+            value: lineItem.value,
+            orderDate: lineItem.orderDate,
+            ...(lineItem.batchExpiryDate
+              ? { batchExpiryDate: lineItem.batchExpiryDate }
+              : {}),
+            ...(identifiers.length ? { identifiers } : {}),
+          };
+        }),
       };
 
-      const promises = values.stockIntakes.map((lineItem, index) => {
-        const state = ls(index);
-        const identifiers = state.hasUniqueIdentifiers
-          ? state.serialNumbers.filter((s) => s.trim() !== "")
-          : [];
-        return createStockIntake(
-          { ...shared, ...lineItem, createDirectStockIntakeReceipt: true },
-          identifiers,
-        );
-      });
-
-      Promise.all(promises)
-        .then((results) => {
-          const failed = results.filter((r) => r?.responseType !== "success");
-          if (failed.length === 0) {
+      console.log("payload to be submitted is", payload);
+      createStockIntake(payload)
+        .then((result) => {
+          if (result?.responseType === "success") {
             toast({
               title: "Success",
-              description: `${results.length} stock intake(s) recorded.${goodReceiveNote ? " GRN generated." : ""}`,
+              description: `${values.stockIntakes.length} stock intake(s) recorded.`,
             });
-
-            console.log("The result is ", results);
-            // Get the id from the first successful result's data
-            const firstResult = results[0];
-            const receiptId = firstResult?.data?.id;
-
-            if (receiptId) {
-              router.push(`/goods-received/${receiptId}`);
-            } else {
-              router.push("/stock-intakes"); // fallback if no id returned
-            }
+            console.log("The results is", result);
+            const receiptId = result?.data?.id;
+            router.push(
+              receiptId ? `/goods-received/${receiptId}` : "/stock-intakes",
+            );
           } else {
-            setError(`${failed.length} intake(s) failed to save.`);
+            setError("Failed to save stock intake.");
           }
         })
         .catch(() => setError("An unexpected error occurred."));
