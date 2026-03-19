@@ -51,7 +51,10 @@ export function UniqueIdentifierInput({
   const disabledRef   = useRef<boolean>(disabled);
   // Guard: true while we are in the middle of committing a scan so a second
   // Enter from the same physical trigger cannot sneak through.
-  const committingRef = useRef(false);
+  const committingRef   = useRef(false);
+  // Auto-commit timeout: if Enter never arrives, flush the buffer after
+  // 500ms of silence. Some scanners omit Enter or send it unreliably.
+  const scanTimeoutRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => { serialsRef.current   = serials;     }, [serials]);
   useEffect(() => { activeIdxRef.current = activeIndex; }, [activeIndex]);
@@ -83,6 +86,11 @@ export function UniqueIdentifierInput({
       lastKeyTimeRef.current = now;
 
       if (e.key === "Enter") {
+        // Clear auto-commit timeout — Enter arrived normally
+        if (scanTimeoutRef.current) {
+          clearTimeout(scanTimeoutRef.current);
+          scanTimeoutRef.current = null;
+        }
         const scanned = scanBufferRef.current.trim();
         scanBufferRef.current = "";
         setScanBuffer("");
@@ -167,21 +175,41 @@ export function UniqueIdentifierInput({
       }
 
       // ── Accumulate scanner characters ────────────────────────────
-      // USB scanners send characters < 50–80 ms apart.
-      if (
-        e.key.length === 1 &&
-        (timeDiff < 80 || scanBufferRef.current.length > 0)
-      ) {
-        // Prevent the character from landing in the focused text input
-        // while in USB mode (we manage the value ourselves)
-        e.preventDefault();
-        scanBufferRef.current += e.key;
-        setScanBuffer(scanBufferRef.current);
+      // USB barcode scanners send characters very fast (< 50ms apart) but
+      // the very first character of a scan can arrive up to ~150ms after
+      // the previous Enter, making timeDiff large for that first char.
+      // Strategy: once the buffer has ANY content we keep accumulating
+      // regardless of timing. We only use timing to detect the START of
+      // a new scan (first character arriving after a quiet period).
+      // This prevents slow scanners from splitting a barcode across fields.
+      if (e.key.length === 1) {
+        const bufferHasContent = scanBufferRef.current.length > 0;
+        // Accept first char if within 200ms (generous for slow scanners),
+        // or always accept if buffer is already building.
+        if (bufferHasContent || timeDiff < 200) {
+          // Prevent the character from landing in the focused text input
+          e.preventDefault();
+          scanBufferRef.current += e.key;
+          setScanBuffer(scanBufferRef.current);
+
+          // Reset the auto-commit timeout on every new character
+          if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+          scanTimeoutRef.current = setTimeout(() => {
+            // Simulate an Enter if the buffer has content and no Enter came
+            const buffered = scanBufferRef.current.trim();
+            if (buffered && activeIdxRef.current !== null) {
+              window.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+            }
+          }, 500);
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      if (scanTimeoutRef.current) clearTimeout(scanTimeoutRef.current);
+    };
   // Intentionally empty — all state is read through refs.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
