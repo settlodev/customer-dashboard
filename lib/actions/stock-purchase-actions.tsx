@@ -74,6 +74,7 @@ export const previewPurchaseOrder = async (identifier: string | UUID) => {
       `/api/stock-intake-purchase-order/public/lookup?orderNumber=${identifier}`,
     );
 
+    console.log("The previewed purchase order is", purchaseOrder);
     return parseStringify(purchaseOrder);
   } catch (error) {
     throw error;

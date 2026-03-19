@@ -75,7 +75,6 @@ export const searchStockIntakes = async (
 export const createStockIntake = async (
   stockIntake: z.infer<typeof StockIntakeSchema>,
   identifiers: string[] = [],
-  goodReceiveNote: boolean,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
@@ -99,6 +98,7 @@ export const createStockIntake = async (
     orderDate,
     staff,
     supplier,
+    createDirectStockIntakeReceipt,
   } = validData.data;
 
   const payload: Record<string, unknown> = {
@@ -109,7 +109,7 @@ export const createStockIntake = async (
     stockVariant,
     staff,
     identifiers,
-    goodReceiveNote,
+    createDirectStockIntakeReceipt,
     ...(batchExpiryDate ? { batchExpiryDate } : {}),
     ...(supplier ? { supplier } : {}),
   };
@@ -118,12 +118,18 @@ export const createStockIntake = async (
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(`/api/stock-intakes/${stockVariant}/create`, payload);
+    const response = await apiClient.post(
+      `/api/stock-intakes/${stockVariant}/create`,
+      payload,
+    );
+    console.log("The list of Stock Intakes in this location: ", response);
     formResponse = {
       responseType: "success",
       message: "Stock Intake recorded successfully",
+      data: response,
     };
   } catch (error) {
+    console.log("API Error payload:", error);
     formResponse = {
       responseType: "error",
       message:

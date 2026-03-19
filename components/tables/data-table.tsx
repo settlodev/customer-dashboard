@@ -58,9 +58,9 @@ import { usePaginationState } from "@/hooks/usePaginationState";
 import TableExport from "../widgets/export";
 import StockExport from "../widgets/export-stock";
 import StockIntakeExport from "../widgets/export-intake";
-import { CSVStockIntakeDialog } from "../csv/stockIntakeImport";
 import { BulkArchive } from "../widgets/bulk-archive";
 import { WarehouseBulkArchive } from "../widgets/warehouse/bulk-archive";
+import { CSVStockIntakeDialog } from "@/components/csv/stockIntakeImport";
 
 // Define page-specific component mappings
 const pageSpecificComponents = {
@@ -87,7 +87,7 @@ const pageSpecificComponents = {
   },
   "/stock-intakes": {
     entityType: "stock-intake" as const,
-    importComponent: <CSVStockIntakeDialog />,
+    importComponent: "",
     exportComponent: <StockIntakeExport filename="Stock Intake" />,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
     allowArchive: true,

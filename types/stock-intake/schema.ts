@@ -34,6 +34,7 @@ export const StockIntakeSchema = object({
   staff: string({ message: "Please select a staff" }).uuid(),
   purchasePaidAmount: number().optional(),
   identifiers: array(string()).optional(),
+  createDirectStockIntakeReceipt: boolean().default(true),
 });
 
 export const MultiStockIntakeSchema = object({

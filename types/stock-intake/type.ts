@@ -21,5 +21,6 @@ export declare interface StockIntake {
   staffName: string;
   stock: UUID;
   purchasePaidAmount: number;
+  createDirectStockIntakeReceipt: boolean;
   identifiers: string[];
 }

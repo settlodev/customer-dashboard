@@ -19,7 +19,7 @@ import { StockPurchase } from "@/types/stock-purchases/type";
 import { Loader2 } from "lucide-react";
 
 const breadCrumbItems = [
-  { title: "Stock Purchases", link: "/stock-purchases" },
+  { title: "Local purchase orders", link: "/stock-purchases" },
 ];
 
 type Params = {
