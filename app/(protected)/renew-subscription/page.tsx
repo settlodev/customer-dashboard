@@ -1,9 +1,8 @@
 "use client";
+
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Receipt, Loader2, DollarSign, CreditCard } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   Form,
@@ -30,7 +29,6 @@ import {
   useInvoiceCalculations,
 } from "@/hooks/useInvoiceCalculation";
 import { useDiscountValidation } from "@/hooks/useDiscountValidation";
-
 import SubscriptionPlanCard from "@/components/subscription/subscriptionPlanCard";
 import AdditionalServiceCard from "@/components/subscription/additionalServiceCard";
 import InvoiceItemCard from "@/components/subscription/invoiceItemCard";
@@ -40,6 +38,18 @@ import { UUID } from "crypto";
 import { SubscriptionAddons } from "@/types/subscription/type";
 import BillingHistoryTable from "@/components/subscription/billingTable";
 import { useSearchParams } from "next/navigation";
+import {
+  CreditCard,
+  Receipt,
+  Loader2,
+  DollarSign,
+  Layers,
+  Puzzle,
+  Sparkles,
+  BadgeCheck,
+  ShieldCheck,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type InvoiceFormData = z.infer<typeof InvoiceSchema>;
 
@@ -62,6 +72,7 @@ const InvoiceSubscriptionPage = () => {
     subscriptionData,
     isLoading: subscriptionLoading,
   } = useSubscriptionData(locationId);
+
   const {
     isValidatingDiscount,
     discountValid,
@@ -88,7 +99,6 @@ const InvoiceSubscriptionPage = () => {
 
   const { toast } = useToast();
 
-  // Form setup
   const form = useForm<InvoiceFormData>({
     resolver: zodResolver(InvoiceSchema),
     defaultValues: {
@@ -99,81 +109,68 @@ const InvoiceSubscriptionPage = () => {
     },
   });
 
+  // ── Fetch addons ────────────────────────────────────────────────────────────
   useEffect(() => {
-    async function fetchSubscriptionAddon() {
-      const q = "";
-      const page = 1;
-      const pageLimit = 100;
-
-      try {
-        const data = await getSubscriptionAddons(q, page, pageLimit);
-        setAddons(data.content);
-      } catch (error) {
-        console.error("Failed to fetch subscription addons", error);
+    getSubscriptionAddons("", 1, 100)
+      .then((data) => setAddons(data.content))
+      .catch(() =>
         toast({
           variant: "destructive",
-          title: "Failed to load ",
-          description: "Please try refreshing the page",
-        });
-      }
-    }
-    fetchSubscriptionAddon();
+          title: "Failed to load addons",
+          description: "Please refresh",
+        }),
+      );
   }, []);
 
-  // Auto-add current subscription on load
+  // ── Auto-add current subscription ──────────────────────────────────────────
   useEffect(() => {
     if (activeSubscription?.subscription && subscriptionData.length > 0) {
       const currentPlan = subscriptionData.find(
-        (plan) => plan.id === activeSubscription.subscription.id,
+        (p) => p.id === activeSubscription.subscription.id,
       );
       if (currentPlan) {
         setSelectedPlanId(currentPlan.id);
-        const renewalItem: InvoiceItem = {
-          id: Date.now(),
-          type: "subscription",
-          itemId: currentPlan.id,
-          name: currentPlan.packageName,
-          unitPrice: currentPlan.amount,
-          months: 12,
-          totalPrice: currentPlan.amount * 12,
-          isRenewal: true,
-          actionType: "renew",
-        };
-        setInvoiceItems([renewalItem]);
+        setInvoiceItems([
+          {
+            id: Date.now(),
+            type: "subscription",
+            itemId: currentPlan.id,
+            name: currentPlan.packageName,
+            unitPrice: currentPlan.amount,
+            months: 12,
+            totalPrice: currentPlan.amount * 12,
+            isRenewal: true,
+            actionType: "renew",
+          },
+        ]);
       }
     }
   }, [activeSubscription, subscriptionData]);
 
-  // Watch discount code changes
+  // ── Discount code watcher ───────────────────────────────────────────────────
   const discountCode = useWatch({
     control: form.control,
     name: "discountCode",
   });
-
   useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      validateDiscount(discountCode || "");
-    }, 500);
-
-    return () => clearTimeout(timeoutId);
+    const t = setTimeout(() => validateDiscount(discountCode || ""), 500);
+    return () => clearTimeout(t);
   }, [discountCode, validateDiscount]);
 
   useEffect(() => {
-    if (validatedDiscountCode && discountValid) {
+    if (validatedDiscountCode && discountValid)
       setDiscount(validatedDiscountCode.discountValue);
-    } else {
-      setDiscount(0);
-    }
+    else setDiscount(0);
   }, [validatedDiscountCode, discountValid]);
 
+  // ── Handlers (unchanged logic) ──────────────────────────────────────────────
   const getActionType = useCallback(
     (plan: any): "upgrade" | "downgrade" | "renew" | "switch" | "subscribe" => {
       if (!activeSubscription?.subscription) return "subscribe";
-
-      const currentPlan = activeSubscription.subscription;
-      if (plan.id === currentPlan.id) return "renew";
-      if (plan.amount > currentPlan.amount) return "upgrade";
-      if (plan.amount < currentPlan.amount) return "downgrade";
+      const cur = activeSubscription.subscription;
+      if (plan.id === cur.id) return "renew";
+      if (plan.amount > cur.amount) return "upgrade";
+      if (plan.amount < cur.amount) return "downgrade";
       return "switch";
     },
     [activeSubscription],
@@ -183,118 +180,85 @@ const InvoiceSubscriptionPage = () => {
     (plan: any) => {
       const actionType = getActionType(plan);
       const isDiamond = plan.packageName?.toLowerCase().includes("diamond");
-
-      // Remove existing subscription items
-      let nonSubscriptionItems = invoiceItems.filter(
-        (item) => item.type !== "subscription",
-      );
-
-      // If selecting Diamond package, also remove all addon items
+      let nonSub = invoiceItems.filter((i) => i.type !== "subscription");
       if (isDiamond) {
-        nonSubscriptionItems = nonSubscriptionItems.filter(
-          (item) => item.type !== "service",
-        );
-
-        // Show toast if addons were removed
-        const removedAddons = invoiceItems.filter(
-          (item) => item.type === "service",
-        );
-        if (removedAddons.length > 0) {
+        const removedAddons = nonSub.filter((i) => i.type === "service");
+        nonSub = nonSub.filter((i) => i.type !== "service");
+        if (removedAddons.length > 0)
           toast({
             title: "Addons Removed",
-            description:
-              "Addons have been removed as they cannot be used with Diamond packages.",
-            variant: "default",
+            description: "Diamond plans don't support addons.",
           });
-        }
       }
-
-      const subscriptionItem: InvoiceItem = {
-        id: Date.now(),
-        type: "subscription",
-        itemId: plan.id,
-        name: plan.packageName,
-        unitPrice: plan.amount,
-        months: 12,
-        totalPrice: plan.amount * 12,
-        actionType: actionType,
-        isRenewal: actionType === "renew",
-      };
-
       setSelectedPlanId(plan.id);
-      setInvoiceItems([...nonSubscriptionItems, subscriptionItem]);
+      setInvoiceItems([
+        ...nonSub,
+        {
+          id: Date.now(),
+          type: "subscription",
+          itemId: plan.id,
+          name: plan.packageName,
+          unitPrice: plan.amount,
+          months: 12,
+          totalPrice: plan.amount * 12,
+          actionType,
+          isRenewal: actionType === "renew",
+        },
+      ]);
     },
     [invoiceItems, getActionType, toast],
   );
 
   const isDiamondSubscriptionSelected = useMemo(() => {
-    const selectedSubscription = invoiceItems.find(
-      (item) => item.type === "subscription",
-    );
-    if (!selectedSubscription) return false;
-
-    const subscriptionPlan = subscriptionData.find(
-      (plan) => plan.id === selectedSubscription.itemId,
-    );
+    const sel = invoiceItems.find((i) => i.type === "subscription");
+    if (!sel) return false;
     return (
-      subscriptionPlan?.packageName?.toLowerCase().includes("diamond") || false
+      subscriptionData
+        .find((p) => p.id === sel.itemId)
+        ?.packageName?.toLowerCase()
+        .includes("diamond") || false
     );
   }, [invoiceItems, subscriptionData]);
 
   const addAdditionalService = useCallback(
     (service: any) => {
-      // Check if Diamond subscription is selected
       if (isDiamondSubscriptionSelected) {
         toast({
-          title: "Diamond Package Restriction",
-          description:
-            "Addons cannot be added to Diamond packages. Please contact support for assistance.",
+          title: "Diamond Package",
+          description: "Addons cannot be added to Diamond plans.",
           variant: "destructive",
         });
         return;
       }
-
-      // Check if there's an active subscription to determine duration
-      const activeSubscriptionItem = invoiceItems.find(
-        (item) => item.type === "subscription",
-      );
-
-      // Default to 12 months if no subscription found, otherwise use subscription months
-      const defaultMonths = activeSubscriptionItem
-        ? activeSubscriptionItem.months
-        : 12;
-
-      const existingService = invoiceItems.find(
-        (item) =>
-          item.type === "service" && item.itemId === service.id.toString(),
-      );
-
-      if (existingService) {
+      if (
+        invoiceItems.find(
+          (i) => i.type === "service" && i.itemId === service.id.toString(),
+        )
+      ) {
         toast({
-          title: "Service Already Added",
-          description: "This service is already in your invoice",
+          title: "Already Added",
+          description: "This service is already in your invoice.",
           variant: "destructive",
         });
         return;
       }
-
-      const newItem: InvoiceItem = {
-        id: Date.now(),
-        type: "service",
-        itemId: service.id.toString(),
-        name: service.name,
-        unitPrice: service.amount,
-        months: defaultMonths,
-        totalPrice: service.amount * defaultMonths,
-      };
-
-      setInvoiceItems((prev) => [...prev, newItem]);
-
-      // Show toast indicating the duration
+      const months =
+        invoiceItems.find((i) => i.type === "subscription")?.months ?? 12;
+      setInvoiceItems((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          type: "service",
+          itemId: service.id.toString(),
+          name: service.name,
+          unitPrice: service.amount,
+          months,
+          totalPrice: service.amount * months,
+        },
+      ]);
       toast({
         title: "Service Added",
-        description: `Service added for ${defaultMonths} month${defaultMonths !== 1 ? "s" : ""}`,
-        variant: "default",
+        description: `Added for ${months} month(s).`,
       });
     },
     [invoiceItems, toast, isDiamondSubscriptionSelected],
@@ -302,210 +266,129 @@ const InvoiceSubscriptionPage = () => {
 
   const removeInvoiceItem = useCallback(
     (id: number) => {
-      const item = invoiceItems.find((item) => item.id === id);
-      if (item?.type === "subscription") {
+      if (invoiceItems.find((i) => i.id === id)?.type === "subscription")
         setSelectedPlanId(null);
-      }
-      setInvoiceItems((prev) => prev.filter((item) => item.id !== id));
+      setInvoiceItems((prev) => prev.filter((i) => i.id !== id));
     },
     [invoiceItems],
   );
 
   const updateItemMonths = useCallback((id: number, months: number) => {
     setInvoiceItems((prev) => {
-      const updatedItems = prev.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              months: months,
-              totalPrice: item.unitPrice * months,
-            }
-          : item,
+      const updated = prev.map((i) =>
+        i.id === id ? { ...i, months, totalPrice: i.unitPrice * months } : i,
       );
-
-      // If updating a subscription, also update all services to match the same duration
-      const updatedItem = updatedItems.find((item) => item.id === id);
-      if (updatedItem?.type === "subscription") {
-        return updatedItems.map((item) =>
-          item.type === "service"
-            ? {
-                ...item,
-                months: months,
-                totalPrice: item.unitPrice * months,
-              }
-            : item,
+      const changedItem = updated.find((i) => i.id === id);
+      if (changedItem?.type === "subscription") {
+        return updated.map((i) =>
+          i.type === "service"
+            ? { ...i, months, totalPrice: i.unitPrice * months }
+            : i,
         );
       }
-
-      return updatedItems;
+      return updated;
     });
   }, []);
 
   const handlePendingPayment = useCallback(
     (transactionId: string, invoice: string) => {
-      // console.log("Payment verification started");
-
       setTimeout(() => {
-        let attemptCount = 0;
+        let attempts = 0;
         const maxAttempts = 12;
-        const pollingInterval = 5000;
-        const maxDuration = 300000;
-        const startTime = Date.now();
-
-        const verificationInterval = setInterval(async () => {
-          attemptCount++;
-
-          if (Date.now() - startTime > maxDuration) {
-            clearInterval(verificationInterval);
+        const start = Date.now();
+        const interval = setInterval(async () => {
+          attempts++;
+          if (Date.now() - start > 300000) {
+            clearInterval(interval);
             setPaymentStatus("FAILED");
-            toast({
-              title: "Payment Timeout",
-              description:
-                "Payment verification timed out. Please check your payment status.",
-              variant: "destructive",
-            });
             return;
           }
-
           try {
-            // console.log("Verification attempt:", attemptCount);
-            const verificationResult = await verifyPayment(
-              transactionId,
-              invoice,
-            );
-            setPaymentStatus(verificationResult.invoicePaymentStatus);
-
-            if (verificationResult.invoicePaymentStatus === "SUCCESS") {
-              clearInterval(verificationInterval);
-              handleSuccessfulPayment(verificationResult);
+            const res = await verifyPayment(transactionId, invoice);
+            setPaymentStatus(res.invoicePaymentStatus);
+            if (res.invoicePaymentStatus === "SUCCESS") {
+              clearInterval(interval);
+              handleSuccessfulPayment(res);
             } else if (
-              verificationResult.invoicePaymentStatus === "PROCESSING"
+              res.invoicePaymentStatus === "FAILED" ||
+              attempts >= maxAttempts
             ) {
-              setPaymentStatus("PROCESSING");
-            } else if (verificationResult.invoicePaymentStatus === "FAILED") {
-              clearInterval(verificationInterval);
-              setPaymentStatus("FAILED");
-              setTimeout(() => {
-                setIsModalOpen(false);
-              }, 2000);
-            } else if (attemptCount >= maxAttempts) {
-              clearInterval(verificationInterval);
+              clearInterval(interval);
               setPaymentStatus("FAILED");
             }
-          } catch (error) {
-            console.error("Payment verification error:", error);
-            clearInterval(verificationInterval);
+          } catch {
+            clearInterval(interval);
             setPaymentStatus("FAILED");
           }
-        }, pollingInterval);
+        }, 5000);
       }, 20000);
     },
     [],
   );
 
+  const handleSuccessfulPayment = useCallback((_response: any) => {
+    setTimeout(() => {
+      setIsModalOpen(false);
+      window.location.href = "/renew-subscription";
+    }, 2000);
+  }, []);
+
   const handleCreateInvoice = useCallback(
     async (data: InvoiceFormData) => {
       if (invoiceItems.length === 0) {
-        form.setError("root", {
-          message: "Please add at least one item to the invoice",
-        });
+        form.setError("root", { message: "Please add at least one item" });
         return;
       }
-
       setIsLoading(true);
       setIsModalOpen(true);
       setPaymentStatus("INITIATING");
-
       try {
-        // Separate subscription and service items
-        const subscriptionItems = invoiceItems.filter(
-          (item) => item.type === "subscription",
-        );
-        const serviceItems = invoiceItems.filter(
-          (item) => item.type === "service",
-        );
-
-        // Check if there are any addon/service items
-        const hasAddons = serviceItems.length > 0;
-        const hasSubscriptions = subscriptionItems.length > 0;
+        const subs = invoiceItems.filter((i) => i.type === "subscription");
+        const services = invoiceItems.filter((i) => i.type === "service");
+        const hasAddons = services.length > 0;
         const hasValidDiscount =
           validatedDiscountCode?.discount && discountValid;
+        const payload: any = {};
 
-        // Initialize the invoice payload
-        const invoicePayload: any = {};
-
-        // Scenario 1: Has subscription items
-        if (hasSubscriptions) {
-          const locationSubscriptions = subscriptionItems.map((item) => {
-            const subscription = subscriptionData.find(
-              (sub: { id: string }) => sub.id === item.itemId,
-            );
-
-            if (!subscription) {
-              throw new Error(`Subscription with ID ${item.itemId} not found`);
-            }
-
-            const subscriptionPayload = {
-              locationId: locationId,
-              locationSubscriptionPackageId: subscription.id,
+        if (subs.length > 0) {
+          payload.locationSubscriptions = subs.map((item) => {
+            const sub = subscriptionData.find((s: any) => s.id === item.itemId);
+            if (!sub) throw new Error(`Subscription ${item.itemId} not found`);
+            return {
+              locationId,
+              locationSubscriptionPackageId: sub.id,
               subscriptionDurationCount: item.months,
               attachSubscriptionAddon: hasAddons,
               subscriptionDurationType: "MONTHS",
-              // Apply discount to subscription items
               ...(hasValidDiscount && {
                 locationSubscriptionDiscountId: validatedDiscountCode.discount,
               }),
             };
-
-            return subscriptionPayload;
           });
-
-          invoicePayload.locationSubscriptions = locationSubscriptions;
-
-          // If we have subscription + addons, include them as regular addons
-          if (hasAddons) {
-            invoicePayload.locationAddons = serviceItems.map((item) => ({
-              subscriptionAddon: item.itemId,
-              // If your backend supports addon-level discounts, include it here
-              ...(hasValidDiscount && {
-                discountCode: data.discountCode,
-              }),
+          if (hasAddons)
+            payload.locationAddons = services.map((i) => ({
+              subscriptionAddon: i.itemId,
+              ...(hasValidDiscount && { discountCode: data.discountCode }),
             }));
-          }
-        }
-        // Scenario 2: Only addons (standalone addons)
-        else if (hasAddons) {
-          if (!activeSubscription?.subscription?.id) {
+        } else if (hasAddons) {
+          if (!activeSubscription?.subscription?.id)
             throw new Error(
-              "You need an active subscription to purchase standalone addons",
+              "Active subscription required for standalone addons",
             );
-          }
-
-          invoicePayload.locationFreeStandingAddonSubscriptions =
-            serviceItems.map((item) => ({
+          payload.locationFreeStandingAddonSubscriptions = services.map(
+            (i) => ({
               targetedLocationSubscriptionId: activeSubscription.id,
-              subscriptionAddon: item.itemId,
-              // Apply discount to standalone addons
-              ...(hasValidDiscount && {
-                discountCode: data.discountCode,
-              }),
-            }));
+              subscriptionAddon: i.itemId,
+              ...(hasValidDiscount && { discountCode: data.discountCode }),
+            }),
+          );
         }
 
-        // Add customer details
-        if (data.email) {
-          invoicePayload.email = data.email;
-        }
-
-        if (data.phone) {
-          invoicePayload.phone = data.phone;
-        }
-
-        // Global discount application - this ensures discount is applied regardless of item type
+        if (data.email) payload.email = data.email;
+        if (data.phone) payload.phone = data.phone;
         if (hasValidDiscount) {
-          // Apply discount at invoice level if your backend supports it
-          invoicePayload.discountCode = data.discountCode;
-          invoicePayload.globalDiscount = {
+          payload.discountCode = data.discountCode;
+          payload.globalDiscount = {
             discountId: validatedDiscountCode.discount,
             discountCode: data.discountCode,
             discountValue: validatedDiscountCode.discountValue,
@@ -513,42 +396,20 @@ const InvoiceSubscriptionPage = () => {
           };
         }
 
-        const locationQueryParam = locationId ? locationId : undefined;
-        const response = await createInvoice(
-          invoicePayload,
-          locationQueryParam,
-        );
-
-        if (
-          response &&
-          typeof response === "object" &&
-          "id" in response &&
-          data.email &&
-          data.phone
-        ) {
-          const invoiceId = (response as { id: UUID }).id;
-
-          try {
-            // Update status to PENDING before making payment
-            setPaymentStatus("PENDING");
-
-            const paymentResponse = await payInvoice(
-              invoiceId,
-              data.email,
-              data.phone,
-            );
-            setPaymentStatus("PROCESSING");
-            handlePendingPayment(paymentResponse.id, paymentResponse.invoice);
-          } catch (error) {
-            console.error("Error making payment:", error);
-            setPaymentStatus("FAILED");
-          }
-        } else {
-          throw new Error("Missing data required to initiate payment");
-        }
+        const response = await createInvoice(payload, locationId ?? undefined);
+        if (response && "id" in response && data.email && data.phone) {
+          setPaymentStatus("PENDING");
+          const payment = await payInvoice(
+            (response as { id: UUID }).id,
+            data.email,
+            data.phone,
+          );
+          setPaymentStatus("PROCESSING");
+          handlePendingPayment(payment.id, payment.invoice);
+        } else throw new Error("Missing data to initiate payment");
       } catch (error) {
         toast({
-          title: "Error Creating Invoice",
+          title: "Error",
           description: (error as Error).message,
           variant: "destructive",
         });
@@ -570,248 +431,210 @@ const InvoiceSubscriptionPage = () => {
     ],
   );
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const handleSuccessfulPayment = useCallback((response: any) => {
-    setTimeout(() => {
-      setIsModalOpen(false);
-      window.location.href = `/renew-subscription`;
-    }, 2000);
-  }, []);
-
   const onFormError = useCallback(
     (errors: any) => {
-      const firstError = Object.values(errors)[0] as any;
-      if (firstError?.message) {
+      const first = Object.values(errors)[0] as any;
+      if (first?.message)
         toast({
           title: "Validation Error",
-          description: firstError.message,
+          description: first.message,
           variant: "destructive",
         });
-      }
     },
     [toast],
   );
 
-  // Loading state
   if (subscriptionLoading) {
     return (
-      <div className="max-w-6xl mx-auto p-6 flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
-  const renderTotalsSection = () => (
-    <div className="space-y-2">
-      {/* Original Subtotal */}
-      <div className="flex justify-between text-sm">
-        <span>Subtotal:</span>
-        <span>TZS {subtotal.toLocaleString()}</span>
+  // ── Totals section ──────────────────────────────────────────────────────────
+  const TotalsSection = () => (
+    <div className="space-y-2.5 text-sm">
+      <div className="flex justify-between text-gray-500">
+        <span>Subtotal</span>
+        <span className="text-gray-700 font-medium">
+          TZS {subtotal.toLocaleString()}
+        </span>
       </div>
 
-      {/* Show item-by-item breakdown if there's a discount */}
-      {discountAmount > 0 && (
-        <div className="bg-gray-50 p-3 rounded text-xs space-y-2">
-          <h5 className="font-medium text-gray-700">Discount Breakdown:</h5>
-          {itemBreakdown.map((breakdown, index) => (
-            <div key={breakdown.item.id} className="space-y-1">
-              <div className="flex justify-between text-gray-600">
-                <span className="truncate">{breakdown.item.name}:</span>
-                <span>TZS {breakdown.originalPrice.toLocaleString()}</span>
-              </div>
-              {breakdown.discountApplied > 0 && (
-                <>
-                  <div className="flex justify-between text-green-600 pl-2">
-                    <span>- Discount:</span>
-                    <span>
-                      -TZS {breakdown.discountApplied.toLocaleString()}
-                    </span>
-                  </div>
-                  <div className="flex justify-between font-medium pl-2 border-b pb-1">
-                    <span>Subtotal:</span>
-                    <span>TZS {breakdown.finalPrice.toLocaleString()}</span>
-                  </div>
-                </>
-              )}
-              {index < itemBreakdown.length - 1 && (
-                <hr className="border-gray-200" />
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Show category totals if both types exist and there's a discount */}
       {discountAmount > 0 &&
         subscriptionSubtotal > 0 &&
         servicesSubtotal > 0 && (
           <>
-            <div className="flex justify-between text-sm text-blue-600 bg-blue-50 px-2 py-1 rounded">
-              <span>Subscription Total:</span>
+            <div className="flex justify-between text-blue-600">
+              <span>Subscription</span>
               <span>TZS {subscriptionTotal.toLocaleString()}</span>
             </div>
-            <div className="flex justify-between text-sm text-green-600 bg-green-50 px-2 py-1 rounded">
-              <span>Addon Total:</span>
+            <div className="flex justify-between text-emerald-600">
+              <span>Addons</span>
               <span>TZS {servicesTotal.toLocaleString()}</span>
             </div>
           </>
         )}
 
-      {/* Total discount applied */}
       {discountAmount > 0 && (
-        <div className="flex justify-between text-sm text-red-600 font-medium">
-          <span>Total Discount Applied:</span>
-          <span>-TZS {discountAmount.toLocaleString()}</span>
+        <div className="flex justify-between text-emerald-600 font-medium">
+          <span>Discount</span>
+          <span>− TZS {discountAmount.toLocaleString()}</span>
         </div>
       )}
 
-      {/* Final Total */}
-      <div className="flex justify-between font-bold text-lg border-t pt-2">
-        <span>Final Total:</span>
+      <div className="h-px bg-gray-100" />
+      <div className="flex justify-between font-bold text-base text-gray-900">
+        <span>Total</span>
         <span>TZS {total.toLocaleString()}</span>
       </div>
-
-      {/* Example calculation display for transparency */}
-      {discountAmount > 0 && itemBreakdown.length > 1 && (
-        <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
-          <span className="font-medium">Calculation: </span>
-          {itemBreakdown.map((breakdown, index) => (
-            <span key={breakdown.item.id}>
-              ({breakdown.originalPrice.toLocaleString()}-
-              {breakdown.discountApplied.toLocaleString()})
-              {index < itemBreakdown.length - 1 ? " + " : " = "}
-            </span>
-          ))}
-          <span className="font-medium">TZS {total.toLocaleString()}</span>
-        </div>
-      )}
     </div>
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-6 space-y-8">
-      {/* Header Section */}
-      <div className="mt-18">
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 lg:p-6 border border-blue-200">
-          <h1 className="text-lg lg:text-2xl font-bold text-gray-900 mb-2">
-            Billing & Subscription Management
-          </h1>
-          <p className="text-sm lg:text-lg text-gray-600">
-            Manage your subscriptions, view payment history, and handle billing
-            operations.
-          </p>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-8 pb-12">
+      {/* ── Page header ──────────────────────────────────────────────────────── */}
+      <div className="pt-6">
+        <div className="relative overflow-hidden ">
+          <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-black">
+                Subscription & Billing
+              </h1>
+              <p className="text-sm text-black mt-1">
+                Manage your plans, addons and payment history
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Available Plans & Services */}
+      {/* ── Main grid ────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* LEFT: Plans + Addons */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Subscription Plans Section */}
-          <Card className="border-l-4 border-l-emerald-500">
-            <CardHeader>
-              <CardTitle className="flex items-center text-sm lg:text-lg">
-                <CreditCard className="mr-2" size={20} />
-                Available Subscription Plans
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {subscriptionData.map((plan: any) => {
-                  const actionType = getActionType(plan);
-                  const isSelected = selectedPlanId === plan.id;
-                  const isCurrent =
-                    activeSubscription?.subscription?.id === plan.id;
-
-                  return (
-                    <SubscriptionPlanCard
-                      key={plan.id}
-                      plan={plan}
-                      isSelected={isSelected}
-                      isCurrent={isCurrent}
-                      actionType={actionType}
-                      onSelect={handlePlanSelection}
-                    />
-                  );
-                })}
+          {/* Plans */}
+          <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
+                <Layers className="h-4 w-4 text-blue-600" />
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Additional Services */}
-          <Card className="border-l-4 border-l-green-500">
-            <CardHeader className="text-sm lg:text-lg">
-              <CardTitle>Additional Services</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {addons.map((service) => {
-                  const isAdded = invoiceItems.some(
-                    (item) =>
-                      item.type === "service" &&
-                      item.itemId === service.id.toString(),
-                  );
-
-                  return (
-                    <AdditionalServiceCard
-                      key={service.id}
-                      service={service}
-                      isAdded={isAdded}
-                      onAdd={addAdditionalService}
-                    />
-                  );
-                })}
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">
+                  Subscription Plans
+                </h2>
+                <p className="text-xs text-gray-400">
+                  Choose a plan that suits your needs
+                </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {subscriptionData.map((plan: any) => (
+                  <SubscriptionPlanCard
+                    key={plan.id}
+                    plan={plan}
+                    isSelected={selectedPlanId === plan.id}
+                    isCurrent={activeSubscription?.subscription?.id === plan.id}
+                    actionType={getActionType(plan)}
+                    onSelect={handlePlanSelection}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Addons */}
+          <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-50">
+                <Puzzle className="h-4 w-4 text-emerald-600" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">
+                  Additional Services
+                </h2>
+                <p className="text-xs text-gray-400">
+                  Enhance your plan with extra features
+                </p>
+              </div>
+            </div>
+            <div className="p-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {addons.map((service) => (
+                  <AdditionalServiceCard
+                    key={service.id}
+                    service={service}
+                    isAdded={invoiceItems.some(
+                      (i) =>
+                        i.type === "service" &&
+                        i.itemId === service.id.toString(),
+                    )}
+                    onAdd={addAdditionalService}
+                  />
+                ))}
+              </div>
+            </div>
+          </section>
         </div>
 
-        {/* Payment Summary Sidebar */}
+        {/* RIGHT: Payment summary */}
         <div>
-          <Card className="sticky top-6 border-t-4 border-t-emerald-500">
-            <CardHeader>
-              <CardTitle className="flex items-center text-sm lg:text-lg">
-                <Receipt className="mr-2" size={20} />
+          <div className="sticky top-6 rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            {/* Summary header */}
+            <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100 bg-gray-50/50">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50">
+                <Receipt className="h-4 w-4 text-orange-500" />
+              </div>
+              <h2 className="text-sm font-semibold text-gray-900">
                 Payment Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+              </h2>
+            </div>
+
+            <div className="p-5">
               <Form {...form}>
                 <form
                   onSubmit={form.handleSubmit(handleCreateInvoice, onFormError)}
-                  className="space-y-4"
+                  className="space-y-5"
                 >
-                  {/* Customer Details */}
+                  {/* Customer details */}
                   <div className="space-y-3">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      Customer Details
+                    </p>
                     <FormField
                       control={form.control}
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email *</FormLabel>
+                          <FormLabel className="text-xs text-gray-600">
+                            Email <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
                             <Input
                               {...field}
-                              placeholder="customer@gmail.com"
-                              required
+                              placeholder="customer@example.com"
+                              className="h-9 text-sm rounded-xl border-gray-200"
                             />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={form.control}
                       name="phone"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Phone Number *</FormLabel>
+                          <FormLabel className="text-xs text-gray-600">
+                            Phone <span className="text-red-500">*</span>
+                          </FormLabel>
                           <FormControl>
                             <PhoneInput
-                              placeholder="Enter phone number"
+                              placeholder="Phone number"
                               {...field}
-                              required
+                              className="h-9 text-sm"
                             />
                           </FormControl>
                           <FormMessage />
@@ -820,17 +643,22 @@ const InvoiceSubscriptionPage = () => {
                     />
                   </div>
 
-                  <Separator />
+                  <div className="h-px bg-gray-100" />
 
-                  {/* Invoice Items */}
-                  <div className="space-y-3">
-                    <h4 className="font-semibold">Items</h4>
+                  {/* Items */}
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                      Selected Items
+                    </p>
                     {invoiceItems.length === 0 ? (
-                      <p className="text-gray-500 text-sm">
-                        No items added yet
-                      </p>
+                      <div className="flex flex-col items-center gap-1.5 rounded-xl border border-dashed border-gray-200 py-6">
+                        <ShieldCheck className="h-7 w-7 text-gray-300" />
+                        <p className="text-xs text-gray-400">
+                          No items selected yet
+                        </p>
+                      </div>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         {invoiceItems.map((item) => (
                           <InvoiceItemCard
                             key={item.id}
@@ -845,58 +673,68 @@ const InvoiceSubscriptionPage = () => {
 
                   {invoiceItems.length > 0 && (
                     <>
-                      <Separator />
+                      <div className="h-px bg-gray-100" />
 
                       {/* Discount */}
-                      <div className="space-y-3">
-                        <DiscountCodeInput
-                          control={form.control}
-                          isValidating={isValidatingDiscount}
-                          isValid={discountValid}
-                          onClear={() => {
-                            setDiscount(0);
-                            clearDiscount();
-                            form.setValue("discountCode", "");
-                          }}
-                        />
-                      </div>
+                      <DiscountCodeInput
+                        control={form.control}
+                        isValidating={isValidatingDiscount}
+                        isValid={discountValid}
+                        onClear={() => {
+                          setDiscount(0);
+                          clearDiscount();
+                          form.setValue("discountCode", "");
+                        }}
+                      />
 
-                      <Separator />
+                      <div className="h-px bg-gray-100" />
 
-                      {renderTotalsSection()}
+                      {/* Totals */}
+                      <TotalsSection />
 
+                      {/* Pay button */}
                       <Button
                         type="submit"
                         disabled={isLoading || invoiceItems.length === 0}
-                        className="w-full"
+                        className={cn(
+                          "w-full h-10 rounded-xl font-semibold text-sm transition-all",
+                          "bg-gray-900 hover:bg-gray-800 text-white",
+                        )}
                       >
                         {isLoading ? (
-                          <div className="flex items-center space-x-2">
+                          <>
                             <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            <span>Processing</span>
-                          </div>
+                            Processing…
+                          </>
                         ) : (
                           <>
-                            <DollarSign className="h-4 w-4 mr-2" />
-                            Pay Now
+                            <DollarSign className="h-4 w-4 mr-1.5" />
+                            Pay Now · TZS {total.toLocaleString()}
                           </>
                         )}
                       </Button>
+
+                      <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400">
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        Secure payment via M-Pesa
+                      </p>
                     </>
                   )}
                 </form>
               </Form>
-            </CardContent>
-          </Card>
-
-          <PaymentStatusModal
-            isOpen={isModalOpen}
-            status={paymentStatus}
-            onClose={() => setIsModalOpen(false)}
-          />
+            </div>
+          </div>
         </div>
       </div>
-      <BillingHistoryTable locationId={locationId ? locationId : undefined} />
+
+      {/* ── Billing history ───────────────────────────────────────────────────── */}
+      <BillingHistoryTable locationId={locationId ?? undefined} />
+
+      <PaymentStatusModal
+        isOpen={isModalOpen}
+        status={paymentStatus}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 };
