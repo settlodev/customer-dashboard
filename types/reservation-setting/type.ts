@@ -58,6 +58,32 @@ export declare interface ReservationSetting {
   termsAndConditions: string | null;
 }
 
+export declare interface PublicReservationSetting extends ReservationSetting {
+  location: string;
+
+  // Branding (from business)
+  logoUrl: string | null;
+  bannerImageUrl: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  faviconUrl: string | null;
+  fontFamily: string | null;
+
+  // SEO (from business)
+  metaTitle: string | null;
+  metaDescription: string | null;
+  shareImageUrl: string | null;
+
+  // Socials (from business)
+  facebook: string | null;
+  twitter: string | null;
+  instagram: string | null;
+  linkedin: string | null;
+  youtube: string | null;
+  tiktok: string | null;
+  website: string | null;
+}
+
 export type BookingQuestionType =
   | "MULTI_SELECT"
   | "SINGLE_SELECT"

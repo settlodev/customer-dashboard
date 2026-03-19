@@ -53,7 +53,10 @@ export interface MenuSettings {
   allowCashOnDelivery: boolean;
   logoUrl: string | null;
   bannerImageUrl: string | null;
-  themeColor: string | null;
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  faviconUrl: string | null;
+  fontFamily: string | null;
   metaTitle: string | null;
   metaDescription: string | null;
   shareImageUrl: string | null;

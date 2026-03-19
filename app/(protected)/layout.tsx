@@ -12,6 +12,9 @@ import {
 } from "@/lib/actions/business/get-current-business";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { BusinessPropsType } from "@/types/business/business-props-type";
+import { Business } from "@/types/business/type";
+import { Location as BusinessLocation } from "@/types/location/type";
 
 export default async function RootLayout({
   children,
@@ -19,13 +22,34 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  const currentBusiness = await getCurrentBusiness();
-  const currentLocation = await getCurrentLocation();
-  const businessList = await getBusinessDropDown();
-  const locationList = await fetchAllLocations();
-  const currentWarehouse = await getCurrentWarehouse();
 
-  const businessData = {
+  let currentBusiness: Business | undefined;
+  let currentLocation: BusinessLocation | undefined;
+  let businessList: Business[] | undefined;
+  let locationList: BusinessLocation[] | null | undefined;
+  let currentWarehouse: any;
+
+  try {
+    const results = await Promise.all([
+      getCurrentBusiness(),
+      getCurrentLocation(),
+      getBusinessDropDown(),
+      fetchAllLocations(),
+      getCurrentWarehouse(),
+    ]);
+    currentBusiness = results[0] ?? undefined;
+    currentLocation = results[1] ?? undefined;
+    businessList = results[2] ?? undefined;
+    locationList = results[3];
+    currentWarehouse = results[4];
+  } catch (error: unknown) {
+    const message = (error && typeof error === "object" && "message" in error)
+      ? (error as { message: string }).message
+      : "Unknown error";
+    console.error("Error loading layout data:", message);
+  }
+
+  const businessData: BusinessPropsType = {
     business: currentBusiness,
     businessList: businessList || [],
     locationList: locationList || [],

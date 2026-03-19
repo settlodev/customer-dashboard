@@ -18,6 +18,7 @@ const createMinimalBusiness = (business: Business): MinimalBusiness => {
     name: business.name,
     prefix: business.prefix,
     businessType: business.businessType,
+    logo: business.logo || null,
     country: business.country,
     countryName: business.countryName,
     status: business.status,

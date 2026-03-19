@@ -28,7 +28,9 @@ import {
   Loader2Icon,
   Mail,
   Phone,
-  Store,
+  Palette,
+  Type,
+  Search,
   X,
   Youtube,
 } from "lucide-react";
@@ -63,6 +65,10 @@ const BusinessForm = ({
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [logoImage, setLogoImage] = useState(item?.logo || "");
+  const [bannerImage, setBannerImage] = useState(item?.bannerImageUrl || "");
+  const [faviconImage, setFaviconImage] = useState(item?.faviconUrl || "");
+  const [shareImage, setShareImage] = useState(item?.shareImageUrl || "");
 
   const form = useForm<z.infer<typeof BusinessSchema>>({
     resolver: zodResolver(BusinessSchema),
@@ -72,7 +78,6 @@ const BusinessForm = ({
       businessType: item ? item.businessType : BusinessType.RETAIL,
 
       logo: item ? item.logo : undefined,
-      storeName: item ? item.storeName : null,
       notificationPhone: item ? item.notificationPhone : undefined,
       notificationEmailAddress: item
         ? item.notificationEmailAddress
@@ -94,6 +99,14 @@ const BusinessForm = ({
       linkedin: item ? item.linkedin : null,
       tiktok: item ? item.tiktok : null,
       vfdRegistrationState: item ? item.vfdRegistrationState : false,
+      primaryColor: item?.primaryColor ?? "#EB7F44",
+      secondaryColor: item?.secondaryColor ?? "#1A1A2E",
+      bannerImageUrl: item?.bannerImageUrl ?? null,
+      faviconUrl: item?.faviconUrl ?? null,
+      fontFamily: item?.fontFamily ?? null,
+      metaTitle: item?.metaTitle ?? null,
+      metaDescription: item?.metaDescription ?? null,
+      shareImageUrl: item?.shareImageUrl ?? null,
     },
   });
 
@@ -110,6 +123,10 @@ const BusinessForm = ({
   }, []);
   const submitData = (values: z.infer<typeof BusinessSchema>) => {
     setResponse(undefined);
+    values.logo = logoImage || null;
+    values.bannerImageUrl = bannerImage || null;
+    values.faviconUrl = faviconImage || null;
+    values.shareImageUrl = shareImage || null;
 
     startTransition(() => {
       if (item) {
@@ -190,29 +207,6 @@ const BusinessForm = ({
                           label="Select business country"
                           placeholder="Select country"
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="storeName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Store Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Store className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="Display name for your store"
-                          />
-                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -554,6 +548,201 @@ const BusinessForm = ({
                           disabled={isPending}
                           value={field.value || ""}
                           placeholder="e.g. TZ"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Branding & SEO</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="primaryColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Primary Color</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Palette className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                            placeholder="#EB7F44"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="secondaryColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Secondary Color</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Palette className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                            placeholder="#1A1A2E"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fontFamily"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Font Family</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Type className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                            placeholder="Inter"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormItem>
+                  <FormLabel>Logo</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      disabled={isPending}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const { uploadImage } = await import("@/lib/utils");
+                          uploadImage(file, "business/logos", (res) => {
+                            if (res.success) setLogoImage(res.data);
+                          });
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  {logoImage && <p className="text-xs text-muted-foreground truncate">{logoImage}</p>}
+                </FormItem>
+                <FormItem>
+                  <FormLabel>Banner Image</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      disabled={isPending}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const { uploadImage } = await import("@/lib/utils");
+                          uploadImage(file, "business/banners", (res) => {
+                            if (res.success) setBannerImage(res.data);
+                          });
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  {bannerImage && <p className="text-xs text-muted-foreground truncate">{bannerImage}</p>}
+                </FormItem>
+                <FormItem>
+                  <FormLabel>Favicon</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      disabled={isPending}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const { uploadImage } = await import("@/lib/utils");
+                          uploadImage(file, "business/favicons", (res) => {
+                            if (res.success) setFaviconImage(res.data);
+                          });
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  {faviconImage && <p className="text-xs text-muted-foreground truncate">{faviconImage}</p>}
+                </FormItem>
+                <FormItem>
+                  <FormLabel>Share Image</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      disabled={isPending}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const { uploadImage } = await import("@/lib/utils");
+                          uploadImage(file, "business/share", (res) => {
+                            if (res.success) setShareImage(res.data);
+                          });
+                        }
+                      }}
+                    />
+                  </FormControl>
+                  {shareImage && <p className="text-xs text-muted-foreground truncate">{shareImage}</p>}
+                </FormItem>
+                <FormField
+                  control={form.control}
+                  name="metaTitle"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>SEO Title</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                            placeholder="My Business - Best Restaurant"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="metaDescription"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>SEO Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          disabled={isPending}
+                          value={field.value || ""}
+                          placeholder="Welcome to our restaurant..."
+                          className="min-h-[80px]"
                         />
                       </FormControl>
                       <FormMessage />

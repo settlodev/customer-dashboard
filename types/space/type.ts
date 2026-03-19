@@ -53,6 +53,30 @@ export declare interface TableCombination {
   isArchived: boolean;
 }
 
+export declare interface SpaceDTO {
+  name: string;
+  code: string;
+  capacity: number;
+  minCapacity: number | null;
+  type: string;
+  tableStatus: string | null;
+  active: boolean;
+  reservable: boolean;
+  turnTimeMinutes: number | null;
+  posX: number | null;
+  posY: number | null;
+  color: string;
+  needsCleaning: boolean;
+  description: string | null;
+  sortOrder: number | null;
+  parentSpaceId: string | null;
+  floorPlanId: string | null;
+  status: boolean;
+  canDelete: boolean;
+  isArchived: boolean;
+  location: UUID;
+}
+
 export const SPACE_TYPES: TableSpaceType[] = [
   TableSpaceType.HALL,
   TableSpaceType.SECTION,
