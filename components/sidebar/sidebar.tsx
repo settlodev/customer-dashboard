@@ -180,7 +180,7 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                 )}
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {isLoading ? (
                     <div className="flex items-center justify-center h-32">
                         <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
