@@ -39,7 +39,7 @@ export const searchStockPurchases = async (
       `/api/stock-intake-purchase-order/${location?.id}/paginate`,
       query,
     );
-
+    console.log("The LPOs are", data);
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -250,7 +250,6 @@ export const getStockIntakeReceipt = async (
       `/api/location/${location.id}/hybrid-stock-intakes/${id}`,
     );
 
-    console.log("The good receive note is", stockIntakeReceipt);
     return parseStringify(stockIntakeReceipt);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);

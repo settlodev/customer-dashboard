@@ -89,13 +89,15 @@ export const createStockIntake = async (
   }
 
   const location = await getCurrentLocation();
-  const { supplier, staff, deliveryDate, items } = validData.data;
+  const { supplier, staff, deliveryDate, items, stockIntakePurchaseOrderId } =
+    validData.data;
 
   const payload: Record<string, unknown> = {
     staff,
     deliveryDate,
     items,
     ...(supplier ? { supplier } : {}),
+    ...(stockIntakePurchaseOrderId ? { stockIntakePurchaseOrderId } : {}),
   };
 
   console.log("API payload:", JSON.stringify(payload, null, 2));
