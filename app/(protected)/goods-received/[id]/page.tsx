@@ -5,9 +5,7 @@ import { getStockIntakeReceipt } from "@/lib/actions/stock-purchase-actions";
 import { StockReceipt } from "@/types/stock-intake-receipt/type";
 import { GRNDownloadButton } from "@/components/widgets/grn-download-button";
 
-// ─── Brand tokens ─────────────────────────────────────────────────────────────
 const PRIMARY = "#EB7F44";
-const PRIMARY_LIGHT = "#fde8d8";
 const SECONDARY = "#EAEAE5";
 
 type Params = Promise<{ id: string }>;
@@ -68,7 +66,6 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
           style={{ maxWidth: "794px", border: `1px solid ${SECONDARY}` }}
         >
           <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
-            {/* Left: logo + business name only */}
             <div className="flex items-center gap-4">
               {(receiptData as any).locationLogo ? (
                 <img
@@ -82,7 +79,6 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
               )}
             </div>
 
-            {/* Right: doc title + location details */}
             <div className="lg:text-right">
               <h2
                 className="text-3xl lg:text-4xl font-light tracking-wide mb-2"
