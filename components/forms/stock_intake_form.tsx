@@ -344,6 +344,7 @@ function StockIntakeForm({
       createStockIntake(payload)
         .then((result) => {
           if (result?.responseType === "success") {
+            console.log("The results after completing stock intake", result);
             const receiptId = (result?.data as { id?: string })?.id;
             setSuccessModal({
               open: true,

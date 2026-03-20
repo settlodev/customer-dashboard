@@ -247,7 +247,7 @@ export const getStockIntakeReceipt = async (
 
   try {
     const stockIntakeReceipt = await apiClient.get(
-      `/api/location/${location.id}/direct-stock-intake-receipts/${id}`,
+      `/api/location/${location.id}/hybrid-stock-intakes/${id}`,
     );
 
     console.log("The good receive note is", stockIntakeReceipt);

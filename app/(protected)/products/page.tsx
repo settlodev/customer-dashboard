@@ -38,8 +38,6 @@ async function Page({ searchParams }: Params) {
     (product) => !product.isArchived,
   );
 
-  console.log("The products are", filteredData);
-
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
