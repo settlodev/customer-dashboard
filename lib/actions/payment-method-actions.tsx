@@ -98,7 +98,7 @@ export const configureBusinessProvider = async (
   const business = await getCurrentBusiness();
   const data = await apiClient.post(
     `/payments/api/v1/admin/providers/business/${business?.id}`,
-    config,
+    { ...config, businessId: business?.id },
   );
   return parseStringify(data);
 };
@@ -112,7 +112,7 @@ export const updateBusinessProvider = async (
   const business = await getCurrentBusiness();
   const data = await apiClient.put(
     `/payments/api/v1/admin/providers/business/${business?.id}/${slug}`,
-    config,
+    { ...config, businessId: business?.id },
   );
   return parseStringify(data);
 };

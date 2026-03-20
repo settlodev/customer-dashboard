@@ -20,7 +20,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
   Check,
+  ChevronDown,
   ChevronLeft,
+  ChevronUp,
   Eye,
   EyeOff,
   Loader2,
@@ -29,36 +31,47 @@ import {
 
 type View = "list" | "setup" | "manage";
 
-const providerLogos: Record<string, React.ReactNode> = {
-  SELCOM: (
-    <svg viewBox="0 0 512 512" className="w-8 h-8" fill="none">
-      <rect width="512" height="512" rx="96" fill="#E31E24" />
-      <text x="256" y="300" textAnchor="middle" fill="white" fontSize="200" fontWeight="bold" fontFamily="Arial, sans-serif">S</text>
-    </svg>
-  ),
-  PESAPAL: (
-    <svg viewBox="0 0 512 512" className="w-8 h-8" fill="none">
-      <rect width="512" height="512" rx="96" fill="#0072CE" />
-      <text x="256" y="300" textAnchor="middle" fill="white" fontSize="200" fontWeight="bold" fontFamily="Arial, sans-serif">P</text>
-    </svg>
-  ),
-  TEMBO: (
-    <svg viewBox="0 0 512 512" className="w-8 h-8" fill="none">
-      <rect width="512" height="512" rx="96" fill="#FF6B00" />
-      <text x="256" y="300" textAnchor="middle" fill="white" fontSize="200" fontWeight="bold" fontFamily="Arial, sans-serif">T</text>
-    </svg>
-  ),
+function extractErrorMessage(err: unknown, fallback: string): string {
+  if (!err || typeof err !== "object") return fallback;
+  const e = err as Record<string, unknown>;
+  // API returns { success: false, message: "..." }
+  if (e.success === false && typeof e.message === "string") return e.message;
+  // Error object with message string
+  if (typeof e.message === "string") return e.message;
+  // Error object with nested message
+  if (typeof e.message === "object" && e.message !== null) {
+    const nested = e.message as Record<string, unknown>;
+    if (typeof nested.message === "string") return nested.message;
+  }
+  return fallback;
+}
+
+const providerLogos: Record<string, { src: string; bg?: string }> = {
+  SELCOM: { src: "/images/integrators/selcom-logo.png", bg: "rgb(232, 0, 50)" },
+  PESAPAL: { src: "/images/integrators/pesapal-logo.png" },
+  TEMBO: { src: "/images/integrators/temboplus-logo.png" },
 };
 
-const defaultProviderLogo = (
-  <svg viewBox="0 0 512 512" className="w-8 h-8" fill="none">
-    <rect width="512" height="512" rx="96" fill="#6366F1" />
-    <path d="M256 150 L310 230 L256 310 L202 230 Z" fill="white" />
-  </svg>
-);
+const comingSoonProviders = new Set(["PESAPAL", "TEMBO"]);
 
-function getProviderLogo(slug: string) {
-  return providerLogos[slug] || defaultProviderLogo;
+function getProviderLogo(slug: string, name: string) {
+  const logo = providerLogos[slug];
+  if (logo) {
+    return (
+      <div
+        className="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden"
+        style={logo.bg ? { backgroundColor: logo.bg } : undefined}
+      >
+        <img src={logo.src} alt={name} className="w-5 h-5 object-contain" />
+      </div>
+    );
+  }
+  return (
+    <svg viewBox="0 0 512 512" className="w-8 h-8" fill="none">
+      <rect width="512" height="512" rx="96" fill="#6366F1" />
+      <path d="M256 150 L310 230 L256 310 L202 230 Z" fill="white" />
+    </svg>
+  );
 }
 
 export default function PaymentIntegrations() {
@@ -81,8 +94,8 @@ export default function PaymentIntegrations() {
       ]);
       setProviders(p);
       setConfigs(c);
-    } catch (err: any) {
-      setError(err.message || "Failed to load providers");
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, "Failed to load providers"));
     } finally {
       setLoading(false);
     }
@@ -181,15 +194,18 @@ export default function PaymentIntegrations() {
       {providers.map((provider) => {
         const config = configMap.get(provider.slug);
         const connected = !!config;
+        const isComingSoon = comingSoonProviders.has(provider.slug);
 
         return (
           <div
             key={provider.id}
-            className="border border-gray-200 dark:border-gray-700 rounded-lg p-5 flex flex-col justify-between"
+            className={`border border-gray-200 dark:border-gray-700 rounded-lg p-5 flex flex-col justify-between ${
+              isComingSoon ? "opacity-50 pointer-events-none select-none" : ""
+            }`}
           >
             <div>
               <div className="flex items-center gap-3 mb-2">
-                {getProviderLogo(provider.slug)}
+                {getProviderLogo(provider.slug, provider.name)}
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
                   {provider.name}
                 </h3>
@@ -198,7 +214,14 @@ export default function PaymentIntegrations() {
                 Payment aggregator
               </p>
             </div>
-            {connected ? (
+            {isComingSoon ? (
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 w-fit">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  Coming Soon
+                </span>
+              </div>
+            ) : connected ? (
               <div className="flex items-center justify-between">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-950 w-fit">
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
@@ -249,6 +272,7 @@ function ProviderSetupForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [showConfig, setShowConfig] = useState(false);
 
   const handleSave = async () => {
     setSaving(true);
@@ -261,9 +285,8 @@ function ProviderSetupForm({
         configOverrides: Object.keys(configOverrides).length > 0 ? configOverrides : undefined,
       });
       onSuccess();
-    } catch (err: any) {
-      const msg = typeof err?.message === "object" ? err.message?.message : err?.message;
-      setError(msg || "Failed to save credentials");
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, "Failed to save credentials"));
     } finally {
       setSaving(false);
     }
@@ -274,7 +297,7 @@ function ProviderSetupForm({
     .some((f) => !credentials[f.fieldName]?.trim());
 
   return (
-    <div className="max-w-lg">
+    <div>
       <button
         onClick={onBack}
         className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-4"
@@ -290,103 +313,120 @@ function ProviderSetupForm({
         Enter your {provider.name} credentials to connect.
       </p>
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
-          {error}
-        </div>
-      )}
+      <form autoComplete="off" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
-      {/* Credential fields */}
-      <div className="space-y-4 mb-6">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Credentials</p>
-        {provider.credentialFields.map((field) => (
-          <CredentialInput
-            key={field.fieldName}
-            field={field}
-            value={credentials[field.fieldName] || ""}
-            onChange={(val) =>
-              setCredentials((prev) => ({ ...prev, [field.fieldName]: val }))
-            }
-            showSecret={showSecrets[field.fieldName] || false}
-            onToggleSecret={() =>
-              setShowSecrets((prev) => ({
-                ...prev,
-                [field.fieldName]: !prev[field.fieldName],
-              }))
-            }
-          />
-        ))}
-      </div>
+        {/* Credential fields — 3 columns */}
+        <div className="mb-6">
+          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Credentials</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {provider.credentialFields.map((field) => (
+              <CredentialInput
+                key={field.fieldName}
+                field={field}
+                value={credentials[field.fieldName] || ""}
+                onChange={(val) =>
+                  setCredentials((prev) => ({ ...prev, [field.fieldName]: val }))
+                }
+                showSecret={showSecrets[field.fieldName] || false}
+                onToggleSecret={() =>
+                  setShowSecrets((prev) => ({
+                    ...prev,
+                    [field.fieldName]: !prev[field.fieldName],
+                  }))
+                }
+              />
+            ))}
+          </div>
+        </div>
 
-      {/* Config overrides */}
-      <div className="space-y-4 mb-6">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">
-          Configuration (optional)
-        </p>
-        <div>
-          <Label>Webhook URL</Label>
-          <Input
-            value={configOverrides.webhook_url || ""}
-            onChange={(e) =>
-              setConfigOverrides((prev) => ({ ...prev, webhook_url: e.target.value }))
-            }
-            placeholder={`https://yoursite.com/api/v1/payments/callbacks/${provider.slug}`}
-          />
-        </div>
-        <div>
-          <Label>Redirect URL</Label>
-          <Input
-            value={configOverrides.redirect_url || ""}
-            onChange={(e) =>
-              setConfigOverrides((prev) => ({ ...prev, redirect_url: e.target.value }))
-            }
-            placeholder="https://yoursite.com/payment/complete"
-          />
-        </div>
-        <div>
-          <Label>Cancel URL</Label>
-          <Input
-            value={configOverrides.cancel_url || ""}
-            onChange={(e) =>
-              setConfigOverrides((prev) => ({ ...prev, cancel_url: e.target.value }))
-            }
-            placeholder="https://yoursite.com/payment/cancelled"
-          />
-        </div>
-        <div>
-          <Label>Order Expiry (minutes)</Label>
-          <Input
-            type="number"
-            value={configOverrides.order_expiry_minutes || ""}
-            onChange={(e) =>
-              setConfigOverrides((prev) => ({
-                ...prev,
-                order_expiry_minutes: e.target.value,
-              }))
-            }
-            placeholder="60"
-          />
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <Button variant="outline" onClick={onBack}>
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSave}
-          disabled={saving || requiredFieldsMissing}
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-              Connecting...
-            </>
-          ) : (
-            "Save & Connect"
+        {/* Config overrides — collapsible, 2 columns */}
+        <div className="mb-6">
+          <button
+            type="button"
+            onClick={() => setShowConfig(!showConfig)}
+            className="flex items-center gap-1.5 text-xs font-medium text-gray-500 uppercase tracking-wide hover:text-gray-700 dark:hover:text-gray-300"
+          >
+            Configuration (optional)
+            {showConfig ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+          {showConfig && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-3">
+              <div>
+                <Label>Webhook URL</Label>
+                <Input
+                  value={configOverrides.webhook_url || ""}
+                  onChange={(e) =>
+                    setConfigOverrides((prev) => ({ ...prev, webhook_url: e.target.value.trim() }))
+                  }
+                  placeholder={`https://yoursite.com/api/v1/payments/callbacks/${provider.slug}`}
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label>Redirect URL</Label>
+                <Input
+                  value={configOverrides.redirect_url || ""}
+                  onChange={(e) =>
+                    setConfigOverrides((prev) => ({ ...prev, redirect_url: e.target.value.trim() }))
+                  }
+                  placeholder="https://yoursite.com/payment/complete"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label>Cancel URL</Label>
+                <Input
+                  value={configOverrides.cancel_url || ""}
+                  onChange={(e) =>
+                    setConfigOverrides((prev) => ({ ...prev, cancel_url: e.target.value.trim() }))
+                  }
+                  placeholder="https://yoursite.com/payment/cancelled"
+                  autoComplete="off"
+                />
+              </div>
+              <div>
+                <Label>Order Expiry (minutes)</Label>
+                <Input
+                  type="number"
+                  value={configOverrides.order_expiry_minutes || ""}
+                  onChange={(e) =>
+                    setConfigOverrides((prev) => ({
+                      ...prev,
+                      order_expiry_minutes: e.target.value.trim(),
+                    }))
+                  }
+                  placeholder="60"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
           )}
-        </Button>
-      </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button type="button" variant="outline" onClick={onBack}>
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={saving || requiredFieldsMissing}
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                Connecting...
+              </>
+            ) : (
+              "Save & Connect"
+            )}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }
@@ -430,9 +470,8 @@ function ProviderManageView({
         credentials: filteredCreds,
       });
       onUpdate();
-    } catch (err: any) {
-      const msg = typeof err?.message === "object" ? err.message?.message : err?.message;
-      setError(msg || "Failed to update credentials");
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, "Failed to update credentials"));
     } finally {
       setSaving(false);
     }
@@ -444,15 +483,15 @@ function ProviderManageView({
     try {
       await removeBusinessProvider(provider.slug);
       onDisconnect();
-    } catch (err: any) {
-      console.error(err);
+    } catch (err: unknown) {
+      setError(extractErrorMessage(err, "Failed to disconnect provider"));
     } finally {
       setDisconnecting(false);
     }
   };
 
   return (
-    <div className="max-w-lg">
+    <div>
       <button
         onClick={onBack}
         className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-4"
@@ -485,61 +524,66 @@ function ProviderManageView({
           Credentials
         </p>
         {!editing ? (
-          <div className="space-y-2">
-            {provider.credentialFields.map((field) => (
-              <div
-                key={field.fieldName}
-                className="flex items-center justify-between py-2"
-              >
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {field.displayName}
-                </span>
-                <span className="text-sm text-gray-900 dark:text-gray-100">
-                  {configuredKeys.has(field.fieldName) ? (
-                    field.fieldType === "SECRET" ? "••••••••" : <Check className="w-4 h-4 text-green-500 inline" />
-                  ) : (
-                    <span className="text-gray-400">Not set</span>
-                  )}
-                </span>
-              </div>
-            ))}
+          <div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+              {provider.credentialFields.map((field) => (
+                <div
+                  key={field.fieldName}
+                  className="flex items-center justify-between py-2"
+                >
+                  <span className="text-sm text-gray-600 dark:text-gray-400">
+                    {field.displayName}
+                  </span>
+                  <span className="text-sm text-gray-900 dark:text-gray-100">
+                    {configuredKeys.has(field.fieldName) ? (
+                      field.fieldType === "SECRET" ? "••••••••" : <Check className="w-4 h-4 text-green-500 inline" />
+                    ) : (
+                      <span className="text-gray-400">Not set</span>
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => setEditing(true)}
-              className="mt-2"
+              className="mt-3"
             >
               Edit Credentials
             </Button>
           </div>
         ) : (
-          <div className="space-y-4">
-            {provider.credentialFields.map((field) => (
-              <CredentialInput
-                key={field.fieldName}
-                field={field}
-                value={credentials[field.fieldName] || ""}
-                onChange={(val) =>
-                  setCredentials((prev) => ({ ...prev, [field.fieldName]: val }))
-                }
-                placeholder={
-                  configuredKeys.has(field.fieldName)
-                    ? field.fieldType === "SECRET"
-                      ? "••••••••  (leave blank to keep)"
-                      : "(leave blank to keep)"
-                    : undefined
-                }
-                showSecret={showSecrets[field.fieldName] || false}
-                onToggleSecret={() =>
-                  setShowSecrets((prev) => ({
-                    ...prev,
-                    [field.fieldName]: !prev[field.fieldName],
-                  }))
-                }
-              />
-            ))}
-            <div className="flex gap-2 mt-3">
+          <form autoComplete="off" onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {provider.credentialFields.map((field) => (
+                <CredentialInput
+                  key={field.fieldName}
+                  field={field}
+                  value={credentials[field.fieldName] || ""}
+                  onChange={(val) =>
+                    setCredentials((prev) => ({ ...prev, [field.fieldName]: val }))
+                  }
+                  placeholder={
+                    configuredKeys.has(field.fieldName)
+                      ? field.fieldType === "SECRET"
+                        ? "••••••••  (leave blank to keep)"
+                        : "(leave blank to keep)"
+                      : undefined
+                  }
+                  showSecret={showSecrets[field.fieldName] || false}
+                  onToggleSecret={() =>
+                    setShowSecrets((prev) => ({
+                      ...prev,
+                      [field.fieldName]: !prev[field.fieldName],
+                    }))
+                  }
+                />
+              ))}
+            </div>
+            <div className="flex gap-2 mt-4">
               <Button
+                type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => {
@@ -549,7 +593,7 @@ function ProviderManageView({
               >
                 Cancel
               </Button>
-              <Button size="sm" onClick={handleUpdate} disabled={saving}>
+              <Button type="submit" size="sm" disabled={saving}>
                 {saving ? (
                   <>
                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
@@ -560,7 +604,7 @@ function ProviderManageView({
                 )}
               </Button>
             </div>
-          </div>
+          </form>
         )}
       </div>
 
@@ -570,7 +614,7 @@ function ProviderManageView({
           <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
             Configuration
           </p>
-          <div className="space-y-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
             {Object.entries(config.configOverrides).map(([key, value]) => (
               <div
                 key={key}
@@ -640,8 +684,12 @@ function CredentialInput({
         <Input
           type={isSecret && !showSecret ? "password" : "text"}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => onChange(e.target.value.trim())}
           placeholder={placeholder}
+          autoComplete="off"
+          data-1p-ignore
+          data-lpignore="true"
+          data-form-type="other"
         />
         {isSecret && (
           <button
