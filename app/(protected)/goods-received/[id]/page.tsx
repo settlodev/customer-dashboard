@@ -60,12 +60,8 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
     format(new Date(d), "dd MMM yyyy, hh:mm a");
 
   return (
-    <div
-      className="min-h-screen py-8 px-4 sm:px-6"
-      style={{ backgroundColor: SECONDARY }}
-    >
+    <div className="min-h-screen py-8 px-4 sm:px-6">
       <div className="max-w-4xl mx-auto">
-        {/* ─── Document ─── */}
         <div
           id="grn-content"
           className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"

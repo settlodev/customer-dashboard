@@ -52,6 +52,7 @@ import { UniqueIdentifierInput } from "../widgets/serial-number-input";
 import { Button } from "@/components/ui/button";
 import { LpoPrefill } from "@/components/forms/stock-intake/lpo-form";
 import { StockIntakePayload } from "@/types/stock-intake/schema";
+import { StockIntakeSuccessModal } from "./stock-intake/success-modal";
 
 const StockLineItemSchema = object({
   stockVariant: string({ message: "Please select a stock item" }).uuid(),
@@ -125,7 +126,11 @@ function StockIntakeForm({
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>();
-  const [goodReceiveNote, setGoodReceiveNote] = useState(false);
+  const [successModal, setSuccessModal] = useState<{
+    open: boolean;
+    receiptId: string | undefined;
+    count: number;
+  }>({ open: false, receiptId: undefined, count: 0 });
 
   const [orderDate, setOrderDate] = useState<Date | undefined>(
     item?.orderDate ? new Date(item.orderDate) : undefined,
@@ -339,15 +344,12 @@ function StockIntakeForm({
       createStockIntake(payload)
         .then((result) => {
           if (result?.responseType === "success") {
-            toast({
-              title: "Success",
-              description: `${values.stockIntakes.length} stock intake(s) recorded.`,
+            const receiptId = (result?.data as { id?: string })?.id;
+            setSuccessModal({
+              open: true,
+              receiptId,
+              count: values.stockIntakes.length,
             });
-            console.log("The results is", result);
-            const receiptId = result?.data?.id;
-            router.push(
-              receiptId ? `/goods-received/${receiptId}` : "/stock-intakes",
-            );
           } else {
             setError("Failed to save stock intake.");
           }
@@ -782,6 +784,15 @@ function StockIntakeForm({
           />
         </div>
       </form>
+      <StockIntakeSuccessModal
+        open={successModal.open}
+        count={successModal.count}
+        receiptId={successModal.receiptId}
+        onViewGRN={() =>
+          router.push(`/goods-received/${successModal.receiptId}`)
+        }
+        onViewAll={() => router.push("/stock-intakes")}
+      />
     </Form>
   );
 }

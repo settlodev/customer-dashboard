@@ -8,43 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { StockPurchase } from "@/types/stock-purchases/type";
 import { LPOSelectionList } from "@/components/widgets/lpo-list";
-import { StockIntake } from "@/types/stock-intake/type";
 import StockIntakeForm from "@/components/forms/stock_intake_form";
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Map an LPO → a StockIntake-shaped object that StockIntakeForm can consume
-// as its `item` prop (pre-filling all the fields).
-//
-// StockIntakeForm's defaultValues when `item` is set:
-//   staff, supplier, deliveryDate,
-//   stockIntakes[0].{ stockVariant, quantity, value, orderDate, batchExpiryDate, status }
-//
-// For multi-line LPOs we need to pre-fill stockIntakes[0] with the first item
-// and let the user add more — BUT StockIntakeForm only accepts a single
-// StockIntake as `item`. So instead we pass `item={null}` and use the
-// `defaultValues` override approach via a wrapper that provides a pre-seeded
-// form state. The cleanest way without touching StockIntakeForm's internals
-// is to pass a fake StockIntake that carries the shared fields, and let each
-// line item beyond index 0 be appended by the user.
-//
-// However — since the LPO can have MULTIPLE line items — we instead render
-// StockIntakeForm with `item={null}` and pass a `prefill` prop.
-// StockIntakeForm already checks `stockVariantId` from URL params; we add a
-// similar `prefill` prop in the updated version below.
-//
-// If you prefer NOT to touch StockIntakeForm at all, use the single-item
-// mapping approach: map only the first LPO item to `item`, and the user
-// manually adds others. This file does the full multi-item pre-fill.
-// ─────────────────────────────────────────────────────────────────────────────
-
 export interface LpoPrefill {
-  supplier: string; // supplier UUID
-  deliveryDate: string; // ISO string
+  supplier: string;
+  deliveryDate: string;
   stockIntakes: {
-    stockVariant: string; // UUID
+    stockVariant: string;
     quantity: number;
-    value: number; // qty × unitCost
-    orderDate: string; // ISO string (LPO order date)
+    value: number;
+    orderDate: string;
   }[];
 }
 
@@ -60,8 +33,6 @@ function lpoToPrefill(lpo: StockPurchase): LpoPrefill {
     })),
   };
 }
-
-// ─── Selected LPO banner ──────────────────────────────────────────────────────
 
 function SelectedLpoBanner({
   lpo,

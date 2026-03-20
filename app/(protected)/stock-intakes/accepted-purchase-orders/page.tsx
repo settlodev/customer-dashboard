@@ -58,7 +58,7 @@ async function AcceptedLPO({ searchParams }: Params) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <LPOSelectionList lpos={submittedLPOs} />
+              {/*<LPOSelectionList lpos={submittedLPOs} />*/}
             </CardContent>
           </Card>
         ) : (
