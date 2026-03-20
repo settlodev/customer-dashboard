@@ -8,6 +8,8 @@ import React from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { Viewport } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import WhatsAppButton from "@/components/whatsapp-button";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.settlo.co.tz"),
@@ -316,6 +318,21 @@ export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
+  const cookieStore = await cookies();
+
+  let businessName: string | undefined;
+  let locationName: string | undefined;
+
+  try {
+    const bizCookie = cookieStore.get("currentBusiness");
+    if (bizCookie) businessName = JSON.parse(bizCookie.value)?.name;
+  } catch {}
+
+  try {
+    const locCookie = cookieStore.get("currentLocation");
+    if (locCookie) locationName = JSON.parse(locCookie.value)?.name;
+  } catch {}
+
   return (
     <html
       lang="en"
@@ -329,6 +346,11 @@ export default async function RootLayout({
         <SessionProvider session={session}>
           <Providers>{children}</Providers>
         </SessionProvider>
+        <WhatsAppButton
+          userName={session?.user?.name ?? undefined}
+          businessName={businessName}
+          locationName={locationName}
+        />
         <Analytics />
         <GoogleAnalytics gaId="G-7FEFKJQ300" />
       </body>

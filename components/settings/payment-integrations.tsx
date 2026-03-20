@@ -79,6 +79,7 @@ export default function PaymentIntegrations() {
   const [configs, setConfigs] = useState<BusinessProviderConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [loadingSlug, setLoadingSlug] = useState<string | null>(null);
 
   // Detail view state
   const [view, setView] = useState<View>("list");
@@ -106,7 +107,7 @@ export default function PaymentIntegrations() {
   }, [load]);
 
   const handleSetup = async (provider: Provider) => {
-    // Fetch full provider details for credential fields
+    setLoadingSlug(provider.slug);
     try {
       const full = await fetchProvider(provider.slug);
       setSelectedProvider(full);
@@ -116,10 +117,13 @@ export default function PaymentIntegrations() {
       setSelectedProvider(provider);
       setSelectedConfig(null);
       setView("setup");
+    } finally {
+      setLoadingSlug(null);
     }
   };
 
   const handleManage = async (provider: Provider, config: BusinessProviderConfig) => {
+    setLoadingSlug(provider.slug);
     try {
       const full = await fetchProvider(provider.slug);
       setSelectedProvider(full);
@@ -128,6 +132,7 @@ export default function PaymentIntegrations() {
     }
     setSelectedConfig(config);
     setView("manage");
+    setLoadingSlug(null);
   };
 
   const handleBack = () => {
@@ -230,9 +235,14 @@ export default function PaymentIntegrations() {
                 <Button
                   variant="outline"
                   size="sm"
+                  disabled={loadingSlug === provider.slug}
                   onClick={() => handleManage(provider, config!)}
                 >
-                  Manage
+                  {loadingSlug === provider.slug ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    "Manage"
+                  )}
                 </Button>
               </div>
             ) : (
@@ -243,9 +253,14 @@ export default function PaymentIntegrations() {
                 </div>
                 <Button
                   size="sm"
+                  disabled={loadingSlug === provider.slug}
                   onClick={() => handleSetup(provider)}
                 >
-                  Set Up
+                  {loadingSlug === provider.slug ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    "Set Up"
+                  )}
                 </Button>
               </div>
             )}
@@ -491,166 +506,184 @@ function ProviderManageView({
   };
 
   return (
-    <div>
+    <div className="space-y-6">
+      {/* Back */}
       <button
         onClick={onBack}
-        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 mb-4"
+        className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
       >
         <ChevronLeft className="w-4 h-4" />
-        Back
+        Back to integrations
       </button>
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      {/* Header */}
+      <div className="flex items-center gap-4">
+        {getProviderLogo(provider.slug, provider.name)}
+        <div className="flex-1">
           <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
             {provider.name}
           </h3>
-          <div className="flex items-center gap-1.5 mt-0.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
-            <span className="text-xs text-green-600 dark:text-green-400">Connected</span>
-          </div>
+        </div>
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-50 dark:bg-green-950">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500" />
+          <span className="text-xs font-medium text-green-600 dark:text-green-400">Connected</span>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
           {error}
         </div>
       )}
 
-      {/* Credentials display */}
-      <div className="mb-6">
-        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-          Credentials
-        </p>
-        {!editing ? (
+      {/* Credentials section */}
+      <div className="rounded-lg border border-gray-200 dark:border-gray-700">
+        <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
           <div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
-              {provider.credentialFields.map((field) => (
-                <div
-                  key={field.fieldName}
-                  className="flex items-center justify-between py-2"
-                >
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {field.displayName}
-                  </span>
-                  <span className="text-sm text-gray-900 dark:text-gray-100">
-                    {configuredKeys.has(field.fieldName) ? (
-                      field.fieldType === "SECRET" ? "••••••••" : <Check className="w-4 h-4 text-green-500 inline" />
-                    ) : (
-                      <span className="text-gray-400">Not set</span>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Credentials</h4>
+            <p className="text-xs text-gray-400 mt-0.5">API keys and secrets for {provider.name}</p>
+          </div>
+          {!editing && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => setEditing(true)}
-              className="mt-3"
             >
-              Edit Credentials
+              Edit
             </Button>
-          </div>
-        ) : (
-          <form autoComplete="off" onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}>
+          )}
+        </div>
+        <div className="px-5 py-4">
+          {!editing ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {provider.credentialFields.map((field) => (
-                <CredentialInput
-                  key={field.fieldName}
-                  field={field}
-                  value={credentials[field.fieldName] || ""}
-                  onChange={(val) =>
-                    setCredentials((prev) => ({ ...prev, [field.fieldName]: val }))
-                  }
-                  placeholder={
-                    configuredKeys.has(field.fieldName)
-                      ? field.fieldType === "SECRET"
-                        ? "••••••••  (leave blank to keep)"
-                        : "(leave blank to keep)"
-                      : undefined
-                  }
-                  showSecret={showSecrets[field.fieldName] || false}
-                  onToggleSecret={() =>
-                    setShowSecrets((prev) => ({
-                      ...prev,
-                      [field.fieldName]: !prev[field.fieldName],
-                    }))
-                  }
-                />
+                <div key={field.fieldName}>
+                  <p className="text-xs text-gray-400 mb-1">{field.displayName}</p>
+                  <p className="text-sm text-gray-900 dark:text-gray-100 font-mono">
+                    {configuredKeys.has(field.fieldName) ? (
+                      field.fieldType === "SECRET" ? (
+                        "••••••••••••"
+                      ) : (
+                        <span className="flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5 text-green-500" />
+                          Configured
+                        </span>
+                      )
+                    ) : (
+                      <span className="text-gray-300 dark:text-gray-600">Not set</span>
+                    )}
+                  </p>
+                </div>
               ))}
             </div>
-            <div className="flex gap-2 mt-4">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setEditing(false);
-                  setCredentials({});
-                }}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" size="sm" disabled={saving}>
-                {saving ? (
-                  <>
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Changes"
-                )}
-              </Button>
-            </div>
-          </form>
-        )}
+          ) : (
+            <form autoComplete="off" onSubmit={(e) => { e.preventDefault(); handleUpdate(); }}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {provider.credentialFields.map((field) => (
+                  <CredentialInput
+                    key={field.fieldName}
+                    field={field}
+                    value={credentials[field.fieldName] || ""}
+                    onChange={(val) =>
+                      setCredentials((prev) => ({ ...prev, [field.fieldName]: val }))
+                    }
+                    placeholder={
+                      configuredKeys.has(field.fieldName)
+                        ? field.fieldType === "SECRET"
+                          ? "Leave blank to keep current"
+                          : "Leave blank to keep current"
+                        : undefined
+                    }
+                    showSecret={showSecrets[field.fieldName] || false}
+                    onToggleSecret={() =>
+                      setShowSecrets((prev) => ({
+                        ...prev,
+                        [field.fieldName]: !prev[field.fieldName],
+                      }))
+                    }
+                  />
+                ))}
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditing(false);
+                    setCredentials({});
+                    setError(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" disabled={saving}>
+                  {saving ? (
+                    <>
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </Button>
+              </div>
+            </form>
+          )}
+        </div>
       </div>
 
-      {/* Config overrides */}
+      {/* Configuration section */}
       {config.configOverrides && Object.keys(config.configOverrides).length > 0 && (
-        <div className="mb-6">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-            Configuration
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
-            {Object.entries(config.configOverrides).map(([key, value]) => (
-              <div
-                key={key}
-                className="flex items-center justify-between py-2"
-              >
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                </span>
-                <span className="text-sm text-gray-900 dark:text-gray-100 max-w-[200px] truncate">
-                  {value}
-                </span>
-              </div>
-            ))}
+        <div className="rounded-lg border border-gray-200 dark:border-gray-700">
+          <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-800">
+            <h4 className="text-sm font-medium text-gray-900 dark:text-gray-100">Configuration</h4>
+            <p className="text-xs text-gray-400 mt-0.5">Webhook URLs and other settings</p>
+          </div>
+          <div className="px-5 py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {Object.entries(config.configOverrides).map(([key, value]) => (
+                <div key={key}>
+                  <p className="text-xs text-gray-400 mb-1">
+                    {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </p>
+                  <p className="text-sm text-gray-900 dark:text-gray-100 font-mono truncate" title={value}>
+                    {value}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Disconnect */}
-      <div className="pt-4 border-t border-gray-100 dark:border-gray-800">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleDisconnect}
-          disabled={disconnecting}
-          className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200"
-        >
-          {disconnecting ? (
-            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-          ) : (
-            <Trash2 className="w-3 h-3 mr-1" />
-          )}
-          Disconnect {provider.name}
-        </Button>
-        <p className="text-xs text-gray-400 mt-2">
-          Payments will switch to record-only mode. The payment method can still be used.
-        </p>
+      {/* Danger zone */}
+      <div className="rounded-lg border border-red-200 dark:border-red-900/50">
+        <div className="px-5 py-4 border-b border-red-100 dark:border-red-900/30">
+          <h4 className="text-sm font-medium text-red-600 dark:text-red-400">Danger Zone</h4>
+        </div>
+        <div className="px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-900 dark:text-gray-100">Disconnect {provider.name}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Payments will switch to record-only mode. The payment method can still be used.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDisconnect}
+            disabled={disconnecting}
+            className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200 dark:border-red-800 flex-shrink-0"
+          >
+            {disconnecting ? (
+              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+            ) : (
+              <Trash2 className="w-3 h-3 mr-1" />
+            )}
+            Disconnect
+          </Button>
+        </div>
       </div>
     </div>
   );
