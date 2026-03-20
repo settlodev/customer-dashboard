@@ -103,7 +103,7 @@ export const createStockIntake = async (
   try {
     const apiClient = new ApiClient();
     const response = await apiClient.post(
-      `/api/location/${location?.id}/direct-stock-intake-receipts`,
+      `/api/location/${location?.id}/hybrid-stock-intakes/all`,
       payload,
     );
     formResponse = {
