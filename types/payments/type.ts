@@ -6,14 +6,17 @@ export interface PaymentMethodChild {
   id: UUID;
   code: string;
   displayName: string;
+  enabled: boolean;
   integrationCapable: boolean;
   sortOrder: number;
+  children: null;
 }
 
 export interface PaymentMethod {
   id: UUID;
   code: string;
   displayName: string;
+  enabled: boolean;
   providerId: UUID | null;
   providerName: string | null;
   integrationCapable: boolean;

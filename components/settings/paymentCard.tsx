@@ -4,6 +4,7 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
+  Info,
   Loader2,
   Smartphone,
   Zap,
@@ -14,102 +15,86 @@ import { PaymentMethod } from "@/types/payments/type";
 
 interface PaymentMethodCardProps {
   method: PaymentMethod;
-  enabledIds: Set<string>;
   toggling: string | null;
   onToggle: (methodId: string, enabled: boolean) => void;
 }
 
 export const PaymentMethodCard = ({
   method,
-  enabledIds,
   toggling,
   onToggle,
 }: PaymentMethodCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const hasChildren = method.children && method.children.length > 0;
-  const isEnabled = enabledIds.has(method.id);
   const isToggling = toggling === method.id;
+  const anyChildEnabled = hasChildren && method.children!.some((c) => c.enabled);
 
   const getIcon = (code: string) => {
     switch (code) {
       case "MOBILE_MONEY":
-        return <Smartphone className="w-5 h-5" />;
+        return <Smartphone className="w-4 h-4" />;
       case "CARD":
-        return <CreditCard className="w-5 h-5" />;
+        return <CreditCard className="w-4 h-4" />;
       case "BANK":
-        return <Building2 className="w-5 h-5" />;
+        return <Building2 className="w-4 h-4" />;
       case "CASH":
-        return <Banknote className="w-5 h-5" />;
+        return <Banknote className="w-4 h-4" />;
       case "PAYMENT_AGGREGATORS":
-        return <Zap className="w-5 h-5" />;
+        return <Zap className="w-4 h-4" />;
       default:
-        return <CreditCard className="w-5 h-5" />;
+        return <CreditCard className="w-4 h-4" />;
     }
   };
 
-  const getColorClass = (code: string) => {
-    switch (code) {
-      case "MOBILE_MONEY":
-        return "bg-blue-50 border-blue-200 text-blue-700";
-      case "CARD":
-        return "bg-purple-50 border-purple-200 text-purple-700";
-      case "BANK":
-        return "bg-green-50 border-green-200 text-green-700";
-      case "CASH":
-        return "bg-amber-50 border-amber-200 text-amber-700";
-      case "PAYMENT_AGGREGATORS":
-        return "bg-indigo-50 border-indigo-200 text-indigo-700";
-      default:
-        return "bg-gray-50 border-gray-200 text-gray-700";
+  const getStatusText = () => {
+    if (!hasChildren) return method.enabled ? "Enabled" : "Disabled";
+    if (method.enabled) return `All ${method.displayName.toLowerCase()} types accepted`;
+    if (anyChildEnabled) {
+      const enabledChildren = method.children!.filter((c) => c.enabled);
+      return enabledChildren.map((c) => c.displayName).join(", ");
     }
+    return "Disabled";
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-shadow">
+    <div className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
       {/* Parent row */}
-      <div className="p-5 flex items-center justify-between">
+      <div className="py-4 px-1 flex items-center justify-between">
         <div
-          className="flex items-center gap-4 flex-1 cursor-pointer"
+          className="flex items-center gap-3 flex-1 cursor-pointer"
           onClick={() => hasChildren && setIsExpanded(!isExpanded)}
         >
-          <div className={`p-2.5 rounded-lg ${getColorClass(method.code)}`}>
+          <span className="text-gray-400 dark:text-gray-500">
             {getIcon(method.code)}
-          </div>
+          </span>
           <div>
-            <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
               {method.displayName}
-            </h3>
-            <p className="text-xs text-gray-500">
-              {hasChildren
-                ? `${method.children!.length} ${method.children!.length === 1 ? "method" : "methods"}`
-                : method.code}
-              {method.integrationCapable && (
-                <span className="ml-2 inline-flex items-center gap-0.5 text-indigo-600">
-                  <Zap className="w-3 h-3" /> Integration
-                </span>
-              )}
+            </span>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              {getStatusText()}
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {isToggling ? (
             <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
           ) : (
             <Switch
-              checked={isEnabled}
+              checked={method.enabled}
               onCheckedChange={(checked) => onToggle(method.id, checked)}
             />
           )}
           {hasChildren && (
             <button
               onClick={() => setIsExpanded(!isExpanded)}
-              className="text-gray-400 hover:text-gray-600 p-1"
+              className="text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 p-0.5"
             >
               {isExpanded ? (
-                <ChevronUp className="w-5 h-5" />
+                <ChevronUp className="w-4 h-4" />
               ) : (
-                <ChevronDown className="w-5 h-5" />
+                <ChevronDown className="w-4 h-4" />
               )}
             </button>
           )}
@@ -118,39 +103,47 @@ export const PaymentMethodCard = ({
 
       {/* Children */}
       {isExpanded && hasChildren && (
-        <div className="px-5 pb-5 border-t border-gray-100 dark:border-gray-700">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
+        <div className="pb-4 pl-8 pr-1">
+          {/* Info message */}
+          <div className="flex items-center gap-1.5 mb-3 text-xs text-gray-400 dark:text-gray-500">
+            <Info className="w-3 h-3 flex-shrink-0" />
+            {method.enabled ? (
+              <span>All types accepted. Toggle individually to be specific.</span>
+            ) : anyChildEnabled ? (
+              <span>Only selected types accepted.</span>
+            ) : (
+              <span>No types enabled.</span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
             {method.children!
               .sort((a, b) => a.sortOrder - b.sortOrder)
               .map((child) => {
-                const childEnabled = enabledIds.has(child.id);
                 const childToggling = toggling === child.id;
 
                 return (
                   <div
                     key={child.id}
-                    className={`flex items-center justify-between p-3 rounded-lg border transition-colors ${
-                      childEnabled
-                        ? "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600"
-                        : "bg-gray-50 dark:bg-gray-800/50 border-gray-100 dark:border-gray-700 opacity-60"
+                    className={`flex items-center justify-between py-2.5 px-3 rounded-md border border-gray-100 dark:border-gray-800 ${
+                      method.enabled ? "opacity-50" : ""
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
-                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
                         {child.displayName}
                       </span>
                       {child.integrationCapable && (
-                        <span className="text-indigo-500">
-                          <Zap className="w-3 h-3" />
-                        </span>
+                        <Zap className="w-3 h-3 text-indigo-400" />
                       )}
                     </div>
-                    {childToggling ? (
+                    {method.enabled ? (
+                      <span className="text-xs text-gray-400">Included</span>
+                    ) : childToggling ? (
                       <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
                     ) : (
                       <Switch
-                        checked={childEnabled}
-                        disabled={!isEnabled}
+                        checked={child.enabled}
                         onCheckedChange={(checked) => onToggle(child.id, checked)}
                       />
                     )}
