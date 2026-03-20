@@ -72,7 +72,7 @@ export const metadata: Metadata = {
     siteName: "Settlo",
     images: [
       {
-        url: "/images/logo_new.png",
+        url: "https://www.settlo.co.tz/images/logo_new.png",
         width: 498,
         height: 220,
         alt: "Settlo - Daftari la Kidigitali",
@@ -93,7 +93,7 @@ export const metadata: Metadata = {
     creator: "@settlo",
     images: [
       {
-        url: "/images/logo_new.png",
+        url: "https://www.settlo.co.tz/images/logo_new.png",
         width: 498,
         height: 220,
         alt: "Settlo - Daftari la Kidigitali",
@@ -309,7 +309,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#F8F0E9",
+  themeColor: "#F0D4BC",
 };
 
 export default async function RootLayout({

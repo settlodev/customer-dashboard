@@ -1,17 +1,15 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  fetchBusinessPaymentMethods,
-  toggleLocationPaymentMethod,
   fetchLocationPaymentMethods,
+  toggleLocationPaymentMethod,
 } from "@/lib/actions/payment-method-actions";
 import { PaymentMethodCard } from "./paymentCard";
 import { PaymentMethod } from "@/types/payments/type";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AcceptedPaymentMethodsPage() {
-  const [allMethods, setAllMethods] = useState<PaymentMethod[]>([]);
-  const [enabledIds, setEnabledIds] = useState<Set<string>>(new Set());
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
@@ -20,24 +18,8 @@ export default function AcceptedPaymentMethodsPage() {
     const load = async () => {
       try {
         setLoading(true);
-        const [business, location] = await Promise.all([
-          fetchBusinessPaymentMethods(),
-          fetchLocationPaymentMethods(),
-        ]);
-
-        setAllMethods(business);
-
-        // Build set of enabled IDs from location methods
-        const enabled = new Set<string>();
-        for (const method of location) {
-          enabled.add(method.id);
-          if (method.children) {
-            for (const child of method.children) {
-              enabled.add(child.id);
-            }
-          }
-        }
-        setEnabledIds(enabled);
+        const data = await fetchLocationPaymentMethods();
+        setMethods(data);
       } catch (err: any) {
         setError(err.message || "Failed to load payment methods");
       } finally {
@@ -47,40 +29,47 @@ export default function AcceptedPaymentMethodsPage() {
     load();
   }, []);
 
-  const handleToggle = async (methodId: string, enabled: boolean) => {
+  const handleToggle = useCallback(async (methodId: string, enabled: boolean) => {
     setToggling(methodId);
     try {
       await toggleLocationPaymentMethod(methodId, enabled);
 
-      setEnabledIds((prev) => {
-        const next = new Set(prev);
-        // Find if this is a parent
-        const parent = allMethods.find((m) => m.id === methodId);
-        if (parent) {
-          // Toggling a parent affects all children
-          if (enabled) {
-            next.add(methodId);
-            parent.children?.forEach((c) => next.add(c.id));
-          } else {
-            next.delete(methodId);
-            parent.children?.forEach((c) => next.delete(c.id));
+      // Optimistic update
+      setMethods((prev) =>
+        prev.map((m) => {
+          // Check if this is the toggled parent
+          if (m.id === methodId) {
+            return {
+              ...m,
+              enabled,
+              // Enable parent → disable all children
+              children: enabled
+                ? m.children?.map((c) => ({ ...c, enabled: false })) ?? null
+                : m.children,
+            };
           }
-        } else {
-          // Toggling a child
-          if (enabled) {
-            next.add(methodId);
-          } else {
-            next.delete(methodId);
+
+          // Check if a child of this parent was toggled
+          if (m.children?.some((c) => c.id === methodId)) {
+            return {
+              ...m,
+              // Enable child → disable parent
+              enabled: enabled ? false : m.enabled,
+              children: m.children.map((c) =>
+                c.id === methodId ? { ...c, enabled } : c,
+              ),
+            };
           }
-        }
-        return next;
-      });
+
+          return m;
+        }),
+      );
     } catch (err: any) {
       console.error("Failed to toggle payment method:", err);
     } finally {
       setToggling(null);
     }
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -89,20 +78,20 @@ export default function AcceptedPaymentMethodsPage() {
           <Skeleton className="h-7 w-32" />
           <Skeleton className="h-4 w-64 mt-2" />
         </div>
-        <div className="grid grid-cols-1 gap-4">
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-4">
           {[1, 2, 3, 4].map((i) => (
             <div
               key={i}
-              className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 p-5 flex items-center justify-between"
+              className="py-4 px-1 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 last:border-b-0"
             >
-              <div className="flex items-center gap-4">
-                <Skeleton className="h-10 w-10 rounded-lg" />
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-4 w-4 rounded" />
                 <div>
-                  <Skeleton className="h-5 w-28" />
-                  <Skeleton className="h-3 w-20 mt-2" />
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-40 mt-1.5" />
                 </div>
               </div>
-              <Skeleton className="h-5 w-10 rounded-full" />
+              <Skeleton className="h-5 w-9 rounded-full" />
             </div>
           ))}
         </div>
@@ -126,29 +115,22 @@ export default function AcceptedPaymentMethodsPage() {
     );
   }
 
-  const totalChildren = allMethods.reduce(
-    (sum, m) => sum + (m.children?.length ?? 0),
-    0,
-  );
-  const totalMethods = allMethods.length + totalChildren;
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Payments</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          {enabledIds.size} of {totalMethods} payment methods enabled
+          Manage accepted payment methods for your location
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {allMethods
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-4">
+        {methods
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((method) => (
             <PaymentMethodCard
               key={method.id}
               method={method}
-              enabledIds={enabledIds}
               toggling={toggling}
               onToggle={handleToggle}
             />

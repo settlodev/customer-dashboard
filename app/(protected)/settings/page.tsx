@@ -18,6 +18,7 @@ import EFDSettings from "@/components/settings/efd";
 import DigitalMenuSettings from "@/components/settings/digital-menu-settings";
 import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
 import BusinessDetailsSettings from "@/components/settings/business-details";
+import IntegrationsSettings from "@/components/settings/integrations";
 import LocationDetailsSettings from "@/components/settings/location-details";
 import { LocationSettings } from "@/types/settings/type";
 import { Business } from "@/types/business/type";
@@ -212,6 +213,8 @@ const SettingsLayout = ({
         );
       case "efd":
         return <EFDSettings />;
+      case "integrations":
+        return <IntegrationsSettings />;
       default:
         return (
           <BusinessDetailsSettings
