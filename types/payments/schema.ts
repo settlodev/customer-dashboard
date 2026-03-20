@@ -1,9 +1,25 @@
 import { z } from "zod";
 
-export const updatePaymentMethodsSchema = z.object({
-  newAcceptedPaymentMethodTypeIds: z.array(z.string().uuid()).min(1),
+export const togglePaymentMethodSchema = z.object({
+  enabled: z.boolean(),
 });
 
+export const configureProviderSchema = z.object({
+  providerSlug: z.string().min(1),
+  enabled: z.boolean(),
+  credentials: z.record(z.string()),
+  configOverrides: z.record(z.string()).optional(),
+  createdBy: z.string().uuid().optional(),
+});
+
+export const locationOverrideSchema = z.object({
+  locationId: z.string().uuid(),
+  enabled: z.boolean(),
+  credentialOverrides: z.record(z.string()).optional(),
+  configOverrides: z.record(z.string()).optional(),
+});
+
+// Receipt payment details (unchanged)
 const paymentMethodItemSchema = z.object({
   acceptedPaymentMethodType: z.string().uuid({
     message: "Invalid UUID format for acceptedPaymentMethodType",
