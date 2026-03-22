@@ -72,8 +72,9 @@ const DeviceSettings = () => {
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [copied, setCopied] = useState(false);
 
-  // Regenerate state
+  // Regenerate / suspend state
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [suspendingId, setSuspendingId] = useState<string | null>(null);
 
   // Logout state
   const [showLogoutAlert, setShowLogoutAlert] = useState(false);
@@ -224,6 +225,7 @@ const DeviceSettings = () => {
     try {
       const result = await regenerateDeviceCode(device.id);
       if (result.success && result.data) {
+        setSelectedDevice(null);
         transitionToCode(device.customName || device.name, result.data);
         loadDevices();
       } else {
@@ -297,9 +299,11 @@ const DeviceSettings = () => {
 
   const handleSuspendToggle = async (device: Device) => {
     const newState = !device.suspended;
+    setSuspendingId(device.id);
     try {
       const result = await suspendDevice(device.id, newState);
       if (result.success) {
+        setSelectedDevice(null);
         toast({
           variant: "success",
           title: "Success",
@@ -321,6 +325,8 @@ const DeviceSettings = () => {
         title: "Error",
         description: "Failed to update device",
       });
+    } finally {
+      setSuspendingId(null);
     }
   };
 
@@ -581,6 +587,7 @@ const DeviceSettings = () => {
                             </DropdownMenuItem>
                           )}
                           <DropdownMenuItem
+                            disabled={suspendingId === device.id}
                             className={device.suspended
                               ? "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:text-emerald-400 dark:focus:bg-emerald-950"
                               : "text-amber-600 focus:text-amber-600 focus:bg-amber-50 dark:text-amber-400 dark:focus:bg-amber-950"
@@ -590,7 +597,9 @@ const DeviceSettings = () => {
                               handleSuspendToggle(device);
                             }}
                           >
-                            {device.suspended ? (
+                            {suspendingId === device.id ? (
+                              <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</>
+                            ) : device.suspended ? (
                               <><ShieldCheck className="mr-2 h-4 w-4" />Restore Data Access</>
                             ) : (
                               <><ShieldOff className="mr-2 h-4 w-4" />Suspend Data Access</>
@@ -839,69 +848,75 @@ const DeviceSettings = () => {
 
               {/* Actions */}
               <Separator />
-              <div className="flex flex-col gap-2">
-                {!isDeviceOnline(selectedDevice) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full rounded-lg border-blue-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
-                    disabled={regeneratingId === selectedDevice.id}
-                    onClick={() => {
-                      setSelectedDevice(null);
-                      handleRegenerateCode(selectedDevice);
-                    }}
-                  >
-                    <RefreshCw className="mr-2 h-4 w-4" />
-                    New Code
-                  </Button>
-                )}
-                {isDeviceOnline(selectedDevice) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full rounded-lg border-orange-200 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"
-                    onClick={() => {
-                      setSelectedDevice(null);
-                      handleLogoutClick(selectedDevice);
-                    }}
-                  >
-                    <LogOut className="mr-2 h-4 w-4" />
-                    Logout Device
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className={`w-full rounded-lg ${
-                    selectedDevice.suspended
-                      ? "border-emerald-200 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
-                      : "border-amber-200 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950"
-                  }`}
-                  onClick={() => {
-                    const dev = selectedDevice;
-                    setSelectedDevice(null);
-                    handleSuspendToggle(dev);
-                  }}
-                >
-                  {selectedDevice.suspended ? (
-                    <><ShieldCheck className="mr-2 h-4 w-4" />Restore Data Access</>
-                  ) : (
-                    <><ShieldOff className="mr-2 h-4 w-4" />Suspend Data Access</>
-                  )}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full rounded-lg border-red-200 text-red-600 hover:text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
-                  onClick={() => {
-                    setSelectedDevice(null);
-                    handleDeleteClick(selectedDevice);
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Device
-                </Button>
-              </div>
+              {(() => {
+                const isBusy = suspendingId === selectedDevice.id || regeneratingId === selectedDevice.id;
+                return (
+                  <div className="flex flex-col gap-2">
+                    {!isDeviceOnline(selectedDevice) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full rounded-lg border-blue-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
+                        disabled={isBusy || regeneratingId === selectedDevice.id}
+                        onClick={() => handleRegenerateCode(selectedDevice)}
+                      >
+                        {regeneratingId === selectedDevice.id ? (
+                          <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Generating...</>
+                        ) : (
+                          <><RefreshCw className="mr-2 h-4 w-4" />New Code</>
+                        )}
+                      </Button>
+                    )}
+                    {isDeviceOnline(selectedDevice) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isBusy}
+                        className="w-full rounded-lg border-orange-200 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"
+                        onClick={() => {
+                          setSelectedDevice(null);
+                          handleLogoutClick(selectedDevice);
+                        }}
+                      >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        Logout Device
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isBusy}
+                      className={`w-full rounded-lg ${
+                        selectedDevice.suspended
+                          ? "border-emerald-200 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                          : "border-amber-200 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950"
+                      }`}
+                      onClick={() => handleSuspendToggle(selectedDevice)}
+                    >
+                      {isBusy ? (
+                        <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Processing...</>
+                      ) : selectedDevice.suspended ? (
+                        <><ShieldCheck className="mr-2 h-4 w-4" />Restore Data Access</>
+                      ) : (
+                        <><ShieldOff className="mr-2 h-4 w-4" />Suspend Data Access</>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={isBusy}
+                      className="w-full rounded-lg border-red-200 text-red-600 hover:text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
+                      onClick={() => {
+                        setSelectedDevice(null);
+                        handleDeleteClick(selectedDevice);
+                      }}
+                    >
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Delete Device
+                    </Button>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </DialogContent>
