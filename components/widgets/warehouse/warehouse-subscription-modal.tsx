@@ -69,7 +69,6 @@ const WarehouseSubscriptionModal = ({
     }, [form]);
 
     const onFormError = useCallback((errors: any) => {
-        console.log('Form validation errors:', errors);
         const firstError = Object.values(errors)[0] as any;
         if (firstError?.message) {
             // Handle error display if needed

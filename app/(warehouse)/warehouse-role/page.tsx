@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/warehouse/roles/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Role, WarehouseRole} from "@/types/roles/type";
+import {WarehouseRole} from "@/types/roles/type";
 import NoItems from "@/components/layouts/no-items";
 import { searchWarehouseRoles } from "@/lib/actions/warehouse/roles-action";
 

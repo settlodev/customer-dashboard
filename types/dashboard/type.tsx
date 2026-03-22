@@ -1,69 +1,92 @@
 export default interface SummaryResponse {
-  totalOrders: number;
-  totalRevenue: number;
-  totalCollections: number;
-  totalDiscounts: number;
-  averageOrderValue: number;
-  completedOrders: number;
-  pendingOrders: number;
-  totalPaidAmount: number;
-  totalUnpaidAmount: number;
-  topSellingItems: TopSellingItems[];
-  paymentStatusSummary: PaymentStatusSummary;
-  paymentMethodTotals: PaymentMethods[];
-  periodicSales:salesStats;
-  averageSale: number;
+  locationId: string;
+  locationName: string;
+  startDate: string;
+  endDate: string;
+
   closingBalance: number;
-  complimentary: number;
-  costsAmount: number;
-  discountsAmount: number;
+  transactionsAmount: number;
   refundsAmount: number;
-  expensesAmount: number;
-  grossProfit: number;
+  expensesPaidAmount: number;
+
   grossSales: number;
-  margins: number;
-  paidCredit: number;
-  salesCount: number;
-  unpaidCredit: number;
-  advancePayment: number;
-  soldItems: SoldItems[];
-  numberOfSoldItems: number;
   netSales: number;
+  totalDiscount: number;
+  totalCost: number;
+  grossProfit: number;
+
+  expenseCount: number;
+  totalExpenseRecordedAmount: number;
+  totalExpensePaidAmount: number;
+  totalExpenseUnpaidAmount: number;
+  totalTips: number;
+
+  totalOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  ongoingOrders: number;
+  refundedOrders: number;
+  averageOrderValue: number;
+
+  totalRefundCount: number;
+  totalRefundedAmount: number;
+
+  uniqueCustomers: number;
+
+  transactionsPerPaymentMethod: TransactionsByPaymentMethod[];
+  recentTransactions: RecentTransaction[];
+  topSellingItems: TopSellingItem[];
+  dailyRevenueTrend: DailyRevenue[];
+  monthlyCashflow: MonthlyCashflow[];
+  staffPerformance: StaffPerformance[];
 }
 
-export interface PaymentStatusSummary {
-  paidOrders: number;
-  partiallyPaidOrders: number;
-  unpaidOrders: number;
-};
+export interface TransactionsByPaymentMethod {
+  acceptedPaymentMethodType: string;
+  acceptedPaymentMethodTypeName: string;
+  transactionCount: number;
+  totalAmount: number;
+  percentage: number;
+}
 
-export interface PaymentMethods {
-  paymentMethodName: string;
+export interface RecentTransaction {
+  id: string;
+  transactionId: string;
+  orderNumber: string;
+  acceptedPaymentMethodTypeName: string;
   amount: number;
+  staffName: string;
+  createdAt: string;
 }
 
-export interface salesStats{
-  salesPeriod: string;
-  periodicSalesValues: periodicSalesValues[];
-}
-export interface periodicSalesValues {
-  time: string;
-  totalPaidAmount: number;
+export interface TopSellingItem {
+  productId: string;
+  itemName: string;
+  departmentName: string;
+  quantitySold: number;
+  grossSales: number;
+  netSales: number;
+  grossProfit: number;
 }
 
-export interface SoldItems {
-    productName:string;
-    imageUrl:string;
-    quantity:number;
-    price:number;
-    soldDate:string;
-    
-  }
-  interface TopSellingItems {
-    name:string;
-    image?:string;
-    quantity:number;
-    totalRevenue:number;
-    
-  }
- 
+export interface DailyRevenue {
+  date: string;
+  revenue: number;
+  expenses: number;
+  ordersCount: number;
+}
+
+export interface MonthlyCashflow {
+  month: string;
+  transactionsTotal: number;
+  transactionsCount: number;
+  expensesTotal: number;
+  expensesCount: number;
+}
+
+export interface StaffPerformance {
+  staffId: string;
+  staffName: string;
+  ordersCount: number;
+  ordersValue: number;
+}

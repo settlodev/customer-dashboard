@@ -1,40 +1,49 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
-import * as z from "zod";
+import { z } from "zod";
 
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Card, CardContent } from "@/components/ui/card";
 
 import { FormResponse } from "@/types/types";
-import { Input } from "@/components/ui/input";
-
-import { Reservation } from "@/types/reservation/type";
+import {
+  Reservation,
+  RESERVATION_SOURCE_LABELS,
+  RESERVATION_SOURCES,
+} from "@/types/reservation/type";
+import { Space } from "@/types/space/type";
 import { ReservationSchema } from "@/types/reservation/schema";
 import {
   createReservation,
   updateReservation,
 } from "@/lib/actions/reservation-actions";
-import DateTimePicker from "../widgets/datetimepicker";
-
-import { PhoneInput } from "../ui/phone-input";
+import { fetchAllSpaces } from "@/lib/actions/space-actions";
 import { useToast } from "@/hooks/use-toast";
-import { Switch } from "../ui/switch";
 import { useRouter } from "next/navigation";
 import CustomerSelector from "../widgets/customer-selector";
 import CancelButton from "../widgets/cancel-button";
-import SubmitButton from "../widgets/submit-button";
-import { Separator } from "../ui/separator";
-import ProductVariantSelector from "../widgets/product-variant-selector";
+import { SubmitButton } from "../widgets/submit-button";
+import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 
 const ReservationForm = ({
   item,
@@ -43,117 +52,145 @@ const ReservationForm = ({
 }) => {
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
-  const [reservationDate, setReservationDate] = useState<Date | undefined>(
-    item?.date ? new Date(item.date) : undefined
-  );
-  const [startDate, setStartDate] = useState<Date | undefined>(
-    item?.startDate ? new Date(item.startDate) : undefined
-  );
-  const [endDate, setEndDate] = useState<Date | undefined>(
-    item?.endDate ? new Date(item.endDate) : undefined
-  );
- 
+  const [spaces, setSpaces] = useState<Space[]>([]);
+
   const { toast } = useToast();
   const router = useRouter();
 
- 
-
+  useEffect(() => {
+    const loadSpaces = async () => {
+      try {
+        const data = await fetchAllSpaces();
+        const bookable = data.filter(
+          (s: Space) =>
+            s.reservable &&
+            s.active &&
+            (s.type === "TABLE" || s.type === "SEAT"),
+        );
+        setSpaces(bookable);
+      } catch (error) {
+        console.error("Failed to load spaces:", error);
+      }
+    };
+    loadSpaces();
+  }, []);
 
   const form = useForm<z.infer<typeof ReservationSchema>>({
     resolver: zodResolver(ReservationSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues: {
+      reservationDate: item?.reservationDate ?? "",
+      reservationTime: item?.reservationTime ?? "",
+      reservationEndTime: item?.reservationEndTime ?? undefined,
+      peopleCount: item?.peopleCount ?? undefined,
+      specialRequests: item?.specialRequests ?? undefined,
+      source: (item?.source as any) ?? undefined,
+      customer: (item?.customer as string) ?? undefined,
+      tableAndSpace: (item?.tableAndSpace as string) ?? undefined,
+      status: item?.status ?? true,
+    },
   });
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
-      console.log("Errors during form submission:", errors);
       toast({
         variant: "destructive",
-        title: "Uh oh! something went wrong",
-        description: typeof errors.message === 'string' ? errors.message : "There was an issue submitting your form, please try later",
+        title: "Form validation failed",
+        description:
+          typeof errors.message === "string"
+            ? errors.message
+            : "Please check your inputs and try again.",
       });
     },
     [toast],
   );
 
   const submitData = (values: z.infer<typeof ReservationSchema>) => {
-console.log("Submitting data:", values);
-    setResponse(undefined);
-
     startTransition(() => {
+      const handleResponse = (data: FormResponse | void) => {
+        if (!data) return;
+        setResponse(data);
+        const msg = SettloErrorHandler.safeMessage(data.message);
+        if (data.responseType === "success") {
+          toast({ variant: "success", title: "Success", description: msg });
+          router.push("/reservations");
+        } else {
+          toast({ variant: "destructive", title: "Error", description: msg });
+        }
+      };
+
       if (item) {
-        updateReservation(item.id, values).then((data) => {
-          if (data) setResponse(data);
-          if (data && data.responseType === "success") {
-            toast({
-              title: "Success",
-              description: data.message,
-            });
-            router.push("/reservations");
-          }
-        });
+        updateReservation(item.id, values).then(handleResponse);
       } else {
-        createReservation(values).then((data) => {
-          if (data) setResponse(data);
-          if (data && data.responseType === "success") {
-            toast({
-              title: "Success",
-              description: data.message,
-            });
-            router.push("/reservations");
-          }
-        });
+        createReservation(values).then(handleResponse);
       }
     });
   };
 
-
-
-  const handleTimeChange = (type: "hour" | "minutes", value: string) => {
-    if (!reservationDate || !startDate || !endDate) return;
-
-    const newDate = new Date(reservationDate);
-    const newStartDate = new Date(startDate)
-    const newEndDate = new Date(endDate)
-
-    if (type === "hour") {
-      newDate.setHours(Number(value));
-      newStartDate.setHours(Number(value));
-      newEndDate.setHours(Number(value))
-    } else if (type === "minutes") {
-      newDate.setMinutes(Number(value));
-      newStartDate.setMinutes(Number(value));
-      newEndDate.setMinutes(Number(value))
-    }
-    setReservationDate(newDate);
-    setStartDate(newStartDate);
-    setEndDate(newEndDate);
-  };
-
-  const handleDateSelect = (date: Date) => {
-    setReservationDate(date)
-    setStartDate(date);
-    setEndDate(date)
-  };
-
   return (
-    <>
-      <>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(submitData, onInvalid)}>
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
+    <Form {...form}>
+      <form
+        onSubmit={form.handleSubmit(submitData, onInvalid)}
+        className="space-y-6"
+      >
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-6">
+            {/* Date & Time */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Date & Time</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
-                  name="name"
+                  name="reservationDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Name</FormLabel>
+                      <FormLabel>
+                        Reservation Date{" "}
+                        <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
                         <Input
+                          type="date"
                           {...field}
                           disabled={isPending}
-                          placeholder="Enter name"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="reservationTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        Start Time <span className="text-red-500">*</span>
+                      </FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="reservationEndTime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>End Time</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="time"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
                         />
                       </FormControl>
                       <FormMessage />
@@ -161,7 +198,42 @@ console.log("Submitting data:", values);
                   )}
                 />
               </div>
-              <div className="grid gap-2">
+            </div>
+
+            <Separator />
+
+            {/* Guest & Table */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Guest & Table</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="peopleCount"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Number of Guests</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={1}
+                          placeholder="Party size"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === ""
+                                ? undefined
+                                : parseInt(e.target.value),
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="customer"
@@ -171,10 +243,7 @@ console.log("Submitting data:", values);
                       <FormControl>
                         <CustomerSelector
                           value={field.value}
-                          onChange={(id) => {
-                            field.onChange(id);
-                            form.setValue("customer", id);
-                          }}
+                          onChange={(id) => field.onChange(id)}
                           placeholder="Select customer"
                         />
                       </FormControl>
@@ -182,215 +251,114 @@ console.log("Submitting data:", values);
                     </FormItem>
                   )}
                 />
-              </div>
-            </div>
 
-            <div className="lg:grid grid-cols-2 gap-4 mt-2">
-              <div className="grid gap-2">
                 <FormField
                   control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col items-start">
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl className="w-full border-1 rounded-sm ">
-                        <PhoneInput
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Enter phone number"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="email"
+                  name="tableAndSpace"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          type="email"
-                          placeholder="Enter email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-            <div className="lg:grid grid-cols-2  gap-4 mt-2">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="date"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Date of Reservation</FormLabel>
-                      <DateTimePicker
-                        field={field}
-                        date={reservationDate}
-                        setDate={setReservationDate}
-                        handleTimeChange={handleTimeChange}
-                        onDateSelect={handleDateSelect}
-                        minDate={new Date()}
-                      />
-                      <FormDescription>
-                        Please select your preferred date of reservation.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="numberOfPeople"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Number of People</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          placeholder="Enter number of people"
-                          value={field.value}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="lg:grid grid-cols-2 gap-2 mt-2">
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="startDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Start date </FormLabel>
-                      <DateTimePicker
-                        field={field}
-                        date={startDate}
-                        setDate={setStartDate}
-                        handleTimeChange={handleTimeChange}
-                        onDateSelect={handleDateSelect}
-                        minDate={new Date()}
-                      />
-                      <FormDescription>
-                        Please select your preferred start date and time.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <FormField
-                  control={form.control}
-                  name="endDate"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>End date</FormLabel>
-                      <DateTimePicker
-                        field={field}
-                        date={endDate}
-                        setDate={setEndDate}
-                        handleTimeChange={handleTimeChange}
-                        onDateSelect={handleDateSelect}
-                        minDate={startDate}
-                      />
-                      <FormDescription>
-                        Please select your preferred end date and time.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <div className="lg:grid grid-cols-2 gap-2 mt-2">
-              <div className="grid gap-2 mt-2">
-                <FormField
-                  control={form.control}
-                  name="product"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Room</FormLabel>
-                      <FormControl>
-                        <ProductVariantSelector
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Select room to reserve"
-                          isDisabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              {item && (
-                <div className="grid gap-2">
-                  <FormField
-                    control={form.control}
-                    name="status"
-
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <FormLabel>
-
-                          Reservation Status
-                          <span className={item.status ? "text-green-500" : "text-red-500"}>
-                            ({item.status ? "Active" : "Inactive"})
-                          </span>
-
-                        </FormLabel>
+                      <FormLabel>Table</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      >
                         <FormControl>
-                          <Switch
-
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
+                          <SelectTrigger>
+                            <SelectValue placeholder="Auto-assign or select" />
+                          </SelectTrigger>
                         </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              )
-              }
+                        <SelectContent>
+                          {spaces.map((space) => (
+                            <SelectItem
+                              key={space.id}
+                              value={space.id as string}
+                            >
+                              {space.name}
+                              {space.capacity
+                                ? ` (${space.capacity} seats)`
+                                : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
-            <div className="flex h-5 items-center space-x-4 mt-7">
-              <CancelButton/>
+            <Separator />
 
-              <Separator orientation="vertical"/>
-              
-              <SubmitButton
-                  isPending={isPending}
-                  label={item ? "Update Reservation" : "Reserve room"}
-              />
+            {/* Details */}
+            <div>
+              <h3 className="text-lg font-medium mb-4">Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="source"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Booking Source</FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select source" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {RESERVATION_SOURCES.map((src) => (
+                            <SelectItem key={src} value={src}>
+                              {RESERVATION_SOURCE_LABELS[src]}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="specialRequests"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Special Requests</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Any special requests or notes"
+                          {...field}
+                          value={field.value ?? ""}
+                          disabled={isPending}
+                          rows={3}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
-          </form>
-        </Form>
-      </>
-    </>
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
+          <CancelButton />
+          <Separator orientation="vertical" className="h-5" />
+          <SubmitButton
+            isPending={isPending}
+            label={item ? "Update Reservation" : "Create Reservation"}
+          />
+        </div>
+      </form>
+    </Form>
   );
 };
 

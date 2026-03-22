@@ -96,7 +96,7 @@ const validateCSV = (
   return { isValid: errors.length === 0, errors, rows };
 };
 
-export function CSVStockDialog() {
+export function CSVStockDialog({ uploadType }: { uploadType: 'warehouse' | 'location' }) {
   const expectedHeaders = [
     "Stock Name",
     "Stock Variant Name",
@@ -163,7 +163,8 @@ export function CSVStockDialog() {
       try {
         await uploadCSV({ 
           fileData: fileContent, 
-          fileName: file.name 
+          fileName: file.name,
+          uploadType
         });
         setUploadComplete(true);
         

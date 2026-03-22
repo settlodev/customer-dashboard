@@ -14,10 +14,10 @@ import {useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import SubmitButton from '@/components/widgets/submit-button';
 import { toast } from '@/hooks/use-toast';
-import Loading from '../../loading';
 import { staffReport } from '@/lib/actions/staff-actions';
 import { StaffSummaryReport } from '@/types/staff';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import Loading from '@/components/ui/loading';
 
 interface DatePickerProps {
     value: Date;
@@ -193,10 +193,8 @@ const StaffReportDashboard = () => {
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-lg">
-                    <Loading />
-                </div>
+            <div className="flex items-center justify-center h-full">
+                <Loading />
             </div>
         );
     }
@@ -226,9 +224,9 @@ const StaffReportDashboard = () => {
     // const dateRangeText = `${format(form.getValues().startDate, "MMM dd")} - ${format(form.getValues().endDate, "MMM dd, yyyy")}`;
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 min-h-screen">
             {/* Header section with title and date filter */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-4 mt-12">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800">Staff Performance Dashboard</h1>
                     <p className="text-gray-500 mt-1">Track performance metrics and team productivity</p>

@@ -2,12 +2,9 @@ import { UUID } from "node:crypto";
 import {
     Card,
     CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
 } from "@/components/ui/card";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Role, WarehouseRole} from "@/types/roles/type";
+import {WarehouseRole} from "@/types/roles/type";
 import { getWarehouseRole } from "@/lib/actions/warehouse/roles-action";
 import WarehouseRoleForm from "@/components/forms/warehouse/role_form";
 
@@ -50,8 +47,8 @@ export default async function WarehouseRolePage({params}: {params: Params}) {
     );
 }
 
-const RoleCard = ({isNewItem, item}: {
-    isNewItem: boolean;
+const RoleCard = ({item}: {
+    isNewItem?: boolean;
     item: WarehouseRole | null | undefined;
 }) => (
     <Card>
