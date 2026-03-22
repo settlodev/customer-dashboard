@@ -13,6 +13,7 @@ import StockIntakeForm from "@/components/forms/stock_intake_form";
 export interface LpoPrefill {
   supplier: string;
   deliveryDate: string;
+  stockIntakePurchaseOrderId?: string;
   stockIntakes: {
     stockVariant: string;
     quantity: number;
@@ -22,11 +23,17 @@ export interface LpoPrefill {
 }
 
 function lpoToPrefill(lpo: StockPurchase): LpoPrefill {
+  console.log(
+    "LPO items:",
+    JSON.stringify(lpo.stockIntakePurchaseOrderItems, null, 2),
+  );
+
   return {
     supplier: lpo.supplier,
     deliveryDate: lpo.deliveryDate,
+    stockIntakePurchaseOrderId: lpo.id,
     stockIntakes: lpo.stockIntakePurchaseOrderItems.map((item) => ({
-      stockVariant: item.stockVariantId,
+      stockVariant: item.stockVariant,
       quantity: item.quantity,
       value: item.quantity * (item.unitCost ?? 0),
       orderDate: lpo.dateCreated ?? lpo.deliveryDate,
@@ -79,8 +86,6 @@ function SelectedLpoBanner({
   );
 }
 
-// ─── Main export ──────────────────────────────────────────────────────────────
-
 export default function StockIntakeLpoForm({
   lpos,
 }: {
@@ -88,7 +93,6 @@ export default function StockIntakeLpoForm({
 }) {
   const [selectedLpo, setSelectedLpo] = useState<StockPurchase | null>(null);
 
-  // ── Step 1: LPO selection list ─────────────────────────────────────────────
   if (!selectedLpo) {
     return (
       <LPOSelectionList lpos={lpos} onSelect={(lpo) => setSelectedLpo(lpo)} />
@@ -106,10 +110,6 @@ export default function StockIntakeLpoForm({
         onBack={() => setSelectedLpo(null)}
       />
 
-      {/*
-        Pass the LPO data to StockIntakeForm via the `prefill` prop.
-        StockIntakeForm needs a small update to accept `prefill` — see below.
-      */}
       <StockIntakeForm item={null} prefill={prefill} />
     </div>
   );

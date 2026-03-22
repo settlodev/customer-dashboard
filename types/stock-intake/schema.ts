@@ -25,6 +25,7 @@ export const StockIntakeSchema = object({
   supplier: string().uuid().optional(),
   staff: string({ message: "Please select a staff" }).uuid(),
   deliveryDate: string({ required_error: "Delivery date is required" }),
+  stockIntakePurchaseOrderId: string().uuid().optional(),
   items: array(StockItemSchema).min(1, {
     message: "At least one item required",
   }),

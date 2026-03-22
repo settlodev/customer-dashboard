@@ -200,12 +200,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        // {
-        //   title: "Goods received",
-        //   link: "/goods-received",
-        //   current: args?.isCurrentItem,
-        //   icon: "cart",
-        // },
+        {
+          title: "Goods received",
+          link: "/goods-received",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
       ],
     },
 

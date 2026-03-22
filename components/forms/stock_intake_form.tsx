@@ -322,6 +322,9 @@ function StockIntakeForm({
         staff: values.staff,
         supplier: values.supplier,
         deliveryDate: values.deliveryDate,
+        ...(prefill?.stockIntakePurchaseOrderId
+          ? { stockIntakePurchaseOrderId: prefill.stockIntakePurchaseOrderId }
+          : {}),
         items: values.stockIntakes.map((lineItem, index) => {
           const state = ls(index);
           const identifiers = state.hasUniqueIdentifiers
@@ -344,6 +347,7 @@ function StockIntakeForm({
       createStockIntake(payload)
         .then((result) => {
           if (result?.responseType === "success") {
+            console.log("The results after completing stock intake", result);
             const receiptId = (result?.data as { id?: string })?.id;
             setSuccessModal({
               open: true,
@@ -497,7 +501,7 @@ function StockIntakeForm({
                           <ChevronUp className="w-4 h-4" />
                         )}
                       </button>
-                      {!item && (
+                      {!item && !prefill && (
                         <button
                           type="button"
                           onClick={() => removeLine(index)}
@@ -528,7 +532,12 @@ function StockIntakeForm({
                               <StockVariantSelector
                                 {...f}
                                 isRequired
-                                isDisabled={!!item || isPending}
+                                isDisabled={
+                                  !!item ||
+                                  isPending ||
+                                  (!!prefill &&
+                                    !!prefill.stockIntakes[index]?.stockVariant)
+                                }
                                 placeholder="Select stock item"
                                 onChange={(val) =>
                                   handleVariantChange(index, val)
@@ -754,7 +763,7 @@ function StockIntakeForm({
           })}
 
           {/* Add another item */}
-          {!item && (
+          {!item && !prefill && (
             <Button
               type="button"
               variant="outline"

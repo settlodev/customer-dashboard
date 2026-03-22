@@ -39,7 +39,7 @@ export const searchStockPurchases = async (
       `/api/stock-intake-purchase-order/${location?.id}/paginate`,
       query,
     );
-
+    console.log("The LPOs are", data);
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -247,10 +247,9 @@ export const getStockIntakeReceipt = async (
 
   try {
     const stockIntakeReceipt = await apiClient.get(
-      `/api/location/${location.id}/direct-stock-intake-receipts/${id}`,
+      `/api/location/${location.id}/hybrid-stock-intakes/${id}`,
     );
 
-    console.log("The good receive note is", stockIntakeReceipt);
     return parseStringify(stockIntakeReceipt);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);

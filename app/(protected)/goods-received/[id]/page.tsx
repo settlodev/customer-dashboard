@@ -40,8 +40,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
     notFound();
   }
 
-  const items = (receiptData.stockIntakeReceiptItems ||
-    []) as EnhancedStockPurchaseItem[];
+  const items = (receiptData.items || []) as EnhancedStockPurchaseItem[];
 
   const totalQty = items.reduce((s, i) => s + (i.quantityReceived || 0), 0);
   const totalValue = items.reduce((s, i) => s + (i.totalCost || 0), 0);
