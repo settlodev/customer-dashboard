@@ -677,7 +677,7 @@ const InvoiceSubscriptionPage = () => {
 
                       {/* Discount */}
                       <DiscountCodeInput
-                        control={form.control}
+                        control={form.control as any}
                         isValidating={isValidatingDiscount}
                         isValid={discountValid}
                         onClear={() => {

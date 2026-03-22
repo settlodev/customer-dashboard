@@ -210,6 +210,39 @@ export const logoutDevice = async (
 };
 
 /**
+ * Suspend or unsuspend a device's data access.
+ * When suspended, reports and sales data are hidden from the device.
+ * PUT /api/location-devices/{locationId}/{deviceId}
+ */
+/**
+ * Suspend or unsuspend a device's data access.
+ * PUT /api/location-devices/{locationId}/{deviceId}/suspend
+ * PUT /api/location-devices/{locationId}/{deviceId}/unsuspend
+ */
+export const suspendDevice = async (
+  id: string,
+  suspended: boolean,
+): Promise<{ success: boolean; error?: string }> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    const action = suspended ? "suspend" : "unsuspend";
+    await apiClient.put(
+      `/api/location-devices/${location?.id}/${id}/${action}`,
+      {},
+    );
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    console.error(`Failed to ${suspended ? "suspend" : "unsuspend"} device:`, error);
+    return { success: false, error: suspended ? "Failed to suspend device" : "Failed to restore device" };
+  }
+};
+
+/**
  * Permanently delete a device from the location.
  * DELETE /api/location-devices/{locationId}/{deviceId}
  */

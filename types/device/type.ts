@@ -37,6 +37,7 @@ export declare interface Device {
   locationId: UUID;
   departmentId: UUID | null;
   departmentName: string | null;
+  suspended: boolean;
   canDelete: boolean;
   status: boolean;
   isArchived: boolean;

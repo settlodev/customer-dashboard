@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
@@ -31,7 +31,17 @@ import {
   Globe,
   RefreshCw,
   Trash2,
+  MoreVertical,
+  ShieldOff,
+  ShieldCheck,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "../ui/dropdown-menu";
 import { Separator } from "../ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { Device } from "@/types/device/type";
@@ -39,6 +49,7 @@ import {
   listAllDevices,
   logoutDevice,
   deleteDevice,
+  suspendDevice,
   addDevice,
   regenerateDeviceCode,
 } from "@/lib/actions/devices-actions";
@@ -48,14 +59,12 @@ const DeviceSettings = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Add device state
-  const [showAddDialog, setShowAddDialog] = useState(false);
+  // Add/code dialog — single dialog with two steps
+  const [showDeviceDialog, setShowDeviceDialog] = useState(false);
+  const [dialogStep, setDialogStep] = useState<"name" | "code">("name");
   const [newDeviceName, setNewDeviceName] = useState("");
   const [addError, setAddError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
-
-  // Code modal state (shared by add + regenerate)
-  const [showCodeModal, setShowCodeModal] = useState(false);
   const [codeDeviceName, setCodeDeviceName] = useState("");
   const [deviceCode, setDeviceCode] = useState<string | null>(null);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
@@ -110,18 +119,82 @@ const DeviceSettings = () => {
       const expiry = new Date(expiresAt).getTime();
       const remaining = Math.max(0, Math.floor((expiry - now) / 1000));
       setTimeRemaining(remaining);
-      if (remaining === 0) clearInterval(interval);
+      if (remaining === 0) {
+        clearInterval(interval);
+        stopPolling();
+      }
     }, 1000);
 
     return () => clearInterval(interval);
   }, [expiresAt]);
 
-  const showCode = (name: string, data: { code: string; expiresAt: string; validityMinutes: number }) => {
+  // Poll for device connection when code modal is open
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const deviceCodeRef = useRef<string | null>(null);
+
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
+
+  const startPolling = useCallback((code: string) => {
+    stopPolling();
+    deviceCodeRef.current = code;
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        const freshDevices = await listAllDevices();
+        // Device connected: has a serialNumber and its loginCode matches the generated code
+        const connected = freshDevices.find(
+          (d) => d.loginCode === deviceCodeRef.current && d.serialNumber
+        );
+        if (connected) {
+          stopPolling();
+          setShowDeviceDialog(false);
+          setDeviceCode(null);
+          setExpiresAt(null);
+          setTimeRemaining(0);
+          setCopied(false);
+          setCodeDeviceName("");
+          setDevices(freshDevices);
+          toast({
+            variant: "success",
+            title: "Device Connected",
+            description: `${connected.customName || connected.name} is now online`,
+          });
+        }
+      } catch {
+        // Silently ignore polling errors
+      }
+    }, 5000);
+  }, [stopPolling, toast]);
+
+  // Clean up polling on unmount or when dialog closes
+  useEffect(() => {
+    if (!showDeviceDialog || dialogStep !== "code") {
+      stopPolling();
+    }
+    return () => stopPolling();
+  }, [showDeviceDialog, dialogStep, stopPolling]);
+
+  const openAddDialog = () => {
+    setNewDeviceName("");
+    setAddError(null);
+    setDialogStep("name");
+    setShowDeviceDialog(true);
+  };
+
+  const transitionToCode = (name: string, data: { code: string; expiresAt: string; validityMinutes: number }) => {
     setCodeDeviceName(name);
     setDeviceCode(data.code);
     setExpiresAt(data.expiresAt);
     setValidityMinutes(data.validityMinutes);
-    setShowCodeModal(true);
+    setCopied(false);
+    setDialogStep("code");
+    setShowDeviceDialog(true);
+    startPolling(data.code);
   };
 
   const handleAddDevice = async () => {
@@ -134,9 +207,7 @@ const DeviceSettings = () => {
     try {
       const result = await addDevice(name);
       if (result.success && result.data) {
-        setShowAddDialog(false);
-        setNewDeviceName("");
-        showCode(name, result.data);
+        transitionToCode(name, result.data);
         loadDevices();
       } else {
         setAddError(result.error ?? "Failed to add device");
@@ -153,7 +224,7 @@ const DeviceSettings = () => {
     try {
       const result = await regenerateDeviceCode(device.id);
       if (result.success && result.data) {
-        showCode(device.customName || device.name, result.data);
+        transitionToCode(device.customName || device.name, result.data);
         loadDevices();
       } else {
         toast({
@@ -181,13 +252,16 @@ const DeviceSettings = () => {
     }
   };
 
-  const handleCloseCodeModal = () => {
-    setShowCodeModal(false);
+  const handleCloseDeviceDialog = () => {
+    stopPolling();
+    setShowDeviceDialog(false);
     setDeviceCode(null);
     setExpiresAt(null);
     setTimeRemaining(0);
     setCopied(false);
     setCodeDeviceName("");
+    setNewDeviceName("");
+    setAddError(null);
   };
 
   const handleLogoutClick = (device: Device) => {
@@ -218,6 +292,35 @@ const DeviceSettings = () => {
       setLogoutError("Unexpected error occurred");
     } finally {
       setIsLoggingOut(false);
+    }
+  };
+
+  const handleSuspendToggle = async (device: Device) => {
+    const newState = !device.suspended;
+    try {
+      const result = await suspendDevice(device.id, newState);
+      if (result.success) {
+        toast({
+          variant: "success",
+          title: "Success",
+          description: newState
+            ? "Device data access suspended"
+            : "Device data access restored",
+        });
+        loadDevices();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.error ?? "Failed to update device",
+        });
+      }
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to update device",
+      });
     }
   };
 
@@ -329,7 +432,7 @@ const DeviceSettings = () => {
         </div>
         <Button
           size="sm"
-          onClick={() => { setShowAddDialog(true); setAddError(null); setNewDeviceName(""); }}
+          onClick={openAddDialog}
           className="rounded-lg bg-primary hover:bg-primary/90 text-white"
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -349,7 +452,7 @@ const DeviceSettings = () => {
               Add a device by giving it a name. You&apos;ll get a code to enter on the POS device.
             </p>
             <Button
-              onClick={() => { setShowAddDialog(true); setAddError(null); setNewDeviceName(""); }}
+              onClick={openAddDialog}
               className="rounded-lg bg-primary hover:bg-primary/90 text-white"
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -369,7 +472,7 @@ const DeviceSettings = () => {
               return (
                 <React.Fragment key={device.id}>
                   <div
-                    className="flex items-center justify-between px-3 py-3.5 rounded-lg hover:bg-primary-light dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                    className="flex items-center justify-between px-3 py-4 rounded-lg hover:bg-primary-light dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                     onClick={() => setSelectedDevice(device)}
                   >
                     <div className="flex items-center gap-3 min-w-0">
@@ -405,49 +508,107 @@ const DeviceSettings = () => {
                             </>
                           )}
                         </div>
+                        {/* Extra details row */}
+                        {!pending && (
+                          <div className="flex items-center gap-3 mt-1">
+                            {device.batteryLevel != null && device.batteryLevel > 0 && (
+                              <div className="flex items-center gap-1">
+                                {device.isCharging ? (
+                                  <BatteryCharging className="h-3 w-3 text-emerald-500" />
+                                ) : (
+                                  <Battery className={`h-3 w-3 ${device.batteryLevel < 0.2 ? "text-red-500" : "text-muted-foreground"}`} />
+                                )}
+                                <span className={`text-xs ${device.batteryLevel < 0.2 ? "text-red-500" : "text-muted-foreground"}`}>
+                                  {Math.round(device.batteryLevel * 100)}%
+                                </span>
+                              </div>
+                            )}
+                            {device.ipAddress && (
+                              <span className="text-xs text-muted-foreground font-mono">{device.ipAddress}</span>
+                            )}
+                            {device.departmentName && (
+                              <span className="text-xs text-muted-foreground">{device.departmentName}</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                       <Badge variant={status.color ? "default" : "secondary"} className={`text-xs border-0 ${status.color}`}>
                         {status.label}
                       </Badge>
-                      {/* Regenerate code for offline/pending devices */}
-                      {!online && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          disabled={regeneratingId === device.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRegenerateCode(device);
-                          }}
-                          className="h-8"
-                        >
-                          {regeneratingId === device.id ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <>
-                              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                              <span className="hidden sm:inline">New Code</span>
-                            </>
+                      {device.suspended && (
+                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700">
+                          Suspended
+                        </Badge>
+                      )}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                            <span className="sr-only">Actions</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52">
+                          {!online && (
+                            <DropdownMenuItem
+                              disabled={regeneratingId === device.id}
+                              className="text-blue-600 focus:text-blue-600 focus:bg-blue-50 dark:text-blue-400 dark:focus:bg-blue-950"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRegenerateCode(device);
+                              }}
+                            >
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              New Code
+                            </DropdownMenuItem>
                           )}
-                        </Button>
-                      )}
-                      {/* Logout for online devices */}
-                      {online && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleLogoutClick(device);
-                          }}
-                          className="h-8 text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Logout</span>
-                        </Button>
-                      )}
+                          {online && (
+                            <DropdownMenuItem
+                              className="text-orange-600 focus:text-orange-600 focus:bg-orange-50 dark:text-orange-400 dark:focus:bg-orange-950"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleLogoutClick(device);
+                              }}
+                            >
+                              <LogOut className="mr-2 h-4 w-4" />
+                              Logout Device
+                            </DropdownMenuItem>
+                          )}
+                          <DropdownMenuItem
+                            className={device.suspended
+                              ? "text-emerald-600 focus:text-emerald-600 focus:bg-emerald-50 dark:text-emerald-400 dark:focus:bg-emerald-950"
+                              : "text-amber-600 focus:text-amber-600 focus:bg-amber-50 dark:text-amber-400 dark:focus:bg-amber-950"
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSuspendToggle(device);
+                            }}
+                          >
+                            {device.suspended ? (
+                              <><ShieldCheck className="mr-2 h-4 w-4" />Restore Data Access</>
+                            ) : (
+                              <><ShieldOff className="mr-2 h-4 w-4" />Suspend Data Access</>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-red-600 focus:text-red-600 focus:bg-red-50 dark:text-red-400 dark:focus:bg-red-950"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteClick(device);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Device
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                   {index < devices.length - 1 && <Separator />}
@@ -458,60 +619,105 @@ const DeviceSettings = () => {
         </Card>
       )}
 
-      {/* Add Device Dialog */}
-      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+      {/* Add Device / Code Dialog (unified) */}
+      <Dialog open={showDeviceDialog} onOpenChange={handleCloseDeviceDialog}>
         <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Device</DialogTitle>
-            <DialogDescription>
-              Give your device a name. You&apos;ll get a 6-digit code to enter on the device.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <label htmlFor="device-name" className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
-                Device Name <span className="text-red-500">*</span>
-              </label>
-              <Input
-                id="device-name"
-                placeholder="e.g. Front Counter iPad"
-                value={newDeviceName}
-                onChange={(e) => { setNewDeviceName(e.target.value); setAddError(null); }}
-                onKeyDown={(e) => e.key === "Enter" && handleAddDevice()}
-                disabled={isAdding}
-                autoFocus
-              />
-            </div>
-            {addError && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{addError}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAddDialog(false)} disabled={isAdding} className="rounded-lg">
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddDevice}
-              disabled={isAdding || !newDeviceName.trim()}
-              className="rounded-lg bg-primary hover:bg-primary/90 text-white"
-            >
-              {isAdding ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Key className="mr-2 h-4 w-4" />
-                  Add &amp; Generate Code
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+          {dialogStep === "name" ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Add Device</DialogTitle>
+                <DialogDescription>
+                  Give your device a name. You&apos;ll get a 6-digit code to enter on the device.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div>
+                  <label htmlFor="device-name" className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
+                    Device Name <span className="text-red-500">*</span>
+                  </label>
+                  <Input
+                    id="device-name"
+                    placeholder="e.g. Front Counter iPad"
+                    value={newDeviceName}
+                    onChange={(e) => { setNewDeviceName(e.target.value); setAddError(null); }}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddDevice()}
+                    disabled={isAdding}
+                    autoFocus
+                  />
+                </div>
+                {addError && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{addError}</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={handleCloseDeviceDialog} disabled={isAdding} className="rounded-lg">
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleAddDevice}
+                  disabled={isAdding || !newDeviceName.trim()}
+                  className="rounded-lg bg-primary hover:bg-primary/90 text-white"
+                >
+                  {isAdding ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding...</>
+                  ) : (
+                    <><Key className="mr-2 h-4 w-4" />Add &amp; Generate Code</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          ) : (
+            <>
+              <DialogHeader>
+                <DialogTitle>Device Authentication Code</DialogTitle>
+                <DialogDescription>
+                  Enter this code on <span className="font-medium">{codeDeviceName}</span> to connect it. Valid for {validityMinutes} minutes.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col items-center space-y-4 py-4">
+                <div className="relative w-full">
+                  <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 p-8">
+                    <span className="text-4xl font-bold tracking-[0.3em] font-mono">
+                      {deviceCode}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  {timeRemaining > 0 ? (
+                    <>
+                      <span className="text-muted-foreground">Expires in:</span>
+                      <span className={`font-semibold ${timeRemaining < 60 ? "text-destructive" : "text-foreground"}`}>
+                        {formatTime(timeRemaining)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-destructive font-semibold">Code expired</span>
+                  )}
+                </div>
+                <div className="flex gap-2 w-full">
+                  <Button
+                    onClick={handleCopyCode}
+                    className="flex-1"
+                    variant="outline"
+                    disabled={timeRemaining === 0}
+                  >
+                    {copied ? (
+                      <><Check className="mr-2 h-4 w-4" />Copied!</>
+                    ) : (
+                      <><Copy className="mr-2 h-4 w-4" />Copy Code</>
+                    )}
+                  </Button>
+                  <Button onClick={handleCloseDeviceDialog} variant="secondary" className="flex-1">
+                    Done
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
 
@@ -553,41 +759,41 @@ const DeviceSettings = () => {
                 <>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     {selectedDevice.deviceType && (
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-muted-foreground block text-xs">Type</span>
-                        <span className="font-medium">{selectedDevice.deviceType}</span>
+                        <span className="font-medium truncate block">{selectedDevice.deviceType}</span>
                       </div>
                     )}
                     {selectedDevice.operatingSystem && (
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-muted-foreground block text-xs">OS</span>
-                        <span className="font-medium">
+                        <span className="font-medium truncate block">
                           {selectedDevice.operatingSystem} {selectedDevice.operatingSystemVersion}
                         </span>
                       </div>
                     )}
                     {selectedDevice.appVersion && (
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-muted-foreground block text-xs">App Version</span>
-                        <span className="font-medium">v{selectedDevice.appVersion} ({selectedDevice.buildNumber})</span>
+                        <span className="font-medium truncate block">v{selectedDevice.appVersion} ({selectedDevice.buildNumber})</span>
                       </div>
                     )}
                     {selectedDevice.serialNumber && (
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-muted-foreground block text-xs">Serial Number</span>
-                        <span className="font-medium text-xs font-mono">{selectedDevice.serialNumber}</span>
+                        <span className="font-medium text-xs font-mono truncate block">{selectedDevice.serialNumber}</span>
                       </div>
                     )}
                     {selectedDevice.displayResolution && (
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-muted-foreground block text-xs">Display</span>
-                        <span className="font-medium">{selectedDevice.displayResolution}</span>
+                        <span className="font-medium text-xs truncate block">{selectedDevice.displayResolution}</span>
                       </div>
                     )}
                     {selectedDevice.ipAddress && (
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-muted-foreground block text-xs">IP Address</span>
-                        <span className="font-medium font-mono text-xs">{selectedDevice.ipAddress}</span>
+                        <span className="font-medium font-mono text-xs truncate block">{selectedDevice.ipAddress}</span>
                       </div>
                     )}
                   </div>
@@ -633,12 +839,12 @@ const DeviceSettings = () => {
 
               {/* Actions */}
               <Separator />
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 {!isDeviceOnline(selectedDevice) && (
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 rounded-lg"
+                    className="w-full rounded-lg border-blue-200 text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-950"
                     disabled={regeneratingId === selectedDevice.id}
                     onClick={() => {
                       setSelectedDevice(null);
@@ -653,83 +859,51 @@ const DeviceSettings = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1 text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                    className="w-full rounded-lg border-orange-200 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:border-orange-800 dark:text-orange-400 dark:hover:bg-orange-950"
                     onClick={() => {
                       setSelectedDevice(null);
                       handleLogoutClick(selectedDevice);
                     }}
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    Logout
+                    Logout Device
                   </Button>
                 )}
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+                  className={`w-full rounded-lg ${
+                    selectedDevice.suspended
+                      ? "border-emerald-200 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-950"
+                      : "border-amber-200 text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:border-amber-800 dark:text-amber-400 dark:hover:bg-amber-950"
+                  }`}
+                  onClick={() => {
+                    const dev = selectedDevice;
+                    setSelectedDevice(null);
+                    handleSuspendToggle(dev);
+                  }}
+                >
+                  {selectedDevice.suspended ? (
+                    <><ShieldCheck className="mr-2 h-4 w-4" />Restore Data Access</>
+                  ) : (
+                    <><ShieldOff className="mr-2 h-4 w-4" />Suspend Data Access</>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full rounded-lg border-red-200 text-red-600 hover:text-red-700 hover:bg-red-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950"
                   onClick={() => {
                     setSelectedDevice(null);
                     handleDeleteClick(selectedDevice);
                   }}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete Device
                 </Button>
               </div>
             </div>
           )}
-        </DialogContent>
-      </Dialog>
-
-      {/* Code Modal (shared by add + regenerate) */}
-      <Dialog open={showCodeModal} onOpenChange={handleCloseCodeModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Device Authentication Code</DialogTitle>
-            <DialogDescription>
-              Enter this code on <span className="font-medium">{codeDeviceName}</span> to connect it. Valid for {validityMinutes} minutes.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex flex-col items-center space-y-4 py-4">
-            <div className="relative w-full">
-              <div className="flex items-center justify-center rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 p-8">
-                <span className="text-4xl font-bold tracking-[0.3em] font-mono">
-                  {deviceCode}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-sm">
-              {timeRemaining > 0 ? (
-                <>
-                  <span className="text-muted-foreground">Expires in:</span>
-                  <span className={`font-semibold ${timeRemaining < 60 ? "text-destructive" : "text-foreground"}`}>
-                    {formatTime(timeRemaining)}
-                  </span>
-                </>
-              ) : (
-                <span className="text-destructive font-semibold">Code expired</span>
-              )}
-            </div>
-
-            <div className="flex gap-2 w-full">
-              <Button
-                onClick={handleCopyCode}
-                className="flex-1"
-                variant="outline"
-                disabled={timeRemaining === 0}
-              >
-                {copied ? (
-                  <><Check className="mr-2 h-4 w-4" />Copied!</>
-                ) : (
-                  <><Copy className="mr-2 h-4 w-4" />Copy Code</>
-                )}
-              </Button>
-              <Button onClick={handleCloseCodeModal} variant="secondary" className="flex-1">
-                Close
-              </Button>
-            </div>
-          </div>
         </DialogContent>
       </Dialog>
 

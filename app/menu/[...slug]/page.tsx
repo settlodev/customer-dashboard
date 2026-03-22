@@ -4,8 +4,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { MenuResolveResponse } from "@/types/online-menu/type";
 import { parseStringify } from "@/lib/utils";
 
-const API_KEY =
-  "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a";
+const API_KEY = process.env.SETTLO_MENU_API_KEY!;
 
 type Params = Promise<{ slug: string[] }>;
 
