@@ -294,6 +294,7 @@ export default function ProductForm({ item }: ProductFormProps) {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
             toast({
+              variant: "success",
               title: "Success",
               description: "Product updated successfully",
             });
@@ -304,6 +305,7 @@ export default function ProductForm({ item }: ProductFormProps) {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
             toast({
+              variant: "success",
               title: "Success",
               description: "Product created successfully",
             });

@@ -72,6 +72,7 @@ const ReservationSlotManager = ({ slots, onRefresh }: Props) => {
     try {
       await deleteReservationSlot(id);
       toast({
+        variant: "success",
         title: "Success",
         description: "Slot rule deleted successfully",
       });
@@ -258,7 +259,7 @@ function SlotForm({
         : await createReservationSlot(values);
 
       if (result?.responseType === "success") {
-        toast({ title: "Success", description: result.message });
+        toast({ variant: "success", title: "Success", description: result.message });
         onSuccess();
       } else if (result?.responseType === "error") {
         toast({

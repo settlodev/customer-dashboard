@@ -226,6 +226,7 @@ function WarehouseStockIntakeForm({
 
         if (response?.responseType === "success") {
           toast({
+            variant: "success",
             title: "Success",
             description: response.message,
           });

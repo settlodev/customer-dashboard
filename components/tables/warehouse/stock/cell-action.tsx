@@ -28,7 +28,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             if (data) {
                 await deleteStock(data.id);
                 toast({
-                    variant: "default",
+                    variant: "success",
                     title: "Success",
                     description: "Stock deleted successfully!",
                 });

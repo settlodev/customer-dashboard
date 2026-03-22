@@ -68,7 +68,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
         updateDepartment(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({ title: "Success", description: data.message });
+            toast({ variant: "success", title: "Success", description: data.message });
             router.push("/departments");
           }
         });
@@ -77,7 +77,7 @@ function DepartmentForm({ item }: { item: Department | null | undefined }) {
           .then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
-              toast({ title: "Success", description: data.message });
+              toast({ variant: "success", title: "Success", description: data.message });
               router.push("/departments");
             }
           })

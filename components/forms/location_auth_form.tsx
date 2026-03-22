@@ -59,7 +59,7 @@ const LocationAuthForm = () => {
           if (data.responseType === "success") {
             setResponse(data);
             toast({
-              variant: "default",
+              variant: "success",
               title: "Business created successfully",
               description: data.message,
             });

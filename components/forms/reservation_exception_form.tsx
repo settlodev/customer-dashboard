@@ -81,6 +81,7 @@ const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
     try {
       await deleteReservationException(id);
       toast({
+        variant: "success",
         title: "Success",
         description: "Exception deleted successfully",
       });
@@ -256,7 +257,7 @@ function ExceptionForm({
         : await createReservationException(values);
 
       if (result?.responseType === "success") {
-        toast({ title: "Success", description: result.message });
+        toast({ variant: "success", title: "Success", description: result.message });
         onSuccess();
       } else if (result?.responseType === "error") {
         toast({

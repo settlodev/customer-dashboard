@@ -85,6 +85,7 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
             setResponse(data);
             if (data.responseType === "success") {
               toast({
+                variant: "success",
                 title: "Success",
                 description: data.message,
               });
@@ -99,6 +100,7 @@ function ExpenseForm({ item }: { item: Expense | null | undefined }) {
               setResponse(data);
               if (data.responseType === "success") {
                 toast({
+                  variant: "success",
                   title: "Success",
                   description: data.message,
                 });

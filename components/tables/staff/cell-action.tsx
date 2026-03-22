@@ -93,6 +93,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     try {
       await resetStaffPasscode(data.id as UUID);
       toast({
+        variant: "success",
         title: "Success",
         description: "Staff passcode has been reset.",
       });

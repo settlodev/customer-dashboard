@@ -102,7 +102,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
           updateRole(item.id, values).then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
-              toast({ title: "Success", description: data.message });
+              toast({ variant: "success", title: "Success", description: data.message });
               router.push("/roles");
             }
           });
@@ -110,7 +110,7 @@ const RoleForm = ({ item }: { item: Role | null | undefined }) => {
           createRole(values).then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
-              toast({ title: "Success", description: data.message });
+              toast({ variant: "success", title: "Success", description: data.message });
               router.push("/roles");
             }
           });

@@ -112,6 +112,7 @@ function StockTransferForm({
             if (data && data.responseType === "success") {
               setSuccess(data.message);
               toast({
+                variant: "success",
                 title: "Success",
                 description: data.message,
               });

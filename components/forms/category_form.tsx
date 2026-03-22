@@ -89,14 +89,14 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
         updateCategory(item.id, updatedValues, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ title: "Success", description: data.message });
+            toast({ variant: "success", title: "Success", description: data.message });
           }
         });
       } else {
         createCategory(values, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ title: "Success", description: data.message });
+            toast({ variant: "success", title: "Success", description: data.message });
             router.push("/categories");
           }
         });

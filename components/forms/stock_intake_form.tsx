@@ -311,7 +311,7 @@ function StockIntakeForm({
           value: values.stockIntakes[0].value,
         }).then((data) => {
           if (data?.responseType === "success") {
-            toast({ title: "Success", description: data.message });
+            toast({ variant: "success", title: "Success", description: data.message });
             router.push("/stock-intakes");
           }
         });

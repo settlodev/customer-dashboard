@@ -111,7 +111,7 @@ const ReservationForm = ({
         setResponse(data);
         const msg = SettloErrorHandler.safeMessage(data.message);
         if (data.responseType === "success") {
-          toast({ title: "Success", description: msg });
+          toast({ variant: "success", title: "Success", description: msg });
           router.push("/reservations");
         } else {
           toast({ variant: "destructive", title: "Error", description: msg });

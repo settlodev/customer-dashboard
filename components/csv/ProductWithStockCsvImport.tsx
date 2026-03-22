@@ -379,7 +379,7 @@ export function ProductWithStockCSVDialog() {
           toast({
             title: "File Validated",
             description: `Successfully validated ${result.rows.length - 1} products with stock.`,
-            variant: "default",
+            variant: "success",
           });
         } else {
           setFileContent(null);

@@ -107,12 +107,8 @@ const StockVariantSelector: React.FC<Props> = ({
       const variantExists = stocks.some((stock) =>
         stock.stockVariants.some((variant) => variant.id === value),
       );
-      if (!variantExists) {
-        setSelectedVariantInfo((prev) => {
-          if (prev && prev.id === value) return prev;
-          loadSpecificVariantInfo(value);
-          return prev;
-        });
+      if (!variantExists && selectedVariantInfo?.id !== value) {
+        loadSpecificVariantInfo(value);
       }
     } else {
       setSelectedVariantInfo(null);

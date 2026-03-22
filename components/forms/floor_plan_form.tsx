@@ -103,7 +103,7 @@ const FloorPlanDialog = ({
       const data = await action;
       if (data) {
         if (data.responseType === "success") {
-          toast({ title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
+          toast({ variant: "success", title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
           onOpenChange(false);
           onSaved();
         } else {
@@ -304,6 +304,7 @@ const FloorPlanManager = ({
     try {
       await deleteFloorPlan(id);
       toast({
+        variant: "success",
         title: "Success",
         description: "Floor plan deleted successfully",
       });

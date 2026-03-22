@@ -118,7 +118,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         toast({
           title: "Payment Successful",
           description: `Payment of ${Intl.NumberFormat().format(amount)} processed successfully`,
-          variant: "default",
+          variant: "success",
         });
 
         router.refresh();

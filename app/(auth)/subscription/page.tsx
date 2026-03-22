@@ -279,7 +279,7 @@ const SubscriptionFormModal = ({
       toast({
         title: "Discount Code Valid",
         description: "The discount code has been applied successfully",
-        variant: "default"
+        variant: "success"
       });
     } catch (error) {
       setDiscountValid(false);

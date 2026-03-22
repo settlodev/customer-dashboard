@@ -32,7 +32,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       if (data) {
         await deleteRole(data.id);
         toast({
-          variant: "default",
+          variant: "success",
           title: "Success",
           description: "Role deleted successfully!",
         });

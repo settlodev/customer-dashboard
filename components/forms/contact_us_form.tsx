@@ -100,7 +100,7 @@ export default function ContactUsForm() {
             toast({
                 title: "Message Sent",
                 description: "Thank you for your message. Someone from our team will get in touch with you within 24 hours.",
-                variant: "default",
+                variant: "success",
             });
 
             form.reset();
