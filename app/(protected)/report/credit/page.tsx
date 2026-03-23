@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { CalendarIcon, DownloadIcon, ReceiptIcon } from "lucide-react";
@@ -20,8 +20,6 @@ import { toast } from "@/hooks/use-toast";
 import { creditReport } from "@/lib/actions/order-actions";
 import { Credit } from "@/types/orders/type";
 import { useRouter } from "next/navigation";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
 import Loading from "@/components/ui/loading";
@@ -37,12 +35,18 @@ const FormSchema = z.object({
   endDate: z.date({ required_error: "End date and time are required." }),
 });
 
+const PRIMARY = "#EB7F44";
+const SECONDARY = "#EAEAE5";
+const fmt = (v: number) =>
+  new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(v);
+
 const CreditReportDashboard = () => {
   const [creditData, setCreditData] = useState<Credit | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
   const [location, setLocation] = useState<Location>();
+  const printRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   const form = useForm({
@@ -84,9 +88,6 @@ const CreditReportDashboard = () => {
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     await fetchCreditReport(values.startDate, values.endDate);
   };
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(value);
 
   const downloadCSV = () => {
     if (!creditData) {
@@ -135,128 +136,127 @@ const CreditReportDashboard = () => {
   };
 
   const generatePDF = async () => {
-    if (!creditData) {
+    const el = printRef.current;
+    if (!el || !creditData) {
       toast({ variant: "destructive", title: "No data to export" });
       return;
     }
     setDownloadingPdf(true);
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.width;
-      const margin = 20;
-      doc.setFontSize(10);
-      doc.setFont("Arial", "bold");
-      doc.text("CREDIT REPORT", margin, 30);
-      doc.setFont("Arial", "normal");
-      doc.text(
-        `Period: ${format(new Date(creditData.startDate), "MMM dd, yyyy HH:mm")} - ${format(new Date(creditData.endDate), "MMM dd, yyyy HH:mm")}`,
-        margin,
-        40,
-      );
-      doc.text(
-        `Generated: ${format(new Date(), "MMM dd, yyyy HH:mm")}`,
-        margin,
-        45,
-      );
-      if (location) {
-        let y = 30;
-        const right = pageWidth - margin;
-        doc.setFont("Arial", "bold");
-        doc.text(location.name, right, y, { align: "right" });
-        y += 5;
-        doc.setFont("Arial", "normal");
-        doc
-          .splitTextToSize(location.address || "", 150)
-          .forEach((line: string) => {
-            doc.text(line, right, y, { align: "right" });
-            y += 5;
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const saved = {
+        width: el.style.width,
+        maxWidth: el.style.maxWidth,
+        margin: el.style.margin,
+        boxShadow: el.style.boxShadow,
+        position: el.style.position,
+      };
+      Object.assign(el.style, {
+        width: "794px",
+        maxWidth: "794px",
+        margin: "0",
+        boxShadow: "none",
+        position: "relative",
+        backgroundColor: "#ffffff",
+      });
+      await new Promise((r) => setTimeout(r, 150));
+      const canvas = await html2canvas(el, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        backgroundColor: "#ffffff",
+        width: 794,
+        height: el.scrollHeight,
+        windowWidth: 1200,
+        windowHeight: el.scrollHeight + 100,
+        scrollX: 0,
+        scrollY: 0,
+        removeContainer: true,
+        foreignObjectRendering: false,
+        onclone: (_doc, clone) => {
+          Object.assign(clone.style, {
+            width: "794px",
+            maxWidth: "794px",
+            margin: "0",
+            backgroundColor: "#ffffff",
           });
-        if (location.phone) {
-          doc.text(`Phone: ${location.phone}`, right, y, { align: "right" });
-          y += 5;
-        }
-        if (location.email) {
-          doc.text(`Email: ${location.email}`, right, y, { align: "right" });
+          clone.querySelectorAll<HTMLElement>("*").forEach((node) => {
+            node.style.visibility = "visible";
+            node.style.opacity = "1";
+            (node.style as any).printColorAdjust = "exact";
+            (node.style as any).webkitPrintColorAdjust = "exact";
+          });
+        },
+      });
+      Object.assign(el.style, saved);
+      const A4_W = 210,
+        A4_H = 297,
+        MARGIN = 10;
+      const printW = A4_W - MARGIN * 2;
+      const contentH = (canvas.height * printW) / canvas.width;
+      const pageH = A4_H - MARGIN * 2;
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        compress: true,
+      });
+      if (contentH <= pageH) {
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", 1.0),
+          "JPEG",
+          MARGIN,
+          MARGIN,
+          printW,
+          contentH,
+          undefined,
+          "FAST",
+        );
+      } else {
+        const totalPages = Math.ceil(contentH / pageH);
+        const pageHeightPx = (pageH * canvas.width) / printW;
+        for (let page = 0; page < totalPages; page++) {
+          if (page > 0) pdf.addPage();
+          const srcY = page * pageHeightPx;
+          const srcH = Math.min(pageHeightPx, canvas.height - srcY);
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = srcH;
+          const ctx = slice.getContext("2d")!;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, slice.width, slice.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            srcY,
+            canvas.width,
+            srcH,
+            0,
+            0,
+            canvas.width,
+            srcH,
+          );
+          pdf.addImage(
+            slice.toDataURL("image/jpeg", 1.0),
+            "JPEG",
+            MARGIN,
+            MARGIN,
+            printW,
+            (srcH * printW) / canvas.width,
+            undefined,
+            "FAST",
+          );
         }
       }
-      doc.setFillColor(254, 242, 242);
-      doc.rect(margin, 60, pageWidth - 2 * margin, 45, "F");
-      doc.setFontSize(14);
-      doc.setFont("Arial", "bold");
-      doc.text("SUMMARY", margin + 5, 75);
-      doc.setFontSize(12);
-      doc.setFont("Arial", "normal");
-      doc.text(`Total Unpaid Orders: ${creditData.total}`, margin + 5, 85);
-      doc.text(
-        `Total Unpaid Amount: TZS ${formatCurrency(creditData.totalUnpaidAmount)}`,
-        margin + 5,
-        92,
-      );
-      doc.text(
-        `Total Paid Amount: TZS ${formatCurrency(creditData.totalPaidAmount)}`,
-        margin + 5,
-        99,
-      );
-      let yPos = 120;
-      doc.setFontSize(10);
-      doc.setFont("Arial", "bold");
-      doc.text("Unpaid Orders", margin, yPos);
-      yPos += 5;
-      doc.autoTable({
-        startY: yPos,
-        head: [["Order #", "Order Name", "Date", "Customer", "Paid", "Unpaid"]],
-        body: creditData.unpaidOrders.map((o) => [
-          o.orderNumber,
-          o.orderName || "N/A",
-          format(new Date(o.openedDate), "MMM dd, yyyy"),
-          o.customerName || "N/A",
-          `TZS ${formatCurrency(o.paidAmount)}`,
-          `TZS ${formatCurrency(o.unpaidAmount)}`,
-        ]),
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 9, cellPadding: 3 },
-        headStyles: {
-          fillColor: [220, 38, 38],
-          textColor: 255,
-          fontStyle: "bold",
-        },
-        alternateRowStyles: { fillColor: [254, 242, 242] },
-        columnStyles: { 4: { halign: "right" }, 5: { halign: "right" } },
-      });
-      const pageHeight = doc.internal.pageSize.height;
-      if (((doc as any).lastAutoTable?.finalY || 0) > pageHeight - 60)
-        doc.addPage();
-      const footerY = pageHeight - 20;
-      doc.setFontSize(8);
-      doc.setTextColor(32, 32, 32);
-      const disclaimer =
-        "This report is confidential and intended solely for the recipient. Any discrepancies must be reported to support@setllo.co.tz within 14 days of issuance";
-      const lines = doc.splitTextToSize(disclaimer, pageWidth - 2 * margin);
-      const lh = 3,
-        startY = footerY - lines.length * lh - lh;
-      doc.setDrawColor(32, 32, 32);
-      doc.setLineWidth(0.3);
-      doc.rect(
-        margin - 3,
-        startY - lh - 3,
-        pageWidth - 2 * margin + 6,
-        lines.length * lh + lh + 8,
-        "S",
-      );
-      lines.forEach((line: string, i: number) => {
-        const cx = (pageWidth - doc.getTextWidth(line)) / 2;
-        doc.text(line, cx, startY + i * lh);
-      });
-      const pw = "Powered by Settlo";
-      doc.text(
-        pw,
-        (pageWidth - doc.getTextWidth(pw)) / 2,
-        startY + lines.length * lh + 2,
-      );
       const filename = `credit-report-${format(new Date(creditData.startDate), "yyyy-MM-dd")}-to-${format(new Date(creditData.endDate), "yyyy-MM-dd")}.pdf`;
-      doc.save(filename);
+      pdf.save(filename);
       toast({ title: "PDF Downloaded", description: `Saved as ${filename}` });
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast({ variant: "destructive", title: "PDF Generation Failed" });
     } finally {
       setDownloadingPdf(false);
@@ -446,6 +446,7 @@ const CreditReportDashboard = () => {
       {/* ── Metric cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-amber-500 rounded-l-xl" />
           <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
             Total unpaid orders
           </p>
@@ -459,25 +460,25 @@ const CreditReportDashboard = () => {
             Outstanding credit balances
           </p>
         </div>
-
         <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-red-500 rounded-l-xl" />
           <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
             Total unpaid amount
           </p>
           <p className="text-2xl font-semibold tabular-nums text-red-600 dark:text-red-400">
-            TZS {formatCurrency(creditData?.totalUnpaidAmount ?? 0)}
+            TZS {fmt(creditData?.totalUnpaidAmount ?? 0)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Amount yet to be collected
           </p>
         </div>
-
         <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
+          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-emerald-500 rounded-l-xl" />
           <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
             Total paid amount
           </p>
           <p className="text-2xl font-semibold tabular-nums text-emerald-600 dark:text-emerald-400">
-            TZS {formatCurrency(creditData?.totalPaidAmount ?? 0)}
+            TZS {fmt(creditData?.totalPaidAmount ?? 0)}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Partially collected payments
@@ -497,7 +498,6 @@ const CreditReportDashboard = () => {
             </span>
           )}
         </div>
-
         <div className="bg-background border rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -533,27 +533,27 @@ const CreditReportDashboard = () => {
                       onClick={() => router.push(`/orders/${order.orderId}`)}
                       className="hover:bg-muted/30 transition-colors cursor-pointer"
                     >
-                      <td className="px-4 py-3 font-medium tabular-nums whitespace-nowrap text-sm">
+                      <td className="px-4 py-3 font-medium tabular-nums whitespace-nowrap">
                         {order.orderNumber}
                       </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {order.orderName || (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap text-muted-foreground">
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
                         {format(new Date(order.openedDate), "dd MMM yyyy")}
                       </td>
-                      <td className="px-4 py-3 text-sm whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         {order.customerName || (
                           <span className="text-muted-foreground">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-sm text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                        TZS {formatCurrency(order.paidAmount)}
+                      <td className="px-4 py-3 text-right tabular-nums text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                        TZS {fmt(order.paidAmount)}
                       </td>
-                      <td className="px-4 py-3 text-right tabular-nums text-sm font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
-                        TZS {formatCurrency(order.unpaidAmount)}
+                      <td className="px-4 py-3 text-right tabular-nums font-medium text-red-600 dark:text-red-400 whitespace-nowrap">
+                        TZS {fmt(order.unpaidAmount)}
                       </td>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
@@ -575,6 +575,384 @@ const CreditReportDashboard = () => {
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      {/* ── Hidden print template ── */}
+      <div
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          top: 0,
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          ref={printRef}
+          style={{
+            width: 794,
+            backgroundColor: "#ffffff",
+            fontFamily:
+              "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            color: "#111827",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{ borderTop: "3px solid #111827", padding: "24px 32px 0" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: "#111827",
+                    marginBottom: 4,
+                  }}
+                >
+                  {location?.name ?? ""}
+                </div>
+                {location?.address && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    {location.address}
+                  </div>
+                )}
+                {location?.phone && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    Tel: {location.phone}
+                  </div>
+                )}
+                {location?.email && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    {location.email}
+                  </div>
+                )}
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{
+                    fontSize: 36,
+                    fontWeight: 300,
+                    color: PRIMARY,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  CREDIT
+                </div>
+                <div style={{ fontSize: 13, color: "#6b7280" }}>REPORT</div>
+              </div>
+            </div>
+            <div
+              style={{
+                marginTop: 20,
+                padding: "10px 0",
+                borderTop: `1px solid ${SECONDARY}`,
+                borderBottom: `1px solid ${SECONDARY}`,
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "#6b7280",
+              }}
+            >
+              {creditData && (
+                <>
+                  <span>
+                    Period:{" "}
+                    <strong style={{ color: "#111827" }}>
+                      {format(
+                        new Date(creditData.startDate),
+                        "MMM dd, yyyy HH:mm",
+                      )}{" "}
+                      —{" "}
+                      {format(
+                        new Date(creditData.endDate),
+                        "MMM dd, yyyy HH:mm",
+                      )}
+                    </strong>
+                  </span>
+                  <span>
+                    Generated:{" "}
+                    <strong style={{ color: "#111827" }}>
+                      {format(new Date(), "MMM dd, yyyy HH:mm")}
+                    </strong>
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {creditData && (
+            <>
+              {/* Summary strip */}
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: 0,
+                  margin: "24px 32px",
+                  border: `1px solid ${SECONDARY}`,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                }}
+              >
+                {[
+                  {
+                    label: "Total unpaid orders",
+                    value: `${creditData.total} orders`,
+                    sub: "Outstanding balances",
+                  },
+                  {
+                    label: "Total unpaid amount",
+                    value: `TZS ${fmt(creditData.totalUnpaidAmount)}`,
+                    sub: "Yet to be collected",
+                  },
+                  {
+                    label: "Total paid amount",
+                    value: `TZS ${fmt(creditData.totalPaidAmount)}`,
+                    sub: "Partially collected",
+                  },
+                ].map((c, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      padding: "14px 16px",
+                      borderLeft: i > 0 ? `1px solid ${SECONDARY}` : "none",
+                      borderTop: "3px solid #111827",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: "#9ca3af",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        marginBottom: 6,
+                      }}
+                    >
+                      {c.label}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 800,
+                        color: "#111827",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {c.value}
+                    </div>
+                    <div
+                      style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}
+                    >
+                      {c.sub}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Orders table */}
+              <div
+                style={{
+                  margin: "0 32px 32px",
+                  border: `1px solid ${SECONDARY}`,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                }}
+              >
+                {/* Table header */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "140px 1fr 100px 1fr 120px 120px 80px",
+                    backgroundColor: "#111827",
+                    padding: "10px 16px",
+                    gap: 8,
+                  }}
+                >
+                  {[
+                    "Order #",
+                    "Order Name",
+                    "Date",
+                    "Customer",
+                    "Paid",
+                    "Unpaid",
+                    "Status",
+                  ].map((h, i) => (
+                    <div
+                      key={h}
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#ffffff",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        textAlign: i >= 4 && i <= 5 ? "right" : "left",
+                      }}
+                    >
+                      {h}
+                    </div>
+                  ))}
+                </div>
+                {/* Rows */}
+                {creditData.unpaidOrders.map((order, i) => (
+                  <div
+                    key={order.orderId}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "140px 1fr 100px 1fr 120px 120px 80px",
+                      padding: "10px 16px",
+                      gap: 8,
+                      borderBottom:
+                        i < creditData.unpaidOrders.length - 1
+                          ? `1px solid ${SECONDARY}`
+                          : "none",
+                      backgroundColor: i % 2 === 0 ? "#ffffff" : "#f9fafb",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#111827",
+                      }}
+                    >
+                      {order.orderNumber}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#374151" }}>
+                      {order.orderName || "—"}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#6b7280" }}>
+                      {format(new Date(order.openedDate), "dd MMM yyyy")}
+                    </div>
+                    <div style={{ fontSize: 12, color: "#374151" }}>
+                      {order.customerName || "—"}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#059669",
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      TZS {fmt(order.paidAmount)}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#dc2626",
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      TZS {fmt(order.unpaidAmount)}
+                    </div>
+                    <div style={{ textAlign: "left" }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: "#92400e",
+                          backgroundColor: "#fef3c7",
+                          padding: "2px 7px",
+                          borderRadius: 20,
+                          border: "1px solid #fcd34d",
+                        }}
+                      >
+                        Unpaid
+                      </span>
+                    </div>
+                  </div>
+                ))}
+                {/* Totals row */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "140px 1fr 100px 1fr 120px 120px 80px",
+                    padding: "12px 16px",
+                    gap: 8,
+                    backgroundColor: "#f3f4f6",
+                    borderTop: "2px solid #111827",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "#111827",
+                      gridColumn: "span 4",
+                    }}
+                  >
+                    Total ({creditData.unpaidOrders.length} orders)
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "#059669",
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    TZS {fmt(creditData.totalPaidAmount)}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "#dc2626",
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    TZS {fmt(creditData.totalUnpaidAmount)}
+                  </div>
+                  <div />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Footer */}
+          <div
+            style={{
+              borderTop: `1px solid ${SECONDARY}`,
+              margin: "0 32px",
+              padding: "16px 0",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 10, color: "#9ca3af", lineHeight: 1.6 }}>
+              This report is confidential and intended solely for the recipient.
+              Any discrepancies must be reported to support@settlo.co.tz within
+              14 days of issuance.
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#d1d5db",
+                marginTop: 6,
+              }}
+            >
+              Powered by Settlo
+            </div>
+          </div>
+          <div style={{ height: 24 }} />
         </div>
       </div>
     </div>
