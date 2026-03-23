@@ -179,7 +179,7 @@ function CustomerForm({
         if (!data) return;
         setResponse(data);
         if (data.responseType === "success") {
-          toast({ title: "Success", description: data.message });
+          toast({ variant: "success", title: "Success", description: data.message });
           router.push("/customers");
         } else {
           toast({

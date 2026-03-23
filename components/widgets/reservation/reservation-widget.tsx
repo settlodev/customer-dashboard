@@ -13,6 +13,8 @@ import {
   fetchPublicLocationInfo,
   fetchPublicReservationSettings,
   fetchPublicBookingQuestions,
+  fetchPublicReservationSlots,
+  fetchPublicReservationExceptions,
   fetchPublicAvailability,
   createPublicReservation,
 } from "@/lib/actions/public-reservation-actions";
@@ -21,7 +23,7 @@ import {
   PublicReservationSetting,
   BookingQuestion,
 } from "@/types/reservation-setting/type";
-import { AvailabilityResponse, AvailableSlot, AvailableTable, AvailableCombination } from "@/types/reservation/type";
+import { AvailabilityResponse, AvailableSlot, AvailableTable, AvailableCombination, ReservationSlot, ReservationException } from "@/types/reservation/type";
 import {
   GuestInfo,
   ReservationStep,
@@ -51,6 +53,8 @@ export default function ReservationWidget({
   const [location, setLocation] = useState<LocationDetails | null>(null);
   const [settings, setSettings] = useState<PublicReservationSetting | null>(initialSettings ?? null);
   const [bookingQuestions, setBookingQuestions] = useState<BookingQuestion[]>([]);
+  const [reservationSlots, setReservationSlots] = useState<ReservationSlot[]>([]);
+  const [reservationExceptions, setReservationExceptions] = useState<ReservationException[]>([]);
   const [availability, setAvailability] =
     useState<AvailabilityResponse | null>(null);
 
@@ -89,16 +93,20 @@ export default function ReservationWidget({
   useEffect(() => {
     const load = async () => {
       try {
-        const [loc, sett, questions] = await Promise.all([
+        const [loc, sett, questions, slots, exceptions] = await Promise.all([
           fetchPublicLocationInfo(locationId),
           initialSettings !== undefined
             ? Promise.resolve(initialSettings)
             : fetchPublicReservationSettings(locationId),
           fetchPublicBookingQuestions(locationId),
+          fetchPublicReservationSlots(locationId),
+          fetchPublicReservationExceptions(locationId),
         ]);
         setLocation(loc);
         if (!initialSettings) setSettings(sett);
         setBookingQuestions(questions.filter((q) => q.active));
+        setReservationSlots(slots.filter((s) => s.active));
+        setReservationExceptions(exceptions);
 
         if (sett && !sett.enableOnlineBooking) {
           setError("Online booking is not currently available for this location.");
@@ -123,6 +131,27 @@ export default function ReservationWidget({
   const maxDate = new Date(today);
   maxDate.setDate(maxDate.getDate() + bookingWindowDays);
   const maxDateStr = maxDate.toISOString().split("T")[0];
+
+  // --- map JS day index (0=Sun) to schedule day name ---
+  const JS_DAY_TO_NAME = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+  const scheduledDays = new Set(reservationSlots.map((s) => s.dayOfWeek));
+  const closedDates = new Set(
+    reservationExceptions
+      .filter((e) => e.type === "CLOSED" || e.type === "HOLIDAY" || e.type === "MAINTENANCE" || e.type === "BLOCKED")
+      .filter((e) => !e.startTime) // full-day closures only
+      .map((e) => e.date),
+  );
+
+  const isDateDisabled = (date: Date) => {
+    // outside booking window
+    if (date < new Date(minDateStr + "T00:00:00") || date > new Date(maxDateStr + "T23:59:59")) return true;
+    // no schedule for this day of week
+    if (scheduledDays.size > 0 && !scheduledDays.has(JS_DAY_TO_NAME[date.getDay()])) return true;
+    // full-day exception closure
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+    if (closedDates.has(dateStr)) return true;
+    return false;
+  };
 
   // --- load availability ---
   const loadAvailability = useCallback(
@@ -361,10 +390,16 @@ export default function ReservationWidget({
                     setSelectedDate("");
                   }
                 }}
-                disabled={(date) => date < new Date(minDateStr + "T00:00:00") || date > new Date(maxDateStr + "T23:59:59")}
+                disabled={isDateDisabled}
                 fromDate={new Date(minDateStr + "T00:00:00")}
                 toDate={new Date(maxDateStr + "T23:59:59")}
                 className="rounded-md border"
+                classNames={{
+                  day_selected: "text-white rounded-md hover:text-white focus:text-white",
+                }}
+                modifiersStyles={{
+                  selected: { backgroundColor: primaryColor, color: "white" },
+                }}
               />
             </div>
 

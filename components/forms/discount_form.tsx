@@ -506,7 +506,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
         updateDiscount(item.id, values).then((data: FormResponse | void) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ title: "Success", description: data.message });
+            toast({ variant: "success", title: "Success", description: data.message });
             router.push("/discounts");
           }
         });
@@ -515,7 +515,7 @@ function DiscountForm({ item }: { item: Discount | null | undefined }) {
           .then((data: FormResponse | void) => {
             if (data?.responseType === "success") {
               setResponse(data);
-              toast({ title: "Success", description: data.message });
+              toast({ variant: "success", title: "Success", description: data.message });
               router.push("/discounts");
             }
           })

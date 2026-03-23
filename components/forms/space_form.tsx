@@ -132,7 +132,7 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
         updateSpace(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({ title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
+            toast({ variant: "success", title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
             router.push("/spaces");
           } else if (data) {
             toast({ variant: "destructive", title: "Error", description: SettloErrorHandler.safeMessage(data.message, "Failed to update table/space") });
@@ -142,7 +142,7 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
         createSpace(values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({ title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
+            toast({ variant: "success", title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
             router.push("/spaces");
           } else if (data) {
             toast({ variant: "destructive", title: "Error", description: SettloErrorHandler.safeMessage(data.message, "Failed to create table/space") });

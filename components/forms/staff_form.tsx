@@ -87,7 +87,7 @@ const StaffForm: React.FC<StaffFormProps> = ({ item, onFormSubmitted }) => {
           setResponse(result);
 
           if (result.responseType === "success") {
-            toast({ title: "Success", description: result.message });
+            toast({ variant: "success", title: "Success", description: result.message });
             onFormSubmitted?.(result);
             router.push("/staff");
           } else if (result.responseType === "error") {

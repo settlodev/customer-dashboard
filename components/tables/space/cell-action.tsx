@@ -31,7 +31,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       if (data) {
         await deleteSpace(data.id);
         toast({
-          variant: "default",
+          variant: "success",
           title: "Success",
           description: "Space / Section deleted successfully!",
         });

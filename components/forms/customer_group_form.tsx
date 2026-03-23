@@ -85,7 +85,7 @@ const GroupDialog = ({
       const data = await action;
       if (data) {
         if (data.responseType === "success") {
-          toast({ title: "Success", description: data.message });
+          toast({ variant: "success", title: "Success", description: data.message });
           onOpenChange(false);
           onSaved();
         } else {
@@ -188,7 +188,7 @@ const CustomerGroupManager = ({
     setDeletingId(id);
     try {
       await deleteCustomerGroup(id);
-      toast({ title: "Success", description: "Group deleted successfully" });
+      toast({ variant: "success", title: "Success", description: "Group deleted successfully" });
       onRefresh();
     } catch {
       toast({

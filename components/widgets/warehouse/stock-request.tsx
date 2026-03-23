@@ -73,6 +73,7 @@ const RequestStockPage = ({ initialRequest }: StockRequestPageProps) => {
   
       // Success case
       toast({
+        variant: "success",
         title: "Success",
         description: response.message,
       });

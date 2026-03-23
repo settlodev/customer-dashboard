@@ -105,6 +105,7 @@ function StockModificationForm({ item }: { item: StockModification | null | unde
                         if (data) setResponse(data);
                         if (data && data.responseType === "success") {
                             toast({
+                                variant: "success",
                                 title: "Success",
                                 description: data.message,
                             });

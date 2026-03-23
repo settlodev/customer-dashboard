@@ -14,7 +14,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import React, { useCallback, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { FormResponse } from "@/types/types";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
 import { FormError } from "../widgets/form-error";
@@ -22,10 +21,10 @@ import { FormSuccess } from "../widgets/form-success";
 import { useRouter } from "next/navigation";
 import { DeviceSchema } from "@/types/device/schema";
 import DepartmentSelector from "@/components/widgets/department-selector";
-import { createDevice, updateDevice } from "@/lib/actions/devices-actions";
+import { updateDevice } from "@/lib/actions/devices-actions";
 import { Device } from "@/types/device/type";
 
-function DeviceForm({ item }: { item: Device | null | undefined }) {
+function DeviceForm({ item, onSuccess, compact = false }: { item: Device | null | undefined; onSuccess?: () => void; compact?: boolean }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>("");
   const [success, setSuccess] = useState<string | undefined>("");
@@ -62,76 +61,44 @@ function DeviceForm({ item }: { item: Device | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof DeviceSchema>) => {
-    console.log("Submitting payload:", values);
-
-    // Clear previous messages
     setError("");
     setSuccess("");
 
+    if (!item) return;
+
     startTransition(() => {
-      if (item) {
-        updateDevice(item.id, values)
-          .then((data: FormResponse | void) => {
-            if (data) {
-              if (data.responseType === "success") {
-                setSuccess(data.message);
-                toast({
-                  title: "Success",
-                  description: data.message,
-                });
-                router.push("/devices");
-              } else if (data.responseType === "error") {
-                setError(data.message);
-                toast({
-                  variant: "destructive",
-                  title: "Error",
-                  description: data.message,
-                });
-              }
+      updateDevice(item.id, values)
+        .then((result) => {
+          if (result.success) {
+            setSuccess("Device updated successfully");
+            toast({
+              variant: "success",
+              title: "Success",
+              description: "Device updated successfully",
+            });
+            if (onSuccess) {
+              onSuccess();
+            } else {
+              router.push("/settings?tab=devices");
             }
-          })
-          .catch((err) => {
-            console.error("Error updating device:", err);
-            const errorMessage = "Failed to update device";
-            setError(errorMessage);
+          } else {
+            setError(result.error ?? "Failed to update device");
             toast({
               variant: "destructive",
               title: "Error",
-              description: errorMessage,
+              description: result.error ?? "Failed to update device",
             });
+          }
+        })
+        .catch((err) => {
+          console.error("Error updating device:", err);
+          setError("Failed to update device");
+          toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Failed to update device",
           });
-      } else {
-        createDevice(values)
-          .then((data: FormResponse | void) => {
-            if (data) {
-              if (data.responseType === "success") {
-                setSuccess(data.message);
-                toast({
-                  title: "Success",
-                  description: data.message,
-                });
-                router.push("/devices");
-              } else if (data.responseType === "error") {
-                setError(data.message);
-                toast({
-                  variant: "destructive",
-                  title: "Error",
-                  description: data.message,
-                });
-              }
-            }
-          })
-          .catch((err) => {
-            console.error("Error creating device:", err);
-            const errorMessage = "Failed to create device";
-            setError(errorMessage);
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: errorMessage,
-            });
-          });
-      }
+        });
     });
   };
 
@@ -140,12 +107,73 @@ function DeviceForm({ item }: { item: Device | null | undefined }) {
     form.handleSubmit(submitData, onInvalid)(e);
   };
 
+  if (compact) {
+    return (
+      <Form {...form}>
+        <form onSubmit={handleFormSubmit}>
+          <div className="space-y-4">
+            <FormError message={error} />
+            <FormSuccess message={success} />
+
+            <div className="grid grid-cols-1 gap-4">
+              <FormField
+                control={form.control}
+                name="customName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Device Name
+                      <span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter device name"
+                        {...field}
+                        disabled={isPending}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="departmentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Department
+                      <span className="text-red-500 ml-1">*</span>
+                    </FormLabel>
+                    <DepartmentSelector
+                      {...field}
+                      value={field.value ?? ""}
+                    />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <SubmitButton
+                isPending={isPending}
+                label={item ? "Update Device" : "Add Device"}
+              />
+            </div>
+          </div>
+        </form>
+      </Form>
+    );
+  }
+
   return (
     <div className="w-full max-w-4xl mx-auto">
-      <div className="bg-white rounded-lg border border-gray-200 shadow-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm">
         {/* Form Header */}
-        <div className="px-6 py-5 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">
+        <div className="px-6 py-5 border-b border-gray-200 dark:border-gray-800">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             {item ? "Edit Device" : "Add New Device"}
           </h2>
           <p className="mt-1 text-sm text-gray-500">
@@ -206,7 +234,7 @@ function DeviceForm({ item }: { item: Device | null | undefined }) {
             </div>
 
             {/* Form Footer */}
-            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg flex items-center justify-between">
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-800 rounded-b-lg flex items-center justify-between">
               <p className="text-xs text-gray-500">
                 <span className="text-red-500">*</span> Required fields
               </p>

@@ -1,14 +1,15 @@
 "use server";
 
-import axios, { AxiosInstance, AxiosRequestConfig } from "axios";
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import https from "https";
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
-import { getAuthToken } from "@/lib/auth-utils";
+import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
 
 class ApiClient {
   private instance: AxiosInstance;
   private readonly baseURL: string;
   public isPlain: boolean;
+  private isRefreshing: boolean = false;
 
   constructor() {
     this.baseURL = process.env.SERVICE_URL || "";
@@ -20,6 +21,7 @@ class ApiClient {
       }),
     });
 
+    // Request interceptor — attach auth token
     this.instance.interceptors.request.use(async (config) => {
       if (!config.url?.startsWith("http")) {
         config.url = this.baseURL + config.url;
@@ -38,6 +40,66 @@ class ApiClient {
 
       return config;
     });
+
+    // Response interceptor — silent token refresh on 401
+    this.instance.interceptors.response.use(
+      (response) => response,
+      async (error: AxiosError) => {
+        const originalRequest = error.config;
+
+        if (
+          error.response?.status === 401 &&
+          originalRequest &&
+          !(originalRequest as any)._retry &&
+          !this.isRefreshing &&
+          !originalRequest.url?.includes("/api/auth/refresh-token") &&
+          !originalRequest.url?.includes("/api/auth/login")
+        ) {
+          (originalRequest as any)._retry = true;
+          this.isRefreshing = true;
+
+          try {
+            const token = await getAuthToken();
+            if (!token?.refreshToken) {
+              throw new Error("No refresh token available");
+            }
+
+            // Call the refresh endpoint directly (bypass interceptors to avoid loop)
+            const refreshResponse = await axios.post(
+              `${this.baseURL}/api/auth/refresh-token`,
+              { refreshToken: token.refreshToken },
+              {
+                headers: { "Content-Type": "application/json" },
+                httpsAgent: new https.Agent({ rejectUnauthorized: true }),
+              },
+            );
+
+            const newAccessToken = refreshResponse.data?.authToken || refreshResponse.data?.accessToken || refreshResponse.data?.token;
+            const newRefreshToken = refreshResponse.data?.refreshToken || token.refreshToken;
+
+            if (newAccessToken) {
+              // Update stored tokens
+              await updateAuthToken({
+                ...token,
+                authToken: newAccessToken,
+                refreshToken: newRefreshToken,
+              });
+
+              // Retry original request with new token
+              originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
+              return this.instance(originalRequest);
+            }
+          } catch (refreshError) {
+            console.error("[API] Token refresh failed:", refreshError);
+            // Let the original 401 propagate — error handler will redirect to login
+          } finally {
+            this.isRefreshing = false;
+          }
+        }
+
+        return Promise.reject(error);
+      },
+    );
   }
 
   public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
@@ -95,8 +157,7 @@ class ApiClient {
       const response = await this.instance.post<T>(url, data, config);
 
       return response.data;
-    } catch (error: any) {
-      // console.log("The error while sending this request is",error.response)
+    } catch (error) {
       throw await handleSettloApiError(error);
     }
   }

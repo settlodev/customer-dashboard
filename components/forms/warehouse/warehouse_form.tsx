@@ -160,6 +160,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
         updateWarehouse(values).then((data) => {
           if (data && data.responseType === "success") {
             toast({
+              variant: "success",
               title: "Success",
               description: data.message,
               duration: 5000,
@@ -173,6 +174,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
             console.log(data);
             if (data && data.responseType === "success") {
               toast({
+                variant: "success",
                 title: "Success",
                 description: data.message,
                 duration: 5000,

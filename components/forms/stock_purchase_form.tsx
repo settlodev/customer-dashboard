@@ -232,6 +232,7 @@ function StockPurchaseForm({
               setSuccess(data.message);
 
               toast({
+                variant: "success",
                 title: "Success",
                 description: data.message,
               });
