@@ -3,7 +3,7 @@
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { LocationDetails } from "@/types/menu/type";
-import { AvailabilityResponse } from "@/types/reservation/type";
+import { AvailabilityResponse, ReservationSlot, ReservationException } from "@/types/reservation/type";
 import { PublicReservationSetting, BookingQuestion } from "@/types/reservation-setting/type";
 import { PublicReservationPayload } from "@/types/public-reservation/type";
 
@@ -50,6 +50,32 @@ export const fetchPublicBookingQuestions = async (
   try {
     const apiClient = createPublicClient();
     const data = await apiClient.get(`/api/booking-questions/${locationId}`);
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return [];
+    throw error;
+  }
+};
+
+export const fetchPublicReservationSlots = async (
+  locationId: string,
+): Promise<ReservationSlot[]> => {
+  try {
+    const apiClient = createPublicClient();
+    const data = await apiClient.get(`/api/reservation-slots/${locationId}`);
+    return parseStringify(data);
+  } catch (error: any) {
+    if (error?.status === 404) return [];
+    throw error;
+  }
+};
+
+export const fetchPublicReservationExceptions = async (
+  locationId: string,
+): Promise<ReservationException[]> => {
+  try {
+    const apiClient = createPublicClient();
+    const data = await apiClient.get(`/api/reservation-exceptions/${locationId}`);
     return parseStringify(data);
   } catch (error: any) {
     if (error?.status === 404) return [];

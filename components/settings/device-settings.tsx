@@ -468,7 +468,7 @@ const DeviceSettings = () => {
         </Card>
       ) : (
         <Card className="rounded-xl border shadow-sm">
-          <CardContent className="pt-6 space-y-1">
+          <CardContent className="px-2 sm:px-4 pt-4 pb-2 space-y-0">
             {devices.map((device, index) => {
               const DeviceIcon = getDeviceIcon(device);
               const online = isDeviceOnline(device);
@@ -478,76 +478,76 @@ const DeviceSettings = () => {
               return (
                 <React.Fragment key={device.id}>
                   <div
-                    className="flex items-center justify-between px-3 py-4 rounded-lg hover:bg-primary-light dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
+                    className="flex items-center justify-between px-2 sm:px-3 py-2.5 rounded-lg hover:bg-primary-light dark:hover:bg-gray-800/50 transition-colors cursor-pointer"
                     onClick={() => setSelectedDevice(device)}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 dark:bg-gray-800 flex-shrink-0 relative">
-                        <DeviceIcon className="h-5 w-5 text-primary" />
-                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white dark:border-gray-900 ${status.dot}`} />
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary/10 dark:bg-gray-800 flex-shrink-0 relative">
+                        <DeviceIcon className="h-4 w-4 text-primary" />
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-gray-900 ${status.dot}`} />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <span className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
                             {device.customName || device.name || "Unnamed Device"}
                           </span>
                           {device.isEmulator && (
-                            <Badge variant="outline" className="text-xs">Emulator</Badge>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 hidden sm:inline-flex">Emulator</Badge>
+                          )}
+                          {device.suspended && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700">
+                              Suspended
+                            </Badge>
                           )}
                         </div>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <div className="flex items-center gap-1 mt-0.5 text-[11px] text-muted-foreground truncate">
                           {pending ? (
-                            <span className="text-xs text-amber-600 dark:text-amber-400">Waiting for device to connect...</span>
+                            <span className="text-amber-600 dark:text-amber-400">Waiting for device to connect...</span>
                           ) : (
                             <>
-                              <span className="text-xs text-muted-foreground">
+                              <span className="truncate">
                                 {[device.brand || device.manufacturer, device.model].filter(Boolean).join(" ") || "Unknown device"}
                               </span>
                               {device.operatingSystem && (
-                                <span className="text-xs text-muted-foreground">
+                                <span className="hidden sm:inline">
                                   · {device.operatingSystem} {device.operatingSystemVersion}
                                 </span>
                               )}
                               {device.appVersion && (
-                                <span className="text-xs text-muted-foreground">· v{device.appVersion}</span>
+                                <span className="hidden sm:inline">· v{device.appVersion}</span>
                               )}
                             </>
                           )}
                         </div>
-                        {/* Extra details row */}
+                        {/* Extra details row — desktop only */}
                         {!pending && (
-                          <div className="flex items-center gap-3 mt-1">
+                          <div className="hidden sm:flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
                             {device.batteryLevel != null && device.batteryLevel > 0 && (
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-0.5">
                                 {device.isCharging ? (
                                   <BatteryCharging className="h-3 w-3 text-emerald-500" />
                                 ) : (
                                   <Battery className={`h-3 w-3 ${device.batteryLevel < 0.2 ? "text-red-500" : "text-muted-foreground"}`} />
                                 )}
-                                <span className={`text-xs ${device.batteryLevel < 0.2 ? "text-red-500" : "text-muted-foreground"}`}>
+                                <span className={device.batteryLevel < 0.2 ? "text-red-500" : ""}>
                                   {Math.round(device.batteryLevel * 100)}%
                                 </span>
                               </div>
                             )}
                             {device.ipAddress && (
-                              <span className="text-xs text-muted-foreground font-mono">{device.ipAddress}</span>
+                              <span className="font-mono">{device.ipAddress}</span>
                             )}
                             {device.departmentName && (
-                              <span className="text-xs text-muted-foreground">{device.departmentName}</span>
+                              <span>{device.departmentName}</span>
                             )}
                           </div>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-                      <Badge variant={status.color ? "default" : "secondary"} className={`text-xs border-0 ${status.color}`}>
+                    <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                      <Badge variant={status.color ? "default" : "secondary"} className={`text-[10px] sm:text-xs border-0 ${status.color}`}>
                         {status.label}
                       </Badge>
-                      {device.suspended && (
-                        <Badge variant="outline" className="text-xs text-amber-600 border-amber-300 dark:text-amber-400 dark:border-amber-700">
-                          Suspended
-                        </Badge>
-                      )}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button

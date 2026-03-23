@@ -68,12 +68,12 @@ const ReservationSettings = ({ defaultTab }: { defaultTab?: string }) => {
             Configure booking rules, policies, and custom questions for your location
           </p>
         </div>
-        <div className="max-w-2xl">
-          <div className="grid grid-cols-4 gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-            <div className="h-9 bg-white dark:bg-gray-900 rounded-md shadow-sm animate-pulse" />
-            <div className="h-9 rounded-md animate-pulse" />
-            <div className="h-9 rounded-md animate-pulse" />
-            <div className="h-9 rounded-md animate-pulse" />
+        <div className="max-w-2xl overflow-hidden">
+          <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+            <div className="flex-1 h-9 bg-white dark:bg-gray-900 rounded-md shadow-sm animate-pulse" />
+            <div className="flex-1 h-9 rounded-md animate-pulse" />
+            <div className="flex-1 h-9 rounded-md animate-pulse" />
+            <div className="flex-1 h-9 rounded-md animate-pulse" />
           </div>
         </div>
         <Card className="rounded-xl border shadow-sm">
@@ -147,33 +147,33 @@ const ReservationSettings = ({ defaultTab }: { defaultTab?: string }) => {
       </div>
 
       <Tabs defaultValue={defaultTab || "settings"} className="w-full">
-        <TabsList className="flex w-full max-w-2xl bg-primary/10 dark:bg-gray-800 rounded-lg p-1">
+        <TabsList className="inline-flex w-full max-w-2xl bg-primary/10 dark:bg-gray-800 rounded-lg p-1 overflow-x-auto no-scrollbar">
           <TabsTrigger
             value="settings"
-            className="flex-1 gap-2 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            className="flex-1 min-w-0 gap-1.5 rounded-md text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
-            <Settings2 className="h-4 w-4" />
+            <Settings2 className="h-4 w-4 hidden sm:block flex-shrink-0" />
             Settings
           </TabsTrigger>
           <TabsTrigger
             value="schedule"
-            className="flex-1 gap-2 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            className="flex-1 min-w-0 gap-1.5 rounded-md text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
-            <Clock className="h-4 w-4" />
+            <Clock className="h-4 w-4 hidden sm:block flex-shrink-0" />
             Schedule
           </TabsTrigger>
           <TabsTrigger
             value="exceptions"
-            className="flex-1 gap-2 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            className="flex-1 min-w-0 gap-1.5 rounded-md text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
-            <CalendarOff className="h-4 w-4" />
+            <CalendarOff className="h-4 w-4 hidden sm:block flex-shrink-0" />
             Exceptions
           </TabsTrigger>
           <TabsTrigger
             value="questions"
-            className="flex-1 gap-2 rounded-md data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+            className="flex-1 min-w-0 gap-1.5 rounded-md text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
-            <MessageSquareText className="h-4 w-4" />
+            <MessageSquareText className="h-4 w-4 hidden sm:block flex-shrink-0" />
             Questions
           </TabsTrigger>
         </TabsList>

@@ -120,80 +120,81 @@ const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
         </Button>
       </div>
 
-      {exceptions.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <CalendarOff className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-            <h3 className="font-medium text-lg">No exceptions configured</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add date-based closures, holidays, or blocked time ranges
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {sorted.map((exception) => {
-            const dateFormatted = new Intl.DateTimeFormat("en", {
-              dateStyle: "medium",
-            }).format(new Date(exception.date));
-            const hasTimeRange = exception.startTime || exception.endTime;
-            const colorClass =
-              EXCEPTION_TYPE_COLORS[exception.type as ReservationExceptionType] ||
-              "bg-gray-100 text-gray-800";
+      <Card className="rounded-xl border shadow-sm">
+        <CardContent className="p-4 sm:p-6">
+          {exceptions.length === 0 ? (
+            <div className="py-4 text-center">
+              <CalendarOff className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+              <h3 className="font-medium text-lg">No exceptions configured</h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add date-based closures, holidays, or blocked time ranges
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {sorted.map((exception) => {
+                const dateFormatted = new Intl.DateTimeFormat("en", {
+                  dateStyle: "medium",
+                }).format(new Date(exception.date));
+                const hasTimeRange = exception.startTime || exception.endTime;
+                const colorClass =
+                  EXCEPTION_TYPE_COLORS[exception.type as ReservationExceptionType] ||
+                  "bg-gray-100 text-gray-800";
 
-            return (
-              <div
-                key={exception.id}
-                className="flex items-center justify-between rounded-lg border p-3"
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <Badge variant="outline" className={colorClass}>
-                    {EXCEPTION_TYPE_LABELS[exception.type as ReservationExceptionType] ||
-                      exception.type}
-                  </Badge>
-                  <div className="min-w-0">
-                    <div className="font-medium">{dateFormatted}</div>
-                    {hasTimeRange && (
-                      <div className="text-sm text-muted-foreground">
-                        {exception.startTime?.substring(0, 5) || "Start"} –{" "}
-                        {exception.endTime?.substring(0, 5) || "End"}
-                      </div>
-                    )}
-                    {!hasTimeRange && (
-                      <div className="text-sm text-muted-foreground">
-                        Full day
-                      </div>
-                    )}
-                  </div>
-                  {exception.reason && (
-                    <span className="text-sm text-muted-foreground truncate">
-                      — {exception.reason}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleEdit(exception)}
+                return (
+                  <div
+                    key={exception.id}
+                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                   >
-                    <Pencil className="h-4 w-4" />
-                  </Button>
-                  {exception.canDelete && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(exception.id)}
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Badge variant="outline" className={colorClass}>
+                        {EXCEPTION_TYPE_LABELS[exception.type as ReservationExceptionType] ||
+                          exception.type}
+                      </Badge>
+                      <div className="min-w-0">
+                        <div className="font-medium">{dateFormatted}</div>
+                        {hasTimeRange ? (
+                          <div className="text-sm text-muted-foreground">
+                            {exception.startTime?.substring(0, 5) || "Start"} –{" "}
+                            {exception.endTime?.substring(0, 5) || "End"}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-muted-foreground">
+                            Full day
+                          </div>
+                        )}
+                      </div>
+                      {exception.reason && (
+                        <span className="text-sm text-muted-foreground truncate hidden sm:inline">
+                          — {exception.reason}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleEdit(exception)}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {exception.canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(exception.id)}
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
