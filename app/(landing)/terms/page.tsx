@@ -106,7 +106,7 @@ const sections = [
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background rounded-lg">
       {/* Hero header */}
       <div
         style={{
