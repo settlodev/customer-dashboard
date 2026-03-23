@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import Loading from "@/components/ui/loading";
+import WhatsAppButton from "@/components/whatsapp-button";
 import {
   fetchPublicLocationInfo,
   fetchPublicReservationSettings,
@@ -23,7 +24,7 @@ import {
   PublicReservationSetting,
   BookingQuestion,
 } from "@/types/reservation-setting/type";
-import { AvailabilityResponse, AvailableSlot, AvailableTable, AvailableCombination, ReservationSlot, ReservationException } from "@/types/reservation/type";
+import { AvailabilityResponse, AvailableSlot, ReservationSlot, ReservationException } from "@/types/reservation/type";
 import {
   GuestInfo,
   ReservationStep,
@@ -218,7 +219,7 @@ export default function ReservationWidget({
     { length: Math.min(maxParty, 10) - minParty + 1 },
     (_, i) => minParty + i,
   );
-  const showLargerPartyInput = maxParty > 10;
+
 
   // --- format time helper ---
   const formatTime = (time: string) => {
@@ -306,21 +307,21 @@ export default function ReservationWidget({
   const currentStepIndex = steps.findIndex((s) => s.key === step);
 
   return (
-    <div className="max-w-2xl mx-auto p-4 sm:p-6">
+    <div className="max-w-2xl mx-auto px-3 py-4 sm:p-6">
       {/* Header */}
-      <div className="text-center mb-6">
+      <div className="text-center mb-4 sm:mb-6">
         {(settings?.logoUrl || location?.businessLogo) && (
           <img
             src={settings?.logoUrl || location?.businessLogo}
             alt={location?.locationName || ""}
-            className="max-h-24 mx-auto mb-3 object-contain"
+            className="max-h-16 sm:max-h-24 mx-auto mb-2 sm:mb-3 object-contain"
           />
         )}
-        <h1 className="text-xl font-bold" style={{ color: secondaryColor }}>
+        <h1 className="text-lg sm:text-xl font-bold" style={{ color: secondaryColor }}>
           {location?.locationName || "Book a Table"}
         </h1>
         {settings?.bookingPageWelcomeMessage && step !== "confirmation" && (
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
             {settings.bookingPageWelcomeMessage}
           </p>
         )}
@@ -328,26 +329,29 @@ export default function ReservationWidget({
 
       {/* Progress */}
       {step !== "confirmation" && (
-        <div className="flex items-center justify-center gap-1 mb-6">
+        <div className="flex items-center justify-center gap-1 mb-4 sm:mb-6">
           {steps.slice(0, 3).map((s, i) => (
             <React.Fragment key={s.key}>
-              <div
-                className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
-                  i <= currentStepIndex
-                    ? "text-white"
-                    : "bg-gray-200 text-gray-500"
-                }`}
-                style={i <= currentStepIndex ? { backgroundColor: primaryColor } : undefined}
-              >
-                {i < currentStepIndex ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  i + 1
-                )}
+              <div className="flex flex-col items-center gap-1">
+                <div
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+                    i <= currentStepIndex
+                      ? "text-white"
+                      : "bg-gray-200 text-gray-500"
+                  }`}
+                  style={i <= currentStepIndex ? { backgroundColor: primaryColor } : undefined}
+                >
+                  {i < currentStepIndex ? (
+                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                  ) : (
+                    i + 1
+                  )}
+                </div>
+                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">{s.label}</span>
               </div>
               {i < 2 && (
                 <div
-                  className="w-12 h-0.5"
+                  className="w-8 sm:w-12 h-0.5 mb-4 sm:mb-5"
                   style={{ backgroundColor: i < currentStepIndex ? primaryColor : "#e5e7eb" }}
                 />
               )}
@@ -366,12 +370,64 @@ export default function ReservationWidget({
 
       {/* ========= STEP 1: GUESTS, DATE & TIME ========= */}
       {step === "booking" && (
-        <div className="space-y-6">
-          {/* Two-column: Calendar left, Guests right */}
-          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-6">
+        <div className="space-y-4 sm:space-y-6">
+          {/* Number of guests - shown first on mobile for better flow */}
+          <div className="sm:hidden">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              <Users className="w-4 h-4 inline mr-1.5" />
+              Number of Guests
+            </label>
+            <div
+              className="grid gap-2"
+              style={{ gridTemplateColumns: `repeat(${partySizeOptions.length <= 6 ? partySizeOptions.length : Math.ceil(partySizeOptions.length / 2)}, 1fr)` }}
+            >
+              {partySizeOptions.map((n) => (
+                <button
+                  key={n}
+                  onClick={() => {
+                    setPartySize(n);
+                    if (selectedDate) {
+                      loadAvailability(selectedDate, n);
+                    }
+                  }}
+                  className={`h-10 rounded-full text-sm font-medium transition-colors ${
+                    partySize === n
+                      ? "text-white"
+                      : "bg-white border border-gray-300 text-gray-700"
+                  }`}
+                  style={partySize === n
+                    ? { backgroundColor: primaryColor }
+                    : undefined
+                  }
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            {partySize === maxParty && (
+              <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <p className="font-medium text-xs">Need more seats?</p>
+                <p className="text-amber-600 text-xs mt-1">
+                  For parties larger than {maxParty}, please contact us directly.
+                </p>
+                {location?.businessPhone && (
+                  <a
+                    href={`tel:${location.businessPhone}`}
+                    className="inline-flex items-center gap-1 mt-2 text-xs font-medium hover:underline"
+                    style={{ color: primaryColor }}
+                  >
+                    Call {location.businessPhone}
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Calendar + Guests (desktop side-by-side) */}
+          <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 sm:gap-6">
             {/* Calendar */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="flex flex-col items-center sm:items-start">
+              <label className="block text-sm font-medium text-gray-700 mb-2 self-start">
                 <CalendarDays className="w-4 h-4 inline mr-1.5" />
                 Select Date
               </label>
@@ -393,7 +449,7 @@ export default function ReservationWidget({
                 disabled={isDateDisabled}
                 fromDate={new Date(minDateStr + "T00:00:00")}
                 toDate={new Date(maxDateStr + "T23:59:59")}
-                className="rounded-md border"
+                className="rounded-md border w-full"
                 classNames={{
                   day_selected: "text-white rounded-md hover:text-white focus:text-white",
                 }}
@@ -406,9 +462,10 @@ export default function ReservationWidget({
             {/* Vertical divider */}
             <div className="hidden sm:block w-px bg-gradient-to-b from-transparent via-gray-300 to-transparent" />
 
-            {/* Number of guests + Time slots */}
-            <div className="space-y-6">
-              <div>
+            {/* Number of guests (desktop) + Time slots */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Guests - desktop only (mobile version is above) */}
+              <div className="hidden sm:block">
                 <label className="block text-sm font-medium text-gray-700 mb-3">
                   <Users className="w-4 h-4 inline mr-1.5" />
                   Number of Guests
@@ -465,8 +522,8 @@ export default function ReservationWidget({
                   </label>
 
                   {loadingSlots && (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="w-6 h-6 animate-spin" style={{ color: primaryColor }} />
+                    <div className="flex items-center justify-center py-6 sm:py-8">
+                      <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" style={{ color: primaryColor }} />
                       <span className="ml-2 text-sm text-gray-500">
                         Checking availability...
                       </span>
@@ -474,12 +531,12 @@ export default function ReservationWidget({
                   )}
 
                   {!loadingSlots && availability && !availability.locationOpen && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-center">
-                      <p className="text-amber-800 font-medium">
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 sm:p-4 text-center">
+                      <p className="text-amber-800 font-medium text-sm">
                         Location is closed on this date
                       </p>
                       {availability.closureReason && (
-                        <p className="text-amber-600 text-sm mt-1">
+                        <p className="text-amber-600 text-xs sm:text-sm mt-1">
                           {availability.closureReason}
                         </p>
                       )}
@@ -490,8 +547,8 @@ export default function ReservationWidget({
                     availability &&
                     availability.locationOpen &&
                     availability.slots.length === 0 && (
-                      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50/50 p-6 text-center">
-                        <Clock className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                      <div className="rounded-xl border border-dashed border-gray-300 bg-gray-50/50 p-4 sm:p-6 text-center">
+                        <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-gray-300 mx-auto mb-2" />
                         <p className="text-sm font-medium text-gray-500">
                           No available slots
                         </p>
@@ -505,7 +562,7 @@ export default function ReservationWidget({
                     availability &&
                     availability.locationOpen &&
                     availability.slots.length > 0 && (
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
                         {availability.slots.map((slot) => (
                           <button
                             key={slot.time}
@@ -514,7 +571,7 @@ export default function ReservationWidget({
                               setSelectedTable(null);
                             }}
                             disabled={!slot.pacingAvailable}
-                            className={`py-2.5 px-2 rounded-lg text-sm font-medium transition-colors ${
+                            className={`py-2 sm:py-2.5 px-1.5 sm:px-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                               selectedSlot?.time === slot.time
                                 ? "text-white"
                                 : slot.pacingAvailable
@@ -541,7 +598,7 @@ export default function ReservationWidget({
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <MapPin className="w-4 h-4 inline mr-1.5" />
-                Preferred Seating <span className="text-xs text-gray-400 font-normal">(optional)</span>
+                Preferred Seating <span className="text-xs text-gray-400 font-normal ml-1">(optional)</span>
               </label>
               {(() => {
                 const tables = selectedSlot.availableTables || [];
@@ -554,14 +611,14 @@ export default function ReservationWidget({
                   );
                 }
                 return (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2">
                     {tables.map((table) => (
                       <button
                         key={`table-${table.id}`}
                         onClick={() =>
                           setSelectedTable(selectedTable === table.id ? null : table.id)
                         }
-                        className={`p-3 rounded-lg text-sm transition-colors text-left ${
+                        className={`p-2.5 sm:p-3 rounded-lg text-sm transition-colors text-left ${
                           selectedTable === table.id
                             ? "text-white"
                             : "bg-white border border-gray-300 text-gray-700"
@@ -625,17 +682,25 @@ export default function ReservationWidget({
       {step === "details" && (
         <div className="space-y-5">
           {/* Summary bar */}
-          <div className="bg-gray-100 rounded-lg p-3 flex items-center justify-between text-sm">
-            <span className="text-gray-600">
-              <Users className="w-3.5 h-3.5 inline mr-1" />
+          <div className="bg-gray-100 rounded-lg p-2.5 sm:p-3 grid grid-cols-3 gap-1 sm:flex sm:items-center sm:justify-between text-xs sm:text-sm">
+            <span className="text-gray-600 text-center sm:text-left">
+              <Users className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
               {partySize} {partySize === 1 ? "guest" : "guests"}
             </span>
-            <span className="text-gray-600">
-              <CalendarDays className="w-3.5 h-3.5 inline mr-1" />
-              {formatDate(selectedDate)}
+            <span className="text-gray-600 text-center">
+              <CalendarDays className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
+              {(() => {
+                const d = new Date(selectedDate + "T00:00:00");
+                return (
+                  <>
+                    <span className="sm:hidden">{d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                    <span className="hidden sm:inline">{formatDate(selectedDate)}</span>
+                  </>
+                );
+              })()}
             </span>
-            <span className="text-gray-600">
-              <Clock className="w-3.5 h-3.5 inline mr-1" />
+            <span className="text-gray-600 text-center sm:text-right">
+              <Clock className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
               {selectedSlot && formatTime(selectedSlot.time)}
             </span>
           </div>
@@ -737,17 +802,25 @@ export default function ReservationWidget({
       {step === "extras" && (
         <div className="space-y-5">
           {/* Summary bar */}
-          <div className="bg-gray-100 rounded-lg p-3 flex items-center justify-between text-sm">
-            <span className="text-gray-600">
-              <Users className="w-3.5 h-3.5 inline mr-1" />
+          <div className="bg-gray-100 rounded-lg p-2.5 sm:p-3 grid grid-cols-3 gap-1 sm:flex sm:items-center sm:justify-between text-xs sm:text-sm">
+            <span className="text-gray-600 text-center sm:text-left">
+              <Users className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
               {partySize} {partySize === 1 ? "guest" : "guests"}
             </span>
-            <span className="text-gray-600">
-              <CalendarDays className="w-3.5 h-3.5 inline mr-1" />
-              {formatDate(selectedDate)}
+            <span className="text-gray-600 text-center">
+              <CalendarDays className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
+              {(() => {
+                const d = new Date(selectedDate + "T00:00:00");
+                return (
+                  <>
+                    <span className="sm:hidden">{d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                    <span className="hidden sm:inline">{formatDate(selectedDate)}</span>
+                  </>
+                );
+              })()}
             </span>
-            <span className="text-gray-600">
-              <Clock className="w-3.5 h-3.5 inline mr-1" />
+            <span className="text-gray-600 text-center sm:text-right">
+              <Clock className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
               {selectedSlot && formatTime(selectedSlot.time)}
             </span>
           </div>
@@ -935,8 +1008,8 @@ export default function ReservationWidget({
       )}
 
       {/* Powered by Settlo */}
-      <div className="mt-8 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
-      <div className="pt-4">
+      <div className="mt-6 sm:mt-8 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
+      <div className="pt-4 pb-16">
         <a
           href="https://settlo.co.tz"
           target="_blank"
@@ -951,6 +1024,14 @@ export default function ReservationWidget({
           />
         </a>
       </div>
+
+      {/* Business WhatsApp button */}
+      {location?.businessPhone && (
+        <WhatsAppButton
+          phoneNumber={location.businessPhone}
+          customMessage={`Hi${location.locationName ? ` ${location.locationName}` : ""}, I'd like to make a reservation. Could you help me with availability?`}
+        />
+      )}
     </div>
   );
 }
