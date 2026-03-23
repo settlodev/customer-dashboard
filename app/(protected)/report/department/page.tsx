@@ -428,7 +428,6 @@ export default function DepartmentReportPage() {
                       "% of total",
                       "Earliest",
                       "Latest",
-                      "Staff",
                     ].map((h, i) => (
                       <th
                         key={h}
@@ -472,9 +471,6 @@ export default function DepartmentReportPage() {
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-sm font-medium">
                           {item.quantity}
-                          <span className="text-muted-foreground font-normal ml-1">
-                            u
-                          </span>
                         </td>
                         <td className="px-4 py-3 text-right tabular-nums text-sm">
                           TZS {fmt(item.price)}
@@ -496,12 +492,6 @@ export default function DepartmentReportPage() {
                             new Date(item.latestSoldDate),
                             "dd MMM, HH:mm",
                           )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <User className="h-3 w-3 shrink-0" />
-                            {item.staffName || "—"}
-                          </div>
                         </td>
                       </tr>
                     );
