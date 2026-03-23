@@ -293,12 +293,6 @@ const getNormalMenuItems = (
       current: args?.isCurrentItem,
       icon: "general",
       items: [
-        // {
-        //   title: "Businesses",
-        //   link: "/business",
-        //   current: args?.isCurrentItem,
-        //   icon: "cart",
-        // },
         {
           title: "Expenses",
           link: "/expenses",
@@ -317,25 +311,9 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        // {
-        //   title: "Locations",
-        //   link: "/locations",
-        //   current: args?.isCurrentItem,
-        //   icon: "cart",
-        // },
-        {
-          title: "Qrcode",
-          link: "/qrcode",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
       ],
     },
   ];
-
-  // if (args?.subscription) {
-  //     return getFilteredMenuItems(args.subscription, baseMenuItems);
-  // }
 };
 
 const getWarehouseMenuItems = (args?: MenuItemArgType) => {
