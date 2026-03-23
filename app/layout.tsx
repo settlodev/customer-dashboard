@@ -350,6 +350,7 @@ export default async function RootLayout({
           userName={session?.user?.name ?? undefined}
           businessName={businessName}
           locationName={locationName}
+          hideOnReserve
         />
         <Analytics />
         <GoogleAnalytics gaId="G-7FEFKJQ300" />
