@@ -337,6 +337,8 @@ export const staffReport = async (
       },
     );
 
+    console.log("staff report is as follows", report);
+
     return parseStringify(report);
   } catch (error: any) {
     // console.error("Error fetching staff summary report:", error);
