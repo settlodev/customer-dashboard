@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import {
   Activity,
@@ -8,7 +8,7 @@ import {
   Package,
   Users,
   Wallet,
-} from 'lucide-react';
+} from "lucide-react";
 import Image from "next/image";
 
 interface Feature {
@@ -58,7 +58,10 @@ const features: Feature[] = [
 
 export const VerticalFeatures = () => {
   return (
-    <section id="features" className="relative z-10 w-full pt-20 md:pt-28 overflow-visible">
+    <section
+      id="features"
+      className="relative z-10 w-full pt-20 md:pt-28 overflow-visible"
+    >
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-b from-white via-gray-50/50 to-primary-light dark:from-gray-950 dark:via-gray-950 dark:to-gray-900" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(235,127,68,0.05),transparent_50%)]" />
@@ -70,7 +73,7 @@ export const VerticalFeatures = () => {
           {/* Image — bottom-aligned, overflows into the next section */}
           <div className="relative lg:self-end lg:mb-[-8rem]">
             <Image
-              src="/images/2.png"
+              src="/images/5.png"
               alt="Settlo POS features overview"
               width={480}
               height={360}
@@ -81,9 +84,15 @@ export const VerticalFeatures = () => {
 
           {/* Content: Header + Feature list — centered vertically */}
           <div className="lg:self-center pb-16 md:pb-24">
-            <h2 className="text-3xl md:text-4xl lg:text-[2.75rem] font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-8" style={{ lineHeight: '1.35' }}>
+            <h2
+              className="text-3xl md:text-4xl lg:text-[2.75rem] font-bold tracking-tight text-gray-900 dark:text-gray-100 mb-8"
+              style={{ lineHeight: "1.35" }}
+            >
               Everything you need to{" "}
-              <span className="bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent" style={{ lineHeight: 'inherit' }}>
+              <span
+                className="bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent"
+                style={{ lineHeight: "inherit" }}
+              >
                 grow your business
               </span>
             </h2>

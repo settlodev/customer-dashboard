@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format, startOfDay, endOfDay } from "date-fns";
 import {
   CalendarIcon,
@@ -20,16 +20,8 @@ import SubmitButton from "@/components/widgets/submit-button";
 import { cn } from "@/lib/utils";
 import { ExpenseReport } from "@/types/expense/type";
 import { GetExpenseReport } from "@/lib/actions/expense-actions";
-import jsPDF from "jspdf";
-import "jspdf-autotable";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { Location } from "@/types/location/type";
-
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
 
 interface DatePickerProps {
   value: Date;
@@ -41,6 +33,8 @@ interface FormValues {
   endDate: Date;
 }
 
+const PRIMARY = "#EB7F44";
+const SECONDARY = "#EAEAE5";
 const fmt = (v: number) =>
   new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(v);
 
@@ -55,6 +49,7 @@ export default function ExpenseReportPage() {
     startDate: startOfDay(new Date()),
     endDate: endOfDay(new Date()),
   });
+  const printRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     getCurrentLocation().then(setLocation);
@@ -150,118 +145,127 @@ export default function ExpenseReportPage() {
   };
 
   const generatePDF = async () => {
-    if (!expenses) {
+    const el = printRef.current;
+    if (!el || !expenses) {
       toast({ variant: "destructive", title: "No data to export" });
       return;
     }
     setDownloadingPdf(true);
     try {
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.width;
-      const margin = 20;
-      doc.setFontSize(10);
-      doc.setFont("Arial", "bold");
-      doc.text("EXPENSE REPORT", margin, 30);
-      doc.setFont("Arial", "normal");
-      doc.text(
-        `Period: ${format(formValues.startDate, "MMM dd, yyyy HH:mm")} - ${format(formValues.endDate, "MMM dd, yyyy HH:mm")}`,
-        margin,
-        40,
-      );
-      doc.text(
-        `Generated: ${format(new Date(), "MMM dd, yyyy HH:mm")}`,
-        margin,
-        45,
-      );
-      if (location) {
-        let y = 30;
-        const right = pageWidth - margin;
-        doc.setFont("Arial", "bold");
-        doc.text(location.name, right, y, { align: "right" });
-        y += 5;
-        doc.setFont("Arial", "normal");
-        doc
-          .splitTextToSize(location.address || "", 150)
-          .forEach((l: string) => {
-            doc.text(l, right, y, { align: "right" });
-            y += 5;
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const saved = {
+        width: el.style.width,
+        maxWidth: el.style.maxWidth,
+        margin: el.style.margin,
+        boxShadow: el.style.boxShadow,
+        position: el.style.position,
+      };
+      Object.assign(el.style, {
+        width: "794px",
+        maxWidth: "794px",
+        margin: "0",
+        boxShadow: "none",
+        position: "relative",
+        backgroundColor: "#ffffff",
+      });
+      await new Promise((r) => setTimeout(r, 150));
+      const canvas = await html2canvas(el, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        backgroundColor: "#ffffff",
+        width: 794,
+        height: el.scrollHeight,
+        windowWidth: 1200,
+        windowHeight: el.scrollHeight + 100,
+        scrollX: 0,
+        scrollY: 0,
+        removeContainer: true,
+        foreignObjectRendering: false,
+        onclone: (_doc, clone) => {
+          Object.assign(clone.style, {
+            width: "794px",
+            maxWidth: "794px",
+            margin: "0",
+            backgroundColor: "#ffffff",
           });
-        if (location.phone) {
-          doc.text(`Phone: ${location.phone}`, right, y, { align: "right" });
-          y += 5;
-        }
-        if (location.email) {
-          doc.text(`Email: ${location.email}`, right, y, { align: "right" });
+          clone.querySelectorAll<HTMLElement>("*").forEach((node) => {
+            node.style.visibility = "visible";
+            node.style.opacity = "1";
+            (node.style as any).printColorAdjust = "exact";
+            (node.style as any).webkitPrintColorAdjust = "exact";
+          });
+        },
+      });
+      Object.assign(el.style, saved);
+      const A4_W = 210,
+        A4_H = 297,
+        MARGIN = 10;
+      const printW = A4_W - MARGIN * 2;
+      const contentH = (canvas.height * printW) / canvas.width;
+      const pageH = A4_H - MARGIN * 2;
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        compress: true,
+      });
+      if (contentH <= pageH) {
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", 1.0),
+          "JPEG",
+          MARGIN,
+          MARGIN,
+          printW,
+          contentH,
+          undefined,
+          "FAST",
+        );
+      } else {
+        const totalPages = Math.ceil(contentH / pageH);
+        const pageHeightPx = (pageH * canvas.width) / printW;
+        for (let page = 0; page < totalPages; page++) {
+          if (page > 0) pdf.addPage();
+          const srcY = page * pageHeightPx;
+          const srcH = Math.min(pageHeightPx, canvas.height - srcY);
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = srcH;
+          const ctx = slice.getContext("2d")!;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, slice.width, slice.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            srcY,
+            canvas.width,
+            srcH,
+            0,
+            0,
+            canvas.width,
+            srcH,
+          );
+          pdf.addImage(
+            slice.toDataURL("image/jpeg", 1.0),
+            "JPEG",
+            MARGIN,
+            MARGIN,
+            printW,
+            (srcH * printW) / canvas.width,
+            undefined,
+            "FAST",
+          );
         }
       }
-      doc.setFillColor(240, 248, 255);
-      doc.rect(margin, 55, pageWidth - 2 * margin, 20, "F");
-      doc.setFontSize(11);
-      doc.setFont("Arial", "bold");
-      doc.text("Summary", margin + 5, 66);
-      doc.setFontSize(10);
-      doc.setFont("Arial", "normal");
-      doc.text(
-        `Total Expenses: TZS ${fmt(expenses.totalExpenses)}`,
-        margin + 5,
-        72,
-      );
-      let yPos = 90;
-      doc.setFontSize(11);
-      doc.setFont("Arial", "bold");
-      doc.text("Expense Categories", margin, yPos);
-      yPos += 5;
-      doc.autoTable({
-        startY: yPos,
-        head: [["Category", "Amount", "Percentage"]],
-        body: expenses.categorySummaries.map((c) => [
-          c.categoryName,
-          `TZS ${fmt(c.amount)}`,
-          `${c.percentage}%`,
-        ]),
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 10, cellPadding: 4 },
-        headStyles: {
-          fillColor: [5, 150, 105],
-          textColor: 255,
-          fontStyle: "bold",
-        },
-        alternateRowStyles: { fillColor: [240, 253, 244] },
-        columnStyles: { 1: { halign: "right" }, 2: { halign: "center" } },
-      });
-      const pageHeight = doc.internal.pageSize.height;
-      if (((doc as any).lastAutoTable?.finalY || 0) > pageHeight - 60)
-        doc.addPage();
-      const footerY = pageHeight - 20;
-      doc.setFontSize(8);
-      doc.setTextColor(32, 32, 32);
-      const disclaimer =
-        "This report was generated automatically by Settlo. Any discrepancies should be reported to support@settlo.co.tz.";
-      const lines = doc.splitTextToSize(disclaimer, pageWidth - 2 * margin);
-      const lh = 3;
-      const startY = footerY - lines.length * lh - lh;
-      doc.setDrawColor(32, 32, 32);
-      doc.setLineWidth(0.3);
-      doc.rect(
-        margin - 3,
-        startY - lh - 3,
-        pageWidth - 2 * margin + 6,
-        lines.length * lh + lh + 8,
-        "S",
-      );
-      lines.forEach((l: string, i: number) => {
-        doc.text(l, (pageWidth - doc.getTextWidth(l)) / 2, startY + i * lh);
-      });
-      const pw = "Powered by Settlo";
-      doc.text(
-        pw,
-        (pageWidth - doc.getTextWidth(pw)) / 2,
-        startY + lines.length * lh + 2,
-      );
       const filename = `expense-report-${format(formValues.startDate, "yyyy-MM-dd")}-to-${format(formValues.endDate, "yyyy-MM-dd")}.pdf`;
-      doc.save(filename);
+      pdf.save(filename);
       toast({ title: "PDF Downloaded", description: `Saved as ${filename}` });
-    } catch {
+    } catch (e) {
+      console.error(e);
       toast({ variant: "destructive", title: "PDF Generation Failed" });
     } finally {
       setDownloadingPdf(false);
@@ -361,6 +365,11 @@ export default function ExpenseReportPage() {
     );
   };
 
+  // Max bar width for distribution column
+  const maxAmount = expenses
+    ? Math.max(...expenses.categorySummaries.map((c) => c.amount), 1)
+    : 1;
+
   return (
     <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 space-y-5 min-h-screen">
       {/* ── Page header ── */}
@@ -441,7 +450,7 @@ export default function ExpenseReportPage() {
         {dateError && <p className="text-xs text-red-500 mt-2">{dateError}</p>}
       </div>
 
-      {/* ── Metric card ── */}
+      {/* ── Metric cards ── */}
       {expenses && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
@@ -555,6 +564,328 @@ export default function ExpenseReportPage() {
           </p>
         </div>
       )}
+
+      {/* ── Hidden print template (html2canvas target) ── */}
+      <div
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          top: 0,
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          ref={printRef}
+          style={{
+            width: 794,
+            backgroundColor: "#ffffff",
+            fontFamily:
+              "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            color: "#111827",
+          }}
+        >
+          {/* Header */}
+          <div
+            style={{ borderTop: "3px solid #111827", padding: "24px 32px 0" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              {/* Left: location */}
+              <div>
+                <div
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: "#111827",
+                    marginBottom: 4,
+                  }}
+                >
+                  {location?.name ?? ""}
+                </div>
+                {location?.address && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    {location.address}
+                  </div>
+                )}
+                {location?.phone && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    Tel: {location.phone}
+                  </div>
+                )}
+                {location?.email && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    {location.email}
+                  </div>
+                )}
+              </div>
+              {/* Right: title */}
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{
+                    fontSize: 36,
+                    fontWeight: 300,
+                    color: PRIMARY,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  EXPENSE
+                </div>
+                <div style={{ fontSize: 13, color: "#6b7280" }}>REPORT</div>
+              </div>
+            </div>
+
+            {/* Period bar */}
+            <div
+              style={{
+                marginTop: 20,
+                padding: "10px 0",
+                borderTop: `1px solid ${SECONDARY}`,
+                borderBottom: `1px solid ${SECONDARY}`,
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "#6b7280",
+              }}
+            >
+              <span>
+                Period:{" "}
+                <strong style={{ color: "#111827" }}>
+                  {format(formValues.startDate, "MMM dd, yyyy HH:mm")} —{" "}
+                  {format(formValues.endDate, "MMM dd, yyyy HH:mm")}
+                </strong>
+              </span>
+              <span>
+                Generated:{" "}
+                <strong style={{ color: "#111827" }}>
+                  {format(new Date(), "MMM dd, yyyy HH:mm")}
+                </strong>
+              </span>
+            </div>
+          </div>
+
+          {expenses && (
+            <>
+              {/* Total expenses strip */}
+              <div
+                style={{
+                  margin: "24px 32px",
+                  border: `1px solid ${SECONDARY}`,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "14px 16px",
+                    borderTop: "3px solid #111827",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: "#9ca3af",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                      marginBottom: 6,
+                    }}
+                  >
+                    Total expenses
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: "#111827",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    TZS {fmt(expenses.totalExpenses)}
+                  </div>
+                  <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
+                    {expenses.categorySummaries.length} categories
+                  </div>
+                </div>
+              </div>
+
+              {/* Category breakdown table */}
+              <div
+                style={{
+                  margin: "0 32px 32px",
+                  border: `1px solid ${SECONDARY}`,
+                  borderRadius: 8,
+                  overflow: "hidden",
+                }}
+              >
+                {/* Table header */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 160px 80px 120px",
+                    backgroundColor: "#111827",
+                    padding: "10px 16px",
+                  }}
+                >
+                  {["Category", "Amount", "Share", "Distribution"].map((h) => (
+                    <div
+                      key={h}
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: "#ffffff",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        textAlign: h === "Category" ? "left" : "right",
+                      }}
+                    >
+                      {h}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Rows */}
+                {expenses.categorySummaries.map((c, i) => (
+                  <div
+                    key={c.categoryName}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 160px 80px 120px",
+                      padding: "11px 16px",
+                      borderBottom:
+                        i < expenses.categorySummaries.length - 1
+                          ? `1px solid ${SECONDARY}`
+                          : "none",
+                      backgroundColor: i % 2 === 0 ? "#ffffff" : "#f9fafb",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#111827",
+                      }}
+                    >
+                      {c.categoryName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: "#111827",
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      TZS {fmt(c.amount)}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 12,
+                        color: "#6b7280",
+                        textAlign: "right",
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {c.percentage}%
+                    </div>
+                    {/* Bar */}
+                    <div style={{ textAlign: "right", paddingLeft: 16 }}>
+                      <div
+                        style={{
+                          height: 6,
+                          backgroundColor: "#e5e7eb",
+                          borderRadius: 3,
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            height: "100%",
+                            width: `${Math.min(c.percentage, 100)}%`,
+                            backgroundColor: "#374151",
+                            borderRadius: 3,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Total row */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 160px 80px 120px",
+                    padding: "12px 16px",
+                    backgroundColor: "#f3f4f6",
+                    borderTop: "2px solid #111827",
+                  }}
+                >
+                  <div
+                    style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}
+                  >
+                    Total
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "#111827",
+                      textAlign: "right",
+                      fontVariantNumeric: "tabular-nums",
+                    }}
+                  >
+                    TZS {fmt(expenses.totalExpenses)}
+                  </div>
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "#9ca3af",
+                      textAlign: "right",
+                    }}
+                  >
+                    100%
+                  </div>
+                  <div />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Footer */}
+          <div
+            style={{
+              borderTop: `1px solid ${SECONDARY}`,
+              margin: "0 32px",
+              padding: "16px 0",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 10, color: "#9ca3af", lineHeight: 1.6 }}>
+              This report was generated automatically by Settlo. Any
+              discrepancies should be reported to support@settlo.co.tz.
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#d1d5db",
+                marginTop: 6,
+              }}
+            >
+              Powered by Settlo
+            </div>
+          </div>
+          <div style={{ height: 24 }} />
+        </div>
+      </div>
     </div>
   );
 }

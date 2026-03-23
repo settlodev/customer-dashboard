@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Download,
   DollarSign,
@@ -6,8 +6,6 @@ import {
   TrendingUp,
   BarChart,
   RefreshCcw,
-  Receipt,
-  ArrowUpCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -16,6 +14,10 @@ import SummaryResponse from "@/types/dashboard/type";
 import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
 import ReportLetterhead from "@/components/widgets/report-letterhead";
+
+const PRIMARY = "#EB7F44";
+const PRIMARY_DARK = "#C4622A";
+const SECONDARY = "#EAEAE5";
 
 const ProfitLossStatement = ({
   salesData,
@@ -27,9 +29,11 @@ const ProfitLossStatement = ({
   location: Location;
 }) => {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const printRef = useRef<HTMLDivElement>(null);
 
   const fmt = (v: any) =>
-    v == null ? "0 TZS" : `${Number(v).toLocaleString()} TZS`;
+    v == null ? "0" : `TZS ${Number(v).toLocaleString("en-US")}`;
+
   const fmtDate = (d: any) => {
     if (!d) return "";
     const dt = new Date(d);
@@ -39,7 +43,7 @@ const ProfitLossStatement = ({
         day: "numeric",
         year: "numeric",
       }) +
-      " " +
+      ", " +
       dt.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
@@ -50,253 +54,254 @@ const ProfitLossStatement = ({
 
   const grossMargin = salesData.netSales
     ? ((salesData.grossProfit / salesData.netSales) * 100).toFixed(1)
-    : 0;
+    : "0";
   const netMargin = salesData.netSales
     ? (((salesData.closingBalance ?? 0) / salesData.netSales) * 100).toFixed(1)
-    : 0;
+    : "0";
   const isProfit = (salesData.closingBalance ?? 0) >= 0;
 
   const generatePDF = async () => {
-    if (!salesData) return;
+    const el = printRef.current;
+    if (!el) return;
     setDownloadingPdf(true);
     try {
-      const { default: jsPDF } = await import("jspdf");
-      await import("jspdf-autotable");
-      const doc = new jsPDF();
-      const pageWidth = doc.internal.pageSize.width;
-      const pageHeight = doc.internal.pageSize.height;
-      const margin = 20;
-      const cw = pageWidth - 2 * margin;
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
 
-      doc.setDrawColor(50, 50, 50);
-      doc.setLineWidth(0.8);
-      doc.line(margin, 20, pageWidth - margin, 20);
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(30, 30, 30);
-      doc.text(business.name || "Business", margin, 28);
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      let hy = 33;
-      if (location.name) {
-        doc.text(location.name, margin, hy);
-        hy += 4;
-      }
-      const addr = [location.address, location.city, location.region].filter(
-        Boolean,
-      );
-      if (addr.length) {
-        doc.text(addr.join(", "), margin, hy);
-        hy += 4;
-      }
-      const contact = [
-        location.phone && `Tel: ${location.phone}`,
-        location.email,
-      ].filter(Boolean);
-      if (contact.length) doc.text(contact.join("  |  "), margin, hy);
-      const rx = pageWidth - margin;
-      let ty = 28;
-      if (business.identificationNumber) {
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(30, 30, 30);
-        doc.text(`TIN: ${business.identificationNumber}`, rx, ty, {
-          align: "right",
-        });
-        ty += 4;
-      }
-      if (business.vrn) {
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(100, 100, 100);
-        doc.text(`VRN: ${business.vrn}`, rx, ty, { align: "right" });
-        ty += 4;
-      }
-      if (business.serial) {
-        doc.text(`Serial: ${business.serial}`, rx, ty, { align: "right" });
-        ty += 4;
-      }
-      if (business.uin) {
-        doc.text(`UIN: ${business.uin}`, rx, ty, { align: "right" });
-      }
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.3);
-      doc.line(margin, 45, pageWidth - margin, 45);
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(30, 30, 30);
-      doc.text("PROFIT & LOSS STATEMENT", pageWidth / 2, 54, {
-        align: "center",
-      });
-      doc.setFontSize(9);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      doc.text(
-        `Period: ${fmtDate(salesData.startDate)} - ${fmtDate(salesData.endDate)}`,
-        pageWidth / 2,
-        60,
-        { align: "center" },
-      );
-      doc.text(
-        `Generated: ${fmtDate(new Date().toISOString())}`,
-        pageWidth / 2,
-        65,
-        { align: "center" },
-      );
-
-      let yp = 78;
-      const section = (title: string) => {
-        doc.setFontSize(10);
-        doc.setFont("helvetica", "bold");
-        doc.setTextColor(30, 30, 30);
-        doc.text(title, margin, yp);
-        doc.setDrawColor(180, 180, 180);
-        doc.setLineWidth(0.2);
-        doc.line(margin, yp + 2, pageWidth - margin, yp + 2);
-        yp += 8;
+      const saved = {
+        width: el.style.width,
+        maxWidth: el.style.maxWidth,
+        margin: el.style.margin,
+        boxShadow: el.style.boxShadow,
+        borderRadius: el.style.borderRadius,
+        position: el.style.position,
       };
-      const summaryRow = (
-        label: string,
-        value: string,
-        fill: number[],
-        text: number[],
-        fontSize = 10,
-      ) => {
-        (doc as any).autoTable({
-          startY: yp,
-          body: [[label, value]],
-          margin: { left: margin, right: margin },
-          styles: {
-            fontSize,
-            cellPadding: 4,
-            fontStyle: "bold",
-            fillColor: fill,
-            textColor: text,
-          },
-          columnStyles: { 0: { cellWidth: cw * 0.65 }, 1: { halign: "right" } },
-        });
-        yp = (doc as any).lastAutoTable?.finalY + 2;
-      };
-
-      section("REVENUE");
-      (doc as any).autoTable({
-        startY: yp,
-        body: [
-          ["Gross Sales", fmt(salesData.grossSales)],
-          ["    Less: Discounts", `(${fmt(salesData.totalDiscount)})`],
-          ["    Less: Refunds", `(${fmt(salesData.refundsAmount)})`],
-        ],
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 9, cellPadding: 3, textColor: [60, 60, 60] },
-        columnStyles: {
-          0: { cellWidth: cw * 0.65 },
-          1: { halign: "right", fontStyle: "bold" },
-        },
-        theme: "plain",
+      Object.assign(el.style, {
+        width: "794px",
+        maxWidth: "794px",
+        margin: "0",
+        boxShadow: "none",
+        borderRadius: "0",
+        position: "relative",
+        backgroundColor: "#ffffff",
       });
-      yp = (doc as any).lastAutoTable?.finalY + 2;
-      summaryRow(
-        "Net Sales",
-        fmt(salesData.netSales),
-        [245, 245, 245],
-        [30, 30, 30],
-      );
 
-      yp += 10;
-      section("COST OF SALES");
-      (doc as any).autoTable({
-        startY: yp,
-        body: [["Cost of Goods Sold (COGS)", fmt(salesData.totalCost)]],
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 9, cellPadding: 3, textColor: [60, 60, 60] },
-        columnStyles: {
-          0: { cellWidth: cw * 0.65 },
-          1: { halign: "right", fontStyle: "bold" },
+      await new Promise((r) => setTimeout(r, 150));
+
+      const canvas = await html2canvas(el, {
+        scale: 3,
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        backgroundColor: "#ffffff",
+        width: 794,
+        height: el.scrollHeight,
+        windowWidth: 1200,
+        windowHeight: el.scrollHeight + 100,
+        scrollX: 0,
+        scrollY: 0,
+        removeContainer: true,
+        foreignObjectRendering: false,
+        onclone: (_doc, clone) => {
+          Object.assign(clone.style, {
+            width: "794px",
+            maxWidth: "794px",
+            margin: "0",
+            backgroundColor: "#ffffff",
+          });
+          clone.querySelectorAll<HTMLElement>("*").forEach((node) => {
+            node.style.visibility = "visible";
+            node.style.opacity = "1";
+            (node.style as any).printColorAdjust = "exact";
+            (node.style as any).webkitPrintColorAdjust = "exact";
+          });
         },
-        theme: "plain",
       });
-      yp = (doc as any).lastAutoTable?.finalY + 2;
-      summaryRow(
-        `Gross Profit (${grossMargin}% margin)`,
-        fmt(salesData.grossProfit),
-        [236, 253, 245],
-        [21, 128, 61],
-      );
 
-      yp += 10;
-      section("OPERATING EXPENSES");
-      (doc as any).autoTable({
-        startY: yp,
-        body: [
-          ["Total Operating Expenses", fmt(salesData.totalExpensePaidAmount)],
-        ],
-        margin: { left: margin, right: margin },
-        styles: { fontSize: 9, cellPadding: 3, textColor: [60, 60, 60] },
-        columnStyles: {
-          0: { cellWidth: cw * 0.65 },
-          1: { halign: "right", fontStyle: "bold" },
-        },
-        theme: "plain",
+      Object.assign(el.style, saved);
+
+      const A4_W = 210;
+      const A4_H = 297;
+      const MARGIN = 10;
+      const printW = A4_W - MARGIN * 2;
+      const contentH = (canvas.height * printW) / canvas.width;
+      const pageH = A4_H - MARGIN * 2;
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        compress: true,
       });
-      yp = (doc as any).lastAutoTable?.finalY + 8;
 
-      doc.setDrawColor(30, 30, 30);
-      doc.setLineWidth(0.5);
-      doc.line(margin, yp, pageWidth - margin, yp);
-      doc.setLineWidth(0.2);
-      doc.line(margin, yp + 1.5, pageWidth - margin, yp + 1.5);
-      yp += 4;
-      summaryRow(
-        `${isProfit ? "NET PROFIT" : "NET LOSS"} (Net Margin: ${netMargin}%)`,
-        fmt(salesData.closingBalance),
-        isProfit ? [236, 253, 245] : [254, 242, 242],
-        isProfit ? [21, 128, 61] : [220, 38, 38],
-        12,
-      );
-
-      const footerSepY = Math.min(
-        (doc as any).lastAutoTable?.finalY + 15,
-        pageHeight - 35,
-      );
-      doc.setDrawColor(200, 200, 200);
-      doc.setLineWidth(0.2);
-      doc.line(margin, footerSepY, pageWidth - margin, footerSepY);
-      doc.setFontSize(7);
-      doc.setTextColor(140, 140, 140);
-      doc.setFont("helvetica", "normal");
-      const disc =
-        "This report was generated automatically by the system. Any discrepancies should be reported to the Settlo Team through support@settlo.co.tz.";
-      const dlines = doc.splitTextToSize(disc, cw);
-      dlines.forEach((l: string, i: number) =>
-        doc.text(l, pageWidth / 2, footerSepY + 5 + i * 3, { align: "center" }),
-      );
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(160, 160, 160);
-      doc.text(
-        "Powered by Settlo",
-        pageWidth / 2,
-        footerSepY + 5 + dlines.length * 3 + 3,
-        { align: "center" },
-      );
-      doc.setDrawColor(50, 50, 50);
-      doc.setLineWidth(0.8);
-      doc.line(margin, pageHeight - 15, pageWidth - margin, pageHeight - 15);
+      if (contentH <= pageH) {
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", 1.0),
+          "JPEG",
+          MARGIN,
+          MARGIN,
+          printW,
+          contentH,
+          undefined,
+          "FAST",
+        );
+      } else {
+        const totalPages = Math.ceil(contentH / pageH);
+        const pageHeightPx = (pageH * canvas.width) / printW;
+        for (let page = 0; page < totalPages; page++) {
+          if (page > 0) pdf.addPage();
+          const srcY = page * pageHeightPx;
+          const srcH = Math.min(pageHeightPx, canvas.height - srcY);
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = srcH;
+          const ctx = slice.getContext("2d")!;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, slice.width, slice.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            srcY,
+            canvas.width,
+            srcH,
+            0,
+            0,
+            canvas.width,
+            srcH,
+          );
+          const sliceH = (srcH * printW) / canvas.width;
+          pdf.addImage(
+            slice.toDataURL("image/jpeg", 1.0),
+            "JPEG",
+            MARGIN,
+            MARGIN,
+            printW,
+            sliceH,
+            undefined,
+            "FAST",
+          );
+        }
+      }
 
       const sd = new Date(salesData.startDate);
       const ed = new Date(salesData.endDate);
       const pad = (n: number) => n.toString().padStart(2, "0");
-      doc.save(
+      pdf.save(
         `profit-loss-${sd.getFullYear()}-${pad(sd.getMonth() + 1)}-${pad(sd.getDate())}-to-${ed.getFullYear()}-${pad(ed.getMonth() + 1)}-${pad(ed.getDate())}.pdf`,
       );
     } catch (e) {
-      console.error(e);
+      console.error("PDF generation failed:", e);
     } finally {
       setDownloadingPdf(false);
     }
   };
 
+  // ── Reusable row ─────────────────────────────────────────────────────
+  const Row = ({
+    label,
+    value,
+    indent = false,
+    muted = false,
+  }: {
+    label: React.ReactNode;
+    value: string;
+    indent?: boolean;
+    muted?: boolean;
+  }) => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px 16px",
+        borderBottom: `1px solid ${SECONDARY}`,
+      }}
+    >
+      <span
+        style={{
+          fontSize: 13,
+          color: muted ? "#6b7280" : "#111827",
+          paddingLeft: indent ? 24 : 0,
+        }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: 13,
+          fontWeight: 600,
+          color: muted ? "#9ca3af" : "#111827",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+
+  const SectionTitle = ({ children }: { children: string }) => (
+    <div
+      style={{
+        fontSize: 10,
+        fontWeight: 700,
+        color: "#6b7280",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+        padding: "14px 16px 6px",
+        borderBottom: `1px solid ${SECONDARY}`,
+        backgroundColor: "#f9fafb",
+      }}
+    >
+      {children}
+    </div>
+  );
+
+  const SummaryRow = ({
+    label,
+    value,
+    color = "#111827",
+    bg = "#f3f4f6",
+    large = false,
+  }: {
+    label: string;
+    value: string;
+    color?: string;
+    bg?: string;
+    large?: boolean;
+  }) => (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: large ? "14px 16px" : "10px 16px",
+        backgroundColor: bg,
+        borderTop: `2px solid ${color}20`,
+      }}
+    >
+      <span
+        style={{ fontSize: large ? 14 : 13, fontWeight: 700, color: "#111827" }}
+      >
+        {label}
+      </span>
+      <span
+        style={{
+          fontSize: large ? 18 : 14,
+          fontWeight: 800,
+          color,
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+
   return (
     <div className="space-y-5">
-      {/* ── Key metrics ── */}
+      {/* ── Key metric cards ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
           {
@@ -332,6 +337,9 @@ const ProfitLossStatement = ({
             key={card.label}
             className="bg-background border rounded-xl p-4 relative overflow-hidden"
           >
+            <div
+              className={`absolute left-0 top-0 bottom-0 w-[3px] ${card.accent} rounded-l-xl`}
+            />
             <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
               {card.label}
             </p>
@@ -347,7 +355,7 @@ const ProfitLossStatement = ({
         ))}
       </div>
 
-      {/* ── Detailed statement ── */}
+      {/* ── Detailed statement (screen UI) ── */}
       <div className="bg-background border rounded-xl overflow-hidden">
         <div className="px-5 py-3.5 border-b flex items-center justify-between">
           <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground">
@@ -368,10 +376,8 @@ const ProfitLossStatement = ({
             {downloadingPdf ? "Generating…" : "Download PDF"}
           </Button>
         </div>
-
         <div className="p-5 space-y-5">
           <ReportLetterhead business={business} location={location} />
-
           {/* Revenue */}
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-3">
@@ -379,7 +385,7 @@ const ProfitLossStatement = ({
             </p>
             <div className="border rounded-lg divide-y text-sm">
               <div className="flex justify-between items-center py-3 px-4">
-                <span className="flex items-center gap-2 text-foreground">
+                <span className="flex items-center gap-2">
                   <DollarSign className="h-3.5 w-3.5 text-muted-foreground" />
                   Gross sales
                 </span>
@@ -413,9 +419,7 @@ const ProfitLossStatement = ({
               </span>
             </div>
           </div>
-
           <Separator />
-
           {/* Cost of sales */}
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-3">
@@ -444,9 +448,7 @@ const ProfitLossStatement = ({
               </span>
             </div>
           </div>
-
           <Separator />
-
           {/* Operating expenses */}
           <div>
             <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-3">
@@ -464,9 +466,7 @@ const ProfitLossStatement = ({
               </div>
             </div>
           </div>
-
           <Separator />
-
           {/* Net profit / loss */}
           <div
             className={cn(
@@ -495,11 +495,282 @@ const ProfitLossStatement = ({
               {fmt(salesData.closingBalance)}
             </p>
           </div>
-
           <p className="text-xs text-muted-foreground text-center pt-1">
             This report was generated automatically. Any discrepancies should be
             reported to support@settlo.co.tz.
           </p>
+        </div>
+      </div>
+
+      {/* ── Hidden print-optimised template (html2canvas target) ── */}
+      <div
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          top: 0,
+          zIndex: -1,
+          pointerEvents: "none",
+        }}
+      >
+        <div
+          ref={printRef}
+          style={{
+            width: 794,
+            backgroundColor: "#ffffff",
+            fontFamily:
+              "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            color: "#111827",
+          }}
+        >
+          {/* ── Header ── */}
+          <div
+            style={{ borderTop: "3px solid #111827", padding: "24px 32px 0" }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "flex-start",
+              }}
+            >
+              {/* Left: business */}
+              <div>
+                <div
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    color: "#111827",
+                    marginBottom: 4,
+                  }}
+                >
+                  {business.name}
+                </div>
+                {location.name && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    {location.name}
+                  </div>
+                )}
+                {(location.address || location.city) && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    {[location.address, location.city, location.region]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </div>
+                )}
+                {location.phone && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    Tel: {location.phone}
+                  </div>
+                )}
+                {location.email && (
+                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                    {location.email}
+                  </div>
+                )}
+                {business.identificationNumber && (
+                  <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                    TIN: {business.identificationNumber}
+                  </div>
+                )}
+                {business.vrn && (
+                  <div style={{ fontSize: 11, color: "#6b7280" }}>
+                    VRN: {business.vrn}
+                  </div>
+                )}
+              </div>
+              {/* Right: title */}
+              <div style={{ textAlign: "right" }}>
+                <div
+                  style={{
+                    fontSize: 36,
+                    fontWeight: 300,
+                    color: PRIMARY,
+                    letterSpacing: "0.04em",
+                  }}
+                >
+                  PROFIT & LOSS
+                </div>
+                <div style={{ fontSize: 13, color: "#6b7280", marginTop: 4 }}>
+                  STATEMENT
+                </div>
+              </div>
+            </div>
+
+            {/* Period bar */}
+            <div
+              style={{
+                marginTop: 20,
+                padding: "10px 0",
+                borderTop: `1px solid ${SECONDARY}`,
+                borderBottom: `1px solid ${SECONDARY}`,
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: 11,
+                color: "#6b7280",
+              }}
+            >
+              <span>
+                Period:{" "}
+                <strong style={{ color: "#111827" }}>
+                  {fmtDate(salesData.startDate)} — {fmtDate(salesData.endDate)}
+                </strong>
+              </span>
+              <span>
+                Generated:{" "}
+                <strong style={{ color: "#111827" }}>
+                  {fmtDate(new Date().toISOString())}
+                </strong>
+              </span>
+            </div>
+          </div>
+
+          {/* ── Summary strip ── */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr 1fr",
+              gap: 0,
+              margin: "24px 32px",
+              border: `1px solid ${SECONDARY}`,
+              borderRadius: 8,
+              overflow: "hidden",
+            }}
+          >
+            {[
+              { label: "Gross sales", value: fmt(salesData.grossSales) },
+              { label: "Net sales", value: fmt(salesData.netSales) },
+              {
+                label: "Gross profit",
+                value: fmt(salesData.grossProfit),
+                sub: `${grossMargin}% margin`,
+              },
+              {
+                label: isProfit ? "Net profit" : "Net loss",
+                value: fmt(salesData.closingBalance),
+                sub: `${netMargin}% margin`,
+              },
+            ].map((c, i) => (
+              <div
+                key={i}
+                style={{
+                  padding: "14px 16px",
+                  borderLeft: i > 0 ? `1px solid ${SECONDARY}` : "none",
+                  borderTop: `3px solid #111827`,
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: "#9ca3af",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.06em",
+                    marginBottom: 6,
+                  }}
+                >
+                  {c.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 800,
+                    color: "#111827",
+                    fontVariantNumeric: "tabular-nums",
+                  }}
+                >
+                  {c.value}
+                </div>
+                {c.sub && (
+                  <div style={{ fontSize: 10, color: "#9ca3af", marginTop: 2 }}>
+                    {c.sub}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ── Statement body ── */}
+          <div
+            style={{
+              margin: "0 32px 32px",
+              border: `1px solid ${SECONDARY}`,
+              borderRadius: 8,
+              overflow: "hidden",
+            }}
+          >
+            <SectionTitle>Revenue</SectionTitle>
+            <Row label="Gross sales" value={fmt(salesData.grossSales)} />
+            <Row
+              label="Less: Discounts"
+              value={`(${fmt(salesData.totalDiscount)})`}
+              indent
+              muted
+            />
+            <Row
+              label="Less: Refunds"
+              value={`(${fmt(salesData.refundsAmount)})`}
+              indent
+              muted
+            />
+            <SummaryRow label="Net sales" value={fmt(salesData.netSales)} />
+
+            <SectionTitle>Cost of sales</SectionTitle>
+            <Row
+              label="Cost of goods sold (COGS)"
+              value={fmt(salesData.totalCost)}
+            />
+            <SummaryRow
+              label={`Gross profit (${grossMargin}% margin)`}
+              value={fmt(salesData.grossProfit)}
+              color="#111827"
+              bg="#f9fafb"
+            />
+
+            <SectionTitle>Operating expenses</SectionTitle>
+            <Row
+              label="Total operating expenses"
+              value={fmt(salesData.totalExpensePaidAmount)}
+            />
+
+            {/* Double line */}
+            <div style={{ borderTop: "2px solid #111827", marginTop: 2 }} />
+            <div style={{ borderTop: "1px solid #111827", marginBottom: 2 }} />
+
+            <SummaryRow
+              label={`${isProfit ? "NET PROFIT" : "NET LOSS"} — Net margin: ${netMargin}%`}
+              value={fmt(salesData.closingBalance)}
+              color="#111827"
+              bg="#f3f4f6"
+              large
+            />
+          </div>
+
+          {/* ── Footer ── */}
+          <div
+            style={{
+              borderTop: `1px solid ${SECONDARY}`,
+              margin: "0 32px",
+              padding: "16px 0",
+              textAlign: "center",
+            }}
+          >
+            <div style={{ fontSize: 10, color: "#9ca3af", lineHeight: 1.6 }}>
+              This report was generated automatically by the system. Any
+              discrepancies should be reported to the Settlo Team through
+              support@settlo.co.tz.
+            </div>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#d1d5db",
+                marginTop: 6,
+              }}
+            >
+              Powered by Settlo
+            </div>
+          </div>
+          <div style={{ height: 24 }} />
         </div>
       </div>
     </div>
