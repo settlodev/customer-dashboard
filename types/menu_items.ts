@@ -293,12 +293,12 @@ const getNormalMenuItems = (
       current: args?.isCurrentItem,
       icon: "general",
       items: [
-        {
-          title: "Businesses",
-          link: "/business",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
+        // {
+        //   title: "Businesses",
+        //   link: "/business",
+        //   current: args?.isCurrentItem,
+        //   icon: "cart",
+        // },
         {
           title: "Expenses",
           link: "/expenses",
@@ -317,12 +317,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Locations",
-          link: "/locations",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
+        // {
+        //   title: "Locations",
+        //   link: "/locations",
+        //   current: args?.isCurrentItem,
+        //   icon: "cart",
+        // },
         {
           title: "Qrcode",
           link: "/qrcode",
