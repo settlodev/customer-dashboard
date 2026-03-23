@@ -235,6 +235,53 @@ export const allocateTable = async (
   return parseStringify(data);
 };
 
+export const searchReservationsByMonth = async (
+  year: number,
+  month: number,
+): Promise<Reservation[]> => {
+  await getAuthenticatedUser();
+
+  const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
+  const lastDay = new Date(year, month, 0).getDate();
+  const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+  try {
+    const apiClient = new ApiClient();
+    const query = {
+      filters: [
+        {
+          key: "reservationDate",
+          operator: "GREATER_THAN_EQUAL",
+          field_type: "STRING",
+          value: startDate,
+        },
+        {
+          key: "reservationDate",
+          operator: "LESS_THAN_EQUAL",
+          field_type: "STRING",
+          value: endDate,
+        },
+      ],
+      sorts: [
+        {
+          key: "reservationDate",
+          direction: "ASC",
+        },
+      ],
+      page: 0,
+      size: 500,
+    };
+    const location = await getCurrentLocation();
+    const data: ApiResponse<Reservation> = await apiClient.post(
+      `/api/reservations/${location?.id}`,
+      query,
+    );
+    return parseStringify(data.content);
+  } catch (error) {
+    throw error;
+  }
+};
+
 // ─── Reservation Slots ────────────────────────────────────────────────
 
 export const fetchReservationSlots = async (): Promise<ReservationSlot[]> => {
