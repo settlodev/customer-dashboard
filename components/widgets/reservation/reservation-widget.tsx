@@ -437,37 +437,22 @@ export default function ReservationWidget({
                     </button>
                   ))}
                 </div>
-                {showLargerPartyInput && partySize > 10 && (
-                  <div className="mt-3">
-                    <Input
-                      type="number"
-                      min={minParty}
-                      max={maxParty}
-                      value={partySize}
-                      onChange={(e) => {
-                        const size = Math.max(minParty, Math.min(maxParty, Number(e.target.value)));
-                        setPartySize(size);
-                        if (selectedDate) {
-                          loadAvailability(selectedDate, size);
-                        }
-                      }}
-                      className="w-24"
-                    />
+                {partySize === maxParty && (
+                  <div className="mt-3 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                    <p className="font-medium">Need more seats?</p>
+                    <p className="text-amber-600 text-xs mt-1">
+                      For parties larger than {maxParty}, please contact us directly to arrange your reservation.
+                    </p>
+                    {location?.businessPhone && (
+                      <a
+                        href={`tel:${location.businessPhone}`}
+                        className="inline-flex items-center gap-1 mt-2 text-xs font-medium hover:underline"
+                        style={{ color: primaryColor }}
+                      >
+                        Call {location.businessPhone}
+                      </a>
+                    )}
                   </div>
-                )}
-                {showLargerPartyInput && partySize <= 10 && (
-                  <button
-                    onClick={() => {
-                      setPartySize(11);
-                      if (selectedDate) {
-                        loadAvailability(selectedDate, 11);
-                      }
-                    }}
-                    className="mt-2 text-sm hover:underline"
-                    style={{ color: primaryColor }}
-                  >
-                    More guests?
-                  </button>
                 )}
               </div>
 
