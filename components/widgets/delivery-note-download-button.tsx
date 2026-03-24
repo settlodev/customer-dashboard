@@ -9,7 +9,6 @@ import jsPDF from "jspdf";
 const PRIMARY = "#EB7F44";
 const PRIMARY_DARK = "#C4622A";
 const PRIMARY_BG = "#fde8d8";
-const SECONDARY = "#EAEAE5";
 const ROW_ALT = "#F0F0EC";
 
 interface DeliveryNoteDownloadButtonProps {
@@ -81,7 +80,7 @@ const DeliveryNoteDownloadButton = ({
 
       // ── 2. Capture ─────────────────────────────────────────────────
       const canvas = await html2canvas(el, {
-        scale: 3, // 3× DPI — sharper print output
+        scale: 3,
         useCORS: true,
         allowTaint: false,
         logging: false,
@@ -107,19 +106,44 @@ const DeliveryNoteDownloadButton = ({
             backgroundColor: "#ffffff",
             fontFamily:
               "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            color: "#111827",
+            color: "#000000",
           });
 
-          // Make every node fully visible + colour-adjust
+          // ── STEP 1: Nuclear black override ──────────────────────────
+          // Force ALL text to #000000 and ALL borders to black first.
+          // Selective brand colors are re-applied in subsequent steps.
           clone.querySelectorAll<HTMLElement>("*").forEach((node) => {
             node.style.visibility = "visible";
             node.style.opacity = "1";
             (node.style as any).printColorAdjust = "exact";
             (node.style as any).webkitPrintColorAdjust = "exact";
             node.style.fontFamily = "inherit";
+
+            // All text → black
+            node.style.color = "#000000";
+
+            // All borders → black (inline style overrides)
+            if (node.style.borderColor || node.style.border) {
+              node.style.borderColor = "#000000";
+            }
+
+            // Borders from computed styles (catches Tailwind utility classes)
+            const computed = window.getComputedStyle(node);
+            if (computed.borderBottomWidth !== "0px") {
+              node.style.borderBottom = `${computed.borderBottomWidth} solid #000000`;
+            }
+            if (computed.borderTopWidth !== "0px") {
+              node.style.borderTop = `${computed.borderTopWidth} solid #000000`;
+            }
+            if (computed.borderLeftWidth !== "0px") {
+              node.style.borderLeft = `${computed.borderLeftWidth} solid #000000`;
+            }
+            if (computed.borderRightWidth !== "0px") {
+              node.style.borderRight = `${computed.borderRightWidth} solid #000000`;
+            }
           });
 
-          // ── Show desktop table, hide mobile cards ─────────────────
+          // ── STEP 2: Show desktop table, hide mobile cards ────────────
           clone
             .querySelectorAll<HTMLElement>(".lg\\:hidden")
             .forEach((node) => {
@@ -133,7 +157,7 @@ const DeliveryNoteDownloadButton = ({
               node.style.setProperty("display", "block", "important");
             });
 
-          // ── Accent bars (top / bottom solid orange strips) ────────
+          // ── STEP 3: Accent bars (top/bottom orange strips) ───────────
           clone.querySelectorAll<HTMLElement>("div").forEach((div) => {
             const s = div.getAttribute("style") ?? "";
             if (
@@ -152,7 +176,7 @@ const DeliveryNoteDownloadButton = ({
             }
           });
 
-          // ── Heading: DELIVERY NOTE ────────────────────────────────
+          // ── STEP 4: DELIVERY NOTE heading — brand orange ─────────────
           clone.querySelectorAll<HTMLElement>("h2").forEach((h) => {
             const txt = h.textContent?.trim().toUpperCase() ?? "";
             if (txt.includes("DELIVERY")) {
@@ -163,14 +187,14 @@ const DeliveryNoteDownloadButton = ({
             }
           });
 
-          // ── Business name h1 ─────────────────────────────────────
+          // ── STEP 5: Business name h1 — black bold ────────────────────
           clone.querySelectorAll<HTMLElement>("h1").forEach((h) => {
-            h.style.setProperty("color", "#111827", "important");
+            h.style.setProperty("color", "#000000", "important");
             h.style.setProperty("font-size", "16px", "important");
             h.style.setProperty("font-weight", "700", "important");
           });
 
-          // ── Items table header ────────────────────────────────────
+          // ── STEP 6: Items table header — orange bg, white text ───────
           clone.querySelectorAll<HTMLElement>("thead tr").forEach((tr) => {
             tr.style.setProperty("background-color", PRIMARY_DARK, "important");
             (tr.style as any).printColorAdjust = "exact";
@@ -184,27 +208,27 @@ const DeliveryNoteDownloadButton = ({
             th.style.setProperty("padding", "10px 14px", "important");
             th.style.setProperty("text-transform", "uppercase", "important");
             th.style.setProperty("letter-spacing", "0.06em", "important");
+            th.style.setProperty("border", "none", "important");
             (th.style as any).printColorAdjust = "exact";
             (th.style as any).webkitPrintColorAdjust = "exact";
           });
 
-          // ── Items table — zebra rows + cells ─────────────────────
+          // ── STEP 7: Items table — zebra rows, black borders & text ───
           clone.querySelectorAll<HTMLElement>("table").forEach((table) => {
-            if (!table.querySelector("thead")) return; // skip meta tables
+            if (!table.querySelector("thead")) return;
 
             table.querySelectorAll<HTMLElement>("tbody tr").forEach((tr, i) => {
               const bg = i % 2 === 0 ? "#ffffff" : ROW_ALT;
               tr.style.setProperty("background-color", bg, "important");
               tr.style.setProperty(
                 "border-bottom",
-                "1px solid #C8C8C2",
+                "1px solid #000000",
                 "important",
               );
               (tr.style as any).printColorAdjust = "exact";
               (tr.style as any).webkitPrintColorAdjust = "exact";
             });
 
-            // Last column per row — bold & dark
             table.querySelectorAll<HTMLElement>("tbody tr").forEach((tr) => {
               const cells = tr.querySelectorAll<HTMLElement>("td");
               cells.forEach((td, ci) => {
@@ -214,28 +238,34 @@ const DeliveryNoteDownloadButton = ({
                   "important",
                 );
                 td.style.setProperty("padding", "10px 14px", "important");
-                td.style.setProperty("color", "#1f2937", "important");
+                td.style.setProperty("color", "#000000", "important");
+                td.style.setProperty(
+                  "border-bottom",
+                  "1px solid #000000",
+                  "important",
+                );
                 if (ci === cells.length - 1) {
                   td.style.setProperty("font-weight", "700", "important");
-                  td.style.setProperty("color", "#111827", "important");
                 }
               });
             });
 
-            // tfoot / total row — orange tint background
+            // tfoot / total row — orange tint bg, orange-dark text
             table.querySelectorAll<HTMLElement>("tfoot tr").forEach((tr) => {
               tr.style.setProperty("background-color", PRIMARY_BG, "important");
+              tr.style.setProperty("border", "1px solid #000000", "important");
               (tr.style as any).printColorAdjust = "exact";
               (tr.style as any).webkitPrintColorAdjust = "exact";
               tr.querySelectorAll<HTMLElement>("td").forEach((td) => {
                 td.style.setProperty("font-weight", "700", "important");
                 td.style.setProperty("color", PRIMARY_DARK, "important");
                 td.style.setProperty("font-size", "12px", "important");
+                td.style.setProperty("border", "none", "important");
               });
             });
           });
 
-          // ── Meta table (no thead) — clean, no borders ────────────
+          // ── STEP 8: Meta table (no thead) — no borders, black text ───
           clone.querySelectorAll<HTMLElement>("table").forEach((table) => {
             if (table.querySelector("thead")) return;
             table.querySelectorAll<HTMLElement>("tr").forEach((tr) => {
@@ -255,11 +285,11 @@ const DeliveryNoteDownloadButton = ({
               td.style.setProperty("border", "none", "important");
               td.style.setProperty("font-size", "11px", "important");
               td.style.setProperty("padding", "5px 8px", "important");
-              td.style.setProperty("color", "#1f2937", "important");
+              td.style.setProperty("color", "#000000", "important");
             });
           });
 
-          // ── Highlighted rows / boxes (orange tint) ────────────────
+          // ── STEP 9: Highlighted rows / boxes (orange tint) ───────────
           clone
             .querySelectorAll<HTMLElement>(
               '[style*="fde8d8"], [style*="F2942233"], [style*="f2942233"]',
@@ -270,24 +300,22 @@ const DeliveryNoteDownloadButton = ({
                 PRIMARY_BG,
                 "important",
               );
+              node.style.setProperty(
+                "border",
+                "1px solid #000000",
+                "important",
+              );
               (node.style as any).printColorAdjust = "exact";
               (node.style as any).webkitPrintColorAdjust = "exact";
               node
                 .querySelectorAll<HTMLElement>("span, p, td")
                 .forEach((child) => {
-                  if (
-                    child.style.color === PRIMARY ||
-                    window
-                      .getComputedStyle(child)
-                      .color.includes("235, 127, 68")
-                  ) {
-                    child.style.setProperty("color", PRIMARY_DARK, "important");
-                    child.style.setProperty("font-weight", "700", "important");
-                  }
+                  child.style.setProperty("color", PRIMARY_DARK, "important");
+                  child.style.setProperty("font-weight", "700", "important");
                 });
             });
 
-          // ── Signature lines — keep dashed borders visible ─────────
+          // ── STEP 10: Signature lines — solid black border ─────────────
           clone
             .querySelectorAll<HTMLElement>(
               '[style*="border-bottom: 2px solid"]',
@@ -295,70 +323,44 @@ const DeliveryNoteDownloadButton = ({
             .forEach((node) => {
               node.style.setProperty(
                 "border-bottom",
-                "2px solid #6b7280",
+                "2px solid #000000",
                 "important",
               );
             });
 
-          // ── Dashed fill-in spans ──────────────────────────────────
+          // ── STEP 11: Dashed fill-in spans — black dashed ─────────────
           clone
             .querySelectorAll<HTMLElement>('[style*="dashed"]')
             .forEach((node) => {
               node.style.setProperty(
                 "border-bottom",
-                "1.5px dashed #6b7280",
+                "1.5px dashed #000000",
                 "important",
               );
             });
 
-          // ── All remaining orange text → PRIMARY_DARK ──────────────
-          clone
-            .querySelectorAll<HTMLElement>("span, div, p, td, th, h1, h2, h3")
-            .forEach((node) => {
-              const cs = window.getComputedStyle(node);
-              if (cs.color.includes("235, 127, 68")) {
-                node.style.setProperty("color", PRIMARY_DARK, "important");
-              }
-              if (cs.backgroundColor.includes("235, 127, 68")) {
-                node.style.setProperty(
-                  "background-color",
-                  PRIMARY_DARK,
-                  "important",
-                );
-                (node.style as any).printColorAdjust = "exact";
-                (node.style as any).webkitPrintColorAdjust = "exact";
-              }
-            });
-
-          // ── Light-gray text → minimum gray-600 for print ─────────
-          clone
-            .querySelectorAll<HTMLElement>("p, span, td, li")
-            .forEach((node) => {
-              if (node.closest("thead")) return;
-              const c = window.getComputedStyle(node).color;
-              // gray-400: rgb(156,163,175)  gray-500: rgb(107,114,128)
-              if (c.includes("156, 163") || c.includes("107, 114")) {
-                node.style.setProperty("color", "#4b5563", "important"); // gray-600
-              }
-            });
-
-          // ── Separator / divider lines ─────────────────────────────
+          // ── STEP 12: Separator / divider lines — solid black ─────────
           clone.querySelectorAll<HTMLElement>("div").forEach((div) => {
-            if (div.style.height === "1px") {
-              div.style.setProperty("background-color", "#D1D5DB", "important");
+            if (div.style.height === "1px" || div.classList.contains("h-px")) {
+              div.style.setProperty("background-color", "#000000", "important");
+              div.style.setProperty("border", "none", "important");
               (div.style as any).printColorAdjust = "exact";
               (div.style as any).webkitPrintColorAdjust = "exact";
             }
           });
           clone
             .querySelectorAll<HTMLElement>(
-              '[style*="1px solid #EAEAE5"], [style*="1px solid #eaeae5"]',
+              '[role="none"], [data-orientation="horizontal"]',
             )
-            .forEach((node) => {
-              node.style.setProperty("border-color", "#C8C8C2", "important");
+            .forEach((sep) => {
+              sep.style.setProperty("height", "1px", "important");
+              sep.style.setProperty("background-color", "#000000", "important");
+              sep.style.setProperty("border", "none", "important");
+              (sep.style as any).printColorAdjust = "exact";
+              (sep.style as any).webkitPrintColorAdjust = "exact";
             });
 
-          // ── Bill To / section labels ──────────────────────────────
+          // ── STEP 13: Section labels (BILL TO / DELIVER TO / SHIP TO) ─
           clone.querySelectorAll<HTMLElement>("p").forEach((p) => {
             const txt = p.textContent?.trim().toUpperCase() ?? "";
             if (
@@ -367,12 +369,14 @@ const DeliveryNoteDownloadButton = ({
               txt === "SHIP TO"
             ) {
               p.style.setProperty("font-size", "9px", "important");
-              p.style.setProperty("color", "#6b7280", "important");
+              p.style.setProperty("color", "#000000", "important");
+              p.style.setProperty("font-weight", "700", "important");
               p.style.setProperty("letter-spacing", "0.12em", "important");
+              p.style.setProperty("text-transform", "uppercase", "important");
             }
           });
 
-          // ── Typography ────────────────────────────────────────────
+          // ── STEP 14: Typography defaults ─────────────────────────────
           clone.querySelectorAll<HTMLElement>("p, span, li").forEach((node) => {
             node.style.fontFamily = "system-ui, -apple-system, sans-serif";
             node.style.lineHeight = "1.5";
@@ -384,23 +388,37 @@ const DeliveryNoteDownloadButton = ({
             h.style.lineHeight = "1.2";
           });
 
-          // ── Footer text ───────────────────────────────────────────
-          clone.querySelectorAll<HTMLElement>("p").forEach((p) => {
-            const txt = p.textContent ?? "";
+          // ── STEP 15: Footer text — black ─────────────────────────────
+          clone.querySelectorAll<HTMLElement>("p, span").forEach((node) => {
+            const txt = node.textContent ?? "";
             if (
               txt.includes("Thank you") ||
-              txt.includes("generated on") ||
               txt.includes("Powered by") ||
               txt.includes("Dispatched by")
             ) {
-              p.style.setProperty(
+              node.style.setProperty(
                 "font-size",
                 fontSize.footer ?? "9px",
                 "important",
               );
-              p.style.setProperty("color", "#4b5563", "important");
+              node.style.setProperty("color", "#000000", "important");
             }
           });
+
+          // ── STEP 16: Hide "Generated on" and "Confirmed" lines ───────
+          clone
+            .querySelectorAll<HTMLElement>("p, span, div, li")
+            .forEach((node) => {
+              const ownText = (node.textContent ?? "").trim();
+              if (
+                ownText.startsWith("Generated on") ||
+                ownText.includes("Confirmed by customer") ||
+                ownText.includes("✓ Confirmed") ||
+                ownText.includes("√ Confirmed")
+              ) {
+                node.style.setProperty("display", "none", "important");
+              }
+            });
         },
       });
 

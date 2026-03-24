@@ -6,7 +6,6 @@ import { DateRangePicker } from "../ui/date-picker-with-range";
 import { fetchSummaries, getLocationId } from "@/lib/actions/dashboard-action";
 import SummaryResponse from "@/types/dashboard/type";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card } from "@/components/ui/card";
 import SalesDashboard from "./salesDashboard";
 
 const WS_URL = process.env.NEXT_PUBLIC_REPORTS_WS_URL;
@@ -22,20 +21,21 @@ const Dashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const stompClientRef = useRef<Client | null>(null);
   const subscriptionRef = useRef<StompSubscription | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
   const retryCountRef = useRef(0);
   const locationIdRef = useRef<string | undefined>(undefined);
-  const activeFilterRef = useRef<SummaryFilter>({ filter: "THIS_MONTH" });
+  const activeFilterRef = useRef<SummaryFilter>({ filter: "TODAY" });
   const mountedRef = useRef(false);
 
-  const getMonthRange = useCallback(() => {
+  const getTodayRange = useCallback(() => {
     const now = new Date();
     const y = now.getFullYear();
     const m = String(now.getMonth() + 1).padStart(2, "0");
-    const lastDay = String(
-      new Date(y, now.getMonth() + 1, 0).getDate()
-    ).padStart(2, "0");
-    return { startDate: `${y}-${m}-01`, endDate: `${y}-${m}-${lastDay}` };
+    const d = String(now.getDate()).padStart(2, "0");
+    const today = `${y}-${m}-${d}`;
+    return { startDate: today, endDate: today };
   }, []);
 
   // Publish the active filter to the server
@@ -76,7 +76,7 @@ const Dashboard: React.FC = () => {
           .catch((error) => console.error("Error fetching summaries:", error));
       }
     },
-    [publishFilter]
+    [publishFilter],
   );
 
   // -- WebSocket lifecycle --
@@ -137,7 +137,7 @@ const Dashboard: React.FC = () => {
               if (!update || !update.locationId) return;
               setSummaries(update as SummaryResponse);
             },
-            { "content-type": "application/json" }
+            { "content-type": "application/json" },
           );
 
           publishFilter();
@@ -176,7 +176,7 @@ const Dashboard: React.FC = () => {
       stompClientRef.current = client;
       client.activate();
     },
-    [publishFilter]
+    [publishFilter],
   );
 
   // -- Tab visibility: disconnect when hidden, reconnect when visible --
@@ -206,7 +206,7 @@ const Dashboard: React.FC = () => {
 
         const [locationId, summary] = await Promise.all([
           getLocationId(),
-          fetchSummaries(getMonthRange().startDate, getMonthRange().endDate),
+          fetchSummaries(getTodayRange().startDate, getTodayRange().endDate),
         ]);
 
         locationIdRef.current = locationId;
@@ -236,7 +236,7 @@ const Dashboard: React.FC = () => {
       mountedRef.current = false;
       disconnectWs();
     };
-  }, [getMonthRange, connectWs, disconnectWs]);
+  }, [getTodayRange, connectWs, disconnectWs]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -252,7 +252,11 @@ const Dashboard: React.FC = () => {
         <DateRangePicker onFilterChange={handleFilterChange} />
       </div>
 
-      {isLoading ? <DashboardSkeleton /> : <SalesDashboard salesData={summaries} />}
+      {isLoading ? (
+        <DashboardSkeleton />
+      ) : (
+        <SalesDashboard salesData={summaries} />
+      )}
     </div>
   );
 };
