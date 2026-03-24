@@ -70,43 +70,55 @@ export const BusinessSwitcher = ({
 
   const hasMultipleBusinesses = businessList.length > 1;
 
+  const businessDisplay = (
+    <div className="flex items-center gap-3 w-full">
+      <div className="relative h-8 w-8 shrink-0">
+        {currentBusiness.logo ? (
+          <Image
+            src={currentBusiness.logo}
+            alt={currentBusiness.name}
+            fill
+            className="rounded-lg object-cover"
+          />
+        ) : (
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Building2 className="h-4 w-4 text-primary" />
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col items-start flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate w-full text-left">
+          {currentBusiness.name}
+        </p>
+        {currentBusiness.countryName && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 truncate w-full text-left">
+            {currentBusiness.countryName}
+          </p>
+        )}
+      </div>
+      {hasMultipleBusinesses && (
+        <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
+      )}
+    </div>
+  );
+
+  if (!hasMultipleBusinesses) {
+    return (
+      <div className="w-full px-1 py-1">
+        {businessDisplay}
+      </div>
+    );
+  }
+
   return (
     <>
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-        <DropdownMenuTrigger asChild disabled={!hasMultipleBusinesses}>
+        <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
             className="w-full px-1 py-1 h-auto hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-0 focus-visible:ring-offset-0"
           >
-            <div className="flex items-center gap-3 w-full">
-              <div className="relative h-8 w-8 shrink-0">
-                {currentBusiness.logo ? (
-                  <Image
-                    src={currentBusiness.logo}
-                    alt={currentBusiness.name}
-                    fill
-                    className="rounded-lg object-cover"
-                  />
-                ) : (
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <Building2 className="h-4 w-4 text-primary" />
-                  </div>
-                )}
-              </div>
-              <div className="flex flex-col items-start flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate w-full text-left">
-                  {currentBusiness.name}
-                </p>
-                {currentBusiness.countryName && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate w-full text-left">
-                    {currentBusiness.countryName}
-                  </p>
-                )}
-              </div>
-              {hasMultipleBusinesses && (
-                <ChevronDown className="h-4 w-4 text-gray-400 shrink-0" />
-              )}
-            </div>
+            {businessDisplay}
           </Button>
         </DropdownMenuTrigger>
 
