@@ -101,99 +101,111 @@ const ReservationSlotManager = ({ slots, onRefresh }: Props) => {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {slots.length} slot rule{slots.length !== 1 ? "s" : ""} configured
-          </p>
-        </div>
-        <Button onClick={handleAdd} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Slot Rule
-        </Button>
-      </div>
-
-      {slots.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <Clock className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-            <h3 className="font-medium text-lg">No slot rules configured</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add time windows for each day of the week to define when
-              reservations are accepted
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {DAYS_OF_WEEK.map((day) => {
-            const daySlots = grouped[day];
-            if (!daySlots || daySlots.length === 0) return null;
-            return (
-              <Card key={day}>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">
-                    {DAY_OF_WEEK_LABELS[day]}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {daySlots.map((slot) => (
-                    <div
-                      key={slot.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Badge
-                          variant={slot.active ? "default" : "secondary"}
-                          className="text-xs"
-                        >
-                          {slot.active ? "Active" : "Inactive"}
-                        </Badge>
-                        <span className="font-medium">
-                          {slot.startTime?.substring(0, 5)} –{" "}
-                          {slot.endTime?.substring(0, 5)}
-                        </span>
-                        <span className="text-sm text-muted-foreground">
-                          Every {slot.slotDurationMinutes}min
-                        </span>
-                        {slot.maxReservations && (
-                          <span className="text-sm text-muted-foreground">
-                            · Max {slot.maxReservations} bookings
-                          </span>
-                        )}
-                        {slot.maxGuests && (
-                          <span className="text-sm text-muted-foreground">
-                            · Max {slot.maxGuests} guests
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleEdit(slot)}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        {slot.canDelete && (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Reservation Schedule</CardTitle>
+            <Button onClick={handleAdd} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Slot Rule
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {slots.length === 0 ? (
+            <div className="text-center py-8 border border-dashed rounded-lg">
+              <Clock className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No slot rules configured
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Add time windows for each day of the week to define when
+                reservations are accepted
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={handleAdd}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add First Slot Rule
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {DAYS_OF_WEEK.map((day) => {
+                const daySlots = grouped[day];
+                if (!daySlots || daySlots.length === 0) return null;
+                return (
+                  <div key={day} className="space-y-2">
+                    <p className="text-sm font-medium text-muted-foreground">
+                      {DAY_OF_WEEK_LABELS[day]}
+                    </p>
+                    {daySlots.map((slot) => (
+                      <div
+                        key={slot.id}
+                        className="flex items-start justify-between gap-4 rounded-lg border p-4"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">
+                              {slot.startTime?.substring(0, 5)} –{" "}
+                              {slot.endTime?.substring(0, 5)}
+                            </span>
+                            <Badge
+                              variant={slot.active ? "default" : "secondary"}
+                              className="text-xs"
+                            >
+                              {slot.active ? "Active" : "Inactive"}
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-xs text-muted-foreground">
+                              Every {slot.slotDurationMinutes}min
+                            </span>
+                            {slot.maxReservations && (
+                              <span className="text-xs text-muted-foreground">
+                                &middot; Max {slot.maxReservations} bookings
+                              </span>
+                            )}
+                            {slot.maxGuests && (
+                              <span className="text-xs text-muted-foreground">
+                                &middot; Max {slot.maxGuests} guests
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDelete(slot.id)}
+                            onClick={() => handleEdit(slot)}
+                            className="h-8 w-8"
                           >
-                            <Trash2 className="h-4 w-4 text-destructive" />
+                            <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                        )}
+                          {slot.canDelete && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(slot.id)}
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+                    ))}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-md">
@@ -212,7 +224,7 @@ const ReservationSlotManager = ({ slots, onRefresh }: Props) => {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 
