@@ -6,7 +6,7 @@ import { FieldErrors, useForm } from "react-hook-form";
 import { z } from "zod";
 import { UUID } from "node:crypto";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -106,32 +106,39 @@ const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm text-muted-foreground">
-            {exceptions.length} exception{exceptions.length !== 1 ? "s" : ""}{" "}
-            configured
-          </p>
-        </div>
-        <Button onClick={handleAdd} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Exception
-        </Button>
-      </div>
-
-      <Card className="rounded-xl border shadow-sm">
-        <CardContent className="p-4 sm:p-6">
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg">Exceptions</CardTitle>
+            <Button onClick={handleAdd} size="sm">
+              <Plus className="h-4 w-4 mr-1" />
+              Add Exception
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
           {exceptions.length === 0 ? (
-            <div className="py-4 text-center">
-              <CalendarOff className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-              <h3 className="font-medium text-lg">No exceptions configured</h3>
-              <p className="text-sm text-muted-foreground mt-1">
+            <div className="text-center py-8 border border-dashed rounded-lg">
+              <CalendarOff className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+              <p className="text-sm text-muted-foreground">
+                No exceptions configured
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
                 Add date-based closures, holidays, or blocked time ranges
               </p>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={handleAdd}
+              >
+                <Plus className="h-3 w-3 mr-1" />
+                Add First Exception
+              </Button>
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-3">
               {sorted.map((exception) => {
                 const dateFormatted = new Intl.DateTimeFormat("en", {
                   dateStyle: "medium",
@@ -144,47 +151,53 @@ const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
                 return (
                   <div
                     key={exception.id}
-                    className="flex items-center justify-between rounded-lg border p-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                    className="flex items-start justify-between gap-4 rounded-lg border p-4"
                   >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <Badge variant="outline" className={colorClass}>
-                        {EXCEPTION_TYPE_LABELS[exception.type as ReservationExceptionType] ||
-                          exception.type}
-                      </Badge>
-                      <div className="min-w-0">
-                        <div className="font-medium">{dateFormatted}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium">
+                          {dateFormatted}
+                        </span>
+                        <Badge variant="outline" className={`text-xs ${colorClass}`}>
+                          {EXCEPTION_TYPE_LABELS[exception.type as ReservationExceptionType] ||
+                            exception.type}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5">
                         {hasTimeRange ? (
-                          <div className="text-sm text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             {exception.startTime?.substring(0, 5) || "Start"} –{" "}
                             {exception.endTime?.substring(0, 5) || "End"}
-                          </div>
+                          </span>
                         ) : (
-                          <div className="text-sm text-muted-foreground">
+                          <span className="text-xs text-muted-foreground">
                             Full day
-                          </div>
+                          </span>
+                        )}
+                        {exception.reason && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            &middot; {exception.reason}
+                          </span>
                         )}
                       </div>
-                      {exception.reason && (
-                        <span className="text-sm text-muted-foreground truncate hidden sm:inline">
-                          — {exception.reason}
-                        </span>
-                      )}
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleEdit(exception)}
+                        className="h-8 w-8"
                       >
-                        <Pencil className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       {exception.canDelete && (
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(exception.id)}
+                          className="h-8 w-8 text-destructive hover:text-destructive"
                         >
-                          <Trash2 className="h-4 w-4 text-destructive" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
                     </div>
@@ -213,7 +226,7 @@ const ReservationExceptionManager = ({ exceptions, onRefresh }: Props) => {
           />
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 };
 
