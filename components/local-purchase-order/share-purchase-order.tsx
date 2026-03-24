@@ -126,17 +126,7 @@ export default function SharePurchaseOrder({
         >
           {/* ── HEADER: Business left · Title+Address right ── */}
           <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
-            <div className="flex items-center gap-4">
-              {/*<div*/}
-              {/*  className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"*/}
-              {/*  style={{ backgroundColor: PRIMARY }}*/}
-              {/*>*/}
-              {/*  {order.businessName?.charAt(0)}*/}
-              {/*</div>*/}
-              {/*<h1 className="text-lg font-bold text-gray-900 leading-tight">*/}
-              {/*  {order.businessName}*/}
-              {/*</h1>*/}
-            </div>
+            <div className="flex items-center gap-4"></div>
 
             {/* Right: title + location details */}
             <div className="lg:text-right">
@@ -258,9 +248,6 @@ export default function SharePurchaseOrder({
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
                     Item Description
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
-                    Variant
                   </th>
                   <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white w-32">
                     Quantity

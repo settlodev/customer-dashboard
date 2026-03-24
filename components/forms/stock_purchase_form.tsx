@@ -33,21 +33,18 @@ import {
   Trash2,
   CheckCircle,
   ArrowLeft,
-  Building2,
-  MapPin,
-  Mail,
-  Phone,
-  Package,
-  Calendar,
-  Hash,
+  Printer,
 } from "lucide-react";
 import DateTimePicker from "@/components/widgets/datetimepicker";
 import { StockPurchaseSchema } from "@/types/stock-purchases/schema";
 import { Button } from "@/components/ui/button";
 import { createStockPurchase } from "@/lib/actions/stock-purchase-actions";
-
 import { format } from "date-fns";
-import { cn } from "@/lib/utils";
+
+// ─── Brand tokens (must match SharePurchaseOrder) ─────────────────────────────
+const PRIMARY = "#EB7F44";
+const PRIMARY_LIGHT = "#fde8d8";
+const SECONDARY = "#EAEAE5";
 
 function StockPurchaseForm({
   item,
@@ -88,29 +85,19 @@ function StockPurchaseForm({
   }, [toast]);
 
   const handleDeliveryDateSelect = (date: Date) => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-
     if (date < new Date()) {
       setError("Delivery date cannot be in the past.");
       return false;
     }
-
     setDeliveryDate(date);
     return true;
   };
 
   const handleTimeChange = (type: "hour" | "minutes", value: string) => {
     if (!deliveryDate) return;
-
     const newDate = new Date(deliveryDate);
-
-    if (type === "hour") {
-      newDate.setHours(Number(value));
-    } else if (type === "minutes") {
-      newDate.setMinutes(Number(value));
-    }
-
+    if (type === "hour") newDate.setHours(Number(value));
+    else if (type === "minutes") newDate.setMinutes(Number(value));
     setDeliveryDate(newDate);
     form.setValue("deliveryDate", newDate.toISOString());
   };
@@ -120,10 +107,7 @@ function StockPurchaseForm({
     defaultValues: {
       supplier: item?.supplier || "",
       stockIntakePurchaseOrderItems: item?.stockIntakePurchaseOrderItems || [
-        {
-          stockVariantId: stockVariantId || "",
-          quantity: 0,
-        },
+        { stockVariantId: stockVariantId || "", quantity: 0 },
       ],
       deliveryDate: item?.deliveryDate || new Date().toISOString(),
       notes: item?.notes,
@@ -135,12 +119,7 @@ function StockPurchaseForm({
     name: "stockIntakePurchaseOrderItems",
   });
 
-  const addStockItem = () => {
-    append({
-      stockVariantId: "",
-      quantity: 1,
-    });
-  };
+  const addStockItem = () => append({ stockVariantId: "", quantity: 1 });
 
   const removeStockItem = (index: number) => {
     if (fields.length > 1) {
@@ -154,40 +133,33 @@ function StockPurchaseForm({
     }
   };
 
-  const getTotalItems = () => {
-    const items = form.getValues("stockIntakePurchaseOrderItems");
-    return items.filter((item) => item.stockVariantId).length;
-  };
+  const getTotalItems = () =>
+    form
+      .getValues("stockIntakePurchaseOrderItems")
+      .filter((i) => i.stockVariantId).length;
 
-  const getTotalQuantity = () => {
-    const items = form.getValues("stockIntakePurchaseOrderItems");
-    return items
-      .filter((item) => item.stockVariantId)
-      .reduce((total, item) => total + (item.quantity || 0), 0);
-  };
+  const getTotalQuantity = () =>
+    form
+      .getValues("stockIntakePurchaseOrderItems")
+      .filter((i) => i.stockVariantId)
+      .reduce((total, i) => total + (i.quantity || 0), 0);
 
   const onInvalid = useCallback(
     (errors: any) => {
-      console.error("Validation errors:", errors);
-
       const getFirstMessage = (obj: any): string | undefined => {
         if (!obj || typeof obj !== "object") return undefined;
         if (typeof obj.message === "string") return obj.message;
-
         for (const value of Object.values(obj)) {
           const msg = getFirstMessage(value);
           if (msg) return msg;
         }
         return undefined;
       };
-
-      const message =
-        getFirstMessage(errors) || "Please check all required fields.";
-
       toast({
         variant: "destructive",
         title: "Validation Error",
-        description: message,
+        description:
+          getFirstMessage(errors) || "Please check all required fields.",
       });
     },
     [toast],
@@ -195,14 +167,13 @@ function StockPurchaseForm({
 
   const copyShareLink = async () => {
     if (!shareLink) return;
-
     try {
       await navigator.clipboard.writeText(shareLink);
       toast({
         title: "Copied!",
         description: "Share link copied to clipboard.",
       });
-    } catch (_err) {
+    } catch {
       toast({
         variant: "destructive",
         title: "Error",
@@ -219,7 +190,6 @@ function StockPurchaseForm({
   const submitData = (values: z.infer<typeof StockPurchaseSchema>) => {
     setError("");
     setSuccess("");
-
     startTransition(() => {
       if (item) {
         console.log("Update logic for existing stock purchase");
@@ -230,24 +200,18 @@ function StockPurchaseForm({
               const purchaseOrder = data.data as StockPurchase;
               setPurchaseData(purchaseOrder);
               setSuccess(data.message);
-
               toast({
                 variant: "success",
                 title: "Success",
                 description: data.message,
               });
-
               setShowPreview(true);
-
-              const newPurchaseId = purchaseOrder.orderNumber;
-              const link = generateShareLink(newPurchaseId);
+              const link = generateShareLink(purchaseOrder.orderNumber);
               setShareLink(link);
-
               setTimeout(() => {
-                document.getElementById("lpo-preview")?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                });
+                document
+                  .getElementById("lpo-preview")
+                  ?.scrollIntoView({ behavior: "smooth", block: "start" });
               }, 100);
             } else if (data && data.responseType === "error") {
               setError(
@@ -275,399 +239,395 @@ function StockPurchaseForm({
     router.push("/stock-purchases");
   };
 
-  const totalQuantity = getTotalQuantity();
-  const totalItems = getTotalItems();
-
-  // Status badge styles
-  const getStatusStyle = (status: string) => {
-    switch (status) {
-      case "SUBMITTED":
-        return "bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700";
-      case "APPROVED":
-        return "bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-700";
-      default:
-        return "bg-gray-100 text-gray-800 border border-gray-300 dark:bg-gray-700 dark:text-gray-300";
-    }
-  };
-
-  // If showing preview, show the LPO document
+  // ── Preview — identical layout to SharePurchaseOrder ──────────────────────
   if (showPreview && purchaseData) {
+    const totalQty =
+      purchaseData.stockIntakePurchaseOrderItems?.reduce(
+        (sum: number, item: any) => sum + item.quantity,
+        0,
+      ) ?? 0;
+    const totalItems = purchaseData.stockIntakePurchaseOrderItems?.length ?? 0;
+
     return (
       <div
-        className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6"
+        className="min-h-screen py-8 px-4 sm:px-6"
+        style={{ backgroundColor: SECONDARY }}
         id="lpo-preview"
       >
-        {/* Action Bar */}
-        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
-          <Button
-            variant="outline"
-            onClick={handleBackToList}
-            className="gap-2"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Purchases
-          </Button>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={copyShareLink} className="gap-2">
-              <Copy className="h-4 w-4" />
-              Copy Link
+        <div className="max-w-4xl mx-auto">
+          {/* ── Action bar (no-print) ── */}
+          <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 print:hidden">
+            <Button
+              variant="outline"
+              onClick={handleBackToList}
+              className="gap-2"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Purchases
             </Button>
-            <Button onClick={handleBackToList}>View All Purchases</Button>
           </div>
-        </div>
 
-        {/* Success Banner */}
-        <div className="mb-5 bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800 rounded-xl p-4 print:hidden">
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-9 h-9 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center">
-              <CheckCircle className="h-5 w-5 text-emerald-600" />
+          {/* ── Success banner (no-print) ── */}
+          <div
+            className="mb-5 flex items-center gap-3 p-4 rounded-xl print:hidden"
+            style={{ backgroundColor: "#dcfce7", border: "1px solid #86efac" }}
+          >
+            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="font-semibold text-emerald-800 dark:text-emerald-300">
+              <p className="font-semibold text-green-800 text-sm">
                 Purchase Order Created Successfully!
               </p>
-              <p className="text-sm text-emerald-700 dark:text-emerald-400">
+              <p className="text-xs text-green-700 mt-0.5">
                 Order{" "}
                 <span className="font-mono font-medium">
                   #{purchaseData.orderNumber}
                 </span>{" "}
-                is ready to share with your supplier
+                is ready to share with your supplier.
               </p>
             </div>
           </div>
-        </div>
 
-        {/* LPO Document */}
-        <Card className="shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden print:shadow-none">
-          <CardContent className="p-0">
-            {/* ── Header ── */}
-            <div className="relative bg-gray-900 dark:bg-gray-950 px-8 py-7 overflow-hidden">
-              {/* decorative stripe */}
-              <div className="absolute inset-y-0 right-0 w-2 bg-emerald-500" />
-              <div className="absolute bottom-0 left-0 right-2 h-px bg-emerald-500/40" />
-
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                <div>
-                  <p className="text-xs font-semibold tracking-widest text-emerald-400 uppercase mb-1">
-                    Purchase Document
+          {/* ── LPO Document — same structure as SharePurchaseOrder ── */}
+          <div
+            id="lpo-content"
+            className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
+            style={{ border: `1px solid ${SECONDARY}` }}
+          >
+            {/* Header */}
+            <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
+              <div className="flex items-center gap-4" />
+              <div className="lg:text-right">
+                <h2
+                  className="text-3xl lg:text-4xl font-light tracking-wide mb-2"
+                  style={{ color: PRIMARY }}
+                >
+                  LOCAL PURCHASE ORDER
+                </h2>
+                <div className="text-sm text-gray-600 space-y-0.5">
+                  <p className="font-semibold text-gray-800">
+                    {purchaseData.businessName}
                   </p>
-                  <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                    Local Purchase Order
-                  </h1>
-                </div>
-                <div className="flex flex-col items-start sm:items-end gap-2">
-                  <span
-                    className={cn(
-                      "text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider",
-                      getStatusStyle(purchaseData.status),
-                    )}
-                  >
-                    {purchaseData.status || "SUBMITTED"}
-                  </span>
-                  <p className="font-mono text-sm text-gray-400">
-                    #{purchaseData.orderNumber}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* ── Meta strip: Order # / Issue Date / Delivery Date ── */}
-            <div className="grid grid-cols-3 divide-x divide-gray-200 dark:divide-gray-700 bg-gray-50 dark:bg-gray-900/60 border-b border-gray-200 dark:border-gray-700">
-              {[
-                {
-                  icon: <Hash className="h-3.5 w-3.5" />,
-                  label: "Order Number",
-                  value: purchaseData.orderNumber,
-                  mono: true,
-                },
-                {
-                  icon: <Calendar className="h-3.5 w-3.5" />,
-                  label: "Issue Date",
-                  value: format(new Date(), "MMM dd, yyyy"),
-                },
-                {
-                  icon: <Calendar className="h-3.5 w-3.5" />,
-                  label: "Expected Delivery",
-                  value: purchaseData.deliveryDate
-                    ? format(
-                        new Date(purchaseData.deliveryDate),
-                        "MMM dd, yyyy",
-                      )
-                    : "Not specified",
-                },
-              ].map((m, i) => (
-                <div key={i} className="px-5 py-4">
-                  <div className="flex items-center gap-1.5 text-gray-400 mb-1">
-                    {m.icon}
-                    <p className="text-xs font-semibold uppercase tracking-wider">
-                      {m.label}
-                    </p>
-                  </div>
-                  <p
-                    className={cn(
-                      "text-sm font-semibold text-gray-900 dark:text-white",
-                      m.mono && "font-mono",
-                    )}
-                  >
-                    {m.value}
-                  </p>
-                </div>
-              ))}
-            </div>
-
-            {/* ── Buyer & Supplier ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-gray-200 dark:divide-gray-700 border-b border-gray-200 dark:border-gray-700">
-              {/* Buyer / Business */}
-              <div className="px-7 py-6 bg-white dark:bg-gray-800">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 rounded bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="h-3.5 w-3.5 text-emerald-600" />
-                  </div>
-                  <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-                    Issued By
-                  </h2>
-                </div>
-
-                <p className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                  {purchaseData.businessName}
-                </p>
-
-                <div className="space-y-2 mt-3">
                   {purchaseData.locationName && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <MapPin className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                      <span>{purchaseData.locationName}</span>
-                    </div>
-                  )}
-                  {purchaseData.locationEmail && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <Mail className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                      <a
-                        href={`mailto:${purchaseData.locationEmail}`}
-                        className="hover:text-emerald-600 transition-colors"
-                      >
-                        {purchaseData.locationEmail}
-                      </a>
-                    </div>
+                    <p>{purchaseData.locationName}</p>
                   )}
                   {purchaseData.locationPhone && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <Phone className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                      <a
-                        href={`tel:${purchaseData.locationPhone}`}
-                        className="hover:text-emerald-600 transition-colors"
-                      >
-                        {purchaseData.locationPhone}
-                      </a>
-                    </div>
+                    <p>Mobile: {purchaseData.locationPhone}</p>
                   )}
-                </div>
-              </div>
-
-              {/* Supplier */}
-              <div className="px-7 py-6 bg-gray-50 dark:bg-gray-900/40">
-                <div className="flex items-center gap-2 mb-4">
-                  <div className="w-6 h-6 rounded bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center flex-shrink-0">
-                    <Building2 className="h-3.5 w-3.5 text-blue-600" />
-                  </div>
-                  <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-                    Supplier
-                  </h2>
-                </div>
-
-                <p className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-                  {purchaseData.supplierName}
-                </p>
-
-                <div className="space-y-2 mt-3">
-                  {purchaseData.supplierEmail && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <Mail className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                      <a
-                        href={`mailto:${purchaseData.supplierEmail}`}
-                        className="hover:text-blue-600 transition-colors"
-                      >
-                        {purchaseData.supplierEmail}
-                      </a>
-                    </div>
-                  )}
-                  {purchaseData.supplierPhoneNumber && (
-                    <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                      <Phone className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
-                      <a
-                        href={`tel:${purchaseData.supplierPhoneNumber}`}
-                        className="hover:text-blue-600 transition-colors"
-                      >
-                        {purchaseData.supplierPhoneNumber}
-                      </a>
-                    </div>
+                  {purchaseData.locationEmail && (
+                    <p>{purchaseData.locationEmail}</p>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* ── Items Table ── */}
-            <div className="px-7 py-6 bg-white dark:bg-gray-800">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-6 h-6 rounded bg-violet-100 dark:bg-violet-900/50 flex items-center justify-center flex-shrink-0">
-                  <Package className="h-3.5 w-3.5 text-violet-600" />
+            {/* Divider */}
+            <div
+              className="mx-6 lg:mx-10"
+              style={{ height: 1, backgroundColor: SECONDARY }}
+            />
+
+            {/* Supplier + Meta table */}
+            <div className="px-6 lg:px-10 py-6 flex flex-col lg:flex-row justify-between gap-6">
+              {/* Left: Supplier */}
+              <div className="flex-1">
+                <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
+                  Supplier
+                </p>
+                <div className="text-sm text-gray-700 space-y-0.5">
+                  <p className="font-semibold text-gray-900">
+                    {purchaseData.supplierName}
+                  </p>
+                  {purchaseData.supplierPhoneNumber && (
+                    <p>{purchaseData.supplierPhoneNumber}</p>
+                  )}
+                  {purchaseData.supplierEmail && (
+                    <p>{purchaseData.supplierEmail}</p>
+                  )}
                 </div>
-                <h2 className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">
-                  Order Items
-                </h2>
               </div>
 
-              <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700">
+              {/* Right: PO meta */}
+              <div className="w-full lg:w-80">
                 <table className="w-full text-sm">
-                  <thead>
-                    <tr className="bg-gray-50 dark:bg-gray-900/60 border-b border-gray-200 dark:border-gray-700">
-                      <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">
-                        #
-                      </th>
-                      <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Item
-                      </th>
-                      <th className="text-left px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Variant
-                      </th>
-                      <th className="text-right px-4 py-3 text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider w-24">
-                        Qty
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {purchaseData.stockIntakePurchaseOrderItems?.map(
-                      (orderItem: any, index: number) => (
-                        <tr
-                          key={orderItem.id}
-                          className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors"
+                  <tbody>
+                    {[
+                      {
+                        label: "Order Number:",
+                        value: purchaseData.orderNumber,
+                        mono: true,
+                      },
+                      {
+                        label: "Date Created:",
+                        value: purchaseData.dateCreated
+                          ? format(
+                              new Date(purchaseData.dateCreated),
+                              "MMMM dd, yyyy",
+                            )
+                          : format(new Date(), "MMMM dd, yyyy"),
+                      },
+                      {
+                        label: "Expected Delivery:",
+                        value: purchaseData.deliveryDate
+                          ? format(
+                              new Date(purchaseData.deliveryDate),
+                              "MMMM dd, yyyy",
+                            )
+                          : "Not specified",
+                      },
+                      { label: "Total Items:", value: totalItems, bold: true },
+                      {
+                        label: "Total Quantity:",
+                        value: totalQty.toLocaleString(),
+                        bold: true,
+                      },
+                    ].map((row, i) => (
+                      <tr
+                        key={i}
+                        style={{ borderBottom: `1px solid ${SECONDARY}` }}
+                      >
+                        <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
+                          {row.label}
+                        </td>
+                        <td
+                          className={`py-2 text-gray-900 text-right ${
+                            (row as any).mono ? "font-mono text-xs" : ""
+                          } ${(row as any).bold ? "font-bold" : ""}`}
                         >
-                          <td className="px-4 py-3.5 text-gray-400 text-xs tabular-nums">
-                            {String(index + 1).padStart(2, "0")}
-                          </td>
-                          <td className="px-4 py-3.5">
-                            <p className="font-medium text-gray-900 dark:text-white">
-                              {orderItem.stockName}
-                            </p>
-                          </td>
-                          <td className="px-4 py-3.5 text-gray-500 dark:text-gray-400">
-                            {orderItem.stockVariantName}
-                          </td>
-                          <td className="px-4 py-3.5 text-right">
-                            <span className="inline-flex items-center justify-center min-w-[2.5rem] px-2.5 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-bold text-sm tabular-nums">
-                              {orderItem.quantity}
-                            </span>
-                          </td>
-                        </tr>
-                      ),
-                    )}
+                          {row.value}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
+            </div>
 
-              {/* Summary */}
-              <div className="mt-4 flex justify-end">
-                <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                  <div className="flex items-center divide-x divide-gray-200 dark:divide-gray-700">
-                    <div className="px-5 py-3 text-center">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
-                        Total Items
-                      </p>
-                      <p className="text-xl font-bold text-gray-900 dark:text-white tabular-nums">
-                        {purchaseData.stockIntakePurchaseOrderItems?.length ??
-                          totalItems}
-                      </p>
-                    </div>
-                    <div className="px-5 py-3 text-center">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-0.5">
-                        Total Qty
-                      </p>
-                      <p className="text-xl font-bold text-emerald-600 tabular-nums">
-                        {purchaseData.stockIntakePurchaseOrderItems?.reduce(
-                          (sum: number, i: any) => sum + (i.quantity || 0),
-                          0,
-                        ) ?? totalQuantity}
+            {/* Items table — desktop */}
+            <div className="hidden lg:block px-10 mb-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr style={{ backgroundColor: PRIMARY }}>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white w-10">
+                      #
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
+                      Item Description
+                    </th>
+
+                    <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white w-32">
+                      Quantity
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {purchaseData.stockIntakePurchaseOrderItems?.map(
+                    (item: any, index: number) => (
+                      <tr
+                        key={item.id}
+                        style={{
+                          backgroundColor:
+                            index % 2 === 0 ? "#ffffff" : `${SECONDARY}40`,
+                          borderBottom: `1px solid ${SECONDARY}`,
+                        }}
+                      >
+                        <td className="px-4 py-3 text-sm text-gray-500">
+                          {index + 1}
+                        </td>
+                        <td className="px-4 py-3 font-medium text-gray-900">
+                          {item.stockName}
+                          {item.stockVariantName &&
+                          item.stockVariantName !== item.stockName
+                            ? ` — ${item.stockVariantName}`
+                            : ""}
+                        </td>
+                        <td className="px-4 py-3 text-right font-bold text-gray-900">
+                          {item.quantity?.toLocaleString()}
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                  <tr>
+                    <td
+                      colSpan={3}
+                      className="px-4 py-3 text-sm font-semibold text-right"
+                    >
+                      Total Quantity:
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold">
+                      {totalQty.toLocaleString()}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Items cards — mobile */}
+            <div className="lg:hidden px-4 mb-6 space-y-3">
+              <div
+                className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider"
+                style={{ backgroundColor: PRIMARY }}
+              >
+                <span>Item</span>
+                <span>Qty</span>
+              </div>
+              {purchaseData.stockIntakePurchaseOrderItems?.map(
+                (item: any, index: number) => (
+                  <div
+                    key={item.id}
+                    className="rounded-lg p-4"
+                    style={{
+                      border: `1px solid ${SECONDARY}`,
+                      backgroundColor:
+                        index % 2 === 0 ? "#ffffff" : `${SECONDARY}20`,
+                    }}
+                  >
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-900">
+                          <span className="text-gray-400 mr-1">
+                            {index + 1}.
+                          </span>
+                          {item.stockName}
+                        </p>
+                        {item.stockVariantName &&
+                          item.stockVariantName !== item.stockName && (
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {item.stockVariantName}
+                            </p>
+                          )}
+                      </div>
+                      <p className="text-sm font-bold whitespace-nowrap">
+                        {item.quantity?.toLocaleString()} units
                       </p>
                     </div>
                   </div>
-                </div>
+                ),
+              )}
+              <div className="flex justify-between items-center px-4 py-3 rounded-lg font-semibold text-sm">
+                <span>
+                  Total — {totalItems} {totalItems === 1 ? "item" : "items"}
+                </span>
+                <span>{totalQty.toLocaleString()} units</span>
               </div>
             </div>
 
-            {/* ── Notes ── */}
+            {/* Notes */}
             {purchaseData.notes && (
-              <div className="px-7 py-5 border-t border-gray-200 dark:border-gray-700 bg-amber-50/50 dark:bg-amber-950/10">
-                <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-2">
+              <div
+                className="px-6 lg:px-10 pb-6"
+                style={{ borderTop: `1px solid ${SECONDARY}` }}
+              >
+                <p
+                  className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold"
+                  style={{ color: PRIMARY }}
+                >
                   Special Instructions / Notes
                 </p>
-                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+                <p
+                  className="text-sm text-gray-600 p-4 rounded-lg leading-relaxed whitespace-pre-wrap"
+                  style={{
+                    backgroundColor: `${SECONDARY}40`,
+                    border: `1px solid ${SECONDARY}`,
+                  }}
+                >
                   {purchaseData.notes}
                 </p>
               </div>
             )}
 
-            {/* ── Terms ── */}
-            <div className="px-7 py-5 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/30">
-              <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest mb-3">
+            {/* Terms */}
+            <div
+              className="px-6 lg:px-10 pb-6"
+              style={{ borderTop: `1px solid ${SECONDARY}` }}
+            >
+              <p
+                className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold"
+                style={{ color: PRIMARY }}
+              >
                 Terms & Conditions
               </p>
-              <ol className="space-y-1.5 list-decimal list-inside">
+              <ol
+                className="space-y-1.5 list-decimal list-inside text-xs text-gray-500 leading-relaxed p-4 rounded-lg"
+                style={{
+                  backgroundColor: `${SECONDARY}40`,
+                  border: `1px solid ${SECONDARY}`,
+                }}
+              >
                 {[
                   "Please confirm receipt of this purchase order within 24 hours.",
                   "Delivery must be made on or before the specified delivery date.",
                   "All items must meet the specified quality standards and match the descriptions provided.",
                   "Invoice should reference the purchase order number for processing.",
+                  "Goods received are subject to inspection and approval.",
+                  "Payment terms: Net 30 days from date of invoice.",
                 ].map((term, i) => (
-                  <li
-                    key={i}
-                    className="text-xs text-gray-500 dark:text-gray-400"
-                  >
+                  <li key={i} className="pl-1">
                     {term}
                   </li>
                 ))}
               </ol>
             </div>
 
-            {/* ── Footer ── */}
-            <div className="flex items-center justify-between px-7 py-3.5 bg-gray-900 dark:bg-gray-950">
-              <p className="text-xs text-gray-500">
-                Generated {format(new Date(), "MMM dd, yyyy 'at' HH:mm")}
-              </p>
-              <p className="text-xs text-gray-400">
-                Powered by{" "}
-                <span className="font-semibold text-emerald-400">Settlo</span>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Share Link */}
-        <Card className="mt-5 print:hidden border border-gray-200 dark:border-gray-700">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Share Purchase Order</CardTitle>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Copy and send this link directly to your supplier
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="flex gap-2">
-              <div className="flex-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2.5">
-                <p className="text-sm font-mono text-gray-600 dark:text-gray-300 truncate">
-                  {shareLink}
+            {/* Footer */}
+            <div
+              className="px-6 lg:px-10 py-6 flex justify-center items-center gap-4"
+              style={{ borderTop: `1px solid ${SECONDARY}` }}
+            >
+              <div className="text-center flex-shrink-0">
+                <p className="text-xs lg:text-sm font-semibold">
+                  Thank you for your business and continued support
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  Powered by Settlo Technologies
                 </p>
               </div>
-              <Button onClick={copyShareLink} className="gap-2 flex-shrink-0">
-                <Copy className="h-4 w-4" />
-                Copy Link
-              </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+
+          {/* Share link card (no-print) */}
+          <Card className="mt-5 print:hidden border border-gray-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Share Purchase Order</CardTitle>
+              <p className="text-sm text-gray-500">
+                Copy and send this link directly to your supplier
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <div className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2.5">
+                  <p className="text-sm font-mono text-gray-600 truncate">
+                    {shareLink}
+                  </p>
+                </div>
+                <Button onClick={copyShareLink} className="gap-2 flex-shrink-0">
+                  <Copy className="h-4 w-4" />
+                  Copy Link
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <style jsx global>{`
+          @media print {
+            body {
+              background: white !important;
+            }
+            .print\\:hidden {
+              display: none !important;
+            }
+            @page {
+              margin: 0.5in;
+            }
+          }
+        `}</style>
       </div>
     );
   }
 
-  // ── Form ──
+  // ── Form ──────────────────────────────────────────────────────────────────
   return (
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <Card className="shadow-lg border-0">
