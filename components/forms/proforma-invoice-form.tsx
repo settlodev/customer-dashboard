@@ -2036,6 +2036,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       discountId: (item as any).appliedDiscountId ?? null,
       notes: item.notes ?? "",
       expiresAt: item.expiresAt ? String(item.expiresAt).split("T")[0] : "",
+      showTaxBreakdown: (item as any).showTaxAmounts ?? false,
       business: {
         businessName: item.businessName ?? null,
         locationName: item.locationName ?? null,
@@ -2047,7 +2048,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       taxExclusiveGrossAmount: (item as any).taxExclusiveGrossAmount ?? 0,
       taxAmount: (item as any).taxAmount ?? 0,
       netAmount: (item as any).netAmount ?? 0,
-      showTaxBreakdown: false,
     };
   });
 
@@ -2107,7 +2107,6 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       }
       const data = result?.data as any;
       const itemId: string = data?.id ?? newItem.variantId;
-      // Use server-computed tax-exclusive price if returned, otherwise fall back.
       const unitTaxExclusivePrice: number =
         data?.unitTaxExclusivePrice ?? newItem.unitTaxExclusivePrice;
       setState((prev) => ({
@@ -2213,6 +2212,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         opts.discountId ?? "",
         opts.manualDiscountAmount,
         opts.expiresAt,
+        state.showTaxBreakdown, // ✅ driven by the toggle in state
       );
       setDetailsPending(false);
       if (result?.responseType === "error") {
@@ -2231,6 +2231,11 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         expiresAt: opts.expiresAt,
         discountId: opts.discountId,
         discount: appliedDiscount,
+        // ✅ Persist the API-confirmed value back into state
+        showTaxBreakdown:
+          typeof data?.showTaxAmounts === "boolean"
+            ? data.showTaxAmounts
+            : prev.showTaxBreakdown,
         grossAmount:
           typeof data?.grossAmount === "number"
             ? data.grossAmount
@@ -2247,7 +2252,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       toast.success("Proforma updated successfully");
       router.push(`/proforma-invoice/details/${state.id}`);
     },
-    [state.id],
+    [state.id, state.showTaxBreakdown, router], // ✅ depend on showTaxBreakdown
   );
 
   const grossTotal = state.items.reduce(

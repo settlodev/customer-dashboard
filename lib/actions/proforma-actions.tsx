@@ -241,6 +241,7 @@ export const updateProforma = async (
   discount: string,
   manualDiscountAmount: number,
   expiresAt: string,
+  showTaxAmounts: boolean,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
@@ -249,6 +250,7 @@ export const updateProforma = async (
     discount,
     manualDiscountAmount,
     expiresAt,
+    showTaxAmounts,
   });
 
   if (!validData.success) {
@@ -267,6 +269,7 @@ export const updateProforma = async (
   const payload: Record<string, unknown> = {
     notes: validData.data.notes || null,
     expiresAt: formattedDueDate,
+    showTaxAmounts: validData.data.showTaxAmounts,
   };
 
   if (validData.data.discount) {
@@ -276,6 +279,7 @@ export const updateProforma = async (
     payload.manualDiscountAmount = validData.data.manualDiscountAmount;
   }
 
+  console.log("The payload updating ", payload);
   const location = await getCurrentLocation();
 
   try {
