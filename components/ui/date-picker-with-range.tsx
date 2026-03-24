@@ -17,7 +17,7 @@ export function DateRangePicker({ onFilterChange }: DateRangePickerProps) {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const [date, setDate] = useState<DateRange | undefined>({
-    from: startOfMonth(now),
+    from: today,
     to: today,
   });
   const [isOpen, setIsOpen] = useState(false);

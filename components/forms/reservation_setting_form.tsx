@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Form,
   FormControl,
@@ -322,7 +322,10 @@ const ReservationSettingForm = ({
 
   return (
     <Card>
-      <CardContent className="pt-6">
+      <CardHeader>
+        <CardTitle className="text-lg">Reservation Settings</CardTitle>
+      </CardHeader>
+      <CardContent>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(submitData, onInvalid)}
