@@ -70,7 +70,7 @@ const ProformaDownloadButton = ({
 
       // ── 3. Render to canvas ─────────────────────────────────────────────
       const canvas = await html2canvas(el, {
-        scale: 3, // higher DPI → sharper print output
+        scale: 3,
         useCORS: true,
         allowTaint: false,
         logging: false,
@@ -96,20 +96,43 @@ const ProformaDownloadButton = ({
             backgroundColor: "#ffffff",
             fontFamily:
               "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-            color: "#111827",
+            color: "#000000",
           });
 
-          // Make every element fully visible and honour color-adjust
+          // ── STEP 1: Force ALL text nodes to black by default ────────────
+          // This is the nuclear option — override every element's color to
+          // pure black first, then selectively re-apply brand colors below.
           clone.querySelectorAll<HTMLElement>("*").forEach((node) => {
             node.style.visibility = "visible";
             node.style.opacity = "1";
             (node.style as any).printColorAdjust = "exact";
             (node.style as any).webkitPrintColorAdjust = "exact";
             node.style.fontFamily = "inherit";
+
+            // Force ALL text to black unless we override it below
+            node.style.color = "#000000";
+
+            // Force ALL borders to black
+            if (node.style.borderColor || node.style.border) {
+              node.style.borderColor = "#000000";
+            }
+            // Force border-bottom used in table cells
+            const computed = window.getComputedStyle(node);
+            if (computed.borderBottomWidth !== "0px") {
+              node.style.borderBottom = `${computed.borderBottomWidth} solid #000000`;
+            }
+            if (computed.borderTopWidth !== "0px") {
+              node.style.borderTop = `${computed.borderTopWidth} solid #000000`;
+            }
+            if (computed.borderLeftWidth !== "0px") {
+              node.style.borderLeft = `${computed.borderLeftWidth} solid #000000`;
+            }
+            if (computed.borderRightWidth !== "0px") {
+              node.style.borderRight = `${computed.borderRightWidth} solid #000000`;
+            }
           });
 
-          // ── PROFORMA INVOICE large heading ──────────────────────────────
-          // The h2 that contains "PROFORMA INVOICE" — keep it big & colored
+          // ── STEP 2: PROFORMA INVOICE heading — brand orange ─────────────
           clone.querySelectorAll<HTMLElement>("h2").forEach((h) => {
             if (h.textContent?.toUpperCase().includes("PROFORMA INVOICE")) {
               h.style.fontSize = "28px";
@@ -120,9 +143,7 @@ const ProformaDownloadButton = ({
             }
           });
 
-          // ── Table header rows (orange background) ──────────────────────
-          // Find thead > tr elements and any tr that had a style backgroundColor
-          // matching our PRIMARY color and restore it strongly.
+          // ── STEP 3: Table header rows (orange background, white text) ───
           clone.querySelectorAll<HTMLElement>("thead tr").forEach((tr) => {
             tr.style.backgroundColor = "#EB7F44";
             (tr.style as any).printColorAdjust = "exact";
@@ -135,56 +156,59 @@ const ProformaDownloadButton = ({
               th.style.textTransform = "uppercase";
               th.style.letterSpacing = "0.06em";
               th.style.padding = "10px 14px";
+              th.style.border = "none";
               (th.style as any).printColorAdjust = "exact";
               (th.style as any).webkitPrintColorAdjust = "exact";
             });
           });
 
-          // ── Zebra rows ──────────────────────────────────────────────────
+          // ── STEP 4: Zebra rows ──────────────────────────────────────────
           clone.querySelectorAll<HTMLElement>("tbody tr").forEach((tr, i) => {
             if (i % 2 !== 0) {
-              tr.style.backgroundColor = "#F5F5F0"; // slightly deeper than SECONDARY
+              tr.style.backgroundColor = "#EEEEEE";
               (tr.style as any).printColorAdjust = "exact";
               (tr.style as any).webkitPrintColorAdjust = "exact";
+            } else {
+              tr.style.backgroundColor = "#ffffff";
             }
           });
 
-          // ── Table cells ─────────────────────────────────────────────────
+          // ── STEP 5: Table cells — black text, visible borders ───────────
           clone.querySelectorAll<HTMLElement>("td").forEach((td) => {
             td.style.padding = "10px 14px";
             td.style.fontSize = "11px";
-            td.style.color = "#1f2937"; // near-black, not gray
-            td.style.borderBottom = "1px solid #D9D9D4";
+            td.style.color = "#000000";
+            td.style.borderBottom = "1px solid #000000";
           });
 
-          // Last column (amount) — extra bold
+          // Last column (amount) — bold black
           clone.querySelectorAll<HTMLElement>("tbody tr").forEach((tr) => {
             const cells = tr.querySelectorAll<HTMLElement>("td");
             if (cells.length > 0) {
               const last = cells[cells.length - 1];
               last.style.fontWeight = "700";
-              last.style.color = "#111827";
+              last.style.color = "#000000";
             }
           });
 
-          // ── Totals block rows ───────────────────────────────────────────
-          // Make all text in the totals section darker and heavier
+          // ── STEP 6: Totals block ────────────────────────────────────────
           clone
             .querySelectorAll<HTMLElement>(".flex.justify-between")
             .forEach((row) => {
               row.querySelectorAll<HTMLElement>("span").forEach((s) => {
                 s.style.fontSize = "12px";
-                s.style.color = "#1f2937";
+                s.style.color = "#000000";
               });
             });
 
-          // Grand total row — strong highlight
+          // Grand total row — highlight with orange tint, orange bold text
           clone
             .querySelectorAll<HTMLElement>(".flex.justify-between.font-bold")
             .forEach((row) => {
               row.style.backgroundColor = "#fde8d8";
               row.style.borderRadius = "6px";
               row.style.padding = "10px 12px";
+              row.style.border = "1px solid #000000";
               (row.style as any).printColorAdjust = "exact";
               (row.style as any).webkitPrintColorAdjust = "exact";
               row.querySelectorAll<HTMLElement>("span").forEach((s) => {
@@ -194,120 +218,164 @@ const ProformaDownloadButton = ({
               });
             });
 
-          // VAT line — green, readable
+          // VAT line — dark green
           clone
             .querySelectorAll<HTMLElement>(".flex.justify-between")
             .forEach((row) => {
               const text = row.textContent ?? "";
               if (text.includes("VAT") && text.includes("%")) {
                 row.querySelectorAll<HTMLElement>("span").forEach((s) => {
-                  s.style.color = "#047857"; // emerald-800 — dark enough to print
+                  s.style.color = "#145a32";
                   s.style.fontWeight = "600";
                   s.style.fontSize = "12px";
                 });
               }
             });
 
-          // Discount line — red, readable
+          // Discount line — dark red
           clone
             .querySelectorAll<HTMLElement>(".flex.justify-between")
             .forEach((row) => {
               const text = row.textContent ?? "";
               if (text.includes("Discount")) {
                 row.querySelectorAll<HTMLElement>("span").forEach((s) => {
-                  s.style.color = "#b91c1c"; // red-700 — dark enough to print
+                  s.style.color = "#7b241c";
                   s.style.fontWeight = "600";
                   s.style.fontSize = "12px";
                 });
               }
             });
 
-          // ── Business name / address text ────────────────────────────────
-          clone.querySelectorAll<HTMLElement>("p, span").forEach((node) => {
-            // Don't touch nodes we've already explicitly styled above
-            if (
-              node.closest("thead") ||
-              node.closest(".flex.justify-between.font-bold")
-            )
-              return;
-            // Upgrade any light-gray text to something that prints clearly
-            const computed = node.style.color;
-            if (!computed || computed === "" || computed === "inherit") return;
-            if (
-              computed.includes("156") || // gray-400 rgb(156,163,175)
-              computed.includes("107") || // gray-500 rgb(107,114,128)
-              node.classList.contains("text-gray-400") ||
-              node.classList.contains("text-gray-500")
-            ) {
-              node.style.color = "#4b5563"; // gray-600 — legible when printed
-            }
-          });
-
-          // ── Separator lines ─────────────────────────────────────────────
+          // ── STEP 7: Separator / divider lines — solid black ─────────────
           clone
             .querySelectorAll<HTMLElement>(
               "[role='none'], [data-orientation='horizontal']",
             )
             .forEach((sep) => {
               sep.style.height = "1px";
-              sep.style.backgroundColor = "#D1D5DB";
+              sep.style.backgroundColor = "#000000";
               sep.style.border = "none";
               sep.style.margin = "0";
               (sep.style as any).printColorAdjust = "exact";
               (sep.style as any).webkitPrintColorAdjust = "exact";
             });
 
-          // Inline divider divs (mx-8 h-px style dividers in the invoice)
+          // Inline divider divs (h-px style)
           clone.querySelectorAll<HTMLElement>("div").forEach((div) => {
-            if (div.style.height === "1px") {
-              div.style.backgroundColor = "#D1D5DB";
+            if (div.style.height === "1px" || div.classList.contains("h-px")) {
+              div.style.backgroundColor = "#000000";
+              div.style.border = "none";
               (div.style as any).printColorAdjust = "exact";
               (div.style as any).webkitPrintColorAdjust = "exact";
             }
           });
 
-          // ── VAT note line at bottom of totals ───────────────────────────
+          // ── STEP 8: Meta table rows (Estimate Number, Date etc.) ─────────
+          // These often have alternating gray bg — keep bg but force text black
+          clone.querySelectorAll<HTMLElement>("table").forEach((table) => {
+            // Skip the items table (has thead)
+            if (table.querySelector("thead")) return;
+            table.querySelectorAll<HTMLElement>("tr").forEach((tr, i) => {
+              tr.style.backgroundColor = i % 2 === 0 ? "#ffffff" : "#f3f3f3";
+              (tr.style as any).printColorAdjust = "exact";
+              (tr.style as any).webkitPrintColorAdjust = "exact";
+              tr.querySelectorAll<HTMLElement>("td, th").forEach((cell) => {
+                cell.style.color = "#000000";
+                cell.style.fontSize = "11px";
+                cell.style.fontWeight = cell.tagName === "TH" ? "700" : "400";
+                cell.style.border = "1px solid #000000";
+                (cell.style as any).printColorAdjust = "exact";
+                (cell.style as any).webkitPrintColorAdjust = "exact";
+              });
+            });
+          });
+
+          // ── STEP 9: "BILL TO" label and all small uppercase labels ───────
+          clone.querySelectorAll<HTMLElement>("*").forEach((node) => {
+            // Target small tracking-widest uppercase labels
+            if (
+              node.classList.contains("tracking-widest") ||
+              node.classList.contains("uppercase") ||
+              (node.style.textTransform === "uppercase" &&
+                parseFloat(node.style.fontSize || "16") <= 10)
+            ) {
+              node.style.color = "#000000";
+              node.style.fontWeight = "700";
+            }
+          });
+
+          // ── STEP 10: Business name / header block (right side) ───────────
+          clone
+            .querySelectorAll<HTMLElement>("h1, h3, h4, h5, h6")
+            .forEach((h) => {
+              h.style.color = "#000000";
+              h.style.fontWeight = "700";
+            });
+
+          // ── STEP 11: Footer text — black ────────────────────────────────
+          clone
+            .querySelectorAll<HTMLElement>(
+              "[class*='text-center'] p, [class*='text-center'] span, footer p, footer span",
+            )
+            .forEach((node) => {
+              node.style.fontSize = "10px";
+              node.style.color = "#000000";
+            });
+
+          // ── STEP 12: VAT note line ───────────────────────────────────────
           clone.querySelectorAll<HTMLElement>("p").forEach((p) => {
             if (
               p.textContent?.includes("VAT of") &&
               p.textContent?.includes("included")
             ) {
               p.style.fontSize = "10px";
-              p.style.color = "#374151";
+              p.style.color = "#000000";
               p.style.fontStyle = "italic";
             }
           });
 
-          // ── Meta table (Estimate Number / Date etc.) ────────────────────
+          // ── STEP 13: Hide "Generated on" and "Confirmed by customer" ────
+          // Walk every element; if its *own* text (trimmed) starts with one
+          // of these phrases, hide the entire node so it won't appear in PDF.
           clone
-            .querySelectorAll<HTMLElement>("table td, table th")
-            .forEach((cell) => {
-              if (!(cell as HTMLTableCellElement).closest?.("thead")) {
-                cell.style.fontSize = "11px";
-                cell.style.color = "#1f2937";
+            .querySelectorAll<HTMLElement>("p, span, div, li")
+            .forEach((node) => {
+              const ownText = (node.textContent ?? "").trim();
+              if (
+                ownText.startsWith("Generated on") ||
+                ownText.includes("Confirmed by customer") ||
+                ownText.includes("✓ Confirmed") ||
+                ownText.includes("√ Confirmed")
+              ) {
+                node.style.display = "none";
               }
             });
 
-          // ── Bill-To section ─────────────────────────────────────────────
+          // ── STEP 14: Remove any remaining background from outlined boxes ─
+          // Ensure meta info box borders are black
           clone
-            .querySelectorAll<HTMLElement>(
-              "[class*='text-xs'][class*='uppercase'][class*='tracking-widest']",
-            )
-            .forEach((label) => {
-              label.style.fontSize = "9px";
-              label.style.color = "#6b7280";
-              label.style.letterSpacing = "0.12em";
-              label.style.textTransform = "uppercase";
-            });
-
-          // ── Footer text ─────────────────────────────────────────────────
-          clone
-            .querySelectorAll<HTMLElement>(
-              "[class*='text-center'] p, [class*='text-center'] span",
-            )
+            .querySelectorAll<HTMLElement>("div, section")
             .forEach((node) => {
-              node.style.fontSize = "10px";
-              node.style.color = "#6b7280";
+              const border = node.style.border;
+              if (border && border !== "none" && border !== "") {
+                node.style.border = border.replace(
+                  /rgba?\([^)]+\)|#[0-9a-fA-F]{3,8}|[a-z]+-[a-z]+/g,
+                  (match) => {
+                    // Keep "none", keep width/style, replace color with black
+                    if (
+                      match === "none" ||
+                      /^\d/.test(match) ||
+                      ["solid", "dashed", "dotted", "double"].includes(match)
+                    )
+                      return match;
+                    return "#000000";
+                  },
+                );
+              }
+              // Also catch inline border-color
+              if (node.style.borderColor) {
+                node.style.borderColor = "#000000";
+              }
             });
         },
       });
@@ -332,7 +400,7 @@ const ProformaDownloadButton = ({
       if (imgH <= A4_H_MM - MARGIN_MM * 2) {
         // ── Single page ──
         pdf.addImage(
-          canvas.toDataURL("image/jpeg", 1.0), // max quality
+          canvas.toDataURL("image/jpeg", 1.0),
           "JPEG",
           MARGIN_MM,
           MARGIN_MM,

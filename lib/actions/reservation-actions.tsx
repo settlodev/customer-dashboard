@@ -252,13 +252,13 @@ export const searchReservationsByMonth = async (
         {
           key: "reservationDate",
           operator: "GREATER_THAN_EQUAL",
-          field_type: "STRING",
+          field_type: "LOCAL_DATE",
           value: startDate,
         },
         {
           key: "reservationDate",
           operator: "LESS_THAN_EQUAL",
-          field_type: "STRING",
+          field_type: "LOCAL_DATE",
           value: endDate,
         },
       ],
