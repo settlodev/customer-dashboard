@@ -328,7 +328,7 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
                                         </div>
                                     ) : (
                                         <div className="space-y-4">
-                                            {sections.map((section, index) => (
+                                            {sections.slice().sort((a, b) => a.name.localeCompare(b.name)).map((section, index) => (
                                                 <div 
                                                     key={section.id || index} 
                                                     className="bg-white dark:bg-gray-900 border rounded-lg shadow-sm p-4"
@@ -338,7 +338,7 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
                                                     </h5>
                                                     {section.warehousePrivilegeActions && section.warehousePrivilegeActions.length > 0 ? (
                                                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                                            {section.warehousePrivilegeActions.map((action, i) => {
+                                                            {section.warehousePrivilegeActions.slice().sort((a, b) => (a.action || "").localeCompare(b.action || "")).map((action, i) => {
                                                                 if (!action.action || !action.id) return null;
                                                                 
                                                                 // Check if this action is selected by comparing IDs
@@ -369,12 +369,11 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
                                                                                 checked:bg-emerald-600 
                                                                                 checked:border-emerald-600"
                                                                         />
-                                                                        <span 
+                                                                        <span
                                                                             className={cn(
                                                                                 "text-xs font-medium cursor-pointer",
                                                                                 selected ? 'text-emerald-700 dark:text-emerald-300' : 'text-gray-700 dark:text-gray-300'
                                                                             )}
-                                                                            onClick={() => selectAction(action.id)}
                                                                         >
                                                                             {action.action}
                                                                         </span>

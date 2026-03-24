@@ -59,7 +59,7 @@ export const columns: ColumnDef<Role>[] = [
             {name}
           </span>
           {description && (
-            <span className="text-xs text-muted-foreground block truncate max-w-xs">
+            <span className="text-xs text-muted-foreground block truncate">
               {description}
             </span>
           )}
@@ -77,6 +77,34 @@ export const columns: ColumnDef<Role>[] = [
         <span className="text-sm text-gray-600 dark:text-gray-400">
           {count} {count === 1 ? "permission" : "permissions"}
         </span>
+      );
+    },
+  },
+  {
+    id: "access",
+    header: () => (
+      <div className="hidden lg:block">Access</div>
+    ),
+    enableHiding: true,
+    cell: ({ row }) => {
+      const pos = row.original.posAccess;
+      const dashboard = row.original.dashboardAccess;
+      return (
+        <div className="hidden lg:flex items-center gap-1.5">
+          {pos && (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
+              POS
+            </span>
+          )}
+          {dashboard && (
+            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400">
+              Dashboard
+            </span>
+          )}
+          {!pos && !dashboard && (
+            <span className="text-xs text-muted-foreground">None</span>
+          )}
+        </div>
       );
     },
   },
