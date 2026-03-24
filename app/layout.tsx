@@ -74,11 +74,11 @@ export const metadata: Metadata = {
     siteName: "Settlo",
     images: [
       {
-        url: "https://www.settlo.co.tz/images/logo_new.png",
-        width: 498,
-        height: 220,
+        url: "https://www.settlo.co.tz/images/settlo_share_image.jpg",
+        width: 1200,
+        height: 630,
         alt: "Settlo - Daftari la Kidigitali",
-        type: "image/png",
+        type: "image/jpeg",
       },
     ],
     locale: "en_TZ",
@@ -95,9 +95,9 @@ export const metadata: Metadata = {
     creator: "@settlo",
     images: [
       {
-        url: "https://www.settlo.co.tz/images/logo_new.png",
-        width: 498,
-        height: 220,
+        url: "https://www.settlo.co.tz/images/settlo_share_image.jpg",
+        width: 1200,
+        height: 630,
         alt: "Settlo - Daftari la Kidigitali",
       },
     ],
@@ -266,7 +266,7 @@ export const metadata: Metadata = {
         "@type": "Organization",
         name: "Settlo",
         url: "https://settlo.co.tz",
-        logo: "https://www.settlo.co.tz/images/logo_new.png",
+        logo: "https://www.settlo.co.tz/images/logo_badge.png",
         address: {
           "@type": "PostalAddress",
           streetAddress: "Victoria Noble Centre",
