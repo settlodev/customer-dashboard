@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { CheckCircle, Loader2, Package, Printer } from "lucide-react";
+import { CheckCircle, Loader2, Package } from "lucide-react";
 import {
   previewPurchaseOrder,
   AcceptStockPurchase,
@@ -98,20 +98,6 @@ export default function SharePurchaseOrder({
     ) ?? 0;
   const totalItems = order.stockIntakePurchaseOrderItems?.length ?? 0;
 
-  // Status badge style
-  const statusStyle: Record<string, { bg: string; color: string }> = {
-    SUBMITTED: { bg: "#dbeafe", color: "#1d4ed8" },
-    APPROVED: { bg: "#dcfce7", color: "#15803d" },
-    ACCEPTED: { bg: "#dcfce7", color: "#15803d" },
-    DELIVERED: { bg: "#ede9fe", color: "#7c3aed" },
-    PARTIALLY_RECEIVED: { bg: PRIMARY_LIGHT, color: PRIMARY },
-    RECEIVED: { bg: "#d1fae5", color: "#065f46" },
-  };
-  const ss = statusStyle[order.status] ?? {
-    bg: SECONDARY,
-    color: "#374151",
-  };
-
   return (
     <div
       className="min-h-screen py-8 px-4 sm:px-6"
@@ -124,11 +110,9 @@ export default function SharePurchaseOrder({
           className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
           style={{ border: `1px solid ${SECONDARY}` }}
         >
-          {/* ── HEADER: Business left · Title+Address right ── */}
+          {/* ── HEADER ── */}
           <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
-            <div className="flex items-center gap-4"></div>
-
-            {/* Right: title + location details */}
+            <div className="flex items-center gap-4" />
             <div className="lg:text-right">
               <h2
                 className="text-3xl lg:text-4xl font-light tracking-wide mb-2"
@@ -155,7 +139,7 @@ export default function SharePurchaseOrder({
 
           {/* ── SUPPLIER + META TABLE ── */}
           <div className="px-6 lg:px-10 py-6 flex flex-col lg:flex-row justify-between gap-6">
-            {/* Left: Supplier + Ship To */}
+            {/* Left: Supplier */}
             <div className="flex-1">
               <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
                 Supplier
@@ -169,20 +153,6 @@ export default function SharePurchaseOrder({
                 )}
                 {order.supplierEmail && <p>{order.supplierEmail}</p>}
               </div>
-
-              {/*<div className="mt-5">*/}
-              {/*  <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">*/}
-              {/*    Ship To*/}
-              {/*  </p>*/}
-              {/*  <div className="text-sm text-gray-700 space-y-0.5">*/}
-              {/*    <p className="font-semibold text-gray-900">*/}
-              {/*      {order.businessName}*/}
-              {/*    </p>*/}
-              {/*    {order.locationName && <p>{order.locationName}</p>}*/}
-              {/*    {order.locationPhone && <p>{order.locationPhone}</p>}*/}
-              {/*    {order.locationEmail && <p>{order.locationEmail}</p>}*/}
-              {/*  </div>*/}
-              {/*</div>*/}
             </div>
 
             {/* Right: PO meta */}
@@ -269,11 +239,11 @@ export default function SharePurchaseOrder({
                         {index + 1}
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-900">
-                        {item.stockName} -{" "}
+                        {item.stockName}
                         {item.stockVariantName &&
                         item.stockVariantName !== item.stockName
-                          ? item.stockVariantName
-                          : "—"}
+                          ? ` — ${item.stockVariantName}`
+                          : ""}
                       </td>
                       <td className="px-4 py-3 text-right font-bold text-gray-900">
                         {item.quantity?.toLocaleString()}
@@ -282,9 +252,9 @@ export default function SharePurchaseOrder({
                   ),
                 )}
                 {/* Total row */}
-                <tr>
+                <tr style={{ borderTop: `2px solid ${SECONDARY}` }}>
                   <td
-                    colSpan={3}
+                    colSpan={2}
                     className="px-4 py-3 text-sm font-semibold text-right"
                   >
                     Total Quantity:

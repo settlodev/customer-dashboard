@@ -265,6 +265,24 @@ function StockPurchaseForm({
               <ArrowLeft className="h-4 w-4" />
               Back to Purchases
             </Button>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                onClick={copyShareLink}
+                className="gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                Copy Share Link
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.print()}
+                className="gap-2"
+              >
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+            </div>
           </div>
 
           {/* ── Success banner (no-print) ── */}
@@ -415,7 +433,6 @@ function StockPurchaseForm({
                     <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
                       Item Description
                     </th>
-
                     <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white w-32">
                       Quantity
                     </th>
@@ -448,9 +465,9 @@ function StockPurchaseForm({
                       </tr>
                     ),
                   )}
-                  <tr>
+                  <tr style={{ borderTop: `2px solid ${SECONDARY}` }}>
                     <td
-                      colSpan={3}
+                      colSpan={2}
                       className="px-4 py-3 text-sm font-semibold text-right"
                     >
                       Total Quantity:
