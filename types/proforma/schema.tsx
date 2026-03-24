@@ -1,4 +1,4 @@
-import { number, object, string } from "zod";
+import { boolean, number, object, string } from "zod";
 export const ProformaSchema = object({
   customer: string({ required_error: "Customer is required" }).min(
     3,
@@ -18,4 +18,5 @@ export const UpdateProformaSchema = object({
   discount: string().optional().default(""),
   manualDiscountAmount: number().min(0).default(0),
   expiresAt: string().optional().default(""),
+  showTaxAmounts: boolean(),
 });

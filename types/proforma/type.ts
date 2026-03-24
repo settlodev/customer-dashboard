@@ -6,6 +6,7 @@ export interface Proforma {
   proformaStatus: "DRAFT" | "COMPLETED" | "CANCELLED" | string;
   notes: string | null;
   taxExclusiveGrossAmount: number;
+  showTaxAmounts: boolean;
   taxAmount: number;
   grossAmount: number;
   manualDiscountAmount: number;
