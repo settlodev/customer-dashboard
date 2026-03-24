@@ -32,9 +32,10 @@ import {
   Truck,
   Clock,
   Shield,
-  Palette,
   UtensilsCrossed,
+  AlertTriangle,
 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { OnlineMenu, MenuSettings, MenuOrderingStatus } from "@/types/online-menu/type";
 import {
@@ -62,6 +63,7 @@ const DigitalMenuSettings = () => {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [menuToDelete, setMenuToDelete] = useState<OnlineMenu | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -121,23 +123,28 @@ const DigitalMenuSettings = () => {
   const handleDeleteConfirm = async () => {
     if (!menuToDelete) return;
 
-    const result = await deleteOnlineMenu(menuToDelete.id);
-    if (result.responseType === "success") {
-      setMenus((prev) => prev.filter((m) => m.id !== menuToDelete.id));
-      if (selectedMenu?.id === menuToDelete.id) {
-        setSelectedMenu(null);
-        setMenuSettings(null);
+    setIsDeleting(true);
+    try {
+      const result = await deleteOnlineMenu(menuToDelete.id);
+      if (result.responseType === "success") {
+        setMenus((prev) => prev.filter((m) => m.id !== menuToDelete.id));
+        if (selectedMenu?.id === menuToDelete.id) {
+          setSelectedMenu(null);
+          setMenuSettings(null);
+        }
+        toast({ variant: "success", title: "Success", description: result.message });
+      } else {
+        toast({
+          title: "Error",
+          description: result.message,
+          variant: "destructive",
+        });
       }
-      toast({ title: "Success", description: result.message });
-    } else {
-      toast({
-        title: "Error",
-        description: result.message,
-        variant: "destructive",
-      });
+      setShowDeleteDialog(false);
+      setMenuToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
-    setShowDeleteDialog(false);
-    setMenuToDelete(null);
   };
 
   const handleCopySlug = (slug: string) => {
@@ -378,18 +385,34 @@ const DigitalMenuSettings = () => {
             <DialogTitle>Delete Menu</DialogTitle>
             <DialogDescription>
               Are you sure you want to delete &quot;{menuToDelete?.name}&quot;?
-              This will also delete all associated settings and cannot be undone.
             </DialogDescription>
           </DialogHeader>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Warning: This action is irreversible</AlertTitle>
+            <AlertDescription>
+              Deleting this menu will permanently remove it along with all
+              associated settings. All shared QR codes and URLs linked to this
+              menu will stop working and will no longer be accessible.
+            </AlertDescription>
+          </Alert>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setShowDeleteDialog(false)}
+              disabled={isDeleting}
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Delete
+            <Button variant="destructive" onClick={handleDeleteConfirm} disabled={isDeleting}>
+              {isDeleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -421,7 +444,7 @@ function CreateMenuDialog({
         description: description || undefined,
       });
       if (result.responseType === "success" && result.data) {
-        toast({ title: "Success", description: result.message });
+        toast({ variant: "success", title: "Success", description: result.message });
         onCreated(result.data);
         setName("");
         setDescription("");
@@ -524,7 +547,7 @@ function MenuSettingsView({
         image: menu.image || undefined,
       });
       if (result.responseType === "success" && result.data) {
-        toast({ title: "Success", description: result.message });
+        toast({ variant: "success", title: "Success", description: result.message });
         onMenuUpdated(result.data);
         setIsEditingName(false);
       } else {
@@ -541,7 +564,7 @@ function MenuSettingsView({
     startQrTransition(async () => {
       const result = await generateQrCode(menu.id);
       if (result.responseType === "success" && result.data) {
-        toast({ title: "Success", description: result.message });
+        toast({ variant: "success", title: "Success", description: result.message });
         onMenuUpdated(result.data);
       } else {
         toast({
@@ -685,57 +708,57 @@ function MenuSettingsView({
             </div>
 
             {/* Right: QR Code */}
-            <div className="flex flex-col items-center justify-center md:border-l md:pl-6">
+            <div className="flex flex-col items-center justify-center md:border-l md:pl-6 w-44 shrink-0">
               {menu.qrCode ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="w-full aspect-square rounded-xl bg-white p-2 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="w-40 h-40 rounded-lg bg-white p-0.5 flex items-center justify-center">
                     <img
                       src={menu.qrCode}
                       alt={`QR code for ${menu.name}`}
                       className="w-full h-full object-contain"
                     />
                   </div>
-                  <div className="flex gap-2 w-full">
+                  <div className="flex gap-1.5 w-full">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleDownloadQr}
-                      className="gap-2 flex-1"
+                      className="gap-1.5 flex-1 text-xs h-8"
                     >
-                      <Download className="h-4 w-4" />
+                      <Download className="h-3.5 w-3.5" />
                       Download
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleCopyUrl}
-                      className="gap-2 flex-1"
+                      className="gap-1.5 flex-1 text-xs h-8"
                     >
                       {copiedUrl ? (
-                        <Check className="h-4 w-4 text-green-500" />
+                        <Check className="h-3.5 w-3.5 text-green-500" />
                       ) : (
-                        <Copy className="h-4 w-4" />
+                        <Copy className="h-3.5 w-3.5" />
                       )}
-                      {copiedUrl ? "Copied" : "Copy URL"}
+                      {copiedUrl ? "Copied" : "URL"}
                     </Button>
                   </div>
                 </div>
               ) : (
-                <div className="w-full aspect-square rounded-xl border border-dashed bg-gray-50 dark:bg-gray-800/50 flex flex-col items-center justify-center gap-3">
-                  <QrCode className="h-12 w-12 text-muted-foreground/40" />
+                <div className="w-32 h-32 rounded-lg border border-dashed bg-gray-50 dark:bg-gray-800/50 flex flex-col items-center justify-center gap-2">
+                  <QrCode className="h-8 w-8 text-muted-foreground/40" />
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handleGenerateQr}
                     disabled={isQrPending}
-                    className="gap-2"
+                    className="gap-1.5 text-xs h-7"
                   >
                     {isQrPending ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <QrCode className="h-4 w-4" />
+                      <QrCode className="h-3.5 w-3.5" />
                     )}
-                    Generate QR Code
+                    Generate
                   </Button>
                 </div>
               )}
@@ -1123,35 +1146,6 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
         min: 5,
         step: 5,
         placeholder: "15",
-      },
-    ],
-  },
-  {
-    id: "branding",
-    title: "Branding & SEO",
-    description: "Public-facing branding and search engine settings",
-    icon: Palette,
-    fields: [
-      {
-        key: "themeColor",
-        label: "Theme Color",
-        helperText: "Primary color for your menu (hex code)",
-        type: "text",
-        placeholder: "#EB7F44",
-      },
-      {
-        key: "metaTitle",
-        label: "SEO Title",
-        helperText: "Title shown in search engine results",
-        type: "text",
-        placeholder: "Your Business - Order Online",
-      },
-      {
-        key: "metaDescription",
-        label: "SEO Description",
-        helperText: "Description shown in search engine results",
-        type: "text",
-        placeholder: "Order online from...",
       },
     ],
   },

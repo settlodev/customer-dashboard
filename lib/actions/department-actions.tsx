@@ -13,7 +13,6 @@ import {
 } from "./business/get-current-business";
 import { Department, Report } from "@/types/department/type";
 import { DepartmentSchema } from "@/types/department/schema";
-// import { isRedirectError } from "next/dist/client/components/redirect";
 
 export const fectchAllDepartments = async (): Promise<Department[]> => {
   await getAuthenticatedUser();

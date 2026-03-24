@@ -15,6 +15,7 @@ export const ErrorCodes = {
     PHONE_EXISTS: 'PHONE_EXISTS',
     WRONG_CREDENTIALS: 'WRONG_CREDENTIALS',
     EMAIL_VERIFIED: 'EMAIL_VERIFIED',
+    SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
     STOCK_VARIANT: 'STOCK_VARIANT',
 } as const;
 
@@ -159,6 +160,16 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
                             stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
                             details: error.response.data
                         }
+                    );
+
+                case 502:
+                case 503:
+                case 504:
+                    return createErrorResponse(
+                        status,
+                        ErrorCodes.SERVICE_UNAVAILABLE,
+                        serverMessage || 'Service is temporarily unavailable. Please try again later.',
+                        errorDetails
                     );
 
                 default:

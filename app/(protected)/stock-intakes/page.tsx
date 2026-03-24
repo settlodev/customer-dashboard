@@ -13,7 +13,6 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-intake/column";
 import { searchStockIntakes } from "@/lib/actions/stock-intake-actions";
 import { StockIntake } from "@/types/stock-intake/type";
-import { RecordStockIntakeButton } from "@/components/widgets/record-stock-intake-button";
 
 const breadCrumbItems = [{ title: "Stock Intake", link: "/stock-intakes" }];
 
@@ -34,7 +33,6 @@ async function Page({ searchParams }: Params) {
 
   const responseData = await searchStockIntakes(q, page, pageLimit);
   const data: StockIntake[] = responseData.content;
-  console.log("The stock intakes are", responseData);
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
 
@@ -45,9 +43,8 @@ async function Page({ searchParams }: Params) {
         <BreadcrumbsNav items={breadCrumbItems} />
 
         <div className="flex items-center gap-2">
-          <RecordStockIntakeButton />
           <Button asChild>
-            <Link href="/stock-purchases/new">Create purchase order</Link>
+            <Link href="/stock-intakes/new">Record intake</Link>
           </Button>
         </div>
       </div>

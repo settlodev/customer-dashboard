@@ -18,6 +18,7 @@ import {
 } from "@/lib/actions/business/get-current-business";
 import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
+import { cn } from "@/lib/utils";
 import Loading from "@/components/ui/loading";
 import ProfitLossStatement from "@/components/widgets/profit&loss";
 
@@ -28,39 +29,33 @@ function DateTimePicker({
   value: Date;
   onChange: (date: Date) => void;
 }) {
-  const [isOpen, setIsOpen] = useState(false);
-
   const handleDateSelect = (selected: Date | undefined) => {
     if (selected) {
-      const newDate = new Date(selected);
-      newDate.setHours(value.getHours());
-      newDate.setMinutes(value.getMinutes());
-      onChange(newDate);
+      const d = new Date(selected);
+      d.setHours(value.getHours());
+      d.setMinutes(value.getMinutes());
+      onChange(d);
     }
   };
-
   const handleTimeChange = (type: "hour" | "minute", val: string) => {
-    const newDate = new Date(value);
-    if (type === "hour") {
-      newDate.setHours(parseInt(val, 10));
-    } else {
-      newDate.setMinutes(parseInt(val, 10));
-    }
-    onChange(newDate);
+    const d = new Date(value);
+    type === "hour"
+      ? d.setHours(parseInt(val, 10))
+      : d.setMinutes(parseInt(val, 10));
+    onChange(d);
   };
-
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover>
       <PopoverTrigger asChild>
         <Button
           variant="outline"
-          className="w-full justify-start text-left font-normal"
+          className="w-full justify-start text-left font-normal h-9 text-sm"
         >
-          <CalendarIcon className="hidden mr-2 h-4 w-4" />
-          {format(value, "MM/dd/yyyy HH:mm")}
+          <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+          {format(value, "dd MMM yyyy, HH:mm")}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0">
+      <PopoverContent className="w-auto p-0" align="start">
         <div className="sm:flex">
           <Calendar
             mode="single"
@@ -71,14 +66,15 @@ function DateTimePicker({
           <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
             <ScrollArea className="w-64 sm:w-auto">
               <div className="flex sm:flex-col p-2">
-                {Array.from({ length: 24 }, (_, i) => i).map((hour) => (
+                {Array.from({ length: 24 }, (_, i) => i).map((h) => (
                   <Button
-                    key={hour}
+                    key={h}
                     size="icon"
-                    variant={value.getHours() === hour ? "default" : "ghost"}
-                    onClick={() => handleTimeChange("hour", hour.toString())}
+                    variant={value.getHours() === h ? "default" : "ghost"}
+                    className="sm:w-full shrink-0 aspect-square text-xs"
+                    onClick={() => handleTimeChange("hour", h.toString())}
                   >
-                    {hour}
+                    {h}
                   </Button>
                 ))}
               </div>
@@ -86,18 +82,15 @@ function DateTimePicker({
             </ScrollArea>
             <ScrollArea className="w-64 sm:w-auto">
               <div className="flex sm:flex-col p-2">
-                {Array.from({ length: 12 }, (_, i) => i * 5).map((minute) => (
+                {Array.from({ length: 12 }, (_, i) => i * 5).map((m) => (
                   <Button
-                    key={minute}
+                    key={m}
                     size="icon"
-                    variant={
-                      value.getMinutes() === minute ? "default" : "ghost"
-                    }
-                    onClick={() =>
-                      handleTimeChange("minute", minute.toString())
-                    }
+                    variant={value.getMinutes() === m ? "default" : "ghost"}
+                    className="sm:w-full shrink-0 aspect-square text-xs"
+                    onClick={() => handleTimeChange("minute", m.toString())}
                   >
-                    {minute.toString().padStart(2, "0")}
+                    {m.toString().padStart(2, "0")}
                   </Button>
                 ))}
               </div>
@@ -112,8 +105,8 @@ function DateTimePicker({
 
 const ProfitAndLossPage: React.FC = () => {
   const [startDate, setStartDate] = useState(() => {
-    const now = new Date();
-    return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+    const d = new Date();
+    return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
   });
   const [endDate, setEndDate] = useState(new Date());
   const [summaries, setSummaries] = useState<SummaryResponse | null>(null);
@@ -123,49 +116,40 @@ const ProfitAndLossPage: React.FC = () => {
   const [isFiltering, setIsFiltering] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [summary, loc, biz] = await Promise.all([
-          fetchSummaries(startDate.toISOString(), endDate.toISOString()),
-          getCurrentLocation(),
-          getCurrentBusiness(),
-        ]);
+    Promise.all([
+      fetchSummaries(
+        format(startDate, "yyyy-MM-dd"),
+        format(endDate, "yyyy-MM-dd"),
+      ),
+      getCurrentLocation(),
+      getCurrentBusiness(),
+    ])
+      .then(([summary, loc, biz]) => {
         setSummaries(summary as SummaryResponse);
         setLocation(loc);
         setBusiness(biz);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchData();
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleFilter = async () => {
     setIsFiltering(true);
     try {
       const summary = await fetchSummaries(
-        startDate.toISOString(),
-        endDate.toISOString(),
+        format(startDate, "yyyy-MM-dd"),
+        format(endDate, "yyyy-MM-dd"),
       );
       setSummaries(summary as SummaryResponse);
-    } catch (error) {
-      console.error("Error fetching summaries:", error);
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsFiltering(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <Loading />
-      </div>
-    );
-  }
-
-  if (!summaries || !location || !business) {
+  if (isLoading || !summaries || !location || !business) {
     return (
       <div className="flex items-center justify-center h-full">
         <Loading />
@@ -174,30 +158,51 @@ const ProfitAndLossPage: React.FC = () => {
   }
 
   return (
-    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 space-y-6 min-h-screen">
-      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 space-y-5 min-h-screen">
+      {/* ── Page header ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
+          <h1 className="text-lg font-semibold tracking-tight">
             Profit & loss statement
           </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
+          <p className="text-sm text-muted-foreground mt-0.5">
             Financial performance overview
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
-          <DateTimePicker value={startDate} onChange={setStartDate} />
-          <DateTimePicker value={endDate} onChange={setEndDate} />
-          <Button onClick={handleFilter} disabled={isFiltering}>
+        {/* ── Filter bar ── */}
+        <div className="flex flex-col sm:flex-row sm:items-end gap-2 p-3 bg-background border rounded-xl">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+              From
+            </span>
+            <DateTimePicker value={startDate} onChange={setStartDate} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+              To
+            </span>
+            <DateTimePicker value={endDate} onChange={setEndDate} />
+          </div>
+          <Button
+            onClick={handleFilter}
+            disabled={isFiltering}
+            size="sm"
+            className="h-9 text-sm"
+          >
             {isFiltering ? (
-              <div className="border-t-transparent border-4 border-green-500 w-[20px] h-[20px] rounded-full animate-spin" />
+              <div className="h-4 w-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
-              "Filter"
+              "Apply"
             )}
           </Button>
         </div>
       </div>
 
-      <ProfitLossStatement salesData={summaries} business={business} location={location} />
+      <ProfitLossStatement
+        salesData={summaries}
+        business={business}
+        location={location}
+      />
     </div>
   );
 };

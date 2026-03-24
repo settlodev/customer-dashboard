@@ -177,7 +177,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
               src={business?.logo || "/images/logo.png"}
               alt={location.name}
               fill
-              className="rounded-full object-cover bg-emerald-400 p-1"
+              className="rounded-full object-cover bg-primary/20 p-1"
             />
           </div>
           <div className="flex flex-col flex-1 min-w-0">
@@ -197,10 +197,10 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
             </div>
           </div>
           {isLoading ? (
-            <Loader2 className="h-4 w-4 text-emerald-500 animate-spin shrink-0" />
+            <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
           ) : (
             isActive && (
-              <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+              <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
             )
           )}
         </DropdownMenuItem>
@@ -248,7 +248,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
               src={business?.logo || "/images/logo.png"}
               alt={warehouse.name || "Warehouse"}
               fill
-              className="rounded-full object-cover bg-emerald-400 p-1"
+              className="rounded-full object-cover bg-primary/20 p-1"
             />
           </div>
           <div className="flex flex-col flex-1 min-w-0">
@@ -260,10 +260,10 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
             </p>
           </div>
           {isLoading ? (
-            <Loader2 className="h-4 w-4 text-emerald-500 animate-spin shrink-0" />
+            <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
           ) : (
             isActive && (
-              <div className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
+              <div className="h-2 w-2 rounded-full bg-primary shrink-0" />
             )
           )}
         </DropdownMenuItem>
@@ -280,7 +280,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         <DropdownMenuTrigger asChild>
           <Button
             variant="ghost"
-            className="w-full px-2 hover:bg-gray-700/50"
+            className="w-full px-2 hover:bg-gray-100 dark:hover:bg-gray-800"
             disabled={loadingLocationId !== null}
           >
             <div className="flex items-center gap-3 w-full">
@@ -289,7 +289,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                   src={business?.logo || "/images/logo.png"}
                   alt={business?.name || "Business logo"}
                   fill
-                  className="rounded-full object-cover bg-emerald-400 p-1"
+                  className="rounded-full object-cover bg-primary/20 p-1"
                 />
               </div>
               <div className="flex flex-col items-start flex-1 min-w-0">
@@ -331,7 +331,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
               disabled={loadingLocationId !== null}
             >
               <Button
-                className="w-full bg-emerald-400 hover:bg-emerald-500 text-gray-800"
+                className="w-full bg-primary/20 hover:bg-primary text-gray-800"
                 size="sm"
                 disabled={loadingLocationId !== null}
               >
@@ -346,7 +346,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
               disabled={loadingLocationId !== null}
             >
               <Button
-                className="w-full bg-emerald-400 hover:bg-emerald-500 text-gray-800"
+                className="w-full bg-primary/20 hover:bg-primary text-gray-800"
                 size="sm"
                 disabled={loadingLocationId !== null}
               >
@@ -392,7 +392,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                 }
               }}
               disabled={loadingLocationId !== null}
-              className="bg-emerald-500 hover:bg-emerald-600 text-white"
+              className="bg-primary hover:bg-orange-600 text-white"
             >
               {loadingLocationId ? (
                 <>

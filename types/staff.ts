@@ -77,6 +77,7 @@ export declare interface Staff {
   id: UUID;
   firstName: string;
   lastName: string;
+  name?: string;
   email?: string;
   phone?: string;
   image?: string;
@@ -84,12 +85,14 @@ export declare interface Staff {
   color?: string;
   salary: string;
   role: string;
+  roleName?: string;
   gender: Gender;
   jobTitle: string;
   business: string;
   location: string;
   employeeNumber?: string;
   department?: UUID;
+  departmentName?: string;
   address?: string;
   notes?: string;
   emergencyNumber?: string;
@@ -97,13 +100,17 @@ export declare interface Staff {
   emergencyRelationship?: string;
   posAccess: boolean;
   dashboardAccess: boolean;
+  loyaltyPoints: number | null;
+  salaryAmount?: number | null;
+  nationalityName?: string;
+  userType?: string;
   canDelete: boolean;
   isArchived: boolean;
   status: boolean;
   dateOfBirth?: Date;
   nationality?: string;
   joiningDate: Date;
-  warehouseRole?: string
+  warehouseRole?: string;
 }
 
 export declare interface StaffSummaryReport{

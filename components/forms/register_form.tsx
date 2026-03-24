@@ -310,7 +310,7 @@ function RegisterForm({ step }: { step: string }) {
         <div className="relative">
           <div className="absolute inset-0 bg-gray-200/50 rounded-full h-1 top-[20px]"></div>
           <div
-            className="absolute bg-gradient-to-r from-emerald-500 to-emerald-600 h-1 rounded-full top-[20px] transition-all duration-500"
+            className="absolute bg-gradient-to-r from-primary to-orange-600 h-1 rounded-full top-[20px] transition-all duration-500"
             style={{
               width: `${((stepsDone.length + 1) / signUpSteps.length) * 100}%`,
             }}
@@ -332,9 +332,9 @@ function RegisterForm({ step }: { step: string }) {
                       w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300
                       ${
                         isDone
-                          ? "bg-gradient-to-r from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/30"
+                          ? "bg-gradient-to-r from-primary to-orange-600 shadow-lg shadow-primary/30"
                           : isCurrent
-                            ? "bg-white border-2 border-emerald-500 shadow-md"
+                            ? "bg-white border-2 border-primary shadow-md"
                             : "bg-white border-2 border-gray-300"
                       }
                   `}
@@ -343,7 +343,7 @@ function RegisterForm({ step }: { step: string }) {
                       <CheckIcon size={20} className="text-white" />
                     ) : (
                       <span
-                        className={`${isCurrent ? "text-emerald-600" : "text-gray-400"}`}
+                        className={`${isCurrent ? "text-primary" : "text-gray-400"}`}
                       >
                         {item.icon}
                       </span>
@@ -373,8 +373,8 @@ function RegisterForm({ step }: { step: string }) {
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="space-y-1 pb-6">
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <User className="w-5 h-5 text-emerald-600" />
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <User className="w-5 h-5 text-primary" />
                 </div>
                 <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   Personal Information
@@ -407,7 +407,7 @@ function RegisterForm({ step }: { step: string }) {
                               <Input
                                 disabled={isPending}
                                 placeholder="Enter your first name"
-                                className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                className=""
                                 {...field}
                               />
                             </FormControl>
@@ -428,7 +428,7 @@ function RegisterForm({ step }: { step: string }) {
                               <Input
                                 disabled={isPending}
                                 placeholder="Enter your last name"
-                                className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                className=""
                                 {...field}
                               />
                             </FormControl>
@@ -521,7 +521,7 @@ function RegisterForm({ step }: { step: string }) {
                                 disabled={isPending}
                                 value={field.value || ""}
                                 placeholder="Enter referral code (optional)"
-                                className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                className=""
                               />
                             </FormControl>
                             <FormMessage />
@@ -545,7 +545,7 @@ function RegisterForm({ step }: { step: string }) {
                                 {...field}
                                 type="email"
                                 disabled={isPending}
-                                className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                className=""
                               />
                             </FormControl>
                             <FormMessage />
@@ -567,7 +567,7 @@ function RegisterForm({ step }: { step: string }) {
                                   disabled={isPending}
                                   type={showPassword ? "text" : "password"}
                                   placeholder="Create a strong password"
-                                  className="border-gray-200 focus:border-emerald-500 transition-colors pr-10"
+                                  className="pr-10"
                                   {...field}
                                 />
                                 <button
@@ -594,7 +594,7 @@ function RegisterForm({ step }: { step: string }) {
                     <Button
                       type="submit"
                       disabled={isPending || emailVerified}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/25"
+                      className="w-full bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                     >
                       {isPending ? (
                         <Loader2Icon className="w-5 h-5 animate-spin" />
@@ -614,8 +614,8 @@ function RegisterForm({ step }: { step: string }) {
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="space-y-1 pb-6">
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <Mail className="w-5 h-5 text-emerald-600" />
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Mail className="w-5 h-5 text-primary" />
                 </div>
                 <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   Verify Your Email
@@ -638,10 +638,10 @@ function RegisterForm({ step }: { step: string }) {
                     submitEmailVerificationData,
                   )}
                 >
-                  <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-6 space-y-4">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-6 space-y-4">
                     <div className="flex items-start gap-3">
-                      <div className="p-2 bg-emerald-100 rounded-full mt-1">
-                        <Mail className="w-4 h-4 text-emerald-600" />
+                      <div className="p-2 bg-orange-100 rounded-full mt-1">
+                        <Mail className="w-4 h-4 text-primary" />
                       </div>
                       <div className="space-y-2">
                         <p className="text-gray-700 font-medium">
@@ -671,7 +671,7 @@ function RegisterForm({ step }: { step: string }) {
                   ) : (
                     <Button
                       type="submit"
-                      className="w-full mt-6 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/25"
+                      className="w-full mt-6 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                       disabled={isPending}
                     >
                       {isPending ? (
@@ -718,8 +718,8 @@ function RegisterForm({ step }: { step: string }) {
           <Card className="border-0 shadow-xl bg-white/80 backdrop-blur-sm">
             <CardHeader className="space-y-1 pb-6">
               <div className="flex items-center gap-2 mb-2">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <Building2 className="w-5 h-5 text-emerald-600" />
+                <div className="p-2 bg-orange-100 rounded-lg">
+                  <Building2 className="w-5 h-5 text-primary" />
                 </div>
                 <CardTitle className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                   Business Setup
@@ -744,7 +744,7 @@ function RegisterForm({ step }: { step: string }) {
                   <div className="space-y-6">
                     <div className="flex flex-col lg:flex-row gap-6">
                       <div className="lg:w-1/4">
-                        <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 p-6 rounded-xl border border-emerald-200">
+                        <div className="bg-gradient-to-br from-orange-50 to-orange-100/50 p-6 rounded-xl border border-orange-200">
                           <UploadImageWidget
                             imagePath={"business"}
                             displayStyle={"default"}
@@ -770,7 +770,7 @@ function RegisterForm({ step }: { step: string }) {
                                     placeholder="Enter your business name"
                                     {...field}
                                     disabled={isPending}
-                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                    className=""
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -791,7 +791,7 @@ function RegisterForm({ step }: { step: string }) {
                                     placeholder="Enter location name"
                                     {...field}
                                     disabled={isPending}
-                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                    className=""
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -816,7 +816,7 @@ function RegisterForm({ step }: { step: string }) {
                                     disabled={isPending}
                                     value={field.value || ""}
                                     onChange={(value) => field.onChange(value)}
-                                    className="border-gray-200 focus:border-emerald-500"
+                                    className=""
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -839,7 +839,7 @@ function RegisterForm({ step }: { step: string }) {
                                     type="email"
                                     value={field.value || ""}
                                     placeholder="Enter your business email address"
-                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                    className=""
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -908,7 +908,7 @@ function RegisterForm({ step }: { step: string }) {
                                     {...field}
                                     disabled={isPending}
                                     placeholder="Enter city name"
-                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                    className=""
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -929,7 +929,7 @@ function RegisterForm({ step }: { step: string }) {
                                     {...field}
                                     disabled={isPending}
                                     placeholder="Enter address"
-                                    className="border-gray-200 focus:border-emerald-500 transition-colors"
+                                    className=""
                                   />
                                 </FormControl>
                                 <FormMessage />
@@ -953,7 +953,7 @@ function RegisterForm({ step }: { step: string }) {
                                     onValueChange={field.onChange}
                                     value={field.value}
                                   >
-                                    <SelectTrigger className="border-gray-200 focus:border-emerald-500 transition-colors">
+                                    <SelectTrigger className="">
                                       <SelectValue placeholder="Select opening time" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -992,7 +992,7 @@ function RegisterForm({ step }: { step: string }) {
                                     onValueChange={field.onChange}
                                     value={field.value}
                                   >
-                                    <SelectTrigger className="border-gray-200 focus:border-emerald-500 transition-colors">
+                                    <SelectTrigger className="">
                                       <SelectValue placeholder="Select closing time" />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1033,7 +1033,7 @@ function RegisterForm({ step }: { step: string }) {
                               placeholder="Tell us about your business..."
                               {...field}
                               disabled={isPending}
-                              className="min-h-[120px] resize-none border-gray-200 focus:border-emerald-500 transition-colors bg-gray-50/50"
+                              className="min-h-[120px] resize-none"
                               maxLength={200}
                               value={field.value || ""}
                             />
@@ -1050,7 +1050,7 @@ function RegisterForm({ step }: { step: string }) {
                   <Button
                     type="submit"
                     disabled={isPending}
-                    className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/25"
+                    className="w-full bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium py-6 rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                   >
                     {isPending ? (
                       <Loader2Icon className="w-5 h-5 animate-spin" />

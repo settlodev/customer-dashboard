@@ -4,147 +4,152 @@ import {
   ChevronDown,
   ChevronUp,
   CreditCard,
+  Info,
+  Loader2,
   Smartphone,
+  Zap,
 } from "lucide-react";
 import { useState } from "react";
-import {
-  PaymentMethodCategory,
-  PaymentMethodType,
-} from "@/types/payments/type";
+import { Switch } from "@/components/ui/switch";
+import { PaymentMethod } from "@/types/payments/type";
 
 interface PaymentMethodCardProps {
-  category: PaymentMethodCategory;
-  selectedMethods: string[];
-  onMethodToggle: (methodId: string) => void;
-  onCategoryToggle: (
-    categoryName: string,
-    methods: PaymentMethodType[],
-    selectAll: boolean,
-  ) => void;
+  method: PaymentMethod;
+  toggling: string | null;
+  onToggle: (methodId: string, enabled: boolean) => void;
 }
 
 export const PaymentMethodCard = ({
-  category,
-  selectedMethods,
-  onMethodToggle,
-  onCategoryToggle,
+  method,
+  toggling,
+  onToggle,
 }: PaymentMethodCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const hasChildren = method.children && method.children.length > 0;
+  const isToggling = toggling === method.id;
+  const anyChildEnabled = hasChildren && method.children!.some((c) => c.enabled);
 
-  const getIcon = (name: string) => {
-    switch (name.toLowerCase()) {
-      case "mobile money":
-        return <Smartphone className="w-6 h-6" />;
-      case "card":
-        return <CreditCard className="w-6 h-6" />;
-      case "bank":
-        return <Building2 className="w-6 h-6" />;
-      case "cash":
-        return <Banknote className="w-6 h-6" />;
+  const getIcon = (code: string) => {
+    switch (code) {
+      case "MOBILE_MONEY":
+        return <Smartphone className="w-4 h-4" />;
+      case "CARD":
+        return <CreditCard className="w-4 h-4" />;
+      case "BANK":
+        return <Building2 className="w-4 h-4" />;
+      case "CASH":
+        return <Banknote className="w-4 h-4" />;
+      case "PAYMENT_AGGREGATORS":
+        return <Zap className="w-4 h-4" />;
       default:
-        return <CreditCard className="w-6 h-6" />;
+        return <CreditCard className="w-4 h-4" />;
     }
   };
 
-  const getColorClass = (name: string) => {
-    switch (name.toLowerCase()) {
-      case "mobile money":
-        return "bg-blue-50 border-blue-200 text-blue-700";
-      case "card":
-        return "bg-purple-50 border-purple-200 text-purple-700";
-      case "bank":
-        return "bg-green-50 border-green-200 text-green-700";
-      case "cash":
-        return "bg-amber-50 border-amber-200 text-amber-700";
-      default:
-        return "bg-gray-50 border-gray-200 text-gray-700";
+  const getStatusText = () => {
+    if (!hasChildren) return method.enabled ? "Enabled" : "Disabled";
+    if (method.enabled) return `All ${method.displayName.toLowerCase()} types accepted`;
+    if (anyChildEnabled) {
+      const enabledChildren = method.children!.filter((c) => c.enabled);
+      return enabledChildren.map((c) => c.displayName).join(", ");
     }
-  };
-
-  const allMethods = category.acceptedPaymentMethodTypes;
-
-  const allSelected = allMethods.every((method) =>
-    selectedMethods.includes(method.id),
-  );
-
-  const someSelected =
-    allMethods.some((method) => selectedMethods.includes(method.id)) &&
-    !allSelected;
-
-  const handleCategoryCheckbox = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onCategoryToggle(category.name, allMethods, !allSelected);
+    return "Disabled";
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full p-6 flex items-center justify-between"
-      >
-        <div className="flex items-center gap-4">
-          <div
-            onClick={handleCategoryCheckbox}
-            className="relative flex items-center justify-center"
-          >
-            <input
-              type="checkbox"
-              checked={allSelected}
-              onChange={() => {}}
-              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              style={{
-                accentColor: someSelected ? "#3b82f6" : undefined,
-                opacity: someSelected ? 0.5 : 1,
-              }}
-            />
-          </div>
-          <div className={`p-3 rounded-lg ${getColorClass(category.name)}`}>
-            {getIcon(category.name)}
-          </div>
-          <div className="text-left">
-            <h3 className="text-lg font-semibold text-gray-900">
-              {category.name}
-            </h3>
-            <p className="text-sm text-gray-500">
-              {allMethods.length} payment{" "}
-              {allMethods.length === 1 ? "method" : "methods"} available
+    <div className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
+      {/* Parent row */}
+      <div className="py-4 px-1 flex items-center justify-between">
+        <div
+          className="flex items-center gap-3 flex-1 cursor-pointer"
+          onClick={() => hasChildren && setIsExpanded(!isExpanded)}
+        >
+          <span className="text-gray-400 dark:text-gray-500">
+            {getIcon(method.code)}
+          </span>
+          <div>
+            <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+              {method.displayName}
+            </span>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+              {getStatusText()}
             </p>
           </div>
         </div>
-        <div className="text-gray-400">
-          {isExpanded ? (
-            <ChevronUp className="w-5 h-5" />
+
+        <div className="flex items-center gap-2">
+          {isToggling ? (
+            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
           ) : (
-            <ChevronDown className="w-5 h-5" />
+            <Switch
+              checked={method.enabled}
+              onCheckedChange={(checked) => onToggle(method.id, checked)}
+            />
+          )}
+          {hasChildren && (
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="text-gray-300 hover:text-gray-500 dark:text-gray-600 dark:hover:text-gray-400 p-0.5"
+            >
+              {isExpanded ? (
+                <ChevronUp className="w-4 h-4" />
+              ) : (
+                <ChevronDown className="w-4 h-4" />
+              )}
+            </button>
           )}
         </div>
-      </button>
+      </div>
 
-      {isExpanded && (
-        <div className="px-6 pb-6 border-t border-gray-100">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mt-4">
-            {allMethods.map((method) => (
-              <div
-                key={method.id}
-                onClick={() => onMethodToggle(method.id)}
-                className="flex items-center gap-3 p-3 rounded-md bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedMethods.includes(method.id)}
-                  onChange={() => {}}
-                  className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                />
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    method.isEnabled ? "bg-green-500" : "bg-gray-300"
-                  }`}
-                />
-                <span className="text-sm text-gray-700 font-medium">
-                  {method.name}
-                </span>
-              </div>
-            ))}
+      {/* Children */}
+      {isExpanded && hasChildren && (
+        <div className="pb-4 pl-8 pr-1">
+          {/* Info message */}
+          <div className="flex items-center gap-1.5 mb-3 text-xs text-gray-400 dark:text-gray-500">
+            <Info className="w-3 h-3 flex-shrink-0" />
+            {method.enabled ? (
+              <span>All types accepted. Toggle individually to be specific.</span>
+            ) : anyChildEnabled ? (
+              <span>Only selected types accepted.</span>
+            ) : (
+              <span>No types enabled.</span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+            {method.children!
+              .sort((a, b) => a.sortOrder - b.sortOrder)
+              .map((child) => {
+                const childToggling = toggling === child.id;
+
+                return (
+                  <div
+                    key={child.id}
+                    className={`flex items-center justify-between py-2.5 px-3 rounded-md border border-gray-100 dark:border-gray-800 ${
+                      method.enabled ? "opacity-50" : ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        {child.displayName}
+                      </span>
+                      {child.integrationCapable && (
+                        <Zap className="w-3 h-3 text-indigo-400" />
+                      )}
+                    </div>
+                    {method.enabled ? (
+                      <span className="text-xs text-gray-400">Included</span>
+                    ) : childToggling ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    ) : (
+                      <Switch
+                        checked={child.enabled}
+                        onCheckedChange={(checked) => onToggle(child.id, checked)}
+                      />
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </div>
       )}

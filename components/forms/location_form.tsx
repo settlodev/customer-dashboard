@@ -44,6 +44,7 @@ import {
 } from "@/components/ui/dialog";
 
 import { Separator } from "../ui/separator";
+import UploadImageWidget from "@/components/widgets/UploadImageWidget";
 
 export const LocationForm = ({
   item,
@@ -56,10 +57,10 @@ export const LocationForm = ({
   multipleStep?: boolean;
   businessId?: string | null;
 }) => {
-  console.log("Business Id passed is", businessId);
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [imageUrl, setImageUrl] = useState(item?.image || "");
 
   const formatTimeForSelect = (timeString: string | null | undefined) => {
     if (!timeString) return undefined;
@@ -96,29 +97,28 @@ export const LocationForm = ({
   }, []);
 
   const submitData = (values: z.infer<typeof LocationSchema>) => {
-    //     console.log("Submitting data:", values);
     setResponse(undefined);
+
+    const locationData = {
+      ...values,
+      image: imageUrl,
+    };
 
     startTransition(async () => {
       try {
-        const operation = item ? "update" : "create";
-        console.log(`Performing ${operation} operation`);
-
         const response = item
-          ? await updateLocation(item.id, values)
-          : await createLocation(values, businessId || undefined);
+          ? await updateLocation(item.id, locationData)
+          : await createLocation(locationData, businessId || undefined);
 
         if (response) {
           setResponse(response);
           if (!item) {
-            // Only reload for create operations
             window.location.href = "/locations";
             return;
           }
           window.location.href = "/select-location";
         }
       } catch (error) {
-        console.error(`${item ? "Update" : "Create"} failed:`, error);
         toast({
           variant: "destructive",
           title: `${item ? "Update" : "Create"} failed`,
@@ -130,7 +130,6 @@ export const LocationForm = ({
       }
     });
   };
-
   return (
     <Form {...form}>
       <form
@@ -141,93 +140,112 @@ export const LocationForm = ({
           <CardContent className="pt-6 space-y-6">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Basic Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location Name</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
+
+              <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-4">
+                {/* Left col — fixed 200px width, same pattern as product form */}
+                <div className="col-span-1">
+                  <div className="flex flex-col items-center">
+                    <UploadImageWidget
+                      imagePath="location"
+                      displayStyle="default"
+                      displayImage={true}
+                      showLabel={true}
+                      label="Upload location image"
+                      setImage={setImageUrl}
+                      image={imageUrl}
+                    />
+                  </div>
+                </div>
+
+                {/* Right col — fills remaining space */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>Location Name</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                            <Input
+                              className="pl-10"
+                              {...field}
+                              disabled={isPending}
+                              placeholder="Enter location name"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <PhoneInput
                             {...field}
                             disabled={isPending}
-                            placeholder="Enter location name"
+                            onChange={(value) => field.onChange(value)}
+                            placeholder="Enter phone number"
                           />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number</FormLabel>
-                      <FormControl>
-                        <PhoneInput
-                          {...field}
-                          disabled={isPending}
-                          onChange={(value) => field.onChange(value)}
-                          placeholder="Enter business location phone number"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                            <Input
+                              className="pl-10"
+                              {...field}
+                              value={field.value || ""}
+                              disabled={isPending}
+                              type="email"
+                              placeholder="Enter email"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            value={field.value || ""}
-                            disabled={isPending}
-                            type="email"
-                            placeholder="Enter business location email"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Location Address</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            placeholder="Enter business location address"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>Location Address</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                            <Input
+                              className="pl-10"
+                              {...field}
+                              disabled={isPending}
+                              placeholder="Enter address"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
             </div>
 
@@ -409,10 +427,18 @@ export const LocationForm = ({
                   <>
                     <FormItem className="flex flex-row items-center justify-between">
                       <div>
-                        <FormLabel className="text-base">Location Status</FormLabel>
+                        <FormLabel className="text-base">
+                          Location Status
+                        </FormLabel>
                         <FormDescription>
                           This location is currently{" "}
-                          <span className={field.value ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                          <span
+                            className={
+                              field.value
+                                ? "text-green-600 font-medium"
+                                : "text-red-600 font-medium"
+                            }
+                          >
                             {field.value ? "enabled" : "disabled"}
                           </span>
                         </FormDescription>
@@ -429,7 +455,10 @@ export const LocationForm = ({
                       <FormMessage />
                     </FormItem>
 
-                    <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+                    <Dialog
+                      open={showStatusDialog}
+                      onOpenChange={setShowStatusDialog}
+                    >
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>

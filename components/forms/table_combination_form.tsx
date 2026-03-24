@@ -124,7 +124,7 @@ const CombinationDialog = ({
       const data = await action;
       if (data) {
         if (data.responseType === "success") {
-          toast({ title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
+          toast({ variant: "success", title: "Success", description: SettloErrorHandler.safeMessage(data.message) });
           onOpenChange(false);
           onSaved();
         } else {
@@ -337,6 +337,7 @@ const TableCombinationManager = ({
     try {
       await deleteTableCombination(id);
       toast({
+        variant: "success",
         title: "Success",
         description: "Table combination deleted successfully",
       });

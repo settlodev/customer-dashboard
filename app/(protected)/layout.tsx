@@ -12,6 +12,9 @@ import {
 } from "@/lib/actions/business/get-current-business";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { BusinessPropsType } from "@/types/business/business-props-type";
+import { Business } from "@/types/business/type";
+import { Location as BusinessLocation } from "@/types/location/type";
 
 export default async function RootLayout({
   children,
@@ -19,35 +22,56 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  const currentBusiness = await getCurrentBusiness();
-  const currentLocation = await getCurrentLocation();
-  const businessList = await getBusinessDropDown();
-  const locationList = await fetchAllLocations();
-  const currentWarehouse = await getCurrentWarehouse();
 
-  const businessData = {
+  let currentBusiness: Business | undefined;
+  let currentLocation: BusinessLocation | undefined;
+  let businessList: Business[] | undefined;
+  let locationList: BusinessLocation[] | null | undefined;
+  let currentWarehouse: any;
+
+  try {
+    const results = await Promise.all([
+      getCurrentBusiness(),
+      getCurrentLocation(),
+      getBusinessDropDown(),
+      fetchAllLocations(),
+      getCurrentWarehouse(),
+    ]);
+    currentBusiness = results[0] ?? undefined;
+    currentLocation = results[1] ?? undefined;
+    businessList = results[2] ?? undefined;
+    locationList = results[3];
+    currentWarehouse = results[4];
+  } catch (error: unknown) {
+    const message = (error && typeof error === "object" && "message" in error)
+      ? (error as { message: string }).message
+      : "Unknown error";
+    console.error("Error loading layout data:", message);
+  }
+
+  const businessData: BusinessPropsType = {
     business: currentBusiness,
     businessList: businessList || [],
     locationList: locationList || [],
     currentLocation: currentLocation,
-    currentWarehouse: currentWarehouse,
+    warehouse: currentWarehouse,
   };
 
   return (
     <SessionProvider session={session}>
       <LoadingBarProvider>
-        <div className="flex h-screen overflow-hidden">
+        <div className="flex h-screen overflow-hidden bg-primary-light dark:bg-gray-950">
           <SidebarWrapper data={businessData} />
 
-          <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden bg-gray-200 dark:bg-gray-950">
+          <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden">
             <div className="relative flex-1 overflow-y-auto">
               <Suspense
                 fallback={
                   <div className="flex justify-center items-center h-full">
                     <div className="flex items-center space-x-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" />
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:0.2s]" />
-                      <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce [animation-delay:0.4s]" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]" />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.4s]" />
                     </div>
                   </div>
                 }

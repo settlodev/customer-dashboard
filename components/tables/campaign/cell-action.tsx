@@ -32,7 +32,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       if (data) {
         await deleteTemplate(data.id);
         toast({
-          variant: "default",
+          variant: "success",
           title: "Success",
           description: "Template deleted successfully!",
         });

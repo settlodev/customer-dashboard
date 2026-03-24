@@ -87,6 +87,7 @@ interface LineItem {
   productName: string;
   variantName: string;
   unitPrice: number;
+  unitTaxExclusivePrice: number;
   quantity: number;
 }
 
@@ -110,9 +111,14 @@ interface ProformaState {
   items: LineItem[];
   discount: number;
   discountId: string | null;
-  note: string;
+  notes: string;
   expiresAt: string;
   business: BusinessInfo | null;
+  grossAmount: number;
+  taxExclusiveGrossAmount: number;
+  netAmount: number;
+  taxAmount: number;
+  showTaxBreakdown: boolean;
 }
 
 interface ProformaInvoiceFormProps {
@@ -852,11 +858,15 @@ function ProductVariantSearch({
   }, [loadingMore, hasMore, query, page, search]);
 
   const selectVariant = (p: Product, v: ProductVariant) => {
+    const unitPrice = v.sellingPrice ?? v.price ?? 0;
     setPending({
       variantId: v.id,
       productName: p.name,
       variantName: v.name ?? "",
-      unitPrice: v.sellingPrice ?? v.price ?? 0,
+      unitPrice,
+      // Before the API responds we don't know the server-computed ex-tax price,
+      // so we optimistically set it equal; it will be overwritten from the payload.
+      unitTaxExclusivePrice: unitPrice,
     });
     setQty(1);
     setOpen(false);
@@ -1250,7 +1260,6 @@ function EditItemPanel({
           <X className="w-4 h-4" />
         </button>
       </div>
-
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-gray-600">Quantity</label>
@@ -1311,12 +1320,10 @@ function EditItemPanel({
           )}
         </div>
       </div>
-
       <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200 text-sm">
         <span className="text-gray-500 text-xs">New Line Total</span>
         <span className="font-bold text-gray-900">{fmt(unitPrice * qty)}</span>
       </div>
-
       <div className="flex gap-2">
         <Button
           type="button"
@@ -1357,6 +1364,8 @@ function DetailsStep({
   initialNote,
   initialExpiresAt,
   initialDiscount,
+  showTaxBreakdown,
+  onTaxBreakdownChange,
   onSave,
   onBack,
 }: {
@@ -1366,15 +1375,17 @@ function DetailsStep({
   initialNote: string;
   initialExpiresAt: string;
   initialDiscount: number;
+  showTaxBreakdown: boolean;
+  onTaxBreakdownChange: (v: boolean) => void;
   onSave: (opts: {
-    note: string;
+    notes: string;
     expiresAt: string;
     discountId: string | null;
     manualDiscountAmount: number;
   }) => Promise<void>;
   onBack: () => void;
 }) {
-  const [note, setNote] = useState(initialNote);
+  const [notes, setNote] = useState(initialNote);
   const [expiresAt, setExpiresAt] = useState(initialExpiresAt);
   const [applyDiscount, setApplyDiscount] = useState<boolean | null>(
     initialDiscount > 0 ? true : null,
@@ -1416,7 +1427,7 @@ function DetailsStep({
 
   const handleSave = async () => {
     await onSave({
-      note,
+      notes,
       expiresAt,
       discountId:
         discountSource === "api" ? (selectedDiscount?.id ?? null) : null,
@@ -1443,7 +1454,7 @@ function DetailsStep({
         </label>
         <Textarea
           placeholder="Payment should be wired through our bank account…"
-          value={note}
+          value={notes}
           onChange={(e) => {
             setNote(e.target.value);
             setSaved(false);
@@ -1468,6 +1479,41 @@ function DetailsStep({
           }}
           className="h-10 border-gray-200 focus-visible:ring-gray-400 focus-visible:border-gray-400"
         />
+      </div>
+
+      <Separator className="bg-gray-200" />
+
+      {/* ── Tax breakdown toggle ───────────────────────────────────────────── */}
+      <div className="flex items-center justify-between p-3.5 rounded-xl border border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-2.5">
+          <div className="w-7 h-7 rounded-lg bg-white border border-gray-200 flex items-center justify-center shrink-0">
+            <PercentIcon className="w-3.5 h-3.5 text-gray-700" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-gray-900">
+              Show tax breakdown
+            </p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Reveals pre-tax and VAT lines on the invoice
+            </p>
+          </div>
+        </div>
+        {/* Toggle switch */}
+        <button
+          type="button"
+          role="switch"
+          aria-checked={showTaxBreakdown}
+          onClick={() => onTaxBreakdownChange(!showTaxBreakdown)}
+          className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 ${
+            showTaxBreakdown ? "bg-gray-700" : "bg-gray-200"
+          }`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${
+              showTaxBreakdown ? "translate-x-4" : "translate-x-0.5"
+            }`}
+          />
+        </button>
       </div>
 
       <Separator className="bg-gray-200" />
@@ -1669,11 +1715,7 @@ function ProformaPreview({ state }: { state: ProformaState }) {
       currency: "TZS",
       minimumFractionDigits: 2,
     }).format(n);
-  const grossTotal = state.items.reduce(
-    (s, it) => s + it.unitPrice * it.quantity,
-    0,
-  );
-  const discountedTotal = Math.max(0, grossTotal - (state.discount ?? 0));
+
   const fmtDate = (d: string) => {
     if (!d) return "";
     try {
@@ -1687,8 +1729,31 @@ function ProformaPreview({ state }: { state: ProformaState }) {
     }
   };
 
+  // Use server-computed totals when available, fall back to client-computed values.
+  const grossAmount =
+    state.grossAmount > 0
+      ? state.grossAmount
+      : state.items.reduce((s, it) => s + it.unitPrice * it.quantity, 0);
+
+  const taxExclusiveGrossAmount =
+    state.taxExclusiveGrossAmount > 0
+      ? state.taxExclusiveGrossAmount
+      : state.items.reduce(
+          (s, it) => s + it.unitTaxExclusivePrice * it.quantity,
+          0,
+        );
+
+  // Use the server-returned taxAmount directly — no client-side calculation needed.
+  const taxAmount = state.taxAmount;
+
+  const netAmount =
+    state.netAmount > 0
+      ? state.netAmount
+      : Math.max(0, grossAmount - (state.discount ?? 0));
+
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 text-[12.5px] sticky top-4 transition-all duration-300">
+      {/* ── Header ── */}
       <div className="flex justify-between items-start mb-5">
         <div className="flex items-start gap-3">
           {state.business?.locationLogo && (
@@ -1750,6 +1815,7 @@ function ProformaPreview({ state }: { state: ProformaState }) {
 
       <Separator className="mb-4 bg-gray-100" />
 
+      {/* ── Bill To ── */}
       <div className="mb-5">
         <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold mb-1.5">
           Bill To
@@ -1767,6 +1833,7 @@ function ProformaPreview({ state }: { state: ProformaState }) {
         </div>
       </div>
 
+      {/* ── Line items ── */}
       <div className="mb-5">
         <table className="w-full">
           <thead>
@@ -1774,7 +1841,9 @@ function ProformaPreview({ state }: { state: ProformaState }) {
               {["Item", "Qty", "Price", "Total"].map((h, i) => (
                 <th
                   key={h}
-                  className={`pb-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold ${i === 0 ? "text-left" : "text-right"}`}
+                  className={`pb-2 text-[10px] uppercase tracking-wider text-gray-400 font-semibold ${
+                    i === 0 ? "text-left" : "text-right"
+                  }`}
                 >
                   {h}
                 </th>
@@ -1804,10 +1873,15 @@ function ProformaPreview({ state }: { state: ProformaState }) {
                     {it.quantity.toLocaleString()}
                   </td>
                   <td className="py-2 text-right text-gray-500">
-                    {fmt(it.unitPrice)}
+                    {/* Show ex-tax price per unit when breakdown is toggled on */}
+                    {state.showTaxBreakdown
+                      ? fmt(it.unitTaxExclusivePrice)
+                      : fmt(it.unitPrice)}
                   </td>
                   <td className="py-2 text-right font-semibold text-gray-900">
-                    {fmt(it.unitPrice * it.quantity)}
+                    {state.showTaxBreakdown
+                      ? fmt(it.unitTaxExclusivePrice * it.quantity)
+                      : fmt(it.unitPrice * it.quantity)}
                   </td>
                 </tr>
               ))
@@ -1816,31 +1890,85 @@ function ProformaPreview({ state }: { state: ProformaState }) {
         </table>
       </div>
 
+      {/* ── Totals ── */}
       <div className="flex justify-end mb-5">
-        <div className="w-52 space-y-1.5 text-[12.5px]">
-          <div className="flex justify-between text-gray-500">
-            <span>Subtotal</span>
-            <span>{fmt(grossTotal)}</span>
-          </div>
-          {state.discount > 0 && (
-            <div className="flex justify-between text-red-500 font-medium">
-              <span>Discount</span>
-              <span>− {fmt(state.discount)}</span>
-            </div>
+        <div className="w-56 space-y-1.5 text-[12.5px]">
+          {state.showTaxBreakdown ? (
+            <>
+              {/* Tax-exclusive subtotal */}
+              <div className="flex justify-between text-gray-500">
+                <span>Subtotal (excl. VAT)</span>
+                <span>{fmt(taxExclusiveGrossAmount)}</span>
+              </div>
+              {/* VAT line */}
+              <div className="flex justify-between text-emerald-600 font-medium">
+                <span className="flex items-center gap-1">
+                  VAT
+                  <span className="text-[10px] text-gray-400 font-normal">
+                    (18%)
+                  </span>
+                </span>
+                <span>+ {fmt(taxAmount)}</span>
+              </div>
+              {/* Gross (tax-inclusive total) */}
+              <div className="flex justify-between text-gray-500 border-t border-gray-100 pt-1.5">
+                <span>Gross (incl. VAT)</span>
+                <span>{fmt(grossAmount)}</span>
+              </div>
+              {/* Discount if any */}
+              {state.discount > 0 && (
+                <div className="flex justify-between text-red-500 font-medium">
+                  <span>Discount</span>
+                  <span>− {fmt(state.discount)}</span>
+                </div>
+              )}
+              {/* Net payable */}
+              <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5">
+                <span>Total payable</span>
+                <span>{fmt(netAmount)}</span>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* Standard view — no tax lines */}
+              <div className="flex justify-between text-gray-500">
+                <span>Subtotal</span>
+                <span>{fmt(grossAmount)}</span>
+              </div>
+              {state.discount > 0 && (
+                <div className="flex justify-between text-red-500 font-medium">
+                  <span>Discount</span>
+                  <span>− {fmt(state.discount)}</span>
+                </div>
+              )}
+              <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5">
+                <span>Total</span>
+                <span>{fmt(netAmount)}</span>
+              </div>
+            </>
           )}
-          <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 pt-1.5">
-            <span>Total</span>
-            <span>{fmt(discountedTotal)}</span>
-          </div>
         </div>
       </div>
 
-      {state.note && (
+      {/* ── Tax notice badge (only when breakdown is shown) ── */}
+      {state.showTaxBreakdown && taxAmount > 0 && (
+        <div className="mb-4 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-100 rounded-lg">
+          <PercentIcon className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          <p className="text-[11px] text-emerald-700">
+            Prices are <span className="font-semibold">VAT-inclusive</span> at
+            18%. Tax amount:{" "}
+            <span className="font-semibold">{fmt(taxAmount)}</span>
+          </p>
+        </div>
+      )}
+
+      {/* ── Note ── */}
+      {state.notes && (
         <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
           <p className="text-[10px] font-bold uppercase tracking-wider text-gray-700 mb-1">
             Note
           </p>
-          <p className="text-gray-600 text-[11px]">{state.note}</p>
+          <p className="text-gray-600 text-[11px]">{state.notes}</p>
         </div>
       )}
 
@@ -1873,9 +2001,14 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         items: [],
         discount: 0,
         discountId: null,
-        note: "",
+        notes: "",
         expiresAt: "",
         business: null,
+        grossAmount: 0,
+        taxExclusiveGrossAmount: 0,
+        taxAmount: 0,
+        netAmount: 0,
+        showTaxBreakdown: false,
       };
     }
     return {
@@ -1895,12 +2028,13 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         productName: i.productName,
         variantName: i.productVariantName,
         unitPrice: i.unitPrice,
+        unitTaxExclusivePrice: i.unitTaxExclusivePrice ?? i.unitPrice,
         quantity: i.quantity,
       })),
       discount:
         (item as any).totalDiscountAmount ?? item.appliedDiscountAmount ?? 0,
       discountId: (item as any).appliedDiscountId ?? null,
-      note: item.notes ?? "",
+      notes: item.notes ?? "",
       expiresAt: item.expiresAt ? String(item.expiresAt).split("T")[0] : "",
       business: {
         businessName: item.businessName ?? null,
@@ -1909,6 +2043,11 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         locationPhoneNumber: item.locationPhoneNumber ?? null,
         locationLogo: item.locationLogo ?? null,
       },
+      grossAmount: (item as any).grossAmount ?? 0,
+      taxExclusiveGrossAmount: (item as any).taxExclusiveGrossAmount ?? 0,
+      taxAmount: (item as any).taxAmount ?? 0,
+      netAmount: (item as any).netAmount ?? 0,
+      showTaxBreakdown: false,
     };
   });
 
@@ -1966,11 +2105,22 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         toast.error(result.message);
         return;
       }
-      const itemId: string =
-        (result?.data as { id?: string })?.id ?? newItem.variantId;
+      const data = result?.data as any;
+      const itemId: string = data?.id ?? newItem.variantId;
+      // Use server-computed tax-exclusive price if returned, otherwise fall back.
+      const unitTaxExclusivePrice: number =
+        data?.unitTaxExclusivePrice ?? newItem.unitTaxExclusivePrice;
       setState((prev) => ({
         ...prev,
-        items: [...prev.items, { ...newItem, itemId, quantity }],
+        items: [
+          ...prev.items,
+          { ...newItem, itemId, quantity, unitTaxExclusivePrice },
+        ],
+        grossAmount: data?.grossAmount ?? prev.grossAmount,
+        taxExclusiveGrossAmount:
+          data?.taxExclusiveGrossAmount ?? prev.taxExclusiveGrossAmount,
+        taxAmount: data?.taxAmount ?? prev.taxAmount,
+        netAmount: data?.netAmount ?? prev.netAmount,
       }));
       toast.success("Item added");
     },
@@ -1991,9 +2141,15 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         toast.error(result.message);
         return;
       }
+      const data = result?.data as any;
       setState((prev) => ({
         ...prev,
         items: prev.items.filter((_, i) => i !== index),
+        grossAmount: data?.grossAmount ?? prev.grossAmount,
+        taxExclusiveGrossAmount:
+          data?.taxExclusiveGrossAmount ?? prev.taxExclusiveGrossAmount,
+        taxAmount: data?.taxAmount ?? prev.taxAmount,
+        netAmount: data?.netAmount ?? prev.netAmount,
       }));
       toast.success("Item removed");
     },
@@ -2015,13 +2171,25 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
         toast.error(result.message);
         return;
       }
+      const data = result?.data as any;
       setState((prev) => ({
         ...prev,
         items: prev.items.map((it) =>
           it.itemId === itemId
-            ? { ...it, quantity, unitPrice: unitCustomPrice }
+            ? {
+                ...it,
+                quantity,
+                unitPrice: unitCustomPrice,
+                unitTaxExclusivePrice:
+                  data?.unitTaxExclusivePrice ?? it.unitTaxExclusivePrice,
+              }
             : it,
         ),
+        grossAmount: data?.grossAmount ?? prev.grossAmount,
+        taxExclusiveGrossAmount:
+          data?.taxExclusiveGrossAmount ?? prev.taxExclusiveGrossAmount,
+        taxAmount: data?.taxAmount ?? prev.taxAmount,
+        netAmount: data?.netAmount ?? prev.netAmount,
       }));
       setEditingIndex(null);
       toast.success("Item updated");
@@ -2031,7 +2199,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
 
   const handleSaveDetails = useCallback(
     async (opts: {
-      note: string;
+      notes: string;
       expiresAt: string;
       discountId: string | null;
       manualDiscountAmount: number;
@@ -2041,7 +2209,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
       setDetailsPending(true);
       const result = await updateProforma(
         state.id,
-        opts.note,
+        opts.notes,
         opts.discountId ?? "",
         opts.manualDiscountAmount,
         opts.expiresAt,
@@ -2059,10 +2227,22 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
           : opts.manualDiscountAmount;
       setState((prev) => ({
         ...prev,
-        note: opts.note,
+        notes: opts.notes,
         expiresAt: opts.expiresAt,
         discountId: opts.discountId,
         discount: appliedDiscount,
+        grossAmount:
+          typeof data?.grossAmount === "number"
+            ? data.grossAmount
+            : prev.grossAmount,
+        taxExclusiveGrossAmount:
+          typeof data?.taxExclusiveGrossAmount === "number"
+            ? data.taxExclusiveGrossAmount
+            : prev.taxExclusiveGrossAmount,
+        taxAmount:
+          typeof data?.taxAmount === "number" ? data.taxAmount : prev.taxAmount,
+        netAmount:
+          typeof data?.netAmount === "number" ? data.netAmount : prev.netAmount,
       }));
       toast.success("Proforma updated successfully");
       router.push(`/proforma-invoice/details/${state.id}`);
@@ -2074,6 +2254,7 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
     (s, it) => s + it.unitPrice * it.quantity,
     0,
   );
+
   const fmt = (n: number) =>
     new Intl.NumberFormat("en", {
       style: "currency",
@@ -2289,9 +2470,13 @@ export default function ProformaWizard({ item }: ProformaInvoiceFormProps) {
               grossTotal={grossTotal}
               pending={detailsPending}
               isEditing={!!item}
-              initialNote={state.note}
+              initialNote={state.notes}
               initialExpiresAt={state.expiresAt}
               initialDiscount={state.discount}
+              showTaxBreakdown={state.showTaxBreakdown}
+              onTaxBreakdownChange={(v) =>
+                setState((prev) => ({ ...prev, showTaxBreakdown: v }))
+              }
               onSave={handleSaveDetails}
               onBack={() => setStep(2)}
             />

@@ -39,7 +39,7 @@ export const searchStockPurchases = async (
       `/api/stock-intake-purchase-order/${location?.id}/paginate`,
       query,
     );
-
+    console.log("The LPOs are", data);
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -60,7 +60,6 @@ export const getStockPurchases = async (id: string): Promise<StockPurchase> => {
       `/api/stock-intake-purchase-order/${location.id}/lookup?orderNumber=${id}`,
     );
 
-    console.log("The stock purchase is", stockPurchaseOrder);
     return parseStringify(stockPurchaseOrder);
   } catch (error) {
     console.error("Failed to fetch stock purchases:", error);
@@ -75,6 +74,7 @@ export const previewPurchaseOrder = async (identifier: string | UUID) => {
       `/api/stock-intake-purchase-order/public/lookup?orderNumber=${identifier}`,
     );
 
+    console.log("The previewed purchase order is", purchaseOrder);
     return parseStringify(purchaseOrder);
   } catch (error) {
     throw error;
@@ -247,7 +247,7 @@ export const getStockIntakeReceipt = async (
 
   try {
     const stockIntakeReceipt = await apiClient.get(
-      `/api/stock-intake-receipts/${location.id}/${id}`,
+      `/api/location/${location.id}/hybrid-stock-intakes/${id}`,
     );
 
     return parseStringify(stockIntakeReceipt);

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Open_Sans } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
 import { Providers } from "./providers";
@@ -7,19 +8,34 @@ import React from "react";
 import { Analytics } from "@vercel/analytics/react";
 import { Viewport } from "next";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import WhatsAppButton from "@/components/whatsapp-button";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://www.settlo.co.tz"),
+  title: {
+    default: "Settlo - Daftari la Kidigitali | POS & Business Management",
+    template: "%s | Settlo",
+  },
+  description:
+    "Tanzania's premier POS and business management platform helping African SMEs streamline their operations with sales tracking, inventory control, payments for retail, restaurant & service businesses.",
+  applicationName: "Settlo",
+  generator: "Settlo",
+  referrer: "origin-when-cross-origin",
+  creator: "Settlo Technologies",
+  publisher: "Settlo Technologies",
+  category: "business",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   alternates: {
     canonical: "/",
     languages: {
       "sw-TZ": "/sw",
     },
   },
-  applicationName: "Settlo",
-  description:
-    "Tanzania's premier POS and business management platform helping African SMEs streamline their  operations with sales tracking, inventory control, payments for retail, restaurant & service businesses.",
-  generator: "Settlo",
   keywords: [
     "POS Tanzania",
     "POS system",
@@ -41,37 +57,50 @@ export const metadata: Metadata = {
     "Kuza Biashara",
     "Biashara",
   ],
-  icons: {
-    icon: "/favicon.png",
-    apple: "/apple-icon.png",
-  },
   itunes: {
     appId: "6740162721",
-    appArgument: "https://settlo.co.tz", // Deep link URL
+    appArgument: "https://settlo.co.tz",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Settlo",
   },
   openGraph: {
-    title: "Settlo - Daftari la kidigitali",
+    title: "Settlo - Daftari la Kidigitali | POS & Business Management",
     description:
-      "Tanzania's premier POS and business management platform helping African SMEs streamline their  operations with sales tracking, inventory control, payments for retail, restaurant & service businesses.",
+      "Run your entire business smarter — All in one POS. Save time, cut costs and eliminate guesswork with an efficient platform built for modern businesses.",
     url: "https://settlo.co.tz",
     siteName: "Settlo",
     images: [
       {
-        url: "/public/images/logo.png",
-        width: 852,
-        height: 841,
-        alt: "Settlo - Daftari la kidigitali",
+        url: "https://www.settlo.co.tz/images/logo_new.png",
+        width: 498,
+        height: 220,
+        alt: "Settlo - Daftari la Kidigitali",
+        type: "image/png",
       },
     ],
     locale: "en_TZ",
+    alternateLocale: "sw_TZ",
     type: "website",
+    countryName: "Tanzania",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Settlo - Daftari la kidigitali",
+    title: "Settlo - Daftari la Kidigitali | POS & Business Management",
     description:
-      "Tanzania's premier POS and business management platform helping African SMEs streamline their  operations with sales tracking, inventory control, payments for retail, restaurant & service businesses..",
-    images: ["/twitter-image.png"],
+      "Run your entire business smarter — All in one POS. Save time, cut costs and eliminate guesswork with an efficient platform built for modern businesses.",
+    site: "@settlo",
+    creator: "@settlo",
+    images: [
+      {
+        url: "https://www.settlo.co.tz/images/logo_new.png",
+        width: 498,
+        height: 220,
+        alt: "Settlo - Daftari la Kidigitali",
+      },
+    ],
   },
   robots: {
     index: true,
@@ -81,19 +110,32 @@ export const metadata: Metadata = {
       follow: true,
       "max-image-preview": "large",
       "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  appLinks: {
+    ios: {
+      url: "https://settlo.co.tz",
+      app_store_id: "6740162721",
+      app_name: "Settlo",
+    },
+    android: {
+      package: "tz.co.settlo",
+      app_name: "Settlo",
+      url: "settlo://home",
+    },
+    web: {
+      url: "https://settlo.co.tz",
+      should_fallback: true,
     },
   },
   other: {
-    // Google Play app association
-    "google-play-app": "app-id=tz.co.settlo",
-
-    // Android App Links
-    "al:android:url": "settlo://home",
-    "al:android:app_name": "Settlo",
-    "al:android:package": "tz.co.settlo",
-
-    // Web App Manifest link (for PWA support)
+    "google-play-app": "app-id=tz.co.settlo.v3",
     "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "msapplication-TileColor": "#EB7F44",
+    "msapplication-config": "none",
 
     "script:ld+json": [
       {
@@ -224,7 +266,7 @@ export const metadata: Metadata = {
         "@type": "Organization",
         name: "Settlo",
         url: "https://settlo.co.tz",
-        logo: "https://settlo.co.tz/logo.png",
+        logo: "https://www.settlo.co.tz/images/logo_new.png",
         address: {
           "@type": "PostalAddress",
           streetAddress: "Victoria Noble Centre",
@@ -260,26 +302,56 @@ export const metadata: Metadata = {
   },
 };
 
+const openSans = Open_Sans({
+  subsets: ["latin"],
+  display: "swap",
+});
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  themeColor: "#F0D4BC",
 };
 
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   const session = await auth();
+  const cookieStore = await cookies();
+
+  let businessName: string | undefined;
+  let locationName: string | undefined;
+
+  try {
+    const bizCookie = cookieStore.get("currentBusiness");
+    if (bizCookie) businessName = JSON.parse(bizCookie.value)?.name;
+  } catch {}
+
+  try {
+    const locCookie = cookieStore.get("currentLocation");
+    if (locCookie) locationName = JSON.parse(locCookie.value)?.name;
+  } catch {}
+
   return (
-    <html lang="en" className="bg-primary-light" suppressHydrationWarning={true}>
-      <head>
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#EB7F44" />
-      </head>
-      <body className="antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark">
+    <html
+      lang="en"
+      className="bg-primary-light"
+      suppressHydrationWarning={true}
+    >
+      <head />
+      <body
+        className={`${openSans.className} antialiased bg-primary-light dark:bg-boxdark-2 dark:text-bodydark`}
+      >
         <SessionProvider session={session}>
           <Providers>{children}</Providers>
         </SessionProvider>
+        <WhatsAppButton
+          userName={session?.user?.name ?? undefined}
+          businessName={businessName}
+          locationName={locationName}
+          hideOnReserve
+        />
         <Analytics />
         <GoogleAnalytics gaId="G-7FEFKJQ300" />
       </body>

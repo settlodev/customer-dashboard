@@ -84,6 +84,7 @@ export const ImageUploadModal: React.FC<ImageUploadModalProps> = ({
       await new Promise((resolve) => setTimeout(resolve, 1000)); // Simulate upload
       onSave(previewUrl);
       toast({
+        variant: "success",
         title: "Success",
         description: "Receipt image uploaded successfully",
       });

@@ -139,6 +139,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
 
           if (data && data.responseType === "success") {
             toast({
+              variant: "success",
               title: "Success",
               description: data.message,
             });
@@ -152,6 +153,7 @@ function ModifierForm({ item }: { item: Modifier | null | undefined }) {
 
             if (data && data.responseType === "success") {
               toast({
+                variant: "success",
                 title: "Success",
                 description: data.message,
               });

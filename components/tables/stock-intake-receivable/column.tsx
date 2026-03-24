@@ -47,7 +47,7 @@ export const columns: ColumnDef<StockReceipt>[] = [
     header: "Stock Items",
     enableHiding: false,
     cell: ({ row }) => {
-      const items = row.original.stockIntakeReceiptItems || [];
+      const items = row.original.items || [];
       return (
         <div className="flex flex-col gap-1 max-w-md">
           {items.slice(0, 3).map((item, index) => (

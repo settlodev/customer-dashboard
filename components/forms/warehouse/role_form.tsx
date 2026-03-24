@@ -70,6 +70,7 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
                     updateWarehouseRole(item.id, values).then((data) => {
                         if (data && data.responseType === "success") {
                             toast({
+                                variant: "success",
                                 title: "Success",
                                 description: data.message,
                             });
@@ -87,6 +88,7 @@ const WarehouseRoleForm = ({ item }: { item: WarehouseRole | null | undefined })
                     createWarehouseRole(values).then((data) => {
                         if (data && data.responseType === "success") {
                             toast({
+                                variant: "success",
                                 title: "Success",
                                 description: data.message,
                             });

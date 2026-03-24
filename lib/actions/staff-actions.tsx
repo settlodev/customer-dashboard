@@ -55,12 +55,12 @@ export const searchStaff = async (
           field_type: "STRING",
           value: q,
         },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
+        // {
+        //   key: "isArchived",
+        //   operator: "EQUAL",
+        //   field_type: "BOOLEAN",
+        //   value: false,
+        // },
       ],
       sorts: [
         {
@@ -265,6 +265,26 @@ export const deleteStaff = async (id: UUID): Promise<void> => {
   }
 };
 
+export const archiveStaff = async (ids: string | string[]): Promise<void> => {
+  const apiClient = new ApiClient();
+  const location = await getCurrentLocation();
+
+  const staffIds = Array.isArray(ids) ? ids : [ids];
+
+  await apiClient.put(`/api/staff/${location?.id}/archive`, staffIds);
+  revalidatePath("/staff");
+};
+
+export const unarchiveStaff = async (ids: string | string[]): Promise<void> => {
+  const apiClient = new ApiClient();
+  const location = await getCurrentLocation();
+
+  const staffIds = Array.isArray(ids) ? ids : [ids];
+
+  await apiClient.put(`/api/staff/${location?.id}/unarchive`, staffIds);
+  revalidatePath("/staff");
+};
+
 const inviteStaff = async (staffId: UUID, businessId: UUID): Promise<void> => {
   await getAuthenticatedUser();
 
@@ -316,6 +336,8 @@ export const staffReport = async (
         params,
       },
     );
+
+    console.log("staff report is as follows", report);
 
     return parseStringify(report);
   } catch (error: any) {

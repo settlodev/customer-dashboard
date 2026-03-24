@@ -13,10 +13,13 @@ import OrdersInventorySettings from "@/components/settings/orders-inventory-sett
 import ReservationSettings from "@/components/settings/reservations";
 import { fetchLocationSettings } from "@/lib/actions/settings-actions";
 import Loading from "@/components/ui/loading";
+import LoyaltyPointsSettings from "@/components/settings/loyalty-points-settings";
 import EFDSettings from "@/components/settings/efd";
 import DigitalMenuSettings from "@/components/settings/digital-menu-settings";
 import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
 import BusinessDetailsSettings from "@/components/settings/business-details";
+import IntegrationsSettings from "@/components/settings/integrations";
+import DeviceSettings from "@/components/settings/device-settings";
 import LocationDetailsSettings from "@/components/settings/location-details";
 import { LocationSettings } from "@/types/settings/type";
 import { Business } from "@/types/business/type";
@@ -205,8 +208,16 @@ const SettingsLayout = ({
         return <DigitalMenuSettings />;
       case "payments":
         return <AcceptedPaymentMethodsPage />;
+      case "loyalty-points":
+        return (
+          <LoyaltyPointsSettings locationSettings={locationSettings} />
+        );
       case "efd":
         return <EFDSettings />;
+      case "devices":
+        return <DeviceSettings />;
+      case "integrations":
+        return <IntegrationsSettings />;
       default:
         return (
           <BusinessDetailsSettings

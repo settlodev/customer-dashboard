@@ -16,10 +16,17 @@ export declare interface Business {
     businessTypeName: string,
     slug: string,
     businessAccountNumber: string,
-    storeName: string,
     image: string,
     receiptImage: string,
     logo: string,
+    primaryColor: string | null,
+    secondaryColor: string | null,
+    bannerImageUrl: string | null,
+    faviconUrl: string | null,
+    fontFamily: string | null,
+    metaTitle: string | null,
+    metaDescription: string | null,
+    shareImageUrl: string | null,
     facebook: string,
     twitter: string,
     instagram: string,
@@ -50,6 +57,7 @@ export declare interface MinimalBusiness {
     name: string;
     prefix: string;
     businessType: string;
+    logo: string | null,
     status: boolean,
     user: UUID,
     country: UUID,

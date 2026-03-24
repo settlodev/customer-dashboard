@@ -31,7 +31,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             if (data) {
                 await deleteAddon(data.id);
                 toast({
-                    variant: "default",
+                    variant: "success",
                     title: "Success",
                     description: "Addon deleted successfully!",
                 });

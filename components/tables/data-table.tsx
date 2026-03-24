@@ -17,6 +17,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ListFilter,
+  MoreHorizontal,
   Search,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -37,7 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
 import {
   DoubleArrowLeftIcon,
   DoubleArrowRightIcon,
@@ -58,16 +58,16 @@ import { usePaginationState } from "@/hooks/usePaginationState";
 import TableExport from "../widgets/export";
 import StockExport from "../widgets/export-stock";
 import StockIntakeExport from "../widgets/export-intake";
-import { CSVStockIntakeDialog } from "../csv/stockIntakeImport";
 import { BulkArchive } from "../widgets/bulk-archive";
 import { WarehouseBulkArchive } from "../widgets/warehouse/bulk-archive";
+import { CSVStockIntakeDialog } from "@/components/csv/stockIntakeImport";
 
 // Define page-specific component mappings
 const pageSpecificComponents = {
   "/products": {
     entityType: "product" as const,
-    importComponent: <ProductCSVDialog />,
-    exportComponent: <TableExport filename="products-csv" />,
+    importComponent: null,
+    exportComponent: null,
     entityNames: { singular: "Product", plural: "Products" },
     allowArchive: true,
     isWarehouse: false,
@@ -87,7 +87,7 @@ const pageSpecificComponents = {
   },
   "/stock-intakes": {
     entityType: "stock-intake" as const,
-    importComponent: <CSVStockIntakeDialog />,
+    importComponent: "",
     exportComponent: <StockIntakeExport filename="Stock Intake" />,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
     allowArchive: true,
@@ -108,7 +108,6 @@ const pageSpecificComponents = {
     allowArchive: false,
     isWarehouse: false,
   },
-  // Warehouse-specific pages
   "/warehouse-stock-variants": {
     entityType: "stock" as const,
     importComponent: (
@@ -155,6 +154,8 @@ interface DataTableProps<TData, TValue> {
   filterKey?: string;
   filterOptions?: { label: string; value: string }[];
   disableArchive?: boolean;
+  onRowClick?: (row: TData) => void;
+  rowClickBasePath?: string;
 }
 
 export function DataTable<TData, TValue>({
@@ -166,18 +167,17 @@ export function DataTable<TData, TValue>({
   filterKey,
   filterOptions,
   disableArchive = false,
+  onRowClick,
+  rowClickBasePath,
 }: DataTableProps<TData, TValue>) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const { initializePaginationState, savePaginationState } = usePaginationState(
-    {
-      key: pathname.replace("/", ""),
-    },
+    { key: pathname.replace("/", "") },
   );
 
-  // Get URL parameters
   const page = searchParams?.get("page") ?? "1";
   const pageAsNumber = Number(page);
   const fallbackPage =
@@ -186,32 +186,27 @@ export function DataTable<TData, TValue>({
   const perPageAsNumber = Number(per_page);
   const fallbackPerPage = isNaN(perPageAsNumber) ? 10 : perPageAsNumber;
 
-  // State management
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = React.useState<string>("");
   const [loading, setLoading] = React.useState<boolean>(false);
   const [isInitialized, setIsInitialized] = React.useState(false);
 
-  // Initialize pagination state once
   React.useEffect(() => {
     if (!isInitialized) {
       const timer = setTimeout(() => {
         initializePaginationState();
         setIsInitialized(true);
       }, 0);
-
       return () => clearTimeout(timer);
     }
   }, [initializePaginationState, isInitialized]);
 
-  // Pagination state synchronized with URL
   const [{ pageIndex, pageSize }, setPagination] =
     React.useState<PaginationState>({
       pageIndex: fallbackPage - 1,
       pageSize: fallbackPerPage,
     });
 
-  // Sync pagination state when URL changes (but only after initialization)
   React.useEffect(() => {
     if (isInitialized) {
       setPagination({
@@ -221,12 +216,11 @@ export function DataTable<TData, TValue>({
     }
   }, [fallbackPage, fallbackPerPage, isInitialized]);
 
-  // Save to localStorage when pagination changes
   React.useEffect(() => {
     if (isInitialized && typeof window !== "undefined") {
       const paginationState = {
-        pageIndex: pageIndex,
-        pageSize: pageSize,
+        pageIndex,
+        pageSize,
         timestamp: Date.now(),
       };
       localStorage.setItem(
@@ -236,7 +230,6 @@ export function DataTable<TData, TValue>({
     }
   }, [pageIndex, pageSize, pathname, isInitialized]);
 
-  // Debounced URL update to prevent multiple rapid updates
   const [pendingPagination, setPendingPagination] =
     React.useState<PaginationState | null>(null);
 
@@ -250,12 +243,11 @@ export function DataTable<TData, TValue>({
           page: newPage,
           limit: pendingPagination.pageSize,
         });
-
         setLoading(true);
         router.replace(`${pathname}?${queryString}`, { scroll: false });
         setPendingPagination(null);
       }
-    }, 100); // Small debounce to prevent rapid updates
+    }, 100);
 
     return () => clearTimeout(timer);
   }, [pendingPagination, isInitialized, pathname, router]);
@@ -272,7 +264,6 @@ export function DataTable<TData, TValue>({
   const createQueryString = React.useCallback(
     (params: Record<string, string | number | null>) => {
       const newSearchParams = new URLSearchParams(searchParams?.toString());
-
       for (const [key, value] of Object.entries(params)) {
         if (value === null) {
           newSearchParams.delete(key);
@@ -280,13 +271,11 @@ export function DataTable<TData, TValue>({
           newSearchParams.set(key, String(value));
         }
       }
-
       return newSearchParams.toString();
     },
     [searchParams],
   );
 
-  // Custom pagination change handler
   const handlePaginationChange = React.useCallback(
     (updater: any) => {
       const newPagination =
@@ -295,8 +284,6 @@ export function DataTable<TData, TValue>({
           : updater;
       setPagination(newPagination);
       setPendingPagination(newPagination);
-
-      // Save pagination state immediately for better UX
       if (!searchParams?.has("_rsc")) {
         savePaginationState(
           String(newPagination.pageIndex + 1),
@@ -307,12 +294,10 @@ export function DataTable<TData, TValue>({
     [pageIndex, pageSize, searchParams, savePaginationState],
   );
 
-  // Reset loading when data changes
   React.useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
     }, 200);
-
     return () => clearTimeout(timer);
   }, [data]);
 
@@ -337,23 +322,17 @@ export function DataTable<TData, TValue>({
 
   const searchValue = table.getColumn(searchKey)?.getFilterValue() as string;
 
-  // Handle search with debouncing and proper pagination reset
   const [searchTimeout, setSearchTimeout] =
     React.useState<NodeJS.Timeout | null>(null);
 
   React.useEffect(() => {
     if (!isInitialized) return;
+    if (searchTimeout) clearTimeout(searchTimeout);
 
-    // Clear previous timeout
-    if (searchTimeout) {
-      clearTimeout(searchTimeout);
-    }
-
-    // Set new timeout for search
     const newTimeout = setTimeout(() => {
       if (searchValue?.length > 0) {
         const queryString = createQueryString({
-          page: 1, // Always reset to page 1 on search
+          page: 1,
           limit: pageSize,
           search: searchValue,
         });
@@ -366,16 +345,14 @@ export function DataTable<TData, TValue>({
         });
         router.replace(`${pathname}?${queryString}`, { scroll: false });
       }
-    }, 300); // Debounce search
+    }, 300);
 
     setSearchTimeout(newTimeout);
-
     return () => {
       if (newTimeout) clearTimeout(newTimeout);
     };
   }, [searchValue, pageSize, isInitialized]);
 
-  // Get selected row IDs
   const selectedRowIds = table
     .getFilteredSelectedRowModel()
     .rows.map((row) => (row.original as any).id);
@@ -391,16 +368,13 @@ export function DataTable<TData, TValue>({
     isWarehouse: false,
   };
 
-  // Reset table selection callback
   const resetTableSelection = () => {
     table.resetRowSelection();
   };
 
-  // Render the appropriate archive component based on whether it's a warehouse page
   const renderArchiveComponent = () => {
     if (disableArchive || selectedRowIds.length === 0) return null;
 
-    // Check if this is a warehouse page
     if (pageConfig.isWarehouse) {
       return (
         <WarehouseBulkArchive
@@ -432,7 +406,6 @@ export function DataTable<TData, TValue>({
     }
   };
 
-  // Don't render until initialized to prevent hydration issues
   if (!isInitialized) {
     return (
       <div className="flex items-center justify-center h-48">
@@ -443,11 +416,13 @@ export function DataTable<TData, TValue>({
 
   return (
     <motion.div>
-      <div className="flex items-center justify-between mb-2">
+      {/* ── Toolbar ── */}
+      <div className="flex items-center justify-between mb-2 gap-2">
+        {/* Search */}
         <div className="relative flex-1 md:max-w-md">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
           <Input
-            className="w-full rounded-lg bg-background pl-8 md:w-[200px] lg:w-[320px]"
+            className="w-full rounded-md border-0 bg-muted pl-10 md:w-[200px] lg:w-[320px] transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             placeholder="Search..."
             type="search"
             value={
@@ -459,19 +434,14 @@ export function DataTable<TData, TValue>({
           />
         </div>
 
+        {/* ✅ Desktop actions — lg and above */}
         <div className="hidden lg:flex items-center space-x-2">
-          {/* Archive Button - Shows appropriate component based on page type */}
           {renderArchiveComponent()}
 
           {filterKey && filterOptions && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button
-                  className="h-8 gap-1"
-                  disabled={false}
-                  size="sm"
-                  variant="outline"
-                >
+                <Button className="h-8 gap-1" size="sm" variant="outline">
                   <ListFilter className="h-3.5 w-3.5" />
                   <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
                     Filter
@@ -481,7 +451,6 @@ export function DataTable<TData, TValue>({
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Filter by</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-
                 {filterOptions.map((option) => (
                   <DropdownMenuCheckboxItem
                     key={option.value}
@@ -495,12 +464,76 @@ export function DataTable<TData, TValue>({
             </DropdownMenu>
           )}
 
-          {/* Page-specific import/export components */}
           {pageConfig.importComponent}
           {pageConfig.exportComponent}
         </div>
+
+        {/* ✅ Mobile / Tablet actions — below lg */}
+        <div className="flex lg:hidden items-center gap-2">
+          {/* Archive stays inline — it's a contextual/important action */}
+          {renderArchiveComponent()}
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5">
+                <MoreHorizontal className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only sm:whitespace-nowrap">
+                  Actions
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-60">
+              {/* Filter options */}
+              {filterKey && filterOptions && (
+                <>
+                  <DropdownMenuLabel>Filter by</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {filterOptions.map((option) => (
+                    <DropdownMenuCheckboxItem
+                      key={option.value}
+                      checked={statusFilter === option.value}
+                      onSelect={() => handleStatusFilterChange(option.value)}
+                    >
+                      {option.label}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                  {(pageConfig.importComponent ||
+                    pageConfig.exportComponent) && <DropdownMenuSeparator />}
+                </>
+              )}
+
+              {/* Import / Export */}
+              {(pageConfig.importComponent || pageConfig.exportComponent) && (
+                <>
+                  <DropdownMenuLabel>Import & Export</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {pageConfig.importComponent && (
+                    <div
+                      className="flex flex-col gap-1 px-2 py-1"
+                      // ✅ Prevent dropdown dismissing before dialog opens
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {pageConfig.importComponent}
+                    </div>
+                  )}
+                  {pageConfig.exportComponent && (
+                    <div
+                      className="flex flex-col gap-1 px-2 py-1"
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {pageConfig.exportComponent}
+                    </div>
+                  )}
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
+      {/* ── Table ── */}
       {loading ? (
         <div className="flex items-center justify-center h-48">
           <Loading />
@@ -511,18 +544,16 @@ export function DataTable<TData, TValue>({
             <TableHeader>
               {table.getHeaderGroups().map((headerGroup) => (
                 <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => {
-                    return (
-                      <TableHead key={header.id}>
-                        {header.isPlaceholder
-                          ? null
-                          : flexRender(
-                              header.column.columnDef.header,
-                              header.getContext(),
-                            )}
-                      </TableHead>
-                    );
-                  })}
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                    </TableHead>
+                  ))}
                 </TableRow>
               ))}
             </TableHeader>
@@ -532,6 +563,29 @@ export function DataTable<TData, TValue>({
                   <TableRow
                     key={row.id}
                     data-state={row.getIsSelected() && "selected"}
+                    className={
+                      onRowClick || rowClickBasePath
+                        ? "cursor-pointer hover:bg-muted/50"
+                        : ""
+                    }
+                    onClick={(e) => {
+                      if (!onRowClick && !rowClickBasePath) return;
+                      const target = e.target as HTMLElement;
+                      if (
+                        target.closest("button") ||
+                        target.closest("[role='menuitem']") ||
+                        target.closest("[role='checkbox']") ||
+                        target.closest("a") ||
+                        target.closest("[data-no-row-click]")
+                      )
+                        return;
+                      if (onRowClick) {
+                        onRowClick(row.original);
+                      } else if (rowClickBasePath) {
+                        const id = (row.original as any).id;
+                        if (id) router.push(`${rowClickBasePath}/${id}`);
+                      }
+                    }}
                   >
                     {row.getVisibleCells().map((cell) => (
                       <TableCell key={cell.id}>
@@ -558,6 +612,7 @@ export function DataTable<TData, TValue>({
         </div>
       )}
 
+      {/* ── Pagination ── */}
       <div className="flex flex-col gap-2 sm:flex-row items-center justify-end space-x-2 py-4">
         <div className="flex items-center justify-between w-full">
           <div className="flex-1 text-sm text-muted-foreground">
@@ -591,6 +646,7 @@ export function DataTable<TData, TValue>({
             </div>
           </div>
         </div>
+
         <div className="flex items-center justify-between sm:justify-end gap-2 w-full">
           <div className="flex w-[100px] items-center justify-center text-sm font-medium">
             Page {table.getState().pagination.pageIndex + 1} of{" "}

@@ -1,4 +1,4 @@
-import { Bell, Building2, CalendarClock, CreditCard, MapPin, Package, Printer, Receipt, ToggleRight, UtensilsCrossed } from "lucide-react";
+import { Bell, Building2, CalendarClock, CreditCard, Link2, MapPin, Package, Printer, Receipt, Smartphone, Star, ToggleRight, UtensilsCrossed } from "lucide-react";
 
 export const taxClasses=
     [
@@ -131,9 +131,27 @@ export const settingsNavItems = [
         description: 'Accepted payment methods'
     },
     {
+        id: 'loyalty-points',
+        label: 'Loyalty Points',
+        icon: Star,
+        description: 'Customer & staff rewards'
+    },
+    {
         id: 'efd',
         label: 'EFD',
         icon: Receipt,
         description: 'Tax & fiscal compliance'
+    },
+    {
+        id: 'devices',
+        label: 'Devices',
+        icon: Smartphone,
+        description: 'Linked devices & access'
+    },
+    {
+        id: 'integrations',
+        label: 'Integrations',
+        icon: Link2,
+        description: 'Payment & service integrations'
     },
 ];

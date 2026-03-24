@@ -1,10 +1,4 @@
-import type { Metadata } from "next";
 import React from "react";
-
-export const metadata: Metadata = {
-  title: "Book a Reservation | Settlo",
-  description: "Book a table reservation online",
-};
 
 export default function ReserveLayout({
   children,

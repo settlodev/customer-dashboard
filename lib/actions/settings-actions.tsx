@@ -15,13 +15,8 @@ import {
 import { NotificationSettingsSchema } from "@/types/notification/shema";
 import { LocationSettingsSchema } from "@/types/settings/schema";
 import {
-  PaymentMethodsResponse,
-  UpdatePaymentMethodsRequest,
-} from "@/types/payments/type";
-import {
   PhysicalReceiptPaymentDetails,
   physicalReceiptPaymentDetailsSchema,
-  updatePaymentMethodsSchema,
 } from "@/types/payments/schema";
 
 export const fetchLocationSettings = async (): Promise<any> => {
@@ -127,57 +122,6 @@ export const updateNotificationSetting = async (
 
   if (formResponse) {
     return parseStringify(formResponse);
-  }
-};
-
-export const acceptOrderPaymentMethods =
-  async (): Promise<PaymentMethodsResponse> => {
-    await getAuthenticatedUser();
-
-    try {
-      const apiClient = new ApiClient();
-
-      const location = await getCurrentLocation();
-
-      const orderPaymentMethods = await apiClient.get(
-        `/api/${location?.id}/accepted-payment-methods/order-transactions/all`,
-      );
-
-      return parseStringify(orderPaymentMethods);
-    } catch (error) {
-      throw error;
-    }
-  };
-
-export const updateOrderPaymentMethods = async (
-  methods: UpdatePaymentMethodsRequest,
-): Promise<PaymentMethodsResponse> => {
-  await getAuthenticatedUser();
-
-  const validated = updatePaymentMethodsSchema.safeParse(methods);
-
-  if (!validated.success) {
-    const errorMessage = validated.error.errors
-      .map((e) => e.message)
-      .join(", ");
-    throw new Error(`Validation failed: ${errorMessage}`);
-  }
-
-  const payload = {
-    ...validated.data,
-  };
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-
-    const orderPaymentMethods = await apiClient.put(
-      `/api/${location?.id}/accepted-payment-methods/order-transactions`,
-      payload,
-    );
-    return parseStringify(orderPaymentMethods);
-  } catch (error) {
-    throw error;
   }
 };
 

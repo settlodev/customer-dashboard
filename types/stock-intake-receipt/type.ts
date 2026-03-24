@@ -1,19 +1,17 @@
 export declare interface StockPurchaseItem {
-  id?: string;
-  stockIntakePurchaseOrderItem: string | null;
   stock: string;
   stockName: string;
   stockVariant: string;
   stockVariantName: string;
-  code?: string;
   quantityReceived: number;
-  bonusQuantity?: number;
   totalCost: number;
   previousCostPerItem: number;
+  bonusQuantity?: number;
   lastCostPerItem?: number;
   sellingPrice?: number;
   margin?: number;
-  condition?: "GOOD" | "DAMAGED" | "PARTIAL";
+  code?: string;
+  id?: string;
 }
 
 export interface StockReceipt {
@@ -27,6 +25,7 @@ export interface StockReceipt {
   supplierName: string;
   supplierPhoneNumber?: string;
   supplierEmail?: string;
+  supplierPhysicalAddress?: string;
   staff: string;
   staffFirstName: string;
   staffLastName: string;
@@ -38,5 +37,5 @@ export interface StockReceipt {
   status?: "DRAFT" | "COMPLETED" | "CANCELLED" | "PARTIAL";
   condition?: "GOOD" | "DAMAGED" | "PARTIAL";
   notes?: string;
-  stockIntakeReceiptItems: StockPurchaseItem[];
+  items: StockPurchaseItem[];
 }

@@ -1,108 +1,99 @@
 "use client";
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect, useCallback } from "react";
 import {
-  acceptOrderPaymentMethods,
-  updateOrderPaymentMethods,
-} from "@/lib/actions/settings-actions";
+  fetchLocationPaymentMethods,
+  toggleLocationPaymentMethod,
+} from "@/lib/actions/payment-method-actions";
 import { PaymentMethodCard } from "./paymentCard";
-import {
-  PaymentMethodCategory,
-  PaymentMethodsResponse,
-} from "@/types/payments/type";
+import { PaymentMethod } from "@/types/payments/type";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AcceptedPaymentMethodsPage() {
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodsResponse>(
-    [],
-  );
+  const [methods, setMethods] = useState<PaymentMethod[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [selectedMethods, setSelectedMethods] = useState<string[]>([]);
+  const [toggling, setToggling] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchPaymentMethods = async () => {
+    const load = async () => {
       try {
         setLoading(true);
-        const data = await acceptOrderPaymentMethods();
-        setPaymentMethods(data);
-
-        const preSelected = data
-          .flatMap(
-            (category: PaymentMethodCategory) =>
-              category.acceptedPaymentMethodTypes,
-          )
-          .filter((method) => method.isEnabled)
-          .map((method) => method.id);
-
-        setSelectedMethods(preSelected);
+        const data = await fetchLocationPaymentMethods();
+        setMethods(data);
       } catch (err: any) {
-        setError(err.message);
+        setError(err.message || "Failed to load payment methods");
       } finally {
         setLoading(false);
       }
     };
-
-    fetchPaymentMethods();
+    load();
   }, []);
 
-  const handleMethodToggle = (methodId: string) => {
-    setSelectedMethods((prev) =>
-      prev.includes(methodId)
-        ? prev.filter((id) => id !== methodId)
-        : [...prev, methodId],
-    );
-  };
-
-  const handleCategoryToggle = (
-    categoryName: string,
-    methods: any[],
-    selectAll: boolean,
-  ) => {
-    const methodIds = methods.map((m) => m.id);
-    if (selectAll) {
-      setSelectedMethods((prev) => [...new Set([...prev, ...methodIds])]);
-    } else {
-      setSelectedMethods((prev) =>
-        prev.filter((id) => !methodIds.includes(id)),
-      );
-    }
-  };
-
-  const handleSubmit = async () => {
+  const handleToggle = useCallback(async (methodId: string, enabled: boolean) => {
+    setToggling(methodId);
     try {
-      setSaving(true);
-      setSaveError(null);
-      setSaveSuccess(false);
+      await toggleLocationPaymentMethod(methodId, enabled);
 
-      await updateOrderPaymentMethods({
-        newAcceptedPaymentMethodTypeIds: selectedMethods,
-      });
+      // Optimistic update
+      setMethods((prev) =>
+        prev.map((m) => {
+          // Check if this is the toggled parent
+          if (m.id === methodId) {
+            return {
+              ...m,
+              enabled,
+              // Enable parent → disable all children
+              children: enabled
+                ? m.children?.map((c) => ({ ...c, enabled: false })) ?? null
+                : m.children,
+            };
+          }
 
-      setSaveSuccess(true);
+          // Check if a child of this parent was toggled
+          if (m.children?.some((c) => c.id === methodId)) {
+            return {
+              ...m,
+              // Enable child → disable parent
+              enabled: enabled ? false : m.enabled,
+              children: m.children.map((c) =>
+                c.id === methodId ? { ...c, enabled } : c,
+              ),
+            };
+          }
 
-      // Clear success message after 3 seconds
-      setTimeout(() => setSaveSuccess(false), 3000);
+          return m;
+        }),
+      );
     } catch (err: any) {
-      setSaveError(err.message);
+      console.error("Failed to toggle payment method:", err);
     } finally {
-      setSaving(false);
+      setToggling(null);
     }
-  };
+  }, []);
 
   if (loading) {
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Payments</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Manage accepted payment methods for your location
-          </p>
+          <Skeleton className="h-7 w-32" />
+          <Skeleton className="h-4 w-64 mt-2" />
         </div>
-        <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className="py-4 px-1 flex items-center justify-between border-b border-gray-100 dark:border-gray-800 last:border-b-0"
+            >
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-4 w-4 rounded" />
+                <div>
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-40 mt-1.5" />
+                </div>
+              </div>
+              <Skeleton className="h-5 w-9 rounded-full" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -124,63 +115,26 @@ export default function AcceptedPaymentMethodsPage() {
     );
   }
 
-  const totalMethods = paymentMethods.reduce(
-    (sum, cat) => sum + cat.acceptedPaymentMethodTypes.length,
-    0,
-  );
-
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Payments</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          {totalMethods} payment methods available across{" "}
-          {paymentMethods.length} categories
+          Manage accepted payment methods for your location
         </p>
       </div>
 
-      {/* Save error */}
-      {saveError && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-700 text-sm">{saveError}</p>
-        </div>
-      )}
-
-      {/* Save success */}
-      {saveSuccess && (
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <p className="text-green-700 text-sm">
-            Payment methods updated successfully.
-          </p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-4">
-        {paymentMethods.map((category) => (
-          <PaymentMethodCard
-            key={category.name}
-            category={category}
-            selectedMethods={selectedMethods}
-            onMethodToggle={handleMethodToggle}
-            onCategoryToggle={handleCategoryToggle}
-          />
-        ))}
-      </div>
-
-      <div className="flex items-center justify-end pt-2">
-        <Button
-          onClick={handleSubmit}
-          disabled={selectedMethods.length === 0 || saving}
-        >
-          {saving ? (
-            <span className="flex items-center gap-2">
-              <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-              Saving...
-            </span>
-          ) : (
-            `Save Selection (${selectedMethods.length})`
-          )}
-        </Button>
+      <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700 px-4">
+        {methods
+          .sort((a, b) => a.sortOrder - b.sortOrder)
+          .map((method) => (
+            <PaymentMethodCard
+              key={method.id}
+              method={method}
+              toggling={toggling}
+              onToggle={handleToggle}
+            />
+          ))}
       </div>
     </div>
   );

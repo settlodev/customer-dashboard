@@ -20,6 +20,7 @@ type DigitalReceiptPaymentDetail = {
 
 type OrderReceiptResponse = {
   order: Record<string, any>;
+  locationDetails: Record<string, any>;
   digitalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
   physicalReceiptPaymentDetails: DigitalReceiptPaymentDetail[];
 };
@@ -62,6 +63,7 @@ export const searchOrder = async (
     throw error;
   }
 };
+
 export const getOrder = async (id: UUID): Promise<ApiResponse<Orders>> => {
   const apiClient = new ApiClient();
   const query = {
@@ -92,9 +94,10 @@ export const getOrderReceipt = async (identifier: string | UUID) => {
     const response = (await apiClient.get(
       `/api/order-receipts/with-additional-details/${identifier}`,
     )) as OrderReceiptResponse;
-    // console.log("The tax invoice is", response);
+
     return parseStringify({
       ...response.order,
+      locationDetails: response.locationDetails ?? null,
       digitalReceiptPaymentDetails: response.digitalReceiptPaymentDetails ?? [],
     });
   } catch (error) {

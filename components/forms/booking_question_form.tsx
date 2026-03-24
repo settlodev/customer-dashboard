@@ -171,7 +171,7 @@ const QuestionDialog = ({
       const data = await action;
       if (data) {
         if (data.responseType === "success") {
-          toast({ title: "Success", description: data.message });
+          toast({ variant: "success", title: "Success", description: data.message });
           onOpenChange(false);
           onSaved();
         } else {
@@ -443,7 +443,7 @@ const BookingQuestionsManager = ({
     setDeletingId(id);
     try {
       await deleteBookingQuestion(id);
-      toast({ title: "Success", description: "Question deleted successfully" });
+      toast({ variant: "success", title: "Success", description: "Question deleted successfully" });
       onRefresh();
     } catch {
       toast({

@@ -22,7 +22,7 @@ const getNormalMenuItems = (
   return [
     // Analytics & Reporting
     {
-      label: "Analytics",
+      label: "Reports",
       showSeparator: true,
       collapsible: false,
       current: args?.isCurrentItem,
@@ -35,61 +35,61 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
-          title: "CashFlow Report",
+          title: "Cashflow report",
           link: "/report/cashflow",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Top Selling Report",
+          title: "Top selling report",
           link: "/report/top-selling",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Sold Items Report",
+          title: "Sold items report",
           link: "/report/sold-items",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Credit Report",
+          title: "Credit report",
           link: "/report/credit",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Refund Report",
+          title: "Refund report",
           link: "/report/refunds",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Stock Report",
+          title: "Stock report",
           link: "/report/stock",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Staff Report",
+          title: "Staff report",
           link: "/report/staff",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Department Report",
+          title: "Department report",
           link: "/report/department",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Expense Report",
+          title: "Expense report",
           link: "/report/expense",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Profit & Loss Report",
+          title: "Profit & loss report",
           link: "/report/profit-loss",
           current: args?.isCurrentItem,
           icon: "cart",
@@ -99,7 +99,7 @@ const getNormalMenuItems = (
 
     // Inventory Management
     {
-      label: "Inventory Management",
+      label: "Inventory management",
       showSeparator: true,
       collapsible: false,
       current: args?.isCurrentItem,
@@ -140,7 +140,7 @@ const getNormalMenuItems = (
 
     // Stock Management
     {
-      label: "Stock Management",
+      label: "Stock management",
       showSeparator: true,
       collapsible: false,
       current: args?.isCurrentItem,
@@ -153,19 +153,19 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
-          title: "Stock Intake",
+          title: "Stock intake",
           link: "/stock-intakes",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Stock Modification",
+          title: "Stock modification",
           link: "/stock-modifications",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Stock Transfer",
+          title: "Stock transfer",
           link: "/stock-transfers",
           current: args?.isCurrentItem,
           icon: "cart",
@@ -189,19 +189,19 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
-          title: "Stock Request",
+          title: "Stock request",
           link: "/stock-requests",
           current: args?.isCurrentItem,
           icon: "truck-return",
         },
         {
-          title: "Purchase Orders",
+          title: "Purchase orders",
           link: "/stock-purchases",
           current: args?.isCurrentItem,
           icon: "cart",
         },
         {
-          title: "Goods Received",
+          title: "Goods received",
           link: "/goods-received",
           current: args?.isCurrentItem,
           icon: "cart",
@@ -240,7 +240,7 @@ const getNormalMenuItems = (
 
     // Customer Management
     {
-      label: "Customer Management",
+      label: "Customer management",
       showSeparator: true,
       collapsible: false,
       current: args?.isCurrentItem,
@@ -263,7 +263,7 @@ const getNormalMenuItems = (
 
     // Staff & Roles Management
     {
-      label: "Staff Management",
+      label: "Staff management",
       showSeparator: true,
       collapsible: false,
       current: args?.isCurrentItem,
@@ -287,18 +287,12 @@ const getNormalMenuItems = (
 
     // Business Operations
     {
-      label: "Business Operations",
+      label: "Business operations",
       showSeparator: false,
       collapsible: false,
       current: args?.isCurrentItem,
       icon: "general",
       items: [
-        {
-          title: "Businesses",
-          link: "/business",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
         {
           title: "Expenses",
           link: "/expenses",
@@ -306,7 +300,7 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
-          title: "Tables & Spaces",
+          title: "Tables & spaces",
           link: "/spaces",
           current: args?.isCurrentItem,
           icon: "cart",
@@ -317,31 +311,9 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Locations",
-          link: "/locations",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "QrCode",
-          link: "/qrcode",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Devices",
-          link: "/devices",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
       ],
     },
   ];
-
-  // if (args?.subscription) {
-  //     return getFilteredMenuItems(args.subscription, baseMenuItems);
-  // }
 };
 
 const getWarehouseMenuItems = (args?: MenuItemArgType) => {
@@ -365,32 +337,32 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
 
     // Stocks
     {
-      label: "Stock Management",
+      label: "Stock management",
       showSeparator: true,
       collapsible: false,
       current: args?.isCurrentItem,
       icon: "inventory",
       items: [
         {
-          title: "Stock Items",
+          title: "Stock items",
           link: "/warehouse-stock-variants",
           current: args?.isCurrentItem,
           icon: "home",
         },
         {
-          title: "Stock Intake",
+          title: "Stock intake",
           link: "/warehouse-stock-intakes",
           current: args?.isCurrentItem,
           icon: "grid",
         },
         {
-          title: "Stock Modification",
+          title: "Stock modification",
           link: "/warehouse-stock-modifications",
           current: args?.isCurrentItem,
           icon: "grid",
         },
         {
-          title: "Stock Supplier Payable",
+          title: "Stock supplier payable",
           link: "/purchases",
           current: args?.isCurrentItem,
           icon: "grid",
@@ -462,7 +434,7 @@ const getWarehouseMenuItems = (args?: MenuItemArgType) => {
       icon: "git",
       items: [
         {
-          title: "Inventory Requests",
+          title: "Inventory requests",
           link: "/warehouse-requests",
           current: args?.isCurrentItem,
           icon: "file-text",

@@ -132,7 +132,7 @@ const ReservationSettingForm = ({
           setResponse(data);
           const msg = SettloErrorHandler.safeMessage(data.message);
           if (data.responseType === "success") {
-            toast({ title: "Success", description: msg });
+            toast({ variant: "success", title: "Success", description: msg });
           } else {
             toast({ variant: "destructive", title: "Error", description: msg });
           }

@@ -107,10 +107,10 @@ const VerificationPage = () => {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-20 h-20 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 p-1"
+            className="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-orange-600 p-1"
           >
             <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-              <Loader2 className="w-10 h-10 text-emerald-600" />
+              <Loader2 className="w-10 h-10 text-primary" />
             </div>
           </motion.div>
         );
@@ -120,10 +120,10 @@ const VerificationPage = () => {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className="w-20 h-20 rounded-full bg-gradient-to-r from-emerald-500 to-green-600 p-1"
+            className="w-20 h-20 rounded-full bg-gradient-to-r from-primary to-orange-600 p-1"
           >
             <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-              <CheckCircle2 className="w-10 h-10 text-emerald-600" />
+              <CheckCircle2 className="w-10 h-10 text-primary" />
             </div>
           </motion.div>
         );
@@ -171,13 +171,13 @@ const VerificationPage = () => {
             <CardDescription className="mt-2 text-gray-600">
               {verificationState.status === "loading" && (
                 <span className="flex items-center justify-center gap-2">
-                  <Sparkles className="w-4 h-4 text-emerald-500 animate-pulse" />
+                  <Sparkles className="w-4 h-4 text-primary animate-pulse" />
                   Please wait while we verify your email address...
                 </span>
               )}
               {verificationState.status === "success" && (
                 <span className="flex items-center justify-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <ShieldCheck className="w-4 h-4 text-primary" />
                   Your account is now active
                 </span>
               )}
@@ -207,7 +207,7 @@ const VerificationPage = () => {
                         }}
                       >
                         <motion.div
-                          className="h-full bg-gradient-to-r from-emerald-500 to-orange-600"
+                          className="h-full bg-gradient-to-r from-primary to-orange-600"
                           initial={{ x: "-100%" }}
                           animate={{ x: "100%" }}
                           transition={{

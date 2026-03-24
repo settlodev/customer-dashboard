@@ -18,10 +18,19 @@ const createMinimalBusiness = (business: Business): MinimalBusiness => {
     name: business.name,
     prefix: business.prefix,
     businessType: business.businessType,
+    logo: business.logo || null,
     country: business.country,
     countryName: business.countryName,
     status: business.status,
   };
+};
+
+export const clearBusiness = async (): Promise<void> => {
+  const cookieStore = await cookies();
+  cookieStore.delete("currentBusiness");
+  cookieStore.delete("activeBusiness");
+  cookieStore.delete("currentLocation");
+  revalidatePath("/", "layout");
 };
 
 export const refreshBusiness = async (data: Business): Promise<void> => {

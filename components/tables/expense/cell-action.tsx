@@ -4,7 +4,7 @@ import { CreditCard, Edit, MoreHorizontal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
-import { useForm} from "react-hook-form";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
@@ -27,14 +27,18 @@ import {
 import { Expense } from "@/types/expense/type";
 import { toast } from "@/hooks/use-toast";
 import { payExpense } from "@/lib/actions/expense-actions";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import DateTimePicker from "@/components/widgets/datetimepicker";
 import { PayableExpenseSchema } from "@/types/expense/schema";
 import { Input } from "@/components/ui/input";
-
-
-
 
 interface CellActionProps {
   data: Expense;
@@ -54,7 +58,13 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     },
   });
 
-  const { control, handleSubmit, watch, reset, formState: {isValid } } = form;
+  const {
+    control,
+    handleSubmit,
+    watch,
+    reset,
+    formState: { isValid },
+  } = form;
   const watchedAmount = watch("amount");
 
   // Listen for payment dialog events from the Pay button
@@ -65,9 +75,15 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       }
     };
 
-    window.addEventListener('openPaymentDialog', handlePaymentDialog as EventListener);
+    window.addEventListener(
+      "openPaymentDialog",
+      handlePaymentDialog as EventListener,
+    );
     return () => {
-      window.removeEventListener('openPaymentDialog', handlePaymentDialog as EventListener);
+      window.removeEventListener(
+        "openPaymentDialog",
+        handlePaymentDialog as EventListener,
+      );
     };
   }, [data.id]);
 
@@ -81,15 +97,19 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     }
   }, [isPaymentDialogOpen, reset]);
 
-  const handleTimeChange = (type: "hour" | "minutes", value: string, currentDate: Date) => {
+  const handleTimeChange = (
+    type: "hour" | "minutes",
+    value: string,
+    currentDate: Date,
+  ) => {
     const newDate = new Date(currentDate);
-    
+
     if (type === "hour") {
       newDate.setHours(Number(value));
     } else if (type === "minutes") {
       newDate.setMinutes(Number(value));
     }
-    
+
     return newDate;
   };
 
@@ -109,7 +129,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     setIsProcessing(true);
 
     try {
-      const response = await payExpense(data.id, amount, paymentDate.toISOString());
+      const response = await payExpense(
+        data.id,
+        amount,
+        paymentDate.toISOString(),
+      );
 
       if (response) {
         setIsPaymentDialogOpen(false);
@@ -118,12 +142,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         toast({
           title: "Payment Successful",
           description: `Payment of ${Intl.NumberFormat().format(amount)} processed successfully`,
-          variant: "default",
+          variant: "success",
         });
 
         router.refresh();
       }
-
     } catch (error) {
       console.log("Error:", error);
       toast({
@@ -135,8 +158,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       setIsProcessing(false);
     }
   };
-
-  
 
   const resetPaymentForm = () => {
     setIsPaymentDialogOpen(false);
@@ -152,10 +173,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     <>
       <div className="flex items-center gap-2">
         {/* Payment Button - Prominent display */}
-        {(data.paymentStatus === "NOT_PAID" || data.paymentStatus === "PARTIAL") && (
+        {(data.paymentStatus === "NOT_PAID" ||
+          data.paymentStatus === "PARTIAL") && (
           <Button
             size="sm"
-            className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white shadow-sm transition-all duration-200 hover:shadow-md"
+            className="bg-[#EB7F44] text-white shadow-sm transition-all duration-200 hover:shadow-md"
             onClick={() => setIsPaymentDialogOpen(true)}
           >
             <CreditCard className="h-4 w-4 mr-2" />
@@ -172,12 +194,14 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel className="text-xs font-medium text-gray-500">Actions</DropdownMenuLabel>
+            <DropdownMenuLabel className="text-xs font-medium text-gray-500">
+              Actions
+            </DropdownMenuLabel>
             <DropdownMenuItem
               onClick={() => router.push(`/expenses/${data.id}`)}
               className="cursor-pointer hover:bg-blue-50"
             >
-              <Edit className="mr-2 h-4 w-4 text-blue-600" /> 
+              <Edit className="mr-2 h-4 w-4 text-blue-600" />
               <span>Update</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -189,22 +213,24 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader className="space-y-3">
             <DialogTitle className="flex items-center gap-2 text-xl">
-              <CreditCard className="h-5 w-5 text-green-600" />
+              <CreditCard className="h-5 w-5 text-[#EB7F44]" />
               Process Payment
             </DialogTitle>
             <DialogDescription className="text-gray-600">
-              Enter the payment details for <span className="font-semibold text-gray-800">{data.name}</span>
+              Enter the payment details for{" "}
+              <span className="font-semibold text-gray-800">{data.name}</span>
             </DialogDescription>
           </DialogHeader>
-          
+
           <Form {...form}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
               {/* Unpaid Amount Display */}
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                  
-                    <Label className="text-sm font-medium text-gray-700">Outstanding Amount:</Label>
+                    <Label className="text-sm font-medium text-gray-700">
+                      Outstanding Amount:
+                    </Label>
                   </div>
                   <div className="text-lg font-bold text-gray-900">
                     {Intl.NumberFormat().format(data.unpaidAmount)}
@@ -234,11 +260,14 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                         />
                       </div>
                     </FormControl>
-                    {watchedAmount && !isNaN(watchedAmount) && watchedAmount > 0 && (
-                      <p className="text-xs text-gray-500">
-                        Remaining after payment: {Intl.NumberFormat().format(getRemainingAmount())}
-                      </p>
-                    )}
+                    {watchedAmount &&
+                      !isNaN(watchedAmount) &&
+                      watchedAmount > 0 && (
+                        <p className="text-xs text-gray-500">
+                          Remaining after payment:{" "}
+                          {Intl.NumberFormat().format(getRemainingAmount())}
+                        </p>
+                      )}
                     <FormMessage className="text-red-500 text-xs" />
                   </FormItem>
                 )}
@@ -256,16 +285,23 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                     <FormControl>
                       <div className="relative">
                         <div>
-                        <DateTimePicker
+                          <DateTimePicker
                             field={{
                               ...field,
-                              value: field.value?.toISOString() || new Date().toISOString(),
-                              onChange: (value: string) => field.onChange(new Date(value))
+                              value:
+                                field.value?.toISOString() ||
+                                new Date().toISOString(),
+                              onChange: (value: string) =>
+                                field.onChange(new Date(value)),
                             }}
                             date={field.value}
                             setDate={field.onChange}
                             handleTimeChange={(type, value) => {
-                              const newDate = handleTimeChange(type, value, field.value || new Date());
+                              const newDate = handleTimeChange(
+                                type,
+                                value,
+                                field.value || new Date(),
+                              );
                               field.onChange(newDate);
                             }}
                             onDateSelect={field.onChange}
@@ -291,8 +327,13 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isProcessing || !isValid || !watchedAmount || watchedAmount <= 0}
-                  className="flex-1 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={
+                    isProcessing ||
+                    !isValid ||
+                    !watchedAmount ||
+                    watchedAmount <= 0
+                  }
+                  className="flex-1 bg-[#EB7F44] text-white disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isProcessing ? (
                     <div className="flex items-center gap-2">
@@ -302,7 +343,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                   ) : (
                     <>
                       <CreditCard className="h-4 w-4 mr-2" />
-                      Pay {watchedAmount ? Number(watchedAmount).toFixed(2) : '0.00'}
+                      Pay{" "}
+                      {watchedAmount
+                        ? Number(watchedAmount).toFixed(2)
+                        : "0.00"}
                     </>
                   )}
                 </Button>

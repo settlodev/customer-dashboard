@@ -21,6 +21,13 @@ import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Separator } from "../ui/separator";
 import { Loader2Icon, ImageIcon, FileText } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 import { updateLocationSettings } from "@/lib/actions/settings-actions";
 import { toast } from "@/hooks/use-toast";
 import {
@@ -83,6 +90,8 @@ const CATEGORY_TITLES = {
   printing: "Printing Settings",
   inventory: "Inventory Settings",
   order: "Order Settings",
+  loyalty: "Customer Loyalty Points",
+  "staff-points": "Staff Points",
 } as const;
 
 const groupSettingsByCategory = (settings: SettingField[]) =>
@@ -332,6 +341,40 @@ const LocationSettingsForm = ({
                       }
                     }}
                   />
+                </FormControl>
+                {helperText && <FormDescription>{helperText}</FormDescription>}
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        );
+
+      case "select":
+        return (
+          <FormField
+            key={key as any}
+            control={form.control}
+            name={key as any}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>{field.label}</FormLabel>
+                <FormControl>
+                  <Select
+                    value={formField.value ?? ""}
+                    onValueChange={formField.onChange}
+                    disabled={isPending || field.disabled}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={placeholder || "Select an option"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {field.options?.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </FormControl>
                 {helperText && <FormDescription>{helperText}</FormDescription>}
                 <FormMessage />

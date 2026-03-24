@@ -69,7 +69,7 @@ function LoginForm() {
 
     startTransition(async () => {
       try {
-        const data: FormResponse = await login(values);
+        const data: FormResponse = await login(values, rememberMe);
 
         if (data) {
           if (data.error === Error("Unexpected")) {
@@ -102,7 +102,7 @@ function LoginForm() {
         setPersistentError(errorMsg);
       }
     });
-  }, []);
+  }, [rememberMe]);
 
   return (
     <section className="flex items-center justify-center">
@@ -125,9 +125,9 @@ function LoginForm() {
                 delay: 0.2,
               }}
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 p-0.5">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-orange-600 p-0.5">
                 <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                  <Shield className="w-8 h-8 text-emerald-600" />
+                  <Shield className="w-8 h-8 text-primary" />
                 </div>
               </div>
             </motion.div>
@@ -171,19 +171,19 @@ function LoginForm() {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700 flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-gray-500" />
-                            Email address *
-                          </FormLabel>
+                          <FormLabel>Email address *</FormLabel>
                           <FormControl>
-                            <Input
-                              placeholder="Enter your email address"
-                              {...field}
-                              type="email"
-                              disabled={isPending}
-                              className="h-12 border-gray-200 focus:border-emerald-500 transition-all duration-300 bg-gray-50/50 hover:bg-white"
-                              autoComplete="email"
-                            />
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input
+                                className="pl-10"
+                                placeholder="Enter your email address"
+                                {...field}
+                                type="email"
+                                disabled={isPending}
+                                autoComplete="email"
+                              />
+                            </div>
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -195,18 +195,16 @@ function LoginForm() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700 flex items-center gap-2">
-                            <Lock className="w-4 h-4 text-gray-500" />
-                            Password *
-                          </FormLabel>
+                          <FormLabel>Password *</FormLabel>
                           <FormControl>
                             <div className="relative">
+                              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                               <Input
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Enter your password"
                                 {...field}
                                 disabled={isPending}
-                                className="h-12 pr-12 border-gray-200 focus:border-emerald-500 transition-all duration-300 bg-gray-50/50 hover:bg-white"
+                                className="pl-10 pr-12"
                                 autoComplete="current-password"
                               />
                               <button
@@ -238,7 +236,7 @@ function LoginForm() {
                           setRememberMe(checked as boolean)
                         }
                         disabled={isPending}
-                        className="border-gray-300 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                        className="border-gray-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                       />
                       <label
                         htmlFor="remember"
@@ -250,7 +248,7 @@ function LoginForm() {
 
                     <Link
                       href="/reset-password"
-                      className="text-sm font-medium text-emerald-600 hover:text-emerald-700 transition-colors"
+                      className="text-sm font-medium text-primary hover:text-orange-700 transition-colors"
                     >
                       Forgot password?
                     </Link>
@@ -259,7 +257,7 @@ function LoginForm() {
                   <Button
                     type="submit"
                     disabled={isPending}
-                    className="w-full h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-emerald-500/25"
+                    className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                   >
                     {isPending ? (
                       <span className="flex items-center gap-2">
@@ -284,7 +282,7 @@ function LoginForm() {
               Don&#39;t have an account?{" "}
               <Link
                 href="/register"
-                className="font-semibold text-emerald-600 hover:text-emerald-700 transition-colors"
+                className="font-semibold text-primary hover:text-orange-700 transition-colors"
               >
                 Sign up for free
               </Link>

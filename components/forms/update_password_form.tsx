@@ -132,7 +132,7 @@ function UpdatePasswordForm() {
                 delay: 0.2,
               }}
             >
-              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 p-0.5">
+              <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-orange-600 p-0.5">
                 <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
                   <motion.div
                     key={passwordUpdated ? "check" : "key"}
@@ -147,9 +147,9 @@ function UpdatePasswordForm() {
                     }}
                   >
                     {passwordUpdated ? (
-                      <CheckCircle className="w-8 h-8 text-green-600" />
+                      <CheckCircle className="w-8 h-8 text-primary" />
                     ) : (
-                      <KeyRound className="w-8 h-8 text-green-600" />
+                      <KeyRound className="w-8 h-8 text-primary" />
                     )}
                   </motion.div>
                 </div>
@@ -214,37 +214,33 @@ function UpdatePasswordForm() {
                       name="password"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-gray-700 flex items-center gap-2">
-                            <Lock className="w-4 h-4 text-gray-500" />
-                            New Password *
-                          </FormLabel>
+                          <FormLabel>New Password *</FormLabel>
                           <FormControl>
                             <div className="relative">
+                              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
                               <Input
                                 type={showPassword ? "text" : "password"}
                                 placeholder="Enter your new password"
                                 {...field}
                                 disabled={isPending}
-                                className="h-12 border-gray-200 focus:border-blue-500 transition-all duration-300 bg-gray-50/50 hover:bg-white pr-12"
+                                className="pl-10 pr-12"
                                 autoComplete="new-password"
                               />
-                              <Button
+                              <button
                                 type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="absolute right-0 top-0 h-12 px-3 py-2 hover:bg-transparent"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-100"
                                 onClick={togglePasswordVisibility}
                               >
                                 {showPassword ? (
-                                  <EyeOff className="h-4 w-4 text-gray-400" />
+                                  <EyeOff className="h-4 w-4" />
                                 ) : (
-                                  <Eye className="h-4 w-4 text-gray-400" />
+                                  <Eye className="h-4 w-4" />
                                 )}
-                              </Button>
+                              </button>
                             </div>
                           </FormControl>
                           <FormDescription className="text-gray-500 flex items-start gap-2 mt-2">
-                            <Sparkles className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                            <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                             <span>
                               Choose a strong password with at least 8 characters
                             </span>
@@ -258,7 +254,7 @@ function UpdatePasswordForm() {
                       <Button
                         type="submit"
                         disabled={isPending}
-                        className="w-full h-12 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-blue-500/25"
+                        className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                       >
                         {isPending ? (
                           <span className="flex items-center gap-2">
@@ -282,22 +278,22 @@ function UpdatePasswordForm() {
                   transition={{ delay: 0.3 }}
                   className="space-y-6"
                 >
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-left space-y-3">
-                    <p className="text-sm text-green-800 font-medium flex items-center gap-2">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left space-y-3">
+                    <p className="text-sm text-orange-800 font-medium flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4" />
                       Password successfully updated!
                     </p>
-                    <ul className="text-sm text-green-700 space-y-2 ml-6">
+                    <ul className="text-sm text-orange-700 space-y-2 ml-6">
                       <li className="flex items-start gap-2">
-                        <span className="text-green-500 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         Your account is now secured with your new password
                       </li>
                       <li className="flex items-start gap-2">
-                        <span className="text-green-500 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         You&apos;ll be automatically redirected in a few seconds
                       </li>
                       <li className="flex items-start gap-2">
-                        <span className="text-green-500 mt-1">•</span>
+                        <span className="text-primary mt-1">•</span>
                         Use your new password for future logins
                       </li>
                     </ul>
@@ -305,7 +301,7 @@ function UpdatePasswordForm() {
 
                   <Button
                     onClick={() => (window.location.href = DEFAULT_LOGIN_REDIRECT_URL)}
-                    className="w-full h-12 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-green-500/25"
+                    className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                   >
                     Continue to Sign In
                   </Button>

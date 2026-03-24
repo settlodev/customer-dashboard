@@ -5,17 +5,18 @@ import { Download } from "lucide-react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
+// ─── Brand tokens ─────────────────────────────────────────────────────────────
+const PRIMARY = "#EB7F44";
+const PRIMARY_DARK = "#C4622A";
+const PRIMARY_BG = "#fde8d8";
+const SECONDARY = "#EAEAE5";
+const ROW_ALT = "#F0F0EC";
+
 interface DeliveryNoteDownloadButtonProps {
   orderNumber: string;
   isDownloadable?: boolean;
   title: string;
-  fontFamily?: string;
   fontSize?: {
-    header?: string;
-    body?: string;
-    footer?: string;
-  };
-  fontWeight?: {
     header?: string;
     body?: string;
     footer?: string;
@@ -26,348 +27,483 @@ const DeliveryNoteDownloadButton = ({
   orderNumber,
   isDownloadable,
   title,
-  fontFamily = "system-ui, -apple-system, sans-serif",
-  fontSize = {
-    header: "14px",
-    body: "10px",
-    footer: "8px",
-  },
-  fontWeight = {
-    header: "600",
-    body: "normal",
-    footer: "normal",
-  },
+  fontSize = { header: "14px", body: "10px", footer: "8px" },
 }: DeliveryNoteDownloadButtonProps) => {
   const handleDownload = useCallback(async () => {
-    // ↓ Only difference from DownloadButton: targets 'delivery-note-content'
-    const deliveryNote = document.getElementById("delivery-note-content");
-    if (deliveryNote) {
-      try {
-        const originalButton = document.querySelector(
-          "[data-delivery-download-button]",
-        ) as HTMLButtonElement;
-        if (originalButton) {
-          originalButton.disabled = true;
-          originalButton.innerHTML =
-            '<div class="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full"></div> Generating...';
-        }
+    const el = document.getElementById("delivery-note-content");
+    if (!el) return;
 
-        const originalStyles = {
-          width: deliveryNote.style.width,
-          maxWidth: deliveryNote.style.maxWidth,
-          margin: deliveryNote.style.margin,
-          padding: deliveryNote.style.padding,
-          transform: deliveryNote.style.transform,
-          position: deliveryNote.style.position,
-          backgroundColor: deliveryNote.style.backgroundColor,
-        };
+    const btn = document.querySelector(
+      "[data-delivery-download-button]",
+    ) as HTMLButtonElement | null;
 
-        deliveryNote.style.width = "794px";
-        deliveryNote.style.maxWidth = "794px";
-        deliveryNote.style.margin = "0";
-        deliveryNote.style.padding = "0";
-        deliveryNote.style.transform = "none";
-        deliveryNote.style.position = "relative";
-        deliveryNote.style.backgroundColor = "white";
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "Generating…";
+      }
 
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      // ── 1. Snapshot + normalise layout ─────────────────────────────
+      const saved = {
+        width: el.style.width,
+        maxWidth: el.style.maxWidth,
+        margin: el.style.margin,
+        padding: el.style.padding,
+        transform: el.style.transform,
+        position: el.style.position,
+        backgroundColor: el.style.backgroundColor,
+        borderRadius: el.style.borderRadius,
+        boxShadow: el.style.boxShadow,
+      };
+      Object.assign(el.style, {
+        width: "794px",
+        maxWidth: "794px",
+        margin: "0",
+        padding: "0",
+        transform: "none",
+        position: "relative",
+        backgroundColor: "#ffffff",
+        borderRadius: "0",
+        boxShadow: "none",
+      });
 
-        const images = deliveryNote.querySelectorAll("img");
-        await Promise.all(
-          Array.from(images).map((img) => {
-            if (img.complete) return Promise.resolve();
-            return new Promise((resolve) => {
-              img.onload = resolve;
-              img.onerror = resolve;
-              setTimeout(resolve, 3000);
+      await new Promise((r) => setTimeout(r, 150));
+      await Promise.all(
+        Array.from(el.querySelectorAll("img")).map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((r) => {
+            img.onload = r;
+            img.onerror = r;
+            setTimeout(r, 5000);
+          });
+        }),
+      );
+
+      // ── 2. Capture ─────────────────────────────────────────────────
+      const canvas = await html2canvas(el, {
+        scale: 3, // 3× DPI — sharper print output
+        useCORS: true,
+        allowTaint: false,
+        logging: false,
+        backgroundColor: "#ffffff",
+        width: 794,
+        height: el.scrollHeight,
+        windowWidth: 1200,
+        windowHeight: el.scrollHeight + 100,
+        scrollX: 0,
+        scrollY: 0,
+        imageTimeout: 15000,
+        removeContainer: true,
+        foreignObjectRendering: false,
+        onclone: (_doc, clone) => {
+          // ── Base reset ────────────────────────────────────────────
+          Object.assign(clone.style, {
+            width: "794px",
+            maxWidth: "794px",
+            margin: "0",
+            padding: "0",
+            transform: "none",
+            position: "relative",
+            backgroundColor: "#ffffff",
+            fontFamily:
+              "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+            color: "#111827",
+          });
+
+          // Make every node fully visible + colour-adjust
+          clone.querySelectorAll<HTMLElement>("*").forEach((node) => {
+            node.style.visibility = "visible";
+            node.style.opacity = "1";
+            (node.style as any).printColorAdjust = "exact";
+            (node.style as any).webkitPrintColorAdjust = "exact";
+            node.style.fontFamily = "inherit";
+          });
+
+          // ── Show desktop table, hide mobile cards ─────────────────
+          clone
+            .querySelectorAll<HTMLElement>(".lg\\:hidden")
+            .forEach((node) => {
+              node.style.setProperty("display", "none", "important");
             });
-          }),
-        );
+          clone
+            .querySelectorAll<HTMLElement>(
+              ".hidden.lg\\:block, .hidden.lg\\:table",
+            )
+            .forEach((node) => {
+              node.style.setProperty("display", "block", "important");
+            });
 
-        const canvas = await html2canvas(deliveryNote, {
-          scale: 1.5,
-          useCORS: true,
-          allowTaint: false,
-          logging: false,
-          backgroundColor: "#ffffff",
-          width: 794,
-          height: deliveryNote.scrollHeight,
-          windowWidth: 1200,
-          windowHeight: deliveryNote.scrollHeight + 100,
-          scrollX: 0,
-          scrollY: 0,
-          imageTimeout: 15000,
-          removeContainer: true,
-          foreignObjectRendering: false,
-          onclone: (clonedDoc) => {
-            // ↓ Only difference: targets 'delivery-note-content'
-            const clonedElement = clonedDoc.getElementById(
-              "delivery-note-content",
-            );
-            if (clonedElement) {
-              clonedElement.style.width = "794px";
-              clonedElement.style.maxWidth = "794px";
-              clonedElement.style.margin = "0";
-              clonedElement.style.padding = "0";
-              clonedElement.style.transform = "none";
-              clonedElement.style.position = "relative";
-              clonedElement.style.backgroundColor = "white";
-              clonedElement.style.fontFamily = fontFamily;
-              clonedElement.style.color = "#111827";
+          // ── Accent bars (top / bottom solid orange strips) ────────
+          clone.querySelectorAll<HTMLElement>("div").forEach((div) => {
+            const s = div.getAttribute("style") ?? "";
+            if (
+              (s.includes("EB7F44") || s.includes("eb7f44")) &&
+              (div.style.height === "6px" ||
+                div.style.height === "4px" ||
+                div.style.height === "8px")
+            ) {
+              div.style.setProperty(
+                "background-color",
+                PRIMARY_DARK,
+                "important",
+              );
+              (div.style as any).printColorAdjust = "exact";
+              (div.style as any).webkitPrintColorAdjust = "exact";
+            }
+          });
 
-              const allElements = clonedElement.querySelectorAll("*");
-              allElements.forEach((el: any) => {
-                if (el.style) {
-                  el.style.visibility = "visible";
-                  el.style.opacity = "1";
-                  el.style.printColorAdjust = "exact";
-                  el.style.webkitPrintColorAdjust = "exact";
-                  el.style.colorAdjust = "exact";
-                  el.style.fontFamily = fontFamily;
+          // ── Heading: DELIVERY NOTE ────────────────────────────────
+          clone.querySelectorAll<HTMLElement>("h2").forEach((h) => {
+            const txt = h.textContent?.trim().toUpperCase() ?? "";
+            if (txt.includes("DELIVERY")) {
+              h.style.setProperty("color", PRIMARY_DARK, "important");
+              h.style.setProperty("font-size", "32px", "important");
+              h.style.setProperty("font-weight", "300", "important");
+              h.style.setProperty("letter-spacing", "0.05em", "important");
+            }
+          });
+
+          // ── Business name h1 ─────────────────────────────────────
+          clone.querySelectorAll<HTMLElement>("h1").forEach((h) => {
+            h.style.setProperty("color", "#111827", "important");
+            h.style.setProperty("font-size", "16px", "important");
+            h.style.setProperty("font-weight", "700", "important");
+          });
+
+          // ── Items table header ────────────────────────────────────
+          clone.querySelectorAll<HTMLElement>("thead tr").forEach((tr) => {
+            tr.style.setProperty("background-color", PRIMARY_DARK, "important");
+            (tr.style as any).printColorAdjust = "exact";
+            (tr.style as any).webkitPrintColorAdjust = "exact";
+          });
+          clone.querySelectorAll<HTMLElement>("thead th").forEach((th) => {
+            th.style.setProperty("background-color", PRIMARY_DARK, "important");
+            th.style.setProperty("color", "#ffffff", "important");
+            th.style.setProperty("font-size", "10px", "important");
+            th.style.setProperty("font-weight", "700", "important");
+            th.style.setProperty("padding", "10px 14px", "important");
+            th.style.setProperty("text-transform", "uppercase", "important");
+            th.style.setProperty("letter-spacing", "0.06em", "important");
+            (th.style as any).printColorAdjust = "exact";
+            (th.style as any).webkitPrintColorAdjust = "exact";
+          });
+
+          // ── Items table — zebra rows + cells ─────────────────────
+          clone.querySelectorAll<HTMLElement>("table").forEach((table) => {
+            if (!table.querySelector("thead")) return; // skip meta tables
+
+            table.querySelectorAll<HTMLElement>("tbody tr").forEach((tr, i) => {
+              const bg = i % 2 === 0 ? "#ffffff" : ROW_ALT;
+              tr.style.setProperty("background-color", bg, "important");
+              tr.style.setProperty(
+                "border-bottom",
+                "1px solid #C8C8C2",
+                "important",
+              );
+              (tr.style as any).printColorAdjust = "exact";
+              (tr.style as any).webkitPrintColorAdjust = "exact";
+            });
+
+            // Last column per row — bold & dark
+            table.querySelectorAll<HTMLElement>("tbody tr").forEach((tr) => {
+              const cells = tr.querySelectorAll<HTMLElement>("td");
+              cells.forEach((td, ci) => {
+                td.style.setProperty(
+                  "font-size",
+                  fontSize.body ?? "10px",
+                  "important",
+                );
+                td.style.setProperty("padding", "10px 14px", "important");
+                td.style.setProperty("color", "#1f2937", "important");
+                if (ci === cells.length - 1) {
+                  td.style.setProperty("font-weight", "700", "important");
+                  td.style.setProperty("color", "#111827", "important");
                 }
               });
+            });
 
-              const mainHeaders = clonedElement.querySelectorAll("h1, h2, h3");
-              mainHeaders.forEach((header: any) => {
-                if (header.textContent?.includes("DELIVERY NOTE")) {
-                  header.style.fontSize = "24px";
-                  header.style.fontWeight = "700";
-                  header.style.color = "#111827";
-                } else {
-                  header.style.fontSize = fontSize.header;
-                  header.style.fontWeight = fontWeight.header;
-                  header.style.color = "#374151";
-                }
-                header.style.fontFamily = fontFamily;
-                header.style.lineHeight = "1.2";
+            // tfoot / total row — orange tint background
+            table.querySelectorAll<HTMLElement>("tfoot tr").forEach((tr) => {
+              tr.style.setProperty("background-color", PRIMARY_BG, "important");
+              (tr.style as any).printColorAdjust = "exact";
+              (tr.style as any).webkitPrintColorAdjust = "exact";
+              tr.querySelectorAll<HTMLElement>("td").forEach((td) => {
+                td.style.setProperty("font-weight", "700", "important");
+                td.style.setProperty("color", PRIMARY_DARK, "important");
+                td.style.setProperty("font-size", "12px", "important");
               });
+            });
+          });
 
-              const bodyElements =
-                clonedElement.querySelectorAll("p, span, div, td");
-              bodyElements.forEach((el: any) => {
-                if (!el.closest("h1, h2, h3, h4, h5, h6")) {
-                  el.style.fontSize = fontSize.body;
-                  el.style.fontWeight = fontWeight.body;
-                  el.style.fontFamily = fontFamily;
-                  el.style.lineHeight = "1.4";
+          // ── Meta table (no thead) — clean, no borders ────────────
+          clone.querySelectorAll<HTMLElement>("table").forEach((table) => {
+            if (table.querySelector("thead")) return;
+            table.querySelectorAll<HTMLElement>("tr").forEach((tr) => {
+              tr.style.setProperty(
+                "background-color",
+                "transparent",
+                "important",
+              );
+              tr.style.setProperty("border", "none", "important");
+            });
+            table.querySelectorAll<HTMLElement>("td").forEach((td) => {
+              td.style.setProperty(
+                "background-color",
+                "transparent",
+                "important",
+              );
+              td.style.setProperty("border", "none", "important");
+              td.style.setProperty("font-size", "11px", "important");
+              td.style.setProperty("padding", "5px 8px", "important");
+              td.style.setProperty("color", "#1f2937", "important");
+            });
+          });
 
+          // ── Highlighted rows / boxes (orange tint) ────────────────
+          clone
+            .querySelectorAll<HTMLElement>(
+              '[style*="fde8d8"], [style*="F2942233"], [style*="f2942233"]',
+            )
+            .forEach((node) => {
+              node.style.setProperty(
+                "background-color",
+                PRIMARY_BG,
+                "important",
+              );
+              (node.style as any).printColorAdjust = "exact";
+              (node.style as any).webkitPrintColorAdjust = "exact";
+              node
+                .querySelectorAll<HTMLElement>("span, p, td")
+                .forEach((child) => {
                   if (
-                    el.classList.contains("text-gray-500") ||
-                    el.classList.contains("text-gray-600")
+                    child.style.color === PRIMARY ||
+                    window
+                      .getComputedStyle(child)
+                      .color.includes("235, 127, 68")
                   ) {
-                    el.style.color = "#6b7280";
-                  } else if (el.classList.contains("text-gray-900")) {
-                    el.style.color = "#111827";
-                  } else if (el.classList.contains("text-green-600")) {
-                    el.style.color = "#059669";
-                  } else if (el.classList.contains("text-red-600")) {
-                    el.style.color = "#dc2626";
-                  } else {
-                    el.style.color = "#374151";
+                    child.style.setProperty("color", PRIMARY_DARK, "important");
+                    child.style.setProperty("font-weight", "700", "important");
                   }
-                }
-              });
-
-              const tables = clonedElement.querySelectorAll("table");
-              tables.forEach((table: any) => {
-                table.style.width = "100%";
-                table.style.borderCollapse = "collapse";
-                table.style.fontFamily = fontFamily;
-
-                const headers = table.querySelectorAll("th");
-                headers.forEach((th: any) => {
-                  th.style.backgroundColor = "#f9fafb";
-                  th.style.color = "#6b7280";
-                  th.style.fontSize = "9px";
-                  th.style.fontWeight = "600";
-                  th.style.padding = "8px 12px";
-                  th.style.borderBottom = "1px solid #e5e7eb";
-                  th.style.textTransform = "uppercase";
-                  th.style.letterSpacing = "0.05em";
                 });
+            });
 
-                const cells = table.querySelectorAll("td");
-                cells.forEach((td: any) => {
-                  td.style.fontSize = "10px";
-                  td.style.padding = "8px 12px";
-                  td.style.borderBottom = "1px solid #f3f4f6";
-                  td.style.color = "#374151";
-                });
-              });
-
-              const badges = clonedElement.querySelectorAll(
-                ".bg-blue-100, .bg-green-100, .bg-yellow-100",
+          // ── Signature lines — keep dashed borders visible ─────────
+          clone
+            .querySelectorAll<HTMLElement>(
+              '[style*="border-bottom: 2px solid"]',
+            )
+            .forEach((node) => {
+              node.style.setProperty(
+                "border-bottom",
+                "2px solid #6b7280",
+                "important",
               );
-              badges.forEach((badge: any) => {
-                badge.style.padding = "4px 8px";
-                badge.style.borderRadius = "9999px";
-                badge.style.fontSize = "8px";
-                badge.style.fontWeight = "500";
+            });
 
-                if (badge.classList.contains("bg-blue-100")) {
-                  badge.style.backgroundColor = "#dbeafe";
-                  badge.style.color = "#1e40af";
-                } else if (badge.classList.contains("bg-green-100")) {
-                  badge.style.backgroundColor = "#dcfce7";
-                  badge.style.color = "#166534";
-                } else if (badge.classList.contains("bg-yellow-100")) {
-                  badge.style.backgroundColor = "#fef3c7";
-                  badge.style.color = "#92400e";
-                }
-              });
-
-              const footerElements = clonedElement.querySelectorAll(
-                '[class*="text-center"] p, .text-sm',
+          // ── Dashed fill-in spans ──────────────────────────────────
+          clone
+            .querySelectorAll<HTMLElement>('[style*="dashed"]')
+            .forEach((node) => {
+              node.style.setProperty(
+                "border-bottom",
+                "1.5px dashed #6b7280",
+                "important",
               );
-              footerElements.forEach((el: any) => {
-                if (
-                  el.textContent?.includes("Thank you") ||
-                  el.textContent?.includes("generated on") ||
-                  el.textContent?.includes("Powered by")
-                ) {
-                  el.style.fontSize = fontSize.footer;
-                  el.style.fontWeight = fontWeight.footer;
-                  el.style.color = "#6b7280";
-                  el.style.fontFamily = fontFamily;
-                }
-              });
+            });
 
-              const borderElements =
-                clonedElement.querySelectorAll('[class*="border"]');
-              borderElements.forEach((el: any) => {
-                if (el.classList.contains("border-gray-200")) {
-                  el.style.borderColor = "#e5e7eb";
-                } else if (el.classList.contains("border-gray-300")) {
-                  el.style.borderColor = "#d1d5db";
-                }
-              });
+          // ── All remaining orange text → PRIMARY_DARK ──────────────
+          clone
+            .querySelectorAll<HTMLElement>("span, div, p, td, th, h1, h2, h3")
+            .forEach((node) => {
+              const cs = window.getComputedStyle(node);
+              if (cs.color.includes("235, 127, 68")) {
+                node.style.setProperty("color", PRIMARY_DARK, "important");
+              }
+              if (cs.backgroundColor.includes("235, 127, 68")) {
+                node.style.setProperty(
+                  "background-color",
+                  PRIMARY_DARK,
+                  "important",
+                );
+                (node.style as any).printColorAdjust = "exact";
+                (node.style as any).webkitPrintColorAdjust = "exact";
+              }
+            });
 
-              const bgElements =
-                clonedElement.querySelectorAll('[class*="bg-gray"]');
-              bgElements.forEach((el: any) => {
-                if (el.classList.contains("bg-gray-50")) {
-                  el.style.backgroundColor = "#f9fafb";
-                } else if (el.classList.contains("bg-gray-100")) {
-                  el.style.backgroundColor = "#f3f4f6";
-                }
-                el.style.printColorAdjust = "exact";
-                el.style.webkitPrintColorAdjust = "exact";
-              });
+          // ── Light-gray text → minimum gray-600 for print ─────────
+          clone
+            .querySelectorAll<HTMLElement>("p, span, td, li")
+            .forEach((node) => {
+              if (node.closest("thead")) return;
+              const c = window.getComputedStyle(node).color;
+              // gray-400: rgb(156,163,175)  gray-500: rgb(107,114,128)
+              if (c.includes("156, 163") || c.includes("107, 114")) {
+                node.style.setProperty("color", "#4b5563", "important"); // gray-600
+              }
+            });
+
+          // ── Separator / divider lines ─────────────────────────────
+          clone.querySelectorAll<HTMLElement>("div").forEach((div) => {
+            if (div.style.height === "1px") {
+              div.style.setProperty("background-color", "#D1D5DB", "important");
+              (div.style as any).printColorAdjust = "exact";
+              (div.style as any).webkitPrintColorAdjust = "exact";
             }
-          },
-        });
+          });
+          clone
+            .querySelectorAll<HTMLElement>(
+              '[style*="1px solid #EAEAE5"], [style*="1px solid #eaeae5"]',
+            )
+            .forEach((node) => {
+              node.style.setProperty("border-color", "#C8C8C2", "important");
+            });
 
-        Object.assign(deliveryNote.style, originalStyles);
+          // ── Bill To / section labels ──────────────────────────────
+          clone.querySelectorAll<HTMLElement>("p").forEach((p) => {
+            const txt = p.textContent?.trim().toUpperCase() ?? "";
+            if (
+              txt === "BILL TO" ||
+              txt === "DELIVER TO" ||
+              txt === "SHIP TO"
+            ) {
+              p.style.setProperty("font-size", "9px", "important");
+              p.style.setProperty("color", "#6b7280", "important");
+              p.style.setProperty("letter-spacing", "0.12em", "important");
+            }
+          });
 
-        const imgData = canvas.toDataURL("image/jpeg", 0.98);
-        const pdfWidth = 210;
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+          // ── Typography ────────────────────────────────────────────
+          clone.querySelectorAll<HTMLElement>("p, span, li").forEach((node) => {
+            node.style.fontFamily = "system-ui, -apple-system, sans-serif";
+            node.style.lineHeight = "1.5";
+            if (!node.style.fontSize)
+              node.style.fontSize = fontSize.body ?? "10px";
+          });
+          clone.querySelectorAll<HTMLElement>("h1, h2, h3, h4").forEach((h) => {
+            h.style.fontFamily = "system-ui, -apple-system, sans-serif";
+            h.style.lineHeight = "1.2";
+          });
 
-        const pdf = new jsPDF({
-          orientation: "portrait",
-          unit: "mm",
-          format: "a4",
-          compress: true,
-        });
+          // ── Footer text ───────────────────────────────────────────
+          clone.querySelectorAll<HTMLElement>("p").forEach((p) => {
+            const txt = p.textContent ?? "";
+            if (
+              txt.includes("Thank you") ||
+              txt.includes("generated on") ||
+              txt.includes("Powered by") ||
+              txt.includes("Dispatched by")
+            ) {
+              p.style.setProperty(
+                "font-size",
+                fontSize.footer ?? "9px",
+                "important",
+              );
+              p.style.setProperty("color", "#4b5563", "important");
+            }
+          });
+        },
+      });
 
-        const margin = 10;
-        const maxWidth = pdfWidth - margin * 2;
-        const maxHeight = 297 - margin * 2;
+      // ── 3. Restore original styles ──────────────────────────────────
+      Object.assign(el.style, saved);
 
-        if (pdfHeight <= maxHeight) {
-          pdf.addImage(
-            imgData,
-            "JPEG",
-            margin,
-            margin,
-            maxWidth,
-            pdfHeight,
-            undefined,
-            "MEDIUM",
+      // ── 4. Build PDF ────────────────────────────────────────────────
+      const A4_W = 210;
+      const A4_H = 297;
+      const MARGIN = 10;
+      const printW = A4_W - MARGIN * 2;
+      const contentH = (canvas.height * printW) / canvas.width;
+      const pageH = A4_H - MARGIN * 2;
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+        compress: true,
+      });
+
+      if (contentH <= pageH) {
+        pdf.addImage(
+          canvas.toDataURL("image/jpeg", 1.0),
+          "JPEG",
+          MARGIN,
+          MARGIN,
+          printW,
+          contentH,
+          undefined,
+          "FAST",
+        );
+      } else {
+        const totalPages = Math.ceil(contentH / pageH);
+        const pageHeightPx = (pageH * canvas.width) / printW;
+
+        for (let page = 0; page < totalPages; page++) {
+          if (page > 0) pdf.addPage();
+
+          const srcY = page * pageHeightPx;
+          const srcH = Math.min(pageHeightPx, canvas.height - srcY);
+
+          const slice = document.createElement("canvas");
+          slice.width = canvas.width;
+          slice.height = srcH;
+          const ctx = slice.getContext("2d")!;
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(0, 0, slice.width, slice.height);
+          ctx.drawImage(
+            canvas,
+            0,
+            srcY,
+            canvas.width,
+            srcH,
+            0,
+            0,
+            canvas.width,
+            srcH,
           );
-        } else {
-          const totalPages = Math.ceil(pdfHeight / maxHeight);
 
-          for (let page = 0; page < totalPages; page++) {
-            if (page > 0) pdf.addPage();
-
-            const sourceY = (page * maxHeight * canvas.height) / pdfHeight;
-            const sourceHeight = Math.min(
-              (maxHeight * canvas.height) / pdfHeight,
-              canvas.height - sourceY,
-            );
-
-            const pageCanvas = document.createElement("canvas");
-            const pageCtx = pageCanvas.getContext("2d");
-
-            pageCanvas.width = canvas.width;
-            pageCanvas.height = sourceHeight;
-
-            if (pageCtx) {
-              pageCtx.drawImage(
-                canvas,
-                0,
-                sourceY,
-                canvas.width,
-                sourceHeight,
-                0,
-                0,
-                canvas.width,
-                sourceHeight,
-              );
-
-              const pageImgData = pageCanvas.toDataURL("image/jpeg", 0.98);
-              const pageHeight = (sourceHeight * maxWidth) / canvas.width;
-
-              pdf.addImage(
-                pageImgData,
-                "JPEG",
-                margin,
-                margin,
-                maxWidth,
-                pageHeight,
-                undefined,
-                "MEDIUM",
-              );
-            }
-          }
-        }
-
-        // ↓ Only difference: filename uses 'delivery-note-'
-        pdf.save(`delivery-note-${orderNumber}.pdf`);
-
-        if (originalButton) {
-          originalButton.disabled = false;
-          originalButton.innerHTML =
-            '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2-2z"></path></svg>Download';
-        }
-      } catch (error) {
-        console.error("Error generating delivery note PDF:", error);
-        alert("There was an error generating the PDF. Please try again.");
-
-        const originalButton = document.querySelector(
-          "[data-delivery-download-button]",
-        ) as HTMLButtonElement;
-        if (originalButton) {
-          originalButton.disabled = false;
-          originalButton.innerHTML =
-            '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3M3 17V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v10a2 2 0 01-2-2z"></path></svg>Download';
+          const sliceH = (srcH * printW) / canvas.width;
+          pdf.addImage(
+            slice.toDataURL("image/jpeg", 1.0),
+            "JPEG",
+            MARGIN,
+            MARGIN,
+            printW,
+            sliceH,
+            undefined,
+            "FAST",
+          );
         }
       }
+
+      pdf.save(`delivery-note-${orderNumber}.pdf`);
+    } catch (err) {
+      console.error("Delivery note PDF generation failed:", err);
+      alert("There was an error generating the PDF. Please try again.");
+    } finally {
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> ${title}`;
+      }
     }
-  }, [orderNumber, fontFamily, fontSize, fontWeight]);
+  }, [orderNumber, fontSize, title]);
 
   useEffect(() => {
-    if (isDownloadable) {
-      handleDownload();
-    }
+    if (isDownloadable) handleDownload();
   }, [isDownloadable, handleDownload]);
 
   return (
     <button
       data-delivery-download-button
       onClick={handleDownload}
-      className="flex justify-center items-center gap-2 lg:w-[50%] w-full px-4 py-3 text-sm font-medium text-white bg-emerald-600 rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex justify-center items-center gap-2 lg:w-[50%] w-full px-4 py-3 text-sm font-medium text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      style={{ backgroundColor: PRIMARY }}
+      onMouseEnter={(e) =>
+        ((e.currentTarget as HTMLButtonElement).style.backgroundColor =
+          PRIMARY_DARK)
+      }
+      onMouseLeave={(e) =>
+        ((e.currentTarget as HTMLButtonElement).style.backgroundColor = PRIMARY)
+      }
     >
       <Download size={16} />
       {title}

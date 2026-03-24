@@ -33,6 +33,9 @@ export declare interface Customer {
   customerGroup: UUID | null;
   customerGroupName: string | null;
   totalOrders: number | null;
+  pendingOrders: number | null;
+  closedOrders: number | null;
+  orderRequests: number | null;
   lastVisit: string | null;
   addresses: CustomerAddress[];
   preferences: CustomerPreference[];

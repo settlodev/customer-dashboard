@@ -41,7 +41,6 @@ import {
   Fingerprint,
   Plus,
   Trash2,
-  FileText,
   ChevronDown,
   ChevronUp,
   AlertCircle,
@@ -51,8 +50,9 @@ import { getStockVariantById } from "@/lib/actions/stock-actions";
 import { NumericFormat } from "react-number-format";
 import { UniqueIdentifierInput } from "../widgets/serial-number-input";
 import { Button } from "@/components/ui/button";
-
-// ─── Schema ───────────────────────────────────────────────────────────────────
+import { LpoPrefill } from "@/components/forms/stock-intake/lpo-form";
+import { StockIntakePayload } from "@/types/stock-intake/schema";
+import { StockIntakeSuccessModal } from "./stock-intake/success-modal";
 
 const StockLineItemSchema = object({
   stockVariant: string({ message: "Please select a stock item" }).uuid(),
@@ -86,8 +86,6 @@ const FormSchema = object({
 
 type FormValues = z.infer<typeof FormSchema>;
 
-// ─── Per-line UI state ────────────────────────────────────────────────────────
-
 interface LineState {
   serialNumbers: string[];
   hasUniqueIdentifiers: boolean;
@@ -111,21 +109,28 @@ const defaultLineItem = () => ({
   orderDate: "",
   batchExpiryDate: undefined,
   status: true,
+  createDirectStockIntakeReceipt: true,
 });
-
-// ─── Shared style constants (matching the screenshot aesthetic) ───────────────
 
 const labelClass = "font-medium flex items-center gap-2 text-sm text-gray-700";
 const iconClass = "h-4 w-4 text-gray-400";
 const inputClass =
   "flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
-function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
+function StockIntakeForm({
+  item,
+  prefill,
+}: {
+  item: StockIntake | null | undefined;
+  prefill?: LpoPrefill;
+}) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | undefined>();
-  const [goodReceiveNote, setGoodReceiveNote] = useState(false);
+  const [successModal, setSuccessModal] = useState<{
+    open: boolean;
+    receiptId: string | undefined;
+    count: number;
+  }>({ open: false, receiptId: undefined, count: 0 });
 
   const [orderDate, setOrderDate] = useState<Date | undefined>(
     item?.orderDate ? new Date(item.orderDate) : undefined,
@@ -138,13 +143,10 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     defaultLineState(),
   ]);
 
-  const [, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
   const stockVariantId = searchParams.get("stockItem");
-
-  // ── Form ────────────────────────────────────────────────────────────────────
 
   const form = useForm<FormValues>({
     resolver: zodResolver(FormSchema),
@@ -164,22 +166,54 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
             },
           ],
         }
-      : {
-          stockIntakes: [
-            {
-              ...defaultLineItem(),
-              ...(stockVariantId ? { stockVariant: stockVariantId } : {}),
-            },
-          ],
-        },
+      : prefill
+        ? {
+            supplier: prefill.supplier,
+            deliveryDate: prefill.deliveryDate,
+            stockIntakes: prefill.stockIntakes.map((line) => ({
+              stockVariant: line.stockVariant,
+              quantity: line.quantity,
+              value: line.value,
+              orderDate: line.orderDate,
+              batchExpiryDate: undefined,
+              status: true,
+            })),
+          }
+        : {
+            stockIntakes: [
+              {
+                ...defaultLineItem(),
+                ...(stockVariantId ? { stockVariant: stockVariantId } : {}),
+              },
+            ],
+          },
   });
+  useEffect(() => {
+    if (!prefill) return;
+
+    prefill.stockIntakes.forEach((line, index) => {
+      if (!line.stockVariant) return;
+      getStockVariantById(line.stockVariant)
+        .then((info) => updateLineState(index, { variantInfo: info }))
+        .catch(console.error);
+    });
+
+    if (prefill.deliveryDate) {
+      setDeliveryDate(new Date(prefill.deliveryDate));
+    }
+
+    if (prefill.stockIntakes[0]?.orderDate) {
+      setOrderDate(new Date(prefill.stockIntakes[0].orderDate));
+    }
+
+    setLineStates(prefill.stockIntakes.map(() => defaultLineState()));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "stockIntakes",
   });
-
-  // ── Preload variant from URL param ─────────────────────────────────────────
 
   useEffect(() => {
     if (!stockVariantId) return;
@@ -189,8 +223,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
       .catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stockVariantId]);
-
-  // ── Line state helpers ──────────────────────────────────────────────────────
 
   const updateLineState = (index: number, patch: Partial<LineState>) =>
     setLineStates((prev) => {
@@ -202,8 +234,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
   const ls = (index: number): LineState =>
     lineStates[index] ?? defaultLineState();
 
-  // ── Add / Remove lines ──────────────────────────────────────────────────────
-
   const addLine = () => {
     append(defaultLineItem());
     setLineStates((prev) => [...prev, defaultLineState()]);
@@ -213,8 +243,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     remove(index);
     setLineStates((prev) => prev.filter((_, i) => i !== index));
   };
-
-  // ── Variant change ──────────────────────────────────────────────────────────
 
   const handleVariantChange = async (index: number, value: string) => {
     form.setValue(`stockIntakes.${index}.stockVariant`, value);
@@ -230,8 +258,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     }
   };
 
-  // ── Shared time handler ─────────────────────────────────────────────────────
-
   const handleSharedTimeChange = (type: "hour" | "minutes", value: string) => {
     const apply = (d: Date | undefined) => {
       if (!d) return d;
@@ -242,8 +268,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     setOrderDate((d) => apply(d));
     setDeliveryDate((d) => apply(d));
   };
-
-  // ── Validation ──────────────────────────────────────────────────────────────
 
   const validateLines = (): string | null => {
     for (let i = 0; i < lineStates.length; i++) {
@@ -258,8 +282,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
     }
     return null;
   };
-
-  // ── Submit ──────────────────────────────────────────────────────────────────
 
   const onInvalid = useCallback(() => {
     toast({
@@ -288,51 +310,57 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
         updateStockIntake(item.id, {
           value: values.stockIntakes[0].value,
         }).then((data) => {
-          if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ title: "Success", description: data.message });
+            toast({ variant: "success", title: "Success", description: data.message });
             router.push("/stock-intakes");
           }
         });
         return;
       }
 
-      const shared = {
+      const payload: StockIntakePayload = {
         staff: values.staff,
         supplier: values.supplier,
         deliveryDate: values.deliveryDate,
+        ...(prefill?.stockIntakePurchaseOrderId
+          ? { stockIntakePurchaseOrderId: prefill.stockIntakePurchaseOrderId }
+          : {}),
+        items: values.stockIntakes.map((lineItem, index) => {
+          const state = ls(index);
+          const identifiers = state.hasUniqueIdentifiers
+            ? state.serialNumbers.filter((s) => s.trim() !== "")
+            : [];
+          return {
+            stockVariantId: lineItem.stockVariant,
+            quantity: lineItem.quantity,
+            value: lineItem.value,
+            orderDate: lineItem.orderDate,
+            ...(lineItem.batchExpiryDate
+              ? { batchExpiryDate: lineItem.batchExpiryDate }
+              : {}),
+            ...(identifiers.length ? { identifiers } : {}),
+          };
+        }),
       };
 
-      const promises = values.stockIntakes.map((lineItem, index) => {
-        const state = ls(index);
-        const identifiers = state.hasUniqueIdentifiers
-          ? state.serialNumbers.filter((s) => s.trim() !== "")
-          : [];
-        return createStockIntake(
-          { ...shared, ...lineItem },
-          identifiers,
-          goodReceiveNote,
-        );
-      });
-
-      Promise.all(promises)
-        .then((results) => {
-          const failed = results.filter((r) => r?.responseType !== "success");
-          if (failed.length === 0) {
-            toast({
-              title: "Success",
-              description: `${results.length} stock intake(s) recorded.${goodReceiveNote ? " GRN generated." : ""}`,
+      console.log("payload to be submitted is", payload);
+      createStockIntake(payload)
+        .then((result) => {
+          if (result?.responseType === "success") {
+            console.log("The results after completing stock intake", result);
+            const receiptId = (result?.data as { id?: string })?.id;
+            setSuccessModal({
+              open: true,
+              receiptId,
+              count: values.stockIntakes.length,
             });
-            router.push("/stock-intakes");
           } else {
-            setError(`${failed.length} intake(s) failed to save.`);
+            setError("Failed to save stock intake.");
           }
         })
         .catch(() => setError("An unexpected error occurred."));
     });
   };
-
-  // ─── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <Form {...form}>
@@ -473,7 +501,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                           <ChevronUp className="w-4 h-4" />
                         )}
                       </button>
-                      {!item && (
+                      {!item && !prefill && (
                         <button
                           type="button"
                           onClick={() => removeLine(index)}
@@ -504,7 +532,12 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
                               <StockVariantSelector
                                 {...f}
                                 isRequired
-                                isDisabled={!!item || isPending}
+                                isDisabled={
+                                  !!item ||
+                                  isPending ||
+                                  (!!prefill &&
+                                    !!prefill.stockIntakes[index]?.stockVariant)
+                                }
                                 placeholder="Select stock item"
                                 onChange={(val) =>
                                   handleVariantChange(index, val)
@@ -730,7 +763,7 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
           })}
 
           {/* Add another item */}
-          {!item && (
+          {!item && !prefill && (
             <Button
               type="button"
               variant="outline"
@@ -743,34 +776,6 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
             </Button>
           )}
         </div>
-
-        {/* ── GRN Checkbox ─────────────────────────────────────────────────── */}
-        {!item && (
-          <div className="flex items-start gap-3 p-4 border border-gray-200 rounded-xl bg-gray-50">
-            <Checkbox
-              id="goodReceiveNote"
-              checked={goodReceiveNote}
-              onCheckedChange={(checked) =>
-                setGoodReceiveNote(checked === true)
-              }
-              disabled={isPending}
-              className="mt-0.5"
-            />
-            <div className="flex flex-col gap-0.5">
-              <label
-                htmlFor="goodReceiveNote"
-                className="text-sm font-medium text-gray-800 flex items-center gap-2 cursor-pointer"
-              >
-                <FileText className="h-4 w-4 text-gray-500" />
-                Generate Goods Received Note (GRN)
-              </label>
-              <p className="text-xs text-gray-500">
-                A GRN document will be generated and attached to this intake
-                record.
-              </p>
-            </div>
-          </div>
-        )}
 
         {/* ── Actions ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
@@ -788,6 +793,15 @@ function StockIntakeForm({ item }: { item: StockIntake | null | undefined }) {
           />
         </div>
       </form>
+      <StockIntakeSuccessModal
+        open={successModal.open}
+        count={successModal.count}
+        receiptId={successModal.receiptId}
+        onViewGRN={() =>
+          router.push(`/goods-received/${successModal.receiptId}`)
+        }
+        onViewAll={() => router.push("/stock-intakes")}
+      />
     </Form>
   );
 }

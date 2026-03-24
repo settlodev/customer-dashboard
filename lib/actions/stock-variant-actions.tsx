@@ -85,6 +85,38 @@ export const getStockVariantMovement = async (
   }
 };
 
+export const getStockVariantById = async (
+  id: UUID,
+): Promise<StockVariant | null> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    const location = await getCurrentLocation();
+    const query = {
+      filters: [
+        {
+          key: "id",
+          operator: "EQUAL",
+          field_type: "UUID_STRING",
+          value: id,
+        },
+      ],
+      sorts: [],
+      page: 0,
+      size: 1,
+    };
+    const data: ApiResponse<StockVariant> = await apiClient.post(
+      `/api/stock-variants/${location?.id}/all`,
+      query,
+    );
+    const parsed = parseStringify(data);
+    return parsed.content?.[0] ?? null;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const getStockVariantSummary = async (
   id: UUID,
   stockId: UUID,

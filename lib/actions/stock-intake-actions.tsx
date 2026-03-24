@@ -11,6 +11,7 @@ import { getCurrentLocation } from "./business/get-current-business";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
 import {
+  StockIntakePayload,
   StockIntakeSchema,
   UpdatedStockIntakeSchema,
 } from "@/types/stock-intake/schema";
@@ -73,55 +74,44 @@ export const searchStockIntakes = async (
 };
 
 export const createStockIntake = async (
-  stockIntake: z.infer<typeof StockIntakeSchema>,
-  identifiers: string[] = [],
-  goodReceiveNote: boolean,
+  stockIntake: StockIntakePayload,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
   const validData = StockIntakeSchema.safeParse(stockIntake);
 
   if (!validData.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
       message: "Please fill all the required fields",
       error: new Error(validData.error.message),
-    };
-    return parseStringify(formResponse);
+    });
   }
 
-  const {
-    stockVariant,
-    quantity,
-    value,
-    batchExpiryDate,
-    deliveryDate,
-    orderDate,
-    staff,
-    supplier,
-  } = validData.data;
+  const location = await getCurrentLocation();
+  const { supplier, staff, deliveryDate, items, stockIntakePurchaseOrderId } =
+    validData.data;
 
   const payload: Record<string, unknown> = {
-    quantity,
-    value,
-    deliveryDate,
-    orderDate,
-    stockVariant,
     staff,
-    identifiers,
-    goodReceiveNote,
-    ...(batchExpiryDate ? { batchExpiryDate } : {}),
+    deliveryDate,
+    items,
     ...(supplier ? { supplier } : {}),
+    ...(stockIntakePurchaseOrderId ? { stockIntakePurchaseOrderId } : {}),
   };
 
   console.log("API payload:", JSON.stringify(payload, null, 2));
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(`/api/stock-intakes/${stockVariant}/create`, payload);
+    const response = await apiClient.post(
+      `/api/location/${location?.id}/hybrid-stock-intakes/all`,
+      payload,
+    );
     formResponse = {
       responseType: "success",
       message: "Stock Intake recorded successfully",
+      data: response,
     };
   } catch (error) {
     formResponse = {

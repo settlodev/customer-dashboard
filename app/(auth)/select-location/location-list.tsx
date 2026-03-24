@@ -1,26 +1,16 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import {
   MapPin,
   Loader2Icon,
-  Search,
   ChevronRight,
   PlusIcon,
   Warehouse,
 } from "lucide-react";
 import { Location } from "@/types/location/type";
-import { refreshLocation } from "@/lib/actions/business/refresh";
+import { refreshLocation, clearBusiness } from "@/lib/actions/business/refresh";
 import { cn } from "@/lib/utils";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import WareHouseRegisterForm from "@/components/forms/warehouse/register_form";
@@ -41,7 +31,6 @@ const LocationList = ({
   warehouses: any[];
 }) => {
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [locationType, setLocationType] = useState<"all" | "warehouse">("all");
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -55,12 +44,25 @@ const LocationList = ({
   const { toast } = useToast();
 
   const displayedItems = useMemo(() => {
-    if (locationType === "warehouse") {
-      return warehouses;
-    } else {
-      return locations;
-    }
+    return locationType === "warehouse" ? warehouses : locations;
   }, [locations, warehouses, locationType]);
+
+  const getSubscriptionState = (
+    subscriptionStatus: string | null | undefined,
+  ) => {
+    switch (subscriptionStatus) {
+      case "EXPIRED":
+      case "EXPIRED_TRIAL":
+      case "DUE":
+      case "PAST_DUE":
+      case null:
+      case undefined:
+      case "":
+        return "inactive";
+      default:
+        return "active";
+    }
+  };
 
   const handlePendingPayment = useCallback(
     (transactionId: string, invoice: string) => {
@@ -79,33 +81,25 @@ const LocationList = ({
             setPaymentStatus("FAILED");
             toast({
               title: "Payment Timeout",
-              description:
-                "Payment verification timed out. Please check your payment status.",
+              description: "Payment verification timed out. Please check your payment status.",
               variant: "destructive",
             });
             return;
           }
 
           try {
-            const verificationResult = await verifyPayment(
-              transactionId,
-              invoice,
-            );
+            const verificationResult = await verifyPayment(transactionId, invoice);
             setPaymentStatus(verificationResult.invoicePaymentStatus);
 
             if (verificationResult.invoicePaymentStatus === "SUCCESS") {
               clearInterval(verificationInterval);
               handleSuccessfulPayment(verificationResult);
-            } else if (
-              verificationResult.invoicePaymentStatus === "PROCESSING"
-            ) {
+            } else if (verificationResult.invoicePaymentStatus === "PROCESSING") {
               setPaymentStatus("PROCESSING");
             } else if (verificationResult.invoicePaymentStatus === "FAILED") {
               clearInterval(verificationInterval);
               setPaymentStatus("FAILED");
-              setTimeout(() => {
-                setIsModalOpen(false);
-              }, 2000);
+              setTimeout(() => setIsModalOpen(false), 2000);
             } else if (attemptCount >= maxAttempts) {
               clearInterval(verificationInterval);
               setPaymentStatus("FAILED");
@@ -144,8 +138,6 @@ const LocationList = ({
         phone,
       };
 
-      console.log("The invoice payload to for warehouse is", invoicePayload);
-
       const response = await createInvoice(invoicePayload);
 
       if (response && typeof response === "object" && "id" in response) {
@@ -154,15 +146,12 @@ const LocationList = ({
         try {
           setPaymentStatus("PENDING");
           const paymentResponse = await payInvoice(invoiceId, email, phone);
-
           setPaymentStatus("PROCESSING");
           handlePendingPayment(paymentResponse.id, paymentResponse.invoice);
         } catch (error) {
           console.error("Error paying invoice:", error);
           setPaymentStatus("FAILED");
-          setTimeout(() => {
-            setIsModalOpen(false);
-          }, 3000);
+          setTimeout(() => setIsModalOpen(false), 3000);
         }
       }
 
@@ -171,15 +160,12 @@ const LocationList = ({
     } catch (error: any) {
       console.error("Error creating invoice:", error);
       setPaymentStatus("FAILED");
-      setTimeout(() => {
-        setIsModalOpen(false);
-      }, 3000);
+      setTimeout(() => setIsModalOpen(false), 3000);
 
       toast({
         variant: "destructive",
         title: "Subscription Failed",
-        description:
-          "There was an error processing your subscription. Please try again.",
+        description: "There was an error processing your subscription. Please try again.",
       });
     }
   };
@@ -196,36 +182,18 @@ const LocationList = ({
         setIsModalOpen(false);
         setIsRedirecting(true);
         await refreshWarehouse(selectedWarehouse);
-        window.location.href = `/warehouse`;
+        window.location.href = "/warehouse";
       }, 2000);
     },
     [selectedWarehouse, toast],
   );
-
-  const getSubscriptionState = (
-    subscriptionStatus: string | null | undefined,
-  ) => {
-    switch (subscriptionStatus) {
-      case "EXPIRED":
-      case "EXPIRED_TRIAL":
-      case "DUE":
-      case "PAST_DUE":
-      case null:
-      case undefined:
-      case "":
-        return "inactive";
-      default:
-        return "active";
-    }
-  };
 
   const handleLocationSelect = async (item: any, index: number) => {
     if (isRedirecting || pendingIndex !== null) return;
     setPendingIndex(index);
 
     const isWarehouse = locationType === "warehouse";
-    const isInactive =
-      getSubscriptionState(item.subscriptionStatus) === "inactive";
+    const isInactive = getSubscriptionState(item.subscriptionStatus) === "inactive";
 
     if (isWarehouse) {
       if (isInactive) {
@@ -263,75 +231,32 @@ const LocationList = ({
       title: "Warehouse Created",
       description: "Your warehouse has been created successfully.",
     });
-
     setTimeout(() => {
       window.location.href = "/select-location";
     }, 1500);
   };
 
-  const filteredItems = displayedItems.filter((item) =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()),
-  );
-
-  const getLocationIcon = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case "warehouse":
-        return <Warehouse className="w-6 h-6 text-blue-600" />;
-      default:
-        return <MapPin className="w-6 h-6 text-emerald-600" />;
-    }
-  };
-
-  const getLocationBackground = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case "warehouse":
-        return "bg-blue-100";
-      default:
-        return "bg-emerald-100";
-    }
-  };
-
-  const getButtonStyle = (item: any, index: number) => {
-    if (pendingIndex === index) return "bg-gray-100 text-gray-400";
+  const getStatusBadge = (item: any) => {
+    const isInactive = getSubscriptionState(item.subscriptionStatus) === "inactive";
+    if (!isInactive) return null;
 
     const isWarehouse = locationType === "warehouse";
-    const isInactive =
-      getSubscriptionState(item.subscriptionStatus) === "inactive";
-
-    switch (true) {
-      case isWarehouse && isInactive:
-        return "bg-orange-500 text-white hover:bg-orange-600";
-      case isWarehouse:
-        return "bg-blue-600 text-white hover:bg-blue-700";
-      case !isWarehouse && isInactive:
-        return "bg-red-100 text-red-800 hover:bg-red-200";
-      default:
-        return "bg-emerald-500 text-white hover:bg-emerald-600";
-    }
-  };
-
-  const getButtonText = (item: any) => {
-    const isWarehouse = locationType === "warehouse";
-    const isInactive =
-      getSubscriptionState(item.subscriptionStatus) === "inactive";
-
-    switch (true) {
-      case isWarehouse && isInactive:
-        return "Subscribe";
-      default:
-        return "Select";
-    }
+    return (
+      <span
+        className={cn(
+          "text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full",
+          isWarehouse
+            ? "bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400"
+            : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+        )}
+      >
+        {isWarehouse ? "Unsubscribed" : "Expired"}
+      </span>
+    );
   };
 
   return (
     <section className="relative">
-      {isRedirecting && (
-        <div className="fixed inset-0 bg-white/80 backdrop-blur-sm z-50 flex items-center justify-center flex-col gap-4">
-          <Loader2Icon className="w-8 h-8 text-emerald-600 animate-spin" />
-          <p className="text-emerald-600 font-medium">Redirecting...</p>
-        </div>
-      )}
-
       {showCreateModal && (
         <WareHouseRegisterForm
           setShowCreateModal={setShowCreateModal}
@@ -350,160 +275,164 @@ const LocationList = ({
         />
       )}
 
-      <Card className="w-full mx-auto max-w-md mt-10 lg:mt-0 md:mt-0">
-        <CardHeader className="text-center pb-2">
-          <CardTitle>{businessName}</CardTitle>
-          <CardDescription>
-            Choose a {locationType === "warehouse" ? "warehouse" : "location"}{" "}
-            to continue
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="flex gap-3 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder={`Search ${locationType === "warehouse" ? "warehouses" : "locations"}...`}
-                className="pl-10 w-full"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+      <div className="relative w-full max-w-md mx-auto">
+        {isRedirecting && (
+          <div className="absolute inset-0 bg-white/60 dark:bg-gray-950/60 backdrop-blur-sm z-30 rounded-xl flex items-center justify-center flex-col gap-3">
+            <Loader2Icon className="w-6 h-6 text-primary animate-spin" />
+            <p className="text-sm text-primary font-medium">Redirecting...</p>
           </div>
+        )}
 
-          <div className="flex border rounded-lg overflow-hidden mb-4">
-            <button
-              onClick={() => setLocationType("all")}
-              className={cn(
-                "flex-1 py-2 text-sm font-medium",
-                locationType === "all"
-                  ? "bg-emerald-100 text-emerald-800"
-                  : "bg-white text-gray-600 hover:bg-gray-50",
-              )}
-            >
-              <MapPin className="w-4 h-4 inline mr-1" />
-              Locations
-            </button>
-            <button
-              onClick={() => setLocationType("warehouse")}
-              className={cn(
-                "flex-1 py-2 text-sm font-medium",
-                locationType === "warehouse"
-                  ? "bg-blue-100 text-blue-800"
-                  : "bg-white text-gray-600 hover:bg-gray-50",
-              )}
-            >
-              <Warehouse className="w-4 h-4 inline mr-1" />
-              Warehouses
-            </button>
-          </div>
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
+            {businessName}
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Choose a {locationType === "warehouse" ? "warehouse" : "location"} to continue
+          </p>
+        </div>
 
-          <div className="max-h-[60vh] overflow-y-auto rounded-lg border border-gray-100">
-            {filteredItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  {locationType === "warehouse" ? (
-                    <Warehouse className="w-8 h-8 text-blue-400" />
-                  ) : (
-                    <MapPin className="w-8 h-8 text-gray-400" />
-                  )}
-                </div>
-                <p className="text-gray-600 text-center">
-                  No {locationType === "warehouse" ? "warehouses" : "locations"}{" "}
-                  found
-                </p>
-                <p className="text-sm text-gray-500">
-                  Try adjusting your search or create a new{" "}
-                  {locationType === "warehouse" ? "warehouse" : "location"}
-                </p>
-                {locationType === "warehouse" && (
-                  <Button
-                    className="mt-4 bg-blue-600 hover:bg-blue-700"
-                    onClick={() => setShowCreateModal(true)}
-                  >
-                    <PlusIcon className="w-4 h-4 mr-1" />
-                    Create Warehouse
-                  </Button>
+        {/* Toggle */}
+        <div className="flex p-1 bg-gray-100 dark:bg-gray-800 rounded-xl mb-5">
+          <button
+            onClick={() => setLocationType("all")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
+              locationType === "all"
+                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700",
+            )}
+          >
+            <MapPin className="w-4 h-4" />
+            Locations
+          </button>
+          <button
+            onClick={() => setLocationType("warehouse")}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium rounded-lg transition-all duration-200",
+              locationType === "warehouse"
+                ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 shadow-sm"
+                : "text-gray-500 dark:text-gray-400 hover:text-gray-700",
+            )}
+          >
+            <Warehouse className="w-4 h-4" />
+            Warehouses
+          </button>
+        </div>
+
+        {/* List */}
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto">
+          {displayedItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4">
+              <div className="w-14 h-14 rounded-xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-4">
+                {locationType === "warehouse" ? (
+                  <Warehouse className="w-6 h-6 text-gray-400" />
+                ) : (
+                  <MapPin className="w-6 h-6 text-gray-400" />
                 )}
               </div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="divide-y divide-gray-100"
+              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                No {locationType === "warehouse" ? "warehouses" : "locations"} found
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                Create a new {locationType === "warehouse" ? "warehouse" : "location"} to get started
+              </p>
+              {locationType === "warehouse" && (
+                <Button
+                  className="mt-5 bg-primary hover:bg-primary/90 rounded-lg text-sm"
+                  onClick={() => setShowCreateModal(true)}
+                >
+                  <PlusIcon className="w-4 h-4 mr-1.5" />
+                  Create Warehouse
+                </Button>
+              )}
+            </div>
+          ) : (
+            displayedItems.map((item, index) => (
+              <button
+                key={item.id}
+                onClick={() => handleLocationSelect(item, index)}
+                disabled={pendingIndex === index || isRedirecting}
+                className={cn(
+                  "w-full flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left",
+                  pendingIndex === index
+                    ? "border-primary/30 bg-primary/5"
+                    : "border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 hover:border-primary/30 hover:shadow-sm",
+                )}
               >
-                {filteredItems.map((item, index) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{
-                      opacity: 1,
-                      y: 0,
-                      transition: { delay: index * 0.1 },
-                    }}
-                    className={cn(
-                      "p-4 hover:bg-gray-50",
-                      "flex items-center justify-between",
-                    )}
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div
-                        className={cn(
-                          "w-12 h-12 rounded-full flex items-center justify-center",
-                          getLocationBackground(item.type),
-                        )}
-                      >
-                        {getLocationIcon(item.type)}
-                      </div>
-                      <div className="flex flex-col justify-start gap-2">
-                        <div className="flex items-center">
-                          <h3 className="font-medium text-gray-900">
-                            {item.name}
-                          </h3>
-                        </div>
-                        {item.city && (
-                          <div className="flex items-center text-sm text-gray-500">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            <span>{item.city}</span>
-                          </div>
-                        )}
-                        {item.address && (
-                          <div className="text-xs text-gray-400 truncate max-w-[180px]">
-                            {item.address}
-                          </div>
-                        )}
-                      </div>
+                <div
+                  className={cn(
+                    "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
+                    locationType === "warehouse"
+                      ? "bg-blue-50 dark:bg-blue-900/20"
+                      : "bg-primary/10",
+                  )}
+                >
+                  {locationType === "warehouse" ? (
+                    <Warehouse className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  ) : (
+                    <MapPin className="w-5 h-5 text-primary" />
+                  )}
+                </div>
+                <div className="flex-grow min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 truncate">
+                      {item.name}
+                    </h3>
+                    {getStatusBadge(item)}
+                  </div>
+                  {item.city && (
+                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+                      <MapPin className="w-3 h-3" />
+                      <span className="truncate">
+                        {item.city}
+                        {item.address ? ` · ${item.address}` : ""}
+                      </span>
                     </div>
+                  )}
+                </div>
+                <div className="flex-shrink-0">
+                  {pendingIndex === index ? (
+                    <Loader2Icon className="w-5 h-5 text-primary animate-spin" />
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  )}
+                </div>
+              </button>
+            ))
+          )}
+        </div>
 
-                    <button
-                      onClick={() => handleLocationSelect(item, index)}
-                      disabled={pendingIndex === index || isRedirecting}
-                      className={cn(
-                        "px-4 py-2 rounded-sm",
-                        "text-sm font-medium",
-                        "transition-all duration-200",
-                        "flex items-center space-x-2",
-                        getButtonStyle(item, index),
-                      )}
-                    >
-                      {pendingIndex === index ? (
-                        <Loader2Icon className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <span>{getButtonText(item)}</span>
-                          <ChevronRight className="w-4 h-4" />
-                        </>
-                      )}
-                    </button>
-                  </motion.div>
-                ))}
-              </motion.div>
-            )}
+        {/* Create warehouse */}
+        {locationType === "warehouse" && displayedItems.length > 0 && (
+          <div className="mt-5">
+            <Button
+              variant="outline"
+              className="w-full rounded-xl border-dashed border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-primary/40 hover:text-primary transition-colors"
+              onClick={() => setShowCreateModal(true)}
+            >
+              <PlusIcon className="w-4 h-4 mr-1.5" />
+              Create New Warehouse
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        )}
+
+        {/* Switch business */}
+        <div className="mt-6 text-center">
+          <button
+            onClick={async () => {
+              setIsRedirecting(true);
+              await clearBusiness();
+              window.location.href = "/select-business";
+            }}
+            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-primary transition-colors"
+          >
+            <ChevronRight className="w-3.5 h-3.5 rotate-180" />
+            Switch business
+          </button>
+        </div>
+      </div>
+
       <PaymentStatusModal
         isOpen={isModalOpen}
         status={paymentStatus}

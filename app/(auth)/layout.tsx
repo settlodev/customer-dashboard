@@ -11,16 +11,23 @@ export default async function RootLayout({children}: {
 
     return (
         <SessionProvider session={session}>
-            <div className="flex flex-col min-h-screen bg-secondary">
-                <LoggedOutNavbar hideLogin={true} />
+            <div className="relative flex flex-col min-h-screen">
+                {/* Background gradient */}
+                <div className="fixed inset-0 bg-gradient-to-b from-primary-light via-white to-primary-light dark:from-gray-900 dark:via-gray-950 dark:to-gray-900" />
+                <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(235,127,68,0.08),transparent_50%)]" />
+                <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(235,127,68,0.06),transparent_50%)]" />
 
-                <main className="flex-grow flex items-center">
-                    <div className="w-full lg:container lg:mx-auto lg:px-28 px-4 py-12">
-                        {children}
-                    </div>
-                </main>
+                <div className="relative z-10 flex flex-col min-h-screen">
+                    <LoggedOutNavbar hideLogin={true} />
 
-                <Footer />
+                    <main className="flex-grow flex items-center">
+                        <div className="w-full lg:container lg:mx-auto lg:px-28 px-4 py-12">
+                            {children}
+                        </div>
+                    </main>
+
+                    <Footer />
+                </div>
             </div>
         </SessionProvider>
     )

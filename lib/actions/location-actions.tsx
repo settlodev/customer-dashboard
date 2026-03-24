@@ -31,9 +31,12 @@ export const fetchAllLocations = async (): Promise<Location[] | null> => {
     const locationsData = await apiClient.get(`/api/locations/${business.id}`);
 
     return parseStringify(locationsData);
-  } catch (error) {
-    console.error("Error in fetchAllLocations:", error);
-    throw error;
+  } catch (error: unknown) {
+    const message = (error && typeof error === "object" && "message" in error)
+      ? (error as { message: string }).message
+      : "Unknown error";
+    console.error("Error in fetchAllLocations:", message);
+    return null;
   }
 };
 
@@ -209,7 +212,6 @@ export const updateLocation = async (
       ...validatedData.data,
       business: business.id,
     };
-
     // Make the API call to update location
     await apiClient.put(`/api/locations/${business.id}/${id}`, payload);
 
