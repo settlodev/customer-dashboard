@@ -282,9 +282,7 @@ export default function SharePurchaseOrder({
                         {index + 1}
                       </td>
                       <td className="px-4 py-3 font-medium text-gray-900">
-                        {item.stockName}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-500">
+                        {item.stockName} -{" "}
                         {item.stockVariantName &&
                         item.stockVariantName !== item.stockName
                           ? item.stockVariantName
