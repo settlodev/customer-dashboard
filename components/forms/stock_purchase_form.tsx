@@ -23,7 +23,7 @@ import { Stock } from "@/types/stock/type";
 import { NumericFormat } from "react-number-format";
 import { Textarea } from "../ui/textarea";
 import { useRouter, useSearchParams } from "next/navigation";
-import StockVariantSelector from "../widgets/stock-variant-selector";
+import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import { StockPurchase } from "@/types/stock-purchases/type";
@@ -34,17 +34,381 @@ import {
   CheckCircle,
   ArrowLeft,
   Printer,
+  Building2,
+  Phone,
+  Mail,
+  User,
+  MapPin,
+  Briefcase,
+  Loader2,
+  Check,
+  UserPlus,
+  Package,
+  ClipboardList,
+  Hash,
 } from "lucide-react";
 import DateTimePicker from "@/components/widgets/datetimepicker";
 import { StockPurchaseSchema } from "@/types/stock-purchases/schema";
+import { SupplierSchema } from "@/types/supplier/schema";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { createStockPurchase } from "@/lib/actions/stock-purchase-actions";
+import { createSupplier } from "@/lib/actions/supplier-actions";
 import { format } from "date-fns";
+import { isValidPhoneNumber } from "libphonenumber-js";
 
-// ─── Brand tokens (must match SharePurchaseOrder) ─────────────────────────────
+// ─── Brand tokens ─────────────────────────────────────────────────────────────
 const PRIMARY = "#EB7F44";
 const PRIMARY_LIGHT = "#fde8d8";
 const SECONDARY = "#EAEAE5";
+
+// ─── Supplier Schema (local copy for the modal form) ─────────────────────────
+type SupplierFormValues = z.infer<typeof SupplierSchema>;
+
+// ─── Create Supplier Modal ────────────────────────────────────────────────────
+
+function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const [successName, setSuccessName] = useState<string | null>(null);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<SupplierFormValues>({
+    resolver: zodResolver(SupplierSchema),
+  });
+
+  const onSubmit = async (values: SupplierFormValues) => {
+    setServerError(null);
+    setLoading(true);
+    try {
+      const result = await createSupplier(values);
+      if (result?.responseType === "error") {
+        setServerError(result.message ?? "Failed to create supplier");
+        setLoading(false);
+        return;
+      }
+    } catch (e: unknown) {
+      setServerError(
+        e instanceof Error
+          ? e.message
+          : "Something went wrong creating the supplier",
+      );
+      setLoading(false);
+      return;
+    }
+    setLoading(false);
+    setSuccessName(values.name);
+    reset();
+    onCreated();
+    setTimeout(() => {
+      setSuccessName(null);
+      setOpen(false);
+    }, 3500);
+  };
+
+  const inputClass = (hasError: boolean) =>
+    `h-10 text-sm border transition-colors focus-visible:ring-1 focus-visible:ring-orange-400 focus-visible:border-orange-400 ${
+      hasError ? "border-red-300 bg-red-50/40" : "border-gray-200"
+    }`;
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) {
+          reset();
+          setServerError(null);
+          setSuccessName(null);
+        }
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="shrink-0 h-10 w-10 border border-gray-200 text-gray-500 hover:bg-orange-50 hover:border-orange-300 hover:text-orange-600 transition-colors"
+          title="Add new supplier"
+        >
+          <UserPlus className="w-4 h-4" />
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="flex items-center gap-2.5 text-base">
+            <div
+              className="w-7 h-7 rounded-lg flex items-center justify-center"
+              style={{ backgroundColor: PRIMARY_LIGHT }}
+            >
+              <Building2 className="w-4 h-4" style={{ color: PRIMARY }} />
+            </div>
+            New Supplier
+          </DialogTitle>
+        </DialogHeader>
+
+        {successName ? (
+          <div className="flex flex-col items-center gap-4 py-10 text-center">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center"
+              style={{ backgroundColor: "#dcfce7" }}
+            >
+              <Check className="w-7 h-7 text-green-600" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-gray-900">
+                Supplier created successfully!
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">{successName}</span>{" "}
+                is now available in the supplier list.
+              </p>
+            </div>
+            <p className="text-xs text-gray-400">Closing automatically…</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-1">
+            {serverError && (
+              <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
+                {serverError}
+              </div>
+            )}
+
+            {/* ── Company info ─────────────────────────────────────────────── */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+                Company Information
+              </p>
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-gray-700">
+                    Supplier Name <span className="text-red-400">*</span>
+                  </Label>
+                  <div className="relative">
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Acme Supplies Ltd"
+                      {...register("name")}
+                      className={`pl-9 ${inputClass(!!errors.name)}`}
+                    />
+                  </div>
+                  {errors.name && (
+                    <p className="text-xs text-red-500">
+                      {errors.name.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-gray-700">
+                      Email <span className="text-red-400">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        type="email"
+                        placeholder="info@acme.com"
+                        {...register("email")}
+                        className={`pl-9 ${inputClass(!!errors.email)}`}
+                      />
+                    </div>
+                    {errors.email && (
+                      <p className="text-xs text-red-500">
+                        {errors.email.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-gray-700">
+                      Phone <span className="text-red-400">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="+255 712 345 678"
+                        {...register("phoneNumber")}
+                        className={`pl-9 ${inputClass(!!errors.phoneNumber)}`}
+                      />
+                    </div>
+                    {errors.phoneNumber && (
+                      <p className="text-xs text-red-500">
+                        {errors.phoneNumber.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-medium text-gray-700">
+                    Physical Address{" "}
+                    <span className="text-gray-400 font-normal">
+                      (optional)
+                    </span>
+                  </Label>
+                  <div className="relative">
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="123 Main St, Dar es Salaam"
+                      {...register("physicalAddress")}
+                      className={`pl-9 ${inputClass(!!errors.physicalAddress)}`}
+                    />
+                  </div>
+                  {errors.physicalAddress && (
+                    <p className="text-xs text-red-500">
+                      {errors.physicalAddress.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* ── Contact person ────────────────────────────────────────────── */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+                Contact Person
+              </p>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-gray-700">
+                      Full Name <span className="text-red-400">*</span>
+                    </Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Jane Doe"
+                        {...register("contactPersonName")}
+                        className={`pl-9 ${inputClass(!!errors.contactPersonName)}`}
+                      />
+                    </div>
+                    {errors.contactPersonName && (
+                      <p className="text-xs text-red-500">
+                        {errors.contactPersonName.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-gray-700">
+                      Title{" "}
+                      <span className="text-gray-400 font-normal">
+                        (optional)
+                      </span>
+                    </Label>
+                    <div className="relative">
+                      <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="Sales Manager"
+                        {...register("contactPersonTitle")}
+                        className={`pl-9 ${inputClass(!!errors.contactPersonTitle)}`}
+                      />
+                    </div>
+                    {errors.contactPersonTitle && (
+                      <p className="text-xs text-red-500">
+                        {errors.contactPersonTitle.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-gray-700">
+                      Phone <span className="text-red-400">*</span>
+                    </Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        placeholder="+255 712 345 678"
+                        {...register("contactPersonPhone")}
+                        className={`pl-9 ${inputClass(!!errors.contactPersonPhone)}`}
+                      />
+                    </div>
+                    {errors.contactPersonPhone && (
+                      <p className="text-xs text-red-500">
+                        {errors.contactPersonPhone.message}
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-medium text-gray-700">
+                      Email{" "}
+                      <span className="text-gray-400 font-normal">
+                        (optional)
+                      </span>
+                    </Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <Input
+                        type="email"
+                        placeholder="jane@acme.com"
+                        {...register("contactPersonEmail")}
+                        className={`pl-9 ${inputClass(!!errors.contactPersonEmail)}`}
+                      />
+                    </div>
+                    {errors.contactPersonEmail && (
+                      <p className="text-xs text-red-500">
+                        {errors.contactPersonEmail.message}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="flex justify-end gap-2 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={loading}
+                className="border-gray-200 text-gray-600 hover:bg-gray-50 text-sm h-9"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={loading}
+                className="text-white text-sm h-9 min-w-[150px] shadow-sm"
+                style={{ backgroundColor: PRIMARY }}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating…
+                  </>
+                ) : (
+                  <>
+                    <Building2 className="w-4 h-4 mr-2" /> Create Supplier
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Main Form ────────────────────────────────────────────────────────────────
 
 function StockPurchaseForm({
   item,
@@ -60,6 +424,8 @@ function StockPurchaseForm({
   const [purchaseData, setPurchaseData] = useState<any>();
   const { toast } = useToast();
   const router = useRouter();
+  // key used to force-remount the SupplierSelector after a new supplier is added
+  const [supplierSelectorKey, setSupplierSelectorKey] = useState(0);
 
   const searchParams = useSearchParams();
   const stockVariantId = searchParams.get("stockVariant");
@@ -239,7 +605,7 @@ function StockPurchaseForm({
     router.push("/stock-purchases");
   };
 
-  // ── Preview — identical layout to SharePurchaseOrder ──────────────────────
+  // ── Preview ───────────────────────────────────────────────────────────────
   if (showPreview && purchaseData) {
     const totalQty =
       purchaseData.stockIntakePurchaseOrderItems?.reduce(
@@ -255,7 +621,6 @@ function StockPurchaseForm({
         id="lpo-preview"
       >
         <div className="max-w-4xl mx-auto">
-          {/* ── Action bar (no-print) ── */}
           <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 print:hidden">
             <Button
               variant="outline"
@@ -285,7 +650,6 @@ function StockPurchaseForm({
             </div>
           </div>
 
-          {/* ── Success banner (no-print) ── */}
           <div
             className="mb-5 flex items-center gap-3 p-4 rounded-xl print:hidden"
             style={{ backgroundColor: "#dcfce7", border: "1px solid #86efac" }}
@@ -307,13 +671,11 @@ function StockPurchaseForm({
             </div>
           </div>
 
-          {/* ── LPO Document — same structure as SharePurchaseOrder ── */}
           <div
             id="lpo-content"
             className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
             style={{ border: `1px solid ${SECONDARY}` }}
           >
-            {/* Header */}
             <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
               <div className="flex items-center gap-4" />
               <div className="lg:text-right">
@@ -340,15 +702,12 @@ function StockPurchaseForm({
               </div>
             </div>
 
-            {/* Divider */}
             <div
               className="mx-6 lg:mx-10"
               style={{ height: 1, backgroundColor: SECONDARY }}
             />
 
-            {/* Supplier + Meta table */}
             <div className="px-6 lg:px-10 py-6 flex flex-col lg:flex-row justify-between gap-6">
-              {/* Left: Supplier */}
               <div className="flex-1">
                 <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
                   Supplier
@@ -365,8 +724,6 @@ function StockPurchaseForm({
                   )}
                 </div>
               </div>
-
-              {/* Right: PO meta */}
               <div className="w-full lg:w-80">
                 <table className="w-full text-sm">
                   <tbody>
@@ -422,7 +779,6 @@ function StockPurchaseForm({
               </div>
             </div>
 
-            {/* Items table — desktop */}
             <div className="hidden lg:block px-10 mb-6">
               <table className="w-full text-sm">
                 <thead>
@@ -480,7 +836,6 @@ function StockPurchaseForm({
               </table>
             </div>
 
-            {/* Items cards — mobile */}
             <div className="lg:hidden px-4 mb-6 space-y-3">
               <div
                 className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider"
@@ -530,7 +885,6 @@ function StockPurchaseForm({
               </div>
             </div>
 
-            {/* Notes */}
             {purchaseData.notes && (
               <div
                 className="px-6 lg:px-10 pb-6"
@@ -554,7 +908,6 @@ function StockPurchaseForm({
               </div>
             )}
 
-            {/* Terms */}
             <div
               className="px-6 lg:px-10 pb-6"
               style={{ borderTop: `1px solid ${SECONDARY}` }}
@@ -587,7 +940,6 @@ function StockPurchaseForm({
               </ol>
             </div>
 
-            {/* Footer */}
             <div
               className="px-6 lg:px-10 py-6 flex justify-center items-center gap-4"
               style={{ borderTop: `1px solid ${SECONDARY}` }}
@@ -603,7 +955,6 @@ function StockPurchaseForm({
             </div>
           </div>
 
-          {/* Share link card (no-print) */}
           <Card className="mt-5 print:hidden border border-gray-200">
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Share Purchase Order</CardTitle>
@@ -646,81 +997,152 @@ function StockPurchaseForm({
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (
-    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      <Card className="shadow-lg border-0">
-        <CardHeader className="space-y-1 pb-6">
-          <div className="flex items-center justify-between">
+    <div className="w-full  mx-auto px-4 sm:px-6 py-6">
+      {/* ── Page header — matches modal DialogTitle style ── */}
+      <div className="flex items-center gap-2.5 mb-6">
+        <div
+          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+          style={{ backgroundColor: PRIMARY_LIGHT }}
+        >
+          <ClipboardList className="w-4 h-4" style={{ color: PRIMARY }} />
+        </div>
+        <div>
+          <h1 className="text-base font-semibold text-gray-900 leading-tight">
+            {item ? "Edit Purchase Order" : "New Purchase Order"}
+          </h1>
+          <p className="text-xs text-gray-500">
+            {item
+              ? "Update the details of this local purchase order"
+              : "Create a local purchase order to send to your supplier"}
+          </p>
+        </div>
+      </div>
+
+      {/* ── White card — same feel as the modal DialogContent ── */}
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(submitData, onInvalid)}
+            className="space-y-5"
+          >
+            {error && <FormError message={error} />}
+            {success && <FormSuccess message={success} />}
+
+            {/* ── ORDER SUMMARY section header ─────────────────────────────── */}
             <div>
-              <CardTitle className="text-2xl font-bold text-gray-900 dark:text-white">
-                {item ? "Edit Local Purchase" : "New Local Purchase"}
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Purchase multiple stocks from trusted suppliers
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+                Order Summary
               </p>
-            </div>
-          </div>
-        </CardHeader>
-
-        <CardContent>
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(submitData, onInvalid)}
-              className="space-y-6"
-            >
-              {error && <FormError message={error} />}
-              {success && <FormSuccess message={success} />}
-
-              {/* Order Summary */}
-              <div className="flex items-center justify-between bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 p-4 rounded-xl">
-                <div className="flex items-center gap-4">
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Total Items
-                    </p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {getTotalItems()}
-                    </p>
+              <div
+                className="flex items-center justify-between px-4 py-3 rounded-xl border"
+                style={{
+                  backgroundColor: PRIMARY_LIGHT,
+                  borderColor: `${PRIMARY}25`,
+                }}
+              >
+                <div className="flex items-center gap-5">
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${PRIMARY}22` }}
+                    >
+                      <Hash
+                        className="w-3.5 h-3.5"
+                        style={{ color: PRIMARY }}
+                      />
+                    </div>
+                    <div>
+                      <p
+                        className="text-[10px] font-medium leading-none mb-0.5"
+                        style={{ color: `${PRIMARY}bb` }}
+                      >
+                        Items
+                      </p>
+                      <p
+                        className="text-base font-bold leading-none"
+                        style={{ color: PRIMARY }}
+                      >
+                        {getTotalItems()}
+                      </p>
+                    </div>
                   </div>
-                  <Separator orientation="vertical" className="h-10" />
-                  <div className="text-center">
-                    <p className="text-sm font-medium text-muted-foreground">
-                      Total Quantity
-                    </p>
-                    <p className="text-2xl font-bold text-blue-600">
-                      {getTotalQuantity()}
-                    </p>
+                  <div
+                    className="h-7 w-px"
+                    style={{ backgroundColor: `${PRIMARY}30` }}
+                  />
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center"
+                      style={{ backgroundColor: `${PRIMARY}22` }}
+                    >
+                      <Package
+                        className="w-3.5 h-3.5"
+                        style={{ color: PRIMARY }}
+                      />
+                    </div>
+                    <div>
+                      <p
+                        className="text-[10px] font-medium leading-none mb-0.5"
+                        style={{ color: `${PRIMARY}bb` }}
+                      >
+                        Total Qty
+                      </p>
+                      <p
+                        className="text-base font-bold leading-none"
+                        style={{ color: PRIMARY }}
+                      >
+                        {getTotalQuantity()}
+                      </p>
+                    </div>
                   </div>
                 </div>
                 <Button
                   type="button"
-                  variant="outline"
                   size="sm"
                   onClick={addStockItem}
-                  className="gap-2"
+                  className="gap-1.5 text-white text-xs h-8 px-3 shadow-sm"
+                  style={{ backgroundColor: PRIMARY }}
                 >
-                  <Plus className="h-4 w-4" />
+                  <Plus className="h-3.5 w-3.5" />
                   Add Item
                 </Button>
               </div>
+            </div>
 
-              {/* Stock Items */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold">
-                  Stock Items <span className="text-red-500">*</span>
-                </h3>
+            <Separator />
+
+            {/* ── STOCK ITEMS section ───────────────────────────────────────── */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+                Stock Items <span className="text-red-400 normal-case">*</span>
+              </p>
+
+              <div className="space-y-2.5">
                 {fields.map((field, index) => (
                   <div
                     key={field.id}
-                    className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 border rounded-lg"
+                    className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-gray-300 transition-colors"
                   >
+                    {/* Numbered badge */}
+                    <div className="hidden md:flex md:col-span-1 items-center justify-center pt-6">
+                      <span
+                        className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
+                        style={{ backgroundColor: PRIMARY }}
+                      >
+                        {index + 1}
+                      </span>
+                    </div>
+
                     <div className="md:col-span-7">
                       <FormField
                         control={form.control}
                         name={`stockIntakePurchaseOrderItems.${index}.stockVariantId`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>
-                              Stock Item {fields.length > 1 && `#${index + 1}`}
+                            <FormLabel className="text-xs font-medium text-gray-700">
+                              {fields.length > 1
+                                ? `Item #${index + 1}`
+                                : "Stock Item"}
                             </FormLabel>
                             <FormControl>
                               <StockVariantSelector
@@ -736,19 +1158,22 @@ function StockPurchaseForm({
                         )}
                       />
                     </div>
-                    <div className="md:col-span-4">
+
+                    <div className="md:col-span-3">
                       <FormField
                         control={form.control}
                         name={`stockIntakePurchaseOrderItems.${index}.quantity`}
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Quantity</FormLabel>
+                            <FormLabel className="text-xs font-medium text-gray-700">
+                              Quantity
+                            </FormLabel>
                             <FormControl>
                               <NumericFormat
-                                className="flex h-10 w-full rounded-md border px-3 py-2"
+                                className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-orange-400 focus:border-orange-400 transition-colors"
                                 value={field.value}
                                 disabled={isPending}
-                                placeholder="Enter quantity"
+                                placeholder="0"
                                 thousandSeparator={true}
                                 allowNegative={false}
                                 onValueChange={(values) => {
@@ -763,51 +1188,85 @@ function StockPurchaseForm({
                         )}
                       />
                     </div>
-                    <div className="md:col-span-1 flex items-end">
-                      <Button
+
+                    <div className="md:col-span-1 flex items-end justify-center pb-1">
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="icon"
                         onClick={() => removeStockItem(index)}
                         disabled={fields.length <= 1}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
 
-              <Separator />
+              {/* Ghost add-row button */}
+              <button
+                type="button"
+                onClick={addStockItem}
+                className="mt-2.5 w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-gray-200 text-sm text-gray-400 hover:border-orange-300 hover:text-orange-500 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Add another item
+              </button>
+            </div>
 
-              {/* Supplier & Delivery */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Separator />
+
+            {/* ── SUPPLIER & DELIVERY section ───────────────────────────────── */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+                Supplier & Delivery
+              </p>
+
+              <div className="space-y-3">
+                {/* Supplier row — selector + add button side by side */}
                 <FormField
                   control={form.control}
                   name="supplier"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
+                      <FormLabel className="text-xs font-medium text-gray-700">
                         Supplier <span className="text-red-500">*</span>
                       </FormLabel>
-                      <FormControl>
-                        <SupplierSelector
-                          {...field}
-                          isDisabled={!!item || isPending}
-                          placeholder="Select supplier"
-                          label="Select supplier"
-                        />
-                      </FormControl>
+                      <div className="flex gap-2 items-start">
+                        <FormControl className="flex-1">
+                          <SupplierSelector
+                            key={supplierSelectorKey}
+                            {...field}
+                            isDisabled={!!item || isPending}
+                            placeholder="Select supplier"
+                            label="Select supplier"
+                          />
+                        </FormControl>
+                        {!item && (
+                          <CreateSupplierModal
+                            onCreated={() => {
+                              setSupplierSelectorKey((k) => k + 1);
+                              toast({
+                                title: "Supplier added",
+                                description:
+                                  "You can now select the new supplier from the list.",
+                              });
+                            }}
+                          />
+                        )}
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
+                {/* Delivery date */}
                 <FormField
                   control={form.control}
                   name="deliveryDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>
+                      <FormLabel className="text-xs font-medium text-gray-700">
                         Expected Delivery Date{" "}
                         <span className="text-red-500">*</span>
                       </FormLabel>
@@ -827,45 +1286,68 @@ function StockPurchaseForm({
                   )}
                 />
               </div>
+            </div>
 
-              <Separator />
+            <Separator />
 
-              {/* Notes */}
+            {/* ── NOTES section ─────────────────────────────────────────────── */}
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+                Special Instructions
+              </p>
               <FormField
                 control={form.control}
                 name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Custom Instructions (Optional)</FormLabel>
+                    <FormLabel className="text-xs font-medium text-gray-700">
+                      Notes{""} <span className="text-red-500">*</span>
+                    </FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Add special instructions..."
+                        placeholder="Add special instructions for this order…"
                         {...field}
                         disabled={isPending}
                         maxLength={500}
-                        className="min-h-[100px]"
+                        className="min-h-[90px] text-sm border-gray-200 resize-none focus-visible:ring-1 focus-visible:ring-orange-400 focus-visible:border-orange-400"
                       />
                     </FormControl>
-                    <p className="text-xs text-muted-foreground">
-                      {field.value?.length || 0}/500 characters
+                    <p className="text-xs text-gray-400 mt-1">
+                      {field.value?.length || 0}/500
                     </p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
 
-              {/* Actions */}
-              <div className="flex justify-between gap-3 pt-4">
-                <CancelButton />
-                <SubmitButton
-                  isPending={isPending}
-                  label={item ? "Update Purchase" : "Create Purchase Order"}
-                />
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            <Separator />
+
+            {/* ── Actions ───────────────────────────────────────────────────── */}
+            <div className="flex justify-end gap-2 pt-1">
+              <CancelButton />
+              <Button
+                type="submit"
+                disabled={isPending}
+                className="text-white text-sm h-9 min-w-[180px] shadow-sm"
+                style={{ backgroundColor: PRIMARY }}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    {item ? "Updating…" : "Creating…"}
+                  </>
+                ) : (
+                  <>
+                    <ClipboardList className="w-4 h-4 mr-2" />
+                    {item ? "Update Purchase" : "Create Purchase Order"}
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
     </div>
   );
 }
