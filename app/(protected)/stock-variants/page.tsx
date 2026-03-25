@@ -133,7 +133,6 @@ function StockEmptyState() {
         <div className="flex-1 h-px bg-gray-200" />
       </div>
 
-      {/* ── Import option cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-xl">
         {/* Stock only */}
         <div className="group relative flex flex-col bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 hover:shadow-sm transition-all duration-200">
@@ -155,7 +154,6 @@ function StockEmptyState() {
           <CSVStockDialog uploadType="location" />
         </div>
 
-        {/* Stock + Products */}
         <div className="group relative flex flex-col bg-white border border-gray-200 rounded-xl p-5 hover:border-gray-300 hover:shadow-sm transition-all duration-200">
           <div className="flex items-start justify-between mb-3">
             <div className="w-9 h-9 rounded-lg bg-orange-50 flex items-center justify-center">
