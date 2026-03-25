@@ -1,12 +1,18 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, RefreshCcw, Clock, CheckCircle, Package } from 'lucide-react';
-import DailyRevenueChart from './Charts/DailyRevenueChart';
-import PaymentMethodsChart from './Charts/PaymentMethodsChart';
-import TopSellingItemsChart from './Charts/TopSellingItemsChart';
-import MonthlyCashflowChart from './Charts/MonthlyCashflowChart';
-import StaffPerformanceChart from './Charts/StaffPerformanceChart';
-import RecentTransactionsTable from './Charts/RecentTransactionsTable';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DollarSign,
+  RefreshCcw,
+  Clock,
+  CheckCircle,
+  Package,
+} from "lucide-react";
+import DailyRevenueChart from "./Charts/DailyRevenueChart";
+import PaymentMethodsChart from "./Charts/PaymentMethodsChart";
+import TopSellingItemsChart from "./Charts/TopSellingItemsChart";
+import MonthlyCashflowChart from "./Charts/MonthlyCashflowChart";
+import StaffPerformanceChart from "./Charts/StaffPerformanceChart";
+import RecentTransactionsTable from "./Charts/RecentTransactionsTable";
 
 const StatCard = ({
   label,
@@ -21,24 +27,45 @@ const StatCard = ({
 }) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
-      <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        {label}
+      </CardTitle>
       <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
         <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
       </div>
     </CardHeader>
     <CardContent className="px-4 pb-4 pt-0">
-      <div className={`text-2xl font-bold ${valueColor || 'text-gray-900 dark:text-gray-100'}`}>
-        {typeof value === 'string' && value.endsWith('TZS')
-          ? <>{value.replace(' TZS', '')} <span className="text-[0.6em] font-normal opacity-70">TZS</span></>
-          : value}
+      <div
+        className={`text-2xl font-bold ${valueColor || "text-gray-900 dark:text-gray-100"}`}
+      >
+        {typeof value === "string" && value.endsWith("TZS") ? (
+          <>
+            {value.replace(" TZS", "")}{" "}
+            <span className="text-[0.6em] font-normal opacity-70">TZS</span>
+          </>
+        ) : (
+          value
+        )}
       </div>
     </CardContent>
   </Card>
 );
 
-const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, departmentName, children }: { salesData: any; variant?: "location" | "staff"; loyaltyPoints?: number | null; departmentName?: string | null; children?: React.ReactNode }) => {
+const SalesDashboard = ({
+  salesData,
+  variant = "location",
+  loyaltyPoints,
+  departmentName,
+  children,
+}: {
+  salesData: any;
+  variant?: "location" | "staff";
+  loyaltyPoints?: number | null;
+  departmentName?: string | null;
+  children?: React.ReactNode;
+}) => {
   const formatAmount = (value: number | undefined | null): string => {
-    if (value === undefined || value === null) return '0';
+    if (value === undefined || value === null) return "0";
     return value.toLocaleString();
   };
 
@@ -46,9 +73,16 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
     return `${formatAmount(value)} TZS`;
   };
 
-  const CurrencyValue = ({ value, className }: { value: number | undefined | null; className?: string }) => (
+  const CurrencyValue = ({
+    value,
+    className,
+  }: {
+    value: number | undefined | null;
+    className?: string;
+  }) => (
     <span className={className}>
-      {formatAmount(value)} <span className="text-[0.6em] font-normal opacity-70">TZS</span>
+      {formatAmount(value)}{" "}
+      <span className="text-[0.6em] font-normal opacity-70">TZS</span>
     </span>
   );
 
@@ -62,8 +96,8 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
             className="relative rounded-xl overflow-hidden shadow-none"
             style={{
               backgroundImage: "url('/images/bg.png')",
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
+              backgroundSize: "cover",
+              backgroundPosition: "center",
             }}
           >
             <div className="absolute inset-0 bg-black/50" />
@@ -91,7 +125,8 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
                   Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
                 </span>
                 <span className="text-amber-600 font-medium">
-                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)} TZS
+                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)}{" "}
+                  TZS
                 </span>
               </div>
             </CardContent>
@@ -116,17 +151,17 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
             className="relative rounded-xl overflow-hidden shadow-none"
             style={{
               backgroundImage: "url('/images/bg.png')",
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
+              backgroundSize: "cover",
+              backgroundPosition: "center",
             }}
           >
             <div className="absolute inset-0 bg-black/50" />
             <div className="relative p-6">
               <p className="text-sm font-bold uppercase tracking-widest text-white/80">
-                {salesData?.closingBalance >= 0 ? 'Net Profit' : 'Net Loss'}
+                {salesData?.netProfit >= 0 ? "Net Profit" : "Net Loss"}
               </p>
               <p className="text-4xl font-extrabold mt-2 text-primary">
-                <CurrencyValue value={salesData?.closingBalance} />
+                <CurrencyValue value={salesData?.netProfit} />
               </p>
             </div>
           </div>
@@ -135,10 +170,10 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
           <Card className="rounded-xl shadow-none">
             <CardContent className="p-6">
               <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
-                Cost of Goods Sold
+                Closing balance
               </p>
               <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
-                <CurrencyValue value={salesData?.totalCost} />
+                <CurrencyValue value={salesData?.closingBalance} />
               </p>
             </CardContent>
           </Card>
@@ -157,7 +192,8 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
                   Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
                 </span>
                 <span className="text-amber-600 font-medium">
-                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)} TZS
+                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)}{" "}
+                  TZS
                 </span>
               </div>
             </CardContent>
@@ -171,50 +207,104 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
           <div className="flex items-center gap-2">
             <Package className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Total Orders</span>
-            <span className="text-sm font-bold">{salesData?.totalOrders || 0}</span>
+            <span className="text-sm font-bold">
+              {salesData?.totalOrders || 0}
+            </span>
           </div>
           <div className="h-4 w-px bg-border hidden sm:block" />
           <div className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-emerald-500" />
-            <span className="text-sm text-muted-foreground">Completed Orders</span>
-            <span className="text-sm font-bold">{salesData?.completedOrders || 0}</span>
+            <span className="text-sm text-muted-foreground">
+              Completed Orders
+            </span>
+            <span className="text-sm font-bold">
+              {salesData?.completedOrders || 0}
+            </span>
           </div>
           <div className="h-4 w-px bg-border hidden sm:block" />
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-amber-500" />
-            <span className="text-sm text-muted-foreground">Ongoing Orders</span>
-            <span className="text-sm font-bold">{salesData?.ongoingOrders || 0}</span>
+            <span className="text-sm text-muted-foreground">
+              Ongoing Orders
+            </span>
+            <span className="text-sm font-bold">
+              {salesData?.ongoingOrders || 0}
+            </span>
           </div>
           <div className="h-4 w-px bg-border hidden sm:block" />
           <div className="flex items-center gap-2">
             <RefreshCcw className="h-4 w-4 text-red-500" />
-            <span className="text-sm text-muted-foreground">Refunded Orders</span>
-            <span className="text-sm font-bold">{salesData?.refundedOrders || 0}</span>
+            <span className="text-sm text-muted-foreground">
+              Refunded Orders
+            </span>
+            <span className="text-sm font-bold">
+              {salesData?.refundedOrders || 0}
+            </span>
           </div>
           <div className="h-4 w-px bg-border hidden sm:block" />
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Avg. Order Value</span>
-            <span className="text-sm font-bold">{formatCurrency(salesData?.averageOrderValue)}</span>
+            <span className="text-sm text-muted-foreground">
+              Avg. Order Value
+            </span>
+            <span className="text-sm font-bold">
+              {formatCurrency(salesData?.averageOrderValue)}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Cost of goods solid
+            </span>
+            <span className="text-sm font-bold">
+              {formatCurrency(salesData?.totalCost)}
+            </span>
           </div>
         </CardContent>
       </Card>
 
       {/* Revenue stream */}
       <div className="space-y-3">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Revenue stream</h3>
+        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          Revenue stream
+        </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Gross sales" value={formatCurrency(salesData?.grossSales)} icon={DollarSign} />
-          <StatCard label="Discounts" value={formatCurrency(salesData?.totalDiscount)} icon={RefreshCcw} />
+          <StatCard
+            label="Gross sales"
+            value={formatCurrency(salesData?.grossSales)}
+            icon={DollarSign}
+          />
+          <StatCard
+            label="Discounts"
+            value={formatCurrency(salesData?.totalDiscount)}
+            icon={RefreshCcw}
+          />
           {variant === "staff" ? (
             <>
-              <StatCard label="Points" value={loyaltyPoints?.toLocaleString() ?? "0"} icon={DollarSign} />
-              <StatCard label="Department" value={departmentName ?? "—"} icon={DollarSign} />
+              <StatCard
+                label="Points"
+                value={loyaltyPoints?.toLocaleString() ?? "0"}
+                icon={DollarSign}
+              />
+              <StatCard
+                label="Department"
+                value={departmentName ?? "—"}
+                icon={DollarSign}
+              />
             </>
           ) : (
             <>
-              <StatCard label="Refunds" value={formatCurrency(salesData?.totalRefundedAmount)} icon={RefreshCcw} />
-              <StatCard label="Net sales" value={formatCurrency(salesData?.netSales)} icon={DollarSign} />
+              <StatCard
+                label="Refunds"
+                value={formatCurrency(salesData?.totalRefundedAmount)}
+                icon={RefreshCcw}
+              />
+              <StatCard
+                label="Net sales"
+                value={formatCurrency(salesData?.netSales)}
+                icon={DollarSign}
+              />
             </>
           )}
         </div>
@@ -244,7 +334,6 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
         <StaffPerformanceChart data={salesData?.staffPerformance} />
         <RecentTransactionsTable data={salesData?.recentTransactions} />
       </div>
-
     </div>
   );
 };
