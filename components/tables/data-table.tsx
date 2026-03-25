@@ -61,8 +61,6 @@ import StockIntakeExport from "../widgets/export-intake";
 import { BulkArchive } from "../widgets/bulk-archive";
 import { WarehouseBulkArchive } from "../widgets/warehouse/bulk-archive";
 import { CSVStockIntakeDialog } from "@/components/csv/stockIntakeImport";
-
-// Define page-specific component mappings
 const pageSpecificComponents = {
   "/products": {
     entityType: "product" as const,
