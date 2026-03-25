@@ -43,6 +43,7 @@ import {
   Mail,
   MapPin,
   Loader2Icon,
+  Plus,
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { businessTimes } from "@/types/constants";
@@ -59,6 +60,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
 
 const GENERAL_SETTINGS_CATEGORIES = ["basic"];
 
@@ -84,6 +86,7 @@ const LocationDetailsSettings = ({
   isLoading: boolean;
   locationSettings?: LocationSettings | null;
 }) => {
+  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
@@ -410,6 +413,13 @@ const LocationDetailsSettings = ({
             </button>
           </div>
         )}
+        <Button
+          onClick={() => router.push("/locations/new")}
+          className="shrink-0 mt-2"
+        >
+          <Plus className="h-4 w-4 mr-2" />
+          Add New Location
+        </Button>
       </div>
 
       <Form {...form}>
@@ -761,9 +771,7 @@ const LocationDetailsSettings = ({
                             </Button>
                             <Button
                               type="button"
-                              variant={
-                                field.value ? "destructive" : "default"
-                              }
+                              variant={field.value ? "destructive" : "default"}
                               onClick={() => {
                                 field.onChange(!field.value);
                                 setShowStatusDialog(false);
