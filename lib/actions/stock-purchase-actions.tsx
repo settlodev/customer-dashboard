@@ -39,7 +39,7 @@ export const searchStockPurchases = async (
       `/api/stock-intake-purchase-order/${location?.id}/paginate`,
       query,
     );
-    console.log("The LPOs are", data);
+
     return parseStringify(data);
   } catch (error) {
     throw error;

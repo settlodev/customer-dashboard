@@ -43,17 +43,18 @@ async function Page({ searchParams }: Params) {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      {/* Header row */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BreadcrumbsNav items={breadCrumbItems} />
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <TableExport filename="products" useEndpoint />
+
           <ProductCSVDialog />
+
           <Button asChild>
             <Link href="/products/new/edit">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Add Product
+              <Plus className="h-4 w-4 sm:mr-1.5" />
+              <span className="hidden sm:inline">Add Product</span>
             </Link>
           </Button>
         </div>

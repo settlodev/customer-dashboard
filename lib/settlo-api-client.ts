@@ -74,8 +74,12 @@ class ApiClient {
               },
             );
 
-            const newAccessToken = refreshResponse.data?.authToken || refreshResponse.data?.accessToken || refreshResponse.data?.token;
-            const newRefreshToken = refreshResponse.data?.refreshToken || token.refreshToken;
+            const newAccessToken =
+              refreshResponse.data?.authToken ||
+              refreshResponse.data?.accessToken ||
+              refreshResponse.data?.token;
+            const newRefreshToken =
+              refreshResponse.data?.refreshToken || token.refreshToken;
 
             if (newAccessToken) {
               // Update stored tokens
@@ -86,7 +90,8 @@ class ApiClient {
               });
 
               // Retry original request with new token
-              originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
+              originalRequest.headers["Authorization"] =
+                `Bearer ${newAccessToken}`;
               return this.instance(originalRequest);
             }
           } catch (refreshError) {
