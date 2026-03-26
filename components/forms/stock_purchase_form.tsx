@@ -611,11 +611,7 @@ function StockPurchaseForm({
     const totalItems = purchaseData.stockIntakePurchaseOrderItems?.length ?? 0;
 
     return (
-      <div
-        className="min-h-screen py-8 px-4 sm:px-6"
-        style={{ backgroundColor: SECONDARY }}
-        id="lpo-preview"
-      >
+      <div className="min-h-screen py-8 px-4 sm:px-6" id="lpo-preview">
         <div className="max-w-4xl mx-auto">
           <div className="mb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 print:hidden">
             <Button
@@ -626,45 +622,6 @@ function StockPurchaseForm({
               <ArrowLeft className="h-4 w-4" />
               Back to Purchases
             </Button>
-            <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                onClick={copyShareLink}
-                className="gap-2"
-              >
-                <Copy className="h-4 w-4" />
-                Copy Share Link
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => window.print()}
-                className="gap-2"
-              >
-                <Printer className="h-4 w-4" />
-                Print
-              </Button>
-            </div>
-          </div>
-
-          <div
-            className="mb-5 flex items-center gap-3 p-4 rounded-xl print:hidden"
-            style={{ backgroundColor: "#dcfce7", border: "1px solid #86efac" }}
-          >
-            <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <p className="font-semibold text-green-800 text-sm">
-                Purchase Order Created Successfully!
-              </p>
-              <p className="text-xs text-green-700 mt-0.5">
-                Order{" "}
-                <span className="font-mono font-medium">
-                  #{purchaseData.orderNumber}
-                </span>{" "}
-                is ready to share with your supplier.
-              </p>
-            </div>
           </div>
 
           <div

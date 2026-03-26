@@ -4,7 +4,7 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 const highlights = [
   "No credit card required",
-  "Free 14-day trial",
+  "Free 7-day trial",
   "Cancel anytime",
 ];
 
@@ -51,7 +51,7 @@ export const Hero = () => {
                 point-of-sale system and flexible access business funding&mdash;
                 all in one place. <br />
                 <span className="font-semibold text-primary">
-                  Kesho yako ni kubwa.
+                  Kesho Yako Ni Kubwa.
                 </span>
               </p>
 

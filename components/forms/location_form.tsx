@@ -105,7 +105,8 @@ export const LocationForm = ({
       image: imageUrl || null,
     };
 
-    if (multipleStep) {
+    // Delegate to parent for both multipleStep AND standalone new location
+    if (multipleStep || !item) {
       setIsSubmitting(true);
       Promise.resolve(_onSubmit(locationData)).finally(() => {
         setIsSubmitting(false);
@@ -113,24 +114,18 @@ export const LocationForm = ({
       return;
     }
 
+    // Only runs for UPDATE (item exists) — handles its own API call
     startTransition(async () => {
       try {
-        const response = item
-          ? await updateLocation(item.id, locationData)
-          : await createLocation(locationData, businessId || undefined);
-
+        const response = await updateLocation(item.id, locationData);
         if (response) {
           setResponse(response);
-          if (!item) {
-            window.location.href = "/select-business";
-            return;
-          }
           window.location.href = "/select-location";
         }
       } catch (error) {
         toast({
           variant: "destructive",
-          title: `${item ? "Update" : "Create"} failed`,
+          title: "Update failed",
           description:
             error instanceof Error
               ? error.message

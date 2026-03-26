@@ -44,11 +44,13 @@ import {
   MapPin,
   Loader2Icon,
   Plus,
+  X,
+  CheckCircle2,
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { businessTimes } from "@/types/constants";
 import { BusinessTimeType, FormResponse } from "@/types/types";
-import { updateLocation } from "@/lib/actions/location-actions";
+import { createLocation, updateLocation } from "@/lib/actions/location-actions";
 import { updateLocationSettings } from "@/lib/actions/settings-actions";
 import { toast } from "@/hooks/use-toast";
 import CountrySelector from "@/components/widgets/country-selector";
@@ -60,7 +62,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useRouter } from "next/navigation";
+import { LocationForm } from "@/components/forms/location_form";
 
 const GENERAL_SETTINGS_CATEGORIES = ["basic"];
 
@@ -86,10 +88,14 @@ const LocationDetailsSettings = ({
   isLoading: boolean;
   locationSettings?: LocationSettings | null;
 }) => {
-  const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [showNewLocationForm, setShowNewLocationForm] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdLocationName, setCreatedLocationName] = useState<string | null>(
+    null,
+  );
 
   const handleCopy = () => {
     if (!location?.locationAccountNumber) return;
@@ -114,7 +120,6 @@ const LocationDetailsSettings = ({
         ? formatTimeForSelect(location.closingTime)
         : undefined,
       status: location ? location.status : true,
-      // Settings defaults
       currencyCode: locationSettings?.currencyCode ?? "TZS",
       minimumSettlementAmount: locationSettings?.minimumSettlementAmount ?? 0,
       systemPasscode: locationSettings?.systemPasscode ?? "0000",
@@ -160,7 +165,6 @@ const LocationDetailsSettings = ({
   const submitData = (values: CombinedFormValues) => {
     startTransition(async () => {
       try {
-        // Split values for the two APIs
         const locationData = {
           name: values.name,
           phone: values.phone,
@@ -185,7 +189,6 @@ const LocationDetailsSettings = ({
           isDefault: values.isDefault,
         };
 
-        // Call both APIs
         const results = await Promise.all([
           location
             ? updateLocation(location.id, locationData as any)
@@ -224,6 +227,32 @@ const LocationDetailsSettings = ({
     });
   };
 
+  // Handler for the new location form submission
+  const handleNewLocationSubmit = async (
+    values: z.infer<typeof LocationSchema>,
+  ) => {
+    try {
+      const saved = await createLocation(values);
+
+      if (saved?.responseType === "success" && saved.data) {
+        setCreatedLocationName((saved.data as Location).name);
+        setShowNewLocationForm(false);
+        setShowSuccessModal(true);
+      } else {
+        throw new Error(saved?.message || "Failed to create location");
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "There was a problem creating the location. Please try again.",
+      });
+    }
+  };
+
   const generalSettings = SETTINGS_CONFIG.filter((s) =>
     GENERAL_SETTINGS_CATEGORIES.includes(s.category),
   );
@@ -232,7 +261,6 @@ const LocationDetailsSettings = ({
     const { key, type, placeholder, helperText, inputType, min, max, step } =
       field;
 
-    // Check dependencies
     const currentValues = form.watch();
     if (field.dependencies?.length) {
       const allMet = field.dependencies.every(
@@ -352,7 +380,6 @@ const LocationDetailsSettings = ({
     }
   };
 
-  // Group settings by category
   const settingsByCategory = generalSettings.reduce(
     (acc, setting) => {
       if (!acc[setting.category]) acc[setting.category] = [];
@@ -388,408 +415,477 @@ const LocationDetailsSettings = ({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Location Details
-        </h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Manage your location information, address, and general settings
-        </p>
-        {location?.locationAccountNumber && (
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs text-muted-foreground">Account No:</span>
-            <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">
-              {location.locationAccountNumber}
-            </code>
-            <button
-              onClick={handleCopy}
-              className="text-muted-foreground hover:text-primary transition-colors"
-            >
-              {copied ? (
-                <Check className="h-3.5 w-3.5 text-green-500" />
-              ) : (
-                <Copy className="h-3.5 w-3.5" />
-              )}
-            </button>
-          </div>
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Location Details
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Manage your location information, address, and general settings
+          </p>
+          {location?.locationAccountNumber && !showNewLocationForm && (
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-xs text-muted-foreground">Account No:</span>
+              <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">
+                {location.locationAccountNumber}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="text-muted-foreground hover:text-primary transition-colors"
+              >
+                {copied ? (
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Toggle button */}
+        {showNewLocationForm ? (
+          <Button
+            variant="outline"
+            onClick={() => setShowNewLocationForm(false)}
+            className="shrink-0"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+        ) : (
+          <Button
+            onClick={() => setShowNewLocationForm(true)}
+            className="shrink-0"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Location
+          </Button>
         )}
-        <Button
-          onClick={() => router.push("/locations/new")}
-          className="shrink-0 mt-2"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Location
-        </Button>
       </div>
 
-      <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(submitData, onInvalid)}
-          className="space-y-6"
-        >
-          <Card>
-            <CardContent className="pt-6 space-y-6">
-              {/* Basic Information */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Basic Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location Name</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
+      {/* New location form OR existing location edit form */}
+      {showNewLocationForm ? (
+        <Card className="rounded-xl border shadow-sm">
+          <CardContent className="p-6">
+            <LocationForm item={null} onSubmit={handleNewLocationSubmit} />
+          </CardContent>
+        </Card>
+      ) : (
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(submitData, onInvalid)}
+            className="space-y-6"
+          >
+            <Card>
+              <CardContent className="pt-6 space-y-6">
+                {/* Basic Information */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Basic Information</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Location Name</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input
+                                className="pl-10"
+                                {...field}
+                                disabled={isPending}
+                                placeholder="Enter location name"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number</FormLabel>
+                          <FormControl>
+                            <PhoneInput
                               {...field}
                               disabled={isPending}
-                              placeholder="Enter location name"
+                              onChange={(value) => field.onChange(value)}
+                              placeholder="Enter phone number"
                             />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <PhoneInput
-                            {...field}
-                            disabled={isPending}
-                            onChange={(value) => field.onChange(value)}
-                            placeholder="Enter phone number"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Email</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input
+                                className="pl-10"
+                                {...field}
+                                value={field.value || ""}
+                                disabled={isPending}
+                                type="email"
+                                placeholder="Enter email"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              value={field.value || ""}
-                              disabled={isPending}
-                              type="email"
-                              placeholder="Enter email"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location Address</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Enter address"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Location Address</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input
+                                className="pl-10"
+                                {...field}
+                                disabled={isPending}
+                                placeholder="Enter address"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
-              </div>
 
-              <Separator />
+                <Separator />
 
-              {/* Business Hours */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Business Hours</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="openingTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Opening Time</FormLabel>
-                        <FormControl>
-                          <Select
-                            disabled={isPending}
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <SelectTrigger className="pl-10">
-                              <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                              <SelectValue placeholder="Select opening time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {businessTimes.map(
-                                (item: BusinessTimeType, index: number) => (
-                                  <SelectItem key={index} value={item.name}>
-                                    {item.label}
-                                  </SelectItem>
-                                ),
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormDescription>
-                          When do you open your business location?
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="closingTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Closing Time</FormLabel>
-                        <FormControl>
-                          <Select
-                            disabled={isPending}
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <SelectTrigger className="pl-10">
-                              <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                              <SelectValue placeholder="Select closing time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {businessTimes.map(
-                                (item: BusinessTimeType, index: number) => (
-                                  <SelectItem key={index} value={item.name}>
-                                    {item.label}
-                                  </SelectItem>
-                                ),
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormDescription>
-                          When do you close your business location?
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Address Details */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Address Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City / Region</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
+                {/* Business Hours */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Business Hours</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="openingTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Opening Time</FormLabel>
+                          <FormControl>
+                            <Select
                               disabled={isPending}
-                              placeholder="Which city do you operate?"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="street"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Street</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              value={field.value || ""}
-                              disabled={isPending}
-                              placeholder="Enter street"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="Describe your business location"
-                            className="min-h-[100px]"
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* General Settings from SETTINGS_CONFIG */}
-              {Object.entries(settingsByCategory).map(
-                ([category, settings]) => (
-                  <React.Fragment key={category}>
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">
-                        {CATEGORY_TITLES[category] || category}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {settings.map((field) => renderSettingField(field))}
-                      </div>
-                    </div>
-                  </React.Fragment>
-                ),
-              )}
-
-              {/* Submit */}
-              <div className="flex justify-end pt-6">
-                {isPending ? (
-                  <Button disabled className="w-full md:w-auto">
-                    <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                    Updating...
-                  </Button>
-                ) : (
-                  <Button type="submit" className="w-full md:w-auto">
-                    Update Location
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Location Status Card */}
-          {location && (
-            <Card className="rounded-xl border border-red-200 shadow-sm">
-              <CardContent className="p-6">
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <>
-                      <FormItem className="flex flex-row items-center justify-between">
-                        <div>
-                          <FormLabel className="text-base">
-                            Location Status
-                          </FormLabel>
+                              onValueChange={field.onChange}
+                              value={field.value}
+                            >
+                              <SelectTrigger className="pl-10">
+                                <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                <SelectValue placeholder="Select opening time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {businessTimes.map(
+                                  (item: BusinessTimeType, index: number) => (
+                                    <SelectItem key={index} value={item.name}>
+                                      {item.label}
+                                    </SelectItem>
+                                  ),
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
                           <FormDescription>
-                            This location is currently{" "}
-                            <span
-                              className={
-                                field.value
-                                  ? "text-green-600 font-medium"
-                                  : "text-red-600 font-medium"
-                              }
-                            >
-                              {field.value ? "enabled" : "disabled"}
-                            </span>
+                            When do you open your business location?
                           </FormDescription>
-                        </div>
-                        <Button
-                          type="button"
-                          variant={field.value ? "destructive" : "default"}
-                          size="sm"
-                          disabled={isPending}
-                          onClick={() => setShowStatusDialog(true)}
-                        >
-                          {field.value ? "Disable" : "Enable"}
-                        </Button>
-                        <FormMessage />
-                      </FormItem>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                      <Dialog
-                        open={showStatusDialog}
-                        onOpenChange={setShowStatusDialog}
-                      >
-                        <DialogContent>
-                          <DialogHeader>
-                            <DialogTitle>
-                              {field.value ? "Disable" : "Enable"} Location
-                            </DialogTitle>
-                            <DialogDescription>
-                              {field.value
-                                ? "Are you sure you want to disable this location? This will make it inactive and may affect all associated services."
-                                : "Are you sure you want to enable this location? This will make it active again."}
-                            </DialogDescription>
-                          </DialogHeader>
-                          <DialogFooter>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setShowStatusDialog(false)}
+                    <FormField
+                      control={form.control}
+                      name="closingTime"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Closing Time</FormLabel>
+                          <FormControl>
+                            <Select
+                              disabled={isPending}
+                              onValueChange={field.onChange}
+                              value={field.value}
                             >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="button"
-                              variant={field.value ? "destructive" : "default"}
-                              onClick={() => {
-                                field.onChange(!field.value);
-                                setShowStatusDialog(false);
-                              }}
-                            >
-                              {field.value ? "Disable" : "Enable"}
-                            </Button>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </>
+                              <SelectTrigger className="pl-10">
+                                <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                                <SelectValue placeholder="Select closing time" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {businessTimes.map(
+                                  (item: BusinessTimeType, index: number) => (
+                                    <SelectItem key={index} value={item.name}>
+                                      {item.label}
+                                    </SelectItem>
+                                  ),
+                                )}
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>
+                            When do you close your business location?
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Address Details */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-medium">Address Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City / Region</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input
+                                className="pl-10"
+                                {...field}
+                                disabled={isPending}
+                                placeholder="Which city do you operate?"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="street"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Street</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input
+                                className="pl-10"
+                                {...field}
+                                value={field.value || ""}
+                                disabled={isPending}
+                                placeholder="Enter street"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem className="md:col-span-2">
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              {...field}
+                              disabled={isPending}
+                              value={field.value || ""}
+                              placeholder="Describe your business location"
+                              className="min-h-[100px]"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* General Settings */}
+                {Object.entries(settingsByCategory).map(
+                  ([category, settings]) => (
+                    <React.Fragment key={category}>
+                      <div className="space-y-4">
+                        <h3 className="text-lg font-medium">
+                          {CATEGORY_TITLES[category] || category}
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {settings.map((field) => renderSettingField(field))}
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  ),
+                )}
+
+                {/* Submit */}
+                <div className="flex justify-end pt-6">
+                  {isPending ? (
+                    <Button disabled className="w-full md:w-auto">
+                      <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                      Updating...
+                    </Button>
+                  ) : (
+                    <Button type="submit" className="w-full md:w-auto">
+                      Update Location
+                    </Button>
                   )}
-                />
+                </div>
               </CardContent>
             </Card>
-          )}
-        </form>
-      </Form>
+
+            {/* Location Status Card */}
+            {location && (
+              <Card className="rounded-xl border border-red-200 shadow-sm">
+                <CardContent className="p-6">
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <>
+                        <FormItem className="flex flex-row items-center justify-between">
+                          <div>
+                            <FormLabel className="text-base">
+                              Location Status
+                            </FormLabel>
+                            <FormDescription>
+                              This location is currently{" "}
+                              <span
+                                className={
+                                  field.value
+                                    ? "text-green-600 font-medium"
+                                    : "text-red-600 font-medium"
+                                }
+                              >
+                                {field.value ? "enabled" : "disabled"}
+                              </span>
+                            </FormDescription>
+                          </div>
+                          <Button
+                            type="button"
+                            variant={field.value ? "destructive" : "default"}
+                            size="sm"
+                            disabled={isPending}
+                            onClick={() => setShowStatusDialog(true)}
+                          >
+                            {field.value ? "Disable" : "Enable"}
+                          </Button>
+                          <FormMessage />
+                        </FormItem>
+
+                        <Dialog
+                          open={showStatusDialog}
+                          onOpenChange={setShowStatusDialog}
+                        >
+                          <DialogContent>
+                            <DialogHeader>
+                              <DialogTitle>
+                                {field.value ? "Disable" : "Enable"} Location
+                              </DialogTitle>
+                              <DialogDescription>
+                                {field.value
+                                  ? "Are you sure you want to disable this location? This will make it inactive and may affect all associated services."
+                                  : "Are you sure you want to enable this location? This will make it active again."}
+                              </DialogDescription>
+                            </DialogHeader>
+                            <DialogFooter>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setShowStatusDialog(false)}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                type="button"
+                                variant={
+                                  field.value ? "destructive" : "default"
+                                }
+                                onClick={() => {
+                                  field.onChange(!field.value);
+                                  setShowStatusDialog(false);
+                                }}
+                              >
+                                {field.value ? "Disable" : "Enable"}
+                              </Button>
+                            </DialogFooter>
+                          </DialogContent>
+                        </Dialog>
+                      </>
+                    )}
+                  />
+                </CardContent>
+              </Card>
+            )}
+          </form>
+        </Form>
+      )}
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={() => {}}>
+        <DialogContent
+          className="sm:max-w-md"
+          onPointerDownOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <div className="flex justify-center mb-2">
+              <CheckCircle2 className="h-12 w-12 text-green-500" />
+            </div>
+            <DialogTitle className="text-center text-xl">
+              Location Added!
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              <span className="font-semibold text-foreground">
+                {createdLocationName}
+              </span>{" "}
+              has been successfully created.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-2">
+            <Button
+              variant="outline"
+              className="w-full sm:w-auto"
+              onClick={() => setShowSuccessModal(false)}
+            >
+              Stay on Page
+            </Button>
+            <Button
+              className="w-full sm:w-auto"
+              onClick={() => {
+                window.location.href = "/select-location";
+              }}
+            >
+              Go to Select Location
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

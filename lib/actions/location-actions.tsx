@@ -97,15 +97,12 @@ export const createLocation = async (
       updatedAt: new Date().toISOString(),
     };
 
-    console.log("The payload to create location:", payload);
-
     const apiClient = new ApiClient();
     const response = await apiClient.post(
       `/api/locations/${targetBusinessId}/create`,
       payload,
     );
 
-    console.log("Response after proceeding:", response);
     formResponse = parseStringify({
       responseType: "success",
       message: "Location created successfully",
@@ -126,7 +123,7 @@ export const createLocation = async (
     if (formResponse.responseType === "success") {
       // Use businessId to determine if this is multistep
       if (businessId) {
-        revalidatePath("/business");
+        revalidatePath("/select-location");
       } else {
         revalidatePath("/select-location");
       }
