@@ -84,6 +84,7 @@ const MultiStepBusinessForm = ({
     }
 
     try {
+
       const savedLocation = await createLocation(
         locationData,
         createdBusinessId,
