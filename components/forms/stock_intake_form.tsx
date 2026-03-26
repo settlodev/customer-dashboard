@@ -28,7 +28,6 @@ import SupplierSelector from "../widgets/supplier-selector";
 import DateTimePicker from "../widgets/datetimepicker";
 import StaffSelectorWidget from "../widgets/staff_selector_widget";
 import StockVariantSelector from "../widgets/stock-variant-selector";
-import { FormResponse } from "@/types/types";
 import { useRouter } from "next/navigation";
 import {
   Box,
@@ -53,6 +52,8 @@ import { Button } from "@/components/ui/button";
 import { LpoPrefill } from "@/components/forms/stock-intake/lpo-form";
 import { StockIntakePayload } from "@/types/stock-intake/schema";
 import { StockIntakeSuccessModal } from "./stock-intake/success-modal";
+
+// ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const StockLineItemSchema = object({
   stockVariant: string({ message: "Please select a stock item" }).uuid(),
@@ -86,6 +87,8 @@ const FormSchema = object({
 
 type FormValues = z.infer<typeof FormSchema>;
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
 interface LineState {
   serialNumbers: string[];
   hasUniqueIdentifiers: boolean;
@@ -117,6 +120,30 @@ const iconClass = "h-4 w-4 text-gray-400";
 const inputClass =
   "flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50";
 
+const toDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+const validateDates = (
+  orderDate: Date | undefined,
+  deliveryDate: Date | undefined,
+): string | null => {
+  const today = toDay(new Date());
+
+  if (orderDate && toDay(orderDate) > today)
+    return "Order date cannot be in the future.";
+
+  if (deliveryDate) {
+    if (toDay(deliveryDate) > today)
+      return "Delivery date cannot exceed today's date.";
+
+    if (orderDate && toDay(deliveryDate) < toDay(orderDate))
+      return "Delivery date cannot be before the order date.";
+  }
+
+  return null;
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
 function StockIntakeForm({
   item,
   prefill,
@@ -136,7 +163,11 @@ function StockIntakeForm({
     item?.orderDate ? new Date(item.orderDate) : undefined,
   );
   const [deliveryDate, setDeliveryDate] = useState<Date | undefined>(
-    item?.deliveryDate ? new Date(item.deliveryDate) : new Date(),
+    item?.deliveryDate
+      ? new Date(item.deliveryDate)
+      : prefill?.deliveryDate
+        ? new Date(prefill.deliveryDate)
+        : undefined,
   );
 
   const [lineStates, setLineStates] = useState<LineState[]>([
@@ -188,24 +219,18 @@ function StockIntakeForm({
             ],
           },
   });
+
   useEffect(() => {
     if (!prefill) return;
-
     prefill.stockIntakes.forEach((line, index) => {
       if (!line.stockVariant) return;
       getStockVariantById(line.stockVariant)
         .then((info) => updateLineState(index, { variantInfo: info }))
         .catch(console.error);
     });
-
-    if (prefill.deliveryDate) {
-      setDeliveryDate(new Date(prefill.deliveryDate));
-    }
-
-    if (prefill.stockIntakes[0]?.orderDate) {
+    if (prefill.deliveryDate) setDeliveryDate(new Date(prefill.deliveryDate));
+    if (prefill.stockIntakes[0]?.orderDate)
       setOrderDate(new Date(prefill.stockIntakes[0].orderDate));
-    }
-
     setLineStates(prefill.stockIntakes.map(() => defaultLineState()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -223,6 +248,20 @@ function StockIntakeForm({
       .catch(console.error);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stockVariantId]);
+
+  useEffect(() => {
+    if (!orderDate || !deliveryDate) return;
+    const msg = validateDates(orderDate, deliveryDate);
+    setError((prev) => {
+      const isDateError =
+        !prev ||
+        prev === "Order date cannot be in the future." ||
+        prev === "Delivery date cannot exceed today's date." ||
+        prev === "Delivery date cannot be before the order date." ||
+        prev === "Delivery date is required.";
+      return isDateError ? (msg ?? undefined) : prev;
+    });
+  }, [orderDate, deliveryDate]);
 
   const updateLineState = (index: number, patch: Partial<LineState>) =>
     setLineStates((prev) => {
@@ -292,18 +331,47 @@ function StockIntakeForm({
   }, [toast]);
 
   const submitData = (values: FormValues) => {
-    setError(undefined);
+    const firstOrderDateStr = values.stockIntakes?.[0]?.orderDate;
+    const deliveryDateStr = values.deliveryDate;
 
-    if (deliveryDate && orderDate && deliveryDate < orderDate) {
-      setError("Delivery date cannot be before the order date.");
+    const resolvedOrderDate = firstOrderDateStr
+      ? new Date(firstOrderDateStr)
+      : undefined;
+    const resolvedDeliveryDate = deliveryDateStr
+      ? new Date(deliveryDateStr)
+      : undefined;
+
+    // Guard: delivery date is required
+    if (!resolvedDeliveryDate) {
+      setError("Delivery date is required.");
+      setTimeout(() => {
+        document
+          .querySelector("[data-form-error]")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
       return;
     }
 
+    const dateError = validateDates(resolvedOrderDate, resolvedDeliveryDate);
+    if (dateError) {
+      setError(dateError);
+      setTimeout(() => {
+        document
+          .querySelector("[data-form-error]")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+      return; // Hard stop — API is never called
+    }
+
+    // ── 2. Serial / unique-identifier validation ──────────────────────────────
     const lineErr = validateLines();
     if (lineErr) {
       setError(lineErr);
       return;
     }
+
+    // ── 3. All clear — submit to API ──────────────────────────────────────────
+    setError(undefined);
 
     startTransition(() => {
       if (item) {
@@ -311,7 +379,11 @@ function StockIntakeForm({
           value: values.stockIntakes[0].value,
         }).then((data) => {
           if (data?.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: data.message,
+            });
             router.push("/stock-intakes");
           }
         });
@@ -343,11 +415,13 @@ function StockIntakeForm({
         }),
       };
 
-      console.log("payload to be submitted is", payload);
       createStockIntake(payload)
         .then((result) => {
           if (result?.responseType === "success") {
-            console.log("The results after completing stock intake", result);
+            console.debug(
+              "[StockIntakeForm] createStockIntake result.data:",
+              result?.data,
+            );
             const receiptId = (result?.data as { id?: string })?.id;
             setSuccessModal({
               open: true,
@@ -368,9 +442,12 @@ function StockIntakeForm({
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className="space-y-5 sm:space-y-6"
       >
-        <FormError message={error} />
+        {/* data-form-error lets submitData scroll here on validation failure */}
+        <div data-form-error>
+          <FormError message={error} />
+        </div>
 
-        {/* ── Shared delivery fields (Staff, Delivery Date, Supplier) ───────── */}
+        {/* ── Shared fields ─────────────────────────────────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
           {/* Staff */}
           <FormField
@@ -412,20 +489,10 @@ function StockIntakeForm({
                   setDate={setDeliveryDate}
                   handleTimeChange={handleSharedTimeChange}
                   onDateSelect={(d) => {
-                    const today = new Date();
-                    today.setHours(23, 59, 59, 999);
-                    if (orderDate && d < orderDate) {
-                      setError(
-                        "Delivery date cannot be before the order date.",
-                      );
-                      return;
-                    }
-                    if (d > today) {
-                      setError("Delivery date cannot exceed today's date.");
-                      return;
-                    }
-                    setError(undefined);
                     setDeliveryDate(d);
+                    // Eagerly surface the error while the popover is still open
+                    const msg = validateDates(orderDate, d);
+                    setError(msg ?? undefined);
                   }}
                   minDate={orderDate}
                   maxDate={new Date()}
@@ -465,7 +532,7 @@ function StockIntakeForm({
 
         <Separator />
 
-        {/* ── Stock line items ──────────────────────────────────────────────── */}
+        {/* ── Stock line items ───────────────────────────────────────────────── */}
         <div className="space-y-4">
           {fields.map((field, index) => {
             const state = ls(index);
@@ -479,7 +546,6 @@ function StockIntakeForm({
                 key={field.id}
                 className="border border-gray-200 rounded-xl overflow-hidden"
               >
-                {/* Card header — only shown when there are multiple items */}
                 {fields.length > 1 && (
                   <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
                     <span className="text-sm font-medium text-gray-600 truncate max-w-xs">
@@ -514,7 +580,6 @@ function StockIntakeForm({
                   </div>
                 )}
 
-                {/* Card body */}
                 {!state.collapsed && (
                   <div className="p-5 space-y-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
@@ -626,7 +691,14 @@ function StockIntakeForm({
                               handleTimeChange={handleSharedTimeChange}
                               onDateSelect={(d) => {
                                 setOrderDate(d);
-                                if (deliveryDate && deliveryDate < d) {
+                                // Eagerly validate with the new order date
+                                const msg = validateDates(d, deliveryDate);
+                                setError(msg ?? undefined);
+                                // Clear delivery date if it became invalid
+                                if (
+                                  deliveryDate &&
+                                  toDay(deliveryDate) < toDay(d)
+                                ) {
                                   setDeliveryDate(undefined);
                                   form.setValue("deliveryDate", "");
                                 }
@@ -702,7 +774,7 @@ function StockIntakeForm({
                       )}
                     </div>
 
-                    {/* ── Unique Identifiers ───────────────────────────────── */}
+                    {/* Unique Identifiers */}
                     {!item && (
                       <>
                         <div className="flex items-start gap-3 p-4 border border-gray-200 rounded-xl bg-gray-50">
@@ -762,7 +834,6 @@ function StockIntakeForm({
             );
           })}
 
-          {/* Add another item */}
           {!item && !prefill && (
             <Button
               type="button"
@@ -777,7 +848,7 @@ function StockIntakeForm({
           )}
         </div>
 
-        {/* ── Actions ──────────────────────────────────────────────────────── */}
+        {/* ── Actions ─────────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
           <CancelButton />
           <Separator orientation="vertical" className="h-5" />
@@ -793,6 +864,7 @@ function StockIntakeForm({
           />
         </div>
       </form>
+
       <StockIntakeSuccessModal
         open={successModal.open}
         count={successModal.count}

@@ -108,12 +108,14 @@ export const createStockIntake = async (
       `/api/location/${location?.id}/hybrid-stock-intakes/all`,
       payload,
     );
+    console.log("The list of Stock Intakes in this location: ", response);
     formResponse = {
       responseType: "success",
       message: "Stock Intake recorded successfully",
       data: response,
     };
   } catch (error) {
+    console.log("Error while creating StockIntake", error);
     formResponse = {
       responseType: "error",
       message:
