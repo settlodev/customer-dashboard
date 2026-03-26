@@ -1169,7 +1169,6 @@ function StockPurchaseForm({
 
             <Separator />
 
-            {/* ── SUPPLIER & DELIVERY section ───────────────────────────────── */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
                 Supplier & Delivery
