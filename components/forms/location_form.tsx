@@ -60,7 +60,8 @@ export const LocationForm = ({
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
-  const [imageUrl, setImageUrl] = useState(item?.image || "");
+  const [imageUrl, setImageUrl] = useState<string | null>(item?.image || null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatTimeForSelect = (timeString: string | null | undefined) => {
     if (!timeString) return undefined;
@@ -101,8 +102,16 @@ export const LocationForm = ({
 
     const locationData = {
       ...values,
-      image: imageUrl,
+      image: imageUrl || null,
     };
+
+    if (multipleStep) {
+      setIsSubmitting(true);
+      Promise.resolve(_onSubmit(locationData)).finally(() => {
+        setIsSubmitting(false);
+      });
+      return;
+    }
 
     startTransition(async () => {
       try {
@@ -113,7 +122,7 @@ export const LocationForm = ({
         if (response) {
           setResponse(response);
           if (!item) {
-            window.location.href = "/locations";
+            window.location.href = "/select-business";
             return;
           }
           window.location.href = "/select-location";
@@ -399,7 +408,7 @@ export const LocationForm = ({
             </div>
 
             <div className="flex justify-end pt-6">
-              {isPending ? (
+              {isSubmitting || isPending ? (
                 <Button disabled className="w-full md:w-auto">
                   <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
                   {item ? "Updating..." : "Processing..."}

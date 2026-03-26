@@ -195,8 +195,8 @@ export const updateBusiness = async (
     };
   }
 
-  revalidatePath("/business");
-  redirect("/business");
+  revalidatePath("/settings");
+  redirect("/settings");
   // return parseStringify(formResponse);
 };
 
