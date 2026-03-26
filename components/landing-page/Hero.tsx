@@ -4,7 +4,7 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 const highlights = [
   "No credit card required",
-  "Free 14-day trial",
+  "Free 7-day trial",
   "Cancel anytime",
 ];
 
@@ -45,11 +45,14 @@ export const Hero = () => {
               <p className="text-lg text-gray-600 dark:text-gray-400 leading-relaxed max-w-xl">
                 Save time, cut costs and eliminate guesswork with an efficient
                 platform built for modern businesses.
-                <br /><br />
-                Settlo combines
-                market-leading inventory management, a seamless point-of-sale
-                system and flexible access business funding&mdash; all in one
-                place. <br /><span className="font-semibold text-primary">Kesho yako ni kubwa.</span>
+                <br />
+                <br />
+                Settlo combines market-leading inventory management, a seamless
+                point-of-sale system and flexible access business funding&mdash;
+                all in one place. <br />
+                <span className="font-semibold text-primary">
+                  Kesho Yako Ni Kubwa.
+                </span>
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3">
@@ -84,7 +87,7 @@ export const Hero = () => {
             {/* Image — desktop only */}
             <div className="relative hidden lg:block">
               <Image
-                src="/images/1.png"
+                src="/images/11.png"
                 alt="Settlo POS Interface"
                 width={600}
                 height={400}
