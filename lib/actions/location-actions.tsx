@@ -32,56 +32,12 @@ export const fetchAllLocations = async (): Promise<Location[] | null> => {
 
     return parseStringify(locationsData);
   } catch (error: unknown) {
-    const message = (error && typeof error === "object" && "message" in error)
-      ? (error as { message: string }).message
-      : "Unknown error";
+    const message =
+      error && typeof error === "object" && "message" in error
+        ? (error as { message: string }).message
+        : "Unknown error";
     console.error("Error in fetchAllLocations:", message);
     return null;
-  }
-};
-
-export const searchLocations = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Location>> => {
-  await getAuthenticatedUser();
-
-  try {
-    const business = await getCurrentBusiness();
-    const apiClient = new ApiClient();
-
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "UUID_STRING",
-          value: q,
-        },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-
-    const data = await apiClient.post(`/api/locations/${business?.id}`, query);
-
-    return parseStringify(data);
-  } catch (error) {
-    console.error("Error in search locations:", error);
-    throw error;
   }
 };
 
@@ -113,6 +69,7 @@ export const createLocation = async (
     }
 
     let targetBusinessId = businessId;
+    console.log("The targetBusinessId is ", targetBusinessId);
 
     if (!targetBusinessId) {
       const currentBusiness = await getCurrentBusiness();
@@ -152,6 +109,8 @@ export const createLocation = async (
       data: response,
     });
   } catch (error: unknown) {
+    console.error("Error in create location:", error);
+
     return parseStringify({
       responseType: "error",
       message:
@@ -164,7 +123,7 @@ export const createLocation = async (
     if (formResponse.responseType === "success") {
       // Use businessId to determine if this is multistep
       if (businessId) {
-        revalidatePath("/business");
+        revalidatePath("/select-location");
       } else {
         revalidatePath("/select-location");
       }

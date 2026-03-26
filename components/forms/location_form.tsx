@@ -60,7 +60,8 @@ export const LocationForm = ({
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
-  const [imageUrl, setImageUrl] = useState(item?.image || "");
+  const [imageUrl, setImageUrl] = useState<string | null>(item?.image || null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const formatTimeForSelect = (timeString: string | null | undefined) => {
     if (!timeString) return undefined;
@@ -101,27 +102,30 @@ export const LocationForm = ({
 
     const locationData = {
       ...values,
-      image: imageUrl,
+      image: imageUrl || null,
     };
 
+    // Delegate to parent for both multipleStep AND standalone new location
+    if (multipleStep || !item) {
+      setIsSubmitting(true);
+      Promise.resolve(_onSubmit(locationData)).finally(() => {
+        setIsSubmitting(false);
+      });
+      return;
+    }
+
+    // Only runs for UPDATE (item exists) — handles its own API call
     startTransition(async () => {
       try {
-        const response = item
-          ? await updateLocation(item.id, locationData)
-          : await createLocation(locationData, businessId || undefined);
-
+        const response = await updateLocation(item.id, locationData);
         if (response) {
           setResponse(response);
-          if (!item) {
-            window.location.href = "/locations";
-            return;
-          }
           window.location.href = "/select-location";
         }
       } catch (error) {
         toast({
           variant: "destructive",
-          title: `${item ? "Update" : "Create"} failed`,
+          title: "Update failed",
           description:
             error instanceof Error
               ? error.message
@@ -399,7 +403,7 @@ export const LocationForm = ({
             </div>
 
             <div className="flex justify-end pt-6">
-              {isPending ? (
+              {isSubmitting || isPending ? (
                 <Button disabled className="w-full md:w-auto">
                   <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
                   {item ? "Updating..." : "Processing..."}

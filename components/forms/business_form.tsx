@@ -128,13 +128,12 @@ const BusinessForm = ({
     values.faviconUrl = faviconImage || null;
     values.shareImageUrl = shareImage || null;
 
-    startTransition(() => {
+    startTransition(async () => {
       if (item) {
-        updateBusiness(item.id, values).then((data) => {
-          if (data) setResponse(data);
-        });
+        const data = await updateBusiness(item.id, values);
+        if (data) setResponse(data);
       } else {
-        onSubmit(values);
+        await onSubmit(values);
       }
     });
   };
@@ -646,7 +645,11 @@ const BusinessForm = ({
                       }}
                     />
                   </FormControl>
-                  {logoImage && <p className="text-xs text-muted-foreground truncate">{logoImage}</p>}
+                  {logoImage && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {logoImage}
+                    </p>
+                  )}
                 </FormItem>
                 <FormItem>
                   <FormLabel>Banner Image</FormLabel>
@@ -666,7 +669,11 @@ const BusinessForm = ({
                       }}
                     />
                   </FormControl>
-                  {bannerImage && <p className="text-xs text-muted-foreground truncate">{bannerImage}</p>}
+                  {bannerImage && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {bannerImage}
+                    </p>
+                  )}
                 </FormItem>
                 <FormItem>
                   <FormLabel>Favicon</FormLabel>
@@ -686,7 +693,11 @@ const BusinessForm = ({
                       }}
                     />
                   </FormControl>
-                  {faviconImage && <p className="text-xs text-muted-foreground truncate">{faviconImage}</p>}
+                  {faviconImage && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {faviconImage}
+                    </p>
+                  )}
                 </FormItem>
                 <FormItem>
                   <FormLabel>Share Image</FormLabel>
@@ -706,7 +717,11 @@ const BusinessForm = ({
                       }}
                     />
                   </FormControl>
-                  {shareImage && <p className="text-xs text-muted-foreground truncate">{shareImage}</p>}
+                  {shareImage && (
+                    <p className="text-xs text-muted-foreground truncate">
+                      {shareImage}
+                    </p>
+                  )}
                 </FormItem>
                 <FormField
                   control={form.control}
@@ -777,10 +792,18 @@ const BusinessForm = ({
                   <>
                     <FormItem className="flex flex-row items-center justify-between">
                       <div>
-                        <FormLabel className="text-base">Business Status</FormLabel>
+                        <FormLabel className="text-base">
+                          Business Status
+                        </FormLabel>
                         <FormDescription>
                           This business is currently{" "}
-                          <span className={field.value ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                          <span
+                            className={
+                              field.value
+                                ? "text-green-600 font-medium"
+                                : "text-red-600 font-medium"
+                            }
+                          >
                             {field.value ? "enabled" : "disabled"}
                           </span>
                         </FormDescription>
@@ -797,7 +820,10 @@ const BusinessForm = ({
                       <FormMessage />
                     </FormItem>
 
-                    <Dialog open={showStatusDialog} onOpenChange={setShowStatusDialog}>
+                    <Dialog
+                      open={showStatusDialog}
+                      onOpenChange={setShowStatusDialog}
+                    >
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>

@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Business } from "@/types/business/type";
 import BusinessForm from "@/components/forms/business_form";
 import { Card, CardContent } from "@/components/ui/card";
 import Loading from "@/components/ui/loading";
-import { Copy, Check, Plus } from "lucide-react";
+import { Copy, Check, Plus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import MultiStepBusinessForm from "@/components/forms/multistep_form";
 
 const BusinessDetailsSettings = ({
   business,
@@ -17,7 +17,7 @@ const BusinessDetailsSettings = ({
   isLoading: boolean;
 }) => {
   const [copied, setCopied] = useState(false);
-  const router = useRouter();
+  const [showNewBusinessForm, setShowNewBusinessForm] = useState(false);
 
   const handleCopy = () => {
     if (!business?.businessAccountNumber) return;
@@ -48,6 +48,7 @@ const BusinessDetailsSettings = ({
 
   return (
     <div className="space-y-6">
+      {/* Header — always visible */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
@@ -56,7 +57,7 @@ const BusinessDetailsSettings = ({
           <p className="text-muted-foreground mt-1 text-sm">
             Manage your business information, type, and social media links
           </p>
-          {business?.businessAccountNumber && (
+          {business?.businessAccountNumber && !showNewBusinessForm && (
             <div className="flex items-center gap-2 mt-2">
               <span className="text-xs text-muted-foreground">Account No:</span>
               <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">
@@ -76,16 +77,36 @@ const BusinessDetailsSettings = ({
           )}
         </div>
 
-        <Button
-          onClick={() => router.push("/business/new")}
-          className="shrink-0"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add New Business
-        </Button>
+        {/* Toggle button */}
+        {showNewBusinessForm ? (
+          <Button
+            variant="outline"
+            onClick={() => setShowNewBusinessForm(false)}
+            className="shrink-0"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Cancel
+          </Button>
+        ) : (
+          <Button
+            onClick={() => setShowNewBusinessForm(true)}
+            className="shrink-0"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add New Business
+          </Button>
+        )}
       </div>
 
-      <BusinessForm item={business} onSubmit={() => {}} />
+      {showNewBusinessForm ? (
+        <Card className="rounded-xl border shadow-sm">
+          <CardContent className="p-6">
+            <MultiStepBusinessForm item={null} />
+          </CardContent>
+        </Card>
+      ) : (
+        <BusinessForm item={business} onSubmit={() => {}} />
+      )}
     </div>
   );
 };
