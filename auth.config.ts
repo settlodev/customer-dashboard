@@ -1,13 +1,37 @@
-import { AuthError, NextAuthConfig } from "next-auth";
+import { NextAuthConfig } from "next-auth";
 import Credentials from "@auth/core/providers/credentials";
 import { LoginSchema } from "@/types/data-schemas";
 
-const serviceURL = process.env.SERVICE_URL;
+const authServiceURL = process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL;
 
 export default {
   providers: [
     Credentials({
       async authorize(credentials: any) {
+        // Pre-authenticated mode: login server action already verified credentials
+        // and stored tokens. Just create the NextAuth session user object.
+        if (credentials.__preAuthenticated === "true") {
+          return {
+            id: credentials.userId,
+            email: credentials.email,
+            name: credentials.name,
+            firstName: credentials.firstName,
+            lastName: credentials.lastName,
+            phoneNumber: credentials.phoneNumber,
+            accessToken: credentials.accessToken,
+            refreshToken: credentials.refreshToken,
+            emailVerified: credentials.emailVerified === "true" ? new Date() : null,
+            isBusinessRegistrationComplete: credentials.isBusinessRegistrationComplete === "true",
+            isLocationRegistrationComplete: credentials.isLocationRegistrationComplete === "true",
+            countryId: credentials.countryId,
+            countryCode: credentials.countryCode,
+            accountId: credentials.accountId,
+            theme: credentials.theme,
+            pictureUrl: credentials.pictureUrl,
+          };
+        }
+
+        // Direct login mode (fallback)
         const validatedData = LoginSchema.safeParse(credentials);
 
         if (!validatedData.success) {
@@ -17,7 +41,7 @@ export default {
         const { email, password } = validatedData.data;
 
         try {
-          const response = await fetch(`${serviceURL}/api/auth/login`, {
+          const response = await fetch(`${authServiceURL}/auth/login`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -25,43 +49,27 @@ export default {
             body: JSON.stringify({ email, password }),
           });
 
-          console.log("response: ", response);
-
           if (!response.ok) {
-            const responseData = await response.json();
-
-            if (response.status === 500) {
-              console.log(responseData.message);
-            } else if (response.status === 400) {
-              if (responseData.code === "BAD_CREDENTIALS") {
-                console.log(responseData.message);
-              } else if (responseData.code === "VALIDATION_FAILED") {
-                responseData.fieldErrors?.forEach(() => {
-                  console.log(responseData.message);
-                });
-              }
-            }
             return null;
           }
-          return await response.json();
-        } catch (error: any) {
-          console.log("error during registration: ", error);
-          if (error instanceof AuthError) {
-            switch (error.name) {
-              case "CredentialsSignin":
-                return {
-                  error:
-                    "Wrong credentials! Invalid email address and/or password",
-                  status: "error",
-                };
-              default:
-                return {
-                  error: "An unexpected error occurred. Please try again.",
-                  status: "error",
-                };
-            }
+
+          const data = await response.json();
+
+          if (!data.emailVerified) {
+            return null;
           }
-          throw error;
+
+          return {
+            id: data.userId,
+            email: data.email,
+            accessToken: data.accessToken,
+            refreshToken: data.refreshToken,
+            emailVerified: new Date(),
+            accountId: data.accountId,
+          };
+        } catch (error: any) {
+          console.error("Error during login:", error);
+          return null;
         }
       },
     }),

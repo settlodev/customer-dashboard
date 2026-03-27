@@ -1,7 +1,5 @@
-
 "use client";
 
-import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { FormResponse } from "@/types/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useState, useTransition } from "react";
@@ -18,8 +16,8 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { UpdatePasswordSchema } from "@/types/data-schemas";
-import { updatePassword } from "@/lib/actions/auth-actions";
+import { NewPasswordSchema } from "@/types/data-schemas";
+import { confirmNewPassword } from "@/lib/actions/auth-actions";
 import {
   Card,
   CardContent,
@@ -52,31 +50,27 @@ function UpdatePasswordForm() {
 
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
-  const action = searchParams.get("action") || "update"; // 'update' or 'create'
+  const action = searchParams.get("action") || "update";
 
-  const form = useForm<z.infer<typeof UpdatePasswordSchema>>({
-    resolver: zodResolver(UpdatePasswordSchema),
-    defaultValues: {},
+  const form = useForm<z.infer<typeof NewPasswordSchema>>({
+    resolver: zodResolver(NewPasswordSchema),
+    defaultValues: { password: "" },
     mode: "onSubmit",
-    reValidateMode: "onChange",
-    shouldUnregister: false,
   });
 
   const { reset } = form;
 
   const submitData = useCallback(
-    (values: z.infer<typeof UpdatePasswordSchema>) => {
+    (values: z.infer<typeof NewPasswordSchema>) => {
       setError("");
       setSuccess("");
 
-      const payload = {
-        password: values.password,
-        token: token as string,
-      };
-
       startTransition(async () => {
         try {
-          const data: FormResponse = await updatePassword(payload);
+          const data: FormResponse = await confirmNewPassword(
+            token as string,
+            values.password,
+          );
 
           if (!data) {
             setError("An unexpected error occurred. Please try again.");
@@ -88,13 +82,12 @@ function UpdatePasswordForm() {
             return;
           }
 
-          // Success
           setSuccess(data.message);
           setPasswordUpdated(true);
           reset();
-          
+
           setTimeout(() => {
-            window.location.href = DEFAULT_LOGIN_REDIRECT_URL;
+            window.location.href = "/login";
           }, 5000);
         } catch (err: any) {
           console.error("Update password error:", err);
@@ -102,14 +95,10 @@ function UpdatePasswordForm() {
         }
       });
     },
-    [token, reset]
+    [token, reset],
   );
 
   const isCreateAction = action === "create";
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
 
   return (
     <section className="flex items-center justify-center">
@@ -160,15 +149,15 @@ function UpdatePasswordForm() {
               {passwordUpdated
                 ? "Password Updated!"
                 : isCreateAction
-                ? "Create Your Password"
-                : "Update Your Password"}
+                  ? "Create Your Password"
+                  : "Update Your Password"}
             </CardTitle>
             <CardDescription className="text-center text-gray-600 pt-2">
               {passwordUpdated
                 ? "Your password has been successfully updated. You'll be redirected shortly."
                 : isCreateAction
-                ? "Set up a secure password to protect your account"
-                : "Enter your new password to secure your account"}
+                  ? "Set up a secure password to protect your account"
+                  : "Enter your new password to secure your account"}
             </CardDescription>
           </CardHeader>
 
@@ -229,7 +218,7 @@ function UpdatePasswordForm() {
                               <button
                                 type="button"
                                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-100"
-                                onClick={togglePasswordVisibility}
+                                onClick={() => setShowPassword(!showPassword)}
                               >
                                 {showPassword ? (
                                   <EyeOff className="h-4 w-4" />
@@ -250,25 +239,27 @@ function UpdatePasswordForm() {
                       )}
                     />
 
-                    <div className="space-y-4">
-                      <Button
-                        type="submit"
-                        disabled={isPending}
-                        className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
-                      >
-                        {isPending ? (
-                          <span className="flex items-center gap-2">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            {isCreateAction ? "Creating Password..." : "Updating Password..."}
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            <Save className="w-5 h-5" />
-                            {isCreateAction ? "Create Password" : "Update Password"}
-                          </span>
-                        )}
-                      </Button>
-                    </div>
+                    <Button
+                      type="submit"
+                      disabled={isPending}
+                      className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
+                    >
+                      {isPending ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          {isCreateAction
+                            ? "Creating Password..."
+                            : "Updating Password..."}
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Save className="w-5 h-5" />
+                          {isCreateAction
+                            ? "Create Password"
+                            : "Update Password"}
+                        </span>
+                      )}
+                    </Button>
                   </form>
                 </Form>
               ) : (
@@ -292,15 +283,11 @@ function UpdatePasswordForm() {
                         <span className="text-primary mt-1">•</span>
                         You&apos;ll be automatically redirected in a few seconds
                       </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        Use your new password for future logins
-                      </li>
                     </ul>
                   </div>
 
                   <Button
-                    onClick={() => (window.location.href = DEFAULT_LOGIN_REDIRECT_URL)}
+                    onClick={() => (window.location.href = "/login")}
                     className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
                   >
                     Continue to Sign In
@@ -311,7 +298,6 @@ function UpdatePasswordForm() {
           </CardContent>
         </Card>
 
-        {/* Security note */}
         <motion.div
           className="mt-8 text-center"
           initial={{ opacity: 0 }}

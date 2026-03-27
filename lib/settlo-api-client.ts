@@ -3,7 +3,14 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import https from "https";
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
-import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
+import { getAuthToken, updateAuthToken, deleteAuthCookie } from "@/lib/auth-utils";
+
+const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
+const ACCOUNTS_SERVICE_URL = process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL || "";
+
+const sharedHttpsAgent = new https.Agent({
+  rejectUnauthorized: process.env.NODE_ENV === "production",
+});
 
 class ApiClient {
   private instance: AxiosInstance;
@@ -11,26 +18,25 @@ class ApiClient {
   public isPlain: boolean;
   private isRefreshing: boolean = false;
 
-  constructor() {
-    this.baseURL = process.env.SERVICE_URL || "";
+  constructor(useAuthService: boolean = false) {
+    this.baseURL = useAuthService ? AUTH_SERVICE_URL : ACCOUNTS_SERVICE_URL;
     this.isPlain = false;
 
     this.instance = axios.create({
-      httpsAgent: new https.Agent({
-        rejectUnauthorized: true,
-      }),
+      httpsAgent: sharedHttpsAgent,
     });
 
-    // Request interceptor — attach auth token
     this.instance.interceptors.request.use(async (config) => {
       if (!config.url?.startsWith("http")) {
         config.url = this.baseURL + config.url;
       }
 
-      const token = await getAuthToken();
-      if (token?.authToken) {
-        if (!this.isPlain) {
-          config.headers["Authorization"] = `Bearer ${token?.authToken}`;
+      if (this.isPlain) {
+        (config as any)._isPlain = true;
+      } else {
+        const token = await getAuthToken();
+        if (token?.accessToken) {
+          config.headers["Authorization"] = `Bearer ${token.accessToken}`;
         }
       }
 
@@ -41,19 +47,23 @@ class ApiClient {
       return config;
     });
 
-    // Response interceptor — silent token refresh on 401
     this.instance.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
         const originalRequest = error.config;
+        const status = error.response?.status;
+
+        if ((originalRequest as any)?._isPlain) {
+          return Promise.reject(error);
+        }
 
         if (
-          error.response?.status === 401 &&
+          (status === 401 || status === 403) &&
           originalRequest &&
           !(originalRequest as any)._retry &&
           !this.isRefreshing &&
-          !originalRequest.url?.includes("/api/auth/refresh-token") &&
-          !originalRequest.url?.includes("/api/auth/login")
+          !originalRequest.url?.includes("/auth/token-refresh") &&
+          !originalRequest.url?.includes("/auth/login")
         ) {
           (originalRequest as any)._retry = true;
           this.isRefreshing = true;
@@ -64,34 +74,41 @@ class ApiClient {
               throw new Error("No refresh token available");
             }
 
-            // Call the refresh endpoint directly (bypass interceptors to avoid loop)
             const refreshResponse = await axios.post(
-              `${this.baseURL}/api/auth/refresh-token`,
+              `${AUTH_SERVICE_URL}/auth/token-refresh`,
               { refreshToken: token.refreshToken },
               {
                 headers: { "Content-Type": "application/json" },
-                httpsAgent: new https.Agent({ rejectUnauthorized: true }),
+                httpsAgent: sharedHttpsAgent,
               },
             );
 
-            const newAccessToken = refreshResponse.data?.authToken || refreshResponse.data?.accessToken || refreshResponse.data?.token;
+            const newAccessToken = refreshResponse.data?.accessToken;
             const newRefreshToken = refreshResponse.data?.refreshToken || token.refreshToken;
 
             if (newAccessToken) {
-              // Update stored tokens
-              await updateAuthToken({
-                ...token,
-                authToken: newAccessToken,
-                refreshToken: newRefreshToken,
-              });
+              try {
+                await updateAuthToken({
+                  ...token,
+                  accessToken: newAccessToken,
+                  refreshToken: newRefreshToken,
+                });
+              } catch {
+                // Cookie update may fail outside Server Actions — safe to ignore
+              }
 
-              // Retry original request with new token
               originalRequest.headers["Authorization"] = `Bearer ${newAccessToken}`;
               return this.instance(originalRequest);
             }
+
+            throw new Error("No access token in refresh response");
           } catch (refreshError) {
             console.error("[API] Token refresh failed:", refreshError);
-            // Let the original 401 propagate — error handler will redirect to login
+            try {
+              await deleteAuthCookie();
+            } catch {
+              // Cookie deletion may fail outside Server Actions — safe to ignore
+            }
           } finally {
             this.isRefreshing = false;
           }

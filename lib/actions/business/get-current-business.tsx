@@ -111,7 +111,7 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
 export const getBusinessDropDown = async (): Promise<Business[] | null> => {
   try {
     const authToken = await getAuthToken();
-    const userId = authToken?.id;
+    const userId = authToken?.userId;
 
     const myEndpoints = endpoints({ userId: userId });
     const apiClient = new ApiClient();

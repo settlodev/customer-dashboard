@@ -1,6 +1,5 @@
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { nativeEnum, object, string } from "zod";
-import { Gender } from "./enums";
+import { object, string } from "zod";
 
 export const LoginSchema = object({
   email: string()
@@ -22,6 +21,13 @@ export const EmailVerificationSchema = object({
   name: string().optional(),
 });
 
+export const VerifyEmailCodeSchema = object({
+  code: string({ required_error: "Verification code is required" })
+    .min(6, "Code must be 6 digits")
+    .max(6, "Code must be 6 digits")
+    .regex(/^\d{6}$/, "Code must be a 6-digit number"),
+});
+
 export const RegisterSchema = object({
   firstName: string({ required_error: "First name is required" }).min(
     3,
@@ -41,16 +47,16 @@ export const RegisterSchema = object({
     },
   ),
   password: string({ required_error: "Password is required" })
-    .min(6, "Password must be at least 6 characters long")
-    .max(128, "Password must be less than 128 characters")
-    .regex(/^[a-zA-Z0-9]+$/, "Password must contain only letters and numbers")
-    .regex(/(?=.*[a-zA-Z])/, "Password must contain at least one letter")
-    .regex(/(?=.*[0-9])/, "Password must contain at least one number"),
-  country: string({ required_error: "Country is required" }).uuid(
+    .min(8, "Password must be at least 8 characters long")
+    .max(128, "Password must be less than 128 characters"),
+  confirmPassword: string({ required_error: "Please confirm your password" }),
+  countryId: string({ required_error: "Country is required" }).uuid(
     "Please select a valid country",
   ),
-  gender: nativeEnum(Gender, { required_error: "Gender option is required" }),
   referredByCode: string().optional().nullish(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 export const UpdateUserSchema = object({
@@ -73,6 +79,20 @@ export const ResetPasswordSchema = object({
   email: string({ required_error: "Email is required" })
     .min(6, "Please enter a valid email address")
     .email("Please enter a valid email address"),
+});
+
+export const ResetPasswordVerifyCodeSchema = object({
+  userId: string({ required_error: "User ID is required" }),
+  code: string({ required_error: "Verification code is required" })
+    .min(6, "Code must be 6 digits")
+    .max(6, "Code must be 6 digits")
+    .regex(/^\d{6}$/, "Code must be a 6-digit number"),
+});
+
+export const NewPasswordSchema = object({
+  password: string({ required_error: "Password is required" })
+    .min(8, "Password must be at least 8 characters long")
+    .max(128, "Password must be less than 128 characters"),
 });
 
 export const UpdatePasswordSchema = object({

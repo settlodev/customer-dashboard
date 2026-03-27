@@ -16,8 +16,12 @@ import {
 } from "../ui/form";
 import { Input } from "../ui/input";
 import { Button } from "../ui/button";
-import { ResetPasswordSchema } from "@/types/data-schemas";
-import { resetPassword } from "@/lib/actions/auth-actions";
+import { ResetPasswordSchema, NewPasswordSchema } from "@/types/data-schemas";
+import {
+  resetPassword,
+  verifyResetCode,
+  confirmNewPassword,
+} from "@/lib/actions/auth-actions";
 import {
   Card,
   CardContent,
@@ -27,6 +31,7 @@ import {
 } from "../ui/card";
 import Link from "next/link";
 import { FormError } from "../widgets/form-error";
+import { FormSuccess } from "../widgets/form-success";
 import { motion } from "framer-motion";
 import {
   Mail,
@@ -36,67 +41,172 @@ import {
   ShieldCheck,
   Sparkles,
   Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
+  CheckCircle,
 } from "lucide-react";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
+
+type ResetStep = "email" | "code" | "password" | "done";
 
 function ResetPasswordForm() {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | undefined>("");
-  const [, setSuccess] = useState<string | undefined>("");
-  const [persistentError, setPersistentError] = useState<string | undefined>(
-    "",
-  );
-  const [emailSent, setEmailSent] = useState<boolean>(false);
+  const [error, setError] = useState<string>("");
+  const [success, setSuccess] = useState<string>("");
+  const [step, setStep] = useState<ResetStep>("email");
+  const [userId, setUserId] = useState<string>("");
+  const [resetToken, setResetToken] = useState<string>("");
+  const [verificationCode, setVerificationCode] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
-  const form = useForm<z.infer<typeof ResetPasswordSchema>>({
+  const emailForm = useForm<z.infer<typeof ResetPasswordSchema>>({
     resolver: zodResolver(ResetPasswordSchema),
-    defaultValues: {
-      email: "",
-    },
+    defaultValues: { email: "" },
     mode: "onSubmit",
-    reValidateMode: "onChange",
-    shouldUnregister: false,
   });
 
-  const { reset } = form;
+  const passwordForm = useForm<z.infer<typeof NewPasswordSchema>>({
+    resolver: zodResolver(NewPasswordSchema),
+    defaultValues: { password: "" },
+    mode: "onSubmit",
+  });
 
-  const submitData = useCallback(
+  // Step 1: Request password reset
+  const submitEmail = useCallback(
     (values: z.infer<typeof ResetPasswordSchema>) => {
       setError("");
-      setPersistentError("");
       setSuccess("");
 
       startTransition(async () => {
         try {
           const data: FormResponse = await resetPassword(values);
 
-          if (!data) {
-            const errorMsg = "An unexpected error occurred. Please try again.";
-            setError(errorMsg);
-            setPersistentError(errorMsg);
-            return;
-          }
-
           if (data.responseType === "error") {
             setError(data.message);
-            setPersistentError(data.message);
-            // Don't reload on error - let user fix and retry
             return;
           }
 
-          // Success
-          setSuccess(data.message);
-          setEmailSent(true);
-          reset();
-        } catch (err: any) {
-          console.error("Reset password error:", err);
-          const errorMsg = "An unexpected error occurred. Please try again.";
-          setError(errorMsg);
-          setPersistentError(errorMsg);
+          if (data.data && (data.data as any).userId) {
+            setUserId((data.data as any).userId);
+          }
+          setSuccess("A reset code has been sent to your email.");
+          setStep("code");
+        } catch {
+          setError("An unexpected error occurred. Please try again.");
         }
       });
     },
-    [reset],
+    [],
   );
+
+  // Step 2: Verify reset code
+  const submitCode = useCallback(() => {
+    if (verificationCode.length !== 6) {
+      setError("Please enter the complete 6-digit code.");
+      return;
+    }
+
+    setError("");
+    setSuccess("");
+
+    startTransition(async () => {
+      try {
+        const data: FormResponse = await verifyResetCode(
+          userId,
+          verificationCode,
+        );
+
+        if (data.responseType === "error") {
+          setError(data.message);
+          return;
+        }
+
+        if (data.data && (data.data as any).resetToken) {
+          setResetToken((data.data as any).resetToken);
+        }
+        setSuccess("Code verified! Set your new password.");
+        setStep("password");
+      } catch {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    });
+  }, [userId, verificationCode]);
+
+  // Step 3: Set new password
+  const submitNewPassword = useCallback(
+    (values: z.infer<typeof NewPasswordSchema>) => {
+      setError("");
+      setSuccess("");
+
+      startTransition(async () => {
+        try {
+          const data: FormResponse = await confirmNewPassword(
+            resetToken,
+            values.password,
+          );
+
+          if (data.responseType === "error") {
+            setError(data.message);
+            return;
+          }
+
+          setSuccess(data.message);
+          setStep("done");
+
+          setTimeout(() => {
+            window.location.href = "/login";
+          }, 3000);
+        } catch {
+          setError("An unexpected error occurred. Please try again.");
+        }
+      });
+    },
+    [resetToken],
+  );
+
+  const getIcon = () => {
+    switch (step) {
+      case "email":
+        return <KeyRound className="w-8 h-8 text-primary" />;
+      case "code":
+        return <Mail className="w-8 h-8 text-primary" />;
+      case "password":
+        return <Lock className="w-8 h-8 text-primary" />;
+      case "done":
+        return <CheckCircle className="w-8 h-8 text-primary" />;
+    }
+  };
+
+  const getTitle = () => {
+    switch (step) {
+      case "email":
+        return "Reset Your Password";
+      case "code":
+        return "Enter Verification Code";
+      case "password":
+        return "Set New Password";
+      case "done":
+        return "Password Updated!";
+    }
+  };
+
+  const getDescription = () => {
+    switch (step) {
+      case "email":
+        return "Enter your email address and we'll send you a code to reset your password";
+      case "code":
+        return "Enter the 6-digit code sent to your email";
+      case "password":
+        return "Choose a strong new password for your account";
+      case "done":
+        return "Your password has been updated. Redirecting to login...";
+    }
+  };
 
   return (
     <section className="flex items-center justify-center">
@@ -122,34 +232,26 @@ function ResetPasswordForm() {
               <div className="w-16 h-16 rounded-full bg-gradient-to-r from-primary to-orange-600 p-0.5">
                 <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
                   <motion.div
-                    key={emailSent ? "mail" : "key"}
+                    key={step}
                     initial={{ scale: 0, rotate: -180 }}
                     animate={{ scale: 1, rotate: 0 }}
-                    exit={{ scale: 0, rotate: 180 }}
                     transition={{
                       type: "spring",
                       stiffness: 300,
                       damping: 20,
-                      duration: 0.4,
                     }}
                   >
-                    {emailSent ? (
-                      <Mail className="w-8 h-8 text-primary" />
-                    ) : (
-                      <KeyRound className="w-8 h-8 text-primary" />
-                    )}
+                    {getIcon()}
                   </motion.div>
                 </div>
               </div>
             </motion.div>
 
             <CardTitle className="text-2xl font-bold text-center bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-              {emailSent ? "Check Your Email" : "Reset Your Password"}
+              {getTitle()}
             </CardTitle>
             <CardDescription className="text-center text-gray-600 pt-2">
-              {emailSent
-                ? "We've sent password reset instructions to your email address."
-                : "Enter your email address and we'll send you a link to reset your password"}
+              {getDescription()}
             </CardDescription>
           </CardHeader>
 
@@ -159,29 +261,39 @@ function ResetPasswordForm() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.3 }}
             >
-              {(persistentError || error) && (
+              {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="mb-4"
                 >
-                  <FormError message={persistentError || error} />
+                  <FormError message={error} />
                 </motion.div>
               )}
 
-              {!emailSent ? (
-                <Form {...form}>
+              {success && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="mb-4"
+                >
+                  <FormSuccess message={success} />
+                </motion.div>
+              )}
+
+              {/* Step 1: Email */}
+              {step === "email" && (
+                <Form {...emailForm}>
                   <form
                     className="space-y-6"
                     onSubmit={(e) => {
                       e.preventDefault();
-                      e.stopPropagation();
-                      form.handleSubmit(submitData)(e);
+                      emailForm.handleSubmit(submitEmail)(e);
                     }}
                     noValidate
                   >
                     <FormField
-                      control={form.control}
+                      control={emailForm.control}
                       name="email"
                       render={({ field }) => (
                         <FormItem>
@@ -202,7 +314,7 @@ function ResetPasswordForm() {
                           <FormDescription className="text-gray-500 flex items-start gap-2 mt-2">
                             <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
                             <span>
-                              We&#39;ll send you a secure link to reset your
+                              We&#39;ll send you a 6-digit code to reset your
                               password
                             </span>
                           </FormDescription>
@@ -211,81 +323,192 @@ function ResetPasswordForm() {
                       )}
                     />
 
-                    <div className="space-y-4">
-                      <Button
-                        type="submit"
-                        disabled={isPending}
-                        className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
-                      >
-                        {isPending ? (
-                          <span className="flex items-center gap-2">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Sending Reset Link...
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            <Send className="w-5 h-5" />
-                            Send Reset Link
-                          </span>
-                        )}
-                      </Button>
-                    </div>
+                    <Button
+                      type="submit"
+                      disabled={isPending}
+                      className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
+                    >
+                      {isPending ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Sending Code...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <Send className="w-5 h-5" />
+                          Send Reset Code
+                        </span>
+                      )}
+                    </Button>
                   </form>
                 </Form>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="space-y-6"
-                >
-                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left space-y-3">
-                    <p className="text-sm text-orange-800 font-medium flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4" />
-                      What happens next?
-                    </p>
-                    <ul className="text-sm text-orange-700 space-y-2 ml-6">
-                      <li className="flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        Check your inbox for an email from us
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        Click the secure link in the email
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <span className="text-primary mt-1">•</span>
-                        Create your new password
-                      </li>
-                    </ul>
+              )}
+
+              {/* Step 2: Code Verification */}
+              {step === "code" && (
+                <div className="space-y-6">
+                  <div className="flex flex-col items-center space-y-6">
+                    <InputOTP
+                      maxLength={6}
+                      value={verificationCode}
+                      onChange={(value) => setVerificationCode(value)}
+                      disabled={isPending}
+                    >
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
+                      </InputOTPGroup>
+                    </InputOTP>
+
+                    <Button
+                      onClick={submitCode}
+                      disabled={isPending || verificationCode.length !== 6}
+                      className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
+                    >
+                      {isPending ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Verifying...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          Verify Code
+                          <ArrowRight className="w-5 h-5" />
+                        </span>
+                      )}
+                    </Button>
                   </div>
 
                   <Button
-                    onClick={() => setEmailSent(false)}
                     variant="outline"
-                    className="w-full h-12 border-gray-200 hover:bg-gray-50 transition-all duration-300"
+                    onClick={() => {
+                      setStep("email");
+                      setError("");
+                      setSuccess("");
+                    }}
+                    className="w-full"
                   >
-                    Didn&#39;t receive the email? Try again
+                    Didn&#39;t receive the code? Try again
                   </Button>
-                </motion.div>
+                </div>
+              )}
+
+              {/* Step 3: New Password */}
+              {step === "password" && (
+                <Form {...passwordForm}>
+                  <form
+                    className="space-y-6"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      passwordForm.handleSubmit(submitNewPassword)(e);
+                    }}
+                    noValidate
+                  >
+                    <FormField
+                      control={passwordForm.control}
+                      name="password"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>New Password *</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Lock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input
+                                type={showPassword ? "text" : "password"}
+                                placeholder="Enter your new password"
+                                {...field}
+                                disabled={isPending}
+                                className="pl-10 pr-12"
+                                autoComplete="new-password"
+                              />
+                              <button
+                                type="button"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-md hover:bg-gray-100"
+                                onClick={() => setShowPassword(!showPassword)}
+                              >
+                                {showPassword ? (
+                                  <EyeOff className="h-4 w-4" />
+                                ) : (
+                                  <Eye className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
+                          </FormControl>
+                          <FormDescription className="text-gray-500 flex items-start gap-2 mt-2">
+                            <Sparkles className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                            <span>
+                              Choose a strong password with at least 8 characters
+                            </span>
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <Button
+                      type="submit"
+                      disabled={isPending}
+                      className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-primary/25"
+                    >
+                      {isPending ? (
+                        <span className="flex items-center gap-2">
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Updating Password...
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-2">
+                          <ShieldCheck className="w-5 h-5" />
+                          Update Password
+                        </span>
+                      )}
+                    </Button>
+                  </form>
+                </Form>
+              )}
+
+              {/* Step 4: Done */}
+              {step === "done" && (
+                <div className="space-y-6">
+                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-left space-y-3">
+                    <p className="text-sm text-orange-800 font-medium flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4" />
+                      Password successfully updated!
+                    </p>
+                    <p className="text-sm text-orange-700">
+                      You&#39;ll be automatically redirected to the login page.
+                    </p>
+                  </div>
+
+                  <Button
+                    onClick={() => (window.location.href = "/login")}
+                    className="w-full h-12 bg-gradient-to-r from-primary to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-medium rounded-lg transition-all duration-300"
+                  >
+                    Go to Login
+                  </Button>
+                </div>
               )}
             </motion.div>
           </CardContent>
 
-          <div className="border-t border-gray-100 bg-gray-50/50 px-8 py-6 text-center">
-            <p className="text-sm text-gray-600">
-              Remember your password ?{" "}
-              <Link
-                href="/login"
-                className="font-semibold text-primary hover:text-orange-700 transition-colors"
-              >
-                Sign in instead
-              </Link>
-            </p>
-          </div>
+          {step === "email" && (
+            <div className="border-t border-gray-100 bg-gray-50/50 px-8 py-6 text-center">
+              <p className="text-sm text-gray-600">
+                Remember your password ?{" "}
+                <Link
+                  href="/login"
+                  className="font-semibold text-primary hover:text-orange-700 transition-colors"
+                >
+                  Sign in instead
+                </Link>
+              </p>
+            </div>
+          )}
         </Card>
 
-        {/* Security note */}
         <motion.div
           className="mt-8 text-center"
           initial={{ opacity: 0 }}
@@ -294,7 +517,7 @@ function ResetPasswordForm() {
         >
           <p className="text-xs text-gray-500 flex items-center justify-center gap-2">
             <Lock className="w-3 h-3" />
-            Password reset links expire after 24 hours for security
+            Password reset codes expire after 15 minutes for security
           </p>
         </motion.div>
       </motion.div>

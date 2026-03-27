@@ -22,7 +22,6 @@ export const authRoutes = ["/login", "/register"];
 
 export const specialAuthRoutes = [
   "/business-registration",
-  "/business-location",
   "/user-verification",
 ];
 
@@ -32,7 +31,6 @@ export const VERIFICATION_REDIRECT_URL = "/user-verification";
 export const EMAIL_VERIFICATION_URL = "/email-verification";
 export const DEFAULT_LOGIN_REDIRECT_URL = "/dashboard";
 export const COMPLETE_BUSINESS_REGISTRATION_URL = "/business-registration";
-export const COMPLETE_BUSINESS_LOCATION_SETUP_URL = "/business-location";
 export const SELECT_BUSINESS_URL = "/select-business";
 export const SELECT_BUSINESS_LOCATION_URL = "/select-location";
 export const LOCATION_SUBSCRIPTION_URL = "/subscription";

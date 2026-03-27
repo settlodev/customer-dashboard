@@ -8,8 +8,8 @@ import { auth } from "@/auth";
 import {
   activeBusiness,
   AuthToken,
-  ExtendedUser,
   FormResponse,
+  LoginResponse,
 } from "@/types/types";
 import { logout } from "@/lib/actions/auth-actions";
 
@@ -32,7 +32,7 @@ export const getAuthToken = async (): Promise<AuthToken | null> => {
 
   const parsedTokens = JSON.parse(tokens) as AuthToken;
 
-  return parsedTokens.authToken ? parsedTokens : null;
+  return parsedTokens.accessToken ? parsedTokens : null;
 };
 
 export const updateAuthToken = async (token: AuthToken) => {
@@ -41,43 +41,85 @@ export const updateAuthToken = async (token: AuthToken) => {
   cookieStore.set({
     name: "authToken",
     value: JSON.stringify(token),
-    httpOnly: true, // Only available in server
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
   });
 };
 
-export const createAuthToken = async (user: ExtendedUser) => {
+export const createAuthTokenFromLogin = async (
+  loginResponse: LoginResponse,
+  profileData?: {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    pictureUrl?: string | null;
+    isBusinessRegistrationComplete?: boolean;
+    isLocationRegistrationComplete?: boolean;
+    countryId?: string;
+    countryCode?: string;
+    theme?: string | null;
+  },
+) => {
   const cookieStore = await cookies();
   const authTokenData: AuthToken = {
-    firstName: user.firstName,
-    lastName: user.lastName,
-    name: user.name,
-    email: user.email,
-    id: user.id,
-    bio: user.bio,
-    role: user.role,
-    country: user.country,
-    authToken: user.authToken,
-    refreshToken: user.refreshToken,
-    businessComplete: user.businessComplete,
-    locationComplete: user.locationComplete,
-    subscriptionComplete: user.subscriptionComplete,
-    avatar: user.avatar,
-    phoneNumber: user.phoneNumber,
-    emailVerified: user.emailVerified,
-    phoneNumberVerified: user.phoneNumberVerified,
-    //emailVerificationToken: user.emailVerificationToken,
-    consent: user.consent,
-    theme: user.theme,
-    subscriptionStatus: user.subscriptionStatus,
-    businessId: user.businessId,
+    accessToken: loginResponse.accessToken,
+    refreshToken: loginResponse.refreshToken,
+    userId: loginResponse.userId,
+    accountId: loginResponse.accountId,
+    email: loginResponse.email,
+    firstName: profileData?.firstName ?? "",
+    lastName: profileData?.lastName ?? "",
+    phoneNumber: profileData?.phoneNumber ?? "",
+    pictureUrl: profileData?.pictureUrl ?? null,
+    emailVerified: loginResponse.emailVerified,
+    isBusinessRegistrationComplete:
+      profileData?.isBusinessRegistrationComplete ?? false,
+    isLocationRegistrationComplete:
+      profileData?.isLocationRegistrationComplete ?? false,
+    countryId: profileData?.countryId ?? "",
+    countryCode: profileData?.countryCode ?? "",
+    theme: profileData?.theme ?? null,
+    verificationResendToken: loginResponse.verificationResendToken,
   };
 
   cookieStore.set({
     name: "authToken",
     value: JSON.stringify(authTokenData),
-    httpOnly: true, // Only available in server
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+  });
+
+  return authTokenData;
+};
+
+export const createAuthToken = async (user: any) => {
+  const cookieStore = await cookies();
+  const authTokenData: AuthToken = {
+    accessToken: user.accessToken ?? "",
+    refreshToken: user.refreshToken ?? "",
+    userId: user.id ?? user.userId ?? "",
+    accountId: user.accountId ?? "",
+    email: user.email ?? "",
+    firstName: user.firstName ?? "",
+    lastName: user.lastName ?? "",
+    phoneNumber: user.phoneNumber ?? "",
+    pictureUrl: user.pictureUrl ?? user.avatar ?? null,
+    emailVerified: user.emailVerified != null,
+    isBusinessRegistrationComplete:
+      user.isBusinessRegistrationComplete ?? false,
+    isLocationRegistrationComplete:
+      user.isLocationRegistrationComplete ?? false,
+    countryId: user.countryId ?? user.country ?? "",
+    countryCode: user.countryCode ?? "",
+    theme: user.theme ?? null,
+  };
+
+  cookieStore.set({
+    name: "authToken",
+    value: JSON.stringify(authTokenData),
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
   });
@@ -87,7 +129,6 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
   const user = await getUser();
 
   if (!user) {
-    // redirect to log in
     redirect("/login");
   }
 
@@ -108,9 +149,8 @@ export const deleteAuthCookie = async () => {
     cookieStore.delete("authjs.csrf-token");
     cookieStore.delete("authjs.callback-url");
     cookieStore.delete("authjs.session-token");
+    cookieStore.delete("pendingVerification");
   } catch (e) {
-    // Do not throw error - do NOT call signOut here as it triggers
-    // the signOut event which calls deleteAuthCookie again, causing an infinite loop
     console.log("Error deleting auth cookie", e);
   }
 };
@@ -133,3 +173,42 @@ export const deleteActiveLocationCookie = async () => {
   cookieStore.delete("activeLocation");
 };
 
+export const storePendingVerification = async (data: {
+  userId: string;
+  email: string;
+  verificationResendToken?: string;
+  accessToken?: string;
+  refreshToken?: string;
+}) => {
+  const cookieStore = await cookies();
+  cookieStore.set({
+    name: "pendingVerification",
+    value: JSON.stringify(data),
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+    maxAge: 900, // 15 minutes
+  });
+};
+
+export const getPendingVerification = async () => {
+  const cookieStore = await cookies();
+  const data = cookieStore.get("pendingVerification")?.value;
+  if (!data) return null;
+  try {
+    return JSON.parse(data) as {
+      userId: string;
+      email: string;
+      verificationResendToken?: string;
+      accessToken?: string;
+      refreshToken?: string;
+    };
+  } catch {
+    return null;
+  }
+};
+
+export const clearPendingVerification = async () => {
+  const cookieStore = await cookies();
+  cookieStore.delete("pendingVerification");
+};

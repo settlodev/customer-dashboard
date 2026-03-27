@@ -1,94 +1,24 @@
 "use server";
 
-import ApiClient from "@/lib/settlo-api-client";
+import { FormResponse } from "@/types/types";
 import { parseStringify } from "@/lib/utils";
-import { LocationSchema } from "@/types/location/schema";
-import { AuthToken, FormResponse } from "@/types/types";
-import { cookies } from "next/headers";
-import { z } from "zod";
-import { Location } from "@/types/location/type";
-import { switchLocation } from "../business/refresh";
-import { signOut } from "@/auth";
-import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 
+/**
+ * Location creation is now handled atomically together with business creation
+ * via POST /api/v1/businesses/with-locations.
+ * See createBusinessWithLocations in ./business.tsx.
+ *
+ * This function is kept for backward compatibility with any code that still
+ * references it directly. It returns an error directing callers to use the
+ * combined endpoint instead.
+ */
 export const createBusinessLocation = async (
-  businessLocation: z.infer<typeof LocationSchema>,
+  _businessLocation: any,
 ): Promise<FormResponse> => {
-  try {
-    // Handle authentication
-    const cookieStore = await cookies();
-    const token = cookieStore.get("authToken")?.value;
-    if (!token) {
-      await signOut();
-      throw new Error("Session expired, please login to proceed");
-    }
-
-    // Validate input data
-    const validationResult = LocationSchema.safeParse(businessLocation);
-
-    if (!validationResult.success) {
-      return parseStringify({
-        responseType: "error",
-        message: "Please fill all the required fields",
-        error: new Error(validationResult.error.message),
-      });
-    }
-
-    // Get business ID from cookies
-    const currentBusiness = await getCurrentBusiness();
-    if (!currentBusiness) {
-      throw new Error("No active business found");
-    }
-
-    // Prepare payload
-    const payload = {
-      ...validationResult.data,
-      business: currentBusiness.id,
-    };
-
-    // Make API request
-    const apiClient = new ApiClient();
-    const response = await apiClient.post(
-      `/api/locations/${currentBusiness.id}/create`,
-      payload,
-    );
-
-    if (!response) {
-      throw new Error("No response received from server");
-    }
-
-    // Update auth token and refresh location
-    const authToken = JSON.parse(token) as AuthToken;
-    authToken.locationComplete = true;
-
-    cookieStore.set({
-      name: "authToken",
-      value: JSON.stringify(authToken),
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-    });
-
-    await switchLocation(response as Location);
-  } catch (error: any) {
-    if (error?.digest?.startsWith("NEXT_REDIRECT")) {
-      throw error;
-    }
-    console.error("Location creation error:", error);
-    return parseStringify({
-      responseType: "error",
-      message:
-        error.message ??
-        "Something went wrong while processing your request, please try again",
-      error:
-        error instanceof Error
-          ? error
-          : new Error(String(error.message ?? error)),
-    });
-  }
   return parseStringify({
-    responseType: "success",
-    message: "Location created successfully",
+    responseType: "error",
+    message:
+      "Location creation is now part of the business setup. Please use the combined business + location form.",
+    error: new Error("Use createBusinessWithLocations instead"),
   });
 };

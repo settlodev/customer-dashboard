@@ -4,10 +4,7 @@ export declare interface Country {
     id: UUID;
     name: string;
     code: string;
-    currencyCode: string;
     locale: string;
+    currencyCode: string;
     supported: boolean;
-    isArchived: boolean
-    canDelete: boolean
-    status: boolean
 }

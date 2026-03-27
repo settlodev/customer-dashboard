@@ -1,6 +1,5 @@
-import RegisterForm from "@/components/forms/register_form";
+import { redirect } from "next/navigation";
 
-function LocationPage() {
-    return <RegisterForm step="step4" />
+export default function LocationPage() {
+    redirect("/business-registration");
 }
-export default LocationPage;

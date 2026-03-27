@@ -10,7 +10,7 @@ import {ApiResponse} from "@/types/types";
 export const getBusiness = async (id: UUID): Promise<ApiResponse<Business>> => {
     const apiClient = new ApiClient();
     const authToken = await getAuthToken();
-    const userId = authToken?.id;
+    const userId = authToken?.userId;
     const myEndpoints = endpoints({userId: userId, id: id});
     const data = await apiClient.get(myEndpoints.business.get.endpoint);
 

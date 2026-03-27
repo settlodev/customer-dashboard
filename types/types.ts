@@ -2,20 +2,20 @@ import {UUID} from "node:crypto";
 import {DefaultSession} from "next-auth";
 
 export declare interface LoginResponse {
-    id: UUID,
-    email: string,
-    firstName: string,
-    lastName: string,
-    picture: string,
-    phoneNumber: string,
-    authToken: string,
-    refreshToken: string,
-    phoneNumberVerified: string,
-    emailVerified: string,
-    consent: boolean,
-    theme: string,
-    subscriptionStatus: string,
-    businessId: UUID
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresIn: number;
+    accessTokenExpiresAt: string;
+    refreshTokenExpiresAt: string;
+    userId: string;
+    accountId: string;
+    email: string;
+    emailVerified: boolean;
+    verificationResendToken?: string;
+    verificationResendTokenExpiresAt?: string;
+    mfaRequired?: boolean;
+    mfaToken?: string;
 }
 
 export type ApiResponse<T> = {
@@ -51,40 +51,31 @@ export type ApiSortResponse = {
 };
 
 export interface FormResponse<T = unknown> {
-    responseType: "success" | "error";
+    responseType: "success" | "error" | "needs_verification";
     message: string;
     error?: Error | null;
     data?: T;
 }
 
 export declare interface AuthToken {
-    id: string;
-    name: string;
-    bio: string;
-    role: string;
-    country: string;
+    accessToken: string;
+    refreshToken: string;
+    userId: string;
+    accountId: string;
     email: string;
     firstName: string;
     lastName: string;
-    avatar: string|null;
     phoneNumber: string;
-    authToken: string;
-    refreshToken: string;
-    emailVerified: Date | null;
-    phoneNumberVerified: Date | null;
-    consent: boolean | null;
+    pictureUrl: string | null;
+    emailVerified: boolean;
+    isBusinessRegistrationComplete: boolean;
+    isLocationRegistrationComplete: boolean;
+    countryId: string;
+    countryCode: string;
     theme: string | null;
-    subscriptionStatus: string;
-    businessComplete: boolean;
-    locationComplete: boolean;
-    subscriptionComplete: boolean;
-    businessId: UUID | null;
-    //emailVerificationToken: string|null;
-    // businesses: Business[];
-    // locations: Location[];
-    // activeBusiness: string | null;
-
+    verificationResendToken?: string;
 }
+
 export declare interface activeBusiness {
     businessId: UUID | null;
 }
@@ -96,28 +87,71 @@ export type ExtendedUser = DefaultSession["user"] & {
     firstName: string;
     lastName: string;
     bio: string;
-    avatar: string|null;
+    avatar: string | null;
     country: UUID;
     role: UUID;
     phoneNumber: string;
-    authToken: string;
+    accessToken: string;
     refreshToken: string;
     emailVerified: Date | null;
     phoneNumberVerified: Date | null;
     consent: boolean | null;
     theme: string | null;
-    subscriptionStatus: string;
-    businessComplete: boolean;
-    locationComplete: boolean;
-    subscriptionComplete: boolean;
+    isBusinessRegistrationComplete: boolean;
+    isLocationRegistrationComplete: boolean;
     businessId: UUID | null;
-    gender: string;
-    referredByCode: string;
+    accountId: string;
+    countryId: string;
+    countryCode: string;
 };
 
 export declare interface RegisterResponse {
+    id: string;
+    fullName: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber: string;
+    pictureUrl: string | null;
+    active: boolean;
+    authId: string;
+    accountNumber: string;
+    isBusinessRegistrationComplete: boolean;
+    isLocationRegistrationComplete: boolean;
+    countryId: string;
+    countryCode: string;
+    emailVerificationRequired: boolean;
     message: string;
+}
+
+export declare interface VerifyAndLoginResponse {
     success: boolean;
+    message: string;
+    userId: string;
+    accountId: string;
+    email: string;
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresIn: number;
+    accessTokenExpiresAt: string;
+    refreshTokenExpiresAt: string;
+}
+
+export declare interface TokenRefreshResponse {
+    accessToken: string;
+    refreshToken: string;
+    tokenType: string;
+    expiresIn: number;
+    accessTokenExpiresAt: string;
+    refreshTokenExpiresAt: string;
+}
+
+export declare interface ResetPasswordVerifyResponse {
+    success: boolean;
+    message: string;
+    userId: string;
+    resetToken: string;
 }
 
 export declare interface BusinessTimeType {
@@ -195,5 +229,3 @@ export declare interface WarehousePrivilegeActionItem{
     canDelete: boolean;
     isArchived: boolean;
 }
-
-

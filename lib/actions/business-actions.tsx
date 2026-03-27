@@ -30,7 +30,7 @@ export const fetchAllBusinesses = async (): Promise<Business[] | null> => {
   try {
     const authToken = await getAuthToken();
 
-    const userId = authToken?.id;
+    const userId = authToken?.userId;
 
     const apiClient = new ApiClient();
 
@@ -49,7 +49,7 @@ export const searchBusiness = async (
 ): Promise<ApiResponse<Business>> => {
   const authToken = await getAuthToken();
 
-  const userId = authToken?.id;
+  const userId = authToken?.userId;
 
   try {
     const apiClient = new ApiClient();
@@ -87,7 +87,7 @@ export const createBusiness = async (
   let formResponse: FormResponse | null = null;
 
   const authToken = await getAuthToken();
-  const userId = authToken?.id;
+  const userId = authToken?.userId;
 
   const validatedData = BusinessSchema.safeParse(business);
 
@@ -143,7 +143,7 @@ export const updateBusiness = async (
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
   const authToken = await getAuthToken();
-  const userId = authToken?.id;
+  const userId = authToken?.userId;
   const apiClient = new ApiClient();
 
   const validatedData = BusinessSchema.safeParse(business);
@@ -205,7 +205,7 @@ export const getSingleBusiness = async (id: UUID): Promise<Business> => {
 
   const authToken = await getAuthToken();
 
-  const userId = authToken?.id;
+  const userId = authToken?.userId;
 
   const data = await apiClient.get(`/api/businesses/${userId}/${id}`);
   return parseStringify(data);
@@ -215,7 +215,7 @@ export const deleteBusiness = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Business ID is required to perform this request");
   await getAuthenticatedUser();
   const authToken = await getAuthToken();
-  const userId = authToken?.id;
+  const userId = authToken?.userId;
   try {
     const apiClient = new ApiClient();
 
