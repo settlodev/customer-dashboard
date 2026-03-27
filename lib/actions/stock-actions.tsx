@@ -372,7 +372,10 @@ export const uploadProductWithStockCSV = async ({
     );
   }
 
-  const lines = fileData.split("\n");
+  // Normalize line endings first, then validate
+  const formattedCSVData = fileData.replace(/\r\n/g, "\n");
+
+  const lines = formattedCSVData.split("\n").filter(Boolean);
   const isCSVContent = lines.every((line) => line.split(",").length > 1);
 
   if (!isCSVContent) {
@@ -380,8 +383,6 @@ export const uploadProductWithStockCSV = async ({
       "Invalid file content. The file does not appear to have a CSV structure.",
     );
   }
-
-  const formattedCSVData = fileData.replace(/\r\n/g, "\n");
 
   console.log("Uploading CSV file:", formattedCSVData);
 
@@ -403,50 +404,23 @@ export const uploadProductWithStockCSV = async ({
 
     revalidatePath("/stocks");
 
-    // Return the response so the client can access the task_id
     return response;
-  } catch (error: any) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "digest" in error &&
-      (error as any).digest.startsWith("NEXT_REDIRECT")
-    ) {
-      return null;
-    }
+  } catch (error) {
+    // Serialize the full error so you can actually see what's inside
+    console.error("Error uploading CSV file:", JSON.stringify(error, null, 2));
 
-    if (
-      error.code === "FORBIDDEN" &&
-      error.status === 403 &&
-      error.message?.includes(
-        "beyond the limit of the current subscription package",
-      )
-    ) {
-      // Extract limit and wanted values from the message
-      const limitMatch = error.message.match(/limit is (\d+)/);
-      const wantedMatch = error.message.match(/total of (\d+)/);
-
-      const limit = limitMatch ? limitMatch[1] : "100";
-      const wanted = wantedMatch ? wantedMatch[1] : "too many";
-
-      throw new Error(
-        `Subscription limit exceeded. Your current plan allows up to ${limit} products, but you attempted to upload a total of ${wanted}. Please upgrade your subscription or reduce the number of products.`,
-      );
-    }
-
-    // Handle other API errors with structured messages
-    if (error.message && typeof error.message === "string") {
-      throw new Error(`Failed to upload CSV: ${error.message}`);
-    }
-
-    // Handle generic errors - safely convert to string
     if (error instanceof Error) {
-      throw new Error(`Failed to upload CSV file: ${error.message}`);
-    } else {
-      throw new Error(
-        `Failed to upload CSV file: Please check your file and try again.`,
-      );
+      throw error;
     }
+
+    // Extract a useful message from axios/API error shapes
+    const message =
+      (error as any)?.response?.data?.message ||
+      (error as any)?.response?.data ||
+      (error as any)?.message ||
+      JSON.stringify(error);
+
+    throw new Error(message);
   }
 };
 

@@ -16,7 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { searchStockPurchases } from "@/lib/actions/stock-purchase-actions";
 import { StockPurchase } from "@/types/stock-purchases/type";
-import { Loader2 } from "lucide-react";
+import { Loader2, Plus } from "lucide-react";
+import Link from "next/link";
 
 const breadCrumbItems = [
   { title: "Local purchase orders", link: "/stock-purchases" },
@@ -124,14 +125,18 @@ function Page({ searchParams }: Params) {
   }
 
   return (
-    <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
+    <div className="flex-1 space-y-4 px-4 lg:px-8 mt-1">
       <div className={`flex items-center justify-between mb-2`}>
         <div className={`relative flex-1 md:max-w-md`}>
           <BreadcrumbsNav items={breadCrumbItems} />
         </div>
-        <div className={`flex items-center space-x-2`}>
-          <Button onClick={handleStockPurchase}>Create Purchase Orders</Button>
-        </div>
+
+        <Button onClick={handleStockPurchase} asChild>
+          <Link href="/products/new/edit">
+            <Plus className="h-4 w-4 sm:mr-1.5" />
+            <span className="hidden sm:inline">Create Purchase Orders</span>
+          </Link>
+        </Button>
       </div>
       {total > 0 || q !== "" ? (
         <Card x-chunk="data-table">

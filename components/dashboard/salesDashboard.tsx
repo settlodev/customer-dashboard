@@ -255,7 +255,7 @@ const SalesDashboard = ({
           <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">
-              Cost of goods solid
+              Cost of goods sold
             </span>
             <span className="text-sm font-bold">
               {formatCurrency(salesData?.totalCost)}
