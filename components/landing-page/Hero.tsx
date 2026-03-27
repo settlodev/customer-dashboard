@@ -24,7 +24,7 @@ export const Hero = () => {
             {/* Image — shown first on mobile */}
             <div className="relative lg:hidden">
               <Image
-                src="/images/1.png"
+                src="/images/11.png"
                 alt="Settlo POS Interface"
                 width={600}
                 height={400}

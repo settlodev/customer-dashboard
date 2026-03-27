@@ -466,7 +466,7 @@ export function CSVStockDialog({
                 Processing Your Upload
               </DialogTitle>
               <DialogDescription>
-                Sit tight — we're importing your stock data.
+                Sit tight — we&apos;re importing your stock data.
               </DialogDescription>
             </DialogHeader>
             <div className="py-6 flex flex-col items-center gap-5">
@@ -623,8 +623,8 @@ export function CSVStockDialog({
                   className="h-5 w-5 text-amber-500 shrink-0 mt-0.5"
                 />
                 <p className="text-sm text-amber-700 dark:text-amber-300">
-                  Closing won't cancel the upload. Processing will continue and
-                  your stock will appear shortly.
+                  Closing won&apos;t cancel the upload. Processing will continue
+                  and your stock will appear shortly.
                 </p>
               </div>
             </div>
