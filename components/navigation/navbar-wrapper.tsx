@@ -6,15 +6,17 @@ import Header from "@/components/navigation/header";
 import {MobileSidebar} from "@/components/sidebar/sidebar";
 import {BusinessPropsType} from "@/types/business/business-props-type";
 import {MenuType} from "@/types/menu-item-type";
+import {AuthToken} from "@/types/types";
 
 interface Props {
     children: React.ReactNode;
     session: Session | null;
+    authToken?: AuthToken | null;
     businessData?: BusinessPropsType;
     menuType?: MenuType;
 }
 
-export const NavbarWrapper = ({children, session, businessData, menuType}: Props) => {
+export const NavbarWrapper = ({children, session, authToken, businessData, menuType}: Props) => {
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
     return (
@@ -23,6 +25,7 @@ export const NavbarWrapper = ({children, session, businessData, menuType}: Props
                 <div className="sticky top-0 z-40 px-4 pt-2 md:px-8">
                     <Header
                         session={session}
+                        authToken={authToken}
                         onMenuClick={() => setMobileSidebarOpen(true)}
                         businessData={businessData}
                     />

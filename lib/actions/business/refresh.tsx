@@ -11,17 +11,15 @@ import { Warehouses } from "@/types/warehouse/warehouse/type";
 
 const createMinimalBusiness = (business: Business): MinimalBusiness => {
   return {
-    isArchived: business.isArchived,
-    totalLocations: business.totalLocations,
-    user: business.user,
     id: business.id,
+    identifier: business.identifier,
     name: business.name,
-    prefix: business.prefix,
-    businessType: business.businessType,
-    logo: business.logo || null,
-    country: business.country,
-    countryName: business.countryName,
-    status: business.status,
+    businessTypeId: business.businessTypeId,
+    businessTypeName: business.businessTypeName,
+    logoUrl: business.logoUrl || null,
+    active: business.active,
+    accountId: business.accountId,
+    countryId: business.countryId,
   };
 };
 
@@ -53,7 +51,7 @@ export const refreshBusiness = async (data: Business): Promise<void> => {
 
   cookieStore.delete("activeBusiness");
   const businessActive: activeBusiness = {
-    businessId: data.id,
+    businessId: data.id as `${string}-${string}-${string}-${string}-${string}`,
   };
 
   cookieStore.set({

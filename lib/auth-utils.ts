@@ -13,6 +13,79 @@ import {
 } from "@/types/types";
 import { logout } from "@/lib/actions/auth-actions";
 
+// ── Chunked cookie helpers ──────────────────────────────────────────
+// Browser cookie size limit is ~4096 bytes per cookie. JWTs with many
+// claims easily exceed this. We split large values across numbered
+// chunks: authToken.0, authToken.1, etc.
+
+const COOKIE_CHUNK_SIZE = 3800; // Leave room for name + attributes
+const MAX_CHUNKS = 10;
+const AUTH_TOKEN_COOKIE = "authToken";
+
+function getCookieOptions() {
+  const isProduction = process.env.NODE_ENV === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? ("strict" as const) : ("lax" as const),
+  };
+}
+
+async function setChunkedCookie(
+  name: string,
+  value: string,
+  extraOptions?: { maxAge?: number },
+) {
+  const cookieStore = await cookies();
+  const options = { ...getCookieOptions(), ...extraOptions };
+
+  // Delete old chunks and base cookie first
+  try { cookieStore.delete(name); } catch { /* ok */ }
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    try { cookieStore.delete(`${name}.${i}`); } catch { break; }
+  }
+
+  if (value.length <= COOKIE_CHUNK_SIZE) {
+    cookieStore.set({ name, value, ...options });
+  } else {
+    const numChunks = Math.ceil(value.length / COOKIE_CHUNK_SIZE);
+    for (let i = 0; i < numChunks; i++) {
+      const chunk = value.substring(
+        i * COOKIE_CHUNK_SIZE,
+        (i + 1) * COOKIE_CHUNK_SIZE,
+      );
+      cookieStore.set({ name: `${name}.${i}`, value: chunk, ...options });
+    }
+  }
+}
+
+async function getChunkedCookie(name: string): Promise<string | null> {
+  const cookieStore = await cookies();
+
+  // Try non-chunked first
+  const direct = cookieStore.get(name)?.value;
+  if (direct) return direct;
+
+  // Try chunked
+  let value = "";
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    const chunk = cookieStore.get(`${name}.${i}`)?.value;
+    if (!chunk) break;
+    value += chunk;
+  }
+  return value || null;
+}
+
+async function deleteChunkedCookie(name: string) {
+  const cookieStore = await cookies();
+  try { cookieStore.delete(name); } catch { /* ok */ }
+  for (let i = 0; i < MAX_CHUNKS; i++) {
+    try { cookieStore.delete(`${name}.${i}`); } catch { /* ok */ }
+  }
+}
+
+// ── Public API ──────────────────────────────────────────────────────
+
 export const getUser = async () => {
   const session = await auth();
 
@@ -24,27 +97,19 @@ export const getUser = async () => {
 };
 
 export const getAuthToken = async (): Promise<AuthToken | null> => {
-  const cookieStore = await cookies();
+  const raw = await getChunkedCookie(AUTH_TOKEN_COOKIE);
+  if (!raw) return null;
 
-  const tokens = cookieStore.get("authToken")?.value;
-
-  if (!tokens) return null;
-
-  const parsedTokens = JSON.parse(tokens) as AuthToken;
-
-  return parsedTokens.accessToken ? parsedTokens : null;
+  try {
+    const parsed = JSON.parse(raw) as AuthToken;
+    return parsed.accessToken ? parsed : null;
+  } catch {
+    return null;
+  }
 };
 
 export const updateAuthToken = async (token: AuthToken) => {
-  const cookieStore = await cookies();
-
-  cookieStore.set({
-    name: "authToken",
-    value: JSON.stringify(token),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  });
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(token));
 };
 
 export const createAuthTokenFromLogin = async (
@@ -61,7 +126,6 @@ export const createAuthTokenFromLogin = async (
     theme?: string | null;
   },
 ) => {
-  const cookieStore = await cookies();
   const authTokenData: AuthToken = {
     accessToken: loginResponse.accessToken,
     refreshToken: loginResponse.refreshToken,
@@ -83,19 +147,11 @@ export const createAuthTokenFromLogin = async (
     verificationResendToken: loginResponse.verificationResendToken,
   };
 
-  cookieStore.set({
-    name: "authToken",
-    value: JSON.stringify(authTokenData),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  });
-
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
   return authTokenData;
 };
 
 export const createAuthToken = async (user: any) => {
-  const cookieStore = await cookies();
   const authTokenData: AuthToken = {
     accessToken: user.accessToken ?? "",
     refreshToken: user.refreshToken ?? "",
@@ -116,13 +172,7 @@ export const createAuthToken = async (user: any) => {
     theme: user.theme ?? null,
   };
 
-  cookieStore.set({
-    name: "authToken",
-    value: JSON.stringify(authTokenData),
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
-  });
+  await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
 };
 
 export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
@@ -137,9 +187,9 @@ export const getAuthenticatedUser = async (): Promise<FormResponse | User> => {
 
 export const deleteAuthCookie = async () => {
   try {
-    const cookieStore = await cookies();
+    await deleteChunkedCookie(AUTH_TOKEN_COOKIE);
 
-    cookieStore.delete("authToken");
+    const cookieStore = await cookies();
     cookieStore.delete("next-auth.session-token");
     cookieStore.delete("next-auth.csrf-token");
     cookieStore.delete("activeBusiness");

@@ -74,7 +74,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             >
               <Edit className="mr-2 h-4 w-4" /> Update
             </DropdownMenuItem>
-            {data.canDelete && (
+            {true && (
               <>
                 <DropdownMenuItem onClick={onOpen}>
                   <Trash className="mr-2 h-4 w-4" /> Delete
@@ -84,7 +84,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
-      {data.canDelete && (
+      {true && (
         <DeleteModal
           isOpen={isOpen}
           itemName={data.name}

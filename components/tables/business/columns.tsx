@@ -46,26 +46,9 @@ export const columns: ColumnDef<Business>[] = [
     },
   },
   {
-    accessorKey: "prefix",
-    header: "Prefix",
-    enableHiding: false,
-  },
-  {
-    accessorKey: "countryName",
+    accessorKey: "countryId",
     header: "Country",
     enableHiding: false,
-  },
-  {
-    accessorKey: "totalLocations",
-    header: "Total Locations",
-    cell: ({ row }) =>
-      <div className="flex items-center">
-          <div className="rounded-full items-center inline-flex bg-gray-100 text-gray-700 text-md font-bold pl-2 pr-4 pt-1 pb-1 gap-2">
-              <span className="text-emerald-500 font-bold px-2">{row.original.totalLocations}</span>
-              <span className="mr-0">Location{row.original.totalLocations>1 && 's'}</span>
-              <span><ExternalLinkIcon height={14} width={14} /></span>
-      </div>
-      </div>
   },
   {
     accessorKey: "businessTypeName",
@@ -73,24 +56,8 @@ export const columns: ColumnDef<Business>[] = [
     enableHiding: false,
   },
   {
-    id: "vfdRegistrationState",
-    accessorKey: "vfdRegistrationState",
-    header: ({ column }) => {
-        return (
-            <Button
-                className="text-left p-0"
-                variant="ghost"
-                onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}>
-                VFD
-            </Button>
-        );
-    },
-    cell: ({ row }) => <StateColumn state={row.original.vfdRegistrationState} />,
-    enableHiding: false,
-},
-{
-  id: "status",
-  accessorKey: "status",
+  id: "active",
+  accessorKey: "active",
   header: ({ column }) => {
       return (
           <Button
@@ -101,7 +68,7 @@ export const columns: ColumnDef<Business>[] = [
           </Button>
       );
   },
-  cell: ({ row }) => <StateColumn state={row.original.status} />,
+  cell: ({ row }) => <StateColumn state={row.original.active} />,
   enableHiding: false,
 },
   {

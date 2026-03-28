@@ -625,9 +625,9 @@ const CreditReportDashboard = () => {
                     {location.address}
                   </div>
                 )}
-                {location?.phone && (
+                {location?.phoneNumber && (
                   <div style={{ fontSize: 12, color: "#6b7280" }}>
-                    Tel: {location.phone}
+                    Tel: {location.phoneNumber}
                   </div>
                 )}
                 {location?.email && (

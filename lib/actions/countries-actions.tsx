@@ -12,6 +12,7 @@ export const fetchCountries = async () => {
 
     return parseStringify(response);
   } catch (error) {
-    throw error;
+    console.warn("[COUNTRIES] fetchCountries failed:", (error as any)?.message);
+    return [];
   }
 };

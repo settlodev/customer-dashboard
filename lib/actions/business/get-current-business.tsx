@@ -4,7 +4,6 @@ import { parseStringify } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { Business } from "@/types/business/type";
 import { getAuthToken } from "@/lib/auth-utils";
-import { endpoints } from "@/types/endpoints";
 import ApiClient from "@/lib/settlo-api-client";
 import { Location } from "@/types/location/type";
 import { getBusiness } from "@/lib/actions/business/get";
@@ -60,7 +59,7 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
       }
     }
 
-    const currentBusiness = await getBusiness(currentLocation.business);
+    const currentBusiness = await getBusiness(currentLocation.businessId);
 
     if (!currentBusiness) {
       console.warn(
@@ -110,26 +109,15 @@ export const getCurrentLocation = async (): Promise<Location | undefined> => {
 
 export const getBusinessDropDown = async (): Promise<Business[] | null> => {
   try {
-    const authToken = await getAuthToken();
-    const userId = authToken?.userId;
-
-    const myEndpoints = endpoints({ userId: userId });
     const apiClient = new ApiClient();
-
-    try {
-      const data = await apiClient.get(myEndpoints.business.list.endpoint);
-      return parseStringify(data);
-    } catch (apiError: any) {
-      console.error("API request failed:", apiError);
-      throw apiError;
-    }
+    const data = await apiClient.get(`/api/v1/businesses`);
+    return parseStringify(data);
   } catch (error) {
     if (error instanceof Error && error.message === "NEXT_REDIRECT") {
       throw error;
     }
 
     console.error("Failed to get business list:", error);
-
     return null;
   }
 };

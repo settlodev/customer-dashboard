@@ -2,12 +2,15 @@
 
 import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
-import { FormResponse, activeBusiness } from "@/types/types";
+import { FormResponse, activeBusiness, TokenRefreshResponse } from "@/types/types";
 import ApiClient from "@/lib/settlo-api-client";
 import { cookies } from "next/headers";
 import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
 import { revalidatePath } from "next/cache";
+
+const AUTH_SERVICE_URL =
+  process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
 
 interface BusinessWithLocationsPayload {
   business: {
@@ -102,54 +105,27 @@ function mapApiBusinessToExisting(
 ): Business {
   return {
     id: apiBusiness.id,
+    accountId: apiBusiness.accountId,
+    identifier: apiBusiness.slug || "",
     name: apiBusiness.name,
     description: apiBusiness.description || "",
-    slug: apiBusiness.slug || "",
-    businessType: apiBusiness.businessTypeId || "",
-    businessTypeName: apiBusiness.businessTypeName || "",
-    businessAccountNumber: "",
-    prefix: "",
-    tax: 0,
-    identificationNumber: "",
-    vrn: "",
-    serial: "",
-    uin: "",
-    receiptPrefix: "",
-    receiptSuffix: "",
-    image: apiBusiness.logoUrl || "",
-    receiptImage: "",
-    logo: apiBusiness.logoUrl || "",
-    primaryColor: null,
-    secondaryColor: null,
-    bannerImageUrl: null,
-    faviconUrl: null,
-    fontFamily: null,
-    metaTitle: null,
-    metaDescription: null,
-    shareImageUrl: null,
-    facebook: "",
-    twitter: "",
-    instagram: "",
-    linkedin: "",
-    youtube: "",
-    tiktok: "",
-    certificateOfIncorporation: "",
-    businessIdentificationDocument: "",
-    businessLicense: "",
-    memarts: "",
-    notificationPhone: apiBusiness.phoneNumber || "",
-    notificationEmailAddress: apiBusiness.email || "",
-    vfdRegistrationState: false,
+    phoneNumber: apiBusiness.phoneNumber || "",
+    email: apiBusiness.email || "",
     website: apiBusiness.website || "",
-    canDelete: false,
-    status: apiBusiness.active,
-    user: apiBusiness.accountId as any,
-    country: apiBusiness.countryId as any,
-    countryName: "",
-    isArchived: false,
-    totalLocations: 0,
-    allLocations: [],
-  } as Business;
+    active: apiBusiness.active,
+    countryId: apiBusiness.countryId || "",
+    businessTypeId: apiBusiness.businessTypeId || "",
+    businessTypeName: apiBusiness.businessTypeName || "",
+    region: apiBusiness.region || "",
+    district: apiBusiness.district || "",
+    ward: apiBusiness.ward || "",
+    address: apiBusiness.address || "",
+    postalCode: apiBusiness.postalCode || "",
+    logoUrl: apiBusiness.logoUrl || "",
+    timezone: apiBusiness.timezone || "",
+    createdAt: apiBusiness.createdAt || "",
+    updatedAt: apiBusiness.updatedAt || "",
+  };
 }
 
 /**
@@ -161,68 +137,56 @@ function mapApiLocationToExisting(
 ): Location {
   return {
     id: apiLocation.id,
+    accountId: apiLocation.accountId,
+    businessId: apiLocation.businessId,
+    businessName: apiLocation.businessName,
+    identifier: "",
     name: apiLocation.name,
-    phone: apiLocation.phoneNumber || "",
-    locationAccountNumber: "",
-    email: apiLocation.email || "",
-    city: apiLocation.region || "",
-    region: apiLocation.region || "",
-    street: apiLocation.address || "",
-    address: apiLocation.address || "",
     description: apiLocation.description || "",
-    image: "",
-    openingTime: "",
-    closingTime: "",
-    status: apiLocation.active,
-    isArchived: false,
-    canDelete: false,
-    dateCreated: apiLocation.createdAt || "",
-    settings: "" as any,
-    business: apiLocation.businessId as any,
-    businessName: apiLocation.businessName || "",
-    locationBusinessType: "" as any,
-    locationBusinessTypeName: "",
-    subscriptionStatus: "" as any,
-    subscriptionStartDate: "",
-    subscriptionEndDate: "",
-    type: null,
-  } as Location;
+    phoneNumber: apiLocation.phoneNumber || "",
+    email: apiLocation.email || "",
+    active: apiLocation.active,
+    countryId: apiLocation.countryId || "",
+    region: apiLocation.region || "",
+    district: apiLocation.district || "",
+    ward: apiLocation.ward || "",
+    address: apiLocation.address || "",
+    postalCode: apiLocation.postalCode || "",
+    latitude: apiLocation.latitude ?? null,
+    longitude: apiLocation.longitude ?? null,
+    timezone: apiLocation.timezone || "",
+    parentLocationId: null,
+    createdAt: apiLocation.createdAt || "",
+    updatedAt: apiLocation.updatedAt || "",
+  };
 }
 
-function generateOperatingHours(
-  openingTime: string,
-  closingTime: string,
-) {
-  const days = [
-    "MONDAY",
-    "TUESDAY",
-    "WEDNESDAY",
-    "THURSDAY",
-    "FRIDAY",
-    "SATURDAY",
-    "SUNDAY",
-  ];
-  return days.map((day) => ({
-    dayOfWeek: day,
-    openTime: openingTime,
-    closeTime: closingTime,
-    closed: false,
-  }));
+export interface OperatingHoursEntry {
+  dayOfWeek: string;
+  openTime: string;
+  closeTime: string;
+  closed: boolean;
+}
+
+export interface LocationInput {
+  name: string;
+  phoneNumber?: string;
+  email?: string;
+  region?: string;
+  address?: string;
+  countryId?: string;
+  operatingHours?: OperatingHoursEntry[];
 }
 
 export const createBusinessWithLocations = async (data: {
   businessName: string;
-  locationName: string;
   description?: string;
   phoneNumber?: string;
   email?: string;
   businessTypeId?: string;
   countryId?: string;
-  region?: string;
-  address?: string;
   logoUrl?: string;
-  openingTime?: string;
-  closingTime?: string;
+  locations: LocationInput[];
 }): Promise<FormResponse> => {
   try {
     const authToken = await getAuthToken();
@@ -242,25 +206,18 @@ export const createBusinessWithLocations = async (data: {
         email: data.email,
         countryId: data.countryId || authToken.countryId,
         businessTypeId: data.businessTypeId,
-        region: data.region,
-        address: data.address,
         logoUrl: data.logoUrl,
       },
-      locations: [
-        {
-          name: data.locationName,
-          phoneNumber: data.phoneNumber,
-          email: data.email,
-          region: data.region,
-          address: data.address,
-          settings: {
-            operatingHours: generateOperatingHours(
-              data.openingTime || "08:00",
-              data.closingTime || "18:00",
-            ),
-          },
-        },
-      ],
+      locations: data.locations.map((loc) => ({
+        name: loc.name,
+        phoneNumber: loc.phoneNumber || data.phoneNumber,
+        email: loc.email || data.email,
+        region: loc.region,
+        address: loc.address,
+        settings: loc.operatingHours?.length
+          ? { operatingHours: loc.operatingHours }
+          : undefined,
+      })),
     };
 
     const apiClient = new ApiClient();
@@ -288,16 +245,14 @@ export const createBusinessWithLocations = async (data: {
 
       const minimalBusiness = {
         id: business.id,
+        identifier: business.identifier,
         name: business.name,
-        prefix: business.prefix,
-        businessType: business.businessType,
-        logo: business.logo || null,
-        status: business.status,
-        user: business.user,
-        country: business.country,
-        countryName: business.countryName,
-        isArchived: business.isArchived,
-        totalLocations: locations.length,
+        businessTypeId: business.businessTypeId,
+        businessTypeName: business.businessTypeName,
+        logoUrl: business.logoUrl || null,
+        active: business.active,
+        accountId: business.accountId,
+        countryId: business.countryId,
       };
 
       cookieStore.set({
@@ -309,7 +264,7 @@ export const createBusinessWithLocations = async (data: {
       });
 
       const businessActive: activeBusiness = {
-        businessId: business.id,
+        businessId: business.id as `${string}-${string}-${string}-${string}-${string}`,
       };
       cookieStore.set({
         name: "activeBusiness",
@@ -328,6 +283,34 @@ export const createBusinessWithLocations = async (data: {
           secure: isProduction,
           sameSite: isProduction ? "strict" : "lax",
         });
+      }
+
+      // Refresh the access token so it picks up the new business/location
+      // claims (business_id, assigned_to_id, updated permissions).
+      try {
+        const refreshResponse = await fetch(
+          `${AUTH_SERVICE_URL}/auth/token-refresh`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ refreshToken: authToken.refreshToken }),
+          },
+        );
+
+        if (refreshResponse.ok) {
+          const refreshData: TokenRefreshResponse = await refreshResponse.json();
+          await updateAuthToken({
+            ...authToken,
+            accessToken: refreshData.accessToken,
+            refreshToken: refreshData.refreshToken || authToken.refreshToken,
+            isBusinessRegistrationComplete: true,
+            isLocationRegistrationComplete: true,
+          });
+          console.log("[BUSINESS] Access token refreshed with new business/location claims");
+        }
+      } catch {
+        // Non-critical — the old token still works, just missing the new claims
+        console.warn("[BUSINESS] Token refresh after business creation failed (non-critical)");
       }
 
       revalidatePath("/", "layout");
@@ -371,16 +354,19 @@ export const createBusiness = async (
 ): Promise<FormResponse | void> => {
   return createBusinessWithLocations({
     businessName: business.name,
-    locationName: business.locationName || "Main Location",
     description: business.description,
     phoneNumber: business.phoneNumber || business.phone,
     email: business.email,
     businessTypeId: business.businessType || business.businessTypeId,
     countryId: business.country || business.countryId,
-    region: business.city || business.region,
-    address: business.address,
     logoUrl: business.image || business.logoUrl,
-    openingTime: business.openingTime,
-    closingTime: business.closingTime,
+    locations: [
+      {
+        name: business.locationName || business.name || "Main Location",
+        region: business.city || business.region,
+        address: business.address,
+        operatingHours: business.operatingHours,
+      },
+    ],
   });
 };

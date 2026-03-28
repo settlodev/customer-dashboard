@@ -1,89 +1,79 @@
 "use server";
 
-
-
-import {getAuthenticatedUser} from "@/lib/auth-utils";
-import {parseStringify} from "@/lib/utils";
+import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
-import {ApiResponse} from "@/types/types";
-import {getCurrentBusiness} from "@/lib/actions/business/get-current-business";
+import { ApiResponse } from "@/types/types";
+import { getCurrentBusiness } from "@/lib/actions/business/get-current-business";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 import { getCurrentWarehouse } from "./current-warehouse-action";
 
 export const getWarehouse = async (
-    id?:string
+  id?: string,
 ): Promise<Warehouses | null> => {
-    try {
-        const business = await getCurrentBusiness();
+  try {
+    const business = await getCurrentBusiness();
 
-        if (!business) {
-            return null;
-        }
-
-        const apiClient = new ApiClient();
-        const warehouse = id ? { id } : await getCurrentWarehouse();
-
-        const warehousesData = await apiClient.get(
-            `/api/warehouses/${business.id}/${warehouse?.id}`,
-        );
-
-        return parseStringify(warehousesData);
-    } catch (error) {
-        
-        console.error('Error in getWarehouses:', error);
-        throw error;
+    if (!business) {
+      return null;
     }
+
+    const apiClient = new ApiClient();
+    const warehouseId = id || (await getCurrentWarehouse())?.id;
+
+    if (!warehouseId) return null;
+
+    const warehousesData = await apiClient.get(
+      `/api/v1/warehouses/${warehouseId}`,
+    );
+
+    return parseStringify(warehousesData);
+  } catch (error) {
+    console.error("Error in getWarehouses:", error);
+    return null;
+  }
 };
 
 export const searchWarehouses = async (
-    q: string,
-    page: number,
-    pageLimit: number,
+  q: string,
+  page: number,
+  pageLimit: number,
 ): Promise<ApiResponse<Warehouses>> => {
-    await getAuthenticatedUser();
+  try {
+    const business = await getCurrentBusiness();
+    const apiClient = new ApiClient();
 
-    try {
-        const business = await getCurrentBusiness();
-        const apiClient = new ApiClient();
+    const data = await apiClient.get<Warehouses[]>(
+      `/api/v1/warehouses${business?.id ? `?businessId=${business.id}` : ""}`,
+    );
 
-        const query = {
-            filters: [
-                {
-                    key: "name",
-                    operator: "LIKE",
-                    field_type: "UUID_STRING",
-                    value: q,
-                },
-                {
-                    key:"isArchived",
-                    operator:"EQUAL",
-                    field_type:"BOOLEAN",
-                    value:false
-                }
-            ],
-            sorts: [
-                {
-                    key: "name",
-                    direction: "ASC",
-                },
-            ],
-            page: page ? page - 1 : 0,
-            size: pageLimit ? pageLimit : 10,
-        };
+    // The new API returns a flat list. Wrap it in ApiResponse format
+    // for backward compatibility with existing components.
+    const items = Array.isArray(data) ? data : [];
 
-
-        const data = await apiClient.post(
-            `/api/warehouses/${business?.id}`,
-            query,
-        );
-       
-        return parseStringify(data);
-
-    } catch (error) {
-        console.error('Error in search warehouses:', error);
-        throw error;
-    }
+    return parseStringify({
+      content: items,
+      totalPages: 1,
+      totalElements: items.length,
+      first: true,
+      last: true,
+      size: items.length,
+      number: 0,
+      numberOfElements: items.length,
+      empty: items.length === 0,
+    } as ApiResponse<Warehouses>);
+  } catch (error) {
+    console.error("Error in search warehouses:", error);
+    // Return empty result instead of throwing
+    return {
+      content: [],
+      totalPages: 0,
+      totalElements: 0,
+      first: true,
+      last: true,
+      size: 0,
+      number: 0,
+      numberOfElements: 0,
+      empty: true,
+    } as unknown as ApiResponse<Warehouses>;
+  }
 };
-
-
-

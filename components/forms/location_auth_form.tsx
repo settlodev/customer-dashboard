@@ -28,7 +28,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
-import { createBusinessLocation } from "@/lib/actions/auth/location";
+import { createStandaloneLocation } from "@/lib/actions/auth/location";
 import { Loader2Icon } from "lucide-react";
 import { PhoneInput } from "../ui/phone-input";
 
@@ -54,7 +54,7 @@ const LocationAuthForm = () => {
 
   const submitData = useCallback((values: z.infer<typeof LocationSchema>) => {
     startTransition(() => {
-      createBusinessLocation(values).then((data) => {
+      createStandaloneLocation(values as any).then((data: any) => {
         if (data) {
           if (data.responseType === "success") {
             setResponse(data);

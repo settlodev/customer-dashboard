@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   MapPin,
   Loader2Icon,
@@ -42,6 +42,19 @@ const LocationList = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const { toast } = useToast();
+  const autoSelectRan = useRef(false);
+
+  // Auto-select if single location and no warehouses
+  useEffect(() => {
+    if (
+      locations.length === 1 &&
+      warehouses.length === 0 &&
+      !autoSelectRan.current
+    ) {
+      autoSelectRan.current = true;
+      handleLocationSelect(locations[0], 0);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const displayedItems = useMemo(() => {
     return locationType === "warehouse" ? warehouses : locations;

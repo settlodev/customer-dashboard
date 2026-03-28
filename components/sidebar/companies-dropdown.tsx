@@ -110,10 +110,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         setSelectedLocation(null);
         setLoadingLocationId(null);
 
-        if (
-          location.subscriptionStatus === "EXPIRED" ||
-          location.subscriptionStatus === null
-        ) {
+        if (!location.active) {
           window.location.href = `/subscription?location=${location.id}`;
         } else {
           window.location.href = "/dashboard";
@@ -138,10 +135,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         setSelectedLocation(null);
         setLoadingLocationId(null);
 
-        if (
-          warehouse.subscriptionStatus === "EXPIRED" ||
-          warehouse.subscriptionStatus === null
-        ) {
+        if (!warehouse.active) {
           window.location.href = "/select-location";
         } else {
           window.location.href = "/warehouse";
@@ -174,7 +168,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         >
           <div className="relative h-8 w-8 shrink-0">
             <Image
-              src={business?.logo || "/images/logo.png"}
+              src={business?.logoUrl || "/images/logo.png"}
               alt={location.name}
               fill
               className="rounded-full object-cover bg-primary/20 p-1"
@@ -189,10 +183,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
                 {location.region ? location.region : " "}
               </p>
               <p className="text-xs text-gray-500 truncate bg-gray-100 px-2 py-1 rounded">
-                {location.subscriptionStatus === "EXPIRED" ||
-                location.subscriptionStatus === null
-                  ? "Expired"
-                  : "Active"}
+                {location.active ? "Active" : "Inactive"}
               </p>
             </div>
           </div>
@@ -245,7 +236,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
         >
           <div className="relative h-8 w-8 shrink-0">
             <Image
-              src={business?.logo || "/images/logo.png"}
+              src={business?.logoUrl || "/images/logo.png"}
               alt={warehouse.name || "Warehouse"}
               fill
               className="rounded-full object-cover bg-primary/20 p-1"
@@ -286,7 +277,7 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
             <div className="flex items-center gap-3 w-full">
               <div className="relative h-8 w-8 shrink-0">
                 <Image
-                  src={business?.logo || "/images/logo.png"}
+                  src={business?.logoUrl || "/images/logo.png"}
                   alt={business?.name || "Business logo"}
                   fill
                   className="rounded-full object-cover bg-primary/20 p-1"

@@ -18,39 +18,29 @@ function BusinessPageLoading() {
 
 async function BusinessPageContent() {
   try {
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    const data = await getBusinessDropDown();
 
-    // const data = await fetchAllBusinesses();
-
-        // Middleware ensures auth, just fetch data
-        const data = await getBusinessDropDown();
-    
-        // Handle redirects properly in server component
-        if (!data) {
-            // redirect('/login');
-            redirect('/login');
-        }
-        
-        if (Array.isArray(data) && data.length > 0) {
-            return <BusinessSelector businesses={data} />;
-        }
-            redirect('/business-registration');
-        
-        
-    } catch (error) {
-        Sentry.captureException(error);
-        
-        // Re-throw redirect errors
-        if (error instanceof Error && error.message.includes('NEXT_REDIRECT')) {
-            throw error;
-        }
-
-       
-        
-        // For other errors, redirect to login
-        redirect('/login');
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      redirect("/business-registration");
     }
 
+    // Pass all businesses to the client component.
+    // Auto-selection (single business, single location → dashboard)
+    // is handled client-side where server actions can set cookies.
+    return <BusinessSelector businesses={data} />;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      "digest" in error &&
+      typeof (error as any).digest === "string" &&
+      (error as any).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    Sentry.captureException(error);
+    redirect("/login");
+  }
 }
 
 export default async function SelectBusinessPage() {

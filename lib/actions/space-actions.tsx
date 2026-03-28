@@ -5,7 +5,7 @@ import ApiClient from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { SettloErrorHandler } from "@/lib/settlo-error-handler";
 import { ApiResponse, FormResponse } from "@/types/types";
-import { UUID } from "node:crypto";
+type UUID = string;
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { getCurrentLocation } from "./business/get-current-business";
@@ -48,7 +48,7 @@ function buildSpacePayload(
     status: d.status ?? true,
     canDelete: true,
     isArchived: false,
-    location: locationId,
+    location: locationId as `${string}-${string}-${string}-${string}-${string}`,
   };
 }
 

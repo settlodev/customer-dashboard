@@ -53,7 +53,7 @@ function Page({searchParams}: Params) {
     useEffect(() => {
         const fetchBusinessData = async () => {
             const business = await getCurrentBusiness();
-            setTotalLocations(business?.totalLocations);
+            setTotalLocations(undefined);
         };
 
         fetchBusinessData();

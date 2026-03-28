@@ -86,13 +86,13 @@ const fetchWarehouseInvoices = async (page: number, pageSize: number, searchQuer
               </h1>
               <div className="hidden lg:flex items-center text-sm text-gray-500">
                 <span className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs lg:text-sm font-medium ${
-                  warehouse.subscriptionStatus === 'OK' 
-                    ? 'bg-green-100 text-green-800' 
+                  warehouse.active
+                    ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800'
                 }`}>
-                  {warehouse.subscriptionStatus === 'OK' ? 'Active' : 'Inactive'}
+                  {warehouse.active ? 'Active' : 'Inactive'}
                 </span>
-                
+
               </div>
             </div>
             <div className="flex gap-3">

@@ -100,20 +100,14 @@ export const LocationSwitcher = ({
 
       if (confirmItem.type === "warehouse") {
         const wh = confirmItem.data as Warehouses;
-        if (
-          wh.subscriptionStatus === "EXPIRED" ||
-          wh.subscriptionStatus === null
-        ) {
+        if (!wh.active) {
           window.location.href = "/select-location";
         } else {
           window.location.href = "/warehouse";
         }
       } else {
         const loc = confirmItem.data as Location;
-        if (
-          loc.subscriptionStatus === "EXPIRED" ||
-          loc.subscriptionStatus === null
-        ) {
+        if (!loc.active) {
           window.location.href = `/subscription?location=${loc.id}`;
         } else {
           window.location.href = "/dashboard";
@@ -201,16 +195,12 @@ export const LocationSwitcher = ({
                           <span
                             className={cn(
                               "text-xs px-1.5 py-0.5 rounded",
-                              location.subscriptionStatus === "EXPIRED" ||
-                                location.subscriptionStatus === null
+                              !location.active
                                 ? "bg-red-50 text-red-600"
                                 : "bg-green-50 text-green-600",
                             )}
                           >
-                            {location.subscriptionStatus === "EXPIRED" ||
-                            location.subscriptionStatus === null
-                              ? "Expired"
-                              : "Active"}
+                            {location.active ? "Active" : "Inactive"}
                           </span>
                         </div>
                       </div>

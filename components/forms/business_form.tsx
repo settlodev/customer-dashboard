@@ -65,48 +65,48 @@ const BusinessForm = ({
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
-  const [logoImage, setLogoImage] = useState(item?.logo || "");
-  const [bannerImage, setBannerImage] = useState(item?.bannerImageUrl || "");
-  const [faviconImage, setFaviconImage] = useState(item?.faviconUrl || "");
-  const [shareImage, setShareImage] = useState(item?.shareImageUrl || "");
+  const [logoImage, setLogoImage] = useState(item?.logoUrl || "");
+  const [bannerImage, setBannerImage] = useState("");
+  const [faviconImage, setFaviconImage] = useState("");
+  const [shareImage, setShareImage] = useState("");
 
   const form = useForm<z.infer<typeof BusinessSchema>>({
     resolver: zodResolver(BusinessSchema),
     defaultValues: {
-      ...item,
-      status: item ? item.status : true,
-      businessType: item ? item.businessType : BusinessType.RETAIL,
-
-      logo: item ? item.logo : undefined,
-      notificationPhone: item ? item.notificationPhone : undefined,
-      notificationEmailAddress: item
-        ? item.notificationEmailAddress
-        : undefined,
-      vrn: item ? item.vrn : undefined,
-      uin: item ? item.uin : undefined,
-      serial: item ? item.serial : undefined,
-      memarts: item ? item.memarts : undefined,
-      businessLicense: item ? item.businessLicense : "",
-      certificateOfIncorporation: item ? item.certificateOfIncorporation : null,
-      identificationNumber: item ? item.identificationNumber : "",
-      businessIdentificationDocument: item
-        ? item.businessIdentificationDocument
-        : null,
-      receiptPrefix: item ? item.receiptPrefix : null,
-      receiptSuffix: item ? item.receiptSuffix : null,
-      receiptImage: item ? item.receiptImage : null,
-      website: item ? item.website : null,
-      linkedin: item ? item.linkedin : null,
-      tiktok: item ? item.tiktok : null,
-      vfdRegistrationState: item ? item.vfdRegistrationState : false,
-      primaryColor: item?.primaryColor ?? "#EB7F44",
-      secondaryColor: item?.secondaryColor ?? "#1A1A2E",
-      bannerImageUrl: item?.bannerImageUrl ?? null,
-      faviconUrl: item?.faviconUrl ?? null,
-      fontFamily: item?.fontFamily ?? null,
-      metaTitle: item?.metaTitle ?? null,
-      metaDescription: item?.metaDescription ?? null,
-      shareImageUrl: item?.shareImageUrl ?? null,
+      name: item?.name ?? "",
+      description: item?.description ?? "",
+      phoneNumber: item?.phoneNumber ?? "",
+      email: item?.email ?? "",
+      website: item?.website ?? null,
+      status: item ? item.active : true,
+      businessType: item ? item.businessTypeId : BusinessType.RETAIL,
+      country: item ? item.countryId : "",
+      logo: item ? item.logoUrl : undefined,
+      address: item?.address ?? "",
+      notificationPhone: undefined,
+      notificationEmailAddress: undefined,
+      vrn: undefined,
+      uin: undefined,
+      serial: undefined,
+      memarts: undefined,
+      businessLicense: "",
+      certificateOfIncorporation: null,
+      identificationNumber: "",
+      businessIdentificationDocument: null,
+      receiptPrefix: null,
+      receiptSuffix: null,
+      receiptImage: null,
+      linkedin: null,
+      tiktok: null,
+      vfdRegistrationState: false,
+      primaryColor: "#EB7F44",
+      secondaryColor: "#1A1A2E",
+      bannerImageUrl: null,
+      faviconUrl: null,
+      fontFamily: null,
+      metaTitle: null,
+      metaDescription: null,
+      shareImageUrl: null,
     },
   });
 

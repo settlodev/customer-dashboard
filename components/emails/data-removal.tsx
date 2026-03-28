@@ -20,7 +20,7 @@ export default function DataRemovalEmailTemplate({location}: {location: Location
                 The details for this request are as follows:
                 location name: {location.name}
                 location email: {location.email}
-                location phone: {location.phone}
+                location phone: {location.phoneNumber}
                 location address: {location.address}
                 </Text>
                 

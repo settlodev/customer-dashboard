@@ -46,7 +46,7 @@ export const columns: ColumnDef<Location>[] = [
     },
   },
   {
-    accessorKey: "phone",
+    accessorKey: "phoneNumber",
     header: "Phone",
   },
   {
@@ -54,8 +54,8 @@ export const columns: ColumnDef<Location>[] = [
     header: "Email address",
   },
   {
-    id: "status",
-    accessorKey: "status",
+    id: "active",
+    accessorKey: "active",
     header: ({ column }) => {
       return (
         <Button
@@ -68,7 +68,7 @@ export const columns: ColumnDef<Location>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => <StateColumn state={row.original.status} />,
+    cell: ({ row }) => <StateColumn state={row.original.active} />,
     enableHiding: false,
   },
   {

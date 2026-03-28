@@ -36,28 +36,39 @@ export default async function SelectLocationPage({ searchParams }: Params) {
       redirect("/select-business");
     }
 
-    if (business.totalLocations === 0) {
+    // Business exists, continue to fetch locations
+
+    const [businessLocations, warehouseList] = await Promise.all([
+      fetchAllLocations(),
+      searchWarehouses(q, page, pageLimit),
+    ]);
+
+    const warehouses: Warehouses[] = warehouseList?.content || [];
+
+    if (!businessLocations || businessLocations.length === 0) {
       redirect("/business-location");
     }
 
-    const businessLocations = await fetchAllLocations();
-
-    const warehouseList = await searchWarehouses(q, page, pageLimit);
-    const data: Warehouses[] = warehouseList.content;
-
-    if (!businessLocations) {
-      redirect("/select-business");
-    }
-
+    // Pass all data to client component — auto-select logic runs there
+    // where server actions can properly set cookies.
     return (
       <LocationList
-        locations={businessLocations || []}
+        locations={businessLocations}
         businessName={business.name}
-        warehouses={data}
+        warehouses={warehouses}
       />
     );
   } catch (error) {
-    console.error("Error in getting current business - logging out:", error);
+    if (
+      error instanceof Error &&
+      "digest" in error &&
+      typeof (error as any).digest === "string" &&
+      (error as any).digest.startsWith("NEXT_REDIRECT")
+    ) {
+      throw error;
+    }
+
+    console.error("Error in select-location:", error);
     redirect("/select-business");
   }
 }

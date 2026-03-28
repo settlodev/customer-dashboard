@@ -87,11 +87,11 @@ const WarehouseProfile = () => {
               </h1>
               <div className="hidden lg:flex items-center text-sm text-gray-500">
                 <span className={`inline-flex items-center px-2.5 py-1.5 rounded-full text-xs lg:text-sm font-medium ${
-                  warehouse.subscriptionStatus === 'OK' 
-                    ? 'bg-green-100 text-green-800' 
+                  warehouse.active
+                    ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800'
                 }`}>
-                  {warehouse.subscriptionStatus === 'OK' ? 'Active' : 'Inactive'}
+                  {warehouse.active ? 'Active' : 'Inactive'}
                 </span>
                 
               </div>
@@ -130,14 +130,14 @@ const WarehouseProfile = () => {
               <Phone className="w-5 h-5 text-gray-400 mr-3" />
               <div>
                 <p className="text-sm text-gray-500">Phone</p>
-                <p className="text-gray-900">{warehouse.phone}</p>
+                <p className="text-gray-900">N/A</p>
               </div>
             </div>
             <div className="flex items-center">
               <Mail className="w-5 h-5 text-gray-400 mr-3" />
               <div>
                 <p className="text-sm text-gray-500">Email</p>
-                <p className="text-gray-900">{warehouse.email}</p>
+                <p className="text-gray-900">N/A</p>
               </div>
             </div>
           </div>
@@ -153,11 +153,7 @@ const WarehouseProfile = () => {
               <MapPin className="w-5 h-5 text-gray-400 mr-3 mt-0.5" />
               <div>
                 <p className="text-sm text-gray-500">Address</p>
-                <p className="text-gray-900">{warehouse.address}</p>
-                <p className="text-gray-600 text-sm mt-1">
-                  {warehouse.city}
-                  {warehouse.region && `, ${warehouse.region}`}
-                </p>
+                <p className="text-gray-900">{warehouse.description || "N/A"}</p>
               </div>
             </div>
           </div>
@@ -174,7 +170,7 @@ const WarehouseProfile = () => {
               <div>
                 <p className="text-sm text-gray-500">Hours</p>
                 <p className="text-gray-900">
-                  {formatTime(warehouse.openingTime)} - {formatTime(warehouse.closingTime)}
+                  N/A
                 </p>
               </div>
             </div>
@@ -191,7 +187,7 @@ const WarehouseProfile = () => {
               <Calendar className="w-5 h-5 text-gray-400 mr-3" />
               <div>
                 <p className="text-sm text-gray-500">Date Created</p>
-                <p className="text-gray-900">{formatDate(warehouse.dateCreated)}</p>
+                <p className="text-gray-900">{formatDate(warehouse.createdAt)}</p>
               </div>
             </div>
             {warehouse.description && (

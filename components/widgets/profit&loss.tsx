@@ -550,16 +550,16 @@ const ProfitLossStatement = ({
                     {location.name}
                   </div>
                 )}
-                {(location.address || location.city) && (
+                {(location.address || location.region) && (
                   <div style={{ fontSize: 12, color: "#6b7280" }}>
-                    {[location.address, location.city, location.region]
+                    {[location.address, location.region]
                       .filter(Boolean)
                       .join(", ")}
                   </div>
                 )}
-                {location.phone && (
+                {location.phoneNumber && (
                   <div style={{ fontSize: 12, color: "#6b7280" }}>
-                    Tel: {location.phone}
+                    Tel: {location.phoneNumber}
                   </div>
                 )}
                 {location.email && (
@@ -567,14 +567,9 @@ const ProfitLossStatement = ({
                     {location.email}
                   </div>
                 )}
-                {business.identificationNumber && (
+                {business.identifier && (
                   <div style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
-                    TIN: {business.identificationNumber}
-                  </div>
-                )}
-                {business.vrn && (
-                  <div style={{ fontSize: 11, color: "#6b7280" }}>
-                    VRN: {business.vrn}
+                    ID: {business.identifier}
                   </div>
                 )}
               </div>

@@ -89,8 +89,8 @@ const LocationDetailsSettings = ({
   const [showStatusDialog, setShowStatusDialog] = useState(false);
 
   const handleCopy = () => {
-    if (!location?.locationAccountNumber) return;
-    navigator.clipboard.writeText(location.locationAccountNumber);
+    if (!location?.identifier) return;
+    navigator.clipboard.writeText(location.identifier);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -103,14 +103,18 @@ const LocationDetailsSettings = ({
   const form = useForm<CombinedFormValues>({
     resolver: zodResolver(CombinedLocationSchema),
     defaultValues: {
-      ...location,
-      openingTime: location?.openingTime
-        ? formatTimeForSelect(location.openingTime)
-        : undefined,
-      closingTime: location?.closingTime
-        ? formatTimeForSelect(location.closingTime)
-        : undefined,
-      status: location ? location.status : true,
+      name: location?.name ?? "",
+      phone: location?.phoneNumber ?? "",
+      email: location?.email ?? "",
+      description: location?.description ?? "",
+      address: location?.address ?? "",
+      city: location?.region ?? "",
+      region: location?.region ?? "",
+      street: location?.address ?? "",
+      openingTime: undefined,
+      closingTime: undefined,
+      status: location ? location.active : true,
+      image: undefined,
       // Settings defaults
       currencyCode: locationSettings?.currencyCode ?? "TZS",
       minimumSettlementAmount: locationSettings?.minimumSettlementAmount ?? 0,
@@ -124,14 +128,18 @@ const LocationDetailsSettings = ({
   useEffect(() => {
     if (location && locationSettings) {
       form.reset({
-        ...location,
-        openingTime: location?.openingTime
-          ? formatTimeForSelect(location.openingTime)
-          : undefined,
-        closingTime: location?.closingTime
-          ? formatTimeForSelect(location.closingTime)
-          : undefined,
-        status: location.status,
+        name: location.name ?? "",
+        phone: location.phoneNumber ?? "",
+        email: location.email ?? "",
+        description: location.description ?? "",
+        address: location.address ?? "",
+        city: location.region ?? "",
+        region: location.region ?? "",
+        street: location.address ?? "",
+        openingTime: undefined,
+        closingTime: undefined,
+        status: location.active,
+        image: undefined,
         currencyCode: locationSettings.currencyCode ?? "TZS",
         minimumSettlementAmount: locationSettings.minimumSettlementAmount ?? 0,
         systemPasscode: locationSettings.systemPasscode ?? "0000",
@@ -392,11 +400,11 @@ const LocationDetailsSettings = ({
         <p className="text-muted-foreground mt-1 text-sm">
           Manage your location information, address, and general settings
         </p>
-        {location?.locationAccountNumber && (
+        {location?.identifier && (
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs text-muted-foreground">Account No:</span>
             <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">
-              {location.locationAccountNumber}
+              {location.identifier}
             </code>
             <button
               onClick={handleCopy}

@@ -68,15 +68,9 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
     }
   };
 
-  const statusBadge = getSubscriptionStatusBadge(location.subscriptionStatus);
+  const statusBadge = getSubscriptionStatusBadge(location.active ? "OK" : "SUSPENDED");
 
-  const subscriptionProgress = Math.ceil(
-    ((new Date().getTime() -
-      new Date(location.subscriptionStartDate).getTime()) /
-      (new Date(location.subscriptionEndDate).getTime() -
-        new Date(location.subscriptionStartDate).getTime())) *
-      100,
-  );
+  const subscriptionProgress = 0;
 
   const breadcrumbItems = [
     { title: "Locations", link: "/locations" },
@@ -108,7 +102,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 {location.businessName}
                 <span className="text-gray-400">•</span>
                 <span className="capitalize">
-                  {location.locationBusinessTypeName?.toLowerCase()}
+                  {location.businessName?.toLowerCase()}
                 </span>
               </p>
             </div>
@@ -143,7 +137,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
               <LocationForm
                 item={null}
                 onSubmit={handleAddLocation}
-                businessId={location.business ?? null}
+                businessId={location.businessId ?? null}
               />
             </DialogContent>
           </Dialog>
@@ -191,7 +185,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 {statusBadge.text}
               </Badge>
               <span className="text-sm text-muted-foreground">
-                Until {formatDate(location.subscriptionEndDate)}
+                {location.active ? "Active" : "Inactive"}
               </span>
             </div>
           </div>
@@ -217,10 +211,10 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 <Phone className="w-4 h-4 text-gray-600 flex-shrink-0" />
                 <span
                   className={
-                    location.phone ? "font-medium" : "text-muted-foreground"
+                    location.phoneNumber ? "font-medium" : "text-muted-foreground"
                   }
                 >
-                  {location.phone || "Not provided"}
+                  {location.phoneNumber || "Not provided"}
                 </span>
               </div>
 
@@ -232,28 +226,18 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
               )}
 
               {(location.address ||
-                location.street ||
-                location.city ||
                 location.region) && (
                 <div className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                   <MapPin className="w-4 h-4 text-gray-600 flex-shrink-0 mt-1" />
                   <div className="space-y-1 capitalize">
-                    {location.street && (
-                      <div className="font-medium">{location.street}</div>
+                    {location.address && (
+                      <div className="font-medium">{location.address}</div>
                     )}
-                    {(location.city || location.region) && (
+                    {location.region && (
                       <div className="text-sm text-muted-foreground">
-                        {[location.city, location.region]
-                          .filter(Boolean)
-                          .join(", ")}
+                        {location.region}
                       </div>
                     )}
-                    {location.address &&
-                      location.address !== location.street && (
-                        <div className="text-sm text-muted-foreground">
-                          {location.address}
-                        </div>
-                      )}
                   </div>
                 </div>
               )}
@@ -261,8 +245,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
               <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
                 <Clock className="w-4 h-4 text-gray-600 flex-shrink-0" />
                 <span className="font-medium">
-                  {formatTime(location.openingTime)} –{" "}
-                  {formatTime(location.closingTime)}
+                  {location.timezone || "N/A"}
                 </span>
               </div>
             </CardContent>
@@ -286,7 +269,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 <div className="flex items-center gap-2 p-2 rounded-lg border">
                   <Calendar className="w-4 h-4 text-gray-500" />
                   <span className="font-medium">
-                    {formatDate(location.dateCreated)}
+                    {formatDate(location.createdAt)}
                   </span>
                 </div>
               </div>
@@ -297,7 +280,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 <div className="flex items-center gap-2 p-3 rounded-lg border bg-gray-50 dark:bg-gray-800/50">
                   <Globe className="w-4 h-4 text-gray-600" />
                   <span className="font-medium capitalize">
-                    {location.locationBusinessTypeName?.toLowerCase()}
+                    {location.businessName?.toLowerCase()}
                   </span>
                 </div>
               </div>
@@ -343,7 +326,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                     Start Date
                   </div>
                   <div className="text-lg font-bold mt-1">
-                    {formatDate(location.subscriptionStartDate)}
+                    {formatDate(location.createdAt)}
                   </div>
                 </div>
 
@@ -353,7 +336,7 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                     End Date
                   </div>
                   <div className="text-lg font-bold mt-1">
-                    {formatDate(location.subscriptionEndDate)}
+                    N/A
                   </div>
                 </div>
               </div>

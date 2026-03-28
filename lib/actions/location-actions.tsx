@@ -1,6 +1,6 @@
 "use server";
 
-import { UUID } from "node:crypto";
+type UUID = string;
 
 import { revalidatePath } from "next/cache";
 
@@ -28,7 +28,9 @@ export const fetchAllLocations = async (): Promise<Location[] | null> => {
 
     const apiClient = new ApiClient();
 
-    const locationsData = await apiClient.get(`/api/locations/${business.id}`);
+    const locationsData = await apiClient.get(
+      `/api/v1/locations?businessId=${business.id}`,
+    );
 
     return parseStringify(locationsData);
   } catch (error: unknown) {

@@ -1,14 +1,15 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, Loader2Icon, ChevronRight, Globe2 } from "lucide-react";
 import { Business } from "@/types/business/type";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
-import { refreshBusiness } from "@/lib/actions/business/refresh";
+import { refreshBusiness, switchLocation } from "@/lib/actions/business/refresh";
+import { fetchAllLocations } from "@/lib/actions/location-actions";
 
 const BusinessList = ({ businesses }: { businesses: Business[] }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -16,19 +17,15 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
   const [pendingIndex, setPendingIndex] = useState<number | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+  const autoSelectRan = useRef(false);
 
+  // Auto-select if only one business
   useEffect(() => {
-    if (businesses.length === 1 && !isLoading && !isRedirecting) {
+    if (businesses.length === 1 && !autoSelectRan.current) {
+      autoSelectRan.current = true;
       handleBusinessSelect(businesses[0], 0);
     }
-  }, [businesses]);
-
-  useEffect(() => {
-    return () => {
-      setIsLoading(false);
-      setPendingIndex(null);
-    };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleBusinessSelect = useCallback(
     async (selectedBusiness: Business, index: number) => {
@@ -36,12 +33,34 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
 
       setPendingIndex(index);
       setIsLoading(true);
+      setIsRedirecting(true);
 
       try {
-        setIsRedirecting(true);
         await refreshBusiness(selectedBusiness);
+
+        // Check if this business has only one location — skip select-location
+        const locations = await fetchAllLocations();
+
+        if (locations && locations.length === 1) {
+          // Single location — go straight to dashboard
+          await switchLocation(locations[0]);
+          // switchLocation redirects internally
+          return;
+        }
+
+        // Multiple locations or none — go to select-location
         router.push("/select-location");
       } catch (error) {
+        // Re-throw redirects (from switchLocation)
+        if (
+          error instanceof Error &&
+          "digest" in error &&
+          typeof (error as any).digest === "string" &&
+          (error as any).digest.startsWith("NEXT_REDIRECT")
+        ) {
+          throw error;
+        }
+
         Sentry.captureException(error);
         setIsRedirecting(false);
         setIsLoading(false);
@@ -57,6 +76,7 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
     [isLoading, isRedirecting, toast, router],
   );
 
+  // Show loading while auto-selecting single business
   if (businesses.length === 1 && (isLoading || isRedirecting)) {
     return (
       <div className="flex items-center justify-center flex-col gap-3 py-20">
@@ -101,9 +121,9 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
               )}
             >
               <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                {bus.logo ? (
+                {bus.logoUrl ? (
                   <Image
-                    src={bus.logo}
+                    src={bus.logoUrl}
                     alt={bus.name}
                     width={44}
                     height={44}
@@ -120,8 +140,7 @@ const BusinessList = ({ businesses }: { businesses: Business[] }) => {
                 <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                   <Globe2 className="w-3.5 h-3.5" />
                   <span>
-                    {bus.countryName} &middot; {bus.totalLocations}{" "}
-                    {bus.totalLocations === 1 ? "location" : "locations"}
+                    {bus.businessTypeName}
                   </span>
                 </div>
               </div>

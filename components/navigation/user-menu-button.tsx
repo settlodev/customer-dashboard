@@ -22,6 +22,7 @@ import {
   LogOut,
   ChevronDown,
   LayoutDashboard,
+  Loader2,
 } from "lucide-react";
 import UserAvatar from "@/components/widgets/user-avatar";
 import { ExtendedUser } from "@/types/types";
@@ -30,7 +31,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Location } from "@/types/location/type";
 import { getAuthToken } from "@/lib/auth-utils";
-import { signOut } from "next-auth/react";
+import { logout } from "@/lib/actions/auth-actions";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 
@@ -50,6 +51,7 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
     const [currentLocation, setCurrentLocation] = useState<Location | undefined>(undefined);
     const [currentWarehouse, setCurrentWarehouse] = useState<Warehouses | undefined>(undefined);
     const [showSessionExpiredModal, setShowSessionExpiredModal] = useState(false);
+    const [loggingOut, setLoggingOut] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -89,28 +91,53 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
     }
   };
 
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logout();
+    } catch {
+      // logout redirects — if it somehow fails, force navigate
+      window.location.href = "/login";
+    }
+  };
+
   const handleSessionExpiredConfirm = async () => {
     setShowSessionExpiredModal(false);
-    await signOut();
+    await handleLogout();
   };
 
   return (
     <>
+      {/* Full-screen logout overlay */}
+      {loggingOut && (
+        <div className="fixed inset-0 z-[9999] bg-white/80 dark:bg-gray-950/80 backdrop-blur-sm flex flex-col items-center justify-center gap-3">
+          <Loader2 className="h-6 w-6 text-primary animate-spin" />
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+            Logging out...
+          </p>
+        </div>
+      )}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="h-full rounded-l-lg rounded-r-[0.7rem] px-3 gap-2 hover:bg-gray-50 dark:hover:bg-gray-800">
+          <Button variant="ghost" className="h-full rounded-l-lg rounded-r-[0.7rem] px-3 gap-2 hover:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none">
             <div className="flex items-center gap-2">
               <div className="hidden lg:block text-right">
                 <p className="text-sm font-medium leading-none">{fullName}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
               </div>
 
-              <UserAvatar
-                src={user?.avatar}
-                alt={fullName}
-                fallback={initials}
-                className="h-8 w-8"
-              />
+              {user?.avatar ? (
+                <UserAvatar
+                  src={user.avatar}
+                  alt={fullName}
+                  fallback={initials}
+                  className="h-8 w-8"
+                />
+              ) : (
+                <div className="h-8 w-8 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                  <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                </div>
+              )}
               <ChevronDown className="h-4 w-4 text-muted-foreground" />
             </div>
           </Button>
@@ -122,44 +149,50 @@ export const UserDropdown = ({ user }: UserDropdownProps) => {
             <p className="text-xs text-muted-foreground mt-1">{user?.email}</p>
           </div>
 
-          <DropdownMenuSeparator />
-
-          <DropdownMenuItem asChild className="rounded-lg py-2 px-3 cursor-pointer">
-            <a onClick={checkCurrentLocation} className="flex items-center gap-3">
-              <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm">Dashboard</span>
-            </a>
-          </DropdownMenuItem>
-
-          {currentLocation &&
-            currentLocation.subscriptionStatus &&
-            currentLocation.subscriptionStatus !== "EXPIRED" && (
+          {user?.emailVerified &&
+            user?.isBusinessRegistrationComplete &&
+            user?.isLocationRegistrationComplete && (
               <>
+                <DropdownMenuSeparator />
+
                 <DropdownMenuItem asChild className="rounded-lg py-2 px-3 cursor-pointer">
-                  <a href="/profile" className="flex items-center gap-3">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">My Profile</span>
+                  <a onClick={checkCurrentLocation} className="flex items-center gap-3">
+                    <LayoutDashboard className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">Dashboard</span>
                   </a>
                 </DropdownMenuItem>
 
-                <DropdownMenuItem asChild className="rounded-lg py-2 px-3 cursor-pointer">
-                  <a href="/settings" className="flex items-center gap-3">
-                    <Settings className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm">Account Settings</span>
-                  </a>
-                </DropdownMenuItem>
+                {currentLocation &&
+                  currentLocation.active && (
+                    <>
+                      <DropdownMenuItem asChild className="rounded-lg py-2 px-3 cursor-pointer">
+                        <a href="/profile" className="flex items-center gap-3">
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">My Profile</span>
+                        </a>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem asChild className="rounded-lg py-2 px-3 cursor-pointer">
+                        <a href="/settings" className="flex items-center gap-3">
+                          <Settings className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">Account Settings</span>
+                        </a>
+                      </DropdownMenuItem>
+                    </>
+                  )}
               </>
             )}
 
           <DropdownMenuSeparator />
 
           <DropdownMenuItem
-            onClick={() => signOut()}
+            onClick={handleLogout}
+            disabled={loggingOut}
             className="rounded-lg py-2 px-3 text-red-600 focus:text-red-600 focus:bg-red-50 dark:focus:bg-red-950/30 cursor-pointer"
           >
             <div className="flex items-center gap-3">
-              <LogOut className="h-4 w-4" />
-              <span className="text-sm">Log Out</span>
+              {loggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+              <span className="text-sm">{loggingOut ? "Logging out..." : "Log Out"}</span>
             </div>
           </DropdownMenuItem>
         </DropdownMenuContent>

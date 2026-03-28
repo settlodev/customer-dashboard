@@ -60,7 +60,7 @@ export const LocationForm = ({
   const [isPending, startTransition] = useTransition();
   const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
-  const [imageUrl, setImageUrl] = useState(item?.image || "");
+  const [imageUrl, setImageUrl] = useState("");
 
   const formatTimeForSelect = (timeString: string | null | undefined) => {
     if (!timeString) return undefined;
@@ -73,14 +73,18 @@ export const LocationForm = ({
   const form = useForm<z.infer<typeof LocationSchema>>({
     resolver: zodResolver(LocationSchema),
     defaultValues: {
-      ...item,
-      openingTime: item?.openingTime
-        ? formatTimeForSelect(item.openingTime)
-        : undefined,
-      closingTime: item?.closingTime
-        ? formatTimeForSelect(item.closingTime)
-        : undefined,
-      status: item ? item.status : true,
+      name: item?.name ?? "",
+      phone: item?.phoneNumber ?? "",
+      email: item?.email ?? "",
+      description: item?.description ?? "",
+      address: item?.address ?? "",
+      city: item?.region ?? "",
+      region: item?.region ?? "",
+      street: item?.address ?? "",
+      openingTime: undefined,
+      closingTime: undefined,
+      status: item ? item.active : true,
+      image: undefined,
     },
   });
 

@@ -6,9 +6,8 @@ import { fetchBusinessType } from "@/lib/actions/business-actions";
 interface BusinessType{
     id: UUID
     name: string
-    status: boolean
-    canDelete: boolean
-    isArchived: boolean
+    code: string
+    displayOrder: number
 }
 interface BusinessTypeSelectorProps {
     label: string;

@@ -112,7 +112,7 @@ export default function ExpenseReportPage() {
       if (location) {
         csv += `Location,${esc(location.name)}\n`;
         if (location.address) csv += `Address,${esc(location.address)}\n`;
-        if (location.phone) csv += `Phone,${esc(location.phone)}\n`;
+        if (location.phoneNumber) csv += `Phone,${esc(location.phoneNumber)}\n`;
         if (location.email) csv += `Email,${esc(location.email)}\n`;
         csv += "\n";
       }
@@ -613,9 +613,9 @@ export default function ExpenseReportPage() {
                     {location.address}
                   </div>
                 )}
-                {location?.phone && (
+                {location?.phoneNumber && (
                   <div style={{ fontSize: 12, color: "#6b7280" }}>
-                    Tel: {location.phone}
+                    Tel: {location.phoneNumber}
                   </div>
                 )}
                 {location?.email && (

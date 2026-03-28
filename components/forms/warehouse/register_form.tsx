@@ -58,10 +58,10 @@ function WareHouseRegisterForm({ setShowCreateModal, onSuccess }: Props) {
         if (business) {
             form.reset({
                 ...form.getValues(),
-                address: business.countryName || "",
-                phone: business.notificationPhone || "",
-                image: business.image || null,
-                email: business.notificationEmailAddress || "",
+                address: business.address || "",
+                phone: business.phoneNumber || "",
+                image: business.logoUrl || null,
+                email: business.email || "",
             });
         }
     }, [business, form]);

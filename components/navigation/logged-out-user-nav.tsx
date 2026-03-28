@@ -4,7 +4,8 @@ import { MenuIcon, ShieldQuestion, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { UserDropdown } from "@/components/navigation/user-menu-button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { auth } from "@/auth";
+import { getAuthToken } from "@/lib/auth-utils";
+import { ExtendedUser } from "@/types/types";
 
 const navigationLinks = [
   { title: "Features", href: "/#features" },
@@ -19,7 +20,24 @@ interface LoggedOutNavbarProps {
 }
 
 export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
-  const session = await auth();
+  const authToken = await getAuthToken();
+
+  const user: ExtendedUser | null = authToken ? {
+    id: authToken.userId,
+    name: `${authToken.firstName} ${authToken.lastName}`.trim(),
+    email: authToken.email,
+    firstName: authToken.firstName,
+    lastName: authToken.lastName,
+    avatar: authToken.pictureUrl,
+    phoneNumber: authToken.phoneNumber,
+    emailVerified: authToken.emailVerified ? new Date() : null,
+    isBusinessRegistrationComplete: authToken.isBusinessRegistrationComplete,
+    isLocationRegistrationComplete: authToken.isLocationRegistrationComplete,
+    accountId: authToken.accountId,
+    countryId: authToken.countryId,
+    countryCode: authToken.countryCode,
+    theme: authToken.theme,
+  } as ExtendedUser : null;
 
   const MobileNav = () => (
     <SheetContent side="left" className="w-72 p-0">
@@ -54,7 +72,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
             <span>Help & Support</span>
           </Link>
 
-          {!hideLogin && (
+          {!hideLogin && !user && (
             <Button
               className="w-full bg-primary hover:bg-primary/90 text-white rounded-lg"
               asChild
@@ -121,7 +139,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                 <span className="font-medium">Help</span>
               </Link>
 
-              {!session?.user && !hideLogin && (
+              {!user && !hideLogin && (
                 <>
                   <Button
                     variant="ghost"
@@ -142,7 +160,7 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                 </>
               )}
 
-              {session && <UserDropdown user={session.user} />}
+              {user && <UserDropdown user={user} />}
             </div>
           </div>
         </div>

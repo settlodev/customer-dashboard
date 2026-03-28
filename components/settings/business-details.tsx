@@ -17,8 +17,8 @@ const BusinessDetailsSettings = ({
   const [copied, setCopied] = useState(false);
 
   const handleCopy = () => {
-    if (!business?.businessAccountNumber) return;
-    navigator.clipboard.writeText(business.businessAccountNumber);
+    if (!business?.identifier) return;
+    navigator.clipboard.writeText(business.identifier);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -52,11 +52,11 @@ const BusinessDetailsSettings = ({
         <p className="text-muted-foreground mt-1 text-sm">
           Manage your business information, type, and social media links
         </p>
-        {business?.businessAccountNumber && (
+        {business?.identifier && (
           <div className="flex items-center gap-2 mt-2">
             <span className="text-xs text-muted-foreground">Account No:</span>
             <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">
-              {business.businessAccountNumber}
+              {business.identifier}
             </code>
             <button
               onClick={handleCopy}

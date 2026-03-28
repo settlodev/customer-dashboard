@@ -73,9 +73,9 @@ export const BusinessSwitcher = ({
   const businessDisplay = (
     <div className="flex items-center gap-3 w-full">
       <div className="relative h-8 w-8 shrink-0">
-        {currentBusiness.logo ? (
+        {currentBusiness.logoUrl ? (
           <Image
-            src={currentBusiness.logo}
+            src={currentBusiness.logoUrl}
             alt={currentBusiness.name}
             fill
             className="rounded-lg object-cover"
@@ -90,9 +90,9 @@ export const BusinessSwitcher = ({
         <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate w-full text-left">
           {currentBusiness.name}
         </p>
-        {currentBusiness.countryName && (
+        {currentBusiness.identifier && (
           <p className="text-xs text-gray-500 dark:text-gray-400 truncate w-full text-left">
-            {currentBusiness.countryName}
+            {currentBusiness.identifier}
           </p>
         )}
       </div>
@@ -144,9 +144,9 @@ export const BusinessSwitcher = ({
                   disabled={isActive}
                 >
                   <div className="relative h-8 w-8 shrink-0">
-                    {business.logo ? (
+                    {business.logoUrl ? (
                       <Image
-                        src={business.logo}
+                        src={business.logoUrl}
                         alt={business.name}
                         fill
                         className="rounded-lg object-cover bg-primary/20 p-0.5"
@@ -162,8 +162,7 @@ export const BusinessSwitcher = ({
                       {business.name}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {business.countryName} &middot; {business.totalLocations}{" "}
-                      {business.totalLocations === 1 ? "location" : "locations"}
+                      {business.businessTypeName}
                     </p>
                   </div>
                   {isActive && (

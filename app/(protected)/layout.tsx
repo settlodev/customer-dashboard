@@ -1,7 +1,6 @@
 import React, { Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionProvider } from "next-auth/react";
-import { auth } from "@/auth";
 import { NavbarWrapper } from "@/components/navigation/navbar-wrapper";
 import { SidebarWrapper } from "@/components/sidebar/sidebar";
 import { LoadingBarProvider } from "@/components/navigation/loading-bar-provider";
@@ -15,13 +14,14 @@ import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-a
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { Business } from "@/types/business/type";
 import { Location as BusinessLocation } from "@/types/location/type";
+import { getAuthToken } from "@/lib/auth-utils";
 
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await auth();
+  const authToken = await getAuthToken();
 
   let currentBusiness: Business | undefined;
   let currentLocation: BusinessLocation | undefined;
@@ -58,7 +58,7 @@ export default async function RootLayout({
   };
 
   return (
-    <SessionProvider session={session}>
+    <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
       <LoadingBarProvider>
         <div className="flex h-screen overflow-hidden bg-primary-light dark:bg-gray-950">
           <SidebarWrapper data={businessData} />
@@ -76,7 +76,7 @@ export default async function RootLayout({
                   </div>
                 }
               >
-                <NavbarWrapper session={session} businessData={businessData}>
+                <NavbarWrapper session={null} authToken={authToken} businessData={businessData}>
                   <div className="flex-1">{children}</div>
                 </NavbarWrapper>
               </Suspense>

@@ -1,5 +1,4 @@
 import React from "react";
-import {auth} from "@/auth";
 import {SessionProvider} from "next-auth/react";
 import {LoggedOutNavbar} from "@/components/navigation/logged-out-user-nav";
 import {Footer} from "@/components/landing-page/Footer";
@@ -8,10 +7,8 @@ import {GoogleOAuthWrapper} from "@/components/providers/google-oauth-wrapper";
 export default async function RootLayout({children}: {
     children: React.ReactNode;
 }) {
-    const session = await auth();
-
     return (
-        <SessionProvider session={session}>
+        <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
             <GoogleOAuthWrapper>
                 <div className="relative flex flex-col min-h-screen">
                     {/* Background gradient */}

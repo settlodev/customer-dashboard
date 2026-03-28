@@ -124,18 +124,14 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
     if (!isLoadingBusiness) {
       const formValues = {
         name: item?.name || "",
-        address: item?.address || business?.countryName || "",
-        city: item?.city || "",
-        phone: item?.phone || business?.notificationPhone || "",
-        image: item?.image || business?.image || null,
-        email: item?.email || business?.notificationEmailAddress || "",
+        address: business?.address || "",
+        city: "",
+        phone: business?.phoneNumber || "",
+        image: business?.logoUrl || null,
+        email: business?.email || "",
         description: item?.description || null,
-        openingTime: item?.openingTime
-          ? timeToBusinessTimeName(item.openingTime)
-          : "",
-        closingTime: item?.closingTime
-          ? timeToBusinessTimeName(item.closingTime)
-          : "",
+        openingTime: "",
+        closingTime: "",
       };
 
       form.reset(formValues);

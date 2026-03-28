@@ -1,11 +1,10 @@
 "server only";
 
-import { getUserById } from "@/lib/actions/auth-actions";
 import NextAuth from "next-auth";
 
 import authConfig from "@/auth.config";
 import { ExtendedUser } from "@/types/types";
-import { createAuthToken } from "@/lib/auth-utils";
+import { createAuthToken, getAuthToken } from "@/lib/auth-utils";
 
 declare module "next-auth" {
   interface Session {
@@ -22,7 +21,15 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
   },
   events: {
     async signIn({ user }) {
-      await createAuthToken(user);
+      // Only create the authToken cookie if one doesn't already exist.
+      // The pre-authenticated login flow (server action) creates the cookie
+      // via createAuthTokenFromLogin() BEFORE calling signIn(), so we must
+      // not overwrite it — NextAuth strips custom fields (accessToken, etc.)
+      // from the user object, which would blank out the tokens.
+      const existing = await getAuthToken();
+      if (!existing?.accessToken) {
+        await createAuthToken(user);
+      }
     },
     async signOut() {
       // Cookie deletion is handled in the logout() server action
@@ -48,8 +55,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.accessToken = token.accessToken as string;
         session.user.refreshToken = token.refreshToken as string;
         session.user.emailVerified = token.emailVerified as Date;
-        session.user.isBusinessRegistrationComplete = token.isBusinessRegistrationComplete as boolean;
-        session.user.isLocationRegistrationComplete = token.isLocationRegistrationComplete as boolean;
+        session.user.isBusinessRegistrationComplete =
+          token.isBusinessRegistrationComplete as boolean;
+        session.user.isLocationRegistrationComplete =
+          token.isLocationRegistrationComplete as boolean;
         session.user.accountId = token.accountId as string;
         session.user.countryId = token.countryId as string;
         session.user.countryCode = token.countryCode as string;
@@ -60,35 +69,37 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
       return session;
     },
 
-    async jwt({ token }) {
+    async jwt({ token, user }) {
       if (!token.sub) return token;
 
-      try {
-        const existingUser = await getUserById(token.sub);
-        if (!existingUser) return token;
-
-        // Only update fields that are present in the response
-        if (existingUser.name) token.name = existingUser.name;
-        if (existingUser.email) token.email = existingUser.email;
-        if (existingUser.firstName !== undefined) token.firstName = existingUser.firstName;
-        if (existingUser.lastName !== undefined) token.lastName = existingUser.lastName;
-        if (existingUser.bio !== undefined) token.bio = existingUser.bio;
-        if (existingUser.avatar !== undefined) token.avatar = existingUser.avatar;
-        if (existingUser.phoneNumber !== undefined) token.phoneNumber = existingUser.phoneNumber;
-        if (existingUser.theme !== undefined) token.theme = existingUser.theme;
-        if (existingUser.consent !== undefined) token.consent = existingUser.consent;
-        // Keep emailVerified from existing token - account endpoint doesn't return this
-        if (existingUser.isBusinessRegistrationComplete !== undefined)
-          token.isBusinessRegistrationComplete = existingUser.isBusinessRegistrationComplete;
-        if (existingUser.isLocationRegistrationComplete !== undefined)
-          token.isLocationRegistrationComplete = existingUser.isLocationRegistrationComplete;
-        if (existingUser.accountId) token.accountId = existingUser.accountId;
-        if (existingUser.countryId !== undefined) token.countryId = existingUser.countryId;
-        if (existingUser.countryCode !== undefined) token.countryCode = existingUser.countryCode;
-      } catch {
-        // If getUserById fails, keep existing token data
+      // ── Initial sign-in: populate token from the user object ──────
+      // The `user` object is only present on the first JWT creation
+      // (during signIn). All the data is already there from authorize().
+      if (user) {
+        const u = user as any;
+        token.name = user.name;
+        token.email = user.email;
+        token.firstName = u.firstName;
+        token.lastName = u.lastName;
+        token.phoneNumber = u.phoneNumber;
+        token.accessToken = u.accessToken;
+        token.refreshToken = u.refreshToken;
+        token.emailVerified = u.emailVerified;
+        token.isBusinessRegistrationComplete = u.isBusinessRegistrationComplete;
+        token.isLocationRegistrationComplete = u.isLocationRegistrationComplete;
+        token.accountId = u.accountId;
+        token.countryId = u.countryId;
+        token.countryCode = u.countryCode;
+        token.theme = u.theme;
+        token.avatar = u.pictureUrl;
+        return token;
       }
 
+      // ── Subsequent requests: keep existing token data ──────────────
+      // All user data is set on initial sign-in. The authToken cookie
+      // (managed by our server actions) is the source of truth for
+      // routing and display. No API call needed here — avoids hammering
+      // the accounts service on every session check.
       return token;
     },
   },

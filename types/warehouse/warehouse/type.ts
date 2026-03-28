@@ -1,31 +1,15 @@
-import { subscriptionStatus } from "@/types/enums";
-import { UUID } from "crypto";
-
 export interface Warehouses {
-  type: any;
-  id: UUID;
-  name: string;
-  phone: string;
-  email: string;
-  city: string;
-  region: string;
-  street: string;
-  address: string;
-  description: string;
-  openingTime: string;
-  closingTime: string;
-  status: boolean;
-  canDelete: boolean;
-  setting: string;
-  business: UUID;
+  id: string;
+  accountId: string;
+  businessId: string;
   businessName: string;
-  image: string;
-  endDate: string;
-  locationBusinessTypeName: string;
-  subscriptionStatus: subscriptionStatus;
-  subscriptionStartDate: string;
-  subscriptionEndDate: string;
-  subscription: UUID;
-  isArchived: boolean;
-  dateCreated: string;
+  identifier: string;
+  name: string;
+  description: string;
+  code: string;
+  primary: boolean;
+  capacity: number | null;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

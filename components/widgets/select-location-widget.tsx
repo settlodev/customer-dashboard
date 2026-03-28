@@ -15,7 +15,7 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
     const setLocation = async (location: Location, index: number) => {
         setPendingIndex(index);
 
-        if (location.subscriptionStatus === "EXPIRED" || location.subscriptionStatus === null) {
+        if (!location.active) {
             toast({
                 variant: "destructive",
                 title: "Subscription Expired",
@@ -63,7 +63,7 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
                             <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
                                 <MapPin className="w-6 h-6 text-emerald-600" />
                             </div>
-                            {location.status && (
+                            {location.active && (
                                 <div className="absolute -bottom-1 -right-1">
                                     <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                                 </div>
@@ -77,16 +77,16 @@ export function SelectLocation({ locations }: { locations: Location[] }) {
                                 </h3>
                                 <span className={cn(
                                     "px-2 py-1 text-xs rounded-full",
-                                    location.subscriptionStatus == subscriptionStatus.OK
+                                    location.active
                                         ? "bg-emerald-100 text-emerald-800"
                                         : "bg-red-100 text-red-800"
                                 )}>
-                                    {location.subscriptionStatus}
+                                    {location.active ? "Active" : "Inactive"}
                                 </span>
                             </div>
                             <div className="mt-1 flex items-center text-sm text-gray-500">
                                 <MapPin className="w-4 h-4 mr-1 flex-shrink-0" />
-                                <span className="truncate">{location.city}, {location.region}</span>
+                                <span className="truncate">{location.region}</span>
                             </div>
                         </div>
 

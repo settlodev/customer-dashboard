@@ -44,25 +44,41 @@ const ACCOUNTS_SERVICE_URL =
   process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL || "";
 
 export async function logout() {
-  try {
-    const authToken = await getAuthToken();
+  // Always clear local state, regardless of whether the API call succeeds
+  const authToken = await getAuthToken();
 
-    if (authToken?.refreshToken) {
-      try {
-        await fetch(`${AUTH_SERVICE_URL}/auth/logout`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            refreshToken: authToken.refreshToken,
-            logoutAll: false,
-          }),
-        });
-      } catch {
-        // Best-effort logout on auth service
+  // Best-effort: call the auth service to revoke tokens server-side
+  if (authToken?.accessToken || authToken?.refreshToken) {
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (authToken.accessToken) {
+        headers["Authorization"] = `Bearer ${authToken.accessToken}`;
       }
-    }
 
+      await fetch(`${AUTH_SERVICE_URL}/auth/logout`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          refreshToken: authToken.refreshToken || undefined,
+          logoutAll: false,
+        }),
+      });
+    } catch {
+      // API might be down — continue with local cleanup
+    }
+  }
+
+  // Clear all local auth data
+  try {
     await deleteAuthCookie();
+  } catch {
+    // Cookie deletion might fail in some contexts — continue anyway
+  }
+
+  // Sign out from NextAuth and redirect to login
+  try {
     await signOut({ redirectTo: "/login" });
   } catch (error) {
     if (
@@ -195,6 +211,17 @@ export const login = async (
       theme: profileData.theme,
     });
 
+    // Verify the cookie was actually set
+    const verifyToken = await getAuthToken();
+    console.log("[LOGIN] Auth token cookie set:", {
+      hasAccessToken: !!verifyToken?.accessToken,
+      accessTokenLength: verifyToken?.accessToken?.length,
+      hasRefreshToken: !!verifyToken?.refreshToken,
+      emailVerified: verifyToken?.emailVerified,
+      bizComplete: verifyToken?.isBusinessRegistrationComplete,
+      locComplete: verifyToken?.isLocationRegistrationComplete,
+    });
+
     console.log("[LOGIN] Signing into NextAuth session...");
     await signIn("credentials", {
       __preAuthenticated: "true",
@@ -225,6 +252,14 @@ export const login = async (
       redirect: false,
     });
     console.log("[LOGIN] NextAuth signIn completed");
+
+    // Verify cookie survived signIn (event handler might overwrite)
+    const postSignInToken = await getAuthToken();
+    console.log("[LOGIN] Auth token AFTER signIn:", {
+      hasAccessToken: !!postSignInToken?.accessToken,
+      accessTokenLength: postSignInToken?.accessToken?.length,
+      hasRefreshToken: !!postSignInToken?.refreshToken,
+    });
 
     await setSessionPersistence(rememberMe);
 
@@ -272,20 +307,28 @@ export const login = async (
 };
 
 async function setSessionPersistence(rememberMe: boolean) {
+  if (!rememberMe) return; // Session cookies are fine for non-remember-me
+
   const cookieStore = await cookies();
   const isProduction = process.env.NODE_ENV === "production";
   const THIRTY_DAYS = 30 * 24 * 60 * 60;
+  const cookieOpts = {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? ("strict" as const) : ("lax" as const),
+    maxAge: THIRTY_DAYS,
+  };
 
-  const authTokenValue = cookieStore.get("authToken")?.value;
-  if (authTokenValue) {
-    cookieStore.set({
-      name: "authToken",
-      value: authTokenValue,
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "strict" : "lax",
-      ...(rememberMe ? { maxAge: THIRTY_DAYS } : {}),
-    });
+  // Re-set authToken chunks with maxAge
+  // Check both plain and chunked variants
+  const plainAuth = cookieStore.get("authToken")?.value;
+  if (plainAuth) {
+    cookieStore.set({ name: "authToken", value: plainAuth, ...cookieOpts });
+  }
+  for (let i = 0; i < 10; i++) {
+    const chunk = cookieStore.get(`authToken.${i}`)?.value;
+    if (!chunk) break;
+    cookieStore.set({ name: `authToken.${i}`, value: chunk, ...cookieOpts });
   }
 
   const sessionCookieNames = [

@@ -1,6 +1,6 @@
 "use server";
 
-import { UUID } from "node:crypto";
+type UUID = string;
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -18,7 +18,7 @@ export const fetchBusinessType = async () => {
     const apiClient = new ApiClient();
     apiClient.isPlain = true;
 
-    const response = await apiClient.get("/api/business-types");
+    const response = await apiClient.get("/api/v1/public/business-types");
 
     return parseStringify(response);
   } catch (error) {
@@ -28,13 +28,9 @@ export const fetchBusinessType = async () => {
 
 export const fetchAllBusinesses = async (): Promise<Business[] | null> => {
   try {
-    const authToken = await getAuthToken();
-
-    const userId = authToken?.userId;
-
     const apiClient = new ApiClient();
 
-    const data = await apiClient.get(`/api/businesses/${userId}`);
+    const data = await apiClient.get(`/api/v1/businesses`);
 
     return parseStringify(data);
   } catch (error) {

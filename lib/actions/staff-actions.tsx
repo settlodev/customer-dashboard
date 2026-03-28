@@ -1,6 +1,6 @@
 "use server";
 
-import { UUID } from "node:crypto";
+type UUID = string;
 
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
