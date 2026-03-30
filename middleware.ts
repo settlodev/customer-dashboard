@@ -31,17 +31,26 @@ export async function middleware(request: NextRequest) {
   });
   const isAuthRoute = authRoutes.includes(pathname);
   const isSpecialAuthRoute = specialAuthRoutes.includes(pathname);
-  const session = await auth();
 
-  // Allow public routes direct access early, no need to process auth tokens
+  // Always allow public and API auth routes through first
   if (isApiAuthRoute || isPublicRoute) {
     return NextResponse.next();
   }
 
-  let authToken: AuthToken | null = null;
+  const session = await auth();
   const isLoggedIn = !!session;
   const cookieStore = await cookies();
 
+  // ── Not logged in ────────────────────────────────────────────────────────────
+  if (!isLoggedIn) {
+    if (isAuthRoute) {
+      return NextResponse.next();
+    }
+    return NextResponse.redirect(new URL("/login", request.nextUrl));
+  }
+
+  // ── Logged in — parse authToken ──────────────────────────────────────────────
+  let authToken: AuthToken | null = null;
   try {
     const tokenCookie = cookieStore.get("authToken");
     if (tokenCookie?.value) {
@@ -51,106 +60,82 @@ export async function middleware(request: NextRequest) {
     console.error("Failed to parse auth token:", error);
   }
 
-  if (!isLoggedIn) {
-    console.warn("You are not logged in");
+  // Session exists but authToken cookie is missing or unparseable.
+  // This is a broken/partial auth state — redirect to login to re-establish it.
+  if (!authToken) {
+    console.warn(
+      "Session exists but authToken cookie is missing — redirecting to login",
+    );
 
+    // Allow auth routes so the login page itself can render
     if (isAuthRoute) {
-      console.warn("Allowing you to access the auth route", isAuthRoute);
       return NextResponse.next();
     }
 
-    // Redirect to login for all other routes
-    console.warn("Redirecting you to login page");
     return NextResponse.redirect(new URL("/login", request.nextUrl));
   }
 
-  if (isLoggedIn && authToken) {
-    const currentBusinessToken = cookieStore.get("currentBusiness");
-    const currentWarehouseToken = cookieStore.get("currentWarehouse");
-    const currentLocationToken = cookieStore.get("currentLocation");
+  // ── Logged in + authToken present ────────────────────────────────────────────
 
-    // Email is not verified, force user to verify email
-    if (
-      authToken.emailVerified === null &&
-      pathname !== VERIFICATION_REDIRECT_URL
-    ) {
-      console.warn(
-        "You are not verified, redirecting you to verification page",
-      );
-      return NextResponse.redirect(
-        new URL(VERIFICATION_REDIRECT_URL, request.nextUrl),
-      );
-    }
-
-    // Allow access to special routes
-    if (isSpecialAuthRoute) {
-      console.warn("You are accessing a special auth route. Allowing access");
-      return NextResponse.next();
-    }
-
-    // Business registration and location registration are now combined
-    // If not complete, redirect to business registration
-    if (
-      (!authToken.businessComplete || !authToken.locationComplete) &&
-      pathname !== COMPLETE_BUSINESS_REGISTRATION_URL
-    ) {
-      if (!authToken.businessComplete) {
-        console.warn(
-          "Business registration is not complete, redirecting you to BUSINESS registration page",
-        );
-      }
-
-      if (!authToken.locationComplete) {
-        console.warn(
-          "Location registration is not complete, redirecting you to LOCATION registration page",
-        );
-      }
-
-      return NextResponse.redirect(
-        new URL(COMPLETE_BUSINESS_REGISTRATION_URL, request.nextUrl),
-      );
-    }
-
-    // If accessing auth routes, redirect to the correct page
-    if (isAuthRoute) {
-      console.warn(
-        "You are already logged in, you can not access auth routes, redirecting you to default route",
-      );
-
-      return NextResponse.redirect(
-        new URL(DEFAULT_LOGIN_REDIRECT_URL, request.nextUrl),
-      );
-    }
-
-    // Check if user has selected a business (avoid redirect loop)
-    if (!currentBusinessToken?.value && pathname !== SELECT_BUSINESS_URL) {
-      console.warn(
-        "You do not have a business selected, redirecting you to select business page",
-      );
-
-      return NextResponse.redirect(
-        new URL(SELECT_BUSINESS_URL, request.nextUrl),
-      );
-    }
-
-    // Check if user has selected a location/warehouse (avoid redirect loop)
-    if (
-      currentBusinessToken?.value &&
-      !currentWarehouseToken?.value &&
-      !currentLocationToken?.value &&
-      pathname !== SELECT_BUSINESS_LOCATION_URL
-    ) {
-      console.warn(
-        "You do not have a location selected, redirecting you to select location page",
-      );
-
-      return NextResponse.redirect(
-        new URL(SELECT_BUSINESS_LOCATION_URL, request.nextUrl),
-      );
-    }
+  // Email not verified
+  if (
+    authToken.emailVerified === null &&
+    pathname !== VERIFICATION_REDIRECT_URL
+  ) {
+    console.warn("Email not verified — redirecting to verification page");
+    return NextResponse.redirect(
+      new URL(VERIFICATION_REDIRECT_URL, request.nextUrl),
+    );
   }
 
-  // Default: allow the request
+  // Special auth routes (business-registration, business-location, user-verification)
+  if (isSpecialAuthRoute) {
+    return NextResponse.next();
+  }
+
+  // Business / location registration incomplete
+  if (
+    (!authToken.businessComplete || !authToken.locationComplete) &&
+    pathname !== COMPLETE_BUSINESS_REGISTRATION_URL
+  ) {
+    console.warn(
+      "Registration incomplete — redirecting to business registration",
+    );
+    return NextResponse.redirect(
+      new URL(COMPLETE_BUSINESS_REGISTRATION_URL, request.nextUrl),
+    );
+  }
+
+  // Already logged in — don't allow access to login/register
+  if (isAuthRoute) {
+    return NextResponse.redirect(
+      new URL(DEFAULT_LOGIN_REDIRECT_URL, request.nextUrl),
+    );
+  }
+
+  const currentBusinessToken = cookieStore.get("currentBusiness");
+  const currentWarehouseToken = cookieStore.get("currentWarehouse");
+  const currentLocationToken = cookieStore.get("currentLocation");
+
+  // No business selected
+  if (!currentBusinessToken?.value && pathname !== SELECT_BUSINESS_URL) {
+    console.warn("No business selected — redirecting to select business");
+    return NextResponse.redirect(new URL(SELECT_BUSINESS_URL, request.nextUrl));
+  }
+
+  // No location/warehouse selected
+  if (
+    currentBusinessToken?.value &&
+    !currentWarehouseToken?.value &&
+    !currentLocationToken?.value &&
+    pathname !== SELECT_BUSINESS_LOCATION_URL
+  ) {
+    console.warn("No location selected — redirecting to select location");
+    return NextResponse.redirect(
+      new URL(SELECT_BUSINESS_LOCATION_URL, request.nextUrl),
+    );
+  }
+
   return NextResponse.next();
 }
 
