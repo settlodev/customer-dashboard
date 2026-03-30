@@ -107,7 +107,7 @@ export default function ProductForm({ item }: ProductFormProps) {
       sku: item?.sku,
       sellOnline: item?.sellOnline || false,
       taxIncluded: item?.taxIncluded || false,
-      taxClass: item?.taxClass || "1",
+      taxClass: item?.taxClass || "0",
       status: item?.status ?? true,
       image: item?.image || "",
       trackInventory: item?.trackInventory || false,
@@ -241,8 +241,7 @@ export default function ProductForm({ item }: ProductFormProps) {
       toast({
         variant: "destructive",
         title: "Failed to archive variant",
-        description:
-          (error as Error).message || "Please try again later.",
+        description: (error as Error).message || "Please try again later.",
       });
     } finally {
       setArchiveVariantIndex(null);
@@ -323,8 +322,7 @@ export default function ProductForm({ item }: ProductFormProps) {
       toast({
         variant: "destructive",
         title: "Missing Information",
-        description:
-          "Please enter a product name and select a category first.",
+        description: "Please enter a product name and select a category first.",
       });
       return;
     }

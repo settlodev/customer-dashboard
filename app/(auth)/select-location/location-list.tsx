@@ -81,20 +81,26 @@ const LocationList = ({
             setPaymentStatus("FAILED");
             toast({
               title: "Payment Timeout",
-              description: "Payment verification timed out. Please check your payment status.",
+              description:
+                "Payment verification timed out. Please check your payment status.",
               variant: "destructive",
             });
             return;
           }
 
           try {
-            const verificationResult = await verifyPayment(transactionId, invoice);
+            const verificationResult = await verifyPayment(
+              transactionId,
+              invoice,
+            );
             setPaymentStatus(verificationResult.invoicePaymentStatus);
 
             if (verificationResult.invoicePaymentStatus === "SUCCESS") {
               clearInterval(verificationInterval);
               handleSuccessfulPayment(verificationResult);
-            } else if (verificationResult.invoicePaymentStatus === "PROCESSING") {
+            } else if (
+              verificationResult.invoicePaymentStatus === "PROCESSING"
+            ) {
               setPaymentStatus("PROCESSING");
             } else if (verificationResult.invoicePaymentStatus === "FAILED") {
               clearInterval(verificationInterval);
@@ -165,7 +171,8 @@ const LocationList = ({
       toast({
         variant: "destructive",
         title: "Subscription Failed",
-        description: "There was an error processing your subscription. Please try again.",
+        description:
+          "There was an error processing your subscription. Please try again.",
       });
     }
   };
@@ -193,7 +200,8 @@ const LocationList = ({
     setPendingIndex(index);
 
     const isWarehouse = locationType === "warehouse";
-    const isInactive = getSubscriptionState(item.subscriptionStatus) === "inactive";
+    const isInactive =
+      getSubscriptionState(item.subscriptionStatus) === "inactive";
 
     if (isWarehouse) {
       if (isInactive) {
@@ -237,7 +245,8 @@ const LocationList = ({
   };
 
   const getStatusBadge = (item: any) => {
-    const isInactive = getSubscriptionState(item.subscriptionStatus) === "inactive";
+    const isInactive =
+      getSubscriptionState(item.subscriptionStatus) === "inactive";
     if (!isInactive) return null;
 
     const isWarehouse = locationType === "warehouse";
@@ -288,7 +297,8 @@ const LocationList = ({
             {businessName}
           </h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Choose a {locationType === "warehouse" ? "warehouse" : "location"} to continue
+            Choose a {locationType === "warehouse" ? "warehouse" : "location"}{" "}
+            to continue
           </p>
         </div>
 
@@ -332,10 +342,13 @@ const LocationList = ({
                 )}
               </div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                No {locationType === "warehouse" ? "warehouses" : "locations"} found
+                No {locationType === "warehouse" ? "warehouses" : "locations"}{" "}
+                found
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                Create a new {locationType === "warehouse" ? "warehouse" : "location"} to get started
+                Create a new{" "}
+                {locationType === "warehouse" ? "warehouse" : "location"} to get
+                started
               </p>
               {locationType === "warehouse" && (
                 <Button
@@ -364,12 +377,12 @@ const LocationList = ({
                   className={cn(
                     "w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0",
                     locationType === "warehouse"
-                      ? "bg-blue-50 dark:bg-blue-900/20"
+                      ? "border-primary/30 bg-primary/5"
                       : "bg-primary/10",
                   )}
                 >
                   {locationType === "warehouse" ? (
-                    <Warehouse className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <Warehouse className="w-5 h-5 text-primary" />
                   ) : (
                     <MapPin className="w-5 h-5 text-primary" />
                   )}

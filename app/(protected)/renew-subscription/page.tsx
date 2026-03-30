@@ -517,8 +517,8 @@ const InvoiceSubscriptionPage = () => {
           {/* Plans */}
           <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
             <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-50">
-                <Layers className="h-4 w-4 text-blue-600" />
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary/20">
+                <Layers className="h-4 w-4 text-primary" />
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-gray-900">
@@ -698,7 +698,7 @@ const InvoiceSubscriptionPage = () => {
                         disabled={isLoading || invoiceItems.length === 0}
                         className={cn(
                           "w-full h-10 rounded-xl font-semibold text-sm transition-all",
-                          "bg-gray-900 hover:bg-gray-800 text-white",
+                          "bg-primary hover:bg-primary/80 text-white",
                         )}
                       >
                         {isLoading ? (
@@ -716,7 +716,7 @@ const InvoiceSubscriptionPage = () => {
 
                       <p className="flex items-center justify-center gap-1.5 text-xs text-gray-400">
                         <ShieldCheck className="h-3.5 w-3.5" />
-                        Secure payment via M-Pesa
+                        Secure payments.
                       </p>
                     </>
                   )}

@@ -13,6 +13,7 @@ import { StockSchema } from "@/types/stock/schema";
 import { console } from "node:inspector";
 import { getCurrentBusiness } from "../business/get-current-business";
 import { getCurrentWarehouse } from "./current-warehouse-action";
+import { data } from "autoprefixer";
 
 export const searchStockFromWarehouse = async (
   q: string,
@@ -354,7 +355,6 @@ export const getStockVariantFromWarehouse = async (variantId: string) => {
     const data = await apiClient.get(
       `/api/warehouse-stock-variants/${variantId}`,
     );
-    console.log("The stock variant", data);
     return parseStringify(data);
   } catch (error) {
     console.error("Error fetching stock variant:", error);
@@ -372,7 +372,6 @@ export const stockReportFromWarehouse =
       const report = await apiClient.get(
         `/api/reports/${warehouse?.id}/warehouse-stock/summary`,
       );
-
       return parseStringify(report);
     } catch (error) {
       throw error;

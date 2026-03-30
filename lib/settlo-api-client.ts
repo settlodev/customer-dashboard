@@ -1,9 +1,20 @@
-"use server";
+// "use server";
 
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import https from "https";
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
-import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
+import {
+  deleteAuthCookie,
+  getAuthToken,
+  updateAuthToken,
+} from "@/lib/auth-utils";
+
+export class AuthenticationError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthenticationError";
+  }
+}
 
 class ApiClient {
   private instance: AxiosInstance;
@@ -41,12 +52,29 @@ class ApiClient {
       return config;
     });
 
-    // Response interceptor — silent token refresh on 401
+    // Response interceptor — silent token refresh on 401, hard logout on 403
     this.instance.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
         const originalRequest = error.config;
 
+        // Handle 403 invalid token signature — clear cookies and throw AuthenticationError
+        if (error.response?.status === 403) {
+          const errorData = error.response?.data as any;
+          const isInvalidToken =
+            errorData?.code === "FORBIDDEN" &&
+            errorData?.details?.code === "ACCESS_DENIED";
+
+          if (isInvalidToken) {
+            console.warn(
+              "[API] Invalid token signature detected, clearing session",
+            );
+            await deleteAuthCookie();
+            throw new AuthenticationError("Invalid token signature");
+          }
+        }
+
+        // Handle 401 — attempt silent token refresh
         if (
           error.response?.status === 401 &&
           originalRequest &&
@@ -64,7 +92,6 @@ class ApiClient {
               throw new Error("No refresh token available");
             }
 
-            // Call the refresh endpoint directly (bypass interceptors to avoid loop)
             const refreshResponse = await axios.post(
               `${this.baseURL}/api/auth/refresh-token`,
               { refreshToken: token.refreshToken },
@@ -82,21 +109,20 @@ class ApiClient {
               refreshResponse.data?.refreshToken || token.refreshToken;
 
             if (newAccessToken) {
-              // Update stored tokens
               await updateAuthToken({
                 ...token,
                 authToken: newAccessToken,
                 refreshToken: newRefreshToken,
               });
 
-              // Retry original request with new token
               originalRequest.headers["Authorization"] =
                 `Bearer ${newAccessToken}`;
               return this.instance(originalRequest);
             }
           } catch (refreshError) {
             console.error("[API] Token refresh failed:", refreshError);
-            // Let the original 401 propagate — error handler will redirect to login
+            await deleteAuthCookie();
+            throw new AuthenticationError("Token refresh failed");
           } finally {
             this.isRefreshing = false;
           }
@@ -105,7 +131,7 @@ class ApiClient {
         return Promise.reject(error);
       },
     );
-  }
+  } // ← this was the missing closing brace for the constructor
 
   public async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     try {
@@ -117,6 +143,7 @@ class ApiClient {
 
       return response.data;
     } catch (error) {
+      if (error instanceof AuthenticationError) throw error;
       throw await handleSettloApiError(error);
     }
   }
@@ -144,11 +171,9 @@ class ApiClient {
         }
       }
 
-      return {
-        data: response.data,
-        filename,
-      };
+      return { data: response.data, filename };
     } catch (error) {
+      if (error instanceof AuthenticationError) throw error;
       throw await handleSettloApiError(error);
     }
   }
@@ -160,9 +185,9 @@ class ApiClient {
   ): Promise<T> {
     try {
       const response = await this.instance.post<T>(url, data, config);
-
       return response.data;
     } catch (error) {
+      if (error instanceof AuthenticationError) throw error;
       throw await handleSettloApiError(error);
     }
   }
@@ -174,9 +199,9 @@ class ApiClient {
   ): Promise<T> {
     try {
       const response = await this.instance.put<T>(url, data, config);
-
       return response.data;
     } catch (error) {
+      if (error instanceof AuthenticationError) throw error;
       throw await handleSettloApiError(error);
     }
   }
@@ -188,9 +213,9 @@ class ApiClient {
   ): Promise<T> {
     try {
       const response = await this.instance.patch<T>(url, data, config);
-
       return response.data;
     } catch (error) {
+      if (error instanceof AuthenticationError) throw error;
       throw await handleSettloApiError(error);
     }
   }
@@ -198,9 +223,9 @@ class ApiClient {
   public async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     try {
       const response = await this.instance.delete<T>(url, config);
-
       return response.data;
     } catch (error) {
+      if (error instanceof AuthenticationError) throw error;
       throw await handleSettloApiError(error);
     }
   }
