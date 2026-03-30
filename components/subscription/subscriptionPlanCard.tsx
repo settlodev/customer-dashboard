@@ -24,27 +24,27 @@ const ACTION_CONFIG = {
   upgrade: {
     label: "Upgrade Plan",
     icon: ArrowUp,
-    className: "bg-blue-600 hover:bg-blue-700 text-white",
+    className: "bg-primary hover:bg-primary/90 text-primary-foreground",
   },
   downgrade: {
     label: "Downgrade",
     icon: ArrowDown,
-    className: "bg-amber-500 hover:bg-amber-600 text-white",
+    className: "bg-warning hover:bg-warning/90 text-white",
   },
   renew: {
     label: "Renew Plan",
     icon: RotateCcw,
-    className: "bg-emerald-600 hover:bg-emerald-700 text-white",
+    className: "bg-success hover:bg-success/90 text-white",
   },
   switch: {
     label: "Switch Plan",
     icon: ArrowRight,
-    className: "bg-slate-700 hover:bg-slate-800 text-white",
+    className: "bg-black hover:bg-black/90 text-white",
   },
   subscribe: {
     label: "Select Plan",
     icon: Plus,
-    className: "bg-slate-700 hover:bg-slate-800 text-white",
+    className: "bg-black hover:bg-black/90 text-white",
   },
 };
 
@@ -66,23 +66,23 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
       className={cn(
         "relative flex flex-col rounded-2xl border p-5 transition-all duration-200 cursor-pointer group",
         isSelected
-          ? "border-emerald-400 bg-emerald-50/60 shadow-md ring-1 ring-emerald-300"
+          ? "border-primary bg-primary/5 shadow-md ring-1 ring-primary/40"
           : diamond
-            ? "border-violet-200 bg-gradient-to-b from-violet-50/80 to-white hover:border-violet-300 hover:shadow-md"
-            : "border-gray-200 bg-white hover:border-gray-300 hover:shadow-sm",
+            ? "border-meta-10/40 bg-gradient-to-b from-meta-10/5 to-white hover:border-meta-10/60 hover:shadow-md"
+            : "border-stroke bg-white hover:border-gray hover:shadow-sm",
       )}
       onClick={() => !isSelected && onSelect(plan)}
     >
       {/* Badges */}
       <div className="absolute -top-3 right-4 flex gap-1.5">
         {isCurrent && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-success px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
             <span className="h-1.5 w-1.5 rounded-full bg-white/80" />
             Current
           </span>
         )}
         {diamond && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-violet-500 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
+          <span className="inline-flex items-center gap-1 rounded-full bg-meta-10 px-2.5 py-0.5 text-[10px] font-semibold text-white shadow-sm">
             <Sparkles className="h-2.5 w-2.5" />
             Premium
           </span>
@@ -91,36 +91,36 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
 
       {/* Plan name + price */}
       <div className="mb-4">
-        <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
+        <h3 className="text-sm font-semibold text-body uppercase tracking-wide mb-1">
           {plan.packageName}
         </h3>
         <div className="flex items-baseline gap-1">
-          <span className="text-2xl font-bold text-gray-900">
+          <span className="text-2xl font-bold text-black">
             TZS {annualAmount.toLocaleString()}
           </span>
-          <span className="text-xs text-gray-400 font-normal">/year</span>
+          <span className="text-xs text-body font-normal">/year</span>
         </div>
-        <p className="text-xs text-gray-400 mt-0.5">
+        <p className="text-xs text-body mt-0.5">
           TZS {plan.amount.toLocaleString()} / month
         </p>
       </div>
 
       {/* Divider */}
-      <div className="h-px bg-gray-100 mb-4" />
+      <div className="h-px bg-stroke mb-4" />
 
       {/* Features */}
       <ul className="flex-1 space-y-2 mb-5">
         {plan.subscriptionFeatures.slice(0, 5).map((feature) => (
           <li
             key={feature.id}
-            className="flex items-start gap-2 text-sm text-gray-600"
+            className="flex items-start gap-2 text-sm text-body"
           >
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-success shrink-0 mt-0.5" />
             <span>{feature.name}</span>
           </li>
         ))}
         {plan.subscriptionFeatures.length > 5 && (
-          <li className="text-xs text-gray-400 pl-5">
+          <li className="text-xs text-bodydark2 pl-5">
             +{plan.subscriptionFeatures.length - 5} more features
           </li>
         )}
@@ -137,7 +137,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
         className={cn(
           "w-full h-9 text-sm font-medium rounded-xl transition-all",
           isSelected
-            ? "bg-emerald-100 text-emerald-700 border border-emerald-300 cursor-default"
+            ? "bg-primary/10 text-primary border border-primary/30 cursor-default"
             : config.className,
         )}
       >

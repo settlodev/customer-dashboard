@@ -70,7 +70,7 @@ export const getProforma = async (id: UUID): Promise<Proforma | null> => {
     const response = await apiClient.get(
       `/api/location/${location?.id}/order-proforma/${id}`,
     );
-
+    console.log("The proforma response", response);
     return parseStringify(response) as Proforma;
   } catch (error) {
     console.error(`[getProforma] Error fetching proforma ${id}:`, error);
