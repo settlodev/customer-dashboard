@@ -25,7 +25,11 @@ interface CodeResponse {
  */
 export const addDevice = async (
   customName: string,
-): Promise<{ success: boolean; data?: CodeResponse["data"]; error?: string }> => {
+): Promise<{
+  success: boolean;
+  data?: CodeResponse["data"];
+  error?: string;
+}> => {
   await getAuthenticatedUser();
 
   try {
@@ -54,7 +58,11 @@ export const addDevice = async (
  */
 export const regenerateDeviceCode = async (
   deviceId: string,
-): Promise<{ success: boolean; data?: CodeResponse["data"]; error?: string }> => {
+): Promise<{
+  success: boolean;
+  data?: CodeResponse["data"];
+  error?: string;
+}> => {
   await getAuthenticatedUser();
 
   try {
@@ -171,10 +179,10 @@ export const updateDevice = async (
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
 
-    await apiClient.put(
-      `/api/location-devices/${location?.id}/${id}`,
-      { ...data, location: location?.id },
-    );
+    await apiClient.put(`/api/location-devices/${location?.id}/${id}`, {
+      ...data,
+      location: location?.id,
+    });
 
     revalidatePath("/settings");
     return { success: true };
@@ -197,7 +205,7 @@ export const logoutDevice = async (
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
     await apiClient.post(
-      `/api/location-devices/${location?.id}/${id}`,
+      `/api/location-devices/${location?.id}/${id}/logout`,
       {},
     );
 
@@ -237,8 +245,16 @@ export const suspendDevice = async (
     revalidatePath("/settings");
     return { success: true };
   } catch (error) {
-    console.error(`Failed to ${suspended ? "suspend" : "unsuspend"} device:`, error);
-    return { success: false, error: suspended ? "Failed to suspend device" : "Failed to restore device" };
+    console.error(
+      `Failed to ${suspended ? "suspend" : "unsuspend"} device:`,
+      error,
+    );
+    return {
+      success: false,
+      error: suspended
+        ? "Failed to suspend device"
+        : "Failed to restore device",
+    };
   }
 };
 
@@ -254,9 +270,7 @@ export const deleteDevice = async (
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    await apiClient.delete(
-      `/api/location-devices/${location?.id}/${id}`,
-    );
+    await apiClient.delete(`/api/location-devices/${location?.id}/${id}`);
 
     revalidatePath("/settings");
     return { success: true };

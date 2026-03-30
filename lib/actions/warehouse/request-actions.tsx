@@ -155,6 +155,7 @@ export const stockRequestReportForWarehouse =
         `/api/reports/${warehouse?.id}/stock-requests/summary`,
       );
 
+      console.log("The stock report for Warehouse", report);
       return parseStringify(report);
     } catch (error) {
       console.error("Error fetching stock request report:", error);

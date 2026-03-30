@@ -5,13 +5,13 @@ import {
   Subscriptions,
   ValidDiscountCode,
 } from "@/types/subscription/type";
-import ApiClient from "../settlo-api-client";
+import ApiClient, { AuthenticationError } from "../settlo-api-client";
 import { parseStringify } from "../utils";
 import { RenewSubscriptionSchema } from "@/types/renew-subscription/schema";
 import { z } from "zod";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { getCurrentLocation } from "./business/get-current-business";
-import { getAuthenticatedUser } from "../auth-utils";
+import { deleteAuthCookie, getAuthenticatedUser } from "../auth-utils";
 
 export interface User {
   id: string;
@@ -86,7 +86,7 @@ export const getAllSubscriptions = async (): Promise<Subscriptions[]> => {
 
 export const getActiveSubscription = async (
   locationId?: string | null,
-): Promise<ActiveSubscription> => {
+): Promise<ActiveSubscription | null> => {
   let location;
 
   if (locationId) {
@@ -95,13 +95,23 @@ export const getActiveSubscription = async (
     location = await getCurrentLocation();
   }
 
+  if (!location?.id) {
+    await deleteAuthCookie();
+    return null;
+  }
+
   try {
     const apiClient = new ApiClient();
     const response = await apiClient.get(
-      `/api/location-subscriptions/${location?.id}/active`,
+      `/api/location-subscriptions/${location.id}/active`,
     );
     return parseStringify(response);
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof AuthenticationError) {
+      // Cookies already cleared in ApiClient
+      // Middleware will redirect to /login on next request
+      return null;
+    }
     throw error;
   }
 };
