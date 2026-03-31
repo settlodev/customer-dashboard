@@ -7,6 +7,7 @@ import { cookies } from "next/headers";
 import { headers } from "next/headers";
 import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
+import { AuthenticationError } from "@/lib/settlo-api-client";
 
 export const dynamic = "force-dynamic";
 export const fetchCache = "force-no-store";
@@ -26,28 +27,19 @@ export default async function SelectLocationPage({ searchParams }: Params) {
   const pageLimit = Number(resolvedSearchParams.limit) || 1000;
 
   try {
-    // Force dynamic behavior by reading headers and cookies
     headers();
     cookies();
 
     const business = await getCurrentBusiness();
 
-    if (!business) {
-      redirect("/select-business");
-    }
-
-    if (business.totalLocations === 0) {
-      redirect("/business-location");
-    }
+    if (!business) redirect("/select-business");
+    if (business.totalLocations === 0) redirect("/business-location");
 
     const businessLocations = await fetchAllLocations();
-
     const warehouseList = await searchWarehouses(q, page, pageLimit);
     const data: Warehouses[] = warehouseList.content;
 
-    if (!businessLocations) {
-      redirect("/select-business");
-    }
+    if (!businessLocations) redirect("/select-business");
 
     return (
       <LocationList
@@ -57,7 +49,16 @@ export default async function SelectLocationPage({ searchParams }: Params) {
       />
     );
   } catch (error) {
-    console.error("Error in getting current business - logging out:", error);
+    // ✅ Auth errors go to login, not select-business
+    if (error instanceof AuthenticationError) {
+      redirect("/login");
+    }
+
+    if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+      throw error;
+    }
+
+    console.error("Error in SelectLocationPage:", error);
     redirect("/select-business");
   }
 }

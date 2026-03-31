@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { Business } from "@/types/business/type";
 import { getAuthToken } from "@/lib/auth-utils";
 import { endpoints } from "@/types/endpoints";
-import ApiClient from "@/lib/settlo-api-client";
+import ApiClient, { AuthenticationError } from "@/lib/settlo-api-client";
 import { Location } from "@/types/location/type";
 import { getBusiness } from "@/lib/actions/business/get";
 import { signOut } from "@/auth";
@@ -112,24 +112,16 @@ export const getBusinessDropDown = async (): Promise<Business[] | null> => {
   try {
     const authToken = await getAuthToken();
     const userId = authToken?.id;
-
-    const myEndpoints = endpoints({ userId: userId });
+    const myEndpoints = endpoints({ userId });
     const apiClient = new ApiClient();
-
-    try {
-      const data = await apiClient.get(myEndpoints.business.list.endpoint);
-      return parseStringify(data);
-    } catch (apiError: any) {
-      console.error("API request failed:", apiError);
-      throw apiError;
-    }
-  } catch (error) {
-    if (error instanceof Error && error.message === "NEXT_REDIRECT") {
+    const data = await apiClient.get(myEndpoints.business.list.endpoint);
+    return parseStringify(data);
+  } catch (error: unknown) {
+    if (error instanceof AuthenticationError) {
       throw error;
     }
 
     console.error("Failed to get business list:", error);
-
     return null;
   }
 };

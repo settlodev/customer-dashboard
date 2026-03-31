@@ -132,7 +132,7 @@ function Page({ searchParams }: Params) {
         </div>
 
         <Button onClick={handleStockPurchase} asChild>
-          <Link href="/products/new/edit">
+          <Link href="/stock-purchases/new">
             <Plus className="h-4 w-4 sm:mr-1.5" />
             <span className="hidden sm:inline">Create Purchase Orders</span>
           </Link>

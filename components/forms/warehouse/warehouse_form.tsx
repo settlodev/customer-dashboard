@@ -16,14 +16,7 @@ import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { BusinessTimeType } from "@/types/types";
 import { Separator } from "@/components/ui/separator";
-import {
-  Loader2Icon,
-  Mail,
-  MapPin,
-  Phone,
-  Clock,
-  Store,
-} from "lucide-react";
+import { Loader2Icon, Mail, MapPin, Phone, Clock, Store } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { PhoneInput } from "@/components/ui/phone-input";
@@ -194,7 +187,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
       <Card className="w-full max-w-4xl mx-auto">
         <CardContent className="flex items-center justify-center py-12">
           <div className="flex items-center gap-3">
-            <Loader2Icon className="w-6 h-6 animate-spin text-blue-600" />
+            <Loader2Icon className="w-6 h-6 animate-spin text-primary/60" />
             <span className="text-gray-600">Loading warehouse data ...</span>
           </div>
         </CardContent>
@@ -214,7 +207,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
               {/* Basic Information Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Store className="w-5 h-5 text-blue-600" />
+                  <Store className="w-5 h-5 text-primary/60" />
                   <h3 className="text-lg font-semibold text-gray-800">
                     Basic Information
                   </h3>
@@ -252,7 +245,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
                       <FormControl>
                         <Textarea
                           {...field}
-                          value={field.value || '-'}
+                          value={field.value || "-"}
                           placeholder="Enter warehouse description"
                           disabled={isPending}
                           rows={3}
@@ -270,7 +263,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
               {/* Contact Information Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Mail className="w-5 h-5 text-blue-600" />
+                  <Mail className="w-5 h-5 text-primary/60" />
                   <h3 className="text-lg font-semibold text-gray-800">
                     Contact Information
                   </h3>
@@ -332,7 +325,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
               {/* Location Information Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <MapPin className="w-5 h-5 text-blue-600" />
+                  <MapPin className="w-5 h-5 text-primary/60" />
                   <h3 className="text-lg font-semibold text-gray-800">
                     Location Information
                   </h3>
@@ -386,7 +379,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
               {/* Operating Hours Section */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Clock className="w-5 h-5 text-blue-600" />
+                  <Clock className="w-5 h-5 text-primary/60" />
                   <h3 className="text-lg font-semibold text-gray-800">
                     Operating Hours
                   </h3>
@@ -492,7 +485,7 @@ function WarehouseForm({ item }: { item: Warehouses | null | undefined }) {
                   <SubmitButton
                     isPending={isPending}
                     label={item ? "Update Warehouse" : "Create Warehouse"}
-                    className="bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-700 hover:to-emerald-800 text-white px-8 py-3 rounded-lg font-medium transition-all transform hover:scale-105 min-w-[160px]"
+                    className="bg-primary text-white px-8 py-3 rounded-lg font-medium transition-all transform hover:scale-105 min-w-[160px]"
                   />
                 )}
               </div>
