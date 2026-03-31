@@ -58,6 +58,7 @@ export async function middleware(request: NextRequest) {
     }
   } catch (error) {
     console.error("Failed to parse auth token:", error);
+    return NextResponse.redirect(new URL("/login", request.nextUrl));
   }
 
   // Session exists but authToken cookie is missing or unparseable.

@@ -28,8 +28,6 @@ const OrderReceipt = async ({
   const orderData = await getOrderReceipt(id);
   const location = resolvedSearchParams.location || orderData.location;
 
-  console.log("OrderReceipt", orderData);
-
   let efdData = null;
   if (orderData.efdPrinted) {
     efdData = await isEfdPrinted(id, location);
