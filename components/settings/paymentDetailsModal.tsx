@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,7 @@ import {
 import PaymentMethodSelectorWidget from "@/components/widgets/paymentMethodSelector";
 import { PhysicalReceiptPaymentDetails } from "@/types/payments/schema";
 
-interface PaymentRow {
+export interface PaymentRow {
   id: string;
   methodId: string;
   accountNumber: string;
@@ -72,6 +72,13 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
   );
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      setBankRows(initialBankRows?.length ? initialBankRows : []);
+      setMnoRows(initialMnoRows?.length ? initialMnoRows : []);
+    }
+  }, [isOpen]);
+
   // ── Row helpers ─────────────────────────────────────────────────────────────
   const addRow = (set: React.Dispatch<React.SetStateAction<PaymentRow[]>>) =>
     set((prev) => [...prev, newRow()]);
@@ -93,7 +100,7 @@ export const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({
 
   const validateRows = (rows: PaymentRow[], kind: string): boolean => {
     for (const row of rows) {
-      if (!row.methodId && !row.accountNumber) continue; // fully empty → skip
+      if (!row.methodId && !row.accountNumber) continue;
       if (!row.methodId) {
         toast({
           variant: "destructive",

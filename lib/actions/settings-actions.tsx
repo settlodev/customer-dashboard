@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import ApiClient from "@/lib/settlo-api-client";
+import ApiClient, { AuthenticationError } from "@/lib/settlo-api-client";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
@@ -18,6 +18,8 @@ import {
   PhysicalReceiptPaymentDetails,
   physicalReceiptPaymentDetailsSchema,
 } from "@/types/payments/schema";
+import { Proforma } from "@/types/proforma/type";
+import { Location } from "@/types/location/type";
 
 export const fetchLocationSettings = async (): Promise<any> => {
   await getAuthenticatedUser();
@@ -141,7 +143,6 @@ export const physicalReceiptPaymentDetails = async (
   }
 
   const payload = validated.data;
-  console.log("The payload", payload);
 
   try {
     const apiClient = new ApiClient();
@@ -175,7 +176,6 @@ export const digitalReceiptPaymentDetails = async (
   }
 
   const payload = validated.data;
-  console.log("The payload", payload);
 
   try {
     const apiClient = new ApiClient();
@@ -188,6 +188,43 @@ export const digitalReceiptPaymentDetails = async (
     return parseStringify(digitalReceipt);
   } catch (error) {
     console.error("Failed to store digital receipt payment details:", error);
+    throw error;
+  }
+};
+
+export const getAllDigitalReceiptPaymentDetails = async (): Promise<any> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+
+    const location = await getCurrentLocation();
+
+    const settingsData = await apiClient.get(
+      `/api/digital-receipt-payment-details/${location?.id}/all`,
+    );
+    console.log("The payload", settingsData);
+    return parseStringify(settingsData);
+  } catch (error) {
+    console.error("Failed to get All Digital receipt payment details:", error);
+    throw error;
+  }
+};
+export const getAllPhysicalReceiptPaymentDetails = async (): Promise<any> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+
+    const location = await getCurrentLocation();
+
+    const settingsData = await apiClient.get(
+      `/api/physical-receipt-payment-details/${location?.id}/all`,
+    );
+    console.log("The payload", settingsData);
+    return parseStringify(settingsData);
+  } catch (error) {
+    console.error("Failed to get All Physical receipt payment details:", error);
     throw error;
   }
 };

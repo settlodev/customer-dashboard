@@ -20,7 +20,14 @@ import { Input } from "@/components/ui/input";
 import { Button } from "../ui/button";
 import { Switch } from "../ui/switch";
 import { Separator } from "../ui/separator";
-import { Loader2Icon, ImageIcon, FileText } from "lucide-react";
+import {
+  Loader2Icon,
+  ImageIcon,
+  FileText,
+  Trash2,
+  Smartphone,
+  Building2,
+} from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -28,7 +35,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { updateLocationSettings } from "@/lib/actions/settings-actions";
+import {
+  getAllDigitalReceiptPaymentDetails,
+  getAllPhysicalReceiptPaymentDetails,
+  updateLocationSettings,
+} from "@/lib/actions/settings-actions";
 import { toast } from "@/hooks/use-toast";
 import {
   LocationSettings,
@@ -37,7 +48,10 @@ import {
 } from "@/types/settings/type";
 import { LocationSettingsSchema } from "@/types/settings/schema";
 import { ImageUploadModal } from "@/components/settings/uploadImage";
-import { PaymentDetailsModal } from "@/components/settings/paymentDetailsModal";
+import {
+  PaymentDetailsModal,
+  PaymentRow,
+} from "@/components/settings/paymentDetailsModal";
 import CountrySelector from "@/components/widgets/country-selector";
 
 const LoadingSkeleton = () => {
@@ -129,11 +143,102 @@ const LocationSettingsForm = ({
   const [physicalPaymentSaved, setPhysicalPaymentSaved] = useState(false);
   const [digitalPaymentSaved, setDigitalPaymentSaved] = useState(false);
   const [receiptImage, setReceiptImage] = useState<string>("");
+  const [digitalPaymentDetails, setDigitalPaymentDetails] = useState<any[]>([]);
+  const [isLoadingDigitalPayments, setIsLoadingDigitalPayments] =
+    useState(true);
+  const [digitalBankRows, setDigitalBankRows] = useState<PaymentRow[]>([]);
+  const [digitalMnoRows, setDigitalMnoRows] = useState<PaymentRow[]>([]);
+
+  const [physicalPaymentDetails, setPhysicalPaymentDetails] = useState<any[]>(
+    [],
+  );
+  const [isLoadingPhysicalPayments, setIsLoadingPhysicalPayments] =
+    useState(true);
+  const [physicalBankRows, setPhysicalBankRows] = useState<PaymentRow[]>([]);
+  const [physicalMnoRows, setPhysicalMnoRows] = useState<PaymentRow[]>([]);
 
   const form = useForm<z.infer<typeof LocationSettingsSchema>>({
     resolver: zodResolver(LocationSettingsSchema),
     defaultValues: { ...item, status: true },
   });
+
+  useEffect(() => {
+    const fetchDigitalPaymentDetails = async () => {
+      try {
+        setIsLoadingDigitalPayments(true);
+        const data = await getAllDigitalReceiptPaymentDetails();
+        const details: any[] = data?.data ?? data ?? [];
+        const list = Array.isArray(details) ? details : [details];
+
+        if (list.length > 0) {
+          const toRow = (item: any): PaymentRow => ({
+            id: item.id ?? `${Date.now()}-${Math.random()}`,
+            methodId: item.acceptedPaymentMethodType ?? "",
+            accountNumber: item.accountNumber ?? "",
+            notes: item.notes ?? "",
+          });
+
+          const bankList = list.filter((d) =>
+            d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
+          );
+          const mnoList = list.filter(
+            (d) =>
+              !d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
+          );
+
+          setDigitalBankRows(bankList.map(toRow));
+          setDigitalMnoRows(mnoList.map(toRow));
+          setDigitalPaymentDetails(list); // ← this line was missing
+          setDigitalPaymentSaved(true);
+        }
+      } catch (error) {
+        console.error("Failed to fetch digital payment details:", error);
+      } finally {
+        setIsLoadingDigitalPayments(false);
+      }
+    };
+
+    fetchDigitalPaymentDetails();
+  }, []);
+
+  useEffect(() => {
+    const fetchPhysicalPaymentDetails = async () => {
+      try {
+        setIsLoadingPhysicalPayments(true);
+        const data = await getAllPhysicalReceiptPaymentDetails();
+        const details: any[] = data?.data ?? data ?? [];
+        const list = Array.isArray(details) ? details : [details];
+
+        if (list.length > 0) {
+          const toRow = (item: any): PaymentRow => ({
+            id: item.id ?? `${Date.now()}-${Math.random()}`,
+            methodId: item.acceptedPaymentMethodType ?? "",
+            accountNumber: item.accountNumber ?? "",
+            notes: item.notes ?? "",
+          });
+
+          const bankList = list.filter((d) =>
+            d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
+          );
+          const mnoList = list.filter(
+            (d) =>
+              !d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
+          );
+
+          setPhysicalBankRows(bankList.map(toRow));
+          setPhysicalMnoRows(mnoList.map(toRow));
+          setPhysicalPaymentDetails(list);
+          setPhysicalPaymentSaved(true);
+        }
+      } catch (error) {
+        console.error("Failed to fetch physical payment details:", error);
+      } finally {
+        setIsLoadingPhysicalPayments(false);
+      }
+    };
+
+    fetchPhysicalPaymentDetails();
+  }, []);
 
   useEffect(() => {
     if (item) {
@@ -198,12 +303,73 @@ const LocationSettingsForm = ({
     setIsPaymentModalOpen(true);
   };
 
-  // Called by the modal after a successful API save
   const handlePaymentSaved = () => {
     if (paymentModalType === "physical") {
       setPhysicalPaymentSaved(true);
+      getAllPhysicalReceiptPaymentDetails()
+        .then((data) => {
+          const details: any[] = data?.data ?? data ?? [];
+          const list = Array.isArray(details) ? details : [details];
+          setPhysicalPaymentDetails(list);
+
+          const toRow = (item: any): PaymentRow => ({
+            id: item.id ?? `${Date.now()}-${Math.random()}`,
+            methodId: item.acceptedPaymentMethodType ?? "",
+            accountNumber: item.accountNumber ?? "",
+            notes: item.notes ?? "",
+          });
+          setPhysicalBankRows(
+            list
+              .filter((d) =>
+                d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
+              )
+              .map(toRow),
+          );
+          setPhysicalMnoRows(
+            list
+              .filter(
+                (d) =>
+                  !d.acceptedPaymentMethodTypeName
+                    ?.toLowerCase()
+                    .includes("bank"),
+              )
+              .map(toRow),
+          );
+        })
+        .catch(console.error);
     } else {
       setDigitalPaymentSaved(true);
+      getAllDigitalReceiptPaymentDetails()
+        .then((data) => {
+          const details: any[] = data?.data ?? data ?? [];
+          const list = Array.isArray(details) ? details : [details];
+          setDigitalPaymentDetails(list);
+
+          const toRow = (item: any): PaymentRow => ({
+            id: item.id ?? `${Date.now()}-${Math.random()}`,
+            methodId: item.acceptedPaymentMethodType ?? "",
+            accountNumber: item.accountNumber ?? "",
+            notes: item.notes ?? "",
+          });
+          setDigitalBankRows(
+            list
+              .filter((d) =>
+                d.acceptedPaymentMethodTypeName?.toLowerCase().includes("bank"),
+              )
+              .map(toRow),
+          );
+          setDigitalMnoRows(
+            list
+              .filter(
+                (d) =>
+                  !d.acceptedPaymentMethodTypeName
+                    ?.toLowerCase()
+                    .includes("bank"),
+              )
+              .map(toRow),
+          );
+        })
+        .catch(console.error);
     }
   };
 
@@ -269,31 +435,301 @@ const LocationSettingsForm = ({
                 )}
 
                 {key === "physicalReceiptPaymentDetails" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openPaymentModal("physical")}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    {physicalPaymentSaved
-                      ? "Edit Payment Details"
-                      : "Add Payment Details"}
-                  </Button>
+                  <div className="space-y-3">
+                    {isLoadingPhysicalPayments ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                        Loading payment details...
+                      </div>
+                    ) : physicalPaymentSaved &&
+                      physicalPaymentDetails.length > 0 ? (
+                      <>
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          {/* Bank section */}
+                          {physicalPaymentDetails.some((d) =>
+                            d.acceptedPaymentMethodTypeName
+                              ?.toLowerCase()
+                              .includes("bank"),
+                          ) && (
+                            <>
+                              <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                Banks
+                              </p>
+                              {physicalPaymentDetails
+                                .filter((d) =>
+                                  d.acceptedPaymentMethodTypeName
+                                    ?.toLowerCase()
+                                    .includes("bank"),
+                                )
+                                .map((detail, i, arr) => (
+                                  <div
+                                    key={detail.id ?? i}
+                                    className={`flex items-center gap-2.5 px-3 py-2 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}
+                                  >
+                                    <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
+                                      <Building2 className="w-3.5 h-3.5 text-primary dark:text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
+                                        {detail.acceptedPaymentMethodTypeName}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground font-mono">
+                                        ••••
+                                        {String(detail.accountNumber).slice(-4)}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                ))}
+                            </>
+                          )}
+
+                          {/* Divider between sections */}
+                          {physicalPaymentDetails.some((d) =>
+                            d.acceptedPaymentMethodTypeName
+                              ?.toLowerCase()
+                              .includes("bank"),
+                          ) &&
+                            physicalPaymentDetails.some(
+                              (d) =>
+                                !d.acceptedPaymentMethodTypeName
+                                  ?.toLowerCase()
+                                  .includes("bank"),
+                            ) && (
+                              <div className="border-t border-border mx-3" />
+                            )}
+
+                          {/* MNO section */}
+                          {physicalPaymentDetails.some(
+                            (d) =>
+                              !d.acceptedPaymentMethodTypeName
+                                ?.toLowerCase()
+                                .includes("bank"),
+                          ) && (
+                            <>
+                              <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                Mobile money
+                              </p>
+                              {physicalPaymentDetails
+                                .filter(
+                                  (d) =>
+                                    !d.acceptedPaymentMethodTypeName
+                                      ?.toLowerCase()
+                                      .includes("bank"),
+                                )
+                                .map((detail, i, arr) => (
+                                  <div
+                                    key={detail.id ?? i}
+                                    className={`flex items-center gap-2.5 px-3 py-2 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}
+                                  >
+                                    <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
+                                      <Smartphone className="w-3.5 h-3.5 text-primary dark:text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
+                                        {detail.acceptedPaymentMethodTypeName}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground font-mono">
+                                        ••••
+                                        {String(detail.accountNumber).slice(-4)}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                ))}
+                            </>
+                          )}
+
+                          {/* Footer button */}
+                          <div className="border-t border-border p-2.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => openPaymentModal("physical")}
+                            >
+                              <FileText className="h-3.5 w-3.5 mr-2" />
+                              Edit payment details
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openPaymentModal("physical")}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Add payment details
+                      </Button>
+                    )}
+                  </div>
                 )}
 
                 {key === "digitalReceiptPaymentDetails" && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openPaymentModal("digital")}
-                  >
-                    <FileText className="h-4 w-4 mr-2" />
-                    {digitalPaymentSaved
-                      ? "Edit Payment Details"
-                      : "Add Payment Details"}
-                  </Button>
+                  <div className="space-y-3">
+                    {isLoadingDigitalPayments ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Loader2Icon className="h-4 w-4 animate-spin" />
+                        Loading payment details...
+                      </div>
+                    ) : digitalPaymentSaved &&
+                      digitalPaymentDetails.length > 0 ? (
+                      <>
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          {/* Bank section */}
+                          {digitalPaymentDetails.some((d) =>
+                            d.acceptedPaymentMethodTypeName
+                              ?.toLowerCase()
+                              .includes("bank"),
+                          ) && (
+                            <>
+                              <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                Banks
+                              </p>
+                              {digitalPaymentDetails
+                                .filter((d) =>
+                                  d.acceptedPaymentMethodTypeName
+                                    ?.toLowerCase()
+                                    .includes("bank"),
+                                )
+                                .map((detail, i, arr) => (
+                                  <div
+                                    key={detail.id ?? i}
+                                    className={`flex items-center gap-2.5 px-3 py-2 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}
+                                  >
+                                    <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
+                                      <Building2 className="w-3.5 h-3.5 text-primary dark:text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
+                                        {detail.acceptedPaymentMethodTypeName}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground font-mono">
+                                        ••••
+                                        {String(detail.accountNumber).slice(-4)}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                ))}
+                            </>
+                          )}
+
+                          {/* Divider between sections */}
+                          {digitalPaymentDetails.some((d) =>
+                            d.acceptedPaymentMethodTypeName
+                              ?.toLowerCase()
+                              .includes("bank"),
+                          ) &&
+                            digitalPaymentDetails.some(
+                              (d) =>
+                                !d.acceptedPaymentMethodTypeName
+                                  ?.toLowerCase()
+                                  .includes("bank"),
+                            ) && (
+                              <div className="border-t border-border mx-3" />
+                            )}
+
+                          {/* MNO section */}
+                          {digitalPaymentDetails.some(
+                            (d) =>
+                              !d.acceptedPaymentMethodTypeName
+                                ?.toLowerCase()
+                                .includes("bank"),
+                          ) && (
+                            <>
+                              <p className="px-3 pt-2.5 pb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                                Mobile money
+                              </p>
+                              {digitalPaymentDetails
+                                .filter(
+                                  (d) =>
+                                    !d.acceptedPaymentMethodTypeName
+                                      ?.toLowerCase()
+                                      .includes("bank"),
+                                )
+                                .map((detail, i, arr) => (
+                                  <div
+                                    key={detail.id ?? i}
+                                    className={`flex items-center gap-2.5 px-3 py-2 ${i < arr.length - 1 ? "border-b border-border/50" : ""}`}
+                                  >
+                                    <div className="w-8 h-8 rounded-md bg-primary-light dark:bg-primary-light/95 flex items-center justify-center flex-shrink-0">
+                                      <Smartphone className="w-3.5 h-3.5 text-primary dark:text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-[13px] font-medium text-foreground leading-none mb-0.5">
+                                        {detail.acceptedPaymentMethodTypeName}
+                                      </p>
+                                      <p className="text-[11px] text-muted-foreground font-mono">
+                                        ••••
+                                        {String(detail.accountNumber).slice(-4)}
+                                      </p>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="w-7 h-7 text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </Button>
+                                  </div>
+                                ))}
+                            </>
+                          )}
+
+                          {/* Footer button */}
+                          <div className="border-t border-border p-2.5">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => openPaymentModal("digital")}
+                            >
+                              <FileText className="h-3.5 w-3.5 mr-2" />
+                              Edit payment details
+                            </Button>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openPaymentModal("digital")}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Add payment details
+                      </Button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -365,7 +801,9 @@ const LocationSettingsForm = ({
                     disabled={isPending || field.disabled}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder={placeholder || "Select an option"} />
+                      <SelectValue
+                        placeholder={placeholder || "Select an option"}
+                      />
                     </SelectTrigger>
                     <SelectContent>
                       {field.options?.map((option) => (
@@ -463,7 +901,6 @@ const LocationSettingsForm = ({
           </Form>
         </CardContent>
       </Card>
-
       {/* Image Upload Modal */}
       <ImageUploadModal
         isOpen={isImageModalOpen}
@@ -474,13 +911,17 @@ const LocationSettingsForm = ({
         }}
         currentImage={receiptImage}
       />
-
-      {/* Payment Details Modal — calls the API internally */}
       <PaymentDetailsModal
         isOpen={isPaymentModalOpen}
         onClose={() => setIsPaymentModalOpen(false)}
         onSaved={handlePaymentSaved}
         receiptType={paymentModalType}
+        initialBankRows={
+          paymentModalType === "digital" ? digitalBankRows : physicalBankRows
+        }
+        initialMnoRows={
+          paymentModalType === "digital" ? digitalMnoRows : physicalMnoRows
+        }
       />
     </>
   );

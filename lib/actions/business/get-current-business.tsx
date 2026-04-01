@@ -97,8 +97,6 @@ export const getCurrentBusiness = async (): Promise<Business | undefined> => {
 export const getCurrentLocation = async (): Promise<Location | undefined> => {
   const cookieStore = await cookies();
   const locationCookie = cookieStore.get("currentLocation");
-  console.log("Current location:", locationCookie?.value);
-
   if (!locationCookie) return undefined;
 
   try {
