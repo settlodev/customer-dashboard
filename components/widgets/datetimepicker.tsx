@@ -131,6 +131,17 @@ const DateTimePicker = ({
                 return false;
               }}
               initialFocus
+              classNames={{
+                months:
+                  "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
+                month: "space-y-4",
+                caption: "flex justify-center pt-1 relative items-center px-8",
+                caption_label:
+                  "text-sm font-medium truncate text-center min-w-0",
+                nav: "space-x-1 flex items-center",
+                nav_button_previous: "absolute left-1",
+                nav_button_next: "absolute right-1",
+              }}
             />
             <div className="flex flex-col sm:flex-row sm:h-[300px] divide-y sm:divide-y-0 sm:divide-x">
               <ScrollArea className="w-64 sm:w-auto">

@@ -197,9 +197,7 @@ const SettingsLayout = ({
       case "printing":
         return <PrintingSettings locationSettings={locationSettings} />;
       case "orders-inventory":
-        return (
-          <OrdersInventorySettings locationSettings={locationSettings} />
-        );
+        return <OrdersInventorySettings locationSettings={locationSettings} />;
       case "notifications":
         return <NotificationsSettings />;
       case "reservations":
@@ -209,9 +207,7 @@ const SettingsLayout = ({
       case "payments":
         return <AcceptedPaymentMethodsPage />;
       case "loyalty-points":
-        return (
-          <LoyaltyPointsSettings locationSettings={locationSettings} />
-        );
+        return <LoyaltyPointsSettings locationSettings={locationSettings} />;
       case "efd":
         return <EFDSettings />;
       case "devices":
