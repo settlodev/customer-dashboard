@@ -1,6 +1,7 @@
 "use server";
 
 import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
+import { extractSubscriptionStatus } from "@/lib/jwt-utils";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse, activeBusiness, TokenRefreshResponse } from "@/types/types";
 import ApiClient from "@/lib/settlo-api-client";
@@ -288,11 +289,15 @@ export const createBusinessWithLocations = async (data: {
       // Refresh the access token so it picks up the new business/location
       // claims (business_id, assigned_to_id, updated permissions).
       try {
+        const whitelabelClientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
         const refreshResponse = await fetch(
           `${AUTH_SERVICE_URL}/auth/token-refresh`,
           {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              ...(whitelabelClientId ? { "X-Client-Id": whitelabelClientId } : {}),
+            },
             body: JSON.stringify({ refreshToken: authToken.refreshToken }),
           },
         );
@@ -305,6 +310,7 @@ export const createBusinessWithLocations = async (data: {
             refreshToken: refreshData.refreshToken || authToken.refreshToken,
             isBusinessRegistrationComplete: true,
             isLocationRegistrationComplete: true,
+            subscriptionStatus: extractSubscriptionStatus(refreshData.accessToken),
           });
           console.log("[BUSINESS] Access token refreshed with new business/location claims");
         }

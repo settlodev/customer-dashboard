@@ -19,9 +19,7 @@ export const fetchAllRoles = async (): Promise<Role[]> => {
   try {
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
-
-    const rolesData = await apiClient.get(`/api/roles/${location?.id}`);
+    const rolesData = await apiClient.get(`/api/v1/roles`);
 
     return parseStringify(rolesData);
   } catch (error) {
@@ -39,28 +37,13 @@ export const searchRoles = async (
   try {
     const apiClient = new ApiClient();
 
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
+    const params = new URLSearchParams({
+      search: q,
+      page: String(page ? page - 1 : 0),
+      size: String(pageLimit ? pageLimit : 10),
+    });
 
-    const location = await getCurrentLocation();
-
-    const rolesData = await apiClient.post(`/api/roles/${location?.id}`, query);
+    const rolesData = await apiClient.get(`/api/v1/roles?${params.toString()}`);
 
     return parseStringify(rolesData);
   } catch (error) {
@@ -94,7 +77,7 @@ export const createRole = async (
       location: location?.id,
     };
 
-    await apiClient.post(`/api/roles/${location?.id}/create`, payload);
+    await apiClient.post(`/api/v1/roles`, payload);
     formResponse = {
       responseType: "success",
       message: "Role created successfully",
@@ -141,7 +124,7 @@ export const updateRole = async (
 
     console.log("The payload passed is", payload);
 
-    await apiClient.put(`/api/roles/${location?.id}/${id}`, payload);
+    await apiClient.put(`/api/v1/roles/${id}`, payload);
 
     formResponse = {
       responseType: "success",
@@ -164,23 +147,7 @@ export const updateRole = async (
 export const getRole = async (id: UUID): Promise<ApiResponse<Role>> => {
   const apiClient = new ApiClient();
 
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-
-  const location = await getCurrentLocation();
-
-  const roleData = await apiClient.post(`/api/roles/${location?.id}`, query);
+  const roleData = await apiClient.get(`/api/v1/roles/${id}`);
 
   return parseStringify(roleData);
 };
@@ -191,11 +158,32 @@ export const deleteRole = async (id: UUID): Promise<void> => {
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
 
-    await apiClient.delete(`/api/roles/${location?.id}/${id}`);
+    await apiClient.delete(`/api/v1/roles/${id}`);
     revalidatePath("/roles");
   } catch (error) {
     throw error;
+  }
+};
+
+export const addPermissionsToRole = async (roleId: string, permissionIds: string[]): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/roles/${roleId}/permissions`, { permissionIds });
+    revalidatePath("/roles");
+    return { responseType: "success", message: "Permissions added successfully" };
+  } catch (error) {
+    return { responseType: "error", message: "Failed to add permissions", error: error instanceof Error ? error : new Error(String(error)) };
+  }
+};
+
+export const removePermissionsFromRole = async (roleId: string, permissionIds: string[]): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(`/api/v1/roles/${roleId}/permissions`, { data: { permissionIds } });
+    revalidatePath("/roles");
+    return { responseType: "success", message: "Permissions removed successfully" };
+  } catch (error) {
+    return { responseType: "error", message: "Failed to remove permissions", error: error instanceof Error ? error : new Error(String(error)) };
   }
 };

@@ -1,4 +1,4 @@
-import { Bell, Building2, CalendarClock, CreditCard, Link2, MapPin, Package, Printer, Receipt, Smartphone, Star, ToggleRight, UtensilsCrossed } from "lucide-react";
+import { Bell, Building2, CalendarClock, CalendarOff, CreditCard, Link2, MapPin, Palette, Printer, Receipt, Settings2, Smartphone, Star, Sun, UtensilsCrossed } from "lucide-react";
 
 export const taxClasses=
     [
@@ -83,34 +83,58 @@ export const settingsNavItems = [
         description: 'Business details & info'
     },
     {
+        id: 'business-settings',
+        label: 'Business Settings',
+        icon: Palette,
+        description: 'Branding, defaults & operations'
+    },
+    {
         id: 'location',
         label: 'Location',
         icon: MapPin,
         description: 'Location details & hours'
     },
     {
-        id: 'features',
-        label: 'Features',
-        icon: ToggleRight,
-        description: 'Toggle app features'
+        id: 'location-settings',
+        label: 'Location Settings',
+        icon: Settings2,
+        description: 'Operations, POS, orders & tax'
+    },
+    {
+        id: 'day-sessions',
+        label: 'Day Sessions',
+        icon: Sun,
+        description: 'Open & close daily operations'
+    },
+    {
+        id: 'closure-dates',
+        label: 'Closure Dates',
+        icon: CalendarOff,
+        description: 'Scheduled closures & holidays'
     },
     {
         id: 'printing',
         label: 'Printing & Receipts',
         icon: Printer,
-        description: 'Tickets, receipts & images'
-    },
-    {
-        id: 'orders-inventory',
-        label: 'Orders & Inventory',
-        icon: Package,
-        description: 'Order rules & stock deduction'
+        description: 'Dockets, receipts & invoices'
     },
     {
         id: 'notifications',
         label: 'Notifications',
         icon: Bell,
         description: 'Email, SMS & push alerts'
+    },
+    {
+        id: 'loyalty-points',
+        label: 'Loyalty Points',
+        icon: Star,
+        description: 'Customer & staff rewards'
+    },
+    {
+        id: 'efd',
+        label: 'EFD',
+        icon: Receipt,
+        description: 'Tax & fiscal compliance'
     },
     {
         id: 'reservations',
@@ -129,18 +153,6 @@ export const settingsNavItems = [
         label: 'Payments',
         icon: CreditCard,
         description: 'Accepted payment methods'
-    },
-    {
-        id: 'loyalty-points',
-        label: 'Loyalty Points',
-        icon: Star,
-        description: 'Customer & staff rewards'
-    },
-    {
-        id: 'efd',
-        label: 'EFD',
-        icon: Receipt,
-        description: 'Tax & fiscal compliance'
     },
     {
         id: 'devices',

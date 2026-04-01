@@ -21,18 +21,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
 import {
   Building2,
-  Facebook,
   Globe,
-  Instagram,
-  Linkedin,
   Loader2Icon,
   Mail,
   Phone,
-  Palette,
-  Type,
-  Search,
-  X,
-  Youtube,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { Card, CardContent } from "../ui/card";
@@ -44,8 +36,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-import { Separator } from "../ui/separator";
 import { Business } from "@/types/business/type";
 import { BusinessSchema } from "@/types/business/schema";
 import { updateBusiness } from "@/lib/actions/business-actions";
@@ -66,9 +56,6 @@ const BusinessForm = ({
   const [, setResponse] = useState<FormResponse | undefined>();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
   const [logoImage, setLogoImage] = useState(item?.logoUrl || "");
-  const [bannerImage, setBannerImage] = useState("");
-  const [faviconImage, setFaviconImage] = useState("");
-  const [shareImage, setShareImage] = useState("");
 
   const form = useForm<z.infer<typeof BusinessSchema>>({
     resolver: zodResolver(BusinessSchema),
@@ -83,30 +70,6 @@ const BusinessForm = ({
       country: item ? item.countryId : "",
       logo: item ? item.logoUrl : undefined,
       address: item?.address ?? "",
-      notificationPhone: undefined,
-      notificationEmailAddress: undefined,
-      vrn: undefined,
-      uin: undefined,
-      serial: undefined,
-      memarts: undefined,
-      businessLicense: "",
-      certificateOfIncorporation: null,
-      identificationNumber: "",
-      businessIdentificationDocument: null,
-      receiptPrefix: null,
-      receiptSuffix: null,
-      receiptImage: null,
-      linkedin: null,
-      tiktok: null,
-      vfdRegistrationState: false,
-      primaryColor: "#EB7F44",
-      secondaryColor: "#1A1A2E",
-      bannerImageUrl: null,
-      faviconUrl: null,
-      fontFamily: null,
-      metaTitle: null,
-      metaDescription: null,
-      shareImageUrl: null,
     },
   });
 
@@ -124,9 +87,6 @@ const BusinessForm = ({
   const submitData = (values: z.infer<typeof BusinessSchema>) => {
     setResponse(undefined);
     values.logo = logoImage || null;
-    values.bannerImageUrl = bannerImage || null;
-    values.faviconUrl = faviconImage || null;
-    values.shareImageUrl = shareImage || null;
 
     startTransition(() => {
       if (item) {
@@ -215,32 +175,10 @@ const BusinessForm = ({
 
                 <FormField
                   control={form.control}
-                  name="notificationEmailAddress"
+                  name="phoneNumber"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Notification Email</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="notificationPhone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Notification Phone</FormLabel>
+                      <FormLabel>Phone Number</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Phone className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
@@ -260,154 +198,27 @@ const BusinessForm = ({
 
                 <FormField
                   control={form.control}
-                  name="description"
+                  name="email"
                   render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel>Description</FormLabel>
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Textarea
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          placeholder="Describe your business"
-                          className="min-h-[100px]"
-                        />
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            value={field.value || ""}
+                            placeholder="info@business.com"
+                          />
+                        </div>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-            </div>
 
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Social Media Links</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="instagram"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Instagram</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Instagram className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="twitter"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Twitter</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <X className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="facebook"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Facebook</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Facebook className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="youtube"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Youtube</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Youtube className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="linkedin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>LinkedIn</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Linkedin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="tiktok"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>TikTok</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          placeholder="https://tiktok.com/@yourbusiness"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormField
                   control={form.control}
                   name="website"
@@ -430,204 +241,26 @@ const BusinessForm = ({
                     </FormItem>
                   )}
                 />
-              </div>
-            </div>
 
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Tax & VFD</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="identificationNumber"
+                  name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>TIN (Identification Number)</FormLabel>
+                      <FormLabel>Address</FormLabel>
                       <FormControl>
                         <Input
                           {...field}
                           disabled={isPending}
                           value={field.value || ""}
-                          placeholder="TIN-12345678"
+                          placeholder="Business address"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="vrn"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>VRN (VAT Registration Number)</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          placeholder="VRN-001"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="serial"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Serial</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          placeholder="SER-001"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="uin"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>UIN</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          placeholder="UIN-001"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
 
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Receipts</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="receiptPrefix"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Receipt Prefix</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          placeholder="e.g. PI"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="receiptSuffix"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Receipt Suffix</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                          placeholder="e.g. TZ"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Branding & SEO</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="primaryColor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Primary Color</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Palette className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="#EB7F44"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="secondaryColor"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Secondary Color</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Palette className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="#1A1A2E"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="fontFamily"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Font Family</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Type className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="Inter"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <FormItem>
                   <FormLabel>Logo</FormLabel>
                   <FormControl>
@@ -648,101 +281,20 @@ const BusinessForm = ({
                   </FormControl>
                   {logoImage && <p className="text-xs text-muted-foreground truncate">{logoImage}</p>}
                 </FormItem>
-                <FormItem>
-                  <FormLabel>Banner Image</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      disabled={isPending}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const { uploadImage } = await import("@/lib/utils");
-                          uploadImage(file, "business/banners", (res) => {
-                            if (res.success) setBannerImage(res.data);
-                          });
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  {bannerImage && <p className="text-xs text-muted-foreground truncate">{bannerImage}</p>}
-                </FormItem>
-                <FormItem>
-                  <FormLabel>Favicon</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      disabled={isPending}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const { uploadImage } = await import("@/lib/utils");
-                          uploadImage(file, "business/favicons", (res) => {
-                            if (res.success) setFaviconImage(res.data);
-                          });
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  {faviconImage && <p className="text-xs text-muted-foreground truncate">{faviconImage}</p>}
-                </FormItem>
-                <FormItem>
-                  <FormLabel>Share Image</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="file"
-                      accept="image/*"
-                      disabled={isPending}
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const { uploadImage } = await import("@/lib/utils");
-                          uploadImage(file, "business/share", (res) => {
-                            if (res.success) setShareImage(res.data);
-                          });
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  {shareImage && <p className="text-xs text-muted-foreground truncate">{shareImage}</p>}
-                </FormItem>
+
                 <FormField
                   control={form.control}
-                  name="metaTitle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>SEO Title</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                          <Input
-                            className="pl-10"
-                            {...field}
-                            disabled={isPending}
-                            value={field.value || ""}
-                            placeholder="My Business - Best Restaurant"
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="metaDescription"
+                  name="description"
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
-                      <FormLabel>SEO Description</FormLabel>
+                      <FormLabel>Description</FormLabel>
                       <FormControl>
                         <Textarea
                           {...field}
                           disabled={isPending}
                           value={field.value || ""}
-                          placeholder="Welcome to our restaurant..."
-                          className="min-h-[80px]"
+                          placeholder="Describe your business"
+                          className="min-h-[100px]"
                         />
                       </FormControl>
                       <FormMessage />

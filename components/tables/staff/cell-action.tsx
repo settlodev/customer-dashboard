@@ -12,8 +12,8 @@ import {
 
 import DeleteModal from "@/components/tables/delete-modal";
 import {
-  archiveStaff,
-  unarchiveStaff,
+  deactivateStaff,
+  reactivateStaff,
   resetStaffPasscode,
 } from "@/lib/actions/staff-actions";
 import { Staff } from "@/types/staff";
@@ -50,7 +50,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   const handleArchive = async () => {
     try {
-      await archiveStaff(data.id);
+      await deactivateStaff(data.id);
       toast({
         title: "Archived",
         description: `${fullName} has been archived successfully.`,
@@ -71,7 +71,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const handleUnarchive = async () => {
     setIsUnarchiving(true);
     try {
-      await unarchiveStaff(data.id);
+      await reactivateStaff(data.id);
       toast({
         title: "Restored",
         description: `${fullName} has been restored successfully.`,

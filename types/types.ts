@@ -57,6 +57,8 @@ export interface FormResponse<T = unknown> {
     data?: T;
 }
 
+export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "EXPIRED" | "SUSPENDED" | null;
+
 export declare interface AuthToken {
     accessToken: string;
     refreshToken: string;
@@ -74,6 +76,7 @@ export declare interface AuthToken {
     countryCode: string;
     theme: string | null;
     verificationResendToken?: string;
+    subscriptionStatus?: SubscriptionStatus;
 }
 
 export declare interface activeBusiness {

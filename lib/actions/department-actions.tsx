@@ -20,11 +20,7 @@ export const fectchAllDepartments = async (): Promise<Department[]> => {
   try {
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
-
-    const departmentData = await apiClient.get(
-      `/api/departments/${location?.id}`,
-    );
+    const departmentData = await apiClient.get(`/api/v1/departments`);
 
     return parseStringify(departmentData);
   } catch (error) {
@@ -40,28 +36,15 @@ export const searchDepartment = async (
 
   try {
     const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = await getCurrentLocation();
-    const departmentData = await apiClient.post(
-      `/api/departments/${location?.id}`,
-      query,
+
+    const params = new URLSearchParams({
+      search: q,
+      page: String(page ? page - 1 : 0),
+      size: String(pageLimit ? pageLimit : 10),
+    });
+
+    const departmentData = await apiClient.get(
+      `/api/v1/departments?${params.toString()}`,
     );
     return parseStringify(departmentData);
   } catch (error) {
@@ -103,7 +86,7 @@ export const createDepartment = async (
 
     // Make API request
     const response = await apiClient.post(
-      `/api/departments/${location?.id}/create`,
+      `/api/v1/departments`,
       payload,
     );
 
@@ -134,24 +117,8 @@ export const getDepartment = async (
   id: UUID,
 ): Promise<ApiResponse<Department>> => {
   const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const departmentResponse = await apiClient.post(
-    `/api/departments/${location?.id}`,
-    query,
-  );
+
+  const departmentResponse = await apiClient.get(`/api/v1/departments/${id}`);
 
   return parseStringify(departmentResponse);
 };
@@ -184,7 +151,7 @@ export const updateDepartment = async (
   try {
     const apiClient = new ApiClient();
 
-    await apiClient.put(`/api/departments/${location?.id}/${id}`, payload);
+    await apiClient.put(`/api/v1/departments/${id}`, payload);
 
     revalidatePath("/departments");
     formResponse = {
@@ -215,9 +182,7 @@ export const deleteDepartment = async (id: UUID): Promise<void> => {
   try {
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
-
-    await apiClient.delete(`/api/departments/${location?.id}/${id}`);
+    await apiClient.delete(`/api/v1/departments/${id}`);
     revalidatePath("/departments");
   } catch (error) {
     throw error;
@@ -259,13 +224,43 @@ export const fetchDepartmentsByLocation = async (
   try {
     const apiClient = new ApiClient();
 
-    const departmentData = await apiClient.get(
-      `/api/departments/${locationId}`,
-    );
+    const departmentData = await apiClient.get(`/api/v1/departments`);
 
     return parseStringify(departmentData);
   } catch (error) {
     console.error("Error fetching departments by location:", error);
+    throw error;
+  }
+};
+
+export const deactivateDepartment = async (id: string): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/departments/${id}/deactivate`, {});
+    revalidatePath("/departments");
+    return { responseType: "success", message: "Department deactivated successfully" };
+  } catch (error) {
+    return { responseType: "error", message: "Failed to deactivate department", error: error instanceof Error ? error : new Error(String(error)) };
+  }
+};
+
+export const reactivateDepartment = async (id: string): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/departments/${id}/reactivate`, {});
+    revalidatePath("/departments");
+    return { responseType: "success", message: "Department reactivated successfully" };
+  } catch (error) {
+    return { responseType: "error", message: "Failed to reactivate department", error: error instanceof Error ? error : new Error(String(error)) };
+  }
+};
+
+export const getDepartmentCount = async (): Promise<any> => {
+  try {
+    const apiClient = new ApiClient();
+    const count = await apiClient.get(`/api/v1/departments/count`);
+    return parseStringify(count);
+  } catch (error) {
     throw error;
   }
 };

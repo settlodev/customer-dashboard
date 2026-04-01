@@ -20,7 +20,7 @@ import {
 import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
 import { Customer } from "@/types/customer/type";
-import { archiveCustomer, unarchiveCustomer } from "@/lib/actions/customer-actions";
+import { deactivateCustomer, reactivateCustomer } from "@/lib/actions/customer-actions";
 
 interface CellActionProps {
   data: Customer;
@@ -35,7 +35,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   const handleArchive = async () => {
     try {
-      await archiveCustomer(data.id);
+      await deactivateCustomer(data.id);
       toast({
         title: "Archived",
         description: `${fullName} has been archived successfully.`,
@@ -56,7 +56,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const handleUnarchive = async () => {
     setIsUnarchiving(true);
     try {
-      await unarchiveCustomer(data.id);
+      await reactivateCustomer(data.id);
       toast({
         title: "Restored",
         description: `${fullName} has been restored successfully.`,

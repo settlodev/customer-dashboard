@@ -2,14 +2,12 @@
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Menu, X } from "lucide-react";
+import { Menu, X, AlertTriangle } from "lucide-react";
 
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NotificationsSettings from "@/components/settings/notifications";
 import { settingsNavItems } from "@/types/constants";
-import FeatureSettings from "@/components/settings/feature-settings";
 import PrintingSettings from "@/components/settings/printing-settings";
-import OrdersInventorySettings from "@/components/settings/orders-inventory-settings";
 import ReservationSettings from "@/components/settings/reservations";
 import { fetchLocationSettings } from "@/lib/actions/settings-actions";
 import Loading from "@/components/ui/loading";
@@ -18,9 +16,13 @@ import EFDSettings from "@/components/settings/efd";
 import DigitalMenuSettings from "@/components/settings/digital-menu-settings";
 import AcceptedPaymentMethodsPage from "@/components/settings/acceptedPaymentMethods";
 import BusinessDetailsSettings from "@/components/settings/business-details";
+import BusinessSettingsPanel from "@/components/settings/business-settings-panel";
 import IntegrationsSettings from "@/components/settings/integrations";
 import DeviceSettings from "@/components/settings/device-settings";
 import LocationDetailsSettings from "@/components/settings/location-details";
+import LocationSettingsPanel from "@/components/settings/location-settings-panel";
+import DaySessionsPanel from "@/components/settings/day-sessions-panel";
+import ClosureDatesPanel from "@/components/settings/closure-dates-panel";
 import { LocationSettings } from "@/types/settings/type";
 import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
@@ -28,6 +30,7 @@ import { getCurrentBusiness } from "@/lib/actions/business/get-current-business"
 import { getSingleBusiness } from "@/lib/actions/business-actions";
 import { getLocationById } from "@/lib/actions/location-actions";
 import { UUID } from "node:crypto";
+import SessionExpired, { isSessionExpiredError } from "@/components/auth/session-expired";
 
 export default function SettingsPage() {
   const [locationSettings, setLocationSettings] =
@@ -38,6 +41,7 @@ export default function SettingsPage() {
   const [isBusinessLoading, setIsBusinessLoading] = useState(true);
   const [isLocationLoading, setIsLocationLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSessionDead, setIsSessionDead] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -46,11 +50,13 @@ export default function SettingsPage() {
         setError(null);
         const settings = await fetchLocationSettings();
         setLocationSettings(settings);
-      } catch (error) {
-        console.error("Failed to load settings:", error);
-        setError(
-          error instanceof Error ? error.message : "Failed to load settings",
-        );
+      } catch (err) {
+        if (isSessionExpiredError(err)) {
+          setIsSessionDead(true);
+        } else {
+          console.error("Failed to load settings:", err);
+          setError("Failed to load settings. Please try again.");
+        }
       } finally {
         setIsLoading(false);
       }
@@ -66,8 +72,10 @@ export default function SettingsPage() {
           );
           setBusiness(fullBusiness);
         }
-      } catch (error) {
-        console.error("Failed to load business:", error);
+      } catch (err) {
+        if (isSessionExpiredError(err)) {
+          setIsSessionDead(true);
+        }
       } finally {
         setIsBusinessLoading(false);
       }
@@ -78,8 +86,10 @@ export default function SettingsPage() {
         setIsLocationLoading(true);
         const fullLocation = await getLocationById();
         setLocation(fullLocation);
-      } catch (error) {
-        console.error("Failed to load location:", error);
+      } catch (err) {
+        if (isSessionExpiredError(err)) {
+          setIsSessionDead(true);
+        }
       } finally {
         setIsLocationLoading(false);
       }
@@ -89,6 +99,10 @@ export default function SettingsPage() {
     loadBusiness();
     loadLocation();
   }, []);
+
+  if (isSessionDead) {
+    return <SessionExpired />;
+  }
 
   if (isLoading) {
     return (
@@ -103,26 +117,14 @@ export default function SettingsPage() {
       <div className="flex-1 space-y-4 p-4 md:p-8">
         <div className="flex items-center justify-center min-h-[60vh]">
           <Card className="w-full max-w-md mx-4">
-            <CardContent className="p-6 text-center">
-              <div className="text-red-500 mb-2">
-                <svg
-                  className="w-8 h-8 mx-auto"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-                  />
-                </svg>
+            <CardContent className="p-8 text-center space-y-4">
+              <div className="mx-auto w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                <AlertTriangle className="h-7 w-7 text-red-500" />
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 Error Loading Settings
               </h3>
-              <p className="text-sm text-muted-foreground mb-4">{error}</p>
+              <p className="text-sm text-muted-foreground">{error}</p>
               <button
                 onClick={() => window.location.reload()}
                 className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
@@ -184,6 +186,10 @@ const SettingsLayout = ({
             isLoading={isBusinessLoading}
           />
         );
+      case "business-settings":
+        return (
+          <BusinessSettingsPanel business={business} />
+        );
       case "location":
         return (
           <LocationDetailsSettings
@@ -192,28 +198,34 @@ const SettingsLayout = ({
             locationSettings={locationSettings}
           />
         );
-      case "features":
-        return <FeatureSettings locationSettings={locationSettings} />;
+      case "location-settings":
+        return (
+          <LocationSettingsPanel locationSettings={locationSettings} />
+        );
+      case "day-sessions":
+        return (
+          <DaySessionsPanel location={location} />
+        );
+      case "closure-dates":
+        return (
+          <ClosureDatesPanel location={location} />
+        );
       case "printing":
         return <PrintingSettings locationSettings={locationSettings} />;
-      case "orders-inventory":
-        return (
-          <OrdersInventorySettings locationSettings={locationSettings} />
-        );
       case "notifications":
-        return <NotificationsSettings />;
-      case "reservations":
-        return <ReservationSettings defaultTab={subtab} />;
-      case "digital-menu":
-        return <DigitalMenuSettings />;
-      case "payments":
-        return <AcceptedPaymentMethodsPage />;
+        return <NotificationsSettings locationSettings={locationSettings} />;
       case "loyalty-points":
         return (
           <LoyaltyPointsSettings locationSettings={locationSettings} />
         );
       case "efd":
         return <EFDSettings />;
+      case "reservations":
+        return <ReservationSettings defaultTab={subtab} />;
+      case "digital-menu":
+        return <DigitalMenuSettings />;
+      case "payments":
+        return <AcceptedPaymentMethodsPage />;
       case "devices":
         return <DeviceSettings />;
       case "integrations":

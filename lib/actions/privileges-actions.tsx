@@ -9,7 +9,7 @@ export const fetchAllSections = async () : Promise<PrivilegeItem[]> => {
         const apiClient = new ApiClient();
 
         const data = await  apiClient.get(
-            `/api/privilege-sections`,
+            `/api/v1/permissions`,
         );
         return parseStringify(data);
     }
@@ -19,17 +19,16 @@ export const fetchAllSections = async () : Promise<PrivilegeItem[]> => {
 }
 
 export const searchWarehousePrivilegesSection = async():Promise<ApiResponse<WarehousePrivilegeItem[]>>  =>{
-    const page =0;
-    const size = 10;
     try {
         const apiClient = new ApiClient();
-        const query ={
-            page,
-            size
-        }
 
-        const data = await  apiClient.post(
-            `/api/warehouse-privilege-sections`,query,
+        const params = new URLSearchParams();
+        params.set("category", "warehouse");
+        params.set("page", "0");
+        params.set("size", "10");
+
+        const data = await  apiClient.get(
+            `/api/v1/permissions?${params.toString()}`,
         );
         return parseStringify(data);
     }

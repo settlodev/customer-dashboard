@@ -1,5 +1,5 @@
 import { isValidPhoneNumber } from "libphonenumber-js";
-import { boolean, object, string } from "zod";
+import { boolean, number, object, string } from "zod";
 
 export const LocationSchema = object({
   name: string({ required_error: "Location name is required" })
@@ -19,8 +19,11 @@ export const LocationSchema = object({
   city: string({ required_error: "City is required" }),
   region: string().optional().nullish(),
   street: string().optional(),
-  openingTime: string({ required_error: "Opening time is required" }),
-  closingTime: string({ required_error: "Closing time is required" }),
+  latitude: number().nullable().optional(),
+  longitude: number().nullable().optional(),
+  timezone: string().optional(),
+  openingTime: string().optional(),
+  closingTime: string().optional(),
   status: boolean().optional(),
   subscription: string().optional().nullish(),
   image: string().nullable().optional(),

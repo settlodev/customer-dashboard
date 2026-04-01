@@ -3,7 +3,6 @@ import { notFound, redirect } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { getStaff } from "@/lib/actions/staff-actions";
 import { Staff } from "@/types/staff";
-import { ApiResponse } from "@/types/types";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Phone,
@@ -28,17 +27,15 @@ export default async function StaffPage({ params }: { params: Params }) {
     redirect("/staff/new/edit");
   }
 
-  let item: ApiResponse<Staff> | null = null;
+  let staff: Staff | null = null;
 
   try {
-    item = await getStaff(resolvedParams.id as UUID);
-    if (item.totalElements === 0) notFound();
+    staff = await getStaff(resolvedParams.id as UUID);
+    if (!staff) notFound();
   } catch (error) {
     console.log(error);
     throw new Error("Failed to load staff data");
   }
-
-  const staff = item.content[0];
 
   const breadcrumbItems = [
     { title: "Staff", link: "/staff" },

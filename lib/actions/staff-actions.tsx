@@ -29,7 +29,7 @@ export const fetchAllStaff = async (): Promise<Staff[]> => {
 
     const location = await getCurrentLocation();
 
-    const staffData = await apiClient.get(`/api/staff/${location?.id}`);
+    const staffData = await apiClient.get(`/api/v1/staff?locationId=${location?.id}`);
 
     return parseStringify(staffData);
   } catch (error) {
@@ -74,7 +74,14 @@ export const searchStaff = async (
 
     const location = await getCurrentLocation();
 
-    const staffData = await apiClient.post(`/api/staff/${location?.id}`, query);
+    const params = new URLSearchParams();
+    if (q) params.append("search", q);
+    params.append("page", String(page ? page - 1 : 0));
+    params.append("size", String(pageLimit || 10));
+    params.append("sort", "firstName,asc");
+    if (location?.id) params.append("locationId", location.id);
+
+    const staffData = await apiClient.get(`/api/v1/staff?${params.toString()}`);
 
     return parseStringify(staffData);
   } catch (error) {
@@ -112,7 +119,7 @@ export const createStaff = async (
     };
 
     const staff = (await apiClient.post(
-      `/api/staff/${location?.id}/create`,
+      `/api/v1/staff`,
       payload,
     )) as Staff;
 
@@ -200,7 +207,7 @@ export const updateStaff = async (
       business: business?.id,
     };
 
-    await apiClient.put(`/api/staff/${location?.id}/${id}`, payload);
+    await apiClient.put(`/api/v1/staff/${id}`, payload);
     formResponse = {
       responseType: "success",
       message: "Staff updated successfully",
@@ -222,25 +229,10 @@ export const updateStaff = async (
   return parseStringify(formResponse);
 };
 
-export const getStaff = async (id: UUID): Promise<ApiResponse<Staff>> => {
+export const getStaff = async (id: UUID): Promise<Staff> => {
   const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
 
-  const location = await getCurrentLocation();
-
-  const staffData = await apiClient.post(`/api/staff/${location?.id}`, query);
+  const staffData = await apiClient.get(`/api/v1/staff/${id}`);
 
   return parseStringify(staffData);
 };
@@ -254,7 +246,7 @@ export const deleteStaff = async (id: UUID): Promise<void> => {
 
     const location = await getCurrentLocation();
 
-    await apiClient.delete(`/api/staff/${location?.id}/${id}`);
+    await apiClient.delete(`/api/v1/staff/${id}`);
     revalidatePath("/staff");
   } catch (error: any) {
     throw new Error(
@@ -265,24 +257,128 @@ export const deleteStaff = async (id: UUID): Promise<void> => {
   }
 };
 
-export const archiveStaff = async (ids: string | string[]): Promise<void> => {
-  const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
-
-  const staffIds = Array.isArray(ids) ? ids : [ids];
-
-  await apiClient.put(`/api/staff/${location?.id}/archive`, staffIds);
-  revalidatePath("/staff");
+export const deactivateStaff = async (id: UUID): Promise<FormResponse> => {
+  if (!id) throw new Error("Staff ID is required");
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/staff/${id}/deactivate`, {});
+    revalidatePath("/staff");
+    return { responseType: "success", message: "Staff deactivated successfully" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to deactivate staff",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
 };
 
-export const unarchiveStaff = async (ids: string | string[]): Promise<void> => {
-  const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
+export const reactivateStaff = async (id: UUID): Promise<FormResponse> => {
+  if (!id) throw new Error("Staff ID is required");
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/staff/${id}/reactivate`, {});
+    revalidatePath("/staff");
+    return { responseType: "success", message: "Staff reactivated successfully" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to reactivate staff",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
 
-  const staffIds = Array.isArray(ids) ? ids : [ids];
+export const grantDashboardAccess = async (
+  staffId: UUID,
+  email: string,
+  password: string,
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/staff/${staffId}/dashboard-access`, { email, password });
+    revalidatePath("/staff");
+    return { responseType: "success", message: "Dashboard access granted" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to grant dashboard access",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
 
-  await apiClient.put(`/api/staff/${location?.id}/unarchive`, staffIds);
-  revalidatePath("/staff");
+export const revokeDashboardAccess = async (staffId: UUID): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(`/api/v1/staff/${staffId}/dashboard-access`);
+    revalidatePath("/staff");
+    return { responseType: "success", message: "Dashboard access revoked" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to revoke dashboard access",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const grantPosAccess = async (staffId: UUID): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/staff/${staffId}/pos-access`, {});
+    revalidatePath("/staff");
+    return { responseType: "success", message: "POS access granted" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to grant POS access",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const revokePosAccess = async (staffId: UUID): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.delete(`/api/v1/staff/${staffId}/pos-access`);
+    revalidatePath("/staff");
+    return { responseType: "success", message: "POS access revoked" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to revoke POS access",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const assignStaffRoles = async (
+  staffId: UUID,
+  roleIds: string[],
+): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/staff/${staffId}/roles`, { roleIds });
+    revalidatePath("/staff");
+    return { responseType: "success", message: "Roles assigned successfully" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to assign roles",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const getStaffCount = async (): Promise<{ total: number; active: number; inactive: number }> => {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(`/api/v1/staff/count`);
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
 };
 
 const inviteStaff = async (staffId: UUID, businessId: UUID): Promise<void> => {
@@ -298,8 +394,8 @@ const inviteStaff = async (staffId: UUID, businessId: UUID): Promise<void> => {
       business: businessId,
     };
 
-    const invitedStaff: invitedStaff = await apiClient.put(
-      `/api/staff/${location?.id}/invite-to-business`,
+    const invitedStaff: invitedStaff = await apiClient.post(
+      `/api/v1/staff/${staffId}/dashboard-access`,
       payload,
     );
     //    console.log("The invited staff is", invitedStaff);
@@ -358,8 +454,8 @@ export const resetStaffPasscode = async (staffId: UUID): Promise<void> => {
 
     const location = await getCurrentLocation();
 
-    await apiClient.put(
-      `/api/staff/${location?.id}/reset-passcode/${staffId}`,
+    await apiClient.patch(
+      `/api/v1/staff/${staffId}/pin`,
       {},
     );
     revalidatePath("/staff");

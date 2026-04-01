@@ -3,6 +3,7 @@ import Credentials from "@auth/core/providers/credentials";
 import { LoginSchema } from "@/types/data-schemas";
 
 const authServiceURL = process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL;
+const whitelabelClientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
 
 export default {
   providers: [
@@ -45,6 +46,7 @@ export default {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+              ...(whitelabelClientId ? { "X-Client-Id": whitelabelClientId } : {}),
             },
             body: JSON.stringify({ email, password }),
           });

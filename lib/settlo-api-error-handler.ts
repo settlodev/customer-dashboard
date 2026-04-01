@@ -35,9 +35,20 @@ export const ErrorCodes = {
     EMAIL_ALREADY_EXISTS: 'EMAIL_ALREADY_EXISTS',
     PHONE_ALREADY_EXISTS: 'PHONE_ALREADY_EXISTS',
     USER_NOT_FOUND: 'USER_NOT_FOUND',
+    SUBSCRIPTION_EXPIRED: 'SUBSCRIPTION_EXPIRED',
+    SUBSCRIPTION_SUSPENDED: 'SUBSCRIPTION_SUSPENDED',
+    ACCOUNT_SUSPENDED: 'ACCOUNT_SUSPENDED',
+    SESSION_EXPIRED: 'SESSION_EXPIRED',
 } as const;
 
 const UI_ERROR_MESSAGES: Record<string, string> = {
+    INVALID_PHONE_NUMBER: "The phone number you entered is not valid. Please check the format and try again.",
+    INVALID_EMAIL: "The email address you entered is not valid. Please check and try again.",
+    INVALID_PASSWORD: "Your password does not meet the requirements. It must be at least 8 characters.",
+    INVALID_REQUEST: "The information you provided is not valid. Please check and try again.",
+    SERVICE_CLIENT_ERROR: "Something went wrong while processing your request. Please try again.",
+    DUPLICATE_ENTITY: "This record already exists. Please check for duplicates.",
+    RESOURCE_NOT_FOUND: "The requested item could not be found.",
     INVALID_CREDENTIALS: "The email or password you entered is incorrect. Please try again.",
     ACCOUNT_LOCKED: "Your account has been locked due to too many failed login attempts. Please try again in 30 minutes.",
     ACCOUNT_DISABLED: "Your account has been disabled. Please contact support for assistance.",
@@ -57,8 +68,12 @@ const UI_ERROR_MESSAGES: Record<string, string> = {
     TOKEN_VERSION_MISMATCH: "Your credentials have changed. Please log in again.",
     REFRESH_TOKEN_INVALID: "Your session has expired. Please log in again.",
     REFRESH_TOKEN_EXPIRED: "Your session has expired. Please log in again.",
+    SUBSCRIPTION_EXPIRED: "Your subscription has expired. Please renew to continue making changes.",
+    SUBSCRIPTION_SUSPENDED: "Your subscription has been suspended. Please contact billing support.",
+    ACCOUNT_SUSPENDED: "Your account has been suspended. Please contact billing support to reactivate.",
+    SESSION_EXPIRED: "Your session has expired. Please log in again.",
     VALIDATION_ERROR: "Please check your input and try again.",
-    CONFLICT: "This resource already exists.",
+    CONFLICT: "This request is already being processed. Please wait a moment and try again.",
     NOT_FOUND: "The requested resource was not found.",
     FORBIDDEN: "You do not have permission to perform this action.",
     UNAUTHORIZED: "Please log in to continue.",
@@ -70,7 +85,37 @@ const UI_ERROR_MESSAGES: Record<string, string> = {
 };
 
 /**
+ * Attempts to extract a nested error code and message from a server message
+ * that contains embedded JSON (e.g., "Auth Service request failed: {\"code\":\"INVALID_PHONE_NUMBER\",...}").
+ */
+function unwrapNestedError(message: string): { code?: string; message?: string } | null {
+    const jsonMatch = message.match(/\{[^{}]*"code"\s*:\s*"[^"]+"/);
+    if (!jsonMatch) return null;
+
+    // Find the full JSON object starting from the match position
+    const startIdx = message.indexOf("{", message.indexOf(jsonMatch[0]) > -1 ? message.indexOf(jsonMatch[0]) : 0);
+    if (startIdx === -1) return null;
+
+    // Extract from first { to the matching }
+    let depth = 0;
+    let endIdx = startIdx;
+    for (let i = startIdx; i < message.length; i++) {
+        if (message[i] === "{") depth++;
+        if (message[i] === "}") depth--;
+        if (depth === 0) { endIdx = i; break; }
+    }
+
+    try {
+        const nested = JSON.parse(message.substring(startIdx, endIdx + 1));
+        return { code: nested.code, message: nested.message };
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Converts an API error code to a user-friendly message.
+ * Handles nested error messages from service-to-service calls.
  * Falls back to the server-provided message, then a generic default.
  */
 export function getUIErrorMessage(
@@ -78,9 +123,32 @@ export function getUIErrorMessage(
     serverMessage?: string | null,
     fallback: string = "An unexpected error occurred. Please try again.",
 ): string {
+    // Direct match on the error code
     if (code && UI_ERROR_MESSAGES[code]) {
+        // If the code is a wrapper (SERVICE_CLIENT_ERROR), try to unwrap first
+        if (code === "SERVICE_CLIENT_ERROR" && serverMessage) {
+            const nested = unwrapNestedError(serverMessage);
+            if (nested?.code && UI_ERROR_MESSAGES[nested.code]) {
+                return UI_ERROR_MESSAGES[nested.code];
+            }
+            if (nested?.message) {
+                return nested.message;
+            }
+        }
         return UI_ERROR_MESSAGES[code];
     }
+
+    // Try to unwrap nested JSON from the message itself
+    if (serverMessage) {
+        const nested = unwrapNestedError(serverMessage);
+        if (nested?.code && UI_ERROR_MESSAGES[nested.code]) {
+            return UI_ERROR_MESSAGES[nested.code];
+        }
+        if (nested?.message) {
+            return nested.message;
+        }
+    }
+
     return serverMessage || fallback;
 }
 
@@ -100,9 +168,19 @@ export interface ApiErrorBody {
 export async function parseApiError(response: Response): Promise<ApiErrorBody> {
     try {
         const data = await response.json();
+        let code = data.code || data.error;
+        let message = data.message;
+
+        // Unwrap nested service-to-service errors (e.g., "Auth Service request failed: {...}")
+        if (message) {
+            const nested = unwrapNestedError(message);
+            if (nested?.code) code = nested.code;
+            if (nested?.message) message = nested.message;
+        }
+
         return {
-            code: data.code || data.error,
-            message: data.message,
+            code,
+            message,
             errors: data.errors,
             metadata: data.metadata,
             timestamp: data.timestamp,
@@ -113,6 +191,11 @@ export async function parseApiError(response: Response): Promise<ApiErrorBody> {
 }
 
 export const handleSettloApiError = async (error: unknown): Promise<ErrorResponseType> => {
+    // Pass through already-structured errors (e.g., SESSION_EXPIRED from the interceptor)
+    if (error && typeof error === "object" && "code" in error && "status" in error && "timestamp" in error) {
+        return error as ErrorResponseType;
+    }
+
     const getErrorDetails = (axiosError: AxiosError): unknown => {
         const responseData = axiosError.response?.data as Record<string, unknown>;
         return responseData?.details || responseData?.error || responseData?.errors || responseData;
@@ -156,8 +239,15 @@ export const handleSettloApiError = async (error: unknown): Promise<ErrorRespons
 
         if (error.response) {
             const { status } = error.response;
-            const serverMessage = (error.response.data as { message?: string })?.message;
-            const serverCode = (error.response.data as { code?: string })?.code;
+            let serverMessage = (error.response.data as { message?: string })?.message;
+            let serverCode = (error.response.data as { code?: string })?.code;
+
+            // Unwrap nested service-to-service error messages
+            if (serverMessage) {
+                const nested = unwrapNestedError(serverMessage);
+                if (nested?.code) serverCode = nested.code;
+                if (nested?.message) serverMessage = nested.message;
+            }
 
             switch (status) {
                 case 400:

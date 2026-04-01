@@ -17,14 +17,12 @@ export const fectchAllShifts = async () : Promise<Shift[]> => {
     try {
         const apiClient = new ApiClient();
 
-        const location = await getCurrentLocation();
-
         const shiftData= await  apiClient.get(
-            `/api/shifts/${location?.id}`,
+            `/api/v1/shifts/templates`,
         );
 
         console.log("All shifts", shiftData);
-       
+
         return parseStringify(shiftData);
 
     }
@@ -42,28 +40,13 @@ export const searchShift = async (
 
     try {
         const apiClient = new ApiClient();
-        const query ={
-            filters: [
-                {
-                    key:"name",
-                    operator:"LIKE",
-                    field_type:"STRING",
-                    value:q
-                }
-            ],
-            sorts:[
-                {
-                    key:"name",
-                    direction:"ASC"
-                }
-            ],
-            page:page ? page - 1:0,
-            size:pageLimit ? pageLimit : 10
-        }
-        const location = await getCurrentLocation();
-        const shiftData = await  apiClient.post(
-            `/api/shifts/${location?.id}`,
-            query
+        const params = new URLSearchParams();
+        if (q) params.set("search", q);
+        params.set("page", String(page ? page - 1 : 0));
+        params.set("size", String(pageLimit ? pageLimit : 10));
+
+        const shiftData = await  apiClient.get(
+            `/api/v1/shifts/templates?${params.toString()}`,
         );
         return parseStringify(shiftData);
     }
@@ -105,10 +88,10 @@ export const  createShift= async (
 
     try {
         const apiClient = new ApiClient();
-      
+
 
         await apiClient.post(
-            `/api/shifts/${location?.id}/create`,
+            `/api/v1/shifts/templates`,
             payload
         );
         formResponse = {
@@ -125,33 +108,19 @@ export const  createShift= async (
             error: error instanceof Error ? error : new Error(String(error)),
         };
     }
-  
+
     revalidatePath("/shifts");
     return parseStringify(formResponse)
-    
+
 }
 
 export const getShift= async (id:UUID) : Promise<ApiResponse<Shift>> => {
     const apiClient = new ApiClient();
-    const query ={
-        filters:[
-            {
-                key: "id",
-                operator: "EQUAL",
-                field_type: "UUID_STRING",
-                value: id,
-            }
-        ],
-        sorts: [],
-        page: 0,
-        size: 1,
-    }
-    const location = await getCurrentLocation();
-    const shift= await apiClient.post(
-        `/api/shifts/${location?.id}`,
-        query,
+
+    const shift= await apiClient.get(
+        `/api/v1/shifts/templates/${id}`,
     );
-    
+
     return parseStringify(shift)
 }
 
@@ -186,7 +155,7 @@ export const updateShift = async (
         const apiClient = new ApiClient();
 
         await apiClient.put(
-            `/api/shifts/${location?.id}/${id}`, 
+            `/api/v1/shifts/templates/${id}`,
             payload
         );
         formResponse = {
@@ -195,7 +164,7 @@ export const updateShift = async (
         };
 
     } catch (error) {
-        console.error("Error while updating shift", error); 
+        console.error("Error while updating shift", error);
         formResponse = {
             responseType: "error",
             message:
@@ -206,7 +175,7 @@ export const updateShift = async (
 
     revalidatePath("/shifts");
     return parseStringify(formResponse);
-   
+
 };
 
 export const deleteShift = async (id: UUID): Promise<void> => {
@@ -217,13 +186,11 @@ export const deleteShift = async (id: UUID): Promise<void> => {
    try{
     const apiClient = new ApiClient();
 
-    const location = await getCurrentLocation();
-   
     await apiClient.delete(
-        `/api/shifts/${location?.id}/${id}`,
+        `/api/v1/shifts/templates/${id}`,
     );
     revalidatePath("/shifts");
-    
+
    }
    catch (error){
        throw error

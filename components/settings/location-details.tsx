@@ -1,17 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import React, { useCallback, useState, useEffect, useTransition } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { FieldErrors, useForm } from "react-hook-form";
 import * as z from "zod";
 import { Location } from "@/types/location/type";
-import {
-  LocationSettings,
-  SETTINGS_CONFIG,
-  SettingField,
-} from "@/types/settings/type";
+import { LocationSettings, OperatingHour } from "@/types/settings/type";
 import { LocationSchema } from "@/types/location/schema";
-import { LocationSettingsSchema } from "@/types/settings/schema";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Form,
@@ -25,7 +20,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -33,24 +27,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import Loading from "@/components/ui/loading";
 import {
   Copy,
   Check,
   Building2,
-  Clock,
   Mail,
   MapPin,
   Loader2Icon,
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { businessTimes } from "@/types/constants";
-import { BusinessTimeType, FormResponse } from "@/types/types";
+import { BusinessTimeType } from "@/types/types";
 import { updateLocation } from "@/lib/actions/location-actions";
 import { updateLocationSettings } from "@/lib/actions/settings-actions";
 import { toast } from "@/hooks/use-toast";
-import CountrySelector from "@/components/widgets/country-selector";
 import {
   Dialog,
   DialogContent,
@@ -59,21 +52,268 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  APIProvider,
+  Map,
+  AdvancedMarker,
+  useMap,
+  useMapsLibrary,
+} from "@vis.gl/react-google-maps";
 
-const GENERAL_SETTINGS_CATEGORIES = ["basic"];
+const GOOGLE_MAPS_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 
-const CombinedLocationSchema = LocationSchema.extend(
-  LocationSettingsSchema.pick({
-    currencyCode: true,
-    minimumSettlementAmount: true,
-    systemPasscode: true,
-    reportsPasscode: true,
-    usePasscode: true,
-    isDefault: true,
-  }).shape,
-);
+const DAYS_OF_WEEK = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+] as const;
 
-type CombinedFormValues = z.infer<typeof CombinedLocationSchema>;
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: "Monday",
+  TUESDAY: "Tuesday",
+  WEDNESDAY: "Wednesday",
+  THURSDAY: "Thursday",
+  FRIDAY: "Friday",
+  SATURDAY: "Saturday",
+  SUNDAY: "Sunday",
+};
+
+const DEFAULT_HOURS: OperatingHour[] = DAYS_OF_WEEK.map((day) => ({
+  dayOfWeek: day,
+  openTime: "08:00",
+  closeTime: "22:00",
+  closed: false,
+}));
+
+// Default center: Dar es Salaam
+const DEFAULT_CENTER = { lat: -6.7924, lng: 39.2083 };
+
+// --- Map Picker Component ---
+const LocationMapPicker = ({
+  latitude,
+  longitude,
+  onLocationChange,
+  disabled,
+}: {
+  latitude: number | null;
+  longitude: number | null;
+  onLocationChange: (lat: number, lng: number) => void;
+  disabled: boolean;
+}) => {
+  const position =
+    latitude != null && longitude != null
+      ? { lat: latitude, lng: longitude }
+      : DEFAULT_CENTER;
+
+  const handleMapClick = useCallback(
+    (e: { detail: { latLng: { lat: number; lng: number } | null } }) => {
+      if (disabled || !e.detail.latLng) return;
+      onLocationChange(e.detail.latLng.lat, e.detail.latLng.lng);
+    },
+    [disabled, onLocationChange],
+  );
+
+  return (
+    <div className="rounded-lg overflow-hidden border h-[300px]">
+      <Map
+        defaultZoom={latitude != null ? 15 : 12}
+        defaultCenter={position}
+        gestureHandling="greedy"
+        disableDefaultUI={false}
+        mapId="location-picker"
+        onClick={handleMapClick}
+        className="w-full h-full"
+      >
+        {latitude != null && longitude != null && (
+          <AdvancedMarker position={{ lat: latitude, lng: longitude }} />
+        )}
+      </Map>
+    </div>
+  );
+};
+
+// --- Parsed location data from Google ---
+interface ParsedLocation {
+  lat: number;
+  lng: number;
+  address?: string;
+  street?: string;
+  city?: string;
+  region?: string;
+  timezone?: string;
+}
+
+function extractAddressComponents(
+  components: google.maps.GeocoderAddressComponent[],
+): { address: string; street: string; city: string; region: string } {
+  let streetNumber = "";
+  let route = "";
+  let city = "";
+  let region = "";
+  let sublocality = "";
+
+  for (const c of components) {
+    const types = c.types;
+    if (types.includes("street_number")) streetNumber = c.long_name;
+    else if (types.includes("route")) route = c.long_name;
+    else if (types.includes("locality")) city = c.long_name;
+    else if (types.includes("sublocality") || types.includes("sublocality_level_1"))
+      sublocality = c.long_name;
+    else if (types.includes("administrative_area_level_1"))
+      region = c.long_name;
+  }
+
+  const street = [streetNumber, route].filter(Boolean).join(" ");
+  const address = street || sublocality || city;
+
+  return { address, street, city: city || sublocality, region };
+}
+
+// --- Reverse geocode a map click to get address fields ---
+function useReverseGeocode() {
+  const geocoding = useMapsLibrary("geocoding");
+
+  const reverseGeocode = useCallback(
+    async (lat: number, lng: number): Promise<Partial<ParsedLocation>> => {
+      if (!geocoding) return { lat, lng };
+      const geocoder = new geocoding.Geocoder();
+      try {
+        const resp = await geocoder.geocode({ location: { lat, lng } });
+        if (resp.results?.[0]) {
+          const result = resp.results[0];
+          const parts = extractAddressComponents(result.address_components);
+          return {
+            lat,
+            lng,
+            address: result.formatted_address ?? parts.address,
+            street: parts.street,
+            city: parts.city,
+            region: parts.region,
+          };
+        }
+      } catch {
+        // geocode failed, return just coordinates
+      }
+      return { lat, lng };
+    },
+    [geocoding],
+  );
+
+  return reverseGeocode;
+}
+
+// --- Search Box Component ---
+const PlaceSearch = ({
+  onPlaceSelect,
+  disabled,
+}: {
+  onPlaceSelect: (data: ParsedLocation) => void;
+  disabled: boolean;
+}) => {
+  const map = useMap();
+  const places = useMapsLibrary("places");
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!places || !inputRef.current) return;
+    const ac = new places.Autocomplete(inputRef.current, {
+      fields: ["geometry", "formatted_address", "address_components", "utc_offset_minutes"],
+    });
+    ac.addListener("place_changed", () => {
+      const place = ac.getPlace();
+      if (place.geometry?.location) {
+        const lat = place.geometry.location.lat();
+        const lng = place.geometry.location.lng();
+        const parts = place.address_components
+          ? extractAddressComponents(place.address_components)
+          : { address: "", street: "", city: "", region: "" };
+
+        // Try to derive IANA timezone from utc_offset if available
+        let timezone: string | undefined;
+        if (place.utc_offset_minutes != null) {
+          const hours = place.utc_offset_minutes / 60;
+          // Common East Africa offset
+          if (hours === 3) timezone = "Africa/Dar_es_Salaam";
+          else if (hours === 2) timezone = "Africa/Johannesburg";
+          else if (hours === 1) timezone = "Africa/Lagos";
+          else if (hours === 0) timezone = "Africa/Accra";
+        }
+
+        onPlaceSelect({
+          lat,
+          lng,
+          address: place.formatted_address ?? parts.address,
+          street: parts.street,
+          city: parts.city,
+          region: parts.region,
+          timezone,
+        });
+        map?.panTo({ lat, lng });
+        map?.setZoom(15);
+      }
+    });
+    return () => {
+      google.maps.event.clearInstanceListeners(ac);
+    };
+  }, [places, map, onPlaceSelect]);
+
+  return (
+    <Input
+      ref={inputRef}
+      value={inputValue}
+      onChange={(e) => setInputValue(e.target.value)}
+      placeholder="Search for a place..."
+      disabled={disabled}
+    />
+  );
+};
+
+// --- Combined map section (must be inside APIProvider) ---
+const LocationMapSection = ({
+  latitude,
+  longitude,
+  onLocationResolved,
+  disabled,
+}: {
+  latitude: number | null;
+  longitude: number | null;
+  onLocationResolved: (data: Partial<ParsedLocation>) => void;
+  disabled: boolean;
+}) => {
+  const reverseGeocode = useReverseGeocode();
+
+  const handleMapClick = useCallback(
+    async (lat: number, lng: number) => {
+      const data = await reverseGeocode(lat, lng);
+      onLocationResolved(data);
+    },
+    [reverseGeocode, onLocationResolved],
+  );
+
+  return (
+    <div className="space-y-3">
+      <PlaceSearch onPlaceSelect={onLocationResolved} disabled={disabled} />
+      <LocationMapPicker
+        latitude={latitude}
+        longitude={longitude}
+        onLocationChange={handleMapClick}
+        disabled={disabled}
+      />
+      {latitude != null && longitude != null && (
+        <p className="text-xs text-muted-foreground">
+          Coordinates: {latitude.toFixed(6)}, {longitude.toFixed(6)}
+        </p>
+      )}
+    </div>
+  );
+};
+
+type LocationFormValues = z.infer<typeof LocationSchema>;
 
 const LocationDetailsSettings = ({
   location,
@@ -87,6 +327,27 @@ const LocationDetailsSettings = ({
   const [copied, setCopied] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [showStatusDialog, setShowStatusDialog] = useState(false);
+  const [operatingHours, setOperatingHours] =
+    useState<OperatingHour[]>(DEFAULT_HOURS);
+
+  useEffect(() => {
+    if (locationSettings?.operatingHours?.length) {
+      const merged = DAYS_OF_WEEK.map((day) => {
+        const existing = locationSettings.operatingHours.find(
+          (h) => h.dayOfWeek === day,
+        );
+        return (
+          existing ?? {
+            dayOfWeek: day,
+            openTime: "08:00",
+            closeTime: "22:00",
+            closed: false,
+          }
+        );
+      });
+      setOperatingHours(merged);
+    }
+  }, [locationSettings]);
 
   const handleCopy = () => {
     if (!location?.identifier) return;
@@ -95,13 +356,8 @@ const LocationDetailsSettings = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const formatTimeForSelect = (timeString: string | null | undefined) => {
-    if (!timeString) return undefined;
-    return timeString.substring(0, 5);
-  };
-
-  const form = useForm<CombinedFormValues>({
-    resolver: zodResolver(CombinedLocationSchema),
+  const form = useForm<LocationFormValues>({
+    resolver: zodResolver(LocationSchema),
     defaultValues: {
       name: location?.name ?? "",
       phone: location?.phoneNumber ?? "",
@@ -111,22 +367,16 @@ const LocationDetailsSettings = ({
       city: location?.region ?? "",
       region: location?.region ?? "",
       street: location?.address ?? "",
-      openingTime: undefined,
-      closingTime: undefined,
+      latitude: location?.latitude ?? null,
+      longitude: location?.longitude ?? null,
+      timezone: location?.timezone ?? "Africa/Dar_es_Salaam",
       status: location ? location.active : true,
       image: undefined,
-      // Settings defaults
-      currencyCode: locationSettings?.currencyCode ?? "TZS",
-      minimumSettlementAmount: locationSettings?.minimumSettlementAmount ?? 0,
-      systemPasscode: locationSettings?.systemPasscode ?? "0000",
-      reportsPasscode: locationSettings?.reportsPasscode ?? "0000",
-      usePasscode: locationSettings?.usePasscode ?? false,
-      isDefault: locationSettings?.isDefault ?? false,
     },
   });
 
   useEffect(() => {
-    if (location && locationSettings) {
+    if (location) {
       form.reset({
         name: location.name ?? "",
         phone: location.phoneNumber ?? "",
@@ -136,19 +386,26 @@ const LocationDetailsSettings = ({
         city: location.region ?? "",
         region: location.region ?? "",
         street: location.address ?? "",
-        openingTime: undefined,
-        closingTime: undefined,
+        latitude: location.latitude ?? null,
+        longitude: location.longitude ?? null,
+        timezone: location.timezone ?? "Africa/Dar_es_Salaam",
         status: location.active,
         image: undefined,
-        currencyCode: locationSettings.currencyCode ?? "TZS",
-        minimumSettlementAmount: locationSettings.minimumSettlementAmount ?? 0,
-        systemPasscode: locationSettings.systemPasscode ?? "0000",
-        reportsPasscode: locationSettings.reportsPasscode ?? "0000",
-        usePasscode: locationSettings.usePasscode ?? false,
-        isDefault: locationSettings.isDefault ?? false,
       });
     }
-  }, [location, locationSettings, form]);
+  }, [location, form]);
+
+  const updateDayHour = (
+    dayOfWeek: string,
+    field: keyof OperatingHour,
+    value: string | boolean | null,
+  ) => {
+    setOperatingHours((prev) =>
+      prev.map((h) =>
+        h.dayOfWeek === dayOfWeek ? { ...h, [field]: value } : h,
+      ),
+    );
+  };
 
   const onInvalid = useCallback((errors: FieldErrors) => {
     console.error("Form validation errors:", errors);
@@ -162,10 +419,9 @@ const LocationDetailsSettings = ({
     });
   }, []);
 
-  const submitData = (values: CombinedFormValues) => {
+  const submitData = (values: LocationFormValues) => {
     startTransition(async () => {
       try {
-        // Split values for the two APIs
         const locationData = {
           name: values.name,
           phone: values.phone,
@@ -175,32 +431,30 @@ const LocationDetailsSettings = ({
           city: values.city,
           region: values.region,
           street: values.street,
-          openingTime: values.openingTime,
-          closingTime: values.closingTime,
+          latitude: values.latitude,
+          longitude: values.longitude,
+          timezone: values.timezone,
           status: values.status,
           subscription: values.subscription,
         };
 
-        const settingsData = {
-          currencyCode: values.currencyCode,
-          minimumSettlementAmount: values.minimumSettlementAmount,
-          systemPasscode: values.systemPasscode,
-          reportsPasscode: values.reportsPasscode,
-          usePasscode: values.usePasscode,
-          isDefault: values.isDefault,
-        };
+        const promises: Promise<any>[] = [];
 
-        // Call both APIs
-        const results = await Promise.all([
-          location
-            ? updateLocation(location.id, locationData as any)
-            : Promise.resolve(null),
-          locationSettings
-            ? updateLocationSettings(locationSettings.id, settingsData as any)
-            : Promise.resolve(null),
-        ]);
+        if (location) {
+          promises.push(updateLocation(location.id, locationData as any));
+        }
 
-        const locationResult = results[0] as FormResponse | null;
+        if (locationSettings) {
+          promises.push(
+            updateLocationSettings(locationSettings.id, {
+              operatingHours,
+            } as any),
+          );
+        }
+
+        const results = await Promise.all(promises);
+
+        const locationResult = results[0];
         if (locationResult?.responseType === "error") {
           toast({
             variant: "destructive",
@@ -211,9 +465,9 @@ const LocationDetailsSettings = ({
         }
 
         toast({
-          title: "Settings Updated",
+          title: "Location Updated",
           description:
-            "Location details and settings have been updated successfully.",
+            "Location details and operating hours have been updated successfully.",
         });
       } catch (error) {
         console.error("Update failed:", error);
@@ -229,147 +483,21 @@ const LocationDetailsSettings = ({
     });
   };
 
-  const generalSettings = SETTINGS_CONFIG.filter((s) =>
-    GENERAL_SETTINGS_CATEGORIES.includes(s.category),
-  );
-
-  const renderSettingField = (field: SettingField) => {
-    const { key, type, placeholder, helperText, inputType, min, max, step } =
-      field;
-
-    // Check dependencies
-    const currentValues = form.watch();
-    if (field.dependencies?.length) {
-      const allMet = field.dependencies.every(
-        (dep) => currentValues[dep as keyof typeof currentValues],
-      );
-      if (!allMet) return null;
-    }
-
-    switch (type) {
-      case "switch":
-        return (
-          <FormField
-            key={key as any}
-            control={form.control}
-            name={key as any}
-            render={({ field: formField }) => (
-              <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                <div className="space-y-0.5">
-                  <FormLabel className="text-sm font-medium cursor-pointer">
-                    {field.label}
-                  </FormLabel>
-                  {helperText && (
-                    <FormDescription className="text-xs">
-                      {helperText}
-                    </FormDescription>
-                  )}
-                </div>
-                <FormControl>
-                  <Switch
-                    checked={formField.value}
-                    onCheckedChange={formField.onChange}
-                    disabled={isPending || field.disabled}
-                    className="bg-green-500"
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-        );
-
-      case "country-select":
-        return (
-          <FormField
-            key={key as any}
-            control={form.control}
-            name={key as any}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <FormControl>
-                  <CountrySelector
-                    value={formField.value ?? ""}
-                    onChange={formField.onChange}
-                    isDisabled={isPending || field.disabled}
-                    placeholder={placeholder}
-                    valueKey="currencyCode"
-                  />
-                </FormControl>
-                {helperText && <FormDescription>{helperText}</FormDescription>}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
-
-      case "input":
-      case "text":
-      case "password":
-      case "number":
-        return (
-          <FormField
-            key={key as any}
-            control={form.control}
-            name={key as any}
-            render={({ field: formField }) => (
-              <FormItem>
-                <FormLabel>{field.label}</FormLabel>
-                <FormControl>
-                  <Input
-                    {...formField}
-                    type={
-                      inputType ||
-                      (type === "password"
-                        ? "password"
-                        : type === "number"
-                          ? "number"
-                          : "text")
-                    }
-                    placeholder={placeholder}
-                    disabled={isPending || field.disabled}
-                    value={formField.value ?? ""}
-                    min={min}
-                    max={max}
-                    step={step}
-                    onChange={(e) => {
-                      if (type === "number") {
-                        const value =
-                          e.target.value === ""
-                            ? 0
-                            : parseFloat(e.target.value);
-                        formField.onChange(isNaN(value) ? 0 : value);
-                      } else {
-                        formField.onChange(e.target.value);
-                      }
-                    }}
-                  />
-                </FormControl>
-                {helperText && <FormDescription>{helperText}</FormDescription>}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  // Group settings by category
-  const settingsByCategory = generalSettings.reduce(
-    (acc, setting) => {
-      if (!acc[setting.category]) acc[setting.category] = [];
-      acc[setting.category].push(setting);
-      return acc;
+  const applyParsedLocation = useCallback(
+    (data: Partial<ParsedLocation>) => {
+      if (data.lat != null) form.setValue("latitude", data.lat, { shouldDirty: true });
+      if (data.lng != null) form.setValue("longitude", data.lng, { shouldDirty: true });
+      if (data.address) form.setValue("address", data.address, { shouldDirty: true });
+      if (data.street) form.setValue("street", data.street, { shouldDirty: true });
+      if (data.city) form.setValue("city", data.city, { shouldDirty: true });
+      if (data.region) form.setValue("region", data.region, { shouldDirty: true });
+      if (data.timezone) form.setValue("timezone", data.timezone, { shouldDirty: true });
     },
-    {} as Record<string, SettingField[]>,
+    [form],
   );
 
-  const CATEGORY_TITLES: Record<string, string> = {
-    basic: "General Settings",
-  };
+  const watchLat = form.watch("latitude");
+  const watchLng = form.watch("longitude");
 
   if (isLoading) {
     return (
@@ -398,11 +526,11 @@ const LocationDetailsSettings = ({
           Location Details
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Manage your location information, address, and general settings
+          Manage your location information, address, and operating hours
         </p>
         {location?.identifier && (
           <div className="flex items-center gap-2 mt-2">
-            <span className="text-xs text-muted-foreground">Account No:</span>
+            <span className="text-xs text-muted-foreground">Location ID:</span>
             <code className="text-xs bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded font-mono">
               {location.identifier}
             </code>
@@ -425,285 +553,314 @@ const LocationDetailsSettings = ({
           onSubmit={form.handleSubmit(submitData, onInvalid)}
           className="space-y-6"
         >
+          {/* Basic Information */}
           <Card>
-            <CardContent className="pt-6 space-y-6">
-              {/* Basic Information */}
-              <div className="space-y-4">
+            <CardContent className="pt-6 space-y-4">
+              <div>
                 <h3 className="text-lg font-medium">Basic Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location Name</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Enter location name"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <PhoneInput
+                <p className="text-xs text-muted-foreground mt-0.5">Name, contact details, and timezone</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Location Name</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Building2 className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
                             {...field}
                             disabled={isPending}
-                            onChange={(value) => field.onChange(value)}
-                            placeholder="Enter phone number"
+                            placeholder="Enter location name"
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Email</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              value={field.value || ""}
-                              disabled={isPending}
-                              type="email"
-                              placeholder="Enter email"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <PhoneInput
+                          {...field}
+                          disabled={isPending}
+                          onChange={(value) => field.onChange(value)}
+                          placeholder="Enter phone number"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location Address</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Enter address"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Business Hours */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Business Hours</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="openingTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Opening Time</FormLabel>
-                        <FormControl>
-                          <Select
-                            disabled={isPending}
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <SelectTrigger className="pl-10">
-                              <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                              <SelectValue placeholder="Select opening time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {businessTimes.map(
-                                (item: BusinessTimeType, index: number) => (
-                                  <SelectItem key={index} value={item.name}>
-                                    {item.label}
-                                  </SelectItem>
-                                ),
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormDescription>
-                          When do you open your business location?
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="closingTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Closing Time</FormLabel>
-                        <FormControl>
-                          <Select
-                            disabled={isPending}
-                            onValueChange={field.onChange}
-                            value={field.value}
-                          >
-                            <SelectTrigger className="pl-10">
-                              <Clock className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                              <SelectValue placeholder="Select closing time" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {businessTimes.map(
-                                (item: BusinessTimeType, index: number) => (
-                                  <SelectItem key={index} value={item.name}>
-                                    {item.label}
-                                  </SelectItem>
-                                ),
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormDescription>
-                          When do you close your business location?
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Address Details */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Address Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>City / Region</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              disabled={isPending}
-                              placeholder="Which city do you operate?"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="street"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Street</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                            <Input
-                              className="pl-10"
-                              {...field}
-                              value={field.value || ""}
-                              disabled={isPending}
-                              placeholder="Enter street"
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
                             {...field}
-                            disabled={isPending}
                             value={field.value || ""}
-                            placeholder="Describe your business location"
-                            className="min-h-[100px]"
+                            disabled={isPending}
+                            type="email"
+                            placeholder="Enter email"
                           />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <Separator />
-
-              {/* General Settings from SETTINGS_CONFIG */}
-              {Object.entries(settingsByCategory).map(
-                ([category, settings]) => (
-                  <React.Fragment key={category}>
-                    <div className="space-y-4">
-                      <h3 className="text-lg font-medium">
-                        {CATEGORY_TITLES[category] || category}
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {settings.map((field) => renderSettingField(field))}
-                      </div>
-                    </div>
-                  </React.Fragment>
-                ),
-              )}
-
-              {/* Submit */}
-              <div className="flex justify-end pt-6">
-                {isPending ? (
-                  <Button disabled className="w-full md:w-auto">
-                    <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-                    Updating...
-                  </Button>
-                ) : (
-                  <Button type="submit" className="w-full md:w-auto">
-                    Update Location
-                  </Button>
-                )}
+                <FormField
+                  control={form.control}
+                  name="timezone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Timezone</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          disabled={isPending}
+                          placeholder="Africa/Dar_es_Salaam"
+                        />
+                      </FormControl>
+                      <FormDescription>IANA timezone identifier</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
+
+          <Separator />
+
+          {/* Address & Location */}
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-medium">Address & Location</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Physical address and map coordinates</p>
+              </div>
+
+              {/* Map Picker */}
+              {GOOGLE_MAPS_API_KEY ? (
+                <APIProvider apiKey={GOOGLE_MAPS_API_KEY}>
+                  <LocationMapSection
+                    latitude={watchLat ?? null}
+                    longitude={watchLng ?? null}
+                    onLocationResolved={applyParsedLocation}
+                    disabled={isPending}
+                  />
+                </APIProvider>
+              ) : (
+                <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
+                  <MapPin className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                  <p>Map picker unavailable. Set <code className="text-xs bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded">NEXT_PUBLIC_GOOGLE_MAPS_API_KEY</code> to enable.</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                          <Input
+                            className="pl-10"
+                            {...field}
+                            disabled={isPending}
+                            placeholder="Enter address"
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>City / Region</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          disabled={isPending}
+                          placeholder="Which city do you operate?"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="street"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Street</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          value={field.value || ""}
+                          disabled={isPending}
+                          placeholder="Enter street"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          {...field}
+                          disabled={isPending}
+                          value={field.value || ""}
+                          placeholder="Describe your business location"
+                          className="min-h-[100px]"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator />
+
+          {/* Operating Hours */}
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <div>
+                <h3 className="text-lg font-medium">Operating Hours</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Set opening and closing times for each day of the week. Toggle
+                  off days when the location is closed.
+                </p>
+              </div>
+              <div className="space-y-3">
+                {operatingHours.map((hour) => (
+                  <div
+                    key={hour.dayOfWeek}
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border p-3"
+                  >
+                    <div className="flex items-center justify-between sm:w-40 flex-shrink-0">
+                      <span className="text-sm font-medium">
+                        {DAY_LABELS[hour.dayOfWeek]}
+                      </span>
+                      <Switch
+                        checked={!hour.closed}
+                        onCheckedChange={(open) =>
+                          updateDayHour(hour.dayOfWeek, "closed", !open)
+                        }
+                        disabled={isPending}
+                        className="bg-green-500"
+                      />
+                    </div>
+
+                    {!hour.closed ? (
+                      <div className="flex items-center gap-2 flex-1">
+                        <Select
+                          value={hour.openTime ?? "08:00"}
+                          onValueChange={(v) =>
+                            updateDayHour(hour.dayOfWeek, "openTime", v)
+                          }
+                          disabled={isPending}
+                        >
+                          <SelectTrigger className="w-full sm:w-32">
+                            <SelectValue placeholder="Open" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {businessTimes.map(
+                              (t: BusinessTimeType, i: number) => (
+                                <SelectItem key={i} value={t.name}>
+                                  {t.label}
+                                </SelectItem>
+                              ),
+                            )}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-xs text-muted-foreground">
+                          to
+                        </span>
+                        <Select
+                          value={hour.closeTime ?? "22:00"}
+                          onValueChange={(v) =>
+                            updateDayHour(hour.dayOfWeek, "closeTime", v)
+                          }
+                          disabled={isPending}
+                        >
+                          <SelectTrigger className="w-full sm:w-32">
+                            <SelectValue placeholder="Close" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {businessTimes.map(
+                              (t: BusinessTimeType, i: number) => (
+                                <SelectItem key={i} value={t.name}>
+                                  {t.label}
+                                </SelectItem>
+                              ),
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground italic">
+                        Closed
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Submit */}
+          <div className="flex justify-end">
+            {isPending ? (
+              <Button disabled className="w-full md:w-auto">
+                <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+                Updating...
+              </Button>
+            ) : (
+              <Button type="submit" className="w-full md:w-auto">
+                Update Location
+              </Button>
+            )}
+          </div>
 
           {/* Location Status Card */}
           {location && (

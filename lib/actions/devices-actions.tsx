@@ -79,16 +79,15 @@ export const regenerateDeviceCode = async (
 
 /**
  * List all devices for the current location (non-paginated).
- * GET /api/location-devices/{locationId}
+ * GET /api/v1/devices
  */
 export const listAllDevices = async (): Promise<Device[]> => {
   await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     const response = await apiClient.get<Device[]>(
-      `/api/location-devices/${location?.id}`,
+      `/api/v1/devices`,
     );
     return parseStringify(response);
   } catch (error) {
@@ -98,7 +97,7 @@ export const listAllDevices = async (): Promise<Device[]> => {
 
 /**
  * Search devices with pagination and filters.
- * POST /api/location-devices/{locationId}
+ * GET /api/v1/devices?search=X&page=0&size=10
  */
 export const searchDevices = async (
   q: string,
@@ -110,27 +109,13 @@ export const searchDevices = async (
   try {
     const apiClient = new ApiClient();
 
-    const query = {
-      filters: q
-        ? [
-            {
-              key: "customName",
-              operator: "LIKE",
-              field_type: "STRING",
-              value: q,
-            },
-          ]
-        : [],
-      sorts: [],
-      page: page > 0 ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
+    const params = new URLSearchParams();
+    if (q) params.set("search", q);
+    params.set("page", String(page > 0 ? page - 1 : 0));
+    params.set("size", String(pageLimit ? pageLimit : 10));
 
-    const location = await getCurrentLocation();
-
-    const deviceResponse = await apiClient.post(
-      `/api/location-devices/${location?.id}`,
-      query,
+    const deviceResponse = await apiClient.get(
+      `/api/v1/devices?${params.toString()}`,
     );
     return parseStringify(deviceResponse);
   } catch (error) {
@@ -140,16 +125,15 @@ export const searchDevices = async (
 
 /**
  * Get a single device by ID.
- * GET /api/location-devices/{locationId}/{deviceId}
+ * GET /api/v1/devices/{id}
  */
 export const getDevice = async (id: UUID): Promise<Device> => {
   await getAuthenticatedUser();
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     const response = await apiClient.get<Device>(
-      `/api/location-devices/${location?.id}/${id}`,
+      `/api/v1/devices/${id}`,
     );
     return parseStringify(response);
   } catch (error) {
@@ -159,7 +143,7 @@ export const getDevice = async (id: UUID): Promise<Device> => {
 
 /**
  * Update a device's details (custom name, department, etc.).
- * PUT /api/location-devices/{locationId}/{deviceId}
+ * PATCH /api/v1/devices/{id}
  */
 export const updateDevice = async (
   id: UUID,
@@ -169,11 +153,10 @@ export const updateDevice = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
 
-    await apiClient.put(
-      `/api/location-devices/${location?.id}/${id}`,
-      { ...data, location: location?.id },
+    await apiClient.patch(
+      `/api/v1/devices/${id}`,
+      data,
     );
 
     revalidatePath("/settings");
@@ -186,7 +169,7 @@ export const updateDevice = async (
 
 /**
  * Remotely logout a device.
- * POST /api/location-devices/{locationId}/{deviceId}
+ * POST /api/v1/devices/{id}/logout
  */
 export const logoutDevice = async (
   id: string,
@@ -195,9 +178,8 @@ export const logoutDevice = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     await apiClient.post(
-      `/api/location-devices/${location?.id}/${id}`,
+      `/api/v1/devices/${id}/logout`,
       {},
     );
 
@@ -212,12 +194,8 @@ export const logoutDevice = async (
 /**
  * Suspend or unsuspend a device's data access.
  * When suspended, reports and sales data are hidden from the device.
- * PUT /api/location-devices/{locationId}/{deviceId}
- */
-/**
- * Suspend or unsuspend a device's data access.
- * PUT /api/location-devices/{locationId}/{deviceId}/suspend
- * PUT /api/location-devices/{locationId}/{deviceId}/unsuspend
+ * POST /api/v1/devices/{id}/suspend
+ * POST /api/v1/devices/{id}/unsuspend
  */
 export const suspendDevice = async (
   id: string,
@@ -227,10 +205,9 @@ export const suspendDevice = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     const action = suspended ? "suspend" : "unsuspend";
-    await apiClient.put(
-      `/api/location-devices/${location?.id}/${id}/${action}`,
+    await apiClient.post(
+      `/api/v1/devices/${id}/${action}`,
       {},
     );
 
@@ -244,7 +221,7 @@ export const suspendDevice = async (
 
 /**
  * Permanently delete a device from the location.
- * DELETE /api/location-devices/{locationId}/{deviceId}
+ * DELETE /api/v1/devices/{id}
  */
 export const deleteDevice = async (
   id: string,
@@ -253,9 +230,8 @@ export const deleteDevice = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     await apiClient.delete(
-      `/api/location-devices/${location?.id}/${id}`,
+      `/api/v1/devices/${id}`,
     );
 
     revalidatePath("/settings");
@@ -263,5 +239,101 @@ export const deleteDevice = async (
   } catch (error) {
     console.error("Failed to delete device:", error);
     return { success: false, error: "Failed to delete device" };
+  }
+};
+
+/**
+ * Deactivate a device.
+ * POST /api/v1/devices/{id}/deactivate
+ */
+export const deactivateDevice = async (
+  id: string,
+): Promise<{ success: boolean; error?: string }> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(
+      `/api/v1/devices/${id}/deactivate`,
+      {},
+    );
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to deactivate device:", error);
+    return { success: false, error: "Failed to deactivate device" };
+  }
+};
+
+/**
+ * Activate a device.
+ * POST /api/v1/devices/{id}/activate
+ */
+export const activateDevice = async (
+  id: string,
+): Promise<{ success: boolean; error?: string }> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(
+      `/api/v1/devices/${id}/activate`,
+      {},
+    );
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to activate device:", error);
+    return { success: false, error: "Failed to activate device" };
+  }
+};
+
+/**
+ * Archive a device.
+ * POST /api/v1/devices/{id}/archive
+ */
+export const archiveDevice = async (
+  id: string,
+): Promise<{ success: boolean; error?: string }> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(
+      `/api/v1/devices/${id}/archive`,
+      {},
+    );
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to archive device:", error);
+    return { success: false, error: "Failed to archive device" };
+  }
+};
+
+/**
+ * Retire a device.
+ * POST /api/v1/devices/{id}/retire
+ */
+export const retireDevice = async (
+  id: string,
+): Promise<{ success: boolean; error?: string }> => {
+  await getAuthenticatedUser();
+
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(
+      `/api/v1/devices/${id}/retire`,
+      {},
+    );
+
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to retire device:", error);
+    return { success: false, error: "Failed to retire device" };
   }
 };

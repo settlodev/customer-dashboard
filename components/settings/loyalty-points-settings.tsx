@@ -31,7 +31,6 @@ import { toast } from "@/hooks/use-toast";
 import { LocationSettings } from "@/types/settings/type";
 import { LocationSettingsSchema } from "@/types/settings/schema";
 import { updateLocationSettings } from "@/lib/actions/settings-actions";
-import { FormResponse } from "@/types/types";
 
 const LoyaltyPointsSettings = ({
   locationSettings,
@@ -39,7 +38,6 @@ const LoyaltyPointsSettings = ({
   locationSettings: LocationSettings | null | undefined;
 }) => {
   const [isPending, startTransition] = useTransition();
-  const [, setResponse] = useState<FormResponse | undefined>();
 
   const form = useForm<z.infer<typeof LocationSettingsSchema>>({
     resolver: zodResolver(LocationSettingsSchema),
@@ -48,11 +46,11 @@ const LoyaltyPointsSettings = ({
 
   useEffect(() => {
     if (locationSettings) {
-      form.reset(locationSettings);
+      form.reset(locationSettings as any);
     }
   }, [locationSettings, form]);
 
-  const customerEnabled = form.watch("enableCustomerLoyaltyPoints");
+  const loyaltyEnabled = form.watch("enableLoyaltyProgram");
   const customerAwardType = form.watch("customerLoyaltyAwardType");
   const staffEnabled = form.watch("enableStaffPoints");
   const staffAwardType = form.watch("staffPointsAwardType");
@@ -67,21 +65,15 @@ const LoyaltyPointsSettings = ({
   }, []);
 
   const submitData = (values: z.infer<typeof LocationSettingsSchema>) => {
-    setResponse(undefined);
-    startTransition(() => {
+    startTransition(async () => {
       if (locationSettings) {
-        updateLocationSettings(locationSettings.id, values as any).then(
-          (data) => {
-            if (data) {
-              setResponse(data);
-              toast({
-                title: "Settings Updated",
-                description:
-                  "Loyalty points settings have been updated successfully.",
-              });
-            }
-          },
-        );
+        const data = await updateLocationSettings(locationSettings.id, values as any);
+        if (data) {
+          toast({
+            title: "Settings Updated",
+            description: "Loyalty points settings have been updated successfully.",
+          });
+        }
       }
     });
   };
@@ -93,7 +85,7 @@ const LoyaltyPointsSettings = ({
           Loyalty Points
         </h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Configure loyalty points programs for customers and staff members
+          Configure loyalty points programs for customers and staff members at this location
         </p>
       </div>
 
@@ -102,22 +94,20 @@ const LoyaltyPointsSettings = ({
           onSubmit={form.handleSubmit(submitData, onInvalid)}
           className="space-y-6"
         >
-          {/* Customer Loyalty Points */}
+          {/* Enable Loyalty Program toggle */}
           <Card>
             <CardContent className="pt-6 space-y-4">
-              <h3 className="text-lg font-medium">Customer Loyalty Points</h3>
-
               <FormField
                 control={form.control}
-                name="enableCustomerLoyaltyPoints"
+                name="enableLoyaltyProgram"
                 render={({ field }) => (
                   <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
                     <div className="space-y-0.5">
                       <FormLabel className="text-sm font-medium cursor-pointer">
-                        Enable Customer Loyalty Points
+                        Enable Loyalty Program
                       </FormLabel>
                       <FormDescription className="text-xs">
-                        Enable loyalty points program for customers
+                        Turn on loyalty and staff points programs for this location
                       </FormDescription>
                     </div>
                     <FormControl>
@@ -131,176 +121,174 @@ const LoyaltyPointsSettings = ({
                   </FormItem>
                 )}
               />
+            </CardContent>
+          </Card>
 
-              {customerEnabled && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {loyaltyEnabled && (
+          <>
+          {/* Customer Loyalty Points */}
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <h3 className="text-lg font-medium">Customer Loyalty Points</h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="customerLoyaltyAwardType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Award Type</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          disabled={isPending}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select award type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PER_ORDER">
+                              Per Order (flat points per order)
+                            </SelectItem>
+                            <SelectItem value="PER_ORDER_VALUE">
+                              Per Order Value (based on amount)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        How customers earn loyalty points
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {customerAwardType === "PER_ORDER" && (
                   <FormField
                     control={form.control}
-                    name="customerLoyaltyAwardType"
+                    name="customerLoyaltyPointsPerOrder"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Award Type</FormLabel>
-                        <FormControl>
-                          <Select
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            disabled={isPending}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select award type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="PER_ORDER">
-                                Per Order (flat points per order)
-                              </SelectItem>
-                              <SelectItem value="PER_ORDER_VALUE">
-                                Per Order Value (based on amount)
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormDescription>
-                          How customers earn loyalty points
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {customerAwardType === "PER_ORDER" && (
-                    <FormField
-                      control={form.control}
-                      name="customerLoyaltyPointsPerOrder"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Points Per Order</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="number"
-                              min={0}
-                              step={1}
-                              placeholder="e.g. 10"
-                              disabled={isPending}
-                              value={field.value ?? 0}
-                              onChange={(e) =>
-                                field.onChange(
-                                  e.target.value === ""
-                                    ? 0
-                                    : parseInt(e.target.value) || 0,
-                                )
-                              }
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Flat points awarded per closed order
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  {customerAwardType === "PER_ORDER_VALUE" && (
-                    <>
-                      <FormField
-                        control={form.control}
-                        name="customerLoyaltyPointsPerValue"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Points Per Value Threshold</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={0}
-                                step={1}
-                                placeholder="e.g. 1"
-                                disabled={isPending}
-                                value={field.value ?? 0}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value === ""
-                                      ? 0
-                                      : parseInt(e.target.value) || 0,
-                                  )
-                                }
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Points earned each time the value threshold is
-                              reached
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="customerLoyaltyValueThreshold"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Value Threshold</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                placeholder="e.g. 1000"
-                                disabled={isPending}
-                                value={field.value ?? 0}
-                                onChange={(e) =>
-                                  field.onChange(
-                                    e.target.value === ""
-                                      ? 0
-                                      : parseFloat(e.target.value) || 0,
-                                  )
-                                }
-                              />
-                            </FormControl>
-                            <FormDescription>
-                              Order amount needed to earn points (e.g. 1000 = 1
-                              point per 1000 spent)
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </>
-                  )}
-
-                  <FormField
-                    control={form.control}
-                    name="customerLoyaltyMinimumRedeemablePoints"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Minimum Redeemable Points</FormLabel>
+                        <FormLabel>Points Per Order</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
-                            min={0}
+                            min={1}
+                            max={10000}
                             step={1}
-                            placeholder="e.g. 50"
+                            placeholder="e.g. 10"
                             disabled={isPending}
-                            value={field.value ?? 0}
+                            value={field.value ?? 1}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value === ""
-                                  ? 0
-                                  : parseInt(e.target.value) || 0,
+                                e.target.value === "" ? 1 : parseInt(e.target.value) || 1,
                               )
                             }
                           />
                         </FormControl>
                         <FormDescription>
-                          Minimum points a customer must accumulate before
-                          redeeming
+                          Flat points awarded per closed order
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </div>
-              )}
+                )}
+
+                {customerAwardType === "PER_ORDER_VALUE" && (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="customerLoyaltyPointsPerValue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Points Per Value Threshold</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              max={10000}
+                              step={1}
+                              placeholder="e.g. 1"
+                              disabled={isPending}
+                              value={field.value ?? 1}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === "" ? 1 : parseInt(e.target.value) || 1,
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Points earned each time the value threshold is reached
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="customerLoyaltyValueThreshold"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Value Threshold</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={1}
+                              step={0.01}
+                              placeholder="e.g. 1000"
+                              disabled={isPending}
+                              value={field.value ?? 1000}
+                              onChange={(e) =>
+                                field.onChange(
+                                  e.target.value === "" ? 1 : parseFloat(e.target.value) || 1,
+                                )
+                              }
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Order amount needed to earn points (e.g. 1000 = 1 point per 1000 spent)
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+
+                <FormField
+                  control={form.control}
+                  name="customerLoyaltyMinimumRedeemablePoints"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Minimum Redeemable Points</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1}
+                          placeholder="e.g. 100"
+                          disabled={isPending}
+                          value={field.value ?? 100}
+                          onChange={(e) =>
+                            field.onChange(
+                              e.target.value === "" ? 0 : parseInt(e.target.value) || 0,
+                            )
+                          }
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Minimum points a customer must accumulate before redeeming
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -381,16 +369,15 @@ const LoyaltyPointsSettings = ({
                           <FormControl>
                             <Input
                               type="number"
-                              min={0}
+                              min={1}
+                              max={10000}
                               step={1}
                               placeholder="e.g. 5"
                               disabled={isPending}
-                              value={field.value ?? 0}
+                              value={field.value ?? 1}
                               onChange={(e) =>
                                 field.onChange(
-                                  e.target.value === ""
-                                    ? 0
-                                    : parseInt(e.target.value) || 0,
+                                  e.target.value === "" ? 1 : parseInt(e.target.value) || 1,
                                 )
                               }
                             />
@@ -415,23 +402,21 @@ const LoyaltyPointsSettings = ({
                             <FormControl>
                               <Input
                                 type="number"
-                                min={0}
+                                min={1}
+                                max={10000}
                                 step={1}
                                 placeholder="e.g. 1"
                                 disabled={isPending}
-                                value={field.value ?? 0}
+                                value={field.value ?? 1}
                                 onChange={(e) =>
                                   field.onChange(
-                                    e.target.value === ""
-                                      ? 0
-                                      : parseInt(e.target.value) || 0,
+                                    e.target.value === "" ? 1 : parseInt(e.target.value) || 1,
                                   )
                                 }
                               />
                             </FormControl>
                             <FormDescription>
-                              Points earned each time the value threshold is
-                              reached
+                              Points earned each time the value threshold is reached
                             </FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -447,16 +432,14 @@ const LoyaltyPointsSettings = ({
                             <FormControl>
                               <Input
                                 type="number"
-                                min={0}
+                                min={1}
                                 step={0.01}
                                 placeholder="e.g. 5000"
                                 disabled={isPending}
-                                value={field.value ?? 0}
+                                value={field.value ?? 1000}
                                 onChange={(e) =>
                                   field.onChange(
-                                    e.target.value === ""
-                                      ? 0
-                                      : parseFloat(e.target.value) || 0,
+                                    e.target.value === "" ? 1 : parseFloat(e.target.value) || 1,
                                   )
                                 }
                               />
@@ -484,12 +467,10 @@ const LoyaltyPointsSettings = ({
                             step={1}
                             placeholder="e.g. 100"
                             disabled={isPending}
-                            value={field.value ?? 0}
+                            value={field.value ?? 100}
                             onChange={(e) =>
                               field.onChange(
-                                e.target.value === ""
-                                  ? 0
-                                  : parseInt(e.target.value) || 0,
+                                e.target.value === "" ? 0 : parseInt(e.target.value) || 0,
                               )
                             }
                           />
@@ -541,6 +522,8 @@ const LoyaltyPointsSettings = ({
               )}
             </CardContent>
           </Card>
+          </>
+          )}
 
           {/* Submit */}
           <div className="flex justify-end pt-2">

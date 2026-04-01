@@ -3,7 +3,9 @@
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from "axios";
 import https from "https";
 import { handleSettloApiError } from "@/lib/settlo-api-error-handler";
-import { getAuthToken, updateAuthToken, deleteAuthCookie } from "@/lib/auth-utils";
+import { getAuthToken, updateAuthToken } from "@/lib/auth-utils";
+import { extractSubscriptionStatus } from "@/lib/jwt-utils";
+import { ErrorResponseType } from "@/types/types";
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
 const ACCOUNTS_SERVICE_URL = process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL || "";
@@ -44,6 +46,18 @@ class ApiClient {
         config.headers["Content-Type"] = "application/json";
       }
 
+      const clientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
+      if (clientId) {
+        config.headers["X-Client-Id"] = clientId;
+      }
+
+      // Idempotency-Key + X-Trace-Id on mutation requests (POST/PUT/PATCH)
+      const method = config.method?.toUpperCase();
+      if (method === "POST" || method === "PUT" || method === "PATCH") {
+        config.headers["Idempotency-Key"] = crypto.randomUUID();
+        config.headers["X-Trace-Id"] = crypto.randomUUID();
+      }
+
       return config;
     });
 
@@ -74,11 +88,19 @@ class ApiClient {
               throw new Error("No refresh token available");
             }
 
+            const refreshHeaders: Record<string, string> = {
+              "Content-Type": "application/json",
+            };
+            const whitelabelClientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
+            if (whitelabelClientId) {
+              refreshHeaders["X-Client-Id"] = whitelabelClientId;
+            }
+
             const refreshResponse = await axios.post(
               `${AUTH_SERVICE_URL}/auth/token-refresh`,
               { refreshToken: token.refreshToken },
               {
-                headers: { "Content-Type": "application/json" },
+                headers: refreshHeaders,
                 httpsAgent: sharedHttpsAgent,
               },
             );
@@ -92,6 +114,7 @@ class ApiClient {
                   ...token,
                   accessToken: newAccessToken,
                   refreshToken: newRefreshToken,
+                  subscriptionStatus: extractSubscriptionStatus(newAccessToken),
                 });
               } catch {
                 // Cookie update may fail outside Server Actions — safe to ignore
@@ -102,13 +125,19 @@ class ApiClient {
             }
 
             throw new Error("No access token in refresh response");
-          } catch (refreshError) {
-            console.error("[API] Token refresh failed:", refreshError);
-            try {
-              await deleteAuthCookie();
-            } catch {
-              // Cookie deletion may fail outside Server Actions — safe to ignore
-            }
+          } catch {
+            // Token refresh failed — session is dead. Reject with a
+            // structured error so callers can detect SESSION_EXPIRED.
+            this.isRefreshing = false;
+            const sessionError: ErrorResponseType = {
+              status: 401,
+              code: "SESSION_EXPIRED",
+              message: "Your session has expired. Please log in again.",
+              timestamp: new Date().toISOString(),
+              path: originalRequest?.url,
+              correlationId: crypto.randomUUID(),
+            };
+            return Promise.reject(sessionError);
           } finally {
             this.isRefreshing = false;
           }

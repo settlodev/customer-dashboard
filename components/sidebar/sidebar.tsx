@@ -17,7 +17,9 @@ import {
     X,
     CreditCard,
     AlertTriangle,
-    Warehouse
+    Warehouse,
+    Clock,
+    ShieldAlert,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -28,11 +30,11 @@ import {
 } from "@/components/ui/sheet";
 
 import VersionDisplay from "../widgets/versioning";
-import { ActiveSubscription } from "@/types/subscription/type";
-import { getActiveSubscription } from "@/lib/actions/subscriptions";
 import { UrlObject } from "url";
 import { MenuType } from "@/types/menu-item-type";
-import { getActiveSubscriptionForWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { useSubscription } from "@/context/subscriptionContext";
+import { useEntitlements } from "@/context/entitlementContext";
+import { MENU_FEATURE_MAP } from "@/config/menu-feature-map";
 
 interface SidebarProps {
     data: BusinessPropsType;
@@ -47,62 +49,92 @@ interface MenuItem {
     id?: string;
 }
 
+const SubscriptionBanner = () => {
+    const { status, isTrial, isPastDue, isExpired, isSuspended } = useSubscription();
+
+    if (!status || status === "ACTIVE") return null;
+
+    if (isSuspended) {
+        return (
+            <div className="mx-3 mt-3 p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+                <div className="flex items-center gap-2 mb-1">
+                    <ShieldAlert className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    <span className="text-sm font-medium text-red-700 dark:text-red-400">Suspended</span>
+                </div>
+                <p className="text-xs text-red-600 dark:text-red-400">
+                    Your subscription has been suspended. Contact support to reactivate.
+                </p>
+            </div>
+        );
+    }
+
+    if (isExpired) {
+        return (
+            <div className="mx-3 mt-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-800">
+                <div className="flex items-center gap-2 mb-1">
+                    <AlertTriangle className="h-4 w-4 text-orange-500 flex-shrink-0" />
+                    <span className="text-sm font-medium text-orange-700 dark:text-orange-400">Expired</span>
+                </div>
+                <p className="text-xs text-orange-600 dark:text-orange-400">
+                    Your subscription has expired. Renew to make changes.
+                </p>
+                <Link href="/renew-subscription" className="text-xs text-primary hover:underline mt-1 inline-block">
+                    Renew now
+                </Link>
+            </div>
+        );
+    }
+
+    if (isPastDue) {
+        return (
+            <div className="mx-3 mt-3 p-3 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 border border-yellow-200 dark:border-yellow-800">
+                <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-4 w-4 text-yellow-500 flex-shrink-0" />
+                    <span className="text-sm font-medium text-yellow-700 dark:text-yellow-400">Payment Overdue</span>
+                </div>
+                <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                    Your payment is overdue. Please update billing to avoid interruption.
+                </p>
+                <Link href="/renew-subscription" className="text-xs text-primary hover:underline mt-1 inline-block">
+                    Update billing
+                </Link>
+            </div>
+        );
+    }
+
+    if (isTrial) {
+        return (
+            <div className="mx-3 mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                    <span className="text-sm font-medium text-blue-700 dark:text-blue-400">Free Trial</span>
+                </div>
+                <p className="text-xs text-blue-600 dark:text-blue-400">
+                    You are on a free trial. Subscribe to keep access.
+                </p>
+                <Link href="/renew-subscription" className="text-xs text-primary hover:underline mt-1 inline-block">
+                    View plans
+                </Link>
+            </div>
+        );
+    }
+
+    return null;
+};
+
 const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: SidebarProps) => {
     const pathname = usePathname();
     const [visibleIndex, setVisibleIndex] = useState<number>(-1);
-    const [subscription, setSubscription] = useState<ActiveSubscription | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [, setError] = useState<string | null>(null);
+    const { isActive, isSuspended } = useSubscription();
+    const { hasFeature, entitlements } = useEntitlements();
 
-    // Fetch subscription based on menu type
-    useEffect(() => {
-        let isMounted = true;
-        const fetchSubscription = async () => {
-            try {
-                setIsLoading(true);
-                setError(null);
-                
-                let activeSubscription: ActiveSubscription | null = null;
-                
-                if (menuType === 'warehouse') {
-                    activeSubscription = await getActiveSubscriptionForWarehouse();
-                } else {
-                    // Default to normal/location subscription
-                    activeSubscription = await getActiveSubscription();
-                }
-                
-                if (isMounted) {
-                    setSubscription(activeSubscription);
-                }
-            } catch (_err) {
-               
-                if (isMounted) {
-                    setError('Failed to load subscription data');
-                    setSubscription(null);
-                }
-            } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
-            }
-        };
+    // Subscription is considered inactive when EXPIRED (read-only) or SUSPENDED (locked)
+    const isSubscriptionInactive = isSuspended;
 
-        fetchSubscription();
-        return () => {
-            isMounted = false;
-        };
-    }, [menuType]); 
-
-    //Check if subscription is expired, null, or empty
-    const isSubscriptionInactive = !subscription || 
-                                   subscription.subscriptionStatus === 'EXPIRED' || 
-                                   
-                                   subscription.subscriptionStatus === null || 
-                                   subscription.subscriptionStatus === '';
-    
-    // Get filtered menu items based on subscription
+    // Get menu items — pass null for subscription since we no longer use
+    // the old ActiveSubscription object for menu filtering
     const myMenuItems = menuItems({
-        subscription,
+        subscription: null,
         menuType,
         isCurrentItem: false
     });
@@ -155,8 +187,20 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
 
     if (!business) return null;
 
-    // Added menu type indicator for UX clarity
     const menuTypeLabel = menuType === 'warehouse' ? 'Warehouse' : 'Location';
+
+    // Current entity ID for feature checks
+    const currentEntityId = menuType === 'warehouse'
+        ? data.warehouse?.id
+        : data.currentLocation?.id;
+
+    // Check if a menu item link requires a feature the current entity doesn't have
+    const isItemLocked = (link: string): boolean => {
+        if (!currentEntityId || !entitlements) return false;
+        const featureKey = MENU_FEATURE_MAP[link];
+        if (!featureKey) return false;
+        return !hasFeature(currentEntityId, featureKey);
+    };
 
     return (
         <div className="flex h-full flex-col">
@@ -180,28 +224,23 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                 )}
             </div>
 
+            {/* Subscription status banner (from JWT, no API call) */}
+            <SubscriptionBanner />
+
             <div className="flex-1 overflow-y-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {isLoading ? (
-                    <div className="flex items-center justify-center h-32">
-                        <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                    </div>
-                ) 
-                : isSubscriptionInactive ? (
-                    // Show only subscription warning and billing link when subscription is inactive
+                {isSubscriptionInactive ? (
                     <div className="p-4">
                         <div className="text-center mb-6">
                             <AlertTriangle className="h-12 w-12 text-red-400 mx-auto mb-3" />
                             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                                Subscription Required
+                                Account Suspended
                             </h3>
                             <p className="text-sm text-gray-400 mb-4">
-                                Your {menuTypeLabel.toLowerCase()} subscription has expired or is inactive. Please renew to access all features.
+                                Your subscription has been suspended. Please contact billing support to reactivate your account.
                             </p>
-                           
                         </div>
-                        
                     </div>
-                ) 
+                )
                 : myMenuItems.length === 0 ? (
                     <div className="p-4 text-center">
                         <AlertTriangle className="h-8 w-8 text-yellow-400 mx-auto mb-2" />
@@ -216,7 +255,6 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                         </Link>
                     </div>
                 ) : (
-                    // Show full navigation when subscription is active
                     <nav className="flex-1 space-y-1 px-3 py-4">
                         {myMenuItems.map((section, sectionIndex) => {
                             const sectionHasActive = section.items.some(
@@ -264,21 +302,29 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
                                             </div>
                                         ) : (
                                             section.items.map((item: MenuItem, _index: React.Key | null | undefined) => {
-                                                const isActive = pathname === item.link || pathname.startsWith(item.link + "/");
+                                                const isItemActive = pathname === item.link || pathname.startsWith(item.link + "/");
+                                                const locked = isItemLocked(String(item.link));
                                                 return (
                                                 <Link
                                                     key={item.title}
                                                     href={item.link}
                                                     onClick={isMobile ? onClose : undefined}
                                                     className={cn(
-                                                        "block w-full rounded-lg px-2 py-1.5 pl-10",
+                                                        "flex w-full items-center justify-between rounded-lg px-2 py-1.5 pl-10",
                                                         "text-sm transition-colors duration-200",
-                                                        isActive
+                                                        isItemActive
                                                             ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
-                                                            : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
+                                                            : locked
+                                                                ? "text-gray-400 dark:text-gray-500 hover:bg-gray-200/60 dark:hover:bg-gray-800"
+                                                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200"
                                                     )}
                                                 >
-                                                    {item.title}
+                                                    <span>{item.title}</span>
+                                                    {locked && (
+                                                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 dark:from-amber-900/30 dark:to-orange-900/30 dark:text-amber-400">
+                                                            PRO
+                                                        </span>
+                                                    )}
                                                 </Link>
                                                 );
                                             })
@@ -309,10 +355,10 @@ const SidebarContent = ({ data, isMobile, onClose, menuType = 'normal' }: Sideba
             <CreditCard className="mr-2 h-4 w-4"/>
             <span>Billing</span>
         </Link>
-  
+
     </>
 )}
-      {!isSubscriptionInactive  && menuTypeLabel === 'Location' &&(
+      {!isSubscriptionInactive && menuTypeLabel === 'Location' && (
         <Link
             href="/settings"
             onClick={isMobile ? onClose : undefined}

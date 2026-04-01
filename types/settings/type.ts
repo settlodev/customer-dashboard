@@ -17,60 +17,113 @@ export interface PaymentDetails {
   mnoDetails: MNODetail[];
 }
 
+export interface OperatingHour {
+  dayOfWeek: string;
+  openTime: string | null;
+  closeTime: string | null;
+  closed: boolean;
+}
+
 export interface LocationSettings {
   id: UUID;
-  minimumSettlementAmount: number;
-  systemPasscode: string;
-  currencyCode: string;
-  reportsPasscode: string;
+
+  // Operational Toggles
   ecommerceEnabled: boolean;
+  orderPrintsCountEnabled: boolean;
+
+  // Notifications
   enableEmailNotifications: boolean;
   enableSmsNotifications: boolean;
   enablePushNotifications: boolean;
-  enableOrdersPrintsCount: boolean;
-  useRecipe: boolean;
-  usePasscode: boolean;
-  useDepartments: boolean;
-  useCustomPrice: boolean;
-  useWarehouse: boolean;
-  useShifts: boolean;
-  showPosProductQuantity: boolean;
-  showPosProductPrice: boolean;
-  printEachTicketItem: boolean;
-  ticketToHaveAmount: boolean;
+
+  // Docket/Ticket
+  showAmountOnDockets: boolean;
+  printEachDocketItem: boolean;
+  showDocketCount: boolean;
   singleTicketPrint: boolean;
   showPriceOnTicket: boolean;
-  allowTipping: boolean;
+  autoPrintTickets: boolean;
+  allowDuplicateDocketPrinting: boolean;
+
+  // Stock Movement
   deductStockOnItemChange: boolean;
   deductStockOnOrderClose: boolean;
   deductStockOnPartialPay: boolean;
-  useKds: boolean;
-  showDateOnOrderNumber: boolean;
-  showOrderNumberPrefix: boolean;
-  orderNumberPrefix: string;
-  acceptOrderRequests: boolean;
-  orderRequestAcceptStartTime: string | null;
-  orderRequestAcceptEndTime: string | null;
-  locationId: string | null;
-  canDelete: boolean;
-  status: boolean;
-  isDefault: boolean;
-  isActive: boolean;
-  isArchived: boolean;
-  trackInventory?: boolean;
-  enableNotifications?: boolean;
-  autoCloseOrderWhenFullyPaid?: boolean;
-  autoPrintTickets: boolean;
+
+  // Tipping
+  allowTipping: boolean;
+
+  // Order Management
+  allowOrderRequests: boolean;
+  allowCustomPrice: boolean;
+
+  // POS Display
+  showPosProductPrice: boolean;
+  showPosProductQuantity: boolean;
+
+  // Operations
+  useShifts: boolean;
+  usePasscodes: boolean;
+  enableDigitalMenu: boolean;
+  currency: string;
+  minimumOrderAmount: number | null;
+  maxDiscountPercentage: number | null;
+  autoCloseOrderMinutes: number | null;
+  autoCloseOrderWhenFullyPaid: boolean;
   autoOpenCashDrawer: boolean;
-  autoPrintReceiptAfterSale: boolean;
-  receiptImageUpload: string;
-  showQrCodeOnReceipt: boolean;
+  discountApprovalThreshold: number | null;
+  enableTableManagement: boolean;
+  orderingMode: string;
+  receiptCopies: number;
+  enableKitchenDisplay: boolean;
+  enableLoyaltyProgram: boolean;
+
+  // Order Naming
+  orderNamePrefix: string;
+  includeDateInOrderName: boolean;
+  orderNumberStart: number;
+  orderNumberPadding: number;
+  showOrderNumberPrefix: boolean;
+
+  // Receipt Configuration
+  receiptHeaderImageUrl: string | null;
+  receiptNumberPrefix: string | null;
+  receiptNumberSuffix: string | null;
+  receiptBusinessName: string | null;
+  receiptHeaderText: string | null;
+  receiptPaymentDetails: string | null;
+  physicalReceiptPaymentDetails: string | null;
+  digitalReceiptPaymentDetails: string | null;
+  receiptFooterText: string | null;
+  includePaymentDetailsOnReceipt: boolean;
+  showItemizedReceipt: boolean;
+  showTaxOnReceipt: boolean;
+  showDiscountOnReceipt: boolean;
+  showStaffOnReceipt: boolean;
+  showCustomerOnReceipt: boolean;
   showImageOnReceipt: boolean;
   showAdditionalDetailsOnPhysicalReceipt: boolean;
   showAdditionalDetailsOnDigitalReceipt: boolean;
+  showQrCodeOnReceipt: boolean;
+  receiptQrCodeUrl: string | null;
+  autoPrintReceipt: boolean;
+  autoEmailReceipt: boolean;
+  autoSmsReceipt: boolean;
 
-  // Customer Loyalty Points
-  enableCustomerLoyaltyPoints: boolean;
+  // Invoice
+  invoiceNumberPrefix: string;
+  includeDateInInvoiceNumber: boolean;
+  companyRegistrationNumber: string | null;
+  taxIdentificationNumber: string | null;
+  defaultPaymentTerms: string | null;
+  defaultInvoiceDueDays: number;
+
+  // Tax
+  pricesIncludeTax: boolean;
+  defaultTaxRate: number;
+  taxLabel: string;
+
+  // Customer Loyalty
   customerLoyaltyAwardType: string;
   customerLoyaltyPointsPerOrder: number;
   customerLoyaltyPointsPerValue: number;
@@ -86,10 +139,70 @@ export interface LocationSettings {
   staffMinimumRedeemablePoints: number;
   staffPointsRecipient: string;
 
-  // New fields for extended functionality
+  // Day Sessions
+  enableDaySessions: boolean;
+  autoOpenDay: boolean;
+  autoCloseDay: boolean;
+
+  // Inventory Flags
+  batchTrackingEnabled: boolean;
+  qualityInspectionEnabled: boolean;
+  autoReorderEnabled: boolean;
+  autoClosingEnabled: boolean;
+  warehouseManagementEnabled: boolean;
+  cycleCountingEnabled: boolean;
+  consumptionRulesEnabled: boolean;
+  expiryAlertDays: number;
+  reservationExpiryMinutes: number;
+  rfqEnabled: boolean;
+
+  // Location Notifications
+  lowStockAlertEmail: string | null;
+  dailyReportEmail: string | null;
+  alertPhoneNumber: string | null;
+  sendDailySalesEmail: boolean;
+  sendWeeklySalesEmail: boolean;
+
+  // Settlement
+  minimumSettlementAmount: number | null;
+  autoCloseBusinessDays: boolean;
+
+  // Operating Hours
+  operatingHours: OperatingHour[];
+
+  // System flags
+  locationId: string | null;
+  canDelete: boolean;
+  status: boolean;
+  isDefault: boolean;
+  isActive: boolean;
+  isArchived: boolean;
+
+  // Legacy fields (keeping for backwards compat with existing forms)
+  enableOrdersPrintsCount?: boolean;
+  enableNotifications?: boolean;
+  trackInventory?: boolean;
+  receiptImageUpload?: string;
   receiptImage?: string;
-  physicalReceiptPaymentDetails?: PaymentDetails;
-  digitalReceiptPaymentDetails?: PaymentDetails;
+  currencyCode?: string;
+  systemPasscode?: string;
+  reportsPasscode?: string;
+  usePasscode?: boolean;
+  useRecipe?: boolean;
+  useDepartments?: boolean;
+  useCustomPrice?: boolean;
+  useWarehouse?: boolean;
+  useShifts_legacy?: boolean;
+  useKds?: boolean;
+  ticketToHaveAmount?: boolean;
+  printEachTicketItem?: boolean;
+  acceptOrderRequests?: boolean;
+  orderRequestAcceptStartTime?: string | null;
+  orderRequestAcceptEndTime?: string | null;
+  showDateOnOrderNumber?: boolean;
+  orderNumberPrefix_legacy?: string;
+  autoPrintReceiptAfterSale?: boolean;
+  enableCustomerLoyaltyPoints?: boolean;
 }
 
 export type SettingType =
@@ -100,27 +213,39 @@ export type SettingType =
   | "text"
   | "password"
   | "button"
-  | "country-select";
+  | "country-select"
+  | "textarea";
+
+export type SettingCategory =
+  | "operations"
+  | "pos"
+  | "orders"
+  | "order-naming"
+  | "tax"
+  | "settlement"
+  | "tipping"
+  | "inventory-flags"
+  | "day-sessions"
+  | "dockets"
+  | "receipts"
+  | "invoice"
+  | "receipt-actions"
+  | "notifications"
+  | "location-notifications"
+  | "stock-movement"
+  | "loyalty"
+  | "staff-points";
 
 export interface SettingField {
-  key: keyof LocationSettings;
+  key: string;
   label: string;
   type: SettingType;
-  category:
-    | "basic"
-    | "receipt"
-    | "feature"
-    | "system"
-    | "printing"
-    | "inventory"
-    | "order"
-    | "loyalty"
-    | "staff-points";
+  category: SettingCategory;
   placeholder?: string;
   helperText?: string;
   inputType?: "text" | "number" | "password" | "tel" | "email";
   disabled?: boolean;
-  dependencies?: string[]; // for conditional enabling/disabling
+  dependencies?: string[];
   min?: number;
   max?: number;
   step?: number;
@@ -128,352 +253,749 @@ export interface SettingField {
   options?: { value: string; label: string }[];
 }
 
-// Complete settings configuration
+// Complete settings configuration organized by the new API categories
 export const SETTINGS_CONFIG: SettingField[] = [
-  // Basic Settings
+  // --- Operations ---
   {
-    key: "currencyCode",
+    key: "currency",
     label: "Currency",
-    type: "country-select",
-    category: "basic",
-    placeholder: "Select country",
-    helperText: "Country and currency for this location",
+    type: "text",
+    category: "operations",
+    placeholder: "TZS",
+    helperText: "3-letter ISO 4217 currency code for this location",
   },
   {
-    key: "minimumSettlementAmount",
-    label: "Minimum Settlement Amount",
+    key: "orderingMode",
+    label: "Ordering Mode",
+    type: "select",
+    category: "operations",
+    helperText: "How orders are organized at this location",
+    options: [
+      { value: "STANDARD", label: "Standard (standalone orders)" },
+      { value: "TABLE_MANAGEMENT", label: "Table Management (table-based orders)" },
+    ],
+  },
+  {
+    key: "enableTableManagement",
+    label: "Table Management",
+    type: "switch",
+    category: "operations",
+    helperText: "Enable physical table management",
+  },
+  {
+    key: "useShifts",
+    label: "Shifts",
+    type: "switch",
+    category: "operations",
+    helperText: "Enable shift management for staff",
+  },
+  {
+    key: "usePasscodes",
+    label: "Passcodes",
+    type: "switch",
+    category: "operations",
+    helperText: "Require passcodes for system access",
+  },
+  {
+    key: "enableKitchenDisplay",
+    label: "Kitchen Display (KDS)",
+    type: "switch",
+    category: "operations",
+    helperText: "Enable Kitchen Display System",
+  },
+  {
+    key: "receiptCopies",
+    label: "Receipt Copies",
     type: "number",
-    category: "basic",
-    placeholder: "Enter minimum settlement amount",
+    category: "operations",
+    placeholder: "1",
+    helperText: "Number of receipt copies to print (1-10)",
+    inputType: "number",
+    min: 1,
+    max: 10,
+  },
+  {
+    key: "minimumOrderAmount",
+    label: "Minimum Order Amount",
+    type: "number",
+    category: "operations",
+    placeholder: "0",
+    helperText: "Minimum order value to accept",
     inputType: "number",
     min: 0,
     step: 0.01,
   },
   {
-    key: "systemPasscode",
-    label: "System Passcode",
-    type: "password",
-    category: "basic",
-    placeholder: "Enter system passcode",
-    inputType: "password",
+    key: "maxDiscountPercentage",
+    label: "Max Discount (%)",
+    type: "number",
+    category: "operations",
+    placeholder: "100",
+    helperText: "Maximum discount percentage allowed",
+    inputType: "number",
+    min: 0,
+    max: 100,
   },
   {
-    key: "reportsPasscode",
-    label: "Report Passcode",
-    type: "password",
-    category: "basic",
-    placeholder: "Enter report passcode",
-    inputType: "password",
+    key: "discountApprovalThreshold",
+    label: "Discount Approval Threshold (%)",
+    type: "number",
+    category: "operations",
+    placeholder: "20",
+    helperText: "Discounts above this % require manager approval",
+    inputType: "number",
+    min: 0,
+    max: 100,
+  },
+  {
+    key: "autoCloseOrderMinutes",
+    label: "Auto Close Order (minutes)",
+    type: "number",
+    category: "operations",
+    placeholder: "Leave empty to disable",
+    helperText: "Automatically close orders after this many minutes",
+    inputType: "number",
+    min: 1,
+  },
+  {
+    key: "autoCloseOrderWhenFullyPaid",
+    label: "Auto Close When Fully Paid",
+    type: "switch",
+    category: "operations",
+    helperText: "Close orders automatically upon full payment",
+  },
+  {
+    key: "autoOpenCashDrawer",
+    label: "Auto Open Cash Drawer",
+    type: "switch",
+    category: "operations",
+    helperText: "Automatically open cash drawer after a sale",
   },
 
-  // Receipt Management (Buttons for uploading and configuring)
+  // --- POS Display ---
   {
-    key: "receiptImageUpload" as any,
-    label: "Receipt Image",
-    type: "button" as any,
-    category: "receipt" as any,
-    helperText: "Upload or change the image to display on receipts",
-  },
-
-  {
-    key: "physicalReceiptPaymentDetails" as any,
-    label: "Physical Receipt Payment Details",
-    type: "button" as any,
-    category: "receipt" as any,
-    helperText:
-      "Add or edit bank and MNO payment details for physical receipts",
-  },
-
-  {
-    key: "digitalReceiptPaymentDetails" as any,
-    label: "Digital Receipt Payment Details",
-    type: "button" as any,
-    category: "receipt" as any,
-    helperText: "Add or edit bank and MNO payment details for digital receipts",
-  },
-
-  // Feature Settings
-  {
-    key: "trackInventory",
-    label: "Track Inventory",
+    key: "showPosProductPrice",
+    label: "Show Product Price",
     type: "switch",
-    category: "feature",
-    helperText: "Enable inventory tracking for this location",
-  },
-  {
-    key: "ecommerceEnabled",
-    label: "Enable Ecommerce",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable ecommerce functionality",
-  },
-  {
-    key: "useRecipe",
-    label: "Use Recipe",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable recipe management",
-  },
-  {
-    key: "usePasscode",
-    label: "Use Passcode",
-    type: "switch",
-    category: "basic",
-    helperText: "Require passcode for system access",
-  },
-  {
-    key: "useDepartments",
-    label: "Use Departments",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable department management",
-  },
-  {
-    key: "useCustomPrice",
-    label: "Use Custom Price",
-    type: "switch",
-    category: "feature",
-    helperText: "Allow custom pricing per item",
-  },
-  {
-    key: "useWarehouse",
-    label: "Use Warehouse",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable warehouse management",
-  },
-  {
-    key: "useShifts",
-    label: "Use Shifts",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable shift management for staff",
-  },
-  {
-    key: "useKds",
-    label: "Use KDS",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable Kitchen Display System",
-  },
-  {
-    key: "enableOrdersPrintsCount",
-    label: "Enable Orders Prints Count",
-    type: "switch",
-    category: "order",
-    helperText: "Track number of times orders are printed",
+    category: "pos",
+    helperText: "Display product price on POS interface",
   },
   {
     key: "showPosProductQuantity",
-    label: "Show Product Quantity on POS",
+    label: "Show Product Quantity",
     type: "switch",
-    category: "feature",
+    category: "pos",
     helperText: "Display product quantity on POS interface",
   },
   {
-    key: "showPosProductPrice",
-    label: "Show Product Price on POS",
+    key: "allowCustomPrice",
+    label: "Allow Custom Price",
     type: "switch",
-    category: "feature",
-    helperText: "Display product price on POS interface",
+    category: "pos",
+    helperText: "Allow staff to enter custom prices at POS",
   },
 
-  // Order settings
+  // --- Order Management ---
   {
-    key: "acceptOrderRequests",
-    label: "Accept Order Requests",
+    key: "allowOrderRequests",
+    label: "Allow Order Requests",
     type: "switch",
-    category: "order",
-    helperText: "Enable or disable accepting order requests",
+    category: "orders",
+    helperText: "Enable accepting order requests from customers",
   },
   {
-    key: "orderRequestAcceptStartTime",
-    label: "Order Accept Start Time",
-    type: "text",
-    category: "order",
-    placeholder: "e.g. 08:00",
-    helperText: "Start time for accepting order requests (HH:mm)",
-    inputType: "text",
-    dependencies: ["acceptOrderRequests"],
+    key: "orderPrintsCountEnabled",
+    label: "Order Prints Count",
+    type: "switch",
+    category: "orders",
+    helperText: "Track number of times orders are printed",
   },
+
+  // --- Tipping ---
   {
-    key: "orderRequestAcceptEndTime",
-    label: "Order Accept End Time",
+    key: "allowTipping",
+    label: "Allow Tipping",
+    type: "switch",
+    category: "tipping",
+    helperText: "Allow customers to add tips to orders",
+  },
+
+  // --- Order Naming ---
+  {
+    key: "orderNamePrefix",
+    label: "Order Name Prefix",
     type: "text",
-    category: "order",
-    placeholder: "e.g. 22:00",
-    helperText: "End time for accepting order requests (HH:mm)",
+    category: "order-naming",
+    placeholder: "Order",
+    helperText: "Prefix added to order names (e.g. 'Order', 'Sale')",
     inputType: "text",
-    dependencies: ["acceptOrderRequests"],
   },
   {
     key: "showOrderNumberPrefix",
     label: "Show Order Number Prefix",
     type: "switch",
-    category: "order",
+    category: "order-naming",
     helperText: "Display the prefix on order numbers",
   },
   {
-    key: "orderNumberPrefix",
-    label: "Order Number Prefix",
-    type: "text",
-    category: "order",
-    placeholder: "e.g. Order",
-    helperText: "Prefix added to the beginning of each order number",
-    inputType: "text",
-    dependencies: ["showOrderNumberPrefix"],
+    key: "includeDateInOrderName",
+    label: "Include Date in Order Name",
+    type: "switch",
+    category: "order-naming",
+    helperText: "Include the date in order names (e.g. Order 20250615-0001)",
   },
   {
-    key: "showDateOnOrderNumber",
-    label: "Show Date on Order Number",
-    type: "switch",
-    category: "order",
-    helperText: "Include the date in the order number format",
+    key: "orderNumberStart",
+    label: "Order Number Start",
+    type: "number",
+    category: "order-naming",
+    placeholder: "1",
+    helperText: "Starting number for orders",
+    inputType: "number",
+    min: 1,
   },
   {
-    key: "autoCloseOrderWhenFullyPaid",
-    label: "Auto Close Order When Fully Paid",
-    type: "switch",
-    category: "order",
-    helperText: "Close orders automatically upon full payment completion",
-  },
-  {
-    key: "allowTipping",
-    label: "Allow Tipping",
-    type: "switch",
-    category: "order",
-    helperText: "Allow customers to add tips",
+    key: "orderNumberPadding",
+    label: "Order Number Padding",
+    type: "number",
+    category: "order-naming",
+    placeholder: "4",
+    helperText: "Zero-padding for order numbers (e.g. 4 → 0001)",
+    inputType: "number",
+    min: 1,
+    max: 10,
   },
 
-  // Printing Settings
+  // --- Tax ---
   {
-    key: "printEachTicketItem",
-    label: "Print Each Ticket Item",
+    key: "pricesIncludeTax",
+    label: "Prices Include Tax",
     type: "switch",
-    category: "printing",
-    helperText: "Print each item on ticket separately",
+    category: "tax",
+    helperText: "Whether displayed prices include tax",
   },
   {
-    key: "ticketToHaveAmount",
-    label: "Ticket to Have Amount",
+    key: "defaultTaxRate",
+    label: "Tax Rate (%)",
+    type: "number",
+    category: "tax",
+    placeholder: "18.0",
+    helperText: "Default tax rate for this location",
+    inputType: "number",
+    min: 0,
+    max: 100,
+    step: 0.01,
+  },
+  {
+    key: "taxLabel",
+    label: "Tax Label",
+    type: "text",
+    category: "tax",
+    placeholder: "VAT",
+    helperText: "Label shown for tax on receipts (e.g. VAT, GST)",
+    inputType: "text",
+  },
+
+  // --- Settlement ---
+  {
+    key: "minimumSettlementAmount",
+    label: "Minimum Settlement Amount",
+    type: "number",
+    category: "settlement",
+    placeholder: "0",
+    helperText: "Minimum amount required for settlement",
+    inputType: "number",
+    min: 0,
+    step: 0.01,
+  },
+  {
+    key: "autoCloseBusinessDays",
+    label: "Auto Close Business Days",
     type: "switch",
-    category: "printing",
-    helperText: "Include amount on printed tickets",
+    category: "settlement",
+    helperText: "Automatically close business day at end of operations",
+  },
+
+  // --- Day Sessions ---
+  {
+    key: "enableDaySessions",
+    label: "Enable Day Sessions",
+    type: "switch",
+    category: "day-sessions",
+    helperText: "Enable daily open/close business cycles",
+  },
+  {
+    key: "autoOpenDay",
+    label: "Auto Open Day",
+    type: "switch",
+    category: "day-sessions",
+    helperText: "Automatically open day session at scheduled time",
+    dependencies: ["enableDaySessions"],
+  },
+  {
+    key: "autoCloseDay",
+    label: "Auto Close Day",
+    type: "switch",
+    category: "day-sessions",
+    helperText: "Automatically close day session at end of business hours",
+    dependencies: ["enableDaySessions"],
+  },
+
+  // --- Inventory Flags ---
+  {
+    key: "batchTrackingEnabled",
+    label: "Batch Tracking",
+    type: "switch",
+    category: "inventory-flags",
+    helperText: "Enable batch number tracking for inventory",
+  },
+  {
+    key: "qualityInspectionEnabled",
+    label: "Quality Inspection",
+    type: "switch",
+    category: "inventory-flags",
+    helperText: "Require quality inspection for received goods",
+  },
+  {
+    key: "autoReorderEnabled",
+    label: "Auto Reorder",
+    type: "switch",
+    category: "inventory-flags",
+    helperText: "Automatically create reorder when stock is low",
+  },
+  {
+    key: "autoClosingEnabled",
+    label: "Auto Closing",
+    type: "switch",
+    category: "inventory-flags",
+    helperText: "Enable automatic inventory closing",
+  },
+  {
+    key: "warehouseManagementEnabled",
+    label: "Warehouse Management",
+    type: "switch",
+    category: "inventory-flags",
+    helperText: "Enable warehouse management features",
+  },
+  {
+    key: "cycleCountingEnabled",
+    label: "Cycle Counting",
+    type: "switch",
+    category: "inventory-flags",
+    helperText: "Enable periodic cycle counts for inventory accuracy",
+  },
+  {
+    key: "consumptionRulesEnabled",
+    label: "Consumption Rules",
+    type: "switch",
+    category: "inventory-flags",
+    helperText: "Enable automatic consumption/deduction rules",
+  },
+  {
+    key: "rfqEnabled",
+    label: "Request for Quotation (RFQ)",
+    type: "switch",
+    category: "inventory-flags",
+    helperText: "Enable request for quotation workflow",
+  },
+  {
+    key: "expiryAlertDays",
+    label: "Expiry Alert (days)",
+    type: "number",
+    category: "inventory-flags",
+    placeholder: "7",
+    helperText: "Days before expiry to trigger alerts",
+    inputType: "number",
+    min: 1,
+    max: 365,
+  },
+  {
+    key: "reservationExpiryMinutes",
+    label: "Stock Reservation Expiry (minutes)",
+    type: "number",
+    category: "inventory-flags",
+    placeholder: "30",
+    helperText: "Minutes before reserved stock is released",
+    inputType: "number",
+    min: 1,
+    max: 1440,
+  },
+
+  // --- Stock Movement ---
+  {
+    key: "deductStockOnItemChange",
+    label: "Deduct on Item Change",
+    type: "switch",
+    category: "stock-movement",
+    helperText: "Deduct stock when items are modified in an order",
+  },
+  {
+    key: "deductStockOnOrderClose",
+    label: "Deduct on Order Close",
+    type: "switch",
+    category: "stock-movement",
+    helperText: "Deduct stock when an order is closed",
+  },
+  {
+    key: "deductStockOnPartialPay",
+    label: "Deduct on Partial Payment",
+    type: "switch",
+    category: "stock-movement",
+    helperText: "Deduct stock when a partial payment is made",
+  },
+
+  // --- Dockets/Tickets ---
+  {
+    key: "showAmountOnDockets",
+    label: "Show Amount on Dockets",
+    type: "switch",
+    category: "dockets",
+    helperText: "Include amounts on printed dockets",
+  },
+  {
+    key: "printEachDocketItem",
+    label: "Print Each Item Separately",
+    type: "switch",
+    category: "dockets",
+    helperText: "Print each item on a separate docket",
+  },
+  {
+    key: "showDocketCount",
+    label: "Show Docket Count",
+    type: "switch",
+    category: "dockets",
+    helperText: "Display count on dockets",
   },
   {
     key: "singleTicketPrint",
     label: "Single Ticket Print",
     type: "switch",
-    category: "printing",
-    helperText: "Print single ticket for entire order",
+    category: "dockets",
+    helperText: "Print a single ticket for the entire order",
   },
   {
     key: "showPriceOnTicket",
     label: "Show Price on Ticket",
     type: "switch",
-    category: "printing",
+    category: "dockets",
     helperText: "Display prices on printed tickets",
   },
   {
     key: "autoPrintTickets",
     label: "Auto Print Tickets",
     type: "switch",
-    category: "printing",
+    category: "dockets",
     helperText: "Automatically print tickets when orders are placed",
   },
   {
-    key: "autoOpenCashDrawer",
-    label: "Auto Open Cash Drawer",
+    key: "allowDuplicateDocketPrinting",
+    label: "Allow Duplicate Docket Printing",
     type: "switch",
-    category: "order",
-    helperText: "Automatically open the cash drawer after a sale",
+    category: "dockets",
+    helperText: "Allow reprinting dockets for the same order",
+  },
+
+  // --- Receipt Configuration ---
+  {
+    key: "receiptBusinessName",
+    label: "Business Name on Receipt",
+    type: "text",
+    category: "receipts",
+    placeholder: "My Business Ltd",
+    helperText: "Business name displayed on receipts",
+    inputType: "text",
   },
   {
-    key: "autoPrintReceiptAfterSale",
-    label: "Auto Print Receipt After Sale",
+    key: "receiptHeaderText",
+    label: "Receipt Header Text",
+    type: "textarea",
+    category: "receipts",
+    placeholder: "123 Main St, Dar es Salaam",
+    helperText: "Text shown in receipt header (address, etc.)",
+  },
+  {
+    key: "receiptFooterText",
+    label: "Receipt Footer Text",
+    type: "textarea",
+    category: "receipts",
+    placeholder: "Thank you for your business!",
+    helperText: "Text shown at the bottom of receipts",
+  },
+  {
+    key: "receiptNumberPrefix",
+    label: "Receipt Number Prefix",
+    type: "text",
+    category: "receipts",
+    placeholder: "RCP",
+    helperText: "Prefix for receipt numbers",
+    inputType: "text",
+  },
+  {
+    key: "receiptNumberSuffix",
+    label: "Receipt Number Suffix",
+    type: "text",
+    category: "receipts",
+    placeholder: "-TZ",
+    helperText: "Suffix for receipt numbers",
+    inputType: "text",
+  },
+  {
+    key: "receiptHeaderImageUrl",
+    label: "Receipt Header Image URL",
+    type: "text",
+    category: "receipts",
+    placeholder: "https://...",
+    helperText: "Image URL displayed at the top of receipts",
+    inputType: "text",
+  },
+  {
+    key: "receiptQrCodeUrl",
+    label: "Receipt QR Code URL",
+    type: "text",
+    category: "receipts",
+    placeholder: "https://...",
+    helperText: "URL encoded in receipt QR code",
+    inputType: "text",
+    dependencies: ["showQrCodeOnReceipt"],
+  },
+  {
+    key: "physicalReceiptPaymentDetails",
+    label: "Physical Receipt Payment Details",
+    type: "textarea",
+    category: "receipts",
+    placeholder: "Bank: NMB\nAccount: 123456",
+    helperText: "Payment details shown on physical receipts",
+  },
+  {
+    key: "digitalReceiptPaymentDetails",
+    label: "Digital Receipt Payment Details",
+    type: "textarea",
+    category: "receipts",
+    placeholder: "Pay online: https://...",
+    helperText: "Payment details shown on digital receipts",
+  },
+
+  // --- Receipt Display Toggles ---
+  {
+    key: "showImageOnReceipt",
+    label: "Show Image on Receipt",
     type: "switch",
-    category: "printing",
-    helperText: "Automatically print a receipt after completing a sale",
+    category: "receipt-actions",
+    helperText: "Display header image on receipts",
   },
   {
     key: "showQrCodeOnReceipt",
-    label: "Show QrCode On Receipt",
+    label: "Show QR Code on Receipt",
     type: "switch",
-    category: "printing",
-    helperText: "Show QR Code on printed receipt",
+    category: "receipt-actions",
+    helperText: "Display QR code on receipts",
   },
-
   {
-    key: "showImageOnReceipt",
-    label: "Show Image On Receipt",
+    key: "includePaymentDetailsOnReceipt",
+    label: "Include Payment Details",
     type: "switch",
-    category: "printing",
-    helperText: "Show image on printed receipt",
+    category: "receipt-actions",
+    helperText: "Show payment method details on receipts",
   },
-
+  {
+    key: "showItemizedReceipt",
+    label: "Show Itemized Receipt",
+    type: "switch",
+    category: "receipt-actions",
+    helperText: "Show individual items on receipts",
+  },
+  {
+    key: "showTaxOnReceipt",
+    label: "Show Tax on Receipt",
+    type: "switch",
+    category: "receipt-actions",
+    helperText: "Display tax breakdown on receipts",
+  },
+  {
+    key: "showDiscountOnReceipt",
+    label: "Show Discount on Receipt",
+    type: "switch",
+    category: "receipt-actions",
+    helperText: "Display discount details on receipts",
+  },
+  {
+    key: "showStaffOnReceipt",
+    label: "Show Staff on Receipt",
+    type: "switch",
+    category: "receipt-actions",
+    helperText: "Display staff name on receipts",
+  },
+  {
+    key: "showCustomerOnReceipt",
+    label: "Show Customer on Receipt",
+    type: "switch",
+    category: "receipt-actions",
+    helperText: "Display customer name on receipts",
+  },
   {
     key: "showAdditionalDetailsOnPhysicalReceipt",
-    label: "Show Additional Details On Physical Receipt",
+    label: "Additional Details on Physical Receipt",
     type: "switch",
-    category: "printing",
-    helperText: "Show payment details on physical receipt",
+    category: "receipt-actions",
+    helperText: "Show extra payment details on physical receipts",
   },
-
   {
     key: "showAdditionalDetailsOnDigitalReceipt",
-    label: "Show Additional Details On Digital Receipt",
+    label: "Additional Details on Digital Receipt",
     type: "switch",
-    category: "printing",
-    helperText: "Show payment details on digital receipt",
+    category: "receipt-actions",
+    helperText: "Show extra payment details on digital receipts",
+  },
+  {
+    key: "autoPrintReceipt",
+    label: "Auto Print Receipt",
+    type: "switch",
+    category: "receipt-actions",
+    helperText: "Automatically print receipt after completing a sale",
+  },
+  {
+    key: "autoEmailReceipt",
+    label: "Auto Email Receipt",
+    type: "switch",
+    category: "receipt-actions",
+    helperText: "Automatically email receipt to customer",
+  },
+  {
+    key: "autoSmsReceipt",
+    label: "Auto SMS Receipt",
+    type: "switch",
+    category: "receipt-actions",
+    helperText: "Automatically send receipt via SMS",
   },
 
-  // Inventory Settings
+  // --- Invoice ---
   {
-    key: "deductStockOnItemChange",
-    label: "Deduct Stock on Item Change",
-    type: "switch",
-    category: "inventory",
-    helperText: "Deduct stock when items are modified",
+    key: "invoiceNumberPrefix",
+    label: "Invoice Number Prefix",
+    type: "text",
+    category: "invoice",
+    placeholder: "INV",
+    helperText: "Prefix for invoice numbers",
+    inputType: "text",
   },
   {
-    key: "deductStockOnOrderClose",
-    label: "Deduct Stock on Order Close",
+    key: "includeDateInInvoiceNumber",
+    label: "Include Date in Invoice Number",
     type: "switch",
-    category: "inventory",
-    helperText: "Deduct stock when orders are closed",
+    category: "invoice",
+    helperText: "Include date in invoice numbering",
   },
   {
-    key: "deductStockOnPartialPay",
-    label: "Deduct Stock on Partial Payment",
-    type: "switch",
-    category: "inventory",
-    helperText: "Deduct stock on partial payments",
+    key: "companyRegistrationNumber",
+    label: "Company Registration Number",
+    type: "text",
+    category: "invoice",
+    placeholder: "Registration number",
+    helperText: "Company registration number shown on invoices",
+    inputType: "text",
+  },
+  {
+    key: "taxIdentificationNumber",
+    label: "Tax ID Number",
+    type: "text",
+    category: "invoice",
+    placeholder: "TIN",
+    helperText: "Tax identification number shown on invoices",
+    inputType: "text",
+  },
+  {
+    key: "defaultPaymentTerms",
+    label: "Default Payment Terms",
+    type: "text",
+    category: "invoice",
+    placeholder: "Net 30",
+    helperText: "Default payment terms on invoices",
+    inputType: "text",
+  },
+  {
+    key: "defaultInvoiceDueDays",
+    label: "Invoice Due Days",
+    type: "number",
+    category: "invoice",
+    placeholder: "30",
+    helperText: "Number of days until invoice is due",
+    inputType: "number",
+    min: 0,
   },
 
-  // General Settings
+  // --- Notifications ---
   {
-    key: "isDefault",
-    label: "Set as Main Location",
+    key: "enableEmailNotifications",
+    label: "Email Notifications",
     type: "switch",
-    category: "basic",
-    helperText: "Set this location as the main/default location",
+    category: "notifications",
+    helperText: "Receive notifications via email",
+  },
+  {
+    key: "enableSmsNotifications",
+    label: "SMS Notifications",
+    type: "switch",
+    category: "notifications",
+    helperText: "Receive notifications via SMS",
+  },
+  {
+    key: "enablePushNotifications",
+    label: "Push Notifications",
+    type: "switch",
+    category: "notifications",
+    helperText: "Receive push notifications on devices",
   },
 
-  // Customer Loyalty Points
+  // --- Location Notifications ---
   {
-    key: "enableCustomerLoyaltyPoints",
-    label: "Enable Customer Loyalty Points",
-    type: "switch",
-    category: "loyalty",
-    helperText: "Enable loyalty points program for customers",
+    key: "lowStockAlertEmail",
+    label: "Low Stock Alert Email",
+    type: "text",
+    category: "location-notifications",
+    placeholder: "alerts@business.com",
+    helperText: "Email address for low stock alerts",
+    inputType: "email",
   },
+  {
+    key: "dailyReportEmail",
+    label: "Daily Report Email",
+    type: "text",
+    category: "location-notifications",
+    placeholder: "reports@business.com",
+    helperText: "Email address for daily sales reports",
+    inputType: "email",
+  },
+  {
+    key: "alertPhoneNumber",
+    label: "Alert Phone Number",
+    type: "text",
+    category: "location-notifications",
+    placeholder: "+255712345678",
+    helperText: "Phone number for urgent alerts",
+    inputType: "tel",
+  },
+  {
+    key: "sendDailySalesEmail",
+    label: "Send Daily Sales Email",
+    type: "switch",
+    category: "location-notifications",
+    helperText: "Send daily sales summary email",
+  },
+  {
+    key: "sendWeeklySalesEmail",
+    label: "Send Weekly Sales Email",
+    type: "switch",
+    category: "location-notifications",
+    helperText: "Send weekly sales summary email",
+  },
+
+  // --- Customer Loyalty Points ---
   {
     key: "customerLoyaltyAwardType",
     label: "Award Type",
     type: "select",
     category: "loyalty",
     helperText: "How customers earn loyalty points",
-    dependencies: ["enableCustomerLoyaltyPoints"],
     options: [
       { value: "PER_ORDER", label: "Per Order (flat points per order)" },
       { value: "PER_ORDER_VALUE", label: "Per Order Value (based on amount)" },
@@ -484,51 +1006,46 @@ export const SETTINGS_CONFIG: SettingField[] = [
     label: "Points Per Order",
     type: "number",
     category: "loyalty",
-    placeholder: "e.g. 10",
+    placeholder: "1",
     helperText: "Flat points awarded per closed order",
     inputType: "number",
-    min: 0,
-    step: 1,
-    dependencies: ["enableCustomerLoyaltyPoints"],
+    min: 1,
+    max: 10000,
   },
   {
     key: "customerLoyaltyPointsPerValue",
     label: "Points Per Value Threshold",
     type: "number",
     category: "loyalty",
-    placeholder: "e.g. 1",
-    helperText: "Points earned each time the value threshold is reached",
+    placeholder: "1",
+    helperText: "Points earned each time value threshold is reached",
     inputType: "number",
-    min: 0,
-    step: 1,
-    dependencies: ["enableCustomerLoyaltyPoints"],
+    min: 1,
+    max: 10000,
   },
   {
     key: "customerLoyaltyValueThreshold",
     label: "Value Threshold",
     type: "number",
     category: "loyalty",
-    placeholder: "e.g. 1000",
-    helperText: "Order amount needed to earn points (e.g. 1000 = 1 point per 1000 spent)",
+    placeholder: "1000",
+    helperText: "Order amount needed to earn points",
     inputType: "number",
-    min: 0,
+    min: 1,
     step: 0.01,
-    dependencies: ["enableCustomerLoyaltyPoints"],
   },
   {
     key: "customerLoyaltyMinimumRedeemablePoints",
     label: "Minimum Redeemable Points",
     type: "number",
     category: "loyalty",
-    placeholder: "e.g. 50",
-    helperText: "Minimum points a customer must accumulate before redeeming",
+    placeholder: "100",
+    helperText: "Minimum points before customers can redeem",
     inputType: "number",
     min: 0,
-    step: 1,
-    dependencies: ["enableCustomerLoyaltyPoints"],
   },
 
-  // Staff Points
+  // --- Staff Points ---
   {
     key: "enableStaffPoints",
     label: "Enable Staff Points",
@@ -553,11 +1070,11 @@ export const SETTINGS_CONFIG: SettingField[] = [
     label: "Points Per Order",
     type: "number",
     category: "staff-points",
-    placeholder: "e.g. 5",
+    placeholder: "1",
     helperText: "Flat points awarded per closed order",
     inputType: "number",
-    min: 0,
-    step: 1,
+    min: 1,
+    max: 10000,
     dependencies: ["enableStaffPoints"],
   },
   {
@@ -565,11 +1082,11 @@ export const SETTINGS_CONFIG: SettingField[] = [
     label: "Points Per Value Threshold",
     type: "number",
     category: "staff-points",
-    placeholder: "e.g. 1",
-    helperText: "Points earned each time the value threshold is reached",
+    placeholder: "1",
+    helperText: "Points earned each time value threshold is reached",
     inputType: "number",
-    min: 0,
-    step: 1,
+    min: 1,
+    max: 10000,
     dependencies: ["enableStaffPoints"],
   },
   {
@@ -577,10 +1094,10 @@ export const SETTINGS_CONFIG: SettingField[] = [
     label: "Value Threshold",
     type: "number",
     category: "staff-points",
-    placeholder: "e.g. 5000",
+    placeholder: "1000",
     helperText: "Order amount needed to earn points",
     inputType: "number",
-    min: 0,
+    min: 1,
     step: 0.01,
     dependencies: ["enableStaffPoints"],
   },
@@ -589,11 +1106,10 @@ export const SETTINGS_CONFIG: SettingField[] = [
     label: "Minimum Redeemable Points",
     type: "number",
     category: "staff-points",
-    placeholder: "e.g. 100",
+    placeholder: "100",
     helperText: "Minimum points staff must accumulate before redeeming",
     inputType: "number",
     min: 0,
-    step: 1,
     dependencies: ["enableStaffPoints"],
   },
   {
@@ -610,3 +1126,25 @@ export const SETTINGS_CONFIG: SettingField[] = [
     ],
   },
 ];
+
+// Category display names
+export const CATEGORY_TITLES: Record<string, string> = {
+  operations: "Operations",
+  pos: "POS Display",
+  orders: "Order Management",
+  "order-naming": "Order Naming",
+  tax: "Tax",
+  settlement: "Settlement",
+  tipping: "Tipping",
+  "inventory-flags": "Inventory Management",
+  "day-sessions": "Day Sessions",
+  dockets: "Dockets & Tickets",
+  receipts: "Receipt Content",
+  "receipt-actions": "Receipt Options",
+  invoice: "Invoice",
+  notifications: "Notifications",
+  "location-notifications": "Alert Contacts & Reports",
+  "stock-movement": "Stock Movement",
+  loyalty: "Customer Loyalty Points",
+  "staff-points": "Staff Points",
+};

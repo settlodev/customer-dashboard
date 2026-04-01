@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 
-import { getAuthenticatedUser, getAuthToken } from "@/lib/auth-utils";
+import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { ApiResponse, FormResponse } from "@/types/types";
@@ -43,33 +43,16 @@ export const searchBusiness = async (
   page: number,
   pageLimit: number,
 ): Promise<ApiResponse<Business>> => {
-  const authToken = await getAuthToken();
-
-  const userId = authToken?.userId;
-
   try {
     const apiClient = new ApiClient();
 
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
+    const params = new URLSearchParams();
+    if (q) params.append("search", q);
+    params.append("page", String(page ? page - 1 : 0));
+    params.append("size", String(pageLimit || 10));
+    params.append("sort", "name,asc");
 
-    const data = await apiClient.post(`/api/businesses/${userId}`, query);
+    const data = await apiClient.get(`/api/v1/businesses?${params.toString()}`);
 
     return parseStringify(data);
   } catch (error) {
@@ -81,9 +64,6 @@ export const createBusiness = async (
   business: z.infer<typeof BusinessSchema>,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
-
-  const authToken = await getAuthToken();
-  const userId = authToken?.userId;
 
   const validatedData = BusinessSchema.safeParse(business);
 
@@ -99,17 +79,15 @@ export const createBusiness = async (
 
   const payload = {
     ...validatedData.data,
-    owner: userId,
   };
 
   try {
     const apiClient = new ApiClient();
 
     const response = await apiClient.post(
-      `/api/businesses/${userId}/create`,
+      `/api/v1/businesses`,
       payload,
     );
-    // console.log("The business created is", business);
 
     return {
       responseType: "success",
@@ -138,8 +116,6 @@ export const updateBusiness = async (
   business: z.infer<typeof BusinessSchema>,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
-  const authToken = await getAuthToken();
-  const userId = authToken?.userId;
   const apiClient = new ApiClient();
 
   const validatedData = BusinessSchema.safeParse(business);
@@ -158,11 +134,10 @@ export const updateBusiness = async (
 
   const payload = {
     ...validatedData.data,
-    owner: userId,
   };
 
   try {
-    await apiClient.put(`/api/businesses/${userId}/${id}`, payload);
+    await apiClient.put(`/api/v1/businesses/${id}`, payload);
 
     formResponse = {
       responseType: "success",
@@ -199,25 +174,61 @@ export const updateBusiness = async (
 export const getSingleBusiness = async (id: UUID): Promise<Business> => {
   const apiClient = new ApiClient();
 
-  const authToken = await getAuthToken();
-
-  const userId = authToken?.userId;
-
-  const data = await apiClient.get(`/api/businesses/${userId}/${id}`);
+  const data = await apiClient.get(`/api/v1/businesses/${id}`);
   return parseStringify(data);
 };
 
 export const deleteBusiness = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Business ID is required to perform this request");
   await getAuthenticatedUser();
-  const authToken = await getAuthToken();
-  const userId = authToken?.userId;
   try {
     const apiClient = new ApiClient();
 
-    await apiClient.delete(`/api/businesses/${userId}/${id}`);
+    await apiClient.delete(`/api/v1/businesses/${id}`);
 
     revalidatePath("/business");
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deactivateBusiness = async (id: UUID): Promise<FormResponse> => {
+  if (!id) throw new Error("Business ID is required");
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/businesses/${id}/deactivate`, {});
+    revalidatePath("/business");
+    return { responseType: "success", message: "Business deactivated successfully" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to deactivate business",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const reactivateBusiness = async (id: UUID): Promise<FormResponse> => {
+  if (!id) throw new Error("Business ID is required");
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/businesses/${id}/reactivate`, {});
+    revalidatePath("/business");
+    return { responseType: "success", message: "Business reactivated successfully" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to reactivate business",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const getBusinessCount = async (): Promise<{ total: number; active: number; inactive: number }> => {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(`/api/v1/businesses/count`);
+    return parseStringify(data);
   } catch (error) {
     throw error;
   }

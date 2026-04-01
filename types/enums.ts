@@ -12,10 +12,10 @@ export enum BusinessType {
 
 export enum subscriptionStatus {
     TRIAL = "TRIAL",
+    ACTIVE = "ACTIVE",
+    PAST_DUE = "PAST_DUE",
     EXPIRED = "EXPIRED",
-    DUE="DUE",
-    OK="OK",
-    PAST_DUE="PAST_DUE",
+    SUSPENDED = "SUSPENDED",
 }
 
 export enum discountType {

@@ -30,7 +30,9 @@ export const fetchAllCustomers = async (): Promise<Customer[]> => {
   try {
     const apiClient = new ApiClient();
     const location = await getCurrentLocation();
-    const customerData = await apiClient.get(`/api/customers/${location?.id}`);
+    const customerData = await apiClient.get(
+      `/api/v1/customers?locationId=${location?.id}`,
+    );
     return parseStringify(customerData);
   } catch (error) {
     throw error;
@@ -46,34 +48,15 @@ export const searchCustomer = async (
 
   try {
     const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "firstName",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
-      ],
-      sorts: [
-        {
-          key: "firstName",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
     const location = await getCurrentLocation();
-    const customerData = await apiClient.post(
-      `/api/customers/${location?.id}`,
-      query,
+    const params = new URLSearchParams({
+      search: q,
+      page: String(page ? page - 1 : 0),
+      size: String(pageLimit ? pageLimit : 10),
+      locationId: String(location?.id),
+    });
+    const customerData = await apiClient.get(
+      `/api/v1/customers?${params.toString()}`,
     );
     return parseStringify(customerData);
   } catch (error) {
@@ -105,7 +88,7 @@ export const createCustomer = async (
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(`/api/customers/${location?.id}/create`, payload);
+    await apiClient.post(`/api/v1/customers`, payload);
     formResponse = {
       responseType: "success",
       message: "Customer created successfully",
@@ -129,36 +112,16 @@ export const createCustomer = async (
 
 export const getCustomer = async (
   id: UUID,
-): Promise<ApiResponse<Customer>> => {
+): Promise<Customer> => {
   const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const customerResponse = await apiClient.post(
-    `/api/customers/${location?.id}`,
-    query,
-  );
+  const customerResponse = await apiClient.get(`/api/v1/customers/${id}`);
   return parseStringify(customerResponse);
 };
 
 export const getCustomerById = async (id: UUID): Promise<Customer> => {
   await getAuthenticatedUser();
   const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
-  const data = await apiClient.get(
-    `/api/customers/${location?.id}/${id}`,
-  );
+  const data = await apiClient.get(`/api/v1/customers/${id}`);
   return parseStringify(data);
 };
 
@@ -186,7 +149,7 @@ export const updateCustomer = async (
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.put(`/api/customers/${location?.id}/${id}`, payload);
+    await apiClient.put(`/api/v1/customers/${id}`, payload);
     formResponse = {
       responseType: "success",
       message: "Customer updated successfully",
@@ -213,31 +176,22 @@ export const deleteCustomer = async (id: UUID): Promise<void> => {
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(`/api/customers/${location?.id}/${id}`);
+    await apiClient.delete(`/api/v1/customers/${id}`);
     revalidatePath("/customers");
   } catch (error) {
     throw error;
   }
 };
 
-export const archiveCustomer = async (ids: string | string[]): Promise<void> => {
+export const deactivateCustomer = async (id: string): Promise<void> => {
   const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
-
-  const customerIds = Array.isArray(ids) ? ids : [ids];
-
-  await apiClient.put(`/api/customers/${location?.id}/archive`, customerIds);
+  await apiClient.post(`/api/v1/customers/${id}/deactivate`, {});
   revalidatePath("/customers");
 };
 
-export const unarchiveCustomer = async (ids: string | string[]): Promise<void> => {
+export const reactivateCustomer = async (id: string): Promise<void> => {
   const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
-
-  const customerIds = Array.isArray(ids) ? ids : [ids];
-
-  await apiClient.put(`/api/customers/${location?.id}/unarchive`, customerIds);
+  await apiClient.post(`/api/v1/customers/${id}/reactivate`, {});
   revalidatePath("/customers");
 };
 
@@ -248,8 +202,7 @@ export const fetchCustomerGroups = async (): Promise<CustomerGroup[]> => {
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const data = await apiClient.get(`/api/customer-groups/${location?.id}`);
+    const data = await apiClient.get(`/api/v1/customer-groups`);
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -265,23 +218,13 @@ export const searchCustomerGroups = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [{ key: "name", direction: "ASC" }],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const data = await apiClient.post(
-      `/api/customer-groups/${location?.id}`,
-      query,
+    const params = new URLSearchParams({
+      search: q,
+      page: String(page ? page - 1 : 0),
+      size: String(pageLimit ? pageLimit : 10),
+    });
+    const data = await apiClient.get(
+      `/api/v1/customer-groups?${params.toString()}`,
     );
     return parseStringify(data);
   } catch (error) {
@@ -304,14 +247,9 @@ export const createCustomerGroup = async (
     return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
-
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(
-      `/api/customer-groups/${location?.id}/create`,
-      validated.data,
-    );
+    await apiClient.post(`/api/v1/customer-groups`, validated.data);
     formResponse = {
       responseType: "success",
       message: "Customer group created successfully",
@@ -346,14 +284,9 @@ export const updateCustomerGroup = async (
     return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
-
   try {
     const apiClient = new ApiClient();
-    await apiClient.put(
-      `/api/customer-groups/${location?.id}/${id}`,
-      validated.data,
-    );
+    await apiClient.put(`/api/v1/customer-groups/${id}`, validated.data);
     formResponse = {
       responseType: "success",
       message: "Customer group updated successfully",
@@ -378,8 +311,7 @@ export const deleteCustomerGroup = async (id: UUID): Promise<void> => {
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    await apiClient.delete(`/api/customer-groups/${location?.id}/${id}`);
+    await apiClient.delete(`/api/v1/customer-groups/${id}`);
     revalidatePath("/customers");
   } catch (error) {
     throw error;
@@ -391,11 +323,9 @@ export const addCustomersToGroup = async (
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
-  const location = await getCurrentLocation();
-
   try {
     const apiClient = new ApiClient();
-    await apiClient.put(`/api/customers/${location?.id}/add-to-group`, data);
+    await apiClient.put(`/api/v1/customers/bulk/add-to-group`, data);
     formResponse = {
       responseType: "success",
       message: "Customers added to group successfully",
@@ -417,14 +347,9 @@ export const removeCustomersFromGroup = async (
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
-  const location = await getCurrentLocation();
-
   try {
     const apiClient = new ApiClient();
-    await apiClient.put(
-      `/api/customers/${location?.id}/remove-from-group`,
-      data,
-    );
+    await apiClient.put(`/api/v1/customers/bulk/remove-from-group`, data);
     formResponse = {
       responseType: "success",
       message: "Customers removed from group successfully",
@@ -450,9 +375,8 @@ export const fetchCustomerAddresses = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     const data = await apiClient.get(
-      `/api/customer-addresses/${location?.id}/customers/${customerId}`,
+      `/api/v1/customers/${customerId}/addresses`,
     );
     return parseStringify(data);
   } catch (error) {
@@ -476,12 +400,10 @@ export const createCustomerAddress = async (
     return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
-
   try {
     const apiClient = new ApiClient();
     await apiClient.post(
-      `/api/customer-addresses/${location?.id}/customers/${customerId}`,
+      `/api/v1/customers/${customerId}/addresses`,
       validated.data,
     );
     formResponse = {
@@ -517,12 +439,10 @@ export const updateCustomerAddress = async (
     return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
-
   try {
     const apiClient = new ApiClient();
     await apiClient.put(
-      `/api/customer-addresses/${location?.id}/customers/${customerId}/${addressId}`,
+      `/api/v1/customers/${customerId}/addresses/${addressId}`,
       validated.data,
     );
     formResponse = {
@@ -549,9 +469,8 @@ export const deleteCustomerAddress = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     await apiClient.delete(
-      `/api/customer-addresses/${location?.id}/customers/${customerId}/${addressId}`,
+      `/api/v1/customers/${customerId}/addresses/${addressId}`,
     );
     revalidatePath("/customers");
   } catch (error) {
@@ -568,9 +487,8 @@ export const fetchCustomerPreferences = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     const data = await apiClient.get(
-      `/api/customer-preferences/${location?.id}/customers/${customerId}`,
+      `/api/v1/customers/${customerId}/preferences`,
     );
     return parseStringify(data);
   } catch (error) {
@@ -594,12 +512,10 @@ export const createCustomerPreference = async (
     return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
-
   try {
     const apiClient = new ApiClient();
     await apiClient.post(
-      `/api/customer-preferences/${location?.id}/customers/${customerId}`,
+      `/api/v1/customers/${customerId}/preferences`,
       validated.data,
     );
     formResponse = {
@@ -635,12 +551,10 @@ export const updateCustomerPreference = async (
     return parseStringify(formResponse);
   }
 
-  const location = await getCurrentLocation();
-
   try {
     const apiClient = new ApiClient();
     await apiClient.put(
-      `/api/customer-preferences/${location?.id}/customers/${customerId}/${preferenceId}`,
+      `/api/v1/customers/${customerId}/preferences/${preferenceId}`,
       validated.data,
     );
     formResponse = {
@@ -667,9 +581,8 @@ export const deleteCustomerPreference = async (
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
     await apiClient.delete(
-      `/api/customer-preferences/${location?.id}/customers/${customerId}/${preferenceId}`,
+      `/api/v1/customers/${customerId}/preferences/${preferenceId}`,
     );
     revalidatePath("/customers");
   } catch (error) {

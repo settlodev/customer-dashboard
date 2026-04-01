@@ -34,6 +34,7 @@ import {
   LocationSettings,
   SettingField,
   SETTINGS_CONFIG,
+  CATEGORY_TITLES as IMPORTED_CATEGORY_TITLES,
 } from "@/types/settings/type";
 import { LocationSettingsSchema } from "@/types/settings/schema";
 import { ImageUploadModal } from "@/components/settings/uploadImage";
@@ -83,16 +84,7 @@ const LoadingSkeleton = () => {
   );
 };
 
-const CATEGORY_TITLES = {
-  basic: "Basic Settings",
-  receipt: "Receipt Management",
-  feature: "Feature Settings",
-  printing: "Printing Settings",
-  inventory: "Inventory Settings",
-  order: "Order Settings",
-  loyalty: "Customer Loyalty Points",
-  "staff-points": "Staff Points",
-} as const;
+const CATEGORY_TITLES = IMPORTED_CATEGORY_TITLES;
 
 const groupSettingsByCategory = (settings: SettingField[]) =>
   settings.reduce(

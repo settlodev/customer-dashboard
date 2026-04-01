@@ -78,7 +78,14 @@ export const searchLocations = async (
       size: pageLimit ? pageLimit : 10,
     };
 
-    const data = await apiClient.post(`/api/locations/${business?.id}`, query);
+    const params = new URLSearchParams();
+    if (q) params.append("search", q);
+    params.append("page", String(page ? page - 1 : 0));
+    params.append("size", String(pageLimit || 10));
+    params.append("sort", "name,asc");
+    if (business?.id) params.append("businessId", business.id);
+
+    const data = await apiClient.get(`/api/v1/locations?${params.toString()}`);
 
     return parseStringify(data);
   } catch (error) {
@@ -138,13 +145,11 @@ export const createLocation = async (
     const payload = {
       ...validatedData.data,
       business: targetBusinessId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
     };
 
     const apiClient = new ApiClient();
     const response = await apiClient.post(
-      `/api/locations/${targetBusinessId}/create`,
+      `/api/v1/locations`,
       payload,
     );
 
@@ -215,7 +220,7 @@ export const updateLocation = async (
       business: business.id,
     };
     // Make the API call to update location
-    await apiClient.put(`/api/locations/${business.id}/${id}`, payload);
+    await apiClient.put(`/api/v1/locations/${id}`, payload);
 
     // Refresh location data if we're updating the current location
     if (currentLocation?.id === id) {
@@ -243,26 +248,10 @@ export const updateLocation = async (
   return parseStringify(formResponse);
 };
 
-export const getLocation = async (id: UUID): Promise<ApiResponse<Location>> => {
+export const getLocation = async (id: UUID): Promise<Location> => {
   const apiClient = new ApiClient();
 
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-
-  const business = await getCurrentBusiness();
-
-  const data = await apiClient.post(`/api/locations/${business?.id}`, query);
+  const data = await apiClient.get(`/api/v1/locations/${id}`);
 
   return parseStringify(data);
 };
@@ -276,7 +265,7 @@ export const getLocationById = async (): Promise<Location> => {
     const currentLocation = await getCurrentLocation();
 
     const data = await apiClient.get(
-      `/api/locations/${business?.id}/${currentLocation?.id}`,
+      `/api/v1/locations/${currentLocation?.id}`,
     );
 
     return parseStringify(data);
@@ -310,8 +299,51 @@ export const deleteLocation = async (id: UUID): Promise<void> => {
 
     const business = await getCurrentBusiness();
 
-    await apiClient.delete(`/api/locations/${business?.id}/${id}`);
+    await apiClient.delete(`/api/v1/locations/${id}`);
     revalidatePath("/locations");
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deactivateLocation = async (id: UUID): Promise<FormResponse> => {
+  if (!id) throw new Error("Location ID is required");
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/locations/${id}/deactivate`, {});
+    revalidatePath("/locations");
+    return { responseType: "success", message: "Location deactivated successfully" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to deactivate location",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const reactivateLocation = async (id: UUID): Promise<FormResponse> => {
+  if (!id) throw new Error("Location ID is required");
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/locations/${id}/reactivate`, {});
+    revalidatePath("/locations");
+    return { responseType: "success", message: "Location reactivated successfully" };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to reactivate location",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
+  }
+};
+
+export const getLocationCount = async (businessId?: string): Promise<{ total: number; active: number; inactive: number }> => {
+  try {
+    const apiClient = new ApiClient();
+    const params = businessId ? `?businessId=${businessId}` : "";
+    const data = await apiClient.get(`/api/v1/locations/count${params}`);
+    return parseStringify(data);
   } catch (error) {
     throw error;
   }

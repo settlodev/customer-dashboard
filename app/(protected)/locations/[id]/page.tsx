@@ -10,7 +10,6 @@ import {
     CardTitle,
 } from "@/components/ui/card";
 import { getLocation } from "@/lib/actions/location-actions";
-import { ApiResponse } from "@/types/types";
 import { Location } from "@/types/location/type";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import LocationClientForm from "@/components/forms/location_client_form";
@@ -20,12 +19,12 @@ export default async function LocationPage({params}: {params: Params}) {
 
     const resolvedParams = await params;
     const isNewItem = resolvedParams.id === "new";
-    let item: ApiResponse<Location> | null = null;
+    let item: Location | null = null;
 
     if (!isNewItem) {
         try {
             item = await getLocation(resolvedParams.id as UUID);
-            if (item.totalElements == 0) notFound();
+            if (!item) notFound();
         } catch (error) {
             console.log(error)
             throw new Error("Failed to load location data");
@@ -35,7 +34,7 @@ export default async function LocationPage({params}: {params: Params}) {
     const breadcrumbItems = [
         { title: "Locations", link: "/locations" },
         {
-            title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
+            title: isNewItem ? "New" : item?.name || "Edit",
             link: "",
         },
     ];
@@ -48,9 +47,9 @@ export default async function LocationPage({params}: {params: Params}) {
                 </div>
             </div>
 
-            <LocationCard 
-                isNewItem={isNewItem} 
-                item={item?.content[0]} 
+            <LocationCard
+                isNewItem={isNewItem}
+                item={item}
             />
         </div>
     );

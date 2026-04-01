@@ -42,6 +42,8 @@ const AUTH_SERVICE_URL =
   process.env.AUTH_SERVICE_URL || process.env.SERVICE_URL || "";
 const ACCOUNTS_SERVICE_URL =
   process.env.ACCOUNTS_SERVICE_URL || process.env.SERVICE_URL || "";
+const WHITELABEL_CLIENT_ID =
+  process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID || "";
 
 export async function logout() {
   // Always clear local state, regardless of whether the API call succeeds
@@ -52,6 +54,7 @@ export async function logout() {
     try {
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
       };
       if (authToken.accessToken) {
         headers["Authorization"] = `Bearer ${authToken.accessToken}`;
@@ -118,7 +121,10 @@ export const login = async (
 
     const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
       body: JSON.stringify({
         email: validatedData.data.email,
         password: validatedData.data.password,
@@ -179,6 +185,7 @@ export const login = async (
           headers: {
             Authorization: `Bearer ${loginData.accessToken}`,
             "Content-Type": "application/json",
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
           },
         },
       );
@@ -365,7 +372,10 @@ export const oauthLogin = async (
 
     const response = await fetch(`${AUTH_SERVICE_URL}/auth/oauth/login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
       body: JSON.stringify({ provider, idToken }),
     });
 
@@ -408,6 +418,7 @@ export const oauthLogin = async (
           headers: {
             Authorization: `Bearer ${loginData.accessToken}`,
             "Content-Type": "application/json",
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
           },
         },
       );
@@ -564,7 +575,10 @@ export const register = async (
       `${ACCOUNTS_SERVICE_URL}/api/v1/accounts/register`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
         body: JSON.stringify(payload),
       },
     );
@@ -595,7 +609,10 @@ export const register = async (
     try {
       const loginResponse = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
         body: JSON.stringify({
           email: validatedData.data.email,
           password: validatedData.data.password,
@@ -666,6 +683,7 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${pendingVerification.verificationResendToken}`,
+            ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
           },
           body: JSON.stringify({ code }),
         },
@@ -692,6 +710,7 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
             headers: {
               Authorization: `Bearer ${verifyData.accessToken}`,
               "Content-Type": "application/json",
+              ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
             },
           },
         );
@@ -774,7 +793,10 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
       `${AUTH_SERVICE_URL}/auth/verify/email/code`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
         body: JSON.stringify({
           userId: pendingVerification.userId,
           code,
@@ -827,7 +849,10 @@ export const resendVerificationCode = async (): Promise<FormResponse> => {
       `${AUTH_SERVICE_URL}/auth/verify/email/resend/${pendingVerification.userId}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
       },
     );
 
@@ -873,7 +898,10 @@ export const resetPassword = async (
       `${AUTH_SERVICE_URL}/auth/password/reset/request`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
         body: JSON.stringify({
           identifier: validateEmail.data.email,
         }),
@@ -917,7 +945,10 @@ export const verifyResetCode = async (
       `${AUTH_SERVICE_URL}/auth/password/reset/verify/code`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
         body: JSON.stringify({ userId, code }),
       },
     );
@@ -970,7 +1001,10 @@ export const confirmNewPassword = async (
       `${AUTH_SERVICE_URL}/auth/password/reset/confirm`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
         body: JSON.stringify({
           token,
           newPassword: validatedPassword.data.password,

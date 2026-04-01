@@ -6,10 +6,8 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { UUID } from "node:crypto";
 import {
-  getCurrentBusiness,
   getCurrentLocation,
 } from "./business/get-current-business";
 import { NotificationSettingsSchema } from "@/types/notification/shema";
@@ -28,7 +26,7 @@ export const fetchLocationSettings = async (): Promise<any> => {
     const location = await getCurrentLocation();
 
     const settingsData = await apiClient.get(
-      `/api/location-settings/${location?.id}`,
+      `/api/v1/locations/${location?.id}/settings`,
     );
 
     return parseStringify(settingsData);
@@ -54,16 +52,13 @@ export const updateLocationSettings = async (
   }
 
   const locationId = await getCurrentLocation();
-  const payload = {
-    ...validSettingsData.data,
-    locationId: locationId?.id,
-  };
+  const payload = validSettingsData.data;
 
   try {
     const apiClient = new ApiClient();
 
     await apiClient.put(
-      `/api/location-settings/${locationId?.id}/${id}`,
+      `/api/v1/locations/${locationId?.id}/settings`,
       payload,
     );
   } catch (error) {
@@ -79,7 +74,6 @@ export const updateLocationSettings = async (
     return parseStringify(formResponse);
   }
   revalidatePath("/settings");
-  redirect("/settings");
 };
 
 export const updateNotificationSetting = async (
@@ -99,7 +93,6 @@ export const updateNotificationSetting = async (
   }
 
   const locationId = await getCurrentLocation();
-  const businessId = await getCurrentBusiness();
   const payload = {
     ...validNotificationSetting.data,
   };
@@ -108,7 +101,7 @@ export const updateNotificationSetting = async (
     const apiClient = new ApiClient();
 
     await apiClient.put(
-      `/api/locations/${businessId?.id}/update-notifications/${locationId?.id}`,
+      `/api/v1/locations/${locationId?.id}/settings`,
       payload,
     );
   } catch (error) {
@@ -190,5 +183,16 @@ export const digitalReceiptPaymentDetails = async (
   } catch (error) {
     console.error("Failed to store digital receipt payment details:", error);
     throw error;
+  }
+};
+
+export const resetLocationSettings = async (locationId: string): Promise<FormResponse> => {
+  try {
+    const apiClient = new ApiClient();
+    await apiClient.post(`/api/v1/locations/${locationId}/settings/reset`, {});
+    revalidatePath("/settings");
+    return { responseType: "success", message: "Settings reset to defaults" };
+  } catch (error) {
+    return { responseType: "error", message: "Failed to reset settings", error: error instanceof Error ? error : new Error(String(error)) };
   }
 };

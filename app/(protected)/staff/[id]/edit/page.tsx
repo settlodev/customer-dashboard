@@ -4,26 +4,23 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import StaffForm from "@/components/forms/staff_form";
 import { getStaff } from "@/lib/actions/staff-actions";
 import { Staff } from "@/types/staff";
-import { ApiResponse } from "@/types/types";
 
 type Params = Promise<{ id: string }>;
 
 export default async function StaffEditPage({ params }: { params: Params }) {
   const resolvedParams = await params;
   const isNewItem = resolvedParams.id === "new";
-  let item: ApiResponse<Staff> | null = null;
+  let staff: Staff | null = null;
 
   if (!isNewItem) {
     try {
-      item = await getStaff(resolvedParams.id as UUID);
-      if (item.totalElements === 0) notFound();
+      staff = await getStaff(resolvedParams.id as UUID);
+      if (!staff) notFound();
     } catch (error) {
       console.log(error);
       throw new Error("Failed to load staff data");
     }
   }
-
-  const staff = isNewItem ? null : item?.content[0];
 
   const breadcrumbItems = isNewItem
     ? [

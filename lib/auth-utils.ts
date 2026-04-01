@@ -22,6 +22,9 @@ const COOKIE_CHUNK_SIZE = 3800; // Leave room for name + attributes
 const MAX_CHUNKS = 10;
 const AUTH_TOKEN_COOKIE = "authToken";
 
+// Import for internal use — callers should import from "@/lib/jwt-utils" directly
+import { extractSubscriptionStatus } from "@/lib/jwt-utils";
+
 function getCookieOptions() {
   const isProduction = process.env.NODE_ENV === "production";
   return {
@@ -145,6 +148,7 @@ export const createAuthTokenFromLogin = async (
     countryCode: profileData?.countryCode ?? "",
     theme: profileData?.theme ?? null,
     verificationResendToken: loginResponse.verificationResendToken,
+    subscriptionStatus: extractSubscriptionStatus(loginResponse.accessToken),
   };
 
   await setChunkedCookie(AUTH_TOKEN_COOKIE, JSON.stringify(authTokenData));
@@ -200,8 +204,9 @@ export const deleteAuthCookie = async () => {
     cookieStore.delete("authjs.callback-url");
     cookieStore.delete("authjs.session-token");
     cookieStore.delete("pendingVerification");
-  } catch (e) {
-    console.log("Error deleting auth cookie", e);
+  } catch {
+    // Cookies can only be modified in Server Actions or Route Handlers.
+    // This silently fails when called from Server Components (e.g., layout.tsx).
   }
 };
 
