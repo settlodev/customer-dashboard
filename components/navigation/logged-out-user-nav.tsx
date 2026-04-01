@@ -126,15 +126,18 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
                   <Button
                     variant="ghost"
                     asChild
-                    className="hidden sm:inline-flex text-sm font-medium"
+                    className="sm:inline-flex text-sm font-medium"
                   >
                     <Link href="/login">Login</Link>
                   </Button>
                   <Button
                     asChild
-                    className="bg-primary hover:bg-primary/90 text-white rounded-lg shadow-sm transition-all duration-200"
+                    className="hidden bg-primary hover:bg-primary/90 text-white rounded-lg shadow-sm transition-all duration-200"
                   >
-                    <Link href="/register" className="flex items-center text-sm">
+                    <Link
+                      href="/register"
+                      className="flex items-center text-sm"
+                    >
                       Get Started
                       <ChevronRight className="ml-1 h-4 w-4" />
                     </Link>

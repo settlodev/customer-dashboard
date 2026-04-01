@@ -8,7 +8,7 @@ import * as z from "zod";
 
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
-import ApiClient from "@/lib/settlo-api-client";
+import ApiClient, { AuthenticationError } from "@/lib/settlo-api-client";
 import { ApiResponse, FormResponse } from "@/types/types";
 import {
   getCurrentBusiness,
@@ -27,11 +27,13 @@ export const fetchAllLocations = async (): Promise<Location[] | null> => {
     }
 
     const apiClient = new ApiClient();
-
     const locationsData = await apiClient.get(`/api/locations/${business.id}`);
-
     return parseStringify(locationsData);
   } catch (error: unknown) {
+    if (error instanceof AuthenticationError) {
+      throw error;
+    }
+
     const message =
       error && typeof error === "object" && "message" in error
         ? (error as { message: string }).message

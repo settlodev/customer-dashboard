@@ -192,27 +192,12 @@ export const SETTINGS_CONFIG: SettingField[] = [
     helperText: "Add or edit bank and MNO payment details for digital receipts",
   },
 
-  // Feature Settings
-  {
-    key: "trackInventory",
-    label: "Track Inventory",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable inventory tracking for this location",
-  },
   {
     key: "ecommerceEnabled",
     label: "Enable Ecommerce",
     type: "switch",
     category: "feature",
     helperText: "Enable ecommerce functionality",
-  },
-  {
-    key: "useRecipe",
-    label: "Use Recipe",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable recipe management",
   },
   {
     key: "usePasscode",
@@ -222,40 +207,26 @@ export const SETTINGS_CONFIG: SettingField[] = [
     helperText: "Require passcode for system access",
   },
   {
-    key: "useDepartments",
-    label: "Use Departments",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable department management",
-  },
-  {
     key: "useCustomPrice",
     label: "Use Custom Price",
     type: "switch",
     category: "feature",
     helperText: "Allow custom pricing per item",
   },
-  {
-    key: "useWarehouse",
-    label: "Use Warehouse",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable warehouse management",
-  },
-  {
-    key: "useShifts",
-    label: "Use Shifts",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable shift management for staff",
-  },
-  {
-    key: "useKds",
-    label: "Use KDS",
-    type: "switch",
-    category: "feature",
-    helperText: "Enable Kitchen Display System",
-  },
+  // {
+  //   key: "useShifts",
+  //   label: "Use Shifts",
+  //   type: "switch",
+  //   category: "feature",
+  //   helperText: "Enable shift management for staff",
+  // },
+  // {
+  //   key: "useKds",
+  //   label: "Use KDS",
+  //   type: "switch",
+  //   category: "feature",
+  //   helperText: "Enable Kitchen Display System",
+  // },
   {
     key: "enableOrdersPrintsCount",
     label: "Enable Orders Prints Count",
@@ -509,7 +480,8 @@ export const SETTINGS_CONFIG: SettingField[] = [
     type: "number",
     category: "loyalty",
     placeholder: "e.g. 1000",
-    helperText: "Order amount needed to earn points (e.g. 1000 = 1 point per 1000 spent)",
+    helperText:
+      "Order amount needed to earn points (e.g. 1000 = 1 point per 1000 spent)",
     inputType: "number",
     min: 0,
     step: 0.01,
@@ -604,8 +576,14 @@ export const SETTINGS_CONFIG: SettingField[] = [
     helperText: "Which staff member receives the points for an order",
     dependencies: ["enableStaffPoints"],
     options: [
-      { value: "FINISHED_BY", label: "Finished By (staff who closed the order)" },
-      { value: "ASSIGNED_TO", label: "Assigned To (staff assigned to the order)" },
+      {
+        value: "FINISHED_BY",
+        label: "Finished By (staff who closed the order)",
+      },
+      {
+        value: "ASSIGNED_TO",
+        label: "Assigned To (staff assigned to the order)",
+      },
       { value: "SPLIT", label: "Split (divide between both)" },
     ],
   },

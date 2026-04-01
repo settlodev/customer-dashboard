@@ -1,13 +1,7 @@
 "use client";
 
 import * as Sentry from "@sentry/nextjs";
-import {
-  ChevronDown,
-  MapPin,
-  Warehouse,
-  Loader2,
-  Check,
-} from "lucide-react";
+import { ChevronDown, MapPin, Warehouse, Loader2, Check } from "lucide-react";
 import { useEffect, useState, useCallback } from "react";
 import { Location } from "@/types/location/type";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
@@ -33,6 +27,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
+import { AuthenticationError } from "@/lib/settlo-api-client";
 
 interface LocationSwitcherProps {
   locationList: Location[] | null | undefined;
@@ -52,11 +48,11 @@ export const LocationSwitcher = ({
     type: "location" | "warehouse";
   } | null>(null);
   const [warehouseList, setWarehouseList] = useState<Warehouses[]>([]);
+  const router = useRouter();
   const [loadingWarehouses, setLoadingWarehouses] = useState(true);
 
   const isWarehouseMode = warehouse && warehouse.id;
 
-  // Fetch warehouses
   useEffect(() => {
     const fetchWarehouses = async () => {
       setLoadingWarehouses(true);
@@ -64,6 +60,11 @@ export const LocationSwitcher = ({
         const result = await searchWarehouses("", 0, 20);
         setWarehouseList(result?.content || []);
       } catch (error) {
+        // ✅ Redirect to login on auth error
+        if (error instanceof AuthenticationError) {
+          router.replace("/login");
+          return;
+        }
         console.error("Failed to fetch warehouses:", error);
         setWarehouseList([]);
       } finally {
@@ -71,7 +72,7 @@ export const LocationSwitcher = ({
       }
     };
     fetchWarehouses();
-  }, []);
+  }, [router]);
 
   const handleLocationSelect = (location: Location) => {
     if (currentLocation?.id === location.id && !isWarehouseMode) return;
@@ -120,20 +121,23 @@ export const LocationSwitcher = ({
         }
       }
     } catch (error) {
+      if (error instanceof AuthenticationError) {
+        router.replace("/login");
+        return;
+      }
       Sentry.captureException(error);
       setLoadingId(null);
       setConfirmItem(null);
     }
-  }, [confirmItem]);
+  }, [confirmItem, router]);
 
   const locationCount = locationList?.length ?? 0;
-  const hasNothing = !loadingWarehouses && locationCount <= 1 && warehouseList.length === 0;
+  const hasNothing =
+    !loadingWarehouses && locationCount <= 1 && warehouseList.length === 0;
 
   if (hasNothing) return null;
 
-  const activeName = isWarehouseMode
-    ? warehouse?.name
-    : currentLocation?.name;
+  const activeName = isWarehouseMode ? warehouse?.name : currentLocation?.name;
 
   const activeIcon = isWarehouseMode ? (
     <Warehouse className="h-4 w-4 text-primary" />
@@ -243,8 +247,7 @@ export const LocationSwitcher = ({
                   </DropdownMenuItem>
                 ) : (
                   warehouseList.map((wh) => {
-                    const isActive =
-                      isWarehouseMode && warehouse?.id === wh.id;
+                    const isActive = isWarehouseMode && warehouse?.id === wh.id;
                     return (
                       <DropdownMenuItem
                         key={wh.id}
@@ -270,7 +273,6 @@ export const LocationSwitcher = ({
               </DropdownMenuGroup>
             </>
           )}
-
         </DropdownMenuContent>
       </DropdownMenu>
 

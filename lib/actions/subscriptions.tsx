@@ -108,11 +108,9 @@ export const getActiveSubscription = async (
     return parseStringify(response);
   } catch (error: unknown) {
     if (error instanceof AuthenticationError) {
-      // Cookies already cleared in ApiClient
-      // Middleware will redirect to /login on next request
-      return null;
+      throw error;
     }
-    throw error;
+    return null;
   }
 };
 

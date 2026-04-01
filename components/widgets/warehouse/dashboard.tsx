@@ -322,8 +322,8 @@ const IntakeTrendChart = ({
                 <stop offset="95%" stopColor="#EB7F44" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="wh-requests" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#6366F1" stopOpacity={0.18} />
-                <stop offset="95%" stopColor="#6366F1" stopOpacity={0} />
+                <stop offset="5%" stopColor="#10B981" stopOpacity={0.18} />
+                <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid
@@ -364,7 +364,7 @@ const IntakeTrendChart = ({
               type="monotone"
               dataKey="requests"
               name="Requests"
-              stroke="#6366F1"
+              stroke="#10B981"
               strokeWidth={2}
               fill="url(#wh-requests)"
               dot={false}
