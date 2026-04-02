@@ -96,6 +96,75 @@ export const fetchPublicAvailability = async (
   return parseStringify(data);
 };
 
+// ─── Deposit Payment (Selcom Push-to-Pay Simulation) ─────────────────
+// In production, this would call the Selcom USSD Push API to send a
+// payment prompt to the customer's phone. For now, we simulate the flow.
+
+const paymentSessions = new Map<string, { status: string; createdAt: number }>();
+
+export const initiateDepositPayment = async (
+  phoneNumber: string,
+  amount: number,
+  reservationRef: string,
+): Promise<{ success: boolean; transactionId: string; message: string }> => {
+  // Simulate network delay
+  await new Promise((resolve) => setTimeout(resolve, 800));
+
+  // Validate phone number (Tanzanian format)
+  const cleaned = phoneNumber.replace(/\s+/g, "").replace(/^0/, "255").replace(/^\+/, "");
+  if (!/^255\d{9}$/.test(cleaned)) {
+    return {
+      success: false,
+      transactionId: "",
+      message: "Invalid phone number. Please use a valid Tanzanian number (e.g., 0712 345 678).",
+    };
+  }
+
+  // Generate a simulated transaction ID
+  const transactionId = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+
+  // Store session (simulating Selcom push sent)
+  paymentSessions.set(transactionId, { status: "PENDING", createdAt: Date.now() });
+
+  // In production: POST to Selcom USSD Push API
+  // await selcomClient.post('/checkout/create-order', {
+  //   vendor: 'SETTLO',
+  //   order_id: reservationRef,
+  //   buyer_phone: cleaned,
+  //   amount,
+  //   currency: 'TZS',
+  //   payment_methods: 'USSD-PUSH',
+  // });
+
+  return {
+    success: true,
+    transactionId,
+    message: `Payment request of TZS ${amount.toLocaleString()} sent to ${phoneNumber}. Please approve on your phone.`,
+  };
+};
+
+export const checkDepositPaymentStatus = async (
+  transactionId: string,
+): Promise<{ status: "PENDING" | "PAID" | "FAILED"; message: string }> => {
+  // Simulate network delay
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  const session = paymentSessions.get(transactionId);
+
+  if (!session) {
+    return { status: "FAILED", message: "Transaction not found." };
+  }
+
+  // Simulate: after 4 seconds from creation, mark as PAID
+  const elapsed = Date.now() - session.createdAt;
+  if (elapsed > 4000) {
+    session.status = "PAID";
+    return { status: "PAID", message: "Payment confirmed successfully!" };
+  }
+
+  return { status: "PENDING", message: "Waiting for payment confirmation..." };
+};
+
 export const createPublicReservation = async (
   locationId: string,
   payload: PublicReservationPayload,

@@ -61,12 +61,6 @@ export const ReservationSettingSchema = object({
   autoConfirm: optionalBoolean,
   autoConfirmMaxPartySize: optionalNumber,
 
-  // Deposit & Payment
-  requireDeposit: optionalBoolean,
-  defaultDepositAmount: optionalNonNegativeNumber,
-  depositPerGuest: optionalBoolean,
-  depositRequiredMinPartySize: optionalNumber,
-
   // Cancellation & No-Show
   cancellationPolicyHours: optionalNonNegativeNumber,
   allowOnlineCancellation: optionalBoolean,
@@ -110,12 +104,6 @@ export const ReservationSettingSchema = object({
     return true;
   },
   { message: "No-show fee amount is required when charging no-show fees", path: ["noShowFeeAmount"] },
-).refine(
-  (data) => {
-    if (data.requireDeposit && !data.defaultDepositAmount) return false;
-    return true;
-  },
-  { message: "Deposit amount is required when deposits are enabled", path: ["defaultDepositAmount"] },
 );
 
 export const BookingQuestionOptionSchema = object({

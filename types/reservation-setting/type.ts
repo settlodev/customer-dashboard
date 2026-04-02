@@ -19,13 +19,7 @@ export declare interface ReservationSetting {
   autoConfirm: boolean;
   autoConfirmMaxPartySize: number | null;
 
-  // Category 3: Deposit & Payment
-  requireDeposit: boolean;
-  defaultDepositAmount: number | null;
-  depositPerGuest: boolean;
-  depositRequiredMinPartySize: number | null;
-
-  // Category 4: Cancellation & No-Show
+  // Category 3: Cancellation & No-Show
   cancellationPolicyHours: number | null;
   allowOnlineCancellation: boolean;
   cancellationPolicyText: string | null;
@@ -109,7 +103,6 @@ export declare interface BookingQuestion {
 export type ReservationSettingCategory =
   | "booking_rules"
   | "confirmation"
-  | "deposit"
   | "cancellation"
   | "notifications"
   | "pacing"
@@ -231,43 +224,6 @@ export const RESERVATION_SETTINGS_CONFIG: ReservationSettingField[] = [
     helperText: "Only auto-confirm parties up to this size",
     min: 1,
     dependsOn: "autoConfirm",
-  },
-
-  // Deposit & Payment
-  {
-    key: "requireDeposit",
-    label: "Require Deposit",
-    type: "switch",
-    category: "deposit",
-    helperText: "Require a deposit for reservations",
-  },
-  {
-    key: "defaultDepositAmount",
-    label: "Default Deposit Amount",
-    type: "number",
-    category: "deposit",
-    placeholder: "0.00",
-    min: 0,
-    step: 0.01,
-    dependsOn: "requireDeposit",
-  },
-  {
-    key: "depositPerGuest",
-    label: "Deposit Per Guest",
-    type: "switch",
-    category: "deposit",
-    helperText: "Multiply deposit amount by party size",
-    dependsOn: "requireDeposit",
-  },
-  {
-    key: "depositRequiredMinPartySize",
-    label: "Deposit Required Min Party Size",
-    type: "number",
-    category: "deposit",
-    placeholder: "No minimum",
-    helperText: "Only require deposit for parties of this size or larger",
-    min: 1,
-    dependsOn: "requireDeposit",
   },
 
   // Cancellation & No-Show
@@ -451,7 +407,6 @@ export const RESERVATION_SETTING_CATEGORY_TITLES: Record<
 > = {
   booking_rules: "Booking Rules",
   confirmation: "Confirmation",
-  deposit: "Deposit & Payment",
   cancellation: "Cancellation & No-Show",
   notifications: "Notifications & Reminders",
   pacing: "Pacing & Capacity",

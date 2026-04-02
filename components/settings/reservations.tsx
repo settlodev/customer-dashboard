@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "../ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
-import { Settings2, MessageSquareText, Clock, CalendarOff } from "lucide-react";
+import { Settings2, MessageSquareText, Clock, CalendarOff, DollarSign } from "lucide-react";
 
 import ReservationSettingForm from "@/components/forms/reservation_setting_form";
 import BookingQuestionsManager from "@/components/forms/booking_question_form";
 import ReservationSlotManager from "@/components/forms/reservation_slot_form";
 import ReservationExceptionManager from "@/components/forms/reservation_exception_form";
+import DepositRuleManager from "@/components/forms/deposit_rule_form";
 import {
   fetchReservationSettings,
   fetchBookingQuestions,
@@ -17,17 +18,20 @@ import {
   fetchReservationSlots,
   fetchReservationExceptions,
 } from "@/lib/actions/reservation-actions";
+import { fetchDepositRules } from "@/lib/actions/deposit-rule-actions";
 import {
   ReservationSetting,
   BookingQuestion,
 } from "@/types/reservation-setting/type";
 import { ReservationSlot, ReservationException } from "@/types/reservation/type";
+import { DepositRule } from "@/types/deposit-rule/type";
 
 const ReservationSettings = ({ defaultTab }: { defaultTab?: string }) => {
   const [settings, setSettings] = useState<ReservationSetting | null>(null);
   const [questions, setQuestions] = useState<BookingQuestion[]>([]);
   const [slots, setSlots] = useState<ReservationSlot[]>([]);
   const [exceptions, setExceptions] = useState<ReservationException[]>([]);
+  const [depositRules, setDepositRules] = useState<DepositRule[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,16 +39,18 @@ const ReservationSettings = ({ defaultTab }: { defaultTab?: string }) => {
     try {
       setIsLoading(true);
       setError(null);
-      const [settingsData, questionsData, slotsData, exceptionsData] = await Promise.all([
+      const [settingsData, questionsData, slotsData, exceptionsData, depositRulesData] = await Promise.all([
         fetchReservationSettings(),
         fetchBookingQuestions(),
         fetchReservationSlots(),
         fetchReservationExceptions(),
+        fetchDepositRules(),
       ]);
       setSettings(settingsData);
       setQuestions(questionsData);
       setSlots(slotsData);
       setExceptions(exceptionsData);
+      setDepositRules(depositRulesData);
     } catch (err) {
       console.error("Failed to load reservation settings:", err);
       setError(
@@ -170,6 +176,13 @@ const ReservationSettings = ({ defaultTab }: { defaultTab?: string }) => {
             Exceptions
           </TabsTrigger>
           <TabsTrigger
+            value="deposit"
+            className="flex-1 min-w-0 gap-1.5 rounded-md text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
+          >
+            <DollarSign className="h-4 w-4 hidden sm:block flex-shrink-0" />
+            Deposit
+          </TabsTrigger>
+          <TabsTrigger
             value="questions"
             className="flex-1 min-w-0 gap-1.5 rounded-md text-xs sm:text-sm data-[state=active]:bg-white dark:data-[state=active]:bg-gray-900 data-[state=active]:text-primary data-[state=active]:shadow-sm"
           >
@@ -192,6 +205,13 @@ const ReservationSettings = ({ defaultTab }: { defaultTab?: string }) => {
         <TabsContent value="exceptions" className="mt-6">
           <ReservationExceptionManager
             exceptions={exceptions}
+            onRefresh={loadData}
+          />
+        </TabsContent>
+
+        <TabsContent value="deposit" className="mt-6">
+          <DepositRuleManager
+            rules={depositRules}
             onRefresh={loadData}
           />
         </TabsContent>

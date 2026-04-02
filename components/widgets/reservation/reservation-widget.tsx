@@ -18,6 +18,8 @@ import {
   fetchPublicReservationExceptions,
   fetchPublicAvailability,
   createPublicReservation,
+  initiateDepositPayment,
+  checkDepositPaymentStatus,
 } from "@/lib/actions/public-reservation-actions";
 import { LocationDetails } from "@/types/menu/type";
 import {
@@ -39,6 +41,9 @@ import {
   AlertCircle,
   MapPin,
   Loader2,
+  Smartphone,
+  CreditCard,
+  ShieldCheck,
 } from "lucide-react";
 
 interface ReservationWidgetProps {
@@ -82,6 +87,12 @@ export default function ReservationWidget({
   const [acceptedCancellationPolicy, setAcceptedCancellationPolicy] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [confirmationMessage, setConfirmationMessage] = useState("");
+
+  // --- deposit payment state ---
+  const [depositPhoneNumber, setDepositPhoneNumber] = useState("");
+  const [depositPaymentStatus, setDepositPaymentStatus] = useState<"idle" | "sending" | "waiting" | "paid" | "failed">("idle");
+  const [depositTransactionId, setDepositTransactionId] = useState("");
+  const [depositPaymentMessage, setDepositPaymentMessage] = useState("");
 
   // --- derived ---
   const primaryColor = settings?.primaryColor || "#EB7F44";
@@ -172,6 +183,85 @@ export default function ReservationWidget({
     },
     [locationId],
   );
+
+  // --- deposit calculation ---
+  const getDepositInfo = useCallback(() => {
+    // Check per-table deposit first (most specific)
+    if (selectedSlot && selectedTable) {
+      const table = selectedSlot.availableTables?.find((t) => t.id === selectedTable);
+      if (table?.requireDeposit && table.depositAmount != null) {
+        const amount = table.depositPerGuest ? table.depositAmount * partySize : table.depositAmount;
+        return { required: true, amount, perGuest: !!table.depositPerGuest };
+      }
+    }
+
+    // Fall back to global deposit from availability response
+    if (availability?.requireDeposit && availability.defaultDepositAmount != null) {
+      // Check minimum party size threshold
+      if (availability.depositRequiredMinPartySize && partySize < availability.depositRequiredMinPartySize) {
+        return { required: false, amount: 0, perGuest: false };
+      }
+      const amount = availability.depositPerGuest
+        ? availability.defaultDepositAmount * partySize
+        : availability.defaultDepositAmount;
+      return { required: true, amount, perGuest: !!availability.depositPerGuest };
+    }
+
+    return { required: false, amount: 0, perGuest: false };
+  }, [selectedSlot, selectedTable, availability, partySize]);
+
+  const depositInfo = getDepositInfo();
+
+  // --- deposit payment handler ---
+  const handleDepositPayment = async () => {
+    const phone = depositPhoneNumber || guestInfo.customerPhone;
+    if (!phone.trim()) {
+      setDepositPaymentMessage("Please enter your phone number.");
+      return;
+    }
+
+    setDepositPaymentStatus("sending");
+    setDepositPaymentMessage("");
+
+    const result = await initiateDepositPayment(
+      phone.trim(),
+      depositInfo.amount,
+      `RES-${selectedDate}-${selectedSlot?.time || ""}`,
+    );
+
+    if (!result.success) {
+      setDepositPaymentStatus("failed");
+      setDepositPaymentMessage(result.message);
+      return;
+    }
+
+    setDepositTransactionId(result.transactionId);
+    setDepositPaymentStatus("waiting");
+    setDepositPaymentMessage(result.message);
+
+    // Poll for payment confirmation
+    const pollInterval = setInterval(async () => {
+      const status = await checkDepositPaymentStatus(result.transactionId);
+      if (status.status === "PAID") {
+        clearInterval(pollInterval);
+        setDepositPaymentStatus("paid");
+        setDepositPaymentMessage(status.message);
+      } else if (status.status === "FAILED") {
+        clearInterval(pollInterval);
+        setDepositPaymentStatus("failed");
+        setDepositPaymentMessage(status.message);
+      }
+    }, 1500);
+
+    // Safety timeout after 60 seconds
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (depositPaymentStatus === "waiting") {
+        setDepositPaymentStatus("failed");
+        setDepositPaymentMessage("Payment timed out. Please try again.");
+      }
+    }, 60000);
+  };
 
   // --- submit reservation ---
   const handleSubmit = async () => {
@@ -302,6 +392,7 @@ export default function ReservationWidget({
     { key: "booking", label: "Booking" },
     { key: "details", label: "Details" },
     { key: "extras", label: "Review" },
+    ...(depositInfo.required ? [{ key: "deposit" as ReservationStep, label: "Payment" }] : []),
     { key: "confirmation", label: "Confirmed" },
   ];
   const currentStepIndex = steps.findIndex((s) => s.key === step);
@@ -328,37 +419,40 @@ export default function ReservationWidget({
       </div>
 
       {/* Progress */}
-      {step !== "confirmation" && (
-        <div className="flex items-center justify-center gap-1 mb-4 sm:mb-6">
-          {steps.slice(0, 3).map((s, i) => (
-            <React.Fragment key={s.key}>
-              <div className="flex flex-col items-center gap-1">
-                <div
-                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
-                    i <= currentStepIndex
-                      ? "text-white"
-                      : "bg-gray-200 text-gray-500"
-                  }`}
-                  style={i <= currentStepIndex ? { backgroundColor: primaryColor } : undefined}
-                >
-                  {i < currentStepIndex ? (
-                    <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  ) : (
-                    i + 1
-                  )}
+      {step !== "confirmation" && (() => {
+        const visibleSteps = steps.filter((s) => s.key !== "confirmation");
+        return (
+          <div className="flex items-center justify-center gap-1 mb-4 sm:mb-6">
+            {visibleSteps.map((s, i) => (
+              <React.Fragment key={s.key}>
+                <div className="flex flex-col items-center gap-1">
+                  <div
+                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-medium transition-colors ${
+                      i <= currentStepIndex
+                        ? "text-white"
+                        : "bg-gray-200 text-gray-500"
+                    }`}
+                    style={i <= currentStepIndex ? { backgroundColor: primaryColor } : undefined}
+                  >
+                    {i < currentStepIndex ? (
+                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    ) : (
+                      i + 1
+                    )}
+                  </div>
+                  <span className="text-[10px] sm:text-xs text-gray-500 font-medium">{s.label}</span>
                 </div>
-                <span className="text-[10px] sm:text-xs text-gray-500 font-medium">{s.label}</span>
-              </div>
-              {i < 2 && (
-                <div
-                  className="w-8 sm:w-12 h-0.5 mb-4 sm:mb-5"
-                  style={{ backgroundColor: i < currentStepIndex ? primaryColor : "#e5e7eb" }}
-                />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-      )}
+                {i < visibleSteps.length - 1 && (
+                  <div
+                    className="w-8 sm:w-12 h-0.5 mb-4 sm:mb-5"
+                    style={{ backgroundColor: i < currentStepIndex ? primaryColor : "#e5e7eb" }}
+                  />
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Error banner */}
       {error && step !== "confirmation" && (
@@ -632,6 +726,16 @@ export default function ReservationWidget({
                         <span className={`text-xs ${selectedTable === table.id ? "text-white/80" : "text-gray-400"}`}>
                           {table.type.charAt(0) + table.type.slice(1).toLowerCase()} · Up to {table.capacity}
                         </span>
+                        {table.minimumSpend != null && (
+                          <span className={`text-xs block mt-0.5 ${selectedTable === table.id ? "text-white/80" : "text-amber-600"}`}>
+                            Min. spend: {table.minimumSpend.toLocaleString()}
+                          </span>
+                        )}
+                        {table.requireDeposit && table.depositAmount != null && (
+                          <span className={`text-xs block mt-0.5 ${selectedTable === table.id ? "text-white/80" : "text-blue-600"}`}>
+                            Deposit: {table.depositAmount.toLocaleString()}
+                          </span>
+                        )}
                       </button>
                     ))}
                     {combinations.map((combo) => (
@@ -858,22 +962,8 @@ export default function ReservationWidget({
             </div>
           )}
 
-          {/* Deposit info */}
-          {settings?.requireDeposit && settings.defaultDepositAmount && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-              <p className="font-medium">Deposit Required</p>
-              <p className="text-blue-600 text-xs mt-1">
-                A deposit of{" "}
-                {settings.depositPerGuest
-                  ? `${settings.defaultDepositAmount.toLocaleString()} per guest (${(settings.defaultDepositAmount * partySize).toLocaleString()} total)`
-                  : settings.defaultDepositAmount.toLocaleString()}{" "}
-                is required for this reservation.
-              </p>
-            </div>
-          )}
-
-          {/* Cancellation policy acceptance */}
-          {settings?.cancellationPolicyText && (
+          {/* Cancellation policy acceptance — only shown when online cancellation is allowed */}
+          {settings?.allowOnlineCancellation !== false && settings?.cancellationPolicyText?.trim() && (
             <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-500">
               <p className="font-medium text-gray-600 mb-1">
                 Cancellation Policy
@@ -927,10 +1017,19 @@ export default function ReservationWidget({
               Back
             </Button>
             <Button
-              onClick={handleSubmit}
+              onClick={() => {
+                if (depositInfo.required) {
+                  setDepositPhoneNumber(guestInfo.customerPhone);
+                  setDepositPaymentStatus("idle");
+                  setDepositPaymentMessage("");
+                  setStep("deposit");
+                } else {
+                  handleSubmit();
+                }
+              }}
               disabled={
                 submitting ||
-                (!!settings?.cancellationPolicyText && !acceptedCancellationPolicy) ||
+                (settings?.allowOnlineCancellation !== false && !!settings?.cancellationPolicyText?.trim() && !acceptedCancellationPolicy) ||
                 (!!settings?.termsAndConditions && !acceptedTerms)
               }
               className="flex-1 text-white"
@@ -949,7 +1048,190 @@ export default function ReservationWidget({
         </div>
       )}
 
-      {/* ========= STEP 4: CONFIRMATION ========= */}
+      {/* ========= STEP: DEPOSIT PAYMENT ========= */}
+      {step === "deposit" && (
+        <div className="space-y-5">
+          {/* Summary bar */}
+          <div className="bg-gray-100 rounded-lg p-2.5 sm:p-3 grid grid-cols-3 gap-1 sm:flex sm:items-center sm:justify-between text-xs sm:text-sm">
+            <span className="text-gray-600 text-center sm:text-left">
+              <Users className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
+              {partySize} {partySize === 1 ? "guest" : "guests"}
+            </span>
+            <span className="text-gray-600 text-center">
+              <CalendarDays className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
+              {(() => {
+                const d = new Date(selectedDate + "T00:00:00");
+                return (
+                  <>
+                    <span className="sm:hidden">{d.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                    <span className="hidden sm:inline">{formatDate(selectedDate)}</span>
+                  </>
+                );
+              })()}
+            </span>
+            <span className="text-gray-600 text-center sm:text-right">
+              <Clock className="w-3.5 h-3.5 inline mr-0.5 sm:mr-1" />
+              {selectedSlot && formatTime(selectedSlot.time)}
+            </span>
+          </div>
+
+          {/* Deposit amount card */}
+          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-5 text-center">
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center mx-auto mb-3">
+              <CreditCard className="w-6 h-6 text-blue-600" />
+            </div>
+            <p className="text-sm text-gray-600 mb-1">Deposit Amount</p>
+            <p className="text-2xl font-bold text-gray-900">
+              TZS {depositInfo.amount.toLocaleString()}
+            </p>
+            {depositInfo.perGuest && (
+              <p className="text-xs text-gray-500 mt-1">
+                TZS {(depositInfo.amount / partySize).toLocaleString()} per guest
+              </p>
+            )}
+          </div>
+
+          {/* Payment states */}
+          {depositPaymentStatus === "idle" && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="depositPhone" className="text-sm font-medium">
+                  <Smartphone className="w-4 h-4 inline mr-1.5" />
+                  Mobile Money Number
+                </Label>
+                <p className="text-xs text-gray-500 mt-0.5 mb-2">
+                  A payment prompt will be sent to this number via Selcom
+                </p>
+                <Input
+                  id="depositPhone"
+                  type="tel"
+                  value={depositPhoneNumber}
+                  onChange={(e) => setDepositPhoneNumber(e.target.value)}
+                  placeholder="+255 712 345 678"
+                />
+              </div>
+
+              {depositPaymentMessage && (
+                <p className="text-sm text-red-600">{depositPaymentMessage}</p>
+              )}
+
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => setStep("extras")}
+                  className="flex-1"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Back
+                </Button>
+                <Button
+                  onClick={handleDepositPayment}
+                  className="flex-1 text-white"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <Smartphone className="w-4 h-4 mr-1" />
+                  Pay Now
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {depositPaymentStatus === "sending" && (
+            <div className="text-center py-6">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3" style={{ color: primaryColor }} />
+              <p className="text-sm font-medium text-gray-700">Sending payment request...</p>
+              <p className="text-xs text-gray-500 mt-1">Please wait while we connect to the payment provider</p>
+            </div>
+          )}
+
+          {depositPaymentStatus === "waiting" && (
+            <div className="text-center py-4 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-amber-50 border-2 border-amber-200 flex items-center justify-center mx-auto animate-pulse">
+                <Smartphone className="w-8 h-8 text-amber-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-gray-700">Check your phone</p>
+                <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">
+                  A payment prompt has been sent to <strong>{depositPhoneNumber}</strong>. Please approve the payment on your phone.
+                </p>
+              </div>
+              <div className="flex items-center justify-center gap-2 text-xs text-gray-400">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Waiting for confirmation...
+              </div>
+            </div>
+          )}
+
+          {depositPaymentStatus === "paid" && (
+            <DepositPaidAutoSubmit
+              onSubmit={handleSubmit}
+              submitting={submitting}
+              confirmationMessage={confirmationMessage}
+              partySize={partySize}
+              selectedDate={selectedDate}
+              selectedSlot={selectedSlot}
+              depositAmount={depositInfo.amount}
+              depositTransactionId={depositTransactionId}
+              locationName={location?.locationName || location?.businessName || ""}
+              primaryColor={primaryColor}
+              secondaryColor={secondaryColor}
+              formatTime={formatTime}
+              formatDate={formatDate}
+              onNewReservation={() => {
+                setStep("booking");
+                setSelectedDate("");
+                setSelectedSlot(null);
+                setSelectedTable(null);
+                setGuestInfo({ customerFirstName: "", customerLastName: "", customerEmail: "", customerPhone: "" });
+                setSpecialRequests("");
+                setAnswers({});
+                setAcceptedCancellationPolicy(false);
+                setAcceptedTerms(false);
+                setError(null);
+                setAvailability(null);
+                setDepositPaymentStatus("idle");
+                setDepositTransactionId("");
+                setDepositPaymentMessage("");
+                setDepositPhoneNumber("");
+              }}
+            />
+          )}
+
+          {depositPaymentStatus === "failed" && (
+            <div className="text-center py-4 space-y-4">
+              <div className="w-16 h-16 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center mx-auto">
+                <AlertCircle className="w-8 h-8 text-red-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-700">Payment Failed</p>
+                <p className="text-xs text-gray-500 mt-1">{depositPaymentMessage}</p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setDepositPaymentStatus("idle");
+                    setDepositPaymentMessage("");
+                  }}
+                  className="flex-1"
+                >
+                  Try Again
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setStep("extras")}
+                  className="flex-1"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Go Back
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========= STEP: CONFIRMATION ========= */}
       {step === "confirmation" && (
         <div className="text-center space-y-6">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
@@ -982,6 +1264,14 @@ export default function ReservationWidget({
               <MapPin className="w-4 h-4 text-gray-400" />
               <span>{location?.locationName || location?.businessName}</span>
             </div>
+            {depositPaymentStatus === "paid" && (
+              <div className="flex items-center gap-2 pt-1 border-t border-gray-200 mt-1">
+                <CreditCard className="w-4 h-4 text-emerald-500" />
+                <span className="text-emerald-700">
+                  Deposit of TZS {depositInfo.amount.toLocaleString()} paid
+                </span>
+              </div>
+            )}
           </div>
 
           <Button
@@ -997,6 +1287,10 @@ export default function ReservationWidget({
               setAcceptedTerms(false);
               setError(null);
               setAvailability(null);
+              setDepositPaymentStatus("idle");
+              setDepositTransactionId("");
+              setDepositPaymentMessage("");
+              setDepositPhoneNumber("");
             }}
             variant="outline"
             className="w-full"
@@ -1149,4 +1443,132 @@ function BookingQuestionField({
     default:
       return null;
   }
+}
+
+// --- Deposit Paid → Auto-submit & show confirmation ---
+
+function DepositPaidAutoSubmit({
+  onSubmit,
+  submitting,
+  confirmationMessage,
+  partySize,
+  selectedDate,
+  selectedSlot,
+  depositAmount,
+  depositTransactionId,
+  locationName,
+  primaryColor,
+  secondaryColor,
+  formatTime,
+  formatDate,
+  onNewReservation,
+}: {
+  onSubmit: () => Promise<void>;
+  submitting: boolean;
+  confirmationMessage: string;
+  partySize: number;
+  selectedDate: string;
+  selectedSlot: AvailableSlot | null;
+  depositAmount: number;
+  depositTransactionId: string;
+  locationName: string;
+  primaryColor: string;
+  secondaryColor: string;
+  formatTime: (t: string) => string;
+  formatDate: (d: string) => string;
+  onNewReservation: () => void;
+}) {
+  const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
+  useEffect(() => {
+    if (!submitted) {
+      setSubmitted(true);
+      onSubmit().catch(() => {
+        setSubmitError("Failed to complete reservation. Please try again.");
+      });
+    }
+  }, []);
+
+  // Still submitting
+  if (submitting || (!confirmationMessage && !submitError)) {
+    return (
+      <div className="text-center py-6 space-y-3">
+        <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center mx-auto">
+          <ShieldCheck className="w-6 h-6 text-emerald-600" />
+        </div>
+        <p className="text-sm font-medium text-emerald-700">Payment Confirmed!</p>
+        <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          Completing your reservation...
+        </div>
+      </div>
+    );
+  }
+
+  if (submitError) {
+    return (
+      <div className="text-center py-6 space-y-4">
+        <AlertCircle className="w-10 h-10 text-red-400 mx-auto" />
+        <p className="text-sm text-red-600">{submitError}</p>
+        <Button variant="outline" onClick={() => { setSubmitted(false); setSubmitError(""); }}>
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
+  // Reservation confirmed — show confirmation
+  return (
+    <div className="text-center space-y-5">
+      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+        <Check className="w-8 h-8 text-green-600" />
+      </div>
+
+      <div>
+        <h2 className="text-xl font-bold" style={{ color: secondaryColor }}>
+          Reservation Confirmed!
+        </h2>
+        <p className="text-gray-500 mt-2 text-sm">{confirmationMessage}</p>
+      </div>
+
+      <div className="bg-gray-50 rounded-lg p-4 text-left space-y-2 text-sm">
+        <div className="flex items-center gap-2">
+          <Users className="w-4 h-4 text-gray-400" />
+          <span>{partySize} {partySize === 1 ? "guest" : "guests"}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-gray-400" />
+          <span>{formatDate(selectedDate)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock className="w-4 h-4 text-gray-400" />
+          <span>{selectedSlot && formatTime(selectedSlot.time)}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <MapPin className="w-4 h-4 text-gray-400" />
+          <span>{locationName}</span>
+        </div>
+        <div className="flex items-center gap-2 pt-1 border-t border-gray-200 mt-1">
+          <CreditCard className="w-4 h-4 text-emerald-500" />
+          <span className="text-emerald-700">
+            Deposit of TZS {depositAmount.toLocaleString()} paid
+          </span>
+        </div>
+        {depositTransactionId && (
+          <p className="text-[10px] text-gray-400 font-mono pl-6">
+            Ref: {depositTransactionId}
+          </p>
+        )}
+      </div>
+
+      <Button
+        onClick={onNewReservation}
+        variant="outline"
+        className="w-full"
+      >
+        Make Another Reservation
+      </Button>
+    </div>
+  );
 }

@@ -7,7 +7,7 @@ import { CellAction } from "@/components/tables/reservation/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Reservation, RESERVATION_STATUS_LABELS, RESERVATION_STATUS_COLORS, DEPOSIT_STATUS_LABELS } from "@/types/reservation/type";
+import { Reservation, RESERVATION_STATUS_LABELS, RESERVATION_STATUS_COLORS, DEPOSIT_STATUS_LABELS, DEPOSIT_STATUS_COLORS } from "@/types/reservation/type";
 import { ReservationStatus, DepositPaymentStatus } from "@/types/enums";
 
 export const columns: ColumnDef<Reservation>[] = [
@@ -82,7 +82,17 @@ export const columns: ColumnDef<Reservation>[] = [
     header: "Table",
     cell: ({ row }) => {
       const name = row.original.tableAndSpaceName;
-      return <div>{name || "Unassigned"}</div>;
+      const minSpend = row.original.tableMinimumSpend;
+      return (
+        <div>
+          <div>{name || "Unassigned"}</div>
+          {minSpend != null && (
+            <div className="text-xs text-muted-foreground">
+              Min. spend: {minSpend.toLocaleString()}
+            </div>
+          )}
+        </div>
+      );
     },
   },
   {
@@ -106,9 +116,24 @@ export const columns: ColumnDef<Reservation>[] = [
     header: "Deposit",
     cell: ({ row }) => {
       const status = row.original.depositPaymentStatus as DepositPaymentStatus | null;
-      if (!status) return <div className="text-muted-foreground">—</div>;
+      const amount = row.original.depositAmount;
+      if (!status || status === DepositPaymentStatus.NOT_REQUIRED) {
+        return <div className="text-muted-foreground text-sm">—</div>;
+      }
       const label = DEPOSIT_STATUS_LABELS[status] || status;
-      return <div className="text-sm">{label}</div>;
+      const colorClass = DEPOSIT_STATUS_COLORS[status] || "bg-gray-100 text-gray-800";
+      return (
+        <div>
+          {amount != null && (
+            <div className="text-sm font-medium">
+              TZS {amount.toLocaleString()}
+            </div>
+          )}
+          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${colorClass}`}>
+            {label}
+          </Badge>
+        </div>
+      );
     },
   },
   {
