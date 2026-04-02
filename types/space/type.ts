@@ -16,6 +16,8 @@ export declare interface Space {
   posY: number | null;
   color: string | null;
   needsCleaning: boolean;
+  minimumSpend: number | null;
+  effectiveMinimumSpend: number | null;
   description: string | null;
   sortOrder: number | null;
   parentSpaceId: UUID | null;

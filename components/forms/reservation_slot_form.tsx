@@ -161,7 +161,7 @@ const ReservationSlotManager = ({ slots, onRefresh }: Props) => {
                               {slot.active ? "Active" : "Inactive"}
                             </Badge>
                           </div>
-                          <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                             <span className="text-xs text-muted-foreground">
                               Every {slot.slotDurationMinutes}min
                             </span>

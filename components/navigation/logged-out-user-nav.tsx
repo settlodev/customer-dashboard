@@ -124,9 +124,8 @@ export async function LoggedOutNavbar({ hideLogin }: LoggedOutNavbarProps) {
               {!session?.user && !hideLogin && (
                 <>
                   <Button
-                    variant="ghost"
                     asChild
-                    className="sm:inline-flex text-sm font-medium"
+                    className="sm:inline-flex text-sm font-medium bg-primary hover:bg-primary/90 text-white rounded-lg shadow-sm transition-all duration-200"
                   >
                     <Link href="/login">Login</Link>
                   </Button>

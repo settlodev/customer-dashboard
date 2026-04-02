@@ -49,8 +49,6 @@ const DEFAULTS = {
   requireGuestPhone: false,
   allowSpecialRequests: true,
   autoConfirm: false,
-  requireDeposit: false,
-  depositPerGuest: false,
   allowOnlineCancellation: true,
   chargeNoShowFee: false,
   sendConfirmationEmail: true,
@@ -307,7 +305,6 @@ const ReservationSettingForm = ({
   const categoryOrder: ReservationSettingCategory[] = [
     "booking_rules",
     "confirmation",
-    "deposit",
     "cancellation",
     "notifications",
     "pacing",

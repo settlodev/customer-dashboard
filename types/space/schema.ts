@@ -49,6 +49,7 @@ export const SpaceSchema = object({
   ).optional(),
   active: boolean().default(true),
   reservable: boolean().default(true),
+  minimumSpend: optionalNonNegativeNumber,
   turnTimeMinutes: optionalPositiveNumber,
   posX: optionalNonNegativeNumber,
   posY: optionalNonNegativeNumber,

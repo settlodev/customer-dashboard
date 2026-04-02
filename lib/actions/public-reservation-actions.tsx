@@ -96,18 +96,27 @@ export const fetchPublicAvailability = async (
   return parseStringify(data);
 };
 
+// ─── Create Reservation ──────────────────────────────────────────────
+
 export const createPublicReservation = async (
   locationId: string,
   payload: PublicReservationPayload,
-): Promise<{ success: boolean; message: string }> => {
+): Promise<{ success: boolean; message: string; reservationId?: string }> => {
   try {
     const apiClient = createPublicClient();
-    await apiClient.post(`/api/reservations/${locationId}/create`, {
-      ...payload,
-      source: "ONLINE",
-      location: locationId,
-    });
-    return { success: true, message: "Reservation created successfully" };
+    const reservationId = await apiClient.post(
+      `/api/reservations/${locationId}/create`,
+      {
+        ...payload,
+        source: "ONLINE",
+        location: locationId,
+      },
+    );
+    return {
+      success: true,
+      message: "Reservation created successfully",
+      reservationId: String(reservationId),
+    };
   } catch (error: any) {
     let message = "Failed to create reservation. Please try again.";
     if (typeof error?.message === "string") {
@@ -116,5 +125,76 @@ export const createPublicReservation = async (
       message = error.message.message;
     }
     return { success: false, message };
+  }
+};
+
+// ─── Deposit Payment (via Payment Service) ───────────────────────────
+
+export const payReservationDeposit = async (
+  locationId: string,
+  reservationId: string,
+  customerPhone: string,
+): Promise<{
+  success: boolean;
+  paymentStatus: "PROCESSING" | "SUCCESS" | "FAILED";
+  externalReferenceId?: string;
+  message: string;
+}> => {
+  try {
+    const apiClient = createPublicClient();
+    const data: { paymentStatus: string; externalReferenceId?: string } =
+      await apiClient.post(
+        `/api/reservations/${locationId}/${reservationId}/pay-deposit`,
+        { customerPhone },
+      );
+
+    const result = parseStringify(data);
+    return {
+      success: true,
+      paymentStatus: result.paymentStatus as "PROCESSING" | "SUCCESS",
+      externalReferenceId: result.externalReferenceId,
+      message:
+        result.paymentStatus === "SUCCESS"
+          ? "Payment confirmed!"
+          : "Payment request sent to your phone. Please approve.",
+    };
+  } catch (error: any) {
+    let message = "Payment failed. Please try again.";
+    if (typeof error?.message === "string") {
+      message = error.message;
+    } else if (typeof error?.message === "object" && error.message?.message) {
+      message = error.message.message;
+    }
+    return { success: false, paymentStatus: "FAILED", message };
+  }
+};
+
+export const checkPaymentTransactionStatus = async (
+  externalReferenceId: string,
+): Promise<{ status: "PENDING" | "PROCESSING" | "SUCCESS" | "FAILED"; message: string }> => {
+  try {
+    const baseUrl = process.env.SERVICE_URL || "";
+    const response = await fetch(
+      `${baseUrl}/payments/api/v1/transactions/${externalReferenceId}/status`,
+      { cache: "no-store" },
+    );
+
+    if (!response.ok) {
+      return { status: "PENDING", message: "Checking payment status..." };
+    }
+
+    const data = await response.json();
+    const status = data.status || data.paymentStatus || "PENDING";
+
+    if (status === "SUCCESS" || status === "COMPLETED") {
+      return { status: "SUCCESS", message: "Payment confirmed successfully!" };
+    }
+    if (status === "FAILED" || status === "CANCELLED") {
+      return { status: "FAILED", message: data.message || "Payment failed." };
+    }
+
+    return { status: "PENDING", message: "Waiting for payment confirmation..." };
+  } catch {
+    return { status: "PENDING", message: "Checking payment status..." };
   }
 };
