@@ -203,7 +203,6 @@ export const getAllDigitalReceiptPaymentDetails = async (): Promise<any> => {
     const settingsData = await apiClient.get(
       `/api/digital-receipt-payment-details/${location?.id}/all`,
     );
-    console.log("The payload", settingsData);
     return parseStringify(settingsData);
   } catch (error) {
     console.error("Failed to get All Digital receipt payment details:", error);
@@ -221,7 +220,6 @@ export const getAllPhysicalReceiptPaymentDetails = async (): Promise<any> => {
     const settingsData = await apiClient.get(
       `/api/physical-receipt-payment-details/${location?.id}/all`,
     );
-    console.log("The payload", settingsData);
     return parseStringify(settingsData);
   } catch (error) {
     console.error("Failed to get All Physical receipt payment details:", error);

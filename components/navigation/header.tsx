@@ -9,14 +9,21 @@ import { UserDropdown } from "./user-menu-button";
 import { LocationSwitcher } from "./location-switcher";
 import { Session } from "next-auth";
 import { BusinessPropsType } from "@/types/business/business-props-type";
+import { Warehouses } from "@/types/warehouse/warehouse/type";
 
 interface HeaderProps {
   session: Session | null;
   onMenuClick?: () => void;
   businessData?: BusinessPropsType;
+  warehouseList: Warehouses[]; // new
 }
 
-const Header = ({ session, onMenuClick, businessData }: HeaderProps) => {
+const Header = ({
+  session,
+  onMenuClick,
+  businessData,
+  warehouseList,
+}: HeaderProps) => {
   return (
     <header className="z-50 w-full rounded-xl bg-white dark:bg-gray-900">
       <div className="flex h-16 items-center">
@@ -41,14 +48,17 @@ const Header = ({ session, onMenuClick, businessData }: HeaderProps) => {
             />
           </Link>
 
-          {session?.user && businessData &&
-            ((businessData.locationList?.length ?? 0) > 1 || !!businessData.warehouse?.id) && (
-            <LocationSwitcher
-              locationList={businessData.locationList}
-              currentLocation={businessData.currentLocation}
-              warehouse={businessData.warehouse}
-            />
-          )}
+          {session?.user &&
+            businessData &&
+            ((businessData.locationList?.length ?? 0) > 1 ||
+              warehouseList.length > 0) && (
+              <LocationSwitcher
+                locationList={businessData.locationList}
+                currentLocation={businessData.currentLocation}
+                warehouse={businessData.warehouse}
+                warehouseList={warehouseList} // new
+              />
+            )}
         </div>
 
         {/* Right: nav items */}

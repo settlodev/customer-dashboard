@@ -30,16 +30,24 @@ import {
   Reservation,
   RESERVATION_SOURCE_LABELS,
   RESERVATION_SOURCES,
+  RESERVATION_STATUS_LABELS,
+  RESERVATION_STATUS_COLORS,
+  DEPOSIT_STATUS_LABELS,
+  DEPOSIT_STATUS_COLORS,
+  VALID_STATUS_TRANSITIONS,
 } from "@/types/reservation/type";
 import { Space } from "@/types/space/type";
+import { ReservationStatus, DepositPaymentStatus } from "@/types/enums";
 import { ReservationSchema } from "@/types/reservation/schema";
 import {
   createReservation,
   updateReservation,
+  updateReservationStatus,
 } from "@/lib/actions/reservation-actions";
 import { fetchAllSpaces } from "@/lib/actions/space-actions";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import CustomerSelector from "../widgets/customer-selector";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
@@ -104,6 +112,22 @@ const ReservationForm = ({
     [toast],
   );
 
+  const handleStatusChange = (newStatus: ReservationStatus) => {
+    if (!item) return;
+    startTransition(() => {
+      updateReservationStatus(item.id, newStatus).then((data) => {
+        if (!data) return;
+        const msg = SettloErrorHandler.safeMessage(data.message);
+        if (data.responseType === "success") {
+          toast({ variant: "success", title: "Status Updated", description: msg });
+          router.refresh();
+        } else {
+          toast({ variant: "destructive", title: "Error", description: msg });
+        }
+      });
+    });
+  };
+
   const submitData = (values: z.infer<typeof ReservationSchema>) => {
     startTransition(() => {
       const handleResponse = (data: FormResponse | void) => {
@@ -132,6 +156,64 @@ const ReservationForm = ({
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className="space-y-6"
       >
+        {/* Status & Deposit Info (edit mode only) */}
+        {item && (
+          <Card className="rounded-xl shadow-sm">
+            <CardContent className="pt-6 space-y-4">
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Current Status */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                  <Badge
+                    variant="outline"
+                    className={RESERVATION_STATUS_COLORS[item.reservationStatus as ReservationStatus] || "bg-gray-100 text-gray-800"}
+                  >
+                    {RESERVATION_STATUS_LABELS[item.reservationStatus as ReservationStatus] || item.reservationStatus}
+                  </Badge>
+                </div>
+
+                {/* Status transition buttons */}
+                {(() => {
+                  const transitions = VALID_STATUS_TRANSITIONS[item.reservationStatus as ReservationStatus] || [];
+                  if (transitions.length === 0) return null;
+                  return (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">Move to:</span>
+                      {transitions.map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          onClick={() => handleStatusChange(status)}
+                          disabled={isPending}
+                          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${RESERVATION_STATUS_COLORS[status]} hover:opacity-80 disabled:opacity-50`}
+                        >
+                          {RESERVATION_STATUS_LABELS[status]}
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Deposit info */}
+              {item.depositAmount != null && item.depositPaymentStatus && item.depositPaymentStatus !== DepositPaymentStatus.NOT_REQUIRED && (
+                <div className="flex items-center gap-4 pt-2 border-t">
+                  <div>
+                    <span className="text-sm font-medium text-muted-foreground">Deposit:</span>
+                    <span className="ml-2 text-sm font-semibold">TZS {item.depositAmount.toLocaleString()}</span>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={DEPOSIT_STATUS_COLORS[item.depositPaymentStatus as DepositPaymentStatus] || "bg-gray-100 text-gray-800"}
+                  >
+                    {DEPOSIT_STATUS_LABELS[item.depositPaymentStatus as DepositPaymentStatus] || item.depositPaymentStatus}
+                  </Badge>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-6">
             {/* Date & Time */}
@@ -288,6 +370,15 @@ const ReservationForm = ({
                 />
               </div>
             </div>
+
+            {item?.tableMinimumSpend != null && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                <p className="font-medium">Table Minimum Spend</p>
+                <p className="text-amber-600 text-xs mt-1">
+                  This table requires a minimum spend of {item.tableMinimumSpend.toLocaleString()}
+                </p>
+              </div>
+            )}
 
             <Separator />
 

@@ -60,16 +60,16 @@ const StockLineItemSchema = object({
   quantity: preprocess(
     (val) =>
       typeof val === "string" && val.trim() !== "" ? parseFloat(val) : val,
-    number({ message: "Quantity is required" })
-      .nonnegative()
-      .gt(0, { message: "Quantity cannot be zero" }),
+    number({ message: "Quantity is required" }).gte(0, {
+      message: "Quantity cannot be less than 0",
+    }),
   ),
   value: preprocess(
     (val) =>
       typeof val === "string" && val.trim() !== "" ? parseFloat(val) : val,
-    number({ message: "Value is required" })
-      .nonnegative()
-      .gt(0, { message: "Value cannot be zero" }),
+    number({ message: "Value is required" }).gte(0, {
+      message: "Value cannot be less than 0",
+    }),
   ),
   orderDate: string({ required_error: "Order date is required" }),
   batchExpiryDate: string().optional(),
@@ -429,7 +429,9 @@ function StockIntakeForm({
               count: values.stockIntakes.length,
             });
           } else {
-            setError("Failed to save stock intake.");
+            setError(
+              `Failed to save stock intake: ${result?.message || "Unknown error"}`,
+            );
           }
         })
         .catch(() => setError("An unexpected error occurred."));
