@@ -305,12 +305,12 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Reservations",
-          link: "/reservations",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
+        // {
+        //   title: "Reservations",
+        //   link: "/reservations",
+        //   current: args?.isCurrentItem,
+        //   icon: "cart",
+        // },
       ],
     },
   ];

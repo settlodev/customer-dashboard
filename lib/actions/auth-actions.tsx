@@ -28,6 +28,9 @@ export async function logout() {
   try {
     //Make sure token does not exist
     await deleteAuthCookie();
+    await deleteActiveBusinessCookie();
+    await deleteActiveLocationCookie();
+    await deleteActiveWarehouseCookie();
 
     await signOut({ redirectTo: "/login" });
   } catch (error) {

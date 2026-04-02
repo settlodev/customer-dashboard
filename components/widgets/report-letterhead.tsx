@@ -13,7 +13,7 @@ const ReportLetterhead = ({ business, location }: ReportLetterheadProps) => {
   const hasTaxDetails = business.identificationNumber || business.vrn;
 
   return (
-    <div className="flex flex-col sm:flex-row sm:justify-between gap-4 rounded-lg bg-gray-100 dark:bg-gray-800 px-5 py-4">
+    <div className="flex flex-col sm:flex-row sm:justify-between gap-4 rounded-lg bg-primary-light dark:bg-gray-800 px-5 py-4">
       {/* Business / Location info */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
@@ -22,9 +22,7 @@ const ReportLetterhead = ({ business, location }: ReportLetterheadProps) => {
             {business.name}
           </span>
         </div>
-        <p className="text-xs text-muted-foreground pl-6">
-          {location.name}
-        </p>
+        <p className="text-xs text-muted-foreground pl-6">{location.name}</p>
         {hasAddress && (
           <div className="flex items-start gap-2">
             <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0 mt-0.5" />
@@ -60,25 +58,33 @@ const ReportLetterhead = ({ business, location }: ReportLetterheadProps) => {
         <div className="sm:text-right space-y-1">
           {business.identificationNumber && (
             <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-gray-900 dark:text-gray-100">TIN:</span>{" "}
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                TIN:
+              </span>{" "}
               {business.identificationNumber}
             </p>
           )}
           {business.vrn && (
             <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-gray-900 dark:text-gray-100">VRN:</span>{" "}
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                VRN:
+              </span>{" "}
               {business.vrn}
             </p>
           )}
           {business.serial && (
             <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-gray-900 dark:text-gray-100">Serial:</span>{" "}
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                Serial:
+              </span>{" "}
               {business.serial}
             </p>
           )}
           {business.uin && (
             <p className="text-xs text-muted-foreground">
-              <span className="font-medium text-gray-900 dark:text-gray-100">UIN:</span>{" "}
+              <span className="font-medium text-gray-900 dark:text-gray-100">
+                UIN:
+              </span>{" "}
               {business.uin}
             </p>
           )}

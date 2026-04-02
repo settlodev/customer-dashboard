@@ -5,16 +5,16 @@ const StockItemSchema = object({
   quantity: preprocess(
     (val) =>
       typeof val === "string" && val.trim() !== "" ? parseFloat(val) : val,
-    number({ message: "Quantity is required" })
-      .nonnegative()
-      .gt(0, { message: "Quantity cannot be zero" }),
+    number({ message: "Quantity is required" }).gte(0, {
+      message: "Quantity cannot be less than 0",
+    }),
   ),
   value: preprocess(
     (val) =>
       typeof val === "string" && val.trim() !== "" ? parseFloat(val) : val,
-    number({ message: "Value is required" })
-      .nonnegative()
-      .gt(0, { message: "Value cannot be zero" }),
+    number({ message: "Quantity is required" }).gte(0, {
+      message: "Quantity cannot be less than 0",
+    }),
   ),
   batchExpiryDate: string().optional(),
   orderDate: string({ required_error: "Order date is required" }),

@@ -77,6 +77,7 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
           name: item.name,
           code: item.code ?? undefined,
           capacity: item.capacity,
+          minimumSpend: item.minimumSpend ?? undefined,
           minCapacity: item.minCapacity ?? undefined,
           type: item.type,
           tableStatus: item.tableStatus ?? undefined,
@@ -324,6 +325,45 @@ function SpaceForm({ item }: { item: Space | null | undefined }) {
                     </FormControl>
                     <FormDescription className="text-xs">
                       Buffer time between reservations
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {isBookableType && (
+              <FormField
+                control={form.control}
+                name="minimumSpend"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Minimum Spend</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder={
+                          item?.effectiveMinimumSpend != null && item.minimumSpend == null
+                            ? `Inherited: ${item.effectiveMinimumSpend.toLocaleString()}`
+                            : "No minimum"
+                        }
+                        min={0}
+                        {...field}
+                        value={field.value ?? ""}
+                        disabled={isPending}
+                        onChange={(e) =>
+                          field.onChange(
+                            e.target.value === ""
+                              ? undefined
+                              : parseFloat(e.target.value),
+                          )
+                        }
+                      />
+                    </FormControl>
+                    <FormDescription className="text-xs">
+                      {item?.effectiveMinimumSpend != null && item.minimumSpend == null
+                        ? "Inherited from parent space. Set a value to override."
+                        : "Minimum spend amount for this table"}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

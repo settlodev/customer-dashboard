@@ -16,7 +16,7 @@ import { SupplierCreditReports } from "@/types/warehouse/supplier/type";
 export const searchSuppliers = async (
   q: string,
   page: number,
-  pageLimit: number
+  pageLimit: number,
 ): Promise<ApiResponse<Supplier>> => {
   await getAuthenticatedUser();
 
@@ -27,18 +27,18 @@ export const searchSuppliers = async (
 
     const query = {
       filters: [
-          {
-              key: "name",
-              operator: "LIKE",
-              field_type: "STRING",
-              value: q,
-          },
-          {
-            key:"isArchived",
-            operator:"EQUAL",
-            field_type:"BOOLEAN",
-            value:false
-        }
+        {
+          key: "name",
+          operator: "LIKE",
+          field_type: "STRING",
+          value: q,
+        },
+        {
+          key: "isArchived",
+          operator: "EQUAL",
+          field_type: "BOOLEAN",
+          value: false,
+        },
       ],
       sorts: [
         {
@@ -52,9 +52,9 @@ export const searchSuppliers = async (
 
     const supplierData = await apiClient.post(
       `/api/suppliers/${business?.id}`,
-      query
+      query,
     );
-  // console.log("The supplier data",supplierData);
+    // console.log("The supplier data",supplierData);
     return parseStringify(supplierData);
   } catch (error) {
     throw error;
@@ -62,7 +62,7 @@ export const searchSuppliers = async (
 };
 
 export const createSupplier = async (
-  supplier: z.infer<typeof SupplierSchema>
+  supplier: z.infer<typeof SupplierSchema>,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
 
@@ -77,7 +77,6 @@ export const createSupplier = async (
     return parseStringify(formResponse);
   }
 
-  
   const business = await getCurrentBusiness();
 
   const payload = {
@@ -90,20 +89,18 @@ export const createSupplier = async (
   try {
     const apiClient = new ApiClient();
 
-    await apiClient.post(
-      `/api/suppliers/${business?.id}/create`,
-      payload
-    );
+    await apiClient.post(`/api/suppliers/${business?.id}/create`, payload);
     formResponse = {
       responseType: "success",
       message: "Supplier created successfully",
     };
-
-  } catch (error:any) {
+  } catch (error: any) {
     console.error("Error creating supplier", error);
     formResponse = {
       responseType: "error",
-      message:error.message || "Something went wrong while processing your request, please try again",
+      message:
+        error.message ||
+        "Something went wrong while processing your request, please try again",
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
@@ -111,18 +108,17 @@ export const createSupplier = async (
   return parseStringify(formResponse);
 };
 
-
 export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
   const apiClient = new ApiClient();
- 
+
   const query = {
-    filters:[
-        {
-            key: "id",
-            operator: "EQUAL",
-            field_type: "UUID_STRING",
-            value: id,
-        }
+    filters: [
+      {
+        key: "id",
+        operator: "EQUAL",
+        field_type: "UUID_STRING",
+        value: id,
+      },
     ],
     sorts: [],
     page: 0,
@@ -133,77 +129,70 @@ export const getSupplier = async (id: UUID): Promise<ApiResponse<Supplier>> => {
 
   const supplierResponse = await apiClient.post(
     `/api/suppliers/${business?.id}`,
-    query
+    query,
   );
-  
+
   return parseStringify(supplierResponse);
 };
 
 export const updateSupplier = async (
   id: UUID,
-  supplier: z.infer<typeof SupplierSchema>
+  supplier: z.infer<typeof SupplierSchema>,
 ): Promise<FormResponse | void> => {
   let formResponse: FormResponse | null = null;
   const supplierValidData = SupplierSchema.safeParse(supplier);
 
   if (!supplierValidData.success) {
-      formResponse = {
-          responseType: "error",
-          message: "Please fill all the required fields",
-          error: new Error(supplierValidData.error.message),
-      };
-      return parseStringify(formResponse);
+    formResponse = {
+      responseType: "error",
+      message: "Please fill all the required fields",
+      error: new Error(supplierValidData.error.message),
+    };
+    return parseStringify(formResponse);
   }
 
-  
   const business = await getCurrentBusiness();
 
   const payload = {
     ...supplierValidData.data,
-    
+
     business: business?.id,
   };
 
-
   try {
-      const apiClient = new ApiClient();
+    const apiClient = new ApiClient();
 
-      await apiClient.put(
-          `/api/suppliers/${business?.id}/${id}`, 
-          payload
-      );
+    await apiClient.put(`/api/suppliers/${business?.id}/${id}`, payload);
 
-      formResponse = {
-          responseType: "success",
-          message: "Supplier updated successfully",
-      };
-
+    formResponse = {
+      responseType: "success",
+      message: "Supplier updated successfully",
+    };
   } catch (error) {
-      formResponse = {
-          responseType: "error",
-          message:
-              "Something went wrong while processing your request, please try again",
-          error: error instanceof Error ? error : new Error(String(error)),
-      };
+    formResponse = {
+      responseType: "error",
+      message:
+        "Something went wrong while processing your request, please try again",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 
   revalidatePath("/warehouse-suppliers");
   return parseStringify(formResponse);
 };
 
-
 export const deleteSupplier = async (id: UUID): Promise<void> => {
   if (!id) throw new Error("Supplier ID is required to perform this request");
   await getAuthenticatedUser();
 
   try {
-      const apiClient = new ApiClient();
-      const business = await getCurrentBusiness();
+    const apiClient = new ApiClient();
+    const business = await getCurrentBusiness();
 
-      await apiClient.delete(`/api/suppliers/${business?.id}/${id}`);
-      revalidatePath("/warehouse-suppliers");
+    await apiClient.delete(`/api/suppliers/${business?.id}/${id}`);
+    revalidatePath("/warehouse-suppliers");
   } catch (error) {
-      throw error;
+    throw error;
   }
 };
 
@@ -212,31 +201,38 @@ export const archievSupplier = async (id: UUID): Promise<void> => {
   await getAuthenticatedUser();
 
   try {
-      const apiClient = new ApiClient();
-      const business = await getCurrentBusiness();
+    const apiClient = new ApiClient();
+    const business = await getCurrentBusiness();
 
-      await apiClient.delete(`/api/suppliers/${business?.id}/update-archive-status`);
-      revalidatePath("/warehouse-suppliers");
+    await apiClient.delete(
+      `/api/suppliers/${business?.id}/update-archive-status`,
+    );
+    revalidatePath("/warehouse-suppliers");
   } catch (error) {
-      console.error("Error archieving supplier", error);
-      throw error;
+    console.error("Error archieving supplier", error);
+    throw error;
   }
-}
+};
 
-export const supplierCreditReportForWarehouse = async (): Promise<SupplierCreditReports | null> => {
+export const supplierCreditReportForWarehouse =
+  async (): Promise<SupplierCreditReports | null> => {
+    await getAuthenticatedUser();
 
-  await getAuthenticatedUser();
-
-  try {
-
+    try {
       const apiClient = new ApiClient();
       const warehouse = await getCurrentWarehouse();
-      const report=await apiClient.get(`/api/reports/${warehouse?.id}/suppliers-credit/summary`);
+
+      if (!warehouse?.id) {
+        throw new Error(
+          "No active warehouse selected. Please switch to a warehouse first.",
+        );
+      }
+      const report = await apiClient.get(
+        `/api/reports/${warehouse?.id}/suppliers-credit/summary`,
+      );
       return parseStringify(report);
-      
-  } catch (error) {
+    } catch (error) {
       console.error("Error fetching stock request report:", error);
       throw error;
-  }
-  
-};
+    }
+  };

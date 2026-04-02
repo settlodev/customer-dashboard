@@ -77,6 +77,7 @@ export const searchWarehouses = async (
   } catch (error) {
     if (error instanceof AuthenticationError) throw error; // ✅ never swallow auth errors
     console.error("Error in search warehouses:", error);
+
     throw error;
   }
 };

@@ -117,6 +117,31 @@ export const columns: ColumnDef<Space>[] = [
     },
   },
   {
+    accessorKey: "minimumSpend",
+    header: () => (
+      <div className="hidden md:block">Min. Spend</div>
+    ),
+    cell: ({ row }) => {
+      const minSpend = row.original.minimumSpend;
+      const effectiveMinSpend = row.original.effectiveMinimumSpend;
+      const type = row.original.type as TableSpaceType;
+      if (type !== TableSpaceType.TABLE && type !== TableSpaceType.SEAT) {
+        return <div className="hidden md:block"><span className="text-muted-foreground text-xs">—</span></div>;
+      }
+      return (
+        <div className="hidden md:block text-sm">
+          {minSpend != null ? (
+            minSpend.toLocaleString()
+          ) : effectiveMinSpend != null ? (
+            <span className="text-muted-foreground">{effectiveMinSpend.toLocaleString()}</span>
+          ) : (
+            <span className="text-muted-foreground text-xs">—</span>
+          )}
+        </div>
+      );
+    },
+  },
+  {
     accessorKey: "tableStatus",
     header: () => (
       <div className="hidden md:block">Table Status</div>

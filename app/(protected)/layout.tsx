@@ -12,9 +12,11 @@ import {
 } from "@/lib/actions/business/get-current-business";
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
+import { searchWarehouses } from "@/lib/actions/warehouse/list-warehouse";
 import { BusinessPropsType } from "@/types/business/business-props-type";
 import { Business } from "@/types/business/type";
 import { Location as BusinessLocation } from "@/types/location/type";
+import { Warehouses } from "@/types/warehouse/warehouse/type";
 
 export default async function RootLayout({
   children,
@@ -27,25 +29,42 @@ export default async function RootLayout({
   let currentLocation: BusinessLocation | undefined;
   let businessList: Business[] | undefined;
   let locationList: BusinessLocation[] | null | undefined;
-  let currentWarehouse: any;
+  let currentWarehouse: Warehouses | undefined;
+  let warehouseList: Warehouses[] = [];
 
   try {
-    const results = await Promise.all([
+    // ✅ Core data — all equally critical, fetch in parallel
+    const [
+      resolvedBusiness,
+      resolvedLocation,
+      resolvedBusinessList,
+      resolvedLocationList,
+    ] = await Promise.all([
       getCurrentBusiness(),
       getCurrentLocation(),
       getBusinessDropDown(),
       fetchAllLocations(),
-      getCurrentWarehouse(),
     ]);
-    currentBusiness = results[0] ?? undefined;
-    currentLocation = results[1] ?? undefined;
-    businessList = results[2] ?? undefined;
-    locationList = results[3];
-    currentWarehouse = results[4];
+
+    currentBusiness = resolvedBusiness ?? undefined;
+    currentLocation = resolvedLocation ?? undefined;
+    businessList = resolvedBusinessList ?? undefined;
+    locationList = resolvedLocationList;
+
+    // ✅ Non-critical — isolated so a failure doesn't poison core data
+    currentWarehouse = await getCurrentWarehouse().catch(() => undefined);
+
+    // ✅ Gated — only fetch if a business exists, as searchWarehouses requires it
+    if (currentBusiness?.id) {
+      warehouseList = await searchWarehouses("", 0, 20)
+        .then((r) => r?.content ?? [])
+        .catch(() => []);
+    }
   } catch (error: unknown) {
-    const message = (error && typeof error === "object" && "message" in error)
-      ? (error as { message: string }).message
-      : "Unknown error";
+    const message =
+      error && typeof error === "object" && "message" in error
+        ? (error as { message: string }).message
+        : "Unknown error";
     console.error("Error loading layout data:", message);
   }
 
@@ -76,7 +95,11 @@ export default async function RootLayout({
                   </div>
                 }
               >
-                <NavbarWrapper session={session} businessData={businessData}>
+                <NavbarWrapper
+                  session={session}
+                  businessData={businessData}
+                  warehouseList={warehouseList}
+                >
                   <div className="flex-1">{children}</div>
                 </NavbarWrapper>
               </Suspense>

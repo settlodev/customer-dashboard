@@ -11,6 +11,7 @@ export default interface SummaryResponse {
 
   grossSales: number;
   netSales: number;
+  netProfit: number;
   totalDiscount: number;
   totalCost: number;
   grossProfit: number;
