@@ -56,7 +56,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
       ...item,
       image: imageUrl || item?.image || "",
       parentCategory: item?.parentCategory || "",
-      status: item ? item.status : false,
+      status: item ? item.status : true,
     },
   });
 
@@ -82,21 +82,28 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
       if (item) {
         const updatedValues = {
           ...values,
-          parentCategory:
-            values.parentCategory || item.parentCategory || "",
+          parentCategory: values.parentCategory || item.parentCategory || "",
         };
 
         updateCategory(item.id, updatedValues, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: data.message,
+            });
           }
         });
       } else {
         createCategory(values, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: data.message,
+            });
             router.push("/categories");
           }
         });
@@ -136,8 +143,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Category Name{" "}
-                          <span className="text-red-500">*</span>
+                          Category Name <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
