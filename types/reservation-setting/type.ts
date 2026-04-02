@@ -46,6 +46,9 @@ export declare interface ReservationSetting {
   autoAssignTable: boolean;
   allowGuestTablePreference: boolean;
 
+  // Deposit Payment
+  enableOnlineDepositPayment: boolean;
+
   // Category 9: Guest-Facing Messages
   confirmationMessage: string | null;
   bookingPageWelcomeMessage: string | null;
@@ -372,6 +375,13 @@ export const RESERVATION_SETTINGS_CONFIG: ReservationSettingField[] = [
     type: "switch",
     category: "table_assignment",
     helperText: "Let guests request a table or area preference",
+  },
+  {
+    key: "enableOnlineDepositPayment",
+    label: "Enable Online Deposit Payment",
+    type: "switch",
+    category: "table_assignment",
+    helperText: "Collect deposits via mobile payment (Selcom). When off, staff confirms deposits manually.",
   },
 
   // Guest-Facing Messages

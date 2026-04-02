@@ -121,6 +121,7 @@ export declare interface AvailabilityResponse {
   bookingPageWelcomeMessage: string | null;
   termsAndConditions: string | null;
   cancellationPolicyText: string | null;
+  enableOnlineDepositPayment: boolean | null;
 
   // Default deposit info (from GLOBAL DepositRule)
   requireDeposit: boolean | null;

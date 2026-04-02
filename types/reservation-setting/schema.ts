@@ -87,6 +87,7 @@ export const ReservationSettingSchema = object({
   // Table Assignment
   autoAssignTable: optionalBoolean,
   allowGuestTablePreference: optionalBoolean,
+  enableOnlineDepositPayment: optionalBoolean,
 
   // Guest-Facing Messages
   confirmationMessage: optionalString,

@@ -18,8 +18,8 @@ import {
   fetchPublicReservationExceptions,
   fetchPublicAvailability,
   createPublicReservation,
-  initiateDepositPayment,
-  checkDepositPaymentStatus,
+  payReservationDeposit,
+  checkPaymentTransactionStatus,
 } from "@/lib/actions/public-reservation-actions";
 import { LocationDetails } from "@/types/menu/type";
 import {
@@ -43,7 +43,6 @@ import {
   Loader2,
   Smartphone,
   CreditCard,
-  ShieldCheck,
 } from "lucide-react";
 
 interface ReservationWidgetProps {
@@ -89,9 +88,10 @@ export default function ReservationWidget({
   const [confirmationMessage, setConfirmationMessage] = useState("");
 
   // --- deposit payment state ---
+  const [createdReservationId, setCreatedReservationId] = useState("");
   const [depositPhoneNumber, setDepositPhoneNumber] = useState("");
   const [depositPaymentStatus, setDepositPaymentStatus] = useState<"idle" | "sending" | "waiting" | "paid" | "failed">("idle");
-  const [depositTransactionId, setDepositTransactionId] = useState("");
+  const [depositExternalRefId, setDepositExternalRefId] = useState("");
   const [depositPaymentMessage, setDepositPaymentMessage] = useState("");
 
   // --- derived ---
@@ -211,8 +211,9 @@ export default function ReservationWidget({
   }, [selectedSlot, selectedTable, availability, partySize]);
 
   const depositInfo = getDepositInfo();
+  const onlineDepositEnabled = availability?.enableOnlineDepositPayment ?? settings?.enableOnlineDepositPayment ?? false;
 
-  // --- deposit payment handler ---
+  // --- deposit payment handler (calls real Payment Service via API) ---
   const handleDepositPayment = async () => {
     const phone = depositPhoneNumber || guestInfo.customerPhone;
     if (!phone.trim()) {
@@ -220,13 +221,18 @@ export default function ReservationWidget({
       return;
     }
 
+    if (!createdReservationId) {
+      setDepositPaymentMessage("Reservation not found. Please go back and try again.");
+      return;
+    }
+
     setDepositPaymentStatus("sending");
     setDepositPaymentMessage("");
 
-    const result = await initiateDepositPayment(
+    const result = await payReservationDeposit(
+      locationId,
+      createdReservationId,
       phone.trim(),
-      depositInfo.amount,
-      `RES-${selectedDate}-${selectedSlot?.time || ""}`,
     );
 
     if (!result.success) {
@@ -235,14 +241,28 @@ export default function ReservationWidget({
       return;
     }
 
-    setDepositTransactionId(result.transactionId);
+    // Instant payment (cash/bank) — already paid
+    if (result.paymentStatus === "SUCCESS") {
+      setDepositPaymentStatus("paid");
+      setDepositPaymentMessage(result.message);
+      return;
+    }
+
+    // Async payment (Selcom/mobile money) — poll for status
     setDepositPaymentStatus("waiting");
     setDepositPaymentMessage(result.message);
+    const refId = result.externalReferenceId || "";
+    setDepositExternalRefId(refId);
 
-    // Poll for payment confirmation
+    if (!refId) {
+      setDepositPaymentStatus("failed");
+      setDepositPaymentMessage("No payment reference received. Please try again.");
+      return;
+    }
+
     const pollInterval = setInterval(async () => {
-      const status = await checkDepositPaymentStatus(result.transactionId);
-      if (status.status === "PAID") {
+      const status = await checkPaymentTransactionStatus(refId);
+      if (status.status === "SUCCESS") {
         clearInterval(pollInterval);
         setDepositPaymentStatus("paid");
         setDepositPaymentMessage(status.message);
@@ -251,19 +271,13 @@ export default function ReservationWidget({
         setDepositPaymentStatus("failed");
         setDepositPaymentMessage(status.message);
       }
-    }, 1500);
+    }, 2000);
 
-    // Safety timeout after 60 seconds
-    setTimeout(() => {
-      clearInterval(pollInterval);
-      if (depositPaymentStatus === "waiting") {
-        setDepositPaymentStatus("failed");
-        setDepositPaymentMessage("Payment timed out. Please try again.");
-      }
-    }, 60000);
+    // Safety timeout after 90 seconds
+    setTimeout(() => clearInterval(pollInterval), 90000);
   };
 
-  // --- submit reservation ---
+  // --- submit reservation (always creates first, then routes to deposit or confirmation) ---
   const handleSubmit = async () => {
     if (!selectedSlot || !selectedDate) return;
 
@@ -287,20 +301,31 @@ export default function ReservationWidget({
       answers: questionAnswers.length > 0 ? questionAnswers : undefined,
     };
 
-    console.log("Reservation payload:", payload);
-
     const result = await createPublicReservation(locationId, payload);
 
     setSubmitting(false);
 
-    if (result.success) {
-      setConfirmationMessage(
-        settings?.confirmationMessage ||
-          "Your reservation has been submitted successfully!",
-      );
-      setStep("confirmation");
-    } else {
+    if (!result.success) {
       setError(result.message);
+      return;
+    }
+
+    const resId = result.reservationId || "";
+    setCreatedReservationId(resId);
+
+    setConfirmationMessage(
+      settings?.confirmationMessage ||
+        "Your reservation has been submitted successfully!",
+    );
+
+    // If deposit required AND online payment enabled → go to payment step
+    if (depositInfo.required && onlineDepositEnabled && resId) {
+      setDepositPhoneNumber(guestInfo.customerPhone);
+      setDepositPaymentStatus("idle");
+      setDepositPaymentMessage("");
+      setStep("deposit");
+    } else {
+      setStep("confirmation");
     }
   };
 
@@ -392,7 +417,7 @@ export default function ReservationWidget({
     { key: "booking", label: "Booking" },
     { key: "details", label: "Details" },
     { key: "extras", label: "Review" },
-    ...(depositInfo.required ? [{ key: "deposit" as ReservationStep, label: "Payment" }] : []),
+    ...(depositInfo.required && onlineDepositEnabled ? [{ key: "deposit" as ReservationStep, label: "Payment" }] : []),
     { key: "confirmation", label: "Confirmed" },
   ];
   const currentStepIndex = steps.findIndex((s) => s.key === step);
@@ -1017,16 +1042,7 @@ export default function ReservationWidget({
               Back
             </Button>
             <Button
-              onClick={() => {
-                if (depositInfo.required) {
-                  setDepositPhoneNumber(guestInfo.customerPhone);
-                  setDepositPaymentStatus("idle");
-                  setDepositPaymentMessage("");
-                  setStep("deposit");
-                } else {
-                  handleSubmit();
-                }
-              }}
+              onClick={handleSubmit}
               disabled={
                 submitting ||
                 (settings?.allowOnlineCancellation !== false && !!settings?.cancellationPolicyText?.trim() && !acceptedCancellationPolicy) ||
@@ -1115,6 +1131,18 @@ export default function ReservationWidget({
                 <p className="text-sm text-red-600">{depositPaymentMessage}</p>
               )}
 
+              {/* Security notice */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1.5">
+                <div className="flex items-start gap-2 text-xs text-gray-500">
+                  <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span>Your payment is processed securely via Selcom with end-to-end encryption. We never store your mobile money PIN or payment credentials.</span>
+                </div>
+                <div className="flex items-start gap-2 text-xs text-gray-500">
+                  <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  <span>Your personal data is protected under our privacy policy and transmitted over TLS-encrypted connections.</span>
+                </div>
+              </div>
+
               <div className="flex gap-3">
                 <Button
                   variant="outline"
@@ -1163,38 +1191,70 @@ export default function ReservationWidget({
           )}
 
           {depositPaymentStatus === "paid" && (
-            <DepositPaidAutoSubmit
-              onSubmit={handleSubmit}
-              submitting={submitting}
-              confirmationMessage={confirmationMessage}
-              partySize={partySize}
-              selectedDate={selectedDate}
-              selectedSlot={selectedSlot}
-              depositAmount={depositInfo.amount}
-              depositTransactionId={depositTransactionId}
-              locationName={location?.locationName || location?.businessName || ""}
-              primaryColor={primaryColor}
-              secondaryColor={secondaryColor}
-              formatTime={formatTime}
-              formatDate={formatDate}
-              onNewReservation={() => {
-                setStep("booking");
-                setSelectedDate("");
-                setSelectedSlot(null);
-                setSelectedTable(null);
-                setGuestInfo({ customerFirstName: "", customerLastName: "", customerEmail: "", customerPhone: "" });
-                setSpecialRequests("");
-                setAnswers({});
-                setAcceptedCancellationPolicy(false);
-                setAcceptedTerms(false);
-                setError(null);
-                setAvailability(null);
-                setDepositPaymentStatus("idle");
-                setDepositTransactionId("");
-                setDepositPaymentMessage("");
-                setDepositPhoneNumber("");
-              }}
-            />
+            <div className="text-center space-y-5">
+              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold" style={{ color: secondaryColor }}>
+                  Reservation Confirmed!
+                </h2>
+                <p className="text-gray-500 mt-2 text-sm">{confirmationMessage}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4 text-left space-y-2 text-sm">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-gray-400" />
+                  <span>{partySize} {partySize === 1 ? "guest" : "guests"}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-gray-400" />
+                  <span>{formatDate(selectedDate)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-gray-400" />
+                  <span>{selectedSlot && formatTime(selectedSlot.time)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  <span>{location?.locationName || location?.businessName}</span>
+                </div>
+                <div className="flex items-center gap-2 pt-1 border-t border-gray-200 mt-1">
+                  <CreditCard className="w-4 h-4 text-emerald-500" />
+                  <span className="text-emerald-700">
+                    Deposit of TZS {depositInfo.amount.toLocaleString()} paid
+                  </span>
+                </div>
+                {depositExternalRefId && (
+                  <p className="text-[10px] text-gray-400 font-mono pl-6">
+                    Ref: {depositExternalRefId}
+                  </p>
+                )}
+              </div>
+              <Button
+                onClick={() => {
+                  setStep("booking");
+                  setSelectedDate("");
+                  setSelectedSlot(null);
+                  setSelectedTable(null);
+                  setGuestInfo({ customerFirstName: "", customerLastName: "", customerEmail: "", customerPhone: "" });
+                  setSpecialRequests("");
+                  setAnswers({});
+                  setAcceptedCancellationPolicy(false);
+                  setAcceptedTerms(false);
+                  setError(null);
+                  setAvailability(null);
+                  setDepositPaymentStatus("idle");
+                  setDepositExternalRefId("");
+                  setDepositPaymentMessage("");
+                  setDepositPhoneNumber("");
+                  setCreatedReservationId("");
+                }}
+                variant="outline"
+                className="w-full"
+              >
+                Make Another Reservation
+              </Button>
+            </div>
           )}
 
           {depositPaymentStatus === "failed" && (
@@ -1288,7 +1348,8 @@ export default function ReservationWidget({
               setError(null);
               setAvailability(null);
               setDepositPaymentStatus("idle");
-              setDepositTransactionId("");
+              setDepositExternalRefId("");
+              setCreatedReservationId("");
               setDepositPaymentMessage("");
               setDepositPhoneNumber("");
             }}
@@ -1445,130 +1506,3 @@ function BookingQuestionField({
   }
 }
 
-// --- Deposit Paid → Auto-submit & show confirmation ---
-
-function DepositPaidAutoSubmit({
-  onSubmit,
-  submitting,
-  confirmationMessage,
-  partySize,
-  selectedDate,
-  selectedSlot,
-  depositAmount,
-  depositTransactionId,
-  locationName,
-  primaryColor,
-  secondaryColor,
-  formatTime,
-  formatDate,
-  onNewReservation,
-}: {
-  onSubmit: () => Promise<void>;
-  submitting: boolean;
-  confirmationMessage: string;
-  partySize: number;
-  selectedDate: string;
-  selectedSlot: AvailableSlot | null;
-  depositAmount: number;
-  depositTransactionId: string;
-  locationName: string;
-  primaryColor: string;
-  secondaryColor: string;
-  formatTime: (t: string) => string;
-  formatDate: (d: string) => string;
-  onNewReservation: () => void;
-}) {
-  const [submitted, setSubmitted] = useState(false);
-  const [submitError, setSubmitError] = useState("");
-
-  useEffect(() => {
-    if (!submitted) {
-      setSubmitted(true);
-      onSubmit().catch(() => {
-        setSubmitError("Failed to complete reservation. Please try again.");
-      });
-    }
-  }, []);
-
-  // Still submitting
-  if (submitting || (!confirmationMessage && !submitError)) {
-    return (
-      <div className="text-center py-6 space-y-3">
-        <div className="w-12 h-12 rounded-full bg-emerald-50 border-2 border-emerald-200 flex items-center justify-center mx-auto">
-          <ShieldCheck className="w-6 h-6 text-emerald-600" />
-        </div>
-        <p className="text-sm font-medium text-emerald-700">Payment Confirmed!</p>
-        <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
-          <Loader2 className="w-4 h-4 animate-spin" />
-          Completing your reservation...
-        </div>
-      </div>
-    );
-  }
-
-  if (submitError) {
-    return (
-      <div className="text-center py-6 space-y-4">
-        <AlertCircle className="w-10 h-10 text-red-400 mx-auto" />
-        <p className="text-sm text-red-600">{submitError}</p>
-        <Button variant="outline" onClick={() => { setSubmitted(false); setSubmitError(""); }}>
-          Retry
-        </Button>
-      </div>
-    );
-  }
-
-  // Reservation confirmed — show confirmation
-  return (
-    <div className="text-center space-y-5">
-      <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-        <Check className="w-8 h-8 text-green-600" />
-      </div>
-
-      <div>
-        <h2 className="text-xl font-bold" style={{ color: secondaryColor }}>
-          Reservation Confirmed!
-        </h2>
-        <p className="text-gray-500 mt-2 text-sm">{confirmationMessage}</p>
-      </div>
-
-      <div className="bg-gray-50 rounded-lg p-4 text-left space-y-2 text-sm">
-        <div className="flex items-center gap-2">
-          <Users className="w-4 h-4 text-gray-400" />
-          <span>{partySize} {partySize === 1 ? "guest" : "guests"}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 text-gray-400" />
-          <span>{formatDate(selectedDate)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <Clock className="w-4 h-4 text-gray-400" />
-          <span>{selectedSlot && formatTime(selectedSlot.time)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <MapPin className="w-4 h-4 text-gray-400" />
-          <span>{locationName}</span>
-        </div>
-        <div className="flex items-center gap-2 pt-1 border-t border-gray-200 mt-1">
-          <CreditCard className="w-4 h-4 text-emerald-500" />
-          <span className="text-emerald-700">
-            Deposit of TZS {depositAmount.toLocaleString()} paid
-          </span>
-        </div>
-        {depositTransactionId && (
-          <p className="text-[10px] text-gray-400 font-mono pl-6">
-            Ref: {depositTransactionId}
-          </p>
-        )}
-      </div>
-
-      <Button
-        onClick={onNewReservation}
-        variant="outline"
-        className="w-full"
-      >
-        Make Another Reservation
-      </Button>
-    </div>
-  );
-}
