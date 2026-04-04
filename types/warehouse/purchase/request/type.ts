@@ -9,6 +9,7 @@ export interface StockRequests{
     id:UUID
     comment:string
     stockRequested:StockRequestItem[]
+    quantity:number
     fromLocation:UUID
     fromLocationName:string
     toWarehouse:UUID
@@ -24,6 +25,7 @@ export interface StockRequests{
     approvedDate?:string,
     cancelledDate?:string
     requestedDate?:string
+    requestStatus:string
 }
 
 export interface StockRequestReport{
@@ -31,4 +33,5 @@ export interface StockRequestReport{
     approvedStockRequests: number
     pendingStockRequests: number
     cancelledStockRequests: number
+    receivedStockRequests: number
 }

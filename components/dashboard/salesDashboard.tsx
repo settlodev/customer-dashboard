@@ -1,256 +1,339 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowUpCircle, TrendingDown, DollarSign, RefreshCcw, ShoppingCart, TrendingUp, BarChart, Clock, CheckCircle, Package} from 'lucide-react';
+import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  DollarSign,
+  RefreshCcw,
+  Clock,
+  CheckCircle,
+  Package,
+} from "lucide-react";
+import DailyRevenueChart from "./Charts/DailyRevenueChart";
+import PaymentMethodsChart from "./Charts/PaymentMethodsChart";
+import TopSellingItemsChart from "./Charts/TopSellingItemsChart";
+import MonthlyCashflowChart from "./Charts/MonthlyCashflowChart";
+import StaffPerformanceChart from "./Charts/StaffPerformanceChart";
+import RecentTransactionsTable from "./Charts/RecentTransactionsTable";
 
-const SalesDashboard = ({ salesData }: { salesData: any }) => {
-  // Format currency with TZS
-  const formatCurrency = (value: number | undefined | null): string => {
-    if (value === undefined || value === null) return '0 TZS';
-    return `${value.toLocaleString()} TZS`;
+const StatCard = ({
+  label,
+  value,
+  icon: Icon,
+  valueColor,
+}: {
+  label: string;
+  value: string | number;
+  icon: React.ElementType;
+  valueColor?: string;
+}) => (
+  <Card>
+    <CardHeader className="flex flex-row items-center justify-between p-4 pb-1">
+      <CardTitle className="text-sm font-medium text-muted-foreground">
+        {label}
+      </CardTitle>
+      <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+        <Icon className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+      </div>
+    </CardHeader>
+    <CardContent className="px-4 pb-4 pt-0">
+      <div
+        className={`text-2xl font-bold ${valueColor || "text-gray-900 dark:text-gray-100"}`}
+      >
+        {typeof value === "string" && value.endsWith("TZS") ? (
+          <>
+            {value.replace(" TZS", "")}{" "}
+            <span className="text-[0.6em] font-normal opacity-70">TZS</span>
+          </>
+        ) : (
+          value
+        )}
+      </div>
+    </CardContent>
+  </Card>
+);
+
+const SalesDashboard = ({
+  salesData,
+  variant = "location",
+  loyaltyPoints,
+  departmentName,
+  children,
+}: {
+  salesData: any;
+  variant?: "location" | "staff";
+  loyaltyPoints?: number | null;
+  departmentName?: string | null;
+  children?: React.ReactNode;
+}) => {
+  const formatAmount = (value: number | undefined | null): string => {
+    if (value === undefined || value === null) return "0";
+    return value.toLocaleString();
   };
 
+  const formatCurrency = (value: number | undefined | null): string => {
+    return `${formatAmount(value)} TZS`;
+  };
+
+  const CurrencyValue = ({
+    value,
+    className,
+  }: {
+    value: number | undefined | null;
+    className?: string;
+  }) => (
+    <span className={className}>
+      {formatAmount(value)}{" "}
+      <span className="text-[0.6em] font-normal opacity-70">TZS</span>
+    </span>
+  );
 
   return (
-    <div className="p-6 bg-gray-50 space-y-8">
-      {/* Main Financial Overview Section */}
-      <Card className="border-blue-100 shadow-sm">
-        <CardHeader className="pb-2 border-b border-blue-50">
-          <CardTitle className="text-xl text-blue-800">Financial Overview</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-4">
-          <div className="grid grid-cols-1 gap-6">
+    <div className="space-y-6">
+      {/* Analysis Cards Row */}
+      {variant === "staff" ? (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Net Sales Hero Card */}
+          <div
+            className="relative rounded-xl overflow-hidden shadow-none"
+            style={{
+              backgroundImage: "url('/images/bg.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="relative p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-white/80">
+                Net Sales
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-primary">
+                <CurrencyValue value={salesData?.netSales} />
+              </p>
+            </div>
+          </div>
 
-          <div className="space-y-4">
-              <h3 className="text-lg font-medium text-blue-700 flex items-center">
-                <ShoppingCart className="w-5 h-5 mr-2" /> Order Status
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-                
-
-                {/* New Order Cards */}
-                <Card className="bg-gradient-to-br from-teal-50 to-teal-100 border-teal-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Total Orders</p>
-                        <h3 className="text-xl font-bold text-teal-700">{salesData?.totalOrders || 0}</h3>
-                      </div>
-                      <div className="bg-teal-100 p-3 rounded-full shadow-sm">
-                        <Package className="w-5 h-5 text-teal-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Completed Orders</p>
-                        <h3 className="text-xl font-bold text-green-700">{salesData.completedOrders || 0}</h3>
-                      </div>
-                      <div className="bg-green-100 p-3 rounded-full shadow-sm">
-                        <CheckCircle className="w-5 h-5 text-green-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Pending Orders</p>
-                        <h3 className="text-xl font-bold text-amber-700">{salesData.pendingOrders || 0}</h3>
-                      </div>
-                      <div className="bg-amber-100 p-3 rounded-full shadow-sm">
-                        <Clock className="w-5 h-5 text-amber-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Expenses */}
+          <Card className="rounded-xl shadow-none">
+            <CardContent className="p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Expenses
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
+                <CurrencyValue value={salesData?.totalExpenseRecordedAmount} />
+              </p>
+              <div className="flex items-center gap-4 mt-3 text-xs">
+                <span className="text-emerald-600 font-medium">
+                  Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
+                </span>
+                <span className="text-amber-600 font-medium">
+                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)}{" "}
+                  TZS
+                </span>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Refunds */}
+          <Card className="rounded-xl shadow-none">
+            <CardContent className="p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Refunds
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
+                <CurrencyValue value={salesData?.totalRefundedAmount} />
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Net Profit Hero Card */}
+          <div
+            className="relative rounded-xl overflow-hidden shadow-none"
+            style={{
+              backgroundImage: "url('/images/bg.png')",
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          >
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="relative p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-white/80">
+                {salesData?.netProfit >= 0 ? "Net Profit" : "Net Loss"}
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-primary">
+                <CurrencyValue value={salesData?.netProfit} />
+              </p>
             </div>
-            {/* Payment Status Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-purple-700 flex items-center">
-                <BarChart className="w-5 h-5 mr-2" /> Payment Status
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="w-full">
-                        <div className="flex justify-between items-center mb-1">
-                          <p className="text-sm font-medium text-gray-600">Paid Amount</p>
-                          {/* <span className="text-xs font-medium text-green-700">{paidPercentage.toFixed(1)}%</span> */}
-                        </div>
-                        <h3 className="text-xl font-bold text-green-700">{formatCurrency(salesData.paidAmount)}</h3>
-                        
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+          </div>
 
-                <Card className="bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div className="w-full">
-                        <div className="flex justify-between items-center mb-1">
-                          <p className="text-sm font-medium text-gray-600">Unpaid Amount</p>
+          {/* Cost of Goods Sold */}
+          <Card className="rounded-xl shadow-none">
+            <CardContent className="p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Closing balance
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
+                <CurrencyValue value={salesData?.closingBalance} />
+              </p>
+            </CardContent>
+          </Card>
 
-                        </div>
-                        <h3 className="text-2xl font-bold text-amber-700">{formatCurrency(salesData.unpaidAmount)}</h3>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+          {/* Expenses */}
+          <Card className="rounded-xl shadow-none">
+            <CardContent className="p-6">
+              <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground">
+                Expenses
+              </p>
+              <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
+                <CurrencyValue value={salesData?.totalExpenseRecordedAmount} />
+              </p>
+              <div className="flex items-center gap-4 mt-3 text-xs">
+                <span className="text-emerald-600 font-medium">
+                  Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
+                </span>
+                <span className="text-amber-600 font-medium">
+                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)}{" "}
+                  TZS
+                </span>
               </div>
-            </div>
-            
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-            {/* Revenue Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-blue-700 flex items-center">
-                <BarChart className="w-5 h-5 mr-2" /> Revenue Stream
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Gross Sales</p>
-                        <h3 className="text-xl font-bold text-blue-700">{formatCurrency(salesData.grossSales)}</h3>
-                      </div>
-                      <div className="bg-blue-100 p-3 rounded-full shadow-sm">
-                        <DollarSign className="w-5 h-5 text-blue-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-orange-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Refunds</p>
-                        <h3 className="text-xl font-bold text-orange-700">{formatCurrency(salesData.refundsAmount)}</h3>
-                      </div>
-                      <div className="bg-orange-100 p-3 rounded-full shadow-sm">
-                        <RefreshCcw className="w-5 h-5 text-orange-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Discounts</p>
-                        <h3 className="text-xl font-bold text-purple-700">{formatCurrency(salesData.discountsAmount)}</h3>
-                      </div>
-                      <div className="bg-purple-50 p-3 rounded-full shadow-sm">
-                        <RefreshCcw className="w-5 h-5 text-purple-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 border-emerald-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Net Sales</p>
-                        <h3 className="text-xl font-bold text-emerald-700">{formatCurrency(salesData.netSales)}</h3>
-                      </div>
-                      <div className="bg-emerald-100 p-3 rounded-full shadow-sm">
-                        <DollarSign className="w-5 h-5 text-emerald-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Profit Analysis Section */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-indigo-700 flex items-center">
-                <BarChart className="w-5 h-5 mr-2" /> Profit Analysis
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card className="bg-gradient-to-br from-red-50 to-red-100 border-red-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Costs (COGS)</p>
-                        <h3 className="text-2xl font-bold text-red-700">{formatCurrency(salesData.costsAmount)}</h3>
-                      </div>
-                      <div className="bg-red-100 p-3 rounded-full shadow-sm">
-                        <ShoppingCart className="w-5 h-5 text-red-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Gross Profit</p>
-                        <h3 className="text-2xl font-bold text-blue-700">{formatCurrency(salesData.grossProfit)}</h3>
-                      </div>
-                      <div className="bg-blue-100 p-3 rounded-full shadow-sm">
-                        <TrendingUp className="w-5 h-5 text-blue-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-                  <CardContent className="pt-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-                        <h3 className="text-2xl font-bold text-purple-700">{formatCurrency(salesData.expensesAmount)}</h3>
-                      </div>
-                      <div className="bg-purple-100 p-3 rounded-full shadow-sm">
-                        <ShoppingCart className="w-5 h-5 text-purple-600" />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-
-            {/* Bottom Line Section */}
-            <div className="mt-4">
-              <Card className={`bg-gradient-to-br ${salesData.netProfit >= 0 ? 'from-emerald-50 to-emerald-100 border-emerald-200' : 'from-red-50 to-red-100 border-red-200'}`}>
-                <CardContent className="pt-6 pb-6">
-                  <div className="flex items-center justify-between">
-                    <div className="w-full">
-                      <div className="flex justify-between items-center mb-1">
-                        <p className="text-lg font-medium text-gray-700">{salesData.netProfit >= 0 ? 'Net Profit' : 'Net Loss'}</p>
-                      
-                      </div>
-                      <h3 className={`text-3xl font-bold ${salesData.netProfit >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                        {formatCurrency(salesData.netProfit)}
-                      </h3>
-                      
-                    </div>
-                    <div className={`${salesData.netProfit >= 0 ? 'bg-emerald-100' : 'bg-red-100'} p-4 rounded-full shadow-sm ml-4`}>
-                      {salesData.netProfit >= 0 ?
-                        <ArrowUpCircle className="w-6 h-6 text-emerald-600" /> :
-                        <TrendingDown className="w-6 h-6 text-red-600" />
-                      }
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+      {/* Order & Sales Summary — compact inline */}
+      <Card className="shadow-none">
+        <CardContent className="flex items-center px-6 py-4 gap-6 flex-wrap">
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Total Orders</span>
+            <span className="text-sm font-bold">
+              {salesData?.totalOrders || 0}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <span className="text-sm text-muted-foreground">
+              Completed Orders
+            </span>
+            <span className="text-sm font-bold">
+              {salesData?.completedOrders || 0}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-amber-500" />
+            <span className="text-sm text-muted-foreground">
+              Ongoing Orders
+            </span>
+            <span className="text-sm font-bold">
+              {salesData?.ongoingOrders || 0}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <RefreshCcw className="h-4 w-4 text-red-500" />
+            <span className="text-sm text-muted-foreground">
+              Refunded Orders
+            </span>
+            <span className="text-sm font-bold">
+              {salesData?.refundedOrders || 0}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Avg. Order Value
+            </span>
+            <span className="text-sm font-bold">
+              {formatCurrency(salesData?.averageOrderValue)}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              Cost of goods sold
+            </span>
+            <span className="text-sm font-bold">
+              {formatCurrency(salesData?.totalCost)}
+            </span>
           </div>
         </CardContent>
       </Card>
+
+      {/* Revenue stream */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+          Revenue stream
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            label="Gross sales"
+            value={formatCurrency(salesData?.grossSales)}
+            icon={DollarSign}
+          />
+          <StatCard
+            label="Discounts"
+            value={formatCurrency(salesData?.totalDiscount)}
+            icon={RefreshCcw}
+          />
+          {variant === "staff" ? (
+            <>
+              <StatCard
+                label="Points"
+                value={loyaltyPoints?.toLocaleString() ?? "0"}
+                icon={DollarSign}
+              />
+              <StatCard
+                label="Department"
+                value={departmentName ?? "—"}
+                icon={DollarSign}
+              />
+            </>
+          ) : (
+            <>
+              <StatCard
+                label="Refunds"
+                value={formatCurrency(salesData?.totalRefundedAmount)}
+                icon={RefreshCcw}
+              />
+              <StatCard
+                label="Net sales"
+                value={formatCurrency(salesData?.netSales)}
+                icon={DollarSign}
+              />
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Extra content (e.g. staff summary cards) */}
+      {children}
+
+      {/* Charts Row 1: Daily Revenue + Payment Methods */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="flex-1 min-w-0">
+          <DailyRevenueChart data={salesData?.dailyRevenueTrend} />
+        </div>
+        <div className="lg:w-auto lg:flex-shrink-0">
+          <PaymentMethodsChart data={salesData?.transactionsPerPaymentMethod} />
+        </div>
+      </div>
+
+      {/* Charts Row 2: Top Items + Monthly Cashflow */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <TopSellingItemsChart data={salesData?.topSellingItems} />
+        <MonthlyCashflowChart data={salesData?.monthlyCashflow} />
+      </div>
+
+      {/* Charts Row 3: Staff Performance + Recent Transactions */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <StaffPerformanceChart data={salesData?.staffPerformance} />
+        <RecentTransactionsTable data={salesData?.recentTransactions} />
+      </div>
     </div>
   );
 };

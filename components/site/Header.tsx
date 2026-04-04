@@ -1,3 +1,5 @@
+
+
 'use client';
 import React from 'react';
 import { Input } from '@/components/ui/input';
@@ -7,9 +9,10 @@ import {
   Clock, 
   Search,
   ShoppingCartIcon,
+  ShoppingCart,
 } from 'lucide-react';
 import { BusinessInfo, BusinessType } from '@/types/site/type';
-
+import { Button } from '../ui/button';
 
 interface HeaderProps {
   businessInfo: BusinessInfo;
@@ -22,6 +25,7 @@ interface HeaderProps {
   wishlistCount: number;
   setIsMenuOpen: (open: boolean) => void;
   isMenuOpen: boolean;
+  onCartClick?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -30,7 +34,8 @@ const Header: React.FC<HeaderProps> = ({
   searchQuery,
   setSearchQuery,
   handleSearch,
-
+  cartCount,
+  onCartClick,
 }) => {
   return (
     <>
@@ -62,17 +67,6 @@ const Header: React.FC<HeaderProps> = ({
           <div className="flex justify-between items-center">
             {/* Logo and Business Name */}
             <div className="flex items-center space-x-2">
-              {/* {isMobile && (
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => setIsMenuOpen(!isMenuOpen)} 
-                  className="md:hidden"
-                >
-                  <Menu className="h-6 w-6" />
-                </Button>
-              )} */}
-              
               <div className="flex items-center">
                 <div className={`w-10 h-10 rounded-full ${businessType.primary} flex items-center justify-center mr-2`}>
                   <ShoppingCartIcon className="h-6 w-6 text-white" />
@@ -86,8 +80,13 @@ const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
             
-            {/* Search on Desktop */}
-            <div className="hidden md:flex flex-1 mx-8">
+           
+            
+            {/* Action Icons */}
+            <div className="flex items-center space-x-2">
+              
+               {/* Search on Desktop */}
+            <div className="hidden md:flex flex-1 mx-12">
               <div className="relative flex-grow max-w-md mx-auto">
                 <Input
                   type="text"
@@ -107,29 +106,20 @@ const Header: React.FC<HeaderProps> = ({
                 </button>
               </div>
             </div>
-            
-            {/* Action Icons */}
-            {/* <div className="flex items-center space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => alert('Account')}>
-                <User className="h-5 w-5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="relative" onClick={() => alert('Wishlist')}>
-                <Heart className="h-5 w-5" />
-                {wishlistCount > 0 && (
-                  <span className={`absolute -top-1 -right-1 ${businessType.primary} text-white rounded-full text-xs w-4 h-4 flex items-center justify-center`}>
-                    {wishlistCount}
-                  </span>
-                )}
-              </Button>
-              <Button variant="ghost" size="icon" className="relative" onClick={() => alert('Cart')}>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="relative" 
+                onClick={onCartClick}
+              >
                 <ShoppingCart className="h-5 w-5" />
                 {cartCount > 0 && (
-                  <span className={`absolute -top-1 -right-1 ${businessType.primary} text-white rounded-full text-xs w-4 h-4 flex items-center justify-center`}>
-                    {cartCount}
+                  <span className={`absolute -top-1 -right-1 ${businessType.primary} text-white rounded-full text-xs w-5 h-5 flex items-center justify-center font-medium`}>
+                    {cartCount > 99 ? '99+' : cartCount}
                   </span>
                 )}
               </Button>
-            </div> */}
+            </div>
           </div>
           
           {/* Mobile Search */}

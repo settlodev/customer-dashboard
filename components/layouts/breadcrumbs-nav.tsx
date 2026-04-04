@@ -1,5 +1,6 @@
 'use client'
 import React, { useEffect, useState } from "react";
+import Link from "next/link";
 import {
     Breadcrumb,
     BreadcrumbItem,
@@ -28,19 +29,19 @@ export default function BreadcrumbsNav({ items }: BreadcrumbPropsType) {
     useEffect(() => {
         const fetchData = async () => {
             try {
-               
+
                 const [locationData, warehouseData] = await Promise.all([
                     getCurrentLocation(),
                     getCurrentWarehouse()
                 ]);
-                
+
                 setLocation(locationData);
                 setWarehouse(warehouseData);
             } catch (error) {
                 console.error("Error fetching location or warehouse data:", error);
                 setLocation(null);
                 setWarehouse(null);
-            } 
+            }
         };
 
         fetchData();
@@ -49,7 +50,7 @@ export default function BreadcrumbsNav({ items }: BreadcrumbPropsType) {
     const getHomeLink = () => {
         if (location) {
             return "/dashboard";
-        } 
+        }
         else if (warehouse) {
             return "/warehouse";
         }
@@ -62,14 +63,18 @@ export default function BreadcrumbsNav({ items }: BreadcrumbPropsType) {
         <Breadcrumb>
             <BreadcrumbList>
                 <BreadcrumbItem>
-                    <BreadcrumbLink href={getHomeLink()}>Home</BreadcrumbLink>
+                    <BreadcrumbLink asChild>
+                        <Link href={getHomeLink()}>Home</Link>
+                    </BreadcrumbLink>
                 </BreadcrumbItem>
                 {items.map((item) => (
                     <React.Fragment key={item.link}>
                         <BreadcrumbSeparator />
                         <BreadcrumbItem>
-                            <BreadcrumbLink href={item.link}>
-                                {item.title}
+                            <BreadcrumbLink asChild>
+                                <Link href={item.link}>
+                                    {item.title}
+                                </Link>
                             </BreadcrumbLink>
                         </BreadcrumbItem>
                     </React.Fragment>

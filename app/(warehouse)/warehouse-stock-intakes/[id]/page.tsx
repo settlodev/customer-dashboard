@@ -2,7 +2,7 @@ import {ApiResponse} from "@/types/types";
 import {UUID} from "node:crypto";
 import {notFound} from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
+import {Card, CardContent} from "@/components/ui/card";
 import { StockIntake } from "@/types/stock-intake/type";
 import WarehouseStockIntakeForm from "@/components/forms/warehouse/stock_intake_form";
 import { getStockIntakeFromWarehouse } from "@/lib/actions/warehouse/stock-intake-actions";
@@ -42,19 +42,11 @@ export default async function StockIntakePage({params}: {params: Params}){
     )
 }
 
-const StockIntakeCard =({isNewItem, item}:{
-    isNewItem:boolean,
+const StockIntakeCard =({item}:{
+    isNewItem?:boolean,
     item: StockIntake | null | undefined
 }) =>(
     <Card className="mt-12" >
-       {/* <CardHeader>
-           <CardTitle>
-               {isNewItem ? "Record Stock Intake" : "Edit stock intake"}
-           </CardTitle>
-           <CardDescription>
-               {isNewItem ? "Record stock intake to your warehouse": "Edit stock intake details"}
-           </CardDescription>
-       </CardHeader> */}
         <CardContent>
            <WarehouseStockIntakeForm item={item}/>
         </CardContent>
