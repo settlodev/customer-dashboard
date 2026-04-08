@@ -14,7 +14,7 @@ export const LocationSchema = object({
   email: string({ required_error: "Email address is required" }).email(
     "Please enter a valid email address",
   ),
-  description: string().optional(),
+  description: string().optional().nullish(),
   address: string({ required_error: "Location address is required" }),
   city: string({ required_error: "City is required" }),
   region: string().optional().nullish(),

@@ -80,7 +80,6 @@ export const updateLocationSettings = async (
     return parseStringify(formResponse);
   }
   revalidatePath("/settings");
-  redirect("/settings");
 };
 
 export const updateNotificationSetting = async (
