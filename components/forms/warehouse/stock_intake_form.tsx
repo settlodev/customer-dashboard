@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StockIntake } from "@/types/stock-intake/type";
 
-
 import { useRouter } from "next/navigation";
 import {
   Calendar,
@@ -39,63 +38,10 @@ import WarehouseStaffSelectorWidget from "@/components/widgets/warehouse/staff-s
 import StockVariantSelectorForWarehouse from "@/components/widgets/warehouse/stock-variant-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
 import { NumericFormat } from "react-number-format";
-
-const StockIntakeItemSchema = z
-  .object({
-    stockVariant: z.string({ message: "Please select stock item" }).uuid(),
-    quantity: z.preprocess(
-      (val) => {
-        if (typeof val === "string" && val.trim() !== "") {
-          return parseInt(val);
-        }
-        return val;
-      },
-      z
-        .number({ message: "Quantity is required" })
-        .nonnegative({ message: "Quantity cannot be negative" })
-        .gt(0, { message: "Quantity cannot be zero" }),
-    ),
-    value: z.preprocess(
-      (val) => {
-        if (typeof val === "string" && val.trim() !== "") {
-          return parseFloat(val);
-        }
-        return val;
-      },
-      z
-        .number({ message: "Value of inventory is required" })
-        .nonnegative({ message: "Value cannot be negative" })
-        .gt(0, { message: "Value cannot be zero" }),
-    ),
-    batchExpiryDate: z
-      .string({ required_error: "Batch expiry date is required" })
-      .optional(),
-    orderDate: z.string({ required_error: "Order date is required" }),
-    deliveryDate: z.string({ required_error: "Delivery date is required" }),
-    staff: z.string({ message: "Please select a staff" }).uuid(),
-    supplier: z.string().uuid().optional(),
-    purchasePaidAmount: z.number().optional(),
-    trackPurchase: z.boolean().optional(),
-  })
-  .refine(
-    (data) => {
-      if (data.trackPurchase && !data.supplier) {
-        return false;
-      }
-      return true;
-    },
-    {
-      message: "Supplier is required when tracking purchase",
-      path: ["supplier"],
-    },
-  );
-
-const MultiStockIntakeSchema = z.object({
-  stockIntakes: z
-    .array(StockIntakeItemSchema)
-    .min(1, { message: "At least one stock intake must be added" }),
-  status: z.boolean().optional(),
-});
+import {
+  MultiStockIntakeSchema,
+  StockIntakeItemSchema,
+} from "@/types/warehouse/stock-intake/schema";
 
 function WarehouseStockIntakeForm({
   item,
@@ -181,7 +127,26 @@ function WarehouseStockIntakeForm({
 
   const onInvalid = useCallback(
     (errors: any) => {
-      console.log("These errors occurred:", errors);
+      console.log("=== FORM VALIDATION ERRORS ===");
+
+      // Log all field errors
+      Object.keys(errors).forEach((field) => {
+        console.log(`Field: ${field}`);
+        console.log(`Error: ${errors[field]?.message}`);
+
+        // For array fields (stockIntakes)
+        if (field === "stockIntakes" && errors[field]?.length) {
+          errors[field].forEach((itemError: any, index: number) => {
+            console.log(`  Stock Intake #${index + 1}:`);
+            Object.keys(itemError).forEach((subField) => {
+              console.log(`    ${subField}: ${itemError[subField]?.message}`);
+            });
+          });
+        }
+      });
+
+      console.log("Full errors object:", JSON.stringify(errors, null, 2));
+
       toast({
         variant: "destructive",
         title: "Validation Error",
@@ -192,6 +157,15 @@ function WarehouseStockIntakeForm({
   );
 
   const submitData = async (values: z.infer<typeof MultiStockIntakeSchema>) => {
+    console.log("Submitting values:", JSON.stringify(values, null, 2));
+
+    // Validate each item before submit
+    values.stockIntakes.forEach((intake, idx) => {
+      const result = StockIntakeItemSchema.safeParse(intake);
+      if (!result.success) {
+        console.log(`Item ${idx} validation failed:`, result.error.errors);
+      }
+    });
     // Transform data to array format expected by API
     const payload = values.stockIntakes.map((intake) => ({
       quantity: intake.quantity,
