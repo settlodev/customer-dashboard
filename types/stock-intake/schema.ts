@@ -32,6 +32,7 @@ export const StockIntakeSchema = object({
 });
 
 export type StockIntakePayload = z.infer<typeof StockIntakeSchema>;
+
 export const MultiStockIntakeSchema = object({
   stockIntakes: array(StockIntakeSchema).min(1, {
     message: "At least one stock intake must be added",

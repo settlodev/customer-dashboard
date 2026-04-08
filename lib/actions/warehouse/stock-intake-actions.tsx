@@ -9,11 +9,9 @@ import { revalidatePath } from "next/cache";
 import { UUID } from "node:crypto";
 import { console } from "node:inspector";
 import { StockIntake } from "@/types/stock-intake/type";
-import {
-  StockIntakeSchema,
-  UpdatedStockIntakeSchema,
-} from "@/types/stock-intake/schema";
 import { getCurrentWarehouse } from "./current-warehouse-action";
+import { StockIntakeItemSchema } from "@/types/warehouse/stock-intake/schema";
+import { UpdatedStockIntakeSchema } from "@/types/stock-intake/schema";
 
 export const createStockIntakeForWarehouse = async (
   stockIntakes: any[],
@@ -46,9 +44,10 @@ export const createStockIntakeForWarehouse = async (
 
   // Validate each stock intake item
   const validationResults = transformedStockIntakes.map((intake) =>
-    StockIntakeSchema.safeParse(intake),
+    StockIntakeItemSchema.safeParse(intake),
   );
   const hasErrors = validationResults.some((result) => !result.success);
+  console.log("The errors found are", hasErrors);
 
   if (hasErrors) {
     const firstError = validationResults.find((result) => !result.success);
