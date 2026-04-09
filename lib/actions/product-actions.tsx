@@ -449,7 +449,6 @@ export const topSellingProduct = async (
         params,
       },
     );
-    // console.log("The products sold",topSelling )
 
     return parseStringify(topSelling);
   } catch (error) {
