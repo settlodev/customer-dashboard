@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
   const isApiAuthRoute = pathname.startsWith(apiAuthPrefix);
   const isPublicRoute = publicRoutes.some((route) => {
     if (route.includes("[")) {
-      const pattern = route.replace(/\[.*?\]/g, "[^/]+");
+      const pattern = route.replace(/\[\.\.\..*?\]/g, ".+").replace(/\[.*?\]/g, "[^/]+");
       const regex = new RegExp(`^${pattern}$`);
       return regex.test(pathname);
     }

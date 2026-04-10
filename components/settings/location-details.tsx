@@ -169,7 +169,7 @@ const LocationDetailsSettings = ({
           name: values.name,
           phone: values.phone,
           email: values.email,
-          description: values.description,
+          description: values.description || null,
           address: values.address,
           city: values.city,
           region: values.region,

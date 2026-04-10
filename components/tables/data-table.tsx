@@ -88,7 +88,7 @@ const pageSpecificComponents = {
     importComponent: "",
     exportComponent: <StockIntakeExport filename="Stock Intake" />,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
-    allowArchive: true,
+    allowArchive: true, // ✅ was missing
     isWarehouse: false,
   },
   "/staff": {
@@ -96,6 +96,7 @@ const pageSpecificComponents = {
     importComponent: null,
     exportComponent: null,
     entityNames: { singular: "Staff Member", plural: "Staff Members" },
+    allowArchive: true, // ✅ was missing
     isWarehouse: false,
   },
   "/recipes": {
@@ -120,6 +121,7 @@ const pageSpecificComponents = {
       />
     ),
     entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
+    allowArchive: true, // ✅ was missing
     isWarehouse: true,
   },
   "/warehouse-stock-intakes": {
@@ -127,6 +129,7 @@ const pageSpecificComponents = {
     importComponent: <CSVStockIntakeDialog />,
     exportComponent: <StockIntakeExport filename="Warehouse Stock Intake" />,
     entityNames: { singular: "Stock Intake", plural: "Stock Intakes" },
+    allowArchive: true, // ✅ was missing
     isWarehouse: true,
   },
   "/warehouse-suppliers": {
@@ -134,6 +137,7 @@ const pageSpecificComponents = {
     importComponent: "",
     exportComponent: "",
     entityNames: { singular: "Supplier", plural: "Suppliers" },
+    allowArchive: false, // ✅ was missing — suppliers have no archive endpoint
     isWarehouse: true,
   },
 };
@@ -371,7 +375,12 @@ export function DataTable<TData, TValue>({
   };
 
   const renderArchiveComponent = () => {
-    if (disableArchive || selectedRowIds.length === 0) return null;
+    if (
+      disableArchive ||
+      !pageConfig.allowArchive ||
+      selectedRowIds.length === 0
+    )
+      return null;
 
     if (pageConfig.isWarehouse) {
       return (
@@ -385,23 +394,23 @@ export function DataTable<TData, TValue>({
           entityNamePlural={pageConfig.entityNames.plural}
         />
       );
-    } else {
-      return (
-        <BulkArchive
-          selectedIds={selectedRowIds}
-          entityType={
-            pageConfig.entityType as
-              | "product"
-              | "stock"
-              | "staff"
-              | "stock-intake"
-          }
-          onSuccess={resetTableSelection}
-          entityNameSingular={pageConfig.entityNames.singular}
-          entityNamePlural={pageConfig.entityNames.plural}
-        />
-      );
     }
+
+    return (
+      <BulkArchive
+        selectedIds={selectedRowIds}
+        entityType={
+          pageConfig.entityType as
+            | "product"
+            | "stock"
+            | "staff"
+            | "stock-intake"
+        }
+        onSuccess={resetTableSelection}
+        entityNameSingular={pageConfig.entityNames.singular}
+        entityNamePlural={pageConfig.entityNames.plural}
+      />
+    );
   };
 
   if (!isInitialized) {

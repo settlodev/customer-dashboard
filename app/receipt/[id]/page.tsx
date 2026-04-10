@@ -86,7 +86,7 @@ const OrderReceipt = async ({
 
   return (
     <div
-      className="min-h-screen py-8 px-4 sm:px-6"
+      className="min-h-screen py-4 px-2 sm:py-8 sm:px-6"
       style={{ backgroundColor: "#EAEAE5" }}
     >
       <div className="max-w-4xl mx-auto">
@@ -104,31 +104,32 @@ const OrderReceipt = async ({
           style={{ maxWidth: "794px", pageBreakInside: "avoid" }}
         >
           {/* ── TOP HEADER: Logo left · Doc title right ── */}
-          <div className="px-6 lg:px-10 pt-8 lg:pt-10 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
-            {/* Left: Logo + Business name */}
-            <div className="flex items-center gap-4">
+          {/* Mobile: tighter padding, smaller logo */}
+          <div className="px-4 pt-4 pb-3 lg:px-10 lg:pt-10 lg:pb-6 flex flex-row justify-between items-start gap-3">
+            {/* Left: Logo */}
+            <div className="flex items-center gap-3">
               {locationLogo ? (
                 <img
                   src={locationLogo}
                   alt={`${orderData.businessName} logo`}
-                  className="h-14 lg:h-16 w-auto object-contain flex-shrink-0"
+                  className="h-16 lg:h-32 w-auto object-contain flex-shrink-0 rounded-lg"
                 />
               ) : (
-                <div className="h-12 w-12 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"></div>
+                <div className="h-10 w-10 lg:h-12 lg:w-12 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0" />
               )}
             </div>
 
             {/* Right: Document type + company details */}
-            <div className="lg:text-right w-full lg:w-auto">
+            <div className="text-right">
               <h2
-                className="text-3xl lg:text-4xl font-light tracking-wide mb-1"
+                className="text-xl lg:text-4xl font-light tracking-wide mb-0.5"
                 style={{ color: "#EB7F44" }}
               >
                 {docType}
               </h2>
 
               {orderData.efdPrinted && efdData ? (
-                <div className="text-sm text-gray-600 space-y-0.5 mt-2">
+                <div className="text-[10px] lg:text-sm text-gray-600 space-y-0 mt-1">
                   {efdData.vfdInformation?.tin && (
                     <p className="font-semibold text-gray-800">
                       TIN: {efdData.vfdInformation.tin}
@@ -160,7 +161,7 @@ const OrderReceipt = async ({
                   )}
                 </div>
               ) : (
-                <div className="text-sm text-gray-600 space-y-0.5 mt-2">
+                <div className="text-[10px] lg:text-sm text-gray-600 space-y-0 mt-1">
                   <p className="font-semibold text-gray-800">
                     {orderData.businessName}
                   </p>
@@ -184,25 +185,21 @@ const OrderReceipt = async ({
 
           {/* ── DIVIDER ── */}
           <div
-            className="mx-6 lg:mx-10"
+            className="mx-4 lg:mx-10"
             style={{ height: "1px", backgroundColor: "#EAEAE5" }}
           />
 
           {/* ── BILL TO + INVOICE META ── */}
-          {/* Always render the two-column layout regardless of whether
-              customer info exists. Left column shows customer details or
-              stays empty; right column always shows the meta table. This
-              ensures consistent alignment between receipts with and without
-              a customer attached. */}
-          <div className="px-6 lg:px-10 py-6 flex flex-col lg:flex-row justify-between gap-6">
-            {/* Left column — always present to hold the layout */}
+          {/* Mobile: stacked in a compact 2-col grid instead of two block rows */}
+          <div className="px-4 py-3 lg:px-10 lg:py-6 flex flex-col lg:flex-row justify-between gap-3 lg:gap-6">
+            {/* Left column */}
             <div className="flex-1">
               {hasCustomerInfo ? (
                 <>
-                  <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
+                  <p className="text-[9px] lg:text-xs uppercase tracking-widest text-gray-400 mb-1">
                     Bill To
                   </p>
-                  <div className="text-sm text-gray-700 space-y-0.5">
+                  <div className="text-[10px] lg:text-sm text-gray-700 space-y-0">
                     {orderData.customerName && (
                       <p className="font-semibold text-gray-900">
                         {orderData.customerName}
@@ -220,55 +217,54 @@ const OrderReceipt = async ({
                   </div>
                 </>
               ) : (
-                /* Empty placeholder keeps the meta table right-aligned */
                 <div aria-hidden="true" />
               )}
             </div>
 
-            {/* Right column — meta table, always right-aligned */}
+            {/* Right column — meta table */}
             <div className="w-full lg:w-72">
-              <table className="w-full text-sm">
+              <table className="w-full text-[10px] lg:text-sm">
                 <tbody>
                   <tr style={{ borderBottom: "1px solid #EAEAE5" }}>
-                    <td className="py-2 font-semibold text-gray-700 pr-4">
-                      {isPaid ? "Receipt" : "Invoice"} Number:
+                    <td className="py-1 lg:py-2 font-semibold text-gray-700 pr-2">
+                      {isPaid ? "Receipt" : "Invoice"} No:
                     </td>
-                    <td className="py-2 text-gray-900 text-right">
+                    <td className="py-1 lg:py-2 text-gray-900 text-right">
                       {orderData.orderNumber}
                     </td>
                   </tr>
                   <tr style={{ borderBottom: "1px solid #EAEAE5" }}>
-                    <td className="py-2 font-semibold text-gray-700 pr-4">
-                      {isPaid ? "Receipt" : "Invoice"} Date:
+                    <td className="py-1 lg:py-2 font-semibold text-gray-700 pr-2">
+                      Date:
                     </td>
-                    <td className="py-2 text-gray-900 text-right">
+                    <td className="py-1 lg:py-2 text-gray-900 text-right">
                       {formatDisplayDate(orderData.openedDate)}
                     </td>
                   </tr>
                   {orderData.closedDate && (
                     <tr style={{ borderBottom: "1px solid #EAEAE5" }}>
-                      <td className="py-2 font-semibold text-gray-700 pr-4">
-                        Closed Date:
+                      <td className="py-1 lg:py-2 font-semibold text-gray-700 pr-2">
+                        Closed:
                       </td>
-                      <td className="py-2 text-gray-900 text-right">
+                      <td className="py-1 lg:py-2 text-gray-900 text-right">
                         {formatDisplayDate(orderData.closedDate)}
                       </td>
                     </tr>
                   )}
                   <tr style={{ borderBottom: "1px solid #EAEAE5" }}>
-                    <td className="py-2 font-semibold text-gray-700 pr-4">
-                      Staff Assigned:
+                    <td className="py-1 lg:py-2 font-semibold text-gray-700 pr-2">
+                      Staff:
                     </td>
-                    <td className="py-2 text-gray-900 text-right">
+                    <td className="py-1 lg:py-2 text-gray-900 text-right">
                       {orderData.assignedToName}
                     </td>
                   </tr>
                   <tr>
-                    <td className="py-2 font-semibold text-gray-700 pr-4">
-                      Amount Due (TZS):
+                    <td className="py-1 lg:py-2 font-semibold text-gray-700 pr-2">
+                      Due (TZS):
                     </td>
                     <td
-                      className="py-2 font-bold text-right"
+                      className="py-1 lg:py-2 font-bold text-right"
                       style={{ color: "#EB7F44" }}
                     >
                       {formatCurrency(
@@ -281,9 +277,9 @@ const OrderReceipt = async ({
               </table>
 
               {/* Status badges */}
-              <div className="mt-3 flex flex-wrap gap-2 lg:justify-end">
+              <div className="mt-2 flex flex-wrap gap-1.5 lg:gap-2 lg:justify-end">
                 <span
-                  className="px-3 py-1 rounded-full text-xs font-semibold"
+                  className="px-2 py-0.5 rounded-full text-[9px] lg:text-xs font-semibold"
                   style={
                     orderData.orderPaymentStatus === "PAID"
                       ? { backgroundColor: "#F2942233", color: "#EB7F44" }
@@ -296,7 +292,7 @@ const OrderReceipt = async ({
                 </span>
                 {orderData.efdPrinted && efdData && (
                   <span
-                    className="px-3 py-1 rounded-full text-xs font-semibold"
+                    className="px-2 py-0.5 rounded-full text-[9px] lg:text-xs font-semibold"
                     style={{ backgroundColor: "#F2942233", color: "#EB7F44" }}
                   >
                     EFD RECEIPT
@@ -354,64 +350,65 @@ const OrderReceipt = async ({
             </table>
           </div>
 
-          {/* ── ITEMS CARDS — mobile ── */}
-          <div className="lg:hidden px-4 mb-6 space-y-3">
-            <div
-              className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider"
-              style={{ backgroundColor: "#EB7F44" }}
-            >
-              <span>Items</span>
-              <span>Amount</span>
-            </div>
-
-            {orderData.items.map((item: OrderItems, index: number) => (
-              <div
-                key={index}
-                className="rounded-lg p-4"
-                style={{
-                  border: "1px solid #EAEAE5",
-                  backgroundColor: index % 2 === 0 ? "#ffffff" : "#EAEAE520",
-                }}
-              >
-                <div className="flex justify-between items-start gap-3 mb-3">
-                  <p className="text-sm font-medium text-gray-900 flex-1">
-                    <span className="text-gray-400 mr-1">{index + 1}.</span>
-                    {item.name}
-                  </p>
-                  <p
-                    className="text-sm font-bold text-gray-900 whitespace-nowrap"
-                    style={{ color: "#EB7F44" }}
+          {/* ── ITEMS — mobile compact table (replaces cards) ── */}
+          <div className="lg:hidden px-3 mb-4">
+            <table className="w-full text-[10px]">
+              <thead>
+                <tr style={{ backgroundColor: "#EB7F44" }}>
+                  <th className="px-2 py-1.5 text-left font-semibold uppercase tracking-wide text-white rounded-tl w-1/2">
+                    Item
+                  </th>
+                  <th className="px-2 py-1.5 text-center font-semibold uppercase tracking-wide text-white">
+                    Qty
+                  </th>
+                  <th className="px-2 py-1.5 text-right font-semibold uppercase tracking-wide text-white">
+                    Price
+                  </th>
+                  <th className="px-2 py-1.5 text-right font-semibold uppercase tracking-wide text-white rounded-tr">
+                    Total
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {orderData.items.map((item: OrderItems, index: number) => (
+                  <tr
+                    key={index}
+                    style={{
+                      backgroundColor:
+                        index % 2 === 0 ? "#ffffff" : "#EAEAE530",
+                      borderBottom: "1px solid #EAEAE5",
+                    }}
                   >
-                    {formatCurrency(item.totalPrice)}
-                  </p>
-                </div>
-                <div className="flex gap-4 text-xs text-gray-500">
-                  <span>
-                    <span className="font-medium text-gray-700">Qty:</span>{" "}
-                    {item.quantity}
-                  </span>
-                  <span>
-                    <span className="font-medium text-gray-700">
-                      Unit price:
-                    </span>{" "}
-                    {formatCurrency(item.price)}
-                  </span>
-                </div>
-              </div>
-            ))}
+                    <td className="px-2 py-1.5 text-gray-900">
+                      <span className="text-gray-400 mr-1">{index + 1}.</span>
+                      {item.name}
+                    </td>
+                    <td className="px-2 py-1.5 text-gray-600 text-center">
+                      {item.quantity}
+                    </td>
+                    <td className="px-2 py-1.5 text-gray-600 text-right whitespace-nowrap">
+                      {formatCurrency(item.price)}
+                    </td>
+                    <td className="px-2 py-1.5 font-medium text-gray-900 text-right whitespace-nowrap">
+                      {formatCurrency(item.totalPrice)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
 
           {/* ── TOTALS ── */}
-          <div className="px-6 lg:px-10 mb-6">
+          <div className="px-4 lg:px-10 mb-4 lg:mb-6">
             <div className="flex justify-end">
               <div className="w-full lg:max-w-xs">
                 {orderData.efdPrinted && efdData ? (
                   /* EFD Totals */
-                  <div>
+                  <div className="text-[10px] lg:text-sm">
                     {efdData.vatTotals?.map((vat: any, index: number) => (
                       <div key={index}>
                         <div
-                          className="flex justify-between text-sm text-gray-600 py-2"
+                          className="flex justify-between text-gray-600 py-1 lg:py-2"
                           style={{ borderBottom: "1px solid #EAEAE5" }}
                         >
                           <span>
@@ -426,7 +423,7 @@ const OrderReceipt = async ({
                           <span>{formatCurrency(vat.taxAmount)}</span>
                         </div>
                         <div
-                          className="flex justify-between text-sm text-gray-600 py-2"
+                          className="flex justify-between text-gray-600 py-1 lg:py-2"
                           style={{ borderBottom: "1px solid #EAEAE5" }}
                         >
                           <span>Net Amount:</span>
@@ -437,7 +434,7 @@ const OrderReceipt = async ({
                     {efdData.totals && (
                       <>
                         <div
-                          className="flex justify-between text-sm text-gray-600 py-2"
+                          className="flex justify-between text-gray-600 py-1 lg:py-2"
                           style={{ borderBottom: "1px solid #EAEAE5" }}
                         >
                           <span>Total (Excl. Tax):</span>
@@ -446,7 +443,7 @@ const OrderReceipt = async ({
                           </span>
                         </div>
                         <div
-                          className="flex justify-between text-sm text-gray-600 py-2"
+                          className="flex justify-between text-gray-600 py-1 lg:py-2"
                           style={{ borderBottom: "1px solid #EAEAE5" }}
                         >
                           <span>Total Tax:</span>
@@ -454,7 +451,7 @@ const OrderReceipt = async ({
                         </div>
                         {efdData.totals.discount > 0 && (
                           <div
-                            className="flex justify-between text-sm text-gray-600 py-2"
+                            className="flex justify-between text-gray-600 py-1 lg:py-2"
                             style={{ borderBottom: "1px solid #EAEAE5" }}
                           >
                             <span>Discount:</span>
@@ -466,7 +463,7 @@ const OrderReceipt = async ({
                       </>
                     )}
                     <div
-                      className="flex justify-between font-bold py-2"
+                      className="flex justify-between font-bold py-1 lg:py-2"
                       style={{ borderBottom: "1px solid #EAEAE5" }}
                     >
                       <span className="text-gray-900">Total:</span>
@@ -478,7 +475,7 @@ const OrderReceipt = async ({
                     </div>
                     {efdData.payments && (
                       <div
-                        className="flex justify-between text-sm text-gray-600 py-2"
+                        className="flex justify-between text-gray-600 py-1 lg:py-2"
                         style={{ borderBottom: "1px solid #EAEAE5" }}
                       >
                         <span>
@@ -492,7 +489,7 @@ const OrderReceipt = async ({
                       </div>
                     )}
                     <div
-                      className="flex justify-between font-bold py-3 mt-1 rounded px-3"
+                      className="flex justify-between font-bold py-2 mt-1 rounded px-2 lg:px-3"
                       style={{ backgroundColor: "#F2942233" }}
                     >
                       <span style={{ color: "#EB7F44" }}>
@@ -508,9 +505,9 @@ const OrderReceipt = async ({
                   </div>
                 ) : (
                   /* Regular Totals */
-                  <div>
+                  <div className="text-[10px] lg:text-sm">
                     <div
-                      className="flex justify-between text-sm text-gray-600 py-2"
+                      className="flex justify-between text-gray-600 py-1 lg:py-2"
                       style={{ borderBottom: "1px solid #EAEAE5" }}
                     >
                       <span>Subtotal:</span>
@@ -518,7 +515,7 @@ const OrderReceipt = async ({
                     </div>
                     {orderData.totalDiscount > 0 && (
                       <div
-                        className="flex justify-between text-sm text-gray-600 py-2"
+                        className="flex justify-between text-gray-600 py-1 lg:py-2"
                         style={{ borderBottom: "1px solid #EAEAE5" }}
                       >
                         <span>Discount:</span>
@@ -526,7 +523,7 @@ const OrderReceipt = async ({
                       </div>
                     )}
                     <div
-                      className="flex justify-between font-bold py-2"
+                      className="flex justify-between font-bold py-1 lg:py-2"
                       style={{ borderBottom: "1px solid #EAEAE5" }}
                     >
                       <span className="text-gray-900">Total:</span>
@@ -539,10 +536,10 @@ const OrderReceipt = async ({
                       uniqueMethods.map((method) => (
                         <div
                           key={String(method)}
-                          className="flex justify-between text-sm text-gray-600 py-2"
+                          className="flex justify-between text-gray-600 py-1 lg:py-2"
                           style={{ borderBottom: "1px solid #EAEAE5" }}
                         >
-                          <span>Payment via {method}:</span>
+                          <span>Via {method}:</span>
                           <span className="font-medium">
                             {formatCurrency(
                               orderData.transactions
@@ -561,11 +558,11 @@ const OrderReceipt = async ({
                       ))
                     ) : (
                       <div
-                        className="flex justify-between text-sm text-gray-600 py-2"
+                        className="flex justify-between text-gray-600 py-1 lg:py-2"
                         style={{ borderBottom: "1px solid #EAEAE5" }}
                       >
                         <span>
-                          Payment via{" "}
+                          Via{" "}
                           {orderData.transactions?.[0]?.paymentMethodName ||
                             "N/A"}
                           :
@@ -577,7 +574,7 @@ const OrderReceipt = async ({
                     )}
 
                     <div
-                      className="flex justify-between font-bold py-3 mt-1 rounded px-3"
+                      className="flex justify-between font-bold py-2 mt-1 rounded px-2 lg:px-3"
                       style={{ backgroundColor: "#F2942233" }}
                     >
                       <span style={{ color: "#EB7F44" }}>
@@ -598,16 +595,16 @@ const OrderReceipt = async ({
 
           {/* ── NOTES / TERMS ── */}
           <div
-            className="px-6 lg:px-10 pt-6 pb-4 flex flex-col lg:flex-row justify-between items-start gap-6"
+            className="px-4 lg:px-10 pt-3 lg:pt-6 pb-3 lg:pb-4 flex flex-col lg:flex-row justify-between items-start gap-3 lg:gap-6"
             style={{ borderTop: "1px solid #EAEAE5" }}
           >
             <div className="flex-1">
-              <p className="font-bold text-gray-800 text-sm mb-1">
+              <p className="font-bold text-gray-800 text-[10px] lg:text-sm mb-0.5">
                 Notes / Terms
               </p>
 
               {orderData.digitalReceiptPaymentDetails?.length > 0 ? (
-                <div className="text-sm text-gray-600 space-y-0.5 leading-relaxed">
+                <div className="text-[10px] lg:text-sm text-gray-600 space-y-0 leading-snug">
                   {orderData.digitalReceiptPaymentDetails.map(
                     (
                       detail: {
@@ -638,7 +635,7 @@ const OrderReceipt = async ({
                   )}
                 </div>
               ) : (
-                <div className="text-sm text-gray-600 space-y-0.5">
+                <div className="text-[10px] lg:text-sm text-gray-600">
                   <p>
                     {isPaid ? "Receipt" : "Invoice"} generated on{" "}
                     {formatDate(new Date().toISOString())}
@@ -649,11 +646,11 @@ const OrderReceipt = async ({
           </div>
 
           {/* ── FOOTER ── */}
-          <div className="px-6 lg:px-10 pb-8 pt-4 text-center">
-            <p className="text-sm font-semibold">
+          <div className="px-4 lg:px-10 pb-5 lg:pb-8 pt-2 lg:pt-4 text-center">
+            <p className="text-[10px] lg:text-sm font-semibold">
               Thank you for your business and continued support
             </p>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-[9px] lg:text-xs text-gray-400 mt-0.5">
               Powered by Settlo Technologies
             </p>
           </div>
@@ -677,7 +674,7 @@ const OrderReceipt = async ({
         </div>
 
         {/* Mobile EFD Generate button */}
-        <div className="w-full lg:hidden mt-4">
+        <div className="w-full lg:hidden mt-3">
           {!orderData.efdPrinted && (
             <div className="flex items-center w-full">
               <GenerateEfdButton orderId={id} location={location} />
