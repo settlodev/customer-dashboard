@@ -53,7 +53,7 @@ const getNormalMenuItems = (
           icon: "cart",
         },
         {
-          title: "Credit report",
+          title: "Debtors report",
           link: "/report/credit",
           current: args?.isCurrentItem,
           icon: "cart",

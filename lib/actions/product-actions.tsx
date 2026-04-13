@@ -93,7 +93,6 @@ export const searchProducts = async (
       page: page ? page - 1 : 0,
       size: pageLimit ? pageLimit : 10,
     };
-    console.log("The queries are", query);
     const location = (await getCurrentLocation()) || { id: locationId };
 
     const data = await apiClient.post(`/api/products/${location?.id}`, query);
