@@ -127,6 +127,25 @@ export const createStockPurchase = async (
   } catch (error: any) {
     const apiError = error as ErrorResponseType;
 
+    // message can be a string or an array of {field, message} objects
+    const normalizeMessage = (msg: unknown): string => {
+      if (typeof msg === "string") return msg;
+      if (Array.isArray(msg)) {
+        return msg
+          .map((m) =>
+            typeof m === "object" && m !== null && "message" in m
+              ? (m as { field?: string; message: string }).field
+                ? `${(m as { field: string; message: string }).field}: ${(m as { field: string; message: string }).message}`
+                : (m as { message: string }).message
+              : String(m),
+          )
+          .join(", ");
+      }
+      return "An error occurred while creating the stock purchase";
+    };
+
+    const message = normalizeMessage(apiError.message);
+
     console.error("Error creating stock purchase:", {
       status: apiError.status,
       code: apiError.code,
@@ -137,10 +156,8 @@ export const createStockPurchase = async (
 
     formResponse = {
       responseType: "error",
-      message:
-        apiError.message ||
-        "An error occurred while creating the stock purchase",
-      error: new Error(apiError.message),
+      message,
+      error: new Error(message),
     };
   }
 

@@ -21,7 +21,6 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-
 import VersionDisplay from "../widgets/versioning";
 import { UrlObject } from "url";
 import { MenuType } from "@/types/menu-item-type";
@@ -31,6 +30,7 @@ interface SidebarProps {
   isMobile?: boolean;
   onClose?: () => void;
   menuType?: MenuType;
+  isExpired?: boolean;
 }
 
 interface MenuItem {
@@ -44,11 +44,11 @@ const SidebarContent = ({
   isMobile,
   onClose,
   menuType = "normal",
+  isExpired = false,
 }: SidebarProps) => {
   const pathname = usePathname();
   const [visibleIndex, setVisibleIndex] = useState<number>(-1);
 
-  // Get all menu items without subscription filtering
   const myMenuItems = menuItems({
     subscription: null,
     menuType,
@@ -113,7 +113,7 @@ const SidebarContent = ({
 
   return (
     <div className="flex h-full flex-col">
-      {/* Header */}
+      {/* Header — always visible */}
       <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 px-2 py-2">
         <div className="flex items-center flex-1 min-w-0">
           <BusinessSwitcher
@@ -134,83 +134,102 @@ const SidebarContent = ({
         )}
       </div>
 
-      {/* Navigation */}
-      <div className="flex-1 overflow-y-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {myMenuItems.map((section, sectionIndex) => {
-            const sectionHasActive = section.items.some(
-              (item: MenuItem) =>
-                pathname === item.link || pathname.startsWith(item.link + "/"),
-            );
-            return (
-              <div key={sectionIndex} className="py-1">
-                <button
-                  onClick={() =>
-                    setVisibleIndex(
-                      visibleIndex === sectionIndex ? -1 : sectionIndex,
-                    )
-                  }
-                  className={cn(
-                    "flex w-full items-center justify-between rounded-lg p-2",
-                    "text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800",
-                    "transition-colors duration-200",
-                    sectionHasActive &&
-                      "border-l-2 border-primary rounded-l-none text-gray-900 dark:text-white font-semibold",
-                  )}
-                >
-                  <div className="flex items-center">
-                    <span className="text-xs">{getIcon(section.icon)}</span>
-                    <span className="ml-2 text-sm font-medium">
-                      {section.label}
-                    </span>
-                  </div>
-                  <ChevronDown
+      {/* Navigation — hidden when expired */}
+      {!isExpired && (
+        <div className="flex-1 overflow-y-auto scrollbar-hide [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <nav className="flex-1 space-y-1 px-3 py-4">
+            {myMenuItems.map((section, sectionIndex) => {
+              const sectionHasActive = section.items.some(
+                (item: MenuItem) =>
+                  pathname === item.link ||
+                  pathname.startsWith(item.link + "/"),
+              );
+              return (
+                <div key={sectionIndex} className="py-1">
+                  <button
+                    onClick={() =>
+                      setVisibleIndex(
+                        visibleIndex === sectionIndex ? -1 : sectionIndex,
+                      )
+                    }
                     className={cn(
-                      "h-4 w-4 text-gray-400 transition-transform duration-200",
-                      visibleIndex === sectionIndex && "rotate-180",
+                      "flex w-full items-center justify-between rounded-lg p-2",
+                      "text-gray-700 dark:text-gray-300 hover:bg-gray-200/60 dark:hover:bg-gray-800",
+                      "transition-colors duration-200",
+                      sectionHasActive &&
+                        "border-l-2 border-primary rounded-l-none text-gray-900 dark:text-white font-semibold",
                     )}
-                  />
-                </button>
+                  >
+                    <div className="flex items-center">
+                      <span className="text-xs">{getIcon(section.icon)}</span>
+                      <span className="ml-2 text-sm font-medium">
+                        {section.label}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 text-gray-400 transition-transform duration-200",
+                        visibleIndex === sectionIndex && "rotate-180",
+                      )}
+                    />
+                  </button>
 
-                {visibleIndex === sectionIndex && (
-                  <div className="mt-1 space-y-0.5">
-                    {section.items.map(
-                      (
-                        item: MenuItem,
-                        _index: React.Key | null | undefined,
-                      ) => {
-                        const isActive =
-                          pathname === item.link ||
-                          pathname.startsWith(item.link + "/");
-                        return (
-                          <Link
-                            key={item.title}
-                            href={item.link}
-                            onClick={isMobile ? onClose : undefined}
-                            className={cn(
-                              "block w-full rounded-lg px-2 py-1.5 pl-10",
-                              "text-sm transition-colors duration-200",
-                              isActive
-                                ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
-                                : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200",
-                            )}
-                          >
-                            {item.title}
-                          </Link>
-                        );
-                      },
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
-      </div>
+                  {visibleIndex === sectionIndex && (
+                    <div className="mt-1 space-y-0.5">
+                      {section.items.map(
+                        (
+                          item: MenuItem,
+                          _index: React.Key | null | undefined,
+                        ) => {
+                          const isActive =
+                            pathname === item.link ||
+                            pathname.startsWith(item.link + "/");
+                          return (
+                            <Link
+                              key={item.title}
+                              href={item.link}
+                              onClick={isMobile ? onClose : undefined}
+                              className={cn(
+                                "block w-full rounded-lg px-2 py-1.5 pl-10",
+                                "text-sm transition-colors duration-200",
+                                isActive
+                                  ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
+                                  : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-200",
+                              )}
+                            >
+                              {item.title}
+                            </Link>
+                          );
+                        },
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </nav>
+        </div>
+      )}
 
-      {/* Footer */}
+      {/* Spacer — pushes footer to bottom when nav is hidden (expired state) */}
+      {isExpired && <div className="flex-1" />}
+
+      {/* Footer — always visible */}
       <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-        {menuTypeLabel === "Location" && (
+        {/* Expired banner */}
+        {isExpired && (
+          <div className="mb-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2">
+            <p className="text-xs font-medium text-red-600 dark:text-red-400">
+              Subscription Expired
+            </p>
+            <p className="text-xs text-red-500 dark:text-red-500 mt-0.5">
+              Renew to access all features.
+            </p>
+          </div>
+        )}
+
+        {/* Billing — hidden when expired */}
+        {menuTypeLabel === "Location" && !isExpired && (
           <Link
             href="/renew-subscription"
             onClick={isMobile ? onClose : undefined}
@@ -227,20 +246,23 @@ const SidebarContent = ({
           </Link>
         )}
 
-        <Link
-          href="/settings"
-          onClick={isMobile ? onClose : undefined}
-          className={cn(
-            "flex items-center rounded-lg px-2 py-1.5",
-            "text-sm transition-colors duration-200",
-            pathname === "/settings" || pathname.startsWith("/settings/")
-              ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
-              : "text-gray-500 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200",
-          )}
-        >
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Settings</span>
-        </Link>
+        {/* Settings — hidden when expired */}
+        {!isExpired && (
+          <Link
+            href="/settings"
+            onClick={isMobile ? onClose : undefined}
+            className={cn(
+              "flex items-center rounded-lg px-2 py-1.5",
+              "text-sm transition-colors duration-200",
+              pathname === "/settings" || pathname.startsWith("/settings/")
+                ? "bg-primary/10 text-primary font-medium dark:bg-primary/20"
+                : "text-gray-500 dark:text-gray-400 hover:bg-gray-200/60 dark:hover:bg-gray-800 hover:text-gray-800 dark:hover:text-gray-200",
+            )}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Settings</span>
+          </Link>
+        )}
 
         <VersionDisplay />
 
@@ -257,11 +279,13 @@ export const MobileSidebar = ({
   menuType = "normal",
   isOpen,
   onOpenChange,
+  isExpired = false,
 }: {
   data: BusinessPropsType;
   menuType?: MenuType;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  isExpired?: boolean;
 }) => {
   return (
     <Sheet open={isOpen} onOpenChange={onOpenChange}>
@@ -274,6 +298,7 @@ export const MobileSidebar = ({
           isMobile={true}
           onClose={() => onOpenChange(false)}
           menuType={menuType}
+          isExpired={isExpired}
         />
       </SheetContent>
     </Sheet>
@@ -283,13 +308,15 @@ export const MobileSidebar = ({
 export const SidebarWrapper = ({
   data,
   menuType = "normal",
+  isExpired = false,
 }: {
   data: BusinessPropsType;
   menuType?: MenuType;
+  isExpired?: boolean;
 }) => {
   return (
     <aside className="hidden lg:flex lg:flex-col mt-2 mb-3 ml-3 mr-3 h-[calc(100vh-20px)] w-[18rem] flex-shrink-0 bg-gray-50 dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800">
-      <SidebarContent data={data} menuType={menuType} />
+      <SidebarContent data={data} menuType={menuType} isExpired={isExpired} />
     </aside>
   );
 };

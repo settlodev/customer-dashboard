@@ -58,6 +58,7 @@ export const productSummary = async (): Promise<any> => {
     throw error;
   }
 };
+
 export const searchProducts = async (
   q: string,
   page: number,
@@ -351,24 +352,6 @@ export const deleteVariant = async (
   }
 };
 
-export const deleteProduct = async (id: UUID): Promise<void> => {
-  if (!id) throw new Error("Product ID is required to perform this request");
-
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    await apiClient.delete(`/api/products/${location?.id}/${id}`);
-
-    revalidatePath("/products");
-  } catch (error) {
-    throw error;
-  }
-};
-
 export const uploadProductCSV = async ({
   fileData,
   fileName,
@@ -466,7 +449,6 @@ export const topSellingProduct = async (
         params,
       },
     );
-    // console.log("The products sold",topSelling )
 
     return parseStringify(topSelling);
   } catch (error) {

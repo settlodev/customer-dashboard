@@ -18,6 +18,15 @@ import { Business } from "@/types/business/type";
 import { Location as BusinessLocation } from "@/types/location/type";
 import { Warehouses } from "@/types/warehouse/warehouse/type";
 
+const EXPIRED_STATUSES = [
+  "EXPIRED",
+  "EXPIRED_TRIAL",
+  "DUE",
+  "PAST_DUE",
+  "",
+  null,
+  undefined,
+];
 export default async function RootLayout({
   children,
 }: {
@@ -75,12 +84,15 @@ export default async function RootLayout({
     currentLocation: currentLocation,
     warehouse: currentWarehouse,
   };
+  const isExpired = EXPIRED_STATUSES.includes(
+    currentLocation?.subscriptionStatus as any,
+  );
 
   return (
     <SessionProvider session={session}>
       <LoadingBarProvider>
         <div className="flex h-screen overflow-hidden bg-primary-light dark:bg-gray-950">
-          <SidebarWrapper data={businessData} />
+          <SidebarWrapper data={businessData} isExpired={isExpired} />
 
           <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden">
             <div className="relative flex-1 overflow-y-auto">
