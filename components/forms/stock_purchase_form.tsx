@@ -86,7 +86,11 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
     resolver: zodResolver(SupplierSchema),
   });
 
-  const onSubmit = async (values: SupplierFormValues) => {
+  const onSubmit = async (
+    values: SupplierFormValues,
+    e?: React.BaseSyntheticEvent,
+  ) => {
+    e?.stopPropagation();
     setServerError(null);
     setLoading(true);
     try {

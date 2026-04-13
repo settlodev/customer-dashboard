@@ -369,7 +369,7 @@ const CreditReportDashboard = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">
-            Credit report
+            Debtors report
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">
             {creditData
@@ -446,7 +446,6 @@ const CreditReportDashboard = () => {
       {/* ── Metric cards ── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-amber-500 rounded-l-xl" />
           <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
             Total unpaid orders
           </p>
@@ -457,11 +456,10 @@ const CreditReportDashboard = () => {
             </span>
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Outstanding credit balances
+            Outstanding balances
           </p>
         </div>
         <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-red-500 rounded-l-xl" />
           <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
             Total unpaid amount
           </p>
@@ -473,7 +471,6 @@ const CreditReportDashboard = () => {
           </p>
         </div>
         <div className="bg-background border rounded-xl p-4 relative overflow-hidden">
-          <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-emerald-500 rounded-l-xl" />
           <p className="text-[11px] font-medium uppercase tracking-widest text-muted-foreground mb-2">
             Total paid amount
           </p>

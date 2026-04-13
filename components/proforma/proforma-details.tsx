@@ -232,7 +232,7 @@ export function InvoiceDocument({
               <tbody>
                 <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
                   <td className="py-2 font-semibold text-gray-700 pr-4">
-                    Estimate Number:
+                    Prof Number:
                   </td>
                   <td className="py-2 text-gray-900 text-right">
                     {data.proformaNumber}
