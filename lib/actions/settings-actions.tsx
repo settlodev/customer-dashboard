@@ -63,10 +63,11 @@ export const updateLocationSettings = async (
   try {
     const apiClient = new ApiClient();
 
-    await apiClient.put(
+    const response = await apiClient.put(
       `/api/location-settings/${locationId?.id}/${id}`,
       payload,
     );
+    return parseStringify(response);
   } catch (error) {
     formResponse = {
       responseType: "error",
@@ -76,9 +77,6 @@ export const updateLocationSettings = async (
     };
   }
 
-  if (formResponse) {
-    return parseStringify(formResponse);
-  }
   revalidatePath("/settings");
 };
 
