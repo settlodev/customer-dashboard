@@ -88,11 +88,12 @@ export default async function RootLayout({
     <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
       <EntitlementProvider initialEntitlements={entitlements}>
       <LoadingBarProvider>
-        <div className="flex h-screen overflow-hidden bg-primary-light dark:bg-gray-950">
+        <div className="flex h-screen flex-col overflow-hidden bg-primary-light dark:bg-gray-950">
+          <SubscriptionBanner />
+          <div className="flex flex-1 min-h-0 overflow-hidden">
           <SidebarWrapper data={businessData} />
 
-          <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden">
-            <SubscriptionBanner />
+          <main className="flex flex-1 min-w-0 flex-col overflow-hidden">
             <div className="relative flex-1 overflow-y-auto">
               <Suspense
                 fallback={
@@ -115,6 +116,7 @@ export default async function RootLayout({
               <Toaster />
             </div>
           </main>
+          </div>
         </div>
       </LoadingBarProvider>
       </EntitlementProvider>

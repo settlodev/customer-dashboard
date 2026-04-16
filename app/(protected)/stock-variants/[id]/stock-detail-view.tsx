@@ -20,36 +20,54 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   Activity,
+  Layers,
+  ShieldCheck,
+  Truck,
+  Clock,
+  ShoppingCart,
+  RefreshCw,
 } from "lucide-react";
 import type { Stock } from "@/types/stock/type";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
-import type { StockMovement } from "@/types/stock-movement/type";
+import type { StockMovement, StockMovementSummary } from "@/types/stock-movement/type";
 import { MOVEMENT_TYPE_LABELS } from "@/types/stock-movement/type";
 import type {
   StockoutForecastItem,
   StockTurnoverItem,
   AbcAnalysisItem,
-  MovementTypeSummary,
+  ReorderSuggestion,
 } from "@/types/inventory-analytics/type";
 import { RISK_LEVEL_CONFIG, ABC_CONFIG } from "@/types/inventory-analytics/type";
+import type { StockBatch } from "@/types/stock-batch/type";
+import { BATCH_STATUS_CONFIG } from "@/types/stock-batch/type";
+import type { ItemSalesAggregate } from "@/types/item-sales/type";
 
 interface Props {
   stock: Stock;
   balanceMap: Record<string, InventoryBalance>;
+  batchMap: Record<string, StockBatch[]>;
+  variantSummaryMap: Record<string, StockMovementSummary>;
   movements: StockMovement[];
   forecasts: StockoutForecastItem[];
   turnover: StockTurnoverItem[];
   abc: AbcAnalysisItem[];
-  movementSummary: MovementTypeSummary[];
+  reorder: ReorderSuggestion[];
+  salesItems: ItemSalesAggregate[];
+  movementSummary: StockMovementSummary;
   totalQty: number;
   totalValue: number;
+  totalReserved: number;
+  totalInTransit: number;
+  totalAvailable: number;
   worstRisk: StockoutForecastItem | null;
   avgTurnover: number;
 }
 
 const TABS = [
   { key: "overview", label: "Overview", icon: Package },
+  { key: "batches", label: "Batches", icon: Layers },
   { key: "movements", label: "Movements", icon: Activity },
+  { key: "sales", label: "Sales", icon: ShoppingCart },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
 ] as const;
 
@@ -65,13 +83,20 @@ const INBOUND_TYPES = new Set([
 export function StockDetailView({
   stock,
   balanceMap,
+  batchMap,
+  variantSummaryMap,
   movements,
   forecasts,
   turnover,
   abc,
+  reorder,
+  salesItems,
   movementSummary,
   totalQty,
   totalValue,
+  totalReserved,
+  totalInTransit,
+  totalAvailable,
   worstRisk,
   avgTurnover,
 }: Props) {
@@ -81,10 +106,25 @@ export function StockDetailView({
     ? RISK_LEVEL_CONFIG[worstRisk.riskLevel]
     : RISK_LEVEL_CONFIG.NO_CONSUMPTION;
 
+  const totalBatches = Object.values(batchMap).reduce((s, b) => s + b.length, 0);
+
+  // Count batches expiring within 7 days
+  const now = new Date();
+  const sevenDaysOut = new Date(now);
+  sevenDaysOut.setDate(sevenDaysOut.getDate() + 7);
+  const expiringBatchCount = Object.values(batchMap)
+    .flat()
+    .filter(
+      (b) =>
+        b.expiryDate &&
+        new Date(b.expiryDate) <= sevenDaysOut &&
+        new Date(b.expiryDate) > now,
+    ).length;
+
   return (
     <div className="space-y-6">
       {/* ── Summary cards ─────────────────────────────────────── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <SummaryCard
           icon={<Boxes className="h-4 w-4" />}
           label="Qty on Hand"
@@ -99,9 +139,46 @@ export function StockDetailView({
           })}
         />
         <SummaryCard
+          icon={<ShieldCheck className="h-4 w-4" />}
+          label="Available"
+          value={totalAvailable.toLocaleString()}
+          subtitle={
+            totalReserved > 0
+              ? `${totalReserved.toLocaleString()} reserved`
+              : undefined
+          }
+          subtitleClass="text-amber-600 dark:text-amber-400"
+        />
+        <SummaryCard
+          icon={<Truck className="h-4 w-4" />}
+          label="In Transit"
+          value={totalInTransit > 0 ? totalInTransit.toLocaleString() : "\u2014"}
+          subtitle={
+            totalInTransit > 0
+              ? `Expected: ${(totalQty + totalInTransit).toLocaleString()}`
+              : undefined
+          }
+        />
+        <SummaryCard
           icon={<TrendingUp className="h-4 w-4" />}
-          label="Turnover Ratio"
+          label="Turnover (30d)"
           value={avgTurnover > 0 ? `${avgTurnover.toFixed(1)}x` : "\u2014"}
+          subtitle={
+            avgTurnover >= 3
+              ? "Fast moving"
+              : avgTurnover >= 1
+                ? "Normal"
+                : avgTurnover > 0
+                  ? "Slow moving"
+                  : undefined
+          }
+          subtitleClass={
+            avgTurnover >= 3
+              ? "text-green-600 dark:text-green-400"
+              : avgTurnover >= 1
+                ? "text-amber-600 dark:text-amber-400"
+                : "text-red-600 dark:text-red-400"
+          }
         />
         <SummaryCard
           icon={<AlertTriangle className="h-4 w-4" />}
@@ -120,16 +197,20 @@ export function StockDetailView({
       </div>
 
       {/* ── Tabs ──────────────────────────────────────────────── */}
-      <div className="border-b">
-        <div className="flex gap-1">
+      <div className="border-b overflow-x-auto">
+        <div className="flex gap-1 min-w-max">
           {TABS.map((t) => {
             const Icon = t.icon;
             const isActive = tab === t.key;
+            let badge: string | null = null;
+            if (t.key === "batches" && totalBatches > 0) badge = String(totalBatches);
+            if (t.key === "movements" && movements.length > 0)
+              badge = String(movementSummary.totalMovements);
             return (
               <button
                 key={t.key}
                 onClick={() => setTab(t.key)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActive
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
@@ -137,6 +218,11 @@ export function StockDetailView({
               >
                 <Icon className="h-4 w-4" />
                 {t.label}
+                {badge && (
+                  <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {badge}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -145,13 +231,30 @@ export function StockDetailView({
 
       {/* ── Tab content ───────────────────────────────────────── */}
       {tab === "overview" && (
-        <OverviewTab stock={stock} balanceMap={balanceMap} forecasts={forecasts} abc={abc} />
+        <OverviewTab
+          stock={stock}
+          balanceMap={balanceMap}
+          variantSummaryMap={variantSummaryMap}
+          forecasts={forecasts}
+          abc={abc}
+        />
+      )}
+      {tab === "batches" && (
+        <BatchesTab stock={stock} batchMap={batchMap} expiringCount={expiringBatchCount} />
       )}
       {tab === "movements" && (
         <MovementsTab movements={movements} movementSummary={movementSummary} />
       )}
+      {tab === "sales" && (
+        <SalesTab salesItems={salesItems} stock={stock} />
+      )}
       {tab === "analytics" && (
-        <AnalyticsTab forecasts={forecasts} turnover={turnover} abc={abc} />
+        <AnalyticsTab
+          forecasts={forecasts}
+          turnover={turnover}
+          abc={abc}
+          reorder={reorder}
+        />
       )}
     </div>
   );
@@ -201,11 +304,13 @@ function SummaryCard({
 function OverviewTab({
   stock,
   balanceMap,
+  variantSummaryMap,
   forecasts,
   abc,
 }: {
   stock: Stock;
   balanceMap: Record<string, InventoryBalance>;
+  variantSummaryMap: Record<string, StockMovementSummary>;
   forecasts: StockoutForecastItem[];
   abc: AbcAnalysisItem[];
 }) {
@@ -226,9 +331,14 @@ function OverviewTab({
                 <TableHead>Variant</TableHead>
                 <TableHead>Unit</TableHead>
                 <TableHead>Barcode</TableHead>
-                <TableHead className="text-right">Qty</TableHead>
+                <TableHead className="text-right">On Hand</TableHead>
+                <TableHead className="text-right">Available</TableHead>
+                <TableHead className="text-right">Reserved</TableHead>
+                <TableHead className="text-right">In Transit</TableHead>
                 <TableHead className="text-right">Avg Cost</TableHead>
+                <TableHead className="text-right">Batch Cost</TableHead>
                 <TableHead className="text-right">Value</TableHead>
+                <TableHead className="text-right">30d In/Out</TableHead>
                 <TableHead>Risk</TableHead>
                 <TableHead>ABC</TableHead>
                 <TableHead>Status</TableHead>
@@ -239,15 +349,12 @@ function OverviewTab({
                 const bal = balanceMap[v.id];
                 const fc = forecastMap.get(v.id);
                 const abcItem = abcMap.get(v.id);
+                const ms = variantSummaryMap[v.id];
                 const qty = bal?.quantityOnHand ?? 0;
                 const cost = bal?.averageCost ?? 0;
                 const value = qty * cost;
-                const riskCfg = fc
-                  ? RISK_LEVEL_CONFIG[fc.riskLevel]
-                  : null;
-                const abcCfg = abcItem
-                  ? ABC_CONFIG[abcItem.classification]
-                  : null;
+                const riskCfg = fc ? RISK_LEVEL_CONFIG[fc.riskLevel] : null;
+                const abcCfg = abcItem ? ABC_CONFIG[abcItem.classification] : null;
 
                 return (
                   <TableRow
@@ -264,6 +371,11 @@ function OverviewTab({
                             Default
                           </span>
                         )}
+                        {v.serialTracked && (
+                          <span className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-purple-50 text-purple-600 dark:bg-purple-950/30 dark:text-purple-400 font-medium">
+                            Serial
+                          </span>
+                        )}
                         {v.sku && (
                           <span className="block text-xs text-muted-foreground">
                             SKU: {v.sku}
@@ -273,11 +385,31 @@ function OverviewTab({
                     </TableCell>
                     <TableCell className="text-sm">
                       <span>{v.unitAbbreviation}</span>
-                      {v.conversionToBase !== 1 && (
-                        <span className="block text-[10px] text-muted-foreground">
-                          1 {v.unitAbbreviation} = {v.conversionToBase.toLocaleString(undefined, { maximumFractionDigits: 6 })} {stock.baseUnitAbbreviation}
-                        </span>
-                      )}
+                      {v.conversionToBase !== 1 &&
+                        (() => {
+                          const c = v.conversionToBase;
+                          if (c >= 1) {
+                            return (
+                              <span className="block text-[10px] text-muted-foreground">
+                                1 {v.unitAbbreviation} ={" "}
+                                {c.toLocaleString(undefined, {
+                                  maximumFractionDigits: 6,
+                                })}{" "}
+                                {stock.baseUnitAbbreviation}
+                              </span>
+                            );
+                          }
+                          const inv = Math.round((1 / c) * 1e6) / 1e6;
+                          return (
+                            <span className="block text-[10px] text-muted-foreground">
+                              {inv.toLocaleString(undefined, {
+                                maximumFractionDigits: 6,
+                              })}{" "}
+                              {v.unitAbbreviation} = 1{" "}
+                              {stock.baseUnitAbbreviation}
+                            </span>
+                          );
+                        })()}
                     </TableCell>
                     <TableCell className="text-sm font-mono text-muted-foreground">
                       {v.barcode || "\u2014"}
@@ -293,9 +425,38 @@ function OverviewTab({
                     >
                       {qty.toLocaleString()}
                     </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {(bal?.availableQuantity ?? 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {(bal?.reservedQuantity ?? 0) > 0 ? (
+                        <span className="text-amber-600 dark:text-amber-400">
+                          {bal!.reservedQuantity.toLocaleString()}
+                        </span>
+                      ) : (
+                        "\u2014"
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {(bal?.inTransitQuantity ?? 0) > 0 ? (
+                        <span className="text-blue-600 dark:text-blue-400">
+                          {bal!.inTransitQuantity.toLocaleString()}
+                        </span>
+                      ) : (
+                        "\u2014"
+                      )}
+                    </TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
                       {cost > 0
                         ? cost.toLocaleString(undefined, {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })
+                        : "\u2014"}
+                    </TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {bal?.currentBatchCost != null && bal.currentBatchCost > 0
+                        ? bal.currentBatchCost.toLocaleString(undefined, {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })
@@ -308,6 +469,21 @@ function OverviewTab({
                             maximumFractionDigits: 0,
                           })
                         : "\u2014"}
+                    </TableCell>
+                    <TableCell className="text-right text-sm">
+                      {ms ? (
+                        <div className="flex items-center justify-end gap-1">
+                          <span className="text-green-600 dark:text-green-400">
+                            +{ms.totalQuantityIn.toLocaleString()}
+                          </span>
+                          <span className="text-muted-foreground">/</span>
+                          <span className="text-red-600 dark:text-red-400">
+                            -{ms.totalQuantityOut.toLocaleString()}
+                          </span>
+                        </div>
+                      ) : (
+                        "\u2014"
+                      )}
                     </TableCell>
                     <TableCell>
                       {riskCfg ? (
@@ -359,6 +535,255 @@ function OverviewTab({
   );
 }
 
+// ── Batches tab ────────────────────────────────────────────────────
+
+function BatchesTab({
+  stock,
+  batchMap,
+  expiringCount,
+}: {
+  stock: Stock;
+  batchMap: Record<string, StockBatch[]>;
+  expiringCount: number;
+}) {
+  const allBatches = Object.values(batchMap).flat();
+
+  if (allBatches.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <Layers className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">
+            No active batches. Batches are created when stock is received via
+            GRN.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const now = new Date();
+  const sevenDaysOut = new Date(now);
+  sevenDaysOut.setDate(sevenDaysOut.getDate() + 7);
+
+  // Sort: expiring first, then by received date
+  const sorted = [...allBatches].sort((a, b) => {
+    if (a.expiryDate && b.expiryDate)
+      return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+    if (a.expiryDate) return -1;
+    if (b.expiryDate) return 1;
+    return new Date(b.receivedDate).getTime() - new Date(a.receivedDate).getTime();
+  });
+
+  const totalBatchQty = allBatches.reduce((s, b) => s + b.quantityOnHand, 0);
+  const totalBatchValue = allBatches.reduce(
+    (s, b) => s + b.quantityOnHand * (b.unitCost ?? 0),
+    0,
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Batch summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Layers className="h-4 w-4" />
+              <span className="text-xs font-medium">Active Batches</span>
+            </div>
+            <p className="text-xl font-bold">{allBatches.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Boxes className="h-4 w-4" />
+              <span className="text-xs font-medium">Batch Qty</span>
+            </div>
+            <p className="text-xl font-bold">{totalBatchQty.toLocaleString()}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <DollarSign className="h-4 w-4" />
+              <span className="text-xs font-medium">Batch Value</span>
+            </div>
+            <p className="text-xl font-bold">
+              {totalBatchValue.toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <Clock className="h-4 w-4 text-amber-500" />
+              <span className="text-xs font-medium">Expiring Soon</span>
+            </div>
+            <p
+              className={`text-xl font-bold ${
+                expiringCount > 0
+                  ? "text-amber-600 dark:text-amber-400"
+                  : ""
+              }`}
+            >
+              {expiringCount}
+            </p>
+            {expiringCount > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                within 7 days
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Batch table */}
+      <Card>
+        <CardContent className="pt-6">
+          <h3 className="text-sm font-semibold mb-3">Batch Details</h3>
+          <div className="rounded-md border overflow-auto max-h-[500px]">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Batch #</TableHead>
+                  <TableHead>Variant</TableHead>
+                  <TableHead>Supplier Ref</TableHead>
+                  <TableHead>Expiry</TableHead>
+                  <TableHead className="text-right">Qty On Hand</TableHead>
+                  <TableHead className="text-right">Initial Qty</TableHead>
+                  <TableHead className="text-right">Unit Cost</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
+                  <TableHead>Received</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sorted.map((b) => {
+                  const isExpiringSoon =
+                    b.expiryDate &&
+                    new Date(b.expiryDate) <= sevenDaysOut &&
+                    new Date(b.expiryDate) > now;
+                  const isExpired =
+                    b.expiryDate && new Date(b.expiryDate) <= now;
+                  const batchValue =
+                    b.quantityOnHand * (b.unitCost ?? 0);
+                  const consumed =
+                    b.initialQuantity > 0
+                      ? ((b.initialQuantity - b.quantityOnHand) /
+                          b.initialQuantity) *
+                        100
+                      : 0;
+                  const statusCfg = BATCH_STATUS_CONFIG[b.status];
+
+                  return (
+                    <TableRow
+                      key={b.id}
+                      className={
+                        isExpired
+                          ? "bg-red-50/50 dark:bg-red-950/10"
+                          : isExpiringSoon
+                            ? "bg-amber-50/50 dark:bg-amber-950/10"
+                            : ""
+                      }
+                    >
+                      <TableCell className="font-mono text-sm font-medium">
+                        {b.batchNumber}
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        {b.variantName}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {b.supplierBatchReference || "\u2014"}
+                      </TableCell>
+                      <TableCell className="text-sm whitespace-nowrap">
+                        {b.expiryDate ? (
+                          <span
+                            className={
+                              isExpired
+                                ? "text-red-600 dark:text-red-400 font-medium"
+                                : isExpiringSoon
+                                  ? "text-amber-600 dark:text-amber-400 font-medium"
+                                  : ""
+                            }
+                          >
+                            {new Date(b.expiryDate).toLocaleDateString(
+                              undefined,
+                              { month: "short", day: "numeric", year: "numeric" },
+                            )}
+                            {isExpired && (
+                              <span className="block text-[10px]">Expired</span>
+                            )}
+                            {isExpiringSoon && (
+                              <span className="block text-[10px]">
+                                {Math.ceil(
+                                  (new Date(b.expiryDate).getTime() -
+                                    now.getTime()) /
+                                    86400000,
+                                )}
+                                d left
+                              </span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            No expiry
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-medium">
+                        {b.quantityOnHand.toLocaleString()}
+                        <span className="block text-[10px] text-muted-foreground">
+                          {consumed.toFixed(0)}% used
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {b.initialQuantity.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {b.unitCost != null
+                          ? b.unitCost.toLocaleString(undefined, {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })
+                          : "\u2014"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {batchValue > 0
+                          ? batchValue.toLocaleString(undefined, {
+                              minimumFractionDigits: 0,
+                              maximumFractionDigits: 0,
+                            })
+                          : "\u2014"}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                        {new Date(b.receivedDate).toLocaleDateString(
+                          undefined,
+                          { month: "short", day: "numeric", year: "numeric" },
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${statusCfg.bgColor} ${statusCfg.color}`}
+                        >
+                          {statusCfg.label}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ── Movements tab ───────────────────────────────────────────────────
 
 function MovementsTab({
@@ -366,28 +791,20 @@ function MovementsTab({
   movementSummary,
 }: {
   movements: StockMovement[];
-  movementSummary: MovementTypeSummary[];
+  movementSummary: StockMovementSummary;
 }) {
-  // Compute in/out from movements
-  const totalIn = movements
-    .filter((m) => INBOUND_TYPES.has(m.movementType))
-    .reduce((s, m) => s + Math.abs(m.quantity), 0);
-  const totalOut = movements
-    .filter((m) => !INBOUND_TYPES.has(m.movementType))
-    .reduce((s, m) => s + Math.abs(m.quantity), 0);
-
   return (
     <div className="space-y-6">
       {/* Movement summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <ArrowDownRight className="h-4 w-4 text-green-500" />
-              <span className="text-xs font-medium">Total In (30d)</span>
+              <span className="text-xs font-medium">Qty In (30d)</span>
             </div>
             <p className="text-xl font-bold text-green-600 dark:text-green-400">
-              +{totalIn.toLocaleString()}
+              +{movementSummary.totalQuantityIn.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -395,10 +812,10 @@ function MovementsTab({
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <ArrowUpRight className="h-4 w-4 text-red-500" />
-              <span className="text-xs font-medium">Total Out (30d)</span>
+              <span className="text-xs font-medium">Qty Out (30d)</span>
             </div>
             <p className="text-xl font-bold text-red-600 dark:text-red-400">
-              -{totalOut.toLocaleString()}
+              -{movementSummary.totalQuantityOut.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -406,24 +823,61 @@ function MovementsTab({
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <Activity className="h-4 w-4" />
-              <span className="text-xs font-medium">Total Movements</span>
+              <span className="text-xs font-medium">Net Change</span>
             </div>
-            <p className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              {movements.length}
+            <p
+              className={`text-xl font-bold ${
+                movementSummary.netQuantityChange > 0
+                  ? "text-green-600 dark:text-green-400"
+                  : movementSummary.netQuantityChange < 0
+                    ? "text-red-600 dark:text-red-400"
+                    : ""
+              }`}
+            >
+              {movementSummary.netQuantityChange > 0 ? "+" : ""}
+              {movementSummary.netQuantityChange.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <DollarSign className="h-4 w-4 text-green-500" />
+              <span className="text-xs font-medium">Cost In</span>
+            </div>
+            <p className="text-xl font-bold text-green-600 dark:text-green-400">
+              {movementSummary.totalCostIn.toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <DollarSign className="h-4 w-4 text-red-500" />
+              <span className="text-xs font-medium">Cost Out</span>
+            </div>
+            <p className="text-xl font-bold text-red-600 dark:text-red-400">
+              {movementSummary.totalCostOut.toLocaleString(undefined, {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0,
+              })}
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Movement type breakdown */}
-      {movementSummary.length > 0 && (
+      {movementSummary.byType.length > 0 && (
         <Card>
           <CardContent className="pt-6">
             <h3 className="text-sm font-semibold mb-3">
               Movement Breakdown (30 days)
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {movementSummary.map((s) => {
+              {movementSummary.byType.map((s) => {
                 const isIn = INBOUND_TYPES.has(s.movementType);
                 return (
                   <div
@@ -445,9 +899,18 @@ function MovementsTab({
                       {isIn ? "+" : "-"}
                       {Math.abs(s.totalQuantity).toLocaleString()}
                     </p>
-                    <span className="text-[10px] text-muted-foreground">
-                      {s.count} transaction{s.count !== 1 ? "s" : ""}
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] text-muted-foreground">
+                        {s.count} txn{s.count !== 1 ? "s" : ""}
+                      </span>
+                      {s.totalCost > 0 && (
+                        <span className="text-[10px] text-muted-foreground">
+                          {s.totalCost.toLocaleString(undefined, {
+                            maximumFractionDigits: 0,
+                          })}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -460,7 +923,8 @@ function MovementsTab({
       <Card>
         <CardContent className="pt-6">
           <h3 className="text-sm font-semibold mb-3">
-            Movement History ({movements.length > 100 ? "latest 100" : movements.length})
+            Movement History (
+            {movements.length > 100 ? "latest 100" : movements.length})
           </h3>
           {movements.length > 0 ? (
             <div className="rounded-md border overflow-auto max-h-[500px]">
@@ -472,23 +936,27 @@ function MovementsTab({
                     <TableHead>Item</TableHead>
                     <TableHead className="text-right">Qty</TableHead>
                     <TableHead className="text-right">Unit Cost</TableHead>
+                    <TableHead className="text-right">Total Cost</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {movements.slice(0, 100).map((m) => {
                     const isIn = INBOUND_TYPES.has(m.movementType);
                     return (
-                      <TableRow key={m.id}>
+                      <TableRow key={m.movementId}>
                         <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
-                          {new Date(m.occurredAt).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            year:
-                              new Date(m.occurredAt).getFullYear() !==
-                              new Date().getFullYear()
-                                ? "numeric"
-                                : undefined,
-                          })}
+                          {new Date(m.occurredAt).toLocaleDateString(
+                            undefined,
+                            {
+                              month: "short",
+                              day: "numeric",
+                              year:
+                                new Date(m.occurredAt).getFullYear() !==
+                                new Date().getFullYear()
+                                  ? "numeric"
+                                  : undefined,
+                            },
+                          )}
                         </TableCell>
                         <TableCell>
                           <span
@@ -504,7 +972,7 @@ function MovementsTab({
                           </span>
                         </TableCell>
                         <TableCell className="text-sm">
-                          {m.stockVariantName}
+                          {m.variantName}
                         </TableCell>
                         <TableCell
                           className={`text-right text-sm font-medium ${
@@ -521,6 +989,14 @@ function MovementsTab({
                             ? m.unitCost.toLocaleString(undefined, {
                                 minimumFractionDigits: 2,
                                 maximumFractionDigits: 2,
+                              })
+                            : "\u2014"}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-muted-foreground">
+                          {m.totalCost != null && m.totalCost > 0
+                            ? m.totalCost.toLocaleString(undefined, {
+                                minimumFractionDigits: 0,
+                                maximumFractionDigits: 0,
                               })
                             : "\u2014"}
                         </TableCell>
@@ -541,19 +1017,326 @@ function MovementsTab({
   );
 }
 
+// ── Sales tab ──────────────────────────────────────────────────────
+
+function SalesTab({
+  salesItems,
+  stock,
+}: {
+  salesItems: ItemSalesAggregate[];
+  stock: Stock;
+}) {
+  if (salesItems.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <ShoppingCart className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">
+            No sales data available for the last 30 days. Sales data appears
+            when linked product variants are sold via POS.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const totalQtySold = salesItems.reduce((s, i) => s + i.quantitySold, 0);
+  const totalGross = salesItems.reduce((s, i) => s + i.grossSales, 0);
+  const totalNet = salesItems.reduce((s, i) => s + i.netSales, 0);
+  const totalCost = salesItems.reduce((s, i) => s + i.totalCost, 0);
+  const totalProfit = salesItems.reduce((s, i) => s + i.grossProfit, 0);
+  const totalDiscount = salesItems.reduce((s, i) => s + i.totalDiscount, 0);
+  const profitMargin = totalNet > 0 ? (totalProfit / totalNet) * 100 : 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Sales summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <ShoppingCart className="h-4 w-4" />
+              <span className="text-xs font-medium">Qty Sold</span>
+            </div>
+            <p className="text-xl font-bold">
+              {totalQtySold.toLocaleString()}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <DollarSign className="h-4 w-4" />
+              <span className="text-xs font-medium">Gross Sales</span>
+            </div>
+            <p className="text-xl font-bold">
+              {totalGross.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <DollarSign className="h-4 w-4" />
+              <span className="text-xs font-medium">Net Sales</span>
+            </div>
+            <p className="text-xl font-bold">
+              {totalNet.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
+            </p>
+            {totalDiscount > 0 && (
+              <p className="text-xs text-amber-600 dark:text-amber-400 mt-0.5">
+                -{totalDiscount.toLocaleString(undefined, { maximumFractionDigits: 0 })} discounts
+              </p>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <ArrowUpRight className="h-4 w-4" />
+              <span className="text-xs font-medium">COGS</span>
+            </div>
+            <p className="text-xl font-bold">
+              {totalCost.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <TrendingUp className="h-4 w-4" />
+              <span className="text-xs font-medium">Gross Profit</span>
+            </div>
+            <p
+              className={`text-xl font-bold ${
+                totalProfit >= 0
+                  ? "text-green-600 dark:text-green-400"
+                  : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {totalProfit.toLocaleString(undefined, {
+                maximumFractionDigits: 0,
+              })}
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
+              <BarChart3 className="h-4 w-4" />
+              <span className="text-xs font-medium">Margin</span>
+            </div>
+            <p
+              className={`text-xl font-bold ${
+                profitMargin >= 20
+                  ? "text-green-600 dark:text-green-400"
+                  : profitMargin >= 10
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-red-600 dark:text-red-400"
+              }`}
+            >
+              {profitMargin.toFixed(1)}%
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Sales per item table */}
+      <Card>
+        <CardContent className="pt-6">
+          <h3 className="text-sm font-semibold mb-3">
+            Item Sales Breakdown (30 days)
+          </h3>
+          <div className="rounded-md border overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead className="text-right">Qty Sold</TableHead>
+                  <TableHead className="text-right">Gross Sales</TableHead>
+                  <TableHead className="text-right">Discounts</TableHead>
+                  <TableHead className="text-right">Net Sales</TableHead>
+                  <TableHead className="text-right">COGS</TableHead>
+                  <TableHead className="text-right">Profit</TableHead>
+                  <TableHead className="text-right">Margin</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {salesItems.map((item, idx) => {
+                  const margin =
+                    item.netSales > 0
+                      ? (item.grossProfit / item.netSales) * 100
+                      : 0;
+                  return (
+                    <TableRow key={`${item.variantId}-${idx}`}>
+                      <TableCell className="font-medium text-sm">
+                        {item.itemName}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {item.departmentName || "\u2014"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {item.quantitySold.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {item.grossSales.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {item.totalDiscount > 0
+                          ? item.totalDiscount.toLocaleString(undefined, {
+                              maximumFractionDigits: 0,
+                            })
+                          : "\u2014"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        {item.netSales.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {item.totalCost.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right text-sm font-medium ${
+                          item.grossProfit >= 0
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-red-600 dark:text-red-400"
+                        }`}
+                      >
+                        {item.grossProfit.toLocaleString(undefined, {
+                          maximumFractionDigits: 0,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        <span
+                          className={
+                            margin >= 20
+                              ? "text-green-600 dark:text-green-400"
+                              : margin >= 10
+                                ? "text-amber-600 dark:text-amber-400"
+                                : "text-red-600 dark:text-red-400"
+                          }
+                        >
+                          {margin.toFixed(1)}%
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ── Analytics tab ───────────────────────────────────────────────────
 
 function AnalyticsTab({
   forecasts,
   turnover,
   abc,
+  reorder,
 }: {
   forecasts: StockoutForecastItem[];
   turnover: StockTurnoverItem[];
   abc: AbcAnalysisItem[];
+  reorder: ReorderSuggestion[];
 }) {
+  const hasData =
+    forecasts.length > 0 ||
+    turnover.length > 0 ||
+    abc.length > 0 ||
+    reorder.length > 0;
+
   return (
     <div className="space-y-6">
+      {/* Reorder suggestions */}
+      {reorder.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+              <RefreshCw className="h-4 w-4 text-blue-500" />
+              Reorder Suggestions
+            </h3>
+            <div className="rounded-md border overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Variant</TableHead>
+                    <TableHead className="text-right">Current Qty</TableHead>
+                    <TableHead className="text-right">Daily Usage</TableHead>
+                    <TableHead className="text-right">Reorder Point</TableHead>
+                    <TableHead className="text-right">Suggested Order</TableHead>
+                    <TableHead className="text-right">Days Left</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {reorder.map((r) => (
+                    <TableRow key={r.stockVariantId}>
+                      <TableCell className="font-medium text-sm">
+                        {r.variantName}
+                      </TableCell>
+                      <TableCell
+                        className={`text-right text-sm font-medium ${
+                          r.currentAvailableQuantity <= r.reorderPoint
+                            ? "text-red-600 dark:text-red-400"
+                            : ""
+                        }`}
+                      >
+                        {r.currentAvailableQuantity.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {r.avgDailyConsumption > 0
+                          ? r.avgDailyConsumption.toLocaleString(undefined, {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 1,
+                            })
+                          : "\u2014"}
+                      </TableCell>
+                      <TableCell className="text-right text-sm text-muted-foreground">
+                        {r.reorderPoint.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right text-sm font-medium text-blue-600 dark:text-blue-400">
+                        {r.suggestedOrderQuantity.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-right text-sm">
+                        <span
+                          className={
+                            r.daysOfStockRemaining <= 3
+                              ? "text-red-600 dark:text-red-400 font-medium"
+                              : r.daysOfStockRemaining <= 7
+                                ? "text-amber-600 dark:text-amber-400"
+                                : ""
+                          }
+                        >
+                          {r.daysOfStockRemaining >= 0
+                            ? `${r.daysOfStockRemaining}d`
+                            : "\u2014"}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Stockout forecast */}
       {forecasts.length > 0 && (
         <Card>
@@ -633,7 +1416,7 @@ function AnalyticsTab({
             <CardContent className="pt-6">
               <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
                 <TrendingUp className="h-4 w-4 text-blue-500" />
-                Stock Turnover
+                Stock Turnover (30d)
               </h3>
               <div className="space-y-3">
                 {turnover.map((t) => (
@@ -715,7 +1498,7 @@ function AnalyticsTab({
       </div>
 
       {/* Empty state */}
-      {forecasts.length === 0 && turnover.length === 0 && abc.length === 0 && (
+      {!hasData && (
         <Card>
           <CardContent className="py-12 text-center">
             <BarChart3 className="h-8 w-8 mx-auto text-muted-foreground mb-3" />

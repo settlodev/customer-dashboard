@@ -24,7 +24,6 @@ export interface StockVariant {
   unitName: string;
   unitAbbreviation: string;
   conversionToBase: number;
-  defaultCost: number | null;
   archived: boolean;
   isDefault: boolean;
   barcode: string | null;

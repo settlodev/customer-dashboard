@@ -20,6 +20,12 @@ import {
 import { getStocks } from "@/lib/actions/stock-actions";
 import type { Stock, StockVariant } from "@/types/stock/type";
 
+export interface VariantMeta {
+  id: string;
+  displayName: string;
+  serialTracked: boolean;
+}
+
 interface Props {
   placeholder?: string;
   isRequired?: boolean;
@@ -27,6 +33,7 @@ interface Props {
   isDisabled?: boolean;
   description?: string;
   onChange: (value: string) => void;
+  onVariantMeta?: (meta: VariantMeta | null) => void;
   disabledValues?: string[];
 }
 
@@ -36,6 +43,7 @@ const StockVariantSelector: React.FC<Props> = ({
   isDisabled,
   description,
   onChange,
+  onVariantMeta,
   disabledValues = [],
 }) => {
   const [open, setOpen] = useState(false);
@@ -74,6 +82,7 @@ const StockVariantSelector: React.FC<Props> = ({
           .map((variant) => ({
             id: variant.id,
             displayName: variant.displayName || `${stock.name} - ${variant.name}`,
+            serialTracked: variant.serialTracked ?? false,
             disabled: disabledValues.includes(variant.id),
             searchString: `${stock.name} ${variant.name} ${variant.sku || ""}`.toLowerCase(),
           })),
@@ -90,11 +99,13 @@ const StockVariantSelector: React.FC<Props> = ({
   }, [allVariantOptions, value]);
 
   const handleSelect = useCallback(
-    (option: { id: string }) => {
-      onChange(option.id === value ? "" : option.id);
+    (option: { id: string; displayName: string; serialTracked: boolean }) => {
+      const deselecting = option.id === value;
+      onChange(deselecting ? "" : option.id);
+      onVariantMeta?.(deselecting ? null : { id: option.id, displayName: option.displayName, serialTracked: option.serialTracked });
       setOpen(false);
     },
-    [value, onChange],
+    [value, onChange, onVariantMeta],
   );
 
   const displayText = selectedOption?.displayName || placeholder;

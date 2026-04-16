@@ -13,6 +13,18 @@ import type {
   InventoryValuationItem,
 } from "@/types/inventory-analytics/type";
 
+// Maps server field names (variantId/displayName) to client names (stockVariantId/variantName)
+function mapVariantFields<T extends Record<string, unknown>>(
+  item: T,
+): T & { stockVariantId: string; variantName: string; stockName: string } {
+  return {
+    ...item,
+    stockVariantId: (item.variantId as string) ?? (item.stockVariantId as string),
+    variantName: (item.displayName as string) ?? (item.variantName as string) ?? "",
+    stockName: (item.stockName as string) ?? (item.displayName as string) ?? "",
+  };
+}
+
 export async function getStockoutForecast(
   lookbackDays = 30,
 ): Promise<StockoutForecastItem[]> {
@@ -23,7 +35,9 @@ export async function getStockoutForecast(
         `/api/v1/forecasts/stockout?lookbackDays=${lookbackDays}`,
       ),
     );
-    return parseStringify(data) as StockoutForecastItem[];
+    const parsed = parseStringify(data);
+    const items = parsed?.forecasts ?? (Array.isArray(parsed) ? parsed : []);
+    return items.map(mapVariantFields);
   } catch {
     return [];
   }
@@ -44,7 +58,12 @@ export async function getReorderSuggestions(
     const data = await apiClient.get(
       inventoryUrl(`/api/v1/forecasts/reorder-suggestions?${params}`),
     );
-    return parseStringify(data) as ReorderSuggestion[];
+    const parsed = parseStringify(data);
+    const items = parsed?.suggestions ?? (Array.isArray(parsed) ? parsed : []);
+    return items.map((item: Record<string, unknown>) => ({
+      ...mapVariantFields(item),
+      currentAvailableQuantity: item.currentQuantity ?? item.currentAvailableQuantity ?? 0,
+    }));
   } catch {
     return [];
   }
@@ -58,7 +77,9 @@ export async function getInventoryValuation(): Promise<
     const data = await apiClient.get(
       inventoryUrl("/api/v1/reports/inventory-valuation"),
     );
-    return parseStringify(data) as InventoryValuationItem[];
+    const parsed = parseStringify(data);
+    const items = parsed?.variants ?? (Array.isArray(parsed) ? parsed : []);
+    return items.map(mapVariantFields);
   } catch {
     return [];
   }
@@ -75,7 +96,8 @@ export async function getMovementSummary(
         `/api/v1/reports/movement-summary?from=${from}&to=${to}`,
       ),
     );
-    return parseStringify(data) as MovementTypeSummary[];
+    const parsed = parseStringify(data);
+    return parsed?.byType ?? (Array.isArray(parsed) ? parsed : []);
   } catch {
     return [];
   }
@@ -87,7 +109,9 @@ export async function getStockTurnover(): Promise<StockTurnoverItem[]> {
     const data = await apiClient.get(
       inventoryUrl("/api/v1/reports/stock-turnover"),
     );
-    return parseStringify(data) as StockTurnoverItem[];
+    const parsed = parseStringify(data);
+    const items = parsed?.variants ?? (Array.isArray(parsed) ? parsed : []);
+    return items.map(mapVariantFields);
   } catch {
     return [];
   }
@@ -103,7 +127,9 @@ export async function getAbcAnalysis(
         `/api/v1/reports/abc-analysis?lookbackDays=${lookbackDays}`,
       ),
     );
-    return parseStringify(data) as AbcAnalysisItem[];
+    const parsed = parseStringify(data);
+    const items = parsed?.items ?? (Array.isArray(parsed) ? parsed : []);
+    return items.map(mapVariantFields);
   } catch {
     return [];
   }
@@ -119,7 +145,9 @@ export async function getDeadStock(
         `/api/v1/reports/dead-stock?daysInactive=${daysInactive}`,
       ),
     );
-    return parseStringify(data) as DeadStockItem[];
+    const parsed = parseStringify(data);
+    const items = parsed?.items ?? (Array.isArray(parsed) ? parsed : []);
+    return items.map(mapVariantFields);
   } catch {
     return [];
   }

@@ -32,7 +32,7 @@ const StockExport: React.FC<TableExportProps> = ({
       'SKU',
       'Unit',
       'Conversion',
-      'Default Cost',
+      'Barcode',
     ];
 
     const csvRows = [
@@ -43,7 +43,7 @@ const StockExport: React.FC<TableExportProps> = ({
         stock.sku || '',
         stock.unitAbbreviation || '',
         stock.conversionToBase?.toString() || '1',
-        stock.defaultCost?.toString() || '',
+        stock.barcode || '',
       ].map(escapeCSVValue).join(',')),
     ];
     

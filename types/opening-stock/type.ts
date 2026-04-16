@@ -16,6 +16,10 @@ export interface OpeningStock {
   totalItems: number;
   totalQuantity: number;
   totalValue: number;
+  orderedDate: string | null;
+  receivedDate: string | null;
+  supplierId: string | null;
+  supplierName: string | null;
   items: OpeningStockItem[];
   createdAt: string;
   updatedAt: string;

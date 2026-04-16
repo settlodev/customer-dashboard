@@ -4,21 +4,32 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { getStock } from "@/lib/actions/stock-actions";
 import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
-import { getMovementsByVariant } from "@/lib/actions/stock-movement-actions";
+import {
+  getMovementsByVariant,
+  getMovementSummaryByVariant,
+} from "@/lib/actions/stock-movement-actions";
 import {
   getStockoutForecast,
   getStockTurnover,
   getAbcAnalysis,
-  getMovementSummary,
+  getReorderSuggestions,
 } from "@/lib/actions/inventory-analytics-actions";
+import { getBatchesByVariant } from "@/lib/actions/stock-batch-actions";
+import { getItemSalesSummary } from "@/lib/actions/item-sales-actions";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
-import type { StockMovement } from "@/types/stock-movement/type";
+import type {
+  StockMovement,
+  StockMovementSummary,
+  MovementTypeBreakdown,
+} from "@/types/stock-movement/type";
 import type {
   StockoutForecastItem,
   StockTurnoverItem,
   AbcAnalysisItem,
-  MovementTypeSummary,
+  ReorderSuggestion,
 } from "@/types/inventory-analytics/type";
+import type { StockBatch } from "@/types/stock-batch/type";
+import type { ItemSalesAggregate } from "@/types/item-sales/type";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
@@ -47,60 +58,111 @@ export default async function StockDetailPage({
   const fromDate = thirtyDaysAgo.toISOString().split("T")[0];
   const toDate = now.toISOString().split("T")[0];
 
-  // Parallel: all analytics + balances + movements
+  const variantIds = new Set(stock.variants.map((v) => v.id));
+
+  // Parallel: all data fetching
   const [
     allBalances,
-    movementArrays,
+    movementPages,
+    movementSummaries,
     allForecasts,
     allTurnover,
     allAbc,
-    movementSummary,
+    reorderSuggestions,
+    batchArrays,
+    salesSummary,
   ] = await Promise.all([
     locationId ? getBalancesByLocation(locationId) : Promise.resolve([]),
     Promise.all(
       stock.variants.map((v) =>
         locationId
-          ? getMovementsByVariant(locationId, v.id)
-          : Promise.resolve([] as StockMovement[]),
+          ? getMovementsByVariant(locationId, v.id, fromDate, toDate, 0, 100)
+          : Promise.resolve({ content: [] as StockMovement[], page: 0, size: 100, totalElements: 0, totalPages: 0, last: true }),
       ),
     ),
+    locationId
+      ? Promise.all(
+          stock.variants.map((v) =>
+            getMovementSummaryByVariant(locationId, v.id, fromDate, toDate),
+          ),
+        )
+      : Promise.resolve([] as (StockMovementSummary | null)[]),
     getStockoutForecast(),
     getStockTurnover(),
     getAbcAnalysis(),
-    getMovementSummary(fromDate, toDate),
+    getReorderSuggestions(),
+    Promise.all(stock.variants.map((v) => getBatchesByVariant(v.id))),
+    locationId
+      ? getItemSalesSummary(locationId, fromDate, toDate)
+      : Promise.resolve(null),
   ]);
 
-  // Filter to this stock's variants
-  const variantIds = new Set(stock.variants.map((v) => v.id));
-
+  // Balance map keyed by variant ID
   const balanceMap: Record<string, InventoryBalance> = {};
   for (const b of allBalances) {
     if (variantIds.has(b.stockVariantId)) balanceMap[b.stockVariantId] = b;
   }
 
-  const movements = movementArrays
-    .flat()
+  // Batches map keyed by variant ID
+  const batchMap: Record<string, StockBatch[]> = {};
+  stock.variants.forEach((v, i) => {
+    const batches = batchArrays[i];
+    if (batches.length > 0) batchMap[v.id] = batches;
+  });
+
+  // Per-variant movement summaries map
+  const variantSummaryMap: Record<string, StockMovementSummary> = {};
+  stock.variants.forEach((v, i) => {
+    const ms = movementSummaries[i];
+    if (ms) variantSummaryMap[v.id] = ms;
+  });
+
+  // Merged movements sorted by date
+  const movements = movementPages
+    .flatMap((p) => p.content)
     .sort(
       (a, b) =>
         new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime(),
     );
 
-  const forecasts = allForecasts.filter((f) =>
-    variantIds.has(f.stockVariantId),
-  );
-  const turnover = allTurnover.filter((t) =>
-    variantIds.has(t.stockVariantId),
-  );
+  // Merge per-variant summaries into a single combined summary
+  const movementSummary: StockMovementSummary = {
+    locationId: locationId ?? "",
+    startDate: fromDate,
+    endDate: toDate,
+    totalMovements: movementSummaries.reduce((s, ms) => s + (ms?.totalMovements ?? 0), 0),
+    totalQuantityIn: movementSummaries.reduce((s, ms) => s + (ms?.totalQuantityIn ?? 0), 0),
+    totalQuantityOut: movementSummaries.reduce((s, ms) => s + (ms?.totalQuantityOut ?? 0), 0),
+    netQuantityChange: movementSummaries.reduce((s, ms) => s + (ms?.netQuantityChange ?? 0), 0),
+    totalCostIn: movementSummaries.reduce((s, ms) => s + (ms?.totalCostIn ?? 0), 0),
+    totalCostOut: movementSummaries.reduce((s, ms) => s + (ms?.totalCostOut ?? 0), 0),
+    byType: mergeBreakdowns(movementSummaries.filter((s): s is StockMovementSummary => s !== null)),
+  };
+
+  // Filter analytics to this stock's variants
+  const forecasts = allForecasts.filter((f) => variantIds.has(f.stockVariantId));
+  const turnover = allTurnover.filter((t) => variantIds.has(t.stockVariantId));
   const abc = allAbc.filter((a) => variantIds.has(a.stockVariantId));
+  const reorder = reorderSuggestions.filter((r) => variantIds.has(r.stockVariantId));
+
+  // Filter sales data to this stock's variants (sales are by product variant ID,
+  // which may differ from stock variant ID — include all for now, the view filters)
+  const salesItems: ItemSalesAggregate[] = salesSummary?.items ?? [];
 
   // Aggregates
   let totalQty = 0;
   let totalValue = 0;
+  let totalReserved = 0;
+  let totalInTransit = 0;
+  let totalAvailable = 0;
   for (const v of stock.variants) {
     const b = balanceMap[v.id];
     if (b) {
       totalQty += b.quantityOnHand;
       totalValue += b.quantityOnHand * (b.averageCost ?? 0);
+      totalReserved += b.reservedQuantity;
+      totalInTransit += b.inTransitQuantity;
+      totalAvailable += b.availableQuantity;
     }
   }
 
@@ -171,16 +233,40 @@ export default async function StockDetailPage({
       <StockDetailView
         stock={stock}
         balanceMap={balanceMap}
+        batchMap={batchMap}
+        variantSummaryMap={variantSummaryMap}
         movements={movements}
         forecasts={forecasts}
         turnover={turnover}
         abc={abc}
+        reorder={reorder}
+        salesItems={salesItems}
         movementSummary={movementSummary}
         totalQty={totalQty}
         totalValue={totalValue}
+        totalReserved={totalReserved}
+        totalInTransit={totalInTransit}
+        totalAvailable={totalAvailable}
         worstRisk={worstRisk}
         avgTurnover={avgTurnover}
       />
     </div>
   );
+}
+
+function mergeBreakdowns(summaries: StockMovementSummary[]): MovementTypeBreakdown[] {
+  const map = new Map<string, MovementTypeBreakdown>();
+  for (const s of summaries) {
+    for (const b of s.byType) {
+      const existing = map.get(b.movementType);
+      if (existing) {
+        existing.count += b.count;
+        existing.totalQuantity += b.totalQuantity;
+        existing.totalCost += b.totalCost;
+      } else {
+        map.set(b.movementType, { ...b });
+      }
+    }
+  }
+  return Array.from(map.values()).sort((a, b) => b.count - a.count);
 }

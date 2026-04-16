@@ -58,10 +58,18 @@ export async function createOpeningStock(
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(inventoryUrl("/api/v1/opening-stocks"), {
-      locationType: "LOCATION",
-      ...validated.data,
-    });
+
+    // Create opening stock (DRAFT)
+    const created = (await apiClient.post(
+      inventoryUrl("/api/v1/opening-stocks"),
+      { locationType: "LOCATION", ...validated.data },
+    )) as OpeningStock;
+
+    // Immediately confirm — creates movements, batches, and updates balances
+    await apiClient.post(
+      inventoryUrl(`/api/v1/opening-stocks/${created.id}/confirm`),
+      {},
+    );
 
     revalidatePath("/stock-intakes");
     redirect("/stock-intakes");
@@ -79,10 +87,12 @@ export async function confirmOpeningStock(id: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(inventoryUrl(`/api/v1/opening-stocks/${id}/confirm`), {});
   revalidatePath("/stock-intakes");
+  revalidatePath(`/stock-intakes/${id}`);
 }
 
 export async function cancelOpeningStock(id: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(inventoryUrl(`/api/v1/opening-stocks/${id}/cancel`), {});
   revalidatePath("/stock-intakes");
+  revalidatePath(`/stock-intakes/${id}`);
 }

@@ -18,16 +18,14 @@ export const StockVariantSchema = object({
   ),
   conversionToBase: preprocess(
     toNumber,
-    number({ required_error: "Conversion factor is required" }).positive(
-      "Must be positive",
-    ),
+    number().positive().default(1),
   ),
-  defaultCost: preprocess(toNumber, number().nonnegative().optional()),
   barcode: string().max(50).optional().nullish(),
   serialTracked: boolean().default(false),
   archived: boolean().default(false),
   initialQuantity: preprocess(toNumber, number().nonnegative().default(0)),
   initialUnitCost: preprocess(toNumber, number().nonnegative().default(0)),
+  serialNumbers: array(string()).optional(),
 });
 
 export const StockSchema = object({

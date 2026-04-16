@@ -1,5 +1,3 @@
-import type { DestinationType } from "@/types/catalogue/enums";
-
 export type MovementType =
   | "PURCHASE"
   | "SALE"
@@ -25,20 +23,64 @@ export type ReferenceType =
   | "ORDER_VOID";
 
 export interface StockMovement {
-  id: string;
-  locationType: DestinationType;
-  locationId: string;
-  stockVariantId: string;
-  stockVariantName: string;
+  movementId: string;
+  variantId: string;
   stockName: string;
+  variantName: string;
+  locationId: string;
+  locationType: string;
+  businessDate: string;
   movementType: MovementType;
   referenceType: ReferenceType | null;
   referenceId: string | null;
   quantity: number;
   baseQuantity: number;
   unitCost: number | null;
+  totalCost: number | null;
+  currency: string | null;
   occurredAt: string;
-  createdAt: string;
+  eventTime: string;
+}
+
+export interface MovementTypeBreakdown {
+  movementType: string;
+  count: number;
+  totalQuantity: number;
+  totalCost: number;
+}
+
+export interface StockMovementSummary {
+  locationId: string;
+  startDate: string;
+  endDate: string;
+  totalMovements: number;
+  totalQuantityIn: number;
+  totalQuantityOut: number;
+  netQuantityChange: number;
+  totalCostIn: number;
+  totalCostOut: number;
+  byType: MovementTypeBreakdown[];
+}
+
+export interface StockMovementByItem {
+  variantId: string;
+  stockName: string;
+  variantName: string;
+  movementCount: number;
+  totalQuantityIn: number;
+  totalQuantityOut: number;
+  netQuantityChange: number;
+  totalCostIn: number;
+  totalCostOut: number;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  page: number;
+  size: number;
+  totalElements: number;
+  totalPages: number;
+  last: boolean;
 }
 
 export const MOVEMENT_TYPE_LABELS: Record<MovementType, string> = {

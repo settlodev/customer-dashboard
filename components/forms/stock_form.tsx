@@ -83,6 +83,20 @@ const DEFAULT_VARIANT = {
   initialUnitCost: 0,
 };
 
+/** Format a conversion as a readable label using whole numbers where possible */
+function formatConversion(
+  conversion: number,
+  variantAbbr: string,
+  baseAbbr: string,
+): string {
+  if (conversion >= 1) {
+    const v = Math.round(conversion * 1e6) / 1e6;
+    return `1 ${variantAbbr} = ${v.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${baseAbbr}`;
+  }
+  const inv = Math.round((1 / conversion) * 1e6) / 1e6;
+  return `${inv.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${variantAbbr} = 1 ${baseAbbr}`;
+}
+
 export default function StockForm({ item, balances }: StockFormProps) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
@@ -95,10 +109,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const lastSyncedNameRef = useRef("");
   const lastSyncedUnitRef = useRef("");
 
-  // Load units for conversion labels
-  useEffect(() => {
-    getUnits().then(setUnits);
-  }, []);
+  useEffect(() => { getUnits().then(setUnits); }, []);
 
   const unitMap = useMemo(
     () => new Map(units.map((u) => [u.id, u])),
@@ -119,12 +130,12 @@ export default function StockForm({ item, balances }: StockFormProps) {
             sku: v.sku ?? undefined,
             unitId: v.unitId,
             conversionToBase: v.conversionToBase,
-            defaultCost: v.defaultCost ?? undefined,
             barcode: v.barcode ?? undefined,
             serialTracked: v.serialTracked,
             archived: v.archived,
             initialQuantity: 0,
             initialUnitCost: 0,
+            serialNumbers: [] as string[],
           }))
         : [DEFAULT_VARIANT],
     },
@@ -161,32 +172,25 @@ export default function StockForm({ item, balances }: StockFormProps) {
   }, [baseUnitId, isEditing, fields.length, form]);
 
   // ── Auto-fill conversion when variant unit changes
-  const handleVariantUnitChange = async (
-    index: number,
-    newUnitId: string,
-  ) => {
+  const handleVariantUnitChange = async (index: number, newUnitId: string) => {
     form.setValue(`variants.${index}.unitId`, newUnitId);
 
-    const currentBaseUnit = form.getValues("baseUnitId");
-    if (!currentBaseUnit || !newUnitId) return;
+    const currentBase = form.getValues("baseUnitId");
+    if (!currentBase || !newUnitId) return;
 
-    if (newUnitId === currentBaseUnit) {
+    if (newUnitId === currentBase) {
       form.setValue(`variants.${index}.conversionToBase`, 1);
       return;
     }
 
-    // Try to look up a known conversion
-    const result = await convertUnits(newUnitId, currentBaseUnit, 1);
+    const result = await convertUnits(newUnitId, currentBase, 1);
     if (result) {
       form.setValue(`variants.${index}.conversionToBase`, result.result);
     }
   };
 
   // ── Variant archive / unarchive
-  const handleVariantArchive = async (
-    index: number,
-    shouldArchive: boolean,
-  ) => {
+  const handleVariantArchive = async (index: number, shouldArchive: boolean) => {
     const variantId = form.getValues(`variants.${index}.id`);
     if (!variantId || !item) return;
     setArchivingIndex(index);
@@ -201,11 +205,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
         toast({ title: "Restored", description: "Variant has been restored." });
       }
     } catch {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: `Failed to ${shouldArchive ? "archive" : "restore"} variant.`,
-      });
+      toast({ variant: "destructive", title: "Error", description: `Failed to ${shouldArchive ? "archive" : "restore"} variant.` });
     } finally {
       setArchivingIndex(null);
     }
@@ -242,9 +242,9 @@ export default function StockForm({ item, balances }: StockFormProps) {
       if (item) {
         const currentIds = new Set(values.variants.map((v) => v.id).filter(Boolean));
         const removed = (item.variants || []).map((v) => v.id).filter((vid) => !currentIds.has(vid));
-        updateStock(item.id, values, removed).then((data) => { if (data) setResponse(data); });
+        updateStock(item.id, values, removed).then((d) => { if (d) setResponse(d); });
       } else {
-        createStock(values).then((data) => { if (data) setResponse(data); });
+        createStock(values).then((d) => { if (d) setResponse(d); });
       }
     });
   };
@@ -258,18 +258,13 @@ export default function StockForm({ item, balances }: StockFormProps) {
     const variantUnitId = watchedVariants?.[index]?.unitId;
     const conversion = watchedVariants?.[index]?.conversionToBase;
     if (!variantUnitId || !baseUnitId || !conversion || conversion <= 0) return null;
-    if (variantUnitId === baseUnitId) return null; // same unit, no label needed
+    if (variantUnitId === baseUnitId) return null;
 
     const vu = unitMap.get(variantUnitId);
     const bu = unitMap.get(baseUnitId);
     if (!vu || !bu) return null;
 
-    const formatted =
-      conversion >= 0.01
-        ? conversion.toLocaleString(undefined, { maximumFractionDigits: 6 })
-        : conversion.toExponential(4);
-
-    return `1 ${vu.abbreviation} = ${formatted} ${bu.abbreviation}`;
+    return formatConversion(conversion, vu.abbreviation, bu.abbreviation);
   };
 
   return (
@@ -299,8 +294,8 @@ export default function StockForm({ item, balances }: StockFormProps) {
                   <Select value={field.value} onValueChange={field.onChange}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
-                      {MATERIAL_TYPE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      {MATERIAL_TYPE_OPTIONS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -391,7 +386,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
                       </div>
                     </div>
 
-                    {/* Balance display (edit mode) */}
+                    {/* Balance (edit mode) */}
                     {isEditing && bal && (
                       <div className="flex gap-4 text-xs bg-blue-50/50 dark:bg-blue-950/20 rounded px-3 py-2">
                         <span className="text-muted-foreground">Qty: <strong className="text-foreground">{bal.quantityOnHand.toLocaleString()}</strong></span>
@@ -402,7 +397,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
                     )}
 
                     {/* Core fields */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                       <FormField control={form.control} name={`variants.${index}.name`} render={({ field: f }) => (
                         <FormItem>
                           <FormLabel className="text-xs">Name <span className="text-red-500">*</span></FormLabel>
@@ -414,20 +409,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
                         <FormItem>
                           <FormLabel className="text-xs">Unit <span className="text-red-500">*</span></FormLabel>
                           <FormControl>
-                            <UnitSelector
-                              value={f.value}
-                              onChange={(val) => handleVariantUnitChange(index, val)}
-                              isDisabled={isDisabled}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name={`variants.${index}.conversionToBase`} render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Conversion to base <span className="text-red-500">*</span></FormLabel>
-                          <FormControl>
-                            <NumericFormat className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm" value={f.value} onValueChange={(v) => f.onChange(v.floatValue ?? 1)} placeholder="1" disabled={isDisabled} decimalScale={6} />
+                            <UnitSelector value={f.value} onChange={(v) => handleVariantUnitChange(index, v)} isDisabled={isDisabled} />
                           </FormControl>
                           {conversionLabel && (
                             <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-1">
@@ -436,29 +418,6 @@ export default function StockForm({ item, balances }: StockFormProps) {
                             </p>
                           )}
                           <FormMessage />
-                        </FormItem>
-                      )} />
-                    </div>
-
-                    {/* Optional fields */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                      <FormField control={form.control} name={`variants.${index}.defaultCost`} render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">Default cost</FormLabel>
-                          <FormControl>
-                            <NumericFormat className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm" value={f.value ?? ""} onValueChange={(v) => f.onChange(v.floatValue)} thousandSeparator placeholder="0" disabled={isDisabled} decimalScale={4} />
-                          </FormControl>
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name={`variants.${index}.sku`} render={({ field: f }) => (
-                        <FormItem>
-                          <FormLabel className="text-xs">SKU</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <Hash className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                              <Input className="pl-10" placeholder="Optional" {...f} value={f.value ?? ""} disabled={isDisabled} />
-                            </div>
-                          </FormControl>
                         </FormItem>
                       )} />
                       <FormField control={form.control} name={`variants.${index}.barcode`} render={({ field: f }) => (
@@ -479,7 +438,42 @@ export default function StockForm({ item, balances }: StockFormProps) {
                           </FormControl>
                         </FormItem>
                       )} />
+                      <FormField control={form.control} name={`variants.${index}.sku`} render={({ field: f }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs">SKU</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Hash className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
+                              <Input className="pl-10" placeholder="Optional" {...f} value={f.value ?? ""} disabled={isDisabled} />
+                            </div>
+                          </FormControl>
+                        </FormItem>
+                      )} />
                     </div>
+
+                    {/* Initial stock row (create mode only) */}
+                    {!isEditing && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <FormField control={form.control} name={`variants.${index}.initialQuantity`} render={({ field: f }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Initial quantity</FormLabel>
+                            <FormControl>
+                              <NumericFormat className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm" value={f.value} onValueChange={(v) => f.onChange(v.floatValue ?? 0)} thousandSeparator placeholder="0" disabled={isPending} decimalScale={watchedVariants?.[index]?.serialTracked ? 0 : 6} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name={`variants.${index}.initialUnitCost`} render={({ field: f }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">Initial unit cost</FormLabel>
+                            <FormControl>
+                              <NumericFormat className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm" value={f.value} onValueChange={(v) => f.onChange(v.floatValue ?? 0)} thousandSeparator placeholder="0" disabled={isPending} decimalScale={4} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      </div>
+                    )}
 
                     {/* Serial tracking */}
                     <FormField control={form.control} name={`variants.${index}.serialTracked`} render={({ field: f }) => (
@@ -489,37 +483,47 @@ export default function StockForm({ item, balances }: StockFormProps) {
                       </FormItem>
                     )} />
 
-                    {/* Opening Inventory (create only) */}
-                    {!isEditing && (
-                      <>
-                        <Separator />
-                        <div className="space-y-3">
-                          <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-                            <Boxes className="h-3.5 w-3.5" /> Opening inventory
-                          </p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <FormField control={form.control} name={`variants.${index}.initialQuantity`} render={({ field: f }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Quantity</FormLabel>
-                                <FormControl>
-                                  <NumericFormat className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm" value={f.value} onValueChange={(v) => f.onChange(v.floatValue ?? 0)} thousandSeparator placeholder="0" disabled={isPending} decimalScale={6} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )} />
-                            <FormField control={form.control} name={`variants.${index}.initialUnitCost`} render={({ field: f }) => (
-                              <FormItem>
-                                <FormLabel className="text-xs">Unit cost</FormLabel>
-                                <FormControl>
-                                  <NumericFormat className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm" value={f.value} onValueChange={(v) => f.onChange(v.floatValue ?? 0)} thousandSeparator placeholder="0" disabled={isPending} decimalScale={4} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )} />
-                          </div>
-                        </div>
-                      </>
-                    )}
+                    {/* Serial numbers (when serial tracking is on and quantity > 0) */}
+                    {!isEditing && watchedVariants?.[index]?.serialTracked && (watchedVariants?.[index]?.initialQuantity ?? 0) > 0 && (() => {
+                      const qty = Math.floor(watchedVariants[index].initialQuantity ?? 0);
+                      const serials = watchedVariants?.[index]?.serialNumbers ?? [];
+                      const count = serials.filter(s => s.trim()).length;
+                      const isValid = count === qty;
+
+                      return (
+                        <FormField control={form.control} name={`variants.${index}.serialNumbers`} render={({ field: f }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs">
+                              Serial numbers
+                              <span className={`ml-2 text-[10px] font-normal ${isValid ? "text-green-600" : "text-amber-600"}`}>
+                                {count}/{qty} entered
+                              </span>
+                            </FormLabel>
+                            <FormControl>
+                              <Textarea
+                                placeholder={`Enter ${qty} serial number${qty > 1 ? "s" : ""}, one per line`}
+                                rows={Math.min(qty + 1, 8)}
+                                value={(f.value ?? []).join("\n")}
+                                onChange={(e) => {
+                                  const lines = e.target.value.split("\n");
+                                  f.onChange(lines);
+                                }}
+                                disabled={isPending}
+                                className="font-mono text-sm"
+                              />
+                            </FormControl>
+                            {!isValid && count > 0 && (
+                              <p className="text-[11px] text-amber-600">
+                                {count < qty
+                                  ? `${qty - count} more serial number${qty - count > 1 ? "s" : ""} needed`
+                                  : `Too many — remove ${count - qty}`}
+                              </p>
+                            )}
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                      );
+                    })()}
                   </div>
                 );
               })}

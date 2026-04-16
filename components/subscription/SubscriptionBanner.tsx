@@ -2,17 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  AlertTriangle,
-  Clock,
-  ShieldAlert,
-  Sparkles,
-  X,
-} from "lucide-react";
+import { AlertTriangle, Clock, ShieldAlert, Sparkles, X } from "lucide-react";
 import { useEntitlements } from "@/context/entitlementContext";
 
 /**
- * Context-aware subscription banner displayed at the top of the dashboard.
  *
  * States (in priority order):
  *   1. SUSPENDED  — hard block, contact support
@@ -23,7 +16,6 @@ import { useEntitlements } from "@/context/entitlementContext";
  *   6. TRIAL      — always shown, days remaining
  *   7. ACTIVE (healthy) — no banner
  *
- * The countdown updates every minute for real-time display.
  */
 
 // How many days before expiry to start warning
@@ -103,7 +95,8 @@ export function SubscriptionBanner() {
       border: "border-red-700",
       icon: <ShieldAlert className="h-4 w-4" />,
       title: "Account Suspended",
-      message: "Your subscription has been suspended. Please contact support to reactivate your account.",
+      message:
+        "Your subscription has been suspended. Please contact support to reactivate your account.",
       dismissible: false,
     };
   } else if (isExpired) {
@@ -112,7 +105,8 @@ export function SubscriptionBanner() {
       border: "border-red-600",
       icon: <AlertTriangle className="h-4 w-4" />,
       title: "Subscription Expired",
-      message: "Your subscription has expired. Renew now to continue making changes.",
+      message:
+        "Your subscription has expired. Renew now to continue making changes.",
       actionLabel: "Renew Now",
       actionHref: "/renew-subscription",
       dismissible: false,
@@ -123,14 +117,19 @@ export function SubscriptionBanner() {
       border: "border-amber-600",
       icon: <Clock className="h-4 w-4" />,
       title: "Payment Overdue",
-      message: daysLeft !== null
-        ? `Your payment is overdue. Service will be interrupted in ${timeLeft}. Please update your billing.`
-        : "Your payment is overdue. Please update your billing to avoid interruption.",
+      message:
+        daysLeft !== null
+          ? `Your payment is overdue. Service will be interrupted in ${timeLeft}. Please update your billing.`
+          : "Your payment is overdue. Please update your billing to avoid interruption.",
       actionLabel: "Update Billing",
       actionHref: "/renew-subscription",
       dismissible: false,
     };
-  } else if (subscriptionStatus === "ACTIVE" && daysLeft !== null && daysLeft <= ACTIVE_WARNING_DAYS) {
+  } else if (
+    subscriptionStatus === "ACTIVE" &&
+    daysLeft !== null &&
+    daysLeft <= ACTIVE_WARNING_DAYS
+  ) {
     variant = {
       bg: "bg-amber-500",
       border: "border-amber-600",
@@ -158,9 +157,10 @@ export function SubscriptionBanner() {
       border: "border-blue-600",
       icon: <Sparkles className="h-4 w-4" />,
       title: "Free Trial",
-      message: daysLeft !== null
-        ? `You have ${timeLeft} left on your free trial. Explore all features and subscribe when ready.`
-        : "You are on a free trial. Subscribe to keep access after it ends.",
+      message:
+        daysLeft !== null
+          ? `You have ${timeLeft} left on your free trial. Explore all features and subscribe when ready.`
+          : "You are on a free trial. Subscribe to keep access after it ends.",
       actionLabel: "View Plans",
       actionHref: "/renew-subscription",
       dismissible: true,

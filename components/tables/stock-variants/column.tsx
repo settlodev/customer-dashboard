@@ -80,14 +80,12 @@ export const columns: ColumnDef<StockVariant>[] = [
     ),
   },
   {
-    accessorKey: "defaultCost",
-    header: "Default Cost",
+    id: "serialTracked",
+    header: "Serial",
     enableHiding: true,
     cell: ({ row }) => (
       <span className="text-sm text-gray-600 dark:text-gray-400">
-        {row.original.defaultCost != null
-          ? row.original.defaultCost.toLocaleString()
-          : "\u2014"}
+        {row.original.serialTracked ? "Yes" : "\u2014"}
       </span>
     ),
   },

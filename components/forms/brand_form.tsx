@@ -24,7 +24,6 @@ import { Brand } from "@/types/brand/type";
 import { BrandSchema } from "@/types/brand/schema";
 import { createBrand, updateBrand } from "@/lib/actions/brand-actions";
 import { useRouter } from "next/navigation";
-import { Switch } from "../ui/switch";
 import { Card, CardContent } from "../ui/card";
 import UploadImageWidget from "../widgets/UploadImageWidget";
 
@@ -100,27 +99,31 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
       >
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="flex flex-col items-center">
-                <UploadImageWidget
-                  imagePath="brands"
-                  displayStyle="default"
-                  displayImage={true}
-                  showLabel={true}
-                  label="Brand image"
-                  setImage={setImageUrl}
-                  image={imageUrl}
-                />
+            <div className="flex flex-col sm:flex-row gap-6">
+              {/* Image */}
+              <div className="flex-shrink-0 self-start">
+                <div className="w-[200px] h-[200px]">
+                  <UploadImageWidget
+                    imagePath="brands"
+                    displayStyle="default"
+                    displayImage={true}
+                    showLabel={true}
+                    label="Brand image"
+                    setImage={setImageUrl}
+                    image={imageUrl}
+                  />
+                </div>
               </div>
 
-              <div className="lg:col-span-2 space-y-4">
+              {/* Name, Description */}
+              <div className="flex-1 min-w-0 space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Brand Name <span className="text-red-500">*</span>
+                        Brand name <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -143,7 +146,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
                       <FormControl>
                         <Textarea
                           placeholder="Brief description of the brand"
-                          rows={3}
+                          rows={5}
                           {...field}
                           disabled={isPending}
                         />
@@ -154,40 +157,6 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
                 />
               </div>
             </div>
-
-            {item && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Settings</h3>
-                  <FormField
-                    control={form.control}
-                    name="active"
-                    render={({ field }) => (
-                      <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium cursor-pointer">
-                            Brand Status
-                          </FormLabel>
-                          <p className="text-xs text-muted-foreground">
-                            {field.value
-                              ? "This brand is currently active and visible"
-                              : "This brand is currently inactive and hidden"}
-                          </p>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
 

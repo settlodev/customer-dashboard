@@ -27,7 +27,6 @@ import {
   updateProductCollection,
 } from "@/lib/actions/product-collection-actions";
 import { useRouter } from "next/navigation";
-import { Switch } from "../ui/switch";
 import { Card, CardContent } from "../ui/card";
 import UploadImageWidget from "../widgets/UploadImageWidget";
 import { MultiSelect } from "../ui/multi-select";
@@ -131,27 +130,31 @@ function ProductCollectionForm({
       >
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="flex flex-col items-center">
-                <UploadImageWidget
-                  imagePath="collections"
-                  displayStyle="default"
-                  displayImage={true}
-                  showLabel={true}
-                  label="Collection image"
-                  setImage={setImageUrl}
-                  image={imageUrl}
-                />
+            <div className="flex flex-col sm:flex-row gap-6">
+              {/* Image */}
+              <div className="flex-shrink-0 self-start">
+                <div className="w-[200px] h-[200px]">
+                  <UploadImageWidget
+                    imagePath="collections"
+                    displayStyle="default"
+                    displayImage={true}
+                    showLabel={true}
+                    label="Collection image"
+                    setImage={setImageUrl}
+                    image={imageUrl}
+                  />
+                </div>
               </div>
 
-              <div className="lg:col-span-2 space-y-4">
+              {/* Name, Description */}
+              <div className="flex-1 min-w-0 space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Collection Name <span className="text-red-500">*</span>
+                        Collection name <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -174,7 +177,7 @@ function ProductCollectionForm({
                       <FormControl>
                         <Textarea
                           placeholder="Brief description of this collection"
-                          rows={3}
+                          rows={5}
                           {...field}
                           disabled={isPending}
                         />
@@ -209,40 +212,6 @@ function ProductCollectionForm({
                 </FormItem>
               )}
             />
-
-            {item && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Settings</h3>
-                  <FormField
-                    control={form.control}
-                    name="active"
-                    render={({ field }) => (
-                      <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium cursor-pointer">
-                            Collection Status
-                          </FormLabel>
-                          <p className="text-xs text-muted-foreground">
-                            {field.value
-                              ? "This collection is currently active and visible"
-                              : "This collection is currently inactive and hidden"}
-                          </p>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
 

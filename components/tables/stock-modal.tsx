@@ -93,13 +93,13 @@ export default function StockModal({
                           {variant.unitAbbreviation} (×{variant.conversionToBase})
                         </span>
                       </div>
-                      {variant.defaultCost != null && (
+                      {variant.serialTracked && (
                         <div className="flex items-center p-2 border-b border-gray-300">
                           <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
-                            Default Cost
+                            Serial Tracked
                           </span>
                           <span className="w-2/3 pl-2 text-sm">
-                            {Intl.NumberFormat().format(variant.defaultCost)}
+                            Yes
                           </span>
                         </div>
                       )}

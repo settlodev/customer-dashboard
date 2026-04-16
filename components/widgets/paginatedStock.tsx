@@ -108,7 +108,7 @@ export default function PaginatedStockTable({
                     const colors = TYPE_COLORS[movement.movementType] || "bg-gray-50 text-gray-700";
 
                     return (
-                      <TableRow key={movement.id}>
+                      <TableRow key={movement.movementId}>
                         <TableCell>
                           <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${colors}`}>
                             {MOVEMENT_TYPE_LABELS[movement.movementType] || movement.movementType}
@@ -117,7 +117,7 @@ export default function PaginatedStockTable({
                         <TableCell>
                           <div className="min-w-0">
                             <span className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate">
-                              {movement.stockVariantName}
+                              {movement.variantName}
                             </span>
                             <span className="text-xs text-muted-foreground">{movement.stockName}</span>
                           </div>

@@ -54,79 +54,27 @@ export async function createStock(
   try {
     const apiClient = new ApiClient();
 
-    const openingItems: {
-      variantName: string;
-      quantity: number;
-      unitCost: number;
-    }[] = [];
-
     const stockPayload = {
       name: validated.data.name,
       description: validated.data.description,
       baseUnitId: validated.data.baseUnitId,
       materialType: validated.data.materialType,
-      variants: validated.data.variants.map((v) => {
-        if (v.initialQuantity && v.initialQuantity > 0) {
-          openingItems.push({
-            variantName: v.name,
-            quantity: v.initialQuantity,
-            unitCost: v.initialUnitCost ?? 0,
-          });
-        }
-        return {
-          name: v.name,
-          sku: v.sku || undefined,
-          unitId: v.unitId,
-          conversionToBase: v.conversionToBase,
-          defaultCost: v.defaultCost,
-          barcode: v.barcode || undefined,
-          serialTracked: v.serialTracked,
-        };
-      }),
+      variants: validated.data.variants.map((v) => ({
+        name: v.name,
+        sku: v.sku || undefined,
+        unitId: v.unitId,
+        conversionToBase: v.conversionToBase,
+        barcode: v.barcode || undefined,
+        serialTracked: v.serialTracked,
+        startingQuantity: v.initialQuantity && v.initialQuantity > 0 ? v.initialQuantity : undefined,
+        startingUnitCost: v.initialQuantity && v.initialQuantity > 0 ? (v.initialUnitCost ?? 0) : undefined,
+      })),
     };
 
     const created = (await apiClient.post(
       inventoryUrl("/api/v1/stocks"),
       stockPayload,
     )) as Stock;
-
-    if (openingItems.length > 0 && created?.variants?.length) {
-      try {
-        const items = openingItems
-          .map((oi) => {
-            const variant = created.variants.find(
-              (v) => v.name.toLowerCase() === oi.variantName.toLowerCase(),
-            );
-            if (!variant) return null;
-            return {
-              stockVariantId: variant.id,
-              quantity: oi.quantity,
-              unitCost: oi.unitCost,
-            };
-          })
-          .filter(
-            (item): item is NonNullable<typeof item> => item !== null,
-          );
-
-        if (items.length > 0) {
-          const openingStock = (await apiClient.post(
-            inventoryUrl("/api/v1/opening-stocks"),
-            { locationType: "LOCATION", items },
-          )) as { id: string };
-
-          if (openingStock?.id) {
-            await apiClient.post(
-              inventoryUrl(
-                `/api/v1/opening-stocks/${openingStock.id}/confirm`,
-              ),
-              {},
-            );
-          }
-        }
-      } catch {
-        // Best-effort: stock created, opening stock failed silently
-      }
-    }
 
     revalidatePath("/stock-variants");
     redirect(`/stock-variants/${created.id}`);
@@ -174,7 +122,6 @@ export async function updateStock(
             sku: variant.sku || undefined,
             unitId: variant.unitId,
             conversionToBase: variant.conversionToBase,
-            defaultCost: variant.defaultCost,
             barcode: variant.barcode || undefined,
             serialTracked: variant.serialTracked,
           },
@@ -191,7 +138,6 @@ export async function updateStock(
             sku: variant.sku || undefined,
             unitId: variant.unitId,
             conversionToBase: variant.conversionToBase,
-            defaultCost: variant.defaultCost,
           },
         );
       }
@@ -379,8 +325,8 @@ export async function downloadStockCSV(): Promise<string> {
     "SKU",
     "Unit",
     "Conversion to Base",
-    "Default Cost",
     "Barcode",
+    "Serial Tracked",
     "Material Type",
   ];
 
@@ -394,8 +340,8 @@ export async function downloadStockCSV(): Promise<string> {
         v.sku || "",
         v.unitAbbreviation,
         String(v.conversionToBase),
-        v.defaultCost != null ? String(v.defaultCost) : "",
         v.barcode || "",
+        v.serialTracked ? "Yes" : "No",
         stock.materialType,
       ]),
   );

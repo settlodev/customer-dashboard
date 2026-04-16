@@ -31,12 +31,12 @@ export const columns: ColumnDef<StockMovement>[] = [
     },
   },
   {
-    accessorKey: "stockVariantName",
+    accessorKey: "variantName",
     header: "Stock Item",
     cell: ({ row }) => (
       <div className="min-w-0">
         <span className="text-sm font-medium text-gray-900 dark:text-gray-100 block truncate">
-          {row.original.stockVariantName}
+          {row.original.variantName}
         </span>
         <span className="text-xs text-muted-foreground">{row.original.stockName}</span>
       </div>
