@@ -13,13 +13,11 @@ import { refreshLocation, clearBusiness } from "@/lib/actions/business/refresh";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import WareHouseRegisterForm from "@/components/forms/warehouse/register_form";
 import { refreshWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
-import WarehouseSubscriptionModal from "@/components/widgets/warehouse/warehouse-subscription-modal";
 import { UUID } from "crypto";
 import PaymentStatusModal from "@/components/widgets/paymentStatusModal";
-import { createInvoice, payInvoice } from "@/lib/actions/invoice-actions";
-import { verifyPayment } from "@/lib/actions/subscriptions";
+import { prepaySubscription } from "@/lib/actions/billing-actions";
+import { initiatePayment, getPaymentStatus } from "@/lib/actions/payment-actions";
 
 const LocationList = ({
   locations,
@@ -101,15 +99,15 @@ const LocationList = ({
           }
 
           try {
-            const verificationResult = await verifyPayment(transactionId, invoice);
-            setPaymentStatus(verificationResult.invoicePaymentStatus);
+            const verificationResult = await getPaymentStatus(transactionId);
+            setPaymentStatus(verificationResult.paymentStatus as any);
 
-            if (verificationResult.invoicePaymentStatus === "SUCCESS") {
+            if (verificationResult.paymentStatus === "SUCCESS") {
               clearInterval(verificationInterval);
               handleSuccessfulPayment(verificationResult);
-            } else if (verificationResult.invoicePaymentStatus === "PROCESSING") {
+            } else if (verificationResult.paymentStatus === "PROCESSING") {
               setPaymentStatus("PROCESSING");
-            } else if (verificationResult.invoicePaymentStatus === "FAILED") {
+            } else if (verificationResult.paymentStatus === "FAILED") {
               clearInterval(verificationInterval);
               setPaymentStatus("FAILED");
               setTimeout(() => setIsModalOpen(false), 2000);
@@ -138,35 +136,24 @@ const LocationList = ({
       setIsModalOpen(true);
       setPaymentStatus("INITIATING");
 
-      const invoicePayload = {
-        warehouseSubscriptions: [
-          {
-            warehouseId: selectedWarehouse.id,
-            subscriptionDurationType: "MONTHS",
-            subscriptionDurationCount: numberOfMonths,
-            warehouseSubscriptionPackageId: packageId,
-          },
-        ],
-        email,
-        phone,
-      };
+      // TODO: Warehouse subscription needs its own subscription ID.
+      // For now this uses the prepayment flow which requires an existing subscription.
+      // The billing service should create the warehouse subscription item first.
+      const prepayment = await prepaySubscription(packageId, numberOfMonths);
 
-      const response = await createInvoice(invoicePayload);
-
-      if (response && typeof response === "object" && "id" in response) {
-        const invoiceId = (response as { id: UUID }).id;
-
-        try {
-          setPaymentStatus("PENDING");
-          const paymentResponse = await payInvoice(invoiceId, email, phone);
-          setPaymentStatus("PROCESSING");
-          handlePendingPayment(paymentResponse.id, paymentResponse.invoice);
-        } catch (error) {
-          console.error("Error paying invoice:", error);
-          setPaymentStatus("FAILED");
-          setTimeout(() => setIsModalOpen(false), 3000);
-        }
-      }
+      setPaymentStatus("PENDING");
+      const paymentResponse = await initiatePayment({
+        invoiceId: prepayment.invoiceId,
+        amount: prepayment.amount,
+        currency: "TZS",
+        businessId: "",
+        locationId: selectedWarehouse.id,
+        customerPhone: phone,
+        customerEmail: email,
+        description: `Warehouse subscription - ${numberOfMonths} month(s)`,
+      });
+      setPaymentStatus("PROCESSING");
+      handlePendingPayment(paymentResponse.externalReferenceId, prepayment.invoiceId);
 
       setShowSubscriptionModal(false);
       setSelectedWarehouse(null);
@@ -270,23 +257,7 @@ const LocationList = ({
 
   return (
     <section className="relative">
-      {showCreateModal && (
-        <WareHouseRegisterForm
-          setShowCreateModal={setShowCreateModal}
-          onSuccess={handleSuccessfulCreation}
-        />
-      )}
-
-      {showSubscriptionModal && selectedWarehouse && (
-        <WarehouseSubscriptionModal
-          warehouse={selectedWarehouse}
-          onClose={() => {
-            setShowSubscriptionModal(false);
-            setSelectedWarehouse(null);
-          }}
-          onSubscribe={handleWarehouseSubscription}
-        />
-      )}
+      {/* Warehouse creation and subscription handled in /stores or /warehouses pages */}
 
       <div className="relative w-full max-w-md mx-auto">
         {isRedirecting && (

@@ -1,14 +1,9 @@
-import RequestStockPage from '@/components/widgets/warehouse/stock-request';
-import { getWarehouseStockRequest } from '@/lib/actions/warehouse/request-actions';
-import { UUID } from 'crypto';
-
-type Params = Promise<{id: string}>
-
-const RequestStockPageWrapper = async ({ params }: { params: Params }) => {
-  const resolvedParams = await params;
-  const request = await getWarehouseStockRequest(resolvedParams.id as UUID);
-  
-  return <RequestStockPage params={params} initialRequest={request} />;
-};
-
-export default RequestStockPageWrapper;
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+export default function Page() {
+  return (
+    <div className="flex-1 p-4 md:p-8 pt-4">
+      <BreadcrumbsNav items={[{ title: "Requests", link: "/warehouse-requests" }, { title: "Detail", link: "" }]} />
+      <p className="text-sm text-muted-foreground mt-4">Request details.</p>
+    </div>
+  );
+}

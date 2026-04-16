@@ -14,7 +14,7 @@ import { Plus, Tag } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Department } from "@/types/department/type";
-import { fectchAllDepartments, createDepartment } from "@/lib/actions/department-actions";
+import { fetchAllDepartments, createDepartment } from "@/lib/actions/department-actions";
 import { FormError } from "@/components/widgets/form-error";
 import { usePathname } from 'next/navigation';
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
@@ -51,7 +51,7 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
     const loadDepartments = async () => {
         try {
             setIsLoading(true);
-            const fetchedDepartments = await fectchAllDepartments();
+            const fetchedDepartments = await fetchAllDepartments();
             setDepartments(fetchedDepartments ?? []);
         } catch (error: any) {
             console.log("Error fetching departments:", error);
@@ -78,15 +78,11 @@ const DepartmentSelector: React.FC<DepartmentSelectorProps> = ({
 
         setIsSubmitting(true);
         try {
-            const response = await createDepartment(
-                {
-                    name: newDepartmentName,
-                    color: color,
-                    status: true,
-                    image: imageUrl,
-                },
-                pathname,
-            );
+            const response = await createDepartment({
+                name: newDepartmentName,
+                color: color,
+                image: imageUrl,
+            });
 
             if (response.responseType === "success" && response.data) {
                 await loadDepartments();

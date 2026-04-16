@@ -11,14 +11,9 @@ import {
 } from "lucide-react";
 
 import DeleteModal from "@/components/tables/delete-modal";
-import {
-  deactivateStaff,
-  reactivateStaff,
-  resetStaffPasscode,
-} from "@/lib/actions/staff-actions";
+import { deactivateStaff, reactivateStaff, resetStaffPasscode } from "@/lib/actions/staff-actions";
 import { Staff } from "@/types/staff";
 import { toast } from "@/hooks/use-toast";
-import { UUID } from "crypto";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -48,42 +43,24 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   const fullName = `${data.firstName} ${data.lastName}`;
 
-  const handleArchive = async () => {
+  const handleDeactivate = async () => {
     try {
       await deactivateStaff(data.id);
-      toast({
-        title: "Archived",
-        description: `${fullName} has been archived successfully.`,
-      });
+      toast({ title: "Deactivated", description: `${fullName} has been deactivated.` });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description:
-          (error as Error).message ||
-          "There was an issue with your request, please try again later",
-      });
+      toast({ variant: "destructive", title: "Error", description: (error as Error).message });
     } finally {
       setArchiveModalOpen(false);
     }
   };
 
-  const handleUnarchive = async () => {
+  const handleReactivate = async () => {
     setIsUnarchiving(true);
     try {
       await reactivateStaff(data.id);
-      toast({
-        title: "Restored",
-        description: `${fullName} has been restored successfully.`,
-      });
+      toast({ title: "Reactivated", description: `${fullName} has been reactivated.` });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description:
-          (error as Error).message ||
-          "There was an issue with your request, please try again later",
-      });
+      toast({ variant: "destructive", title: "Error", description: (error as Error).message });
     } finally {
       setIsUnarchiving(false);
     }
@@ -91,21 +68,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   const handleResetPasscode = async () => {
     try {
-      await resetStaffPasscode(data.id as UUID);
-      toast({
-        variant: "success",
-        title: "Success",
-        description: "Staff passcode has been reset.",
-      });
+      await resetStaffPasscode(data.id);
+      toast({ variant: "success", title: "Success", description: "Staff PIN has been reset." });
     } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description:
-          error?.response?.data?.message ||
-          error?.message ||
-          "Failed to reset staff passcode",
-      });
+      toast({ variant: "destructive", title: "Error", description: error?.message || "Failed to reset PIN" });
     } finally {
       setResetModalOpen(false);
     }
@@ -120,25 +86,25 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onClick={() => router.push(`/staff/${data.id}/edit`)}
-          >
+          <DropdownMenuItem onClick={() => router.push(`/staff/${data.id}/edit`)}>
             <EditIcon className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setResetModalOpen(true)}>
-            <KeyRound className="mr-2 h-4 w-4" />
-            Reset Passcode
-          </DropdownMenuItem>
+          {data.posAccess && (
+            <DropdownMenuItem onClick={() => setResetModalOpen(true)}>
+              <KeyRound className="mr-2 h-4 w-4" />
+              Reset PIN
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
-          {data.isArchived ? (
+          {!data.active ? (
             <DropdownMenuItem
-              onClick={handleUnarchive}
+              onClick={handleReactivate}
               disabled={isUnarchiving}
               className="text-green-600 focus:text-green-600"
             >
               <ArchiveRestore className="mr-2 h-4 w-4" />
-              {isUnarchiving ? "Restoring..." : "Unarchive"}
+              {isUnarchiving ? "Reactivating..." : "Reactivate"}
             </DropdownMenuItem>
           ) : (
             <DropdownMenuItem
@@ -146,40 +112,30 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
               className="text-red-600 focus:text-red-600"
             >
               <ArchiveIcon className="mr-2 h-4 w-4" />
-              Archive
+              Deactivate
             </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* Archive Modal */}
       <DeleteModal
         isOpen={isArchiveModalOpen}
         itemName={fullName}
-        onDelete={handleArchive}
+        onDelete={handleDeactivate}
         onOpenChange={() => setArchiveModalOpen(false)}
       />
 
-      {/* Reset Passcode Modal */}
       <Dialog open={isResetModalOpen} onOpenChange={setResetModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Reset Passcode</DialogTitle>
+            <DialogTitle>Reset PIN</DialogTitle>
             <DialogDescription>
-              Are you sure you want to reset the passcode for{" "}
-              <span className="font-medium text-gray-900 dark:text-gray-100">
-                {fullName}
-              </span>
-              ?
+              Are you sure you want to reset the PIN for{" "}
+              <span className="font-medium text-gray-900 dark:text-gray-100">{fullName}</span>?
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              onClick={() => setResetModalOpen(false)}
-            >
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setResetModalOpen(false)}>Cancel</Button>
             <Button onClick={handleResetPasscode}>Confirm</Button>
           </DialogFooter>
         </DialogContent>

@@ -42,7 +42,7 @@ export default function UpdateProfileForm() {
       lastName: session.data?.user?.lastName,
       email: session.data?.user?.email,
       phoneNumber: session.data?.user?.phoneNumber,
-      country: session.data?.user?.country,
+      country: session.data?.user?.countryId,
       bio: session.data?.user?.bio,
     },
   });

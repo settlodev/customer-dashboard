@@ -2,7 +2,7 @@
 
 import { FormResponse } from "@/types/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import {
@@ -20,6 +20,7 @@ import { ResetPasswordSchema, NewPasswordSchema } from "@/types/data-schemas";
 import {
   resetPassword,
   verifyResetCode,
+  verifyResetToken,
   confirmNewPassword,
 } from "@/lib/actions/auth-actions";
 import {
@@ -54,15 +55,50 @@ import {
 
 type ResetStep = "email" | "code" | "password" | "done";
 
-function ResetPasswordForm() {
+interface ResetPasswordFormProps {
+  /** Token from email reset link (?token= query param) */
+  linkToken?: string | null;
+  /** "create" when setting a password for the first time (e.g. staff invite) */
+  action?: string | null;
+}
+
+function ResetPasswordForm({ linkToken, action }: ResetPasswordFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
-  const [step, setStep] = useState<ResetStep>("email");
+  const [step, setStep] = useState<ResetStep>(linkToken ? "password" : "email");
   const [userId, setUserId] = useState<string>("");
   const [resetToken, setResetToken] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [linkTokenHandled, setLinkTokenHandled] = useState(false);
+
+  // Handle ?token= from password reset email links
+  useEffect(() => {
+    if (!linkToken || linkTokenHandled) return;
+    setLinkTokenHandled(true);
+
+    startTransition(async () => {
+      try {
+        const data = await verifyResetToken(linkToken);
+
+        if (data.responseType === "error") {
+          setError(data.message);
+          setStep("email"); // Fall back to email step
+          return;
+        }
+
+        if (data.data && (data.data as any).resetToken) {
+          setResetToken((data.data as any).resetToken);
+        }
+        setSuccess("Link verified. Set your new password.");
+        setStep("password");
+      } catch {
+        setError("Invalid or expired reset link. Please request a new one.");
+        setStep("email");
+      }
+    });
+  }, [linkToken, linkTokenHandled]);
 
   const emailForm = useForm<z.infer<typeof ResetPasswordSchema>>({
     resolver: zodResolver(ResetPasswordSchema),
@@ -182,6 +218,8 @@ function ResetPasswordForm() {
     }
   };
 
+  const isCreateAction = action === "create";
+
   const getTitle = () => {
     switch (step) {
       case "email":
@@ -189,9 +227,9 @@ function ResetPasswordForm() {
       case "code":
         return "Enter Verification Code";
       case "password":
-        return "Set New Password";
+        return isCreateAction ? "Create Your Password" : "Set New Password";
       case "done":
-        return "Password Updated!";
+        return isCreateAction ? "Password Created!" : "Password Updated!";
     }
   };
 
@@ -202,7 +240,9 @@ function ResetPasswordForm() {
       case "code":
         return "Enter the 6-digit code sent to your email";
       case "password":
-        return "Choose a strong new password for your account";
+        return isCreateAction
+          ? "Set up a secure password to protect your account"
+          : "Choose a strong new password for your account";
       case "done":
         return "Your password has been updated. Redirecting to login...";
     }
@@ -457,12 +497,12 @@ function ResetPasswordForm() {
                       {isPending ? (
                         <span className="flex items-center gap-2">
                           <Loader2 className="w-5 h-5 animate-spin" />
-                          Updating Password...
+                          {isCreateAction ? "Creating Password..." : "Updating Password..."}
                         </span>
                       ) : (
                         <span className="flex items-center gap-2">
                           <ShieldCheck className="w-5 h-5" />
-                          Update Password
+                          {isCreateAction ? "Create Password" : "Update Password"}
                         </span>
                       )}
                     </Button>

@@ -1,18 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useState } from "react";
 import {
   MoreVertical,
   Eye as EyeIcon,
   Pencil as EditIcon,
   Archive as ArchiveIcon,
+  ArchiveRestore,
 } from "lucide-react";
-import { useDisclosure } from "@/hooks/use-disclosure";
 
 import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
-import { deleteDepartment } from "@/lib/actions/department-actions";
+import {
+  deactivateDepartment,
+  reactivateDepartment,
+} from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,27 +32,68 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [isArchiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isUnarchiving, setIsUnarchiving] = useState(false);
 
-  const onDelete = async () => {
+  const handleArchive = async () => {
+    setIsArchiving(true);
     try {
-      if (data) {
-        await deleteDepartment(data.id);
+      const result = await deactivateDepartment(data.id);
+      if (result.responseType === "success") {
         toast({
+          variant: "success",
           title: "Archived",
-          description: `${data.name} has been archived successfully.`,
+          description: `${data.name} has been archived.`,
+        });
+        router.refresh();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.message || "Failed to archive department",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        title: "Error",
         description:
-          (error as Error).message ||
-          "There was an issue with your request, please try again later",
+          (error as Error).message || "Failed to archive department",
       });
     } finally {
-      onOpenChange();
+      setIsArchiving(false);
+      setArchiveModalOpen(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    setIsUnarchiving(true);
+    try {
+      const result = await reactivateDepartment(data.id);
+      if (result.responseType === "success") {
+        toast({
+          variant: "success",
+          title: "Restored",
+          description: `${data.name} has been restored.`,
+        });
+        router.refresh();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.message || "Failed to restore department",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          (error as Error).message || "Failed to restore department",
+      });
+    } finally {
+      setIsUnarchiving(false);
     }
   };
 
@@ -74,29 +118,37 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <EditIcon className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
-          {data.canDelete && (
-            <>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onOpen}
-                className="text-red-600 focus:text-red-600"
-              >
-                <ArchiveIcon className="mr-2 h-4 w-4" />
-                Archive
-              </DropdownMenuItem>
-            </>
+          <DropdownMenuSeparator />
+          {data.active ? (
+            <DropdownMenuItem
+              onClick={() => setArchiveModalOpen(true)}
+              className="text-red-600 focus:text-red-600"
+            >
+              <ArchiveIcon className="mr-2 h-4 w-4" />
+              Archive
+            </DropdownMenuItem>
+          ) : (
+            <DropdownMenuItem
+              onClick={handleUnarchive}
+              disabled={isUnarchiving}
+              className="text-green-600 focus:text-green-600"
+            >
+              <ArchiveRestore className="mr-2 h-4 w-4" />
+              {isUnarchiving ? "Restoring..." : "Unarchive"}
+            </DropdownMenuItem>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {data.canDelete && (
-        <DeleteModal
-          isOpen={isOpen}
-          itemName={data.name}
-          onDelete={onDelete}
-          onOpenChange={onOpenChange}
-        />
-      )}
+      {/* Archive confirmation (for active items) */}
+      <DeleteModal
+        isOpen={isArchiveModalOpen}
+        itemName={data.name}
+        onDelete={handleArchive}
+        onOpenChange={() => setArchiveModalOpen(false)}
+        isLoading={isArchiving}
+      />
+
     </>
   );
 };

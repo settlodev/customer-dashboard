@@ -1,139 +1,103 @@
-// components/subscription/SubscriptionGuard.tsx
 "use client";
 
-import React from 'react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Button } from '@/components/ui/button';
-import { Shield, AlertTriangle, Lock } from 'lucide-react';
-import Link from 'next/link';
-import { useSubscription } from '../hooks/useSubscription';
+import React from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Shield, Lock, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { useEntitlements } from "@/context/entitlementContext";
+import { getFeatureMeta, type FeatureKey } from "@/lib/features";
 
 interface SubscriptionGuardProps {
-    children: React.ReactNode;
-    requiredFeatures: string[];
-    fallback?: React.ReactNode;
-    showUpgradePrompt?: boolean;
-    featureName?: string;
+  children: React.ReactNode;
+  /** The entitlement feature key to check (from lib/features.ts) */
+  featureKey: FeatureKey;
+  /** Entity ID (location/warehouse/store) to check. If omitted, checks aggregated features. */
+  entityId?: string;
+  /** Custom fallback when feature is locked */
+  fallback?: React.ReactNode;
+  /** Show the upgrade prompt (default true) */
+  showUpgradePrompt?: boolean;
 }
 
-export const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
-    children,
-    requiredFeatures,
-    fallback,
-    showUpgradePrompt = true,
-    featureName = 'this feature'
-}) => {
-    const { subscription, isLoading, error, hasFeature } = useSubscription();
+export function SubscriptionGuard({
+  children,
+  featureKey,
+  entityId,
+  fallback,
+  showUpgradePrompt = true,
+}: SubscriptionGuardProps) {
+  const { entitlements, hasFeature, loading } = useEntitlements();
 
-    if (isLoading) {
-        return (
-            <div className="flex items-center justify-center p-8">
-                <div className="w-8 h-8 border-2 border-blue-400 border-t-transparent rounded-full animate-spin"></div>
-                <span className="ml-2 text-gray-600">Checking subscription...</span>
-            </div>
-        );
-    }
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        <span className="ml-2 text-sm text-gray-600">Checking access...</span>
+      </div>
+    );
+  }
 
-    if (error) {
-        return (
-            <Alert className="m-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                    Error loading subscription: {error}
-                </AlertDescription>
-            </Alert>
-        );
-    }
-
-    if (!subscription) {
-        return fallback || (
-            <Alert className="m-4">
-                <Lock className="h-4 w-4" />
-                <AlertDescription>
-                    No active subscription found. Please subscribe to access {featureName}.
-                    {showUpgradePrompt && (
-                        <div className="mt-2">
-                            <Link href="/renew-subscription">
-                                <Button variant="outline" size="sm">
-                                    Subscribe Now
-                                </Button>
-                            </Link>
-                        </div>
-                    )}
-                </AlertDescription>
-            </Alert>
-        );
-    }
-
-    if (!hasFeature(requiredFeatures)) {
-        return fallback || (
-            <div className="flex items-center justify-center min-h-[80vh] p-4 ">
-                <Alert className="max-w-md bg-red-400">
-                    <Shield className="h-4 w-4" color='white' />
-                    <AlertDescription className="text-center text-white">
-                        Your current subscription ({subscription.subscription.packageName}) doesn&apos;t include access to {featureName}.
-                        {showUpgradePrompt && (
-                            <div className="mt-2">
-                                <Link href="/renew-subscription">
-                                    <Button variant="outline" size="sm" className='text-black'>
-                                        Upgrade Plan
-                                    </Button>
-                                </Link>
-                            </div>
-                        )}
-                    </AlertDescription>
-                </Alert>
-            </div>
-        );
-    }
-
+  // Permissive when no entitlement data (billing service not configured)
+  if (!entitlements) {
     return <>{children}</>;
-};
+  }
 
-// Usage examples:
+  // Check feature: either per-entity or aggregated
+  const hasAccess = entityId
+    ? hasFeature(entityId, featureKey)
+    : entitlements.features[featureKey] === true;
 
-// 1. Protect entire page
-// export const RecipesPageGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-//     return (
-//         <SubscriptionGuard 
-//             requiredFeatures={['recipes']} 
-//             featureName="Recipe Management"
-//         >
-//             {children}
-//         </SubscriptionGuard>
-//     );
-// };
+  if (hasAccess) {
+    return <>{children}</>;
+  }
 
-// 2. Protect specific component
-// export const StaffLimitGuard: React.FC<{ 
-//     children: React.ReactNode; 
-//     currentStaffCount: number;
-// }> = ({ children, currentStaffCount }) => {
-//     const { canAdd } = useSubscription();
-//     const staffLimit = canAdd('staff_2', currentStaffCount) || 
-//                       canAdd('staff_10', currentStaffCount) || 
-//                       canAdd('staff_unlimited', currentStaffCount);
+  // Feature is locked
+  if (fallback) return <>{fallback}</>;
 
-//     if (!staffLimit.canAdd) {
-//         return (
-//             <Alert>
-//                 <AlertTriangle className="h-4 w-4" />
-//                 <AlertDescription>
-//                     You&apos;ve reached your staff limit ({staffLimit.limit}). 
-//                     {staffLimit.remaining !== null && (
-//                         <span> You have {staffLimit.remaining} remaining.</span>
-//                     )}
-//                     <div className="mt-2">
-//                         <Link href="/renew-subscription">
-//                             <Button variant="outline" size="sm">
-//                                 Upgrade Plan
-//                             </Button>
-//                         </Link>
-//                     </div>
-//                 </AlertDescription>
-//             </Alert>
-//         );
-//     }
+  const meta = getFeatureMeta(featureKey);
+  const title = meta?.title ?? featureKey;
 
-//     return <>{children}</>;
-// };
+  return (
+    <div className="flex items-center justify-center min-h-[60vh] p-4">
+      <div className="max-w-md w-full space-y-6 text-center">
+        <div className="mx-auto w-16 h-16 rounded-full bg-orange-50 flex items-center justify-center">
+          <Lock className="w-8 h-8 text-orange-500" />
+        </div>
+
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+          {meta?.description && (
+            <p className="mt-2 text-sm text-gray-600">{meta.description}</p>
+          )}
+        </div>
+
+        {meta?.benefits && meta.benefits.length > 0 && (
+          <ul className="text-left space-y-2">
+            {meta.benefits.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                <Shield className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {showUpgradePrompt && (
+          <Alert className="bg-orange-50 border-orange-200">
+            <AlertDescription className="text-sm text-orange-800">
+              This feature is not included in your current plan.
+              <div className="mt-3">
+                <Link href="/renew-subscription">
+                  <Button size="sm" className="bg-primary hover:bg-orange-600 text-white">
+                    Upgrade Plan
+                  </Button>
+                </Link>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+    </div>
+  );
+}

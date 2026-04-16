@@ -1,27 +1,31 @@
 "use server";
 
-import { UUID } from "node:crypto";
-
 import { revalidatePath } from "next/cache";
 import * as z from "zod";
-
-import { Role } from "@/types/roles/type";
+import { Role, RoleScope } from "@/types/roles/type";
+import { RoleSchema } from "@/types/roles/schema";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { getAuthenticatedUser } from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { RoleSchema } from "@/types/roles/schema";
-import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
 
-export const fetchAllRoles = async (): Promise<Role[]> => {
+// ---------------------------------------------------------------------------
+// List / Search
+// ---------------------------------------------------------------------------
+
+export const fetchAllRoles = async (
+  scope?: RoleScope,
+  scopeId?: string,
+): Promise<Role[]> => {
   await getAuthenticatedUser();
-
   try {
     const apiClient = new ApiClient();
-
-    const rolesData = await apiClient.get(`/api/v1/roles`);
-
-    return parseStringify(rolesData);
+    const params = new URLSearchParams();
+    if (scope) params.append("scope", scope);
+    if (scopeId) params.append("scopeId", scopeId);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const data = await apiClient.get(`/api/v1/roles${query}`);
+    return parseStringify(data);
   } catch (error) {
     throw error;
   }
@@ -33,132 +37,115 @@ export const searchRoles = async (
   pageLimit: number,
 ): Promise<ApiResponse<Role>> => {
   await getAuthenticatedUser();
-
   try {
     const apiClient = new ApiClient();
-
     const params = new URLSearchParams({
       search: q,
       page: String(page ? page - 1 : 0),
-      size: String(pageLimit ? pageLimit : 10),
+      size: String(pageLimit || 10),
     });
-
-    const rolesData = await apiClient.get(`/api/v1/roles?${params.toString()}`);
-
-    return parseStringify(rolesData);
+    const data = await apiClient.get(`/api/v1/roles?${params.toString()}`);
+    return parseStringify(data);
   } catch (error) {
     throw error;
   }
 };
 
+export const getRolesByScope = async (
+  scope: RoleScope,
+  scopeId?: string,
+): Promise<Role[]> => {
+  await getAuthenticatedUser();
+  try {
+    const apiClient = new ApiClient();
+    const query = scopeId ? `?scopeId=${scopeId}` : "";
+    const data = await apiClient.get(`/api/v1/roles/by-scope/${scope}${query}`);
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Get
+// ---------------------------------------------------------------------------
+
+export const getRole = async (id: string): Promise<Role> => {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get(`/api/v1/roles/${id}`);
+  return parseStringify(data);
+};
+
+// ---------------------------------------------------------------------------
+// Create
+// ---------------------------------------------------------------------------
+
 export const createRole = async (
   role: z.infer<typeof RoleSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
   const validatedData = RoleSchema.safeParse(role);
-
   if (!validatedData.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
-      message: "Please fill in all the fields marked with * before proceeding",
+      message: "Please fill in all required fields",
       error: new Error(validatedData.error.message),
-    };
-
-    return parseStringify(formResponse);
+    });
   }
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    console.log("validatedData.data: ", validatedData.data);
-    const payload = {
-      ...validatedData.data,
-      location: location?.id,
-    };
-
-    await apiClient.post(`/api/v1/roles`, payload);
-    formResponse = {
-      responseType: "success",
-      message: "Role created successfully",
-    };
-  } catch (error: unknown) {
-    formResponse = {
+    await apiClient.post(`/api/v1/roles`, validatedData.data);
+    revalidatePath("/roles");
+    return parseStringify({ responseType: "success", message: "Role created successfully" });
+  } catch (error: any) {
+    return parseStringify({
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: error?.message || "Failed to create role",
       error: error instanceof Error ? error : new Error(String(error)),
-    };
+    });
   }
-
-  revalidatePath("/roles");
-  return parseStringify(formResponse);
 };
+
+// ---------------------------------------------------------------------------
+// Update
+// ---------------------------------------------------------------------------
 
 export const updateRole = async (
-  id: UUID,
+  id: string,
   role: z.infer<typeof RoleSchema>,
 ): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
   const validatedData = RoleSchema.safeParse(role);
-
   if (!validatedData.success) {
-    formResponse = {
+    return parseStringify({
       responseType: "error",
-      message: "Please fill in all the fields marked with * before proceeding",
+      message: "Please fill in all required fields",
       error: new Error(validatedData.error.message),
-    };
-
-    return parseStringify(formResponse);
+    });
   }
 
   try {
     const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-
-    const payload = {
-      ...validatedData.data,
-      location: location?.id,
-    };
-
-    console.log("The payload passed is", payload);
-
-    await apiClient.put(`/api/v1/roles/${id}`, payload);
-
-    formResponse = {
-      responseType: "success",
-      message: "Role updated successfully",
-    };
-  } catch (error: unknown) {
-    console.log("Error occuring during updating role ", error);
-    formResponse = {
+    const { scope, scopeId, ...updateFields } = validatedData.data;
+    await apiClient.put(`/api/v1/roles/${id}`, updateFields);
+    revalidatePath("/roles");
+    return parseStringify({ responseType: "success", message: "Role updated successfully" });
+  } catch (error: any) {
+    return parseStringify({
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: error?.message || "Failed to update role",
       error: error instanceof Error ? error : new Error(String(error)),
-    };
+    });
   }
-
-  revalidatePath("/roles");
-  return parseStringify(formResponse);
 };
 
-export const getRole = async (id: UUID): Promise<ApiResponse<Role>> => {
-  const apiClient = new ApiClient();
+// ---------------------------------------------------------------------------
+// Delete
+// ---------------------------------------------------------------------------
 
-  const roleData = await apiClient.get(`/api/v1/roles/${id}`);
-
-  return parseStringify(roleData);
-};
-
-export const deleteRole = async (id: UUID): Promise<void> => {
-  if (!id) throw new Error("Role ID is required to perform this request");
+export const deleteRole = async (id: string): Promise<void> => {
   await getAuthenticatedUser();
-
   try {
     const apiClient = new ApiClient();
-
     await apiClient.delete(`/api/v1/roles/${id}`);
     revalidatePath("/roles");
   } catch (error) {
@@ -166,24 +153,43 @@ export const deleteRole = async (id: UUID): Promise<void> => {
   }
 };
 
-export const addPermissionsToRole = async (roleId: string, permissionIds: string[]): Promise<FormResponse> => {
+// ---------------------------------------------------------------------------
+// Permission management on roles
+// ---------------------------------------------------------------------------
+
+export const addPermissionsToRole = async (
+  roleId: string,
+  permissionKeys: string[],
+  additive: boolean = true,
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(`/api/v1/roles/${roleId}/permissions`, { permissionIds });
+    await apiClient.post(`/api/v1/roles/${roleId}/permissions`, { permissionKeys, additive });
     revalidatePath("/roles");
-    return { responseType: "success", message: "Permissions added successfully" };
+    return { responseType: "success", message: "Permissions updated" };
   } catch (error) {
-    return { responseType: "error", message: "Failed to add permissions", error: error instanceof Error ? error : new Error(String(error)) };
+    return {
+      responseType: "error",
+      message: "Failed to update permissions",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 };
 
-export const removePermissionsFromRole = async (roleId: string, permissionIds: string[]): Promise<FormResponse> => {
+export const removePermissionsFromRole = async (
+  roleId: string,
+  permissionKeys: string[],
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
-    await apiClient.delete(`/api/v1/roles/${roleId}/permissions`, { data: { permissionIds } });
+    await apiClient.delete(`/api/v1/roles/${roleId}/permissions`, { data: permissionKeys });
     revalidatePath("/roles");
-    return { responseType: "success", message: "Permissions removed successfully" };
+    return { responseType: "success", message: "Permissions removed" };
   } catch (error) {
-    return { responseType: "error", message: "Failed to remove permissions", error: error instanceof Error ? error : new Error(String(error)) };
+    return {
+      responseType: "error",
+      message: "Failed to remove permissions",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 };

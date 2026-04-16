@@ -110,7 +110,7 @@ export default function StockIntakeLpoForm({
         onBack={() => setSelectedLpo(null)}
       />
 
-      <StockIntakeForm item={null} prefill={prefill} />
+      <StockIntakeForm />
     </div>
   );
 }

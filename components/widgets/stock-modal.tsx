@@ -1,4 +1,5 @@
-import { StockFormVariant } from "@/types/stockVariant/type";
+// StockFormVariant inlined — legacy type removed
+type StockFormVariant = { id?: string; name: string; startingValue?: number; startingQuantity?: number; alertLevel?: number; imageOption?: string | null };
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { FormError } from "./form-error";
 import { FormSuccess } from "./form-success";

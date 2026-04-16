@@ -11,16 +11,6 @@ export const LoginSchema = object({
   ),
 });
 
-export const PhoneVerificationSchema = object({
-  phoneNumber: string().optional(),
-  code: string().optional(),
-});
-
-export const EmailVerificationSchema = object({
-  email: string().optional(),
-  name: string().optional(),
-});
-
 export const VerifyEmailCodeSchema = object({
   code: string({ required_error: "Verification code is required" })
     .min(6, "Code must be 6 digits")
@@ -95,9 +85,3 @@ export const NewPasswordSchema = object({
     .max(128, "Password must be less than 128 characters"),
 });
 
-export const UpdatePasswordSchema = object({
-  password: string({ required_error: "Old password is required" }).min(
-    6,
-    "Please enter a valid password",
-  ),
-});

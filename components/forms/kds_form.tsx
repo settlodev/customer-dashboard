@@ -23,7 +23,7 @@ import { FormSuccess } from "../widgets/form-success";
 import { createKDS, updateKDS } from "@/lib/actions/kds-actions";
 import { KDSSchema } from "@/types/kds/schema";
 import { KDS } from "@/types/kds/type";
-import { fectchAllDepartments } from "@/lib/actions/department-actions";
+import { fetchAllDepartments } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useRouter } from "next/navigation";
@@ -41,7 +41,7 @@ function KDSForm({ item }: { item: KDS | null | undefined }) {
   useEffect(() => {
     const getDepartments = async () => {
       try {
-        const response = await fectchAllDepartments();
+        const response = await fetchAllDepartments();
         setDepartments(response);
       } catch (error) {
         console.error("Error fetching departments", error);

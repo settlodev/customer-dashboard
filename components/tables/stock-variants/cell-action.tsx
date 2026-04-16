@@ -17,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { StockVariant } from "@/types/stockVariant/type";
+import type { StockVariant } from "@/types/stock/type";
 
 interface CellActionProps {
   data: StockVariant;
@@ -27,11 +27,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
 
   const handleRedirect = (id: string) => {
-    router.push(`/stock-variants/${id}?stock=${data.stock}`);
+    router.push(`/stock-variants/${id}?stock=${data.stockId}`);
   };
 
   const handleRedirectUpdateStock = (id: string) => {
-    router.push(`/stocks/${id}`);
+    router.push(`/stock-variants/${id}/edit`);
   };
 
   const handleStockIntake = (id: string) => {
@@ -61,7 +61,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
         variant="ghost"
         size="sm"
         className="h-8 w-8 p-0"
-        onClick={() => handleRedirectUpdateStock(data.stock)}
+        onClick={() => handleRedirectUpdateStock(data.stockId)}
       >
         <Pencil className="h-4 w-4 text-slate-600" />
       </Button>

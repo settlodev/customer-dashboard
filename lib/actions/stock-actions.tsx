@@ -2,536 +2,428 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
-import { ApiResponse, FormResponse } from "@/types/types";
+import { FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { UUID } from "node:crypto";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "./business/get-current-business";
-import { Stock, StockHistory } from "@/types/stock/type";
+import type {
+  Stock,
+  StockHistory,
+  CsvImportJobResponse,
+} from "@/types/stock/type";
+import { getCurrentLocation } from "./business/get-current-business";
+import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { StockSchema } from "@/types/stock/schema";
-import { console } from "node:inspector";
-import { getCurrentWarehouse } from "./warehouse/current-warehouse-action";
+import { inventoryUrl } from "./inventory-client";
 
-interface CSVUploadResponse {
-  task_id: string;
+// ── Stock CRUD ──────────────────────────────────────────────────────
+
+export async function getStocks(): Promise<Stock[]> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(inventoryUrl("/api/v1/stocks"));
+    return parseStringify(data) as Stock[];
+  } catch {
+    return [];
+  }
 }
 
-interface StockVariant {
-  id: string;
-  // Add other variant properties as needed
-}
-
-let stockCache: Stock[] | null = null;
-
-export const fetchStock = async (): Promise<Stock[]> => {
-  await getAuthenticatedUser();
-
+export async function getStock(id: string): Promise<Stock | null> {
   try {
     const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    const data = await apiClient.get(`/api/stock/${location?.id}`);
-
+    const data = await apiClient.get(inventoryUrl(`/api/v1/stocks/${id}`));
     return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const searchStock = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<Stock>> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = await getCurrentLocation();
-    const data = await apiClient.post(`/api/stock/${location?.id}`, query);
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const createStock = async (
-  stock: z.infer<typeof StockSchema>,
-): Promise<FormResponse | void> => {
-  // console.log('Starting createStock with data:', stock);
-
-  let formResponse: FormResponse | null = null;
-
-  const validData = StockSchema.safeParse(stock);
-  // console.log('Validating stock:', validData);
-  if (!validData.success) {
-    // console.warn('Stock validation failed:', validData.error);
-    return parseStringify({
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validData.error.message),
-    });
-  }
-
-  const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
-
-  // console.log('Retrieved location and business:', {
-  //     locationId: location?.id,
-  //     businessId: business?.id
-  // });
-
-  if (!location || !business) {
-    console.error("Missing required data:", { location, business });
-    return parseStringify({
-      responseType: "error",
-      message: "Could not retrieve required business data",
-      error: new Error("Missing location or business data"),
-    });
-  }
-
-  const payload = {
-    ...validData.data,
-    location: location?.id,
-    business: business?.id,
-  };
-  // console.log("The payload is ",payload)
-
-  try {
-    const apiClient = new ApiClient();
-    await apiClient.post(`/api/stock/${location?.id}/create`, payload);
-
-    formResponse = {
-      responseType: "success",
-      message: "Stock created successfully",
-    };
-  } catch (error: any) {
-    const formattedError = await error;
-    formResponse = {
-      responseType: "error",
-      message: formattedError.message,
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-
-  if (formResponse?.responseType === "error")
-    return parseStringify(formResponse);
-
-  revalidatePath("/stocks");
-  redirect("/stocks");
-};
-
-export const getStock = async (id: UUID): Promise<ApiResponse<Stock>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const response = await apiClient.post(`/api/stock/${location?.id}`, query);
-
-  return parseStringify(response);
-};
-
-export const updateStock = async (
-  id: UUID,
-  stock: z.infer<typeof StockSchema>,
-  paginationState?: { pageIndex: number; pageSize: number } | null,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
-  // Store the IDs before validation
-  const variantIds = stock.stockVariants.map((variant) => (variant as any).id);
-
-  const validData = StockSchema.safeParse(stock);
-
-  if (!validData.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validData.error.message),
-    };
-    return parseStringify(formResponse);
-  }
-
-  const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
-  const payload = {
-    ...validData.data,
-    location: location?.id,
-    business: business?.id,
-    stockVariants: validData.data.stockVariants.map((variant, index) => ({
-      ...variant,
-      id: variantIds[index],
-    })),
-  };
-  // console.log("The payload",payload)
-
-  try {
-    const apiClient = new ApiClient();
-
-    // First, fetch the stock by ID
-    const existingStock = await getStock(id);
-    if (!existingStock || existingStock.totalElements == 0) {
-      formResponse = {
-        responseType: "error",
-        message: "Stock not found",
-        error: new Error("Stock not found"),
-      };
-      return parseStringify(formResponse);
-    }
-    const existingStockVariants = existingStock.content[0].stockVariants;
-
-    //variant data
-    const stockVariantPayload: any[] = [];
-
-    const existingStockVariantMap = new Map();
-    existingStockVariants.forEach((variant) => {
-      existingStockVariantMap.set(variant.id, variant);
-    });
-    // console.log('Existing stock variant map:', existingStockVariantMap);
-    // console.log('Stock variants:', stock.stockVariants);
-
-    payload.stockVariants.forEach((newVariant) => {
-      if (newVariant.id && existingStockVariantMap.has(newVariant.id)) {
-        stockVariantPayload.push({
-          ...newVariant,
-          id: newVariant.id,
-        });
-        existingStockVariantMap.delete(newVariant.id);
-      } else {
-        stockVariantPayload.push(newVariant);
-      }
-    });
-
-    // payload.stockVariants = stockVariantPayload;
-
-    const finalPayload = {
-      ...payload,
-      stockVariants: stockVariantPayload,
-    };
-    // console.log("The final payload",finalPayload )
-
-    await apiClient.put(`/api/stock/${location?.id}/${id}`, finalPayload);
-
-    formResponse = {
-      responseType: "success",
-      message: "Stock updated successfully",
-    };
-  } catch (error) {
-    console.error("Error updating stock", error);
-    formResponse = {
-      responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-  if (formResponse?.responseType === "error")
-    return parseStringify(formResponse);
-
-  revalidatePath("/stock-variants");
-  if (
-    paginationState &&
-    typeof paginationState.pageIndex === "number" &&
-    typeof paginationState.pageSize === "number"
-  ) {
-    const page = paginationState.pageIndex + 1;
-    const limit = paginationState.pageSize;
-    // console.log('↪️ Redirecting to:', `/stock-variants?page=${page}&limit=${limit}`);
-    redirect(`/stock-variants?page=${page}&limit=${limit}`);
-  } else {
-    // console.log('↪️ Redirecting to default products page');
-    redirect("/stock-variants");
-  }
-};
-
-export const deleteStock = async (id: UUID): Promise<FormResponse | void> => {
-  if (!id) throw new Error("Stock ID is required to perform this request");
-
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    await apiClient.delete(`/api/stock/${location?.id}/${id}`);
-    revalidatePath("/stocks");
-  } catch (error: any) {
-    const formattedError = await error;
-    // console.error("Error deleting stock", formattedError );
-
-    throw new Error(formattedError.message);
-  }
-};
-
-export const uploadStockCSV = async ({
-  fileData,
-  fileName,
-  uploadType,
-}: {
-  fileData: string;
-  fileName: string;
-  uploadType: "warehouse" | "location";
-}): Promise<void> => {
-  if (!fileName.endsWith(".csv")) {
-    throw new Error(
-      "Invalid file type. Please upload a CSV file with a .csv extension.",
-    );
-  }
-
-  const lines = fileData.split("\n");
-  const isCSVContent = lines.every((line) => line.split(",").length > 1);
-  if (!isCSVContent) {
-    throw new Error(
-      "Invalid file content. The file does not appear to have a CSV structure.",
-    );
-  }
-
-  const formattedCSVData = fileData.replace(/\r\n/g, "\n");
-
-  const apiClient = new ApiClient();
-  let uploadUrl: string;
-
-  try {
-    if (uploadType === "warehouse") {
-      const warehouse = await getCurrentWarehouse();
-      if (!warehouse?.id) throw new Error("No warehouse found");
-      uploadUrl = `/rust/csv-uploading/upload-warehouse-stock-csv?warehouse_id=${warehouse.id}`;
-    } else {
-      const location = await getCurrentLocation();
-      if (!location?.id) throw new Error("No location found");
-      uploadUrl = `/rust/csv-uploading/upload-stock-csv?location_id=${location.id}`;
-    }
-
-    await apiClient.post(uploadUrl, formattedCSVData, {
-      headers: {
-        "Content-Type": "text/csv",
-      },
-      transformRequest: [(data) => data],
-      timeout: 30000,
-    });
-  } catch (error: any) {
-    console.error("Error uploading CSV file:", error);
-    throw new Error(
-      `Failed to upload CSV file: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-
-  if (uploadType === "location") {
-    revalidatePath("/stock-variants");
-  } else {
-    revalidatePath("/warehouse-stock-variants");
-  }
-};
-
-export const uploadProductWithStockCSV = async ({
-  fileData,
-  fileName,
-}: {
-  fileData: string;
-  fileName: string;
-}): Promise<CSVUploadResponse | null> => {
-  if (!fileName.endsWith(".csv")) {
-    throw new Error(
-      "Invalid file type. Please upload a CSV file with a .csv extension.",
-    );
-  }
-
-  const lines = fileData.split("\n");
-  const isCSVContent = lines.every((line) => line.split(",").length > 1);
-
-  if (!isCSVContent) {
-    throw new Error(
-      "Invalid file content. The file does not appear to have a CSV structure.",
-    );
-  }
-
-  const formattedCSVData = fileData.replace(/\r\n/g, "\n");
-
-  console.log("Uploading CSV file:", formattedCSVData);
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const response = await apiClient.post<CSVUploadResponse, string>(
-      `/rust/csv-uploading/upload-products-and-stock-csv?location_id=${location?.id}`,
-      formattedCSVData,
-      {
-        headers: {
-          "Content-Type": "text/csv",
-        },
-        transformRequest: [(data) => data],
-      },
-    );
-
-    console.log("CSV upload response", response.task_id);
-
-    revalidatePath("/stocks");
-
-    // Return the response so the client can access the task_id
-    return response;
-  } catch (error: any) {
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "digest" in error &&
-      (error as any).digest.startsWith("NEXT_REDIRECT")
-    ) {
-      return null;
-    }
-
-    if (
-      error.code === "FORBIDDEN" &&
-      error.status === 403 &&
-      error.message?.includes(
-        "beyond the limit of the current subscription package",
-      )
-    ) {
-      // Extract limit and wanted values from the message
-      const limitMatch = error.message.match(/limit is (\d+)/);
-      const wantedMatch = error.message.match(/total of (\d+)/);
-
-      const limit = limitMatch ? limitMatch[1] : "100";
-      const wanted = wantedMatch ? wantedMatch[1] : "too many";
-
-      throw new Error(
-        `Subscription limit exceeded. Your current plan allows up to ${limit} products, but you attempted to upload a total of ${wanted}. Please upgrade your subscription or reduce the number of products.`,
-      );
-    }
-
-    // Handle other API errors with structured messages
-    if (error.message && typeof error.message === "string") {
-      throw new Error(`Failed to upload CSV: ${error.message}`);
-    }
-
-    // Handle generic errors - safely convert to string
-    if (error instanceof Error) {
-      throw new Error(`Failed to upload CSV file: ${error.message}`);
-    } else {
-      throw new Error(
-        `Failed to upload CSV file: Please check your file and try again.`,
-      );
-    }
-  }
-};
-
-export const checkTaskStatus = async (taskId: string) => {
-  const apiClient = new ApiClient();
-  const response = await apiClient.get(
-    `/rust/csv-tasks-checking/check-products-and-stock-csv-upload-task?task_id=${taskId}`,
-  );
-  console.log("Task status check response:", response);
-  return parseStringify(response);
-};
-
-export const stockHistory = async (): Promise<StockHistory | null> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const history = await apiClient.get(
-      `/api/reports/${location?.id}/stock/summary`,
-    );
-    return parseStringify(history);
-  } catch (error) {
-    // console.error("Error fetching stock history:", error);
-    throw error;
-  }
-};
-
-export const downloadStockCSV = async (
-  exportType: "warehouse" | "location",
-  locationId?: string,
-) => {
-  let uploadUrl: string;
-  const apiClient = new ApiClient();
-
-  try {
-    if (exportType === "warehouse") {
-      const warehouse = await getCurrentWarehouse();
-      if (!warehouse?.id) throw new Error("No warehouse found");
-      uploadUrl = `/rust/csv-downloading/download-warehouse-stock-csv?warehouse_id=${warehouse?.id}`;
-    } else {
-      const location = (await getCurrentLocation()) || { id: locationId };
-      if (!location?.id) throw new Error("No location found");
-      uploadUrl = `/rust/csv-downloading/download-stock-csv?location_id=${location?.id}`;
-    }
-    const response = await apiClient.get(uploadUrl);
-    return response;
-  } catch (error) {
-    console.error("Error downloading CSV file:", error);
-    throw new Error(
-      `Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
-};
-
-// Function to get a single stock variant by ID (uses cache when possible)
-export const getStockVariantById = async (variantId: string) => {
-  if (!variantId) return null;
-
-  try {
-    // Try to get from cache first
-    if (!stockCache) {
-      stockCache = await fetchStock();
-    }
-
-    if (stockCache && stockCache.length > 0) {
-      for (const stock of stockCache) {
-        const variant = stock.stockVariants.find(
-          (v: StockVariant) => v.id === variantId,
-        );
-        if (variant) {
-          return {
-            stockName: stock.name,
-            variant,
-          };
-        }
-      }
-    }
-
-    // If not in cache or cache doesn't exist, fetch directly
-    const apiClient = new ApiClient();
-    const data = await apiClient.get(`/api/stock-variants/${variantId}`);
-    return parseStringify(data);
-  } catch (error) {
-    console.error("Error fetching stock variant:", error);
+  } catch {
     return null;
   }
-};
+}
+
+export async function createStock(
+  stock: z.infer<typeof StockSchema>,
+): Promise<FormResponse | void> {
+  const validated = StockSchema.safeParse(stock);
+
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all required fields",
+      error: new Error(validated.error.message),
+    });
+  }
+
+  try {
+    const apiClient = new ApiClient();
+
+    const openingItems: {
+      variantName: string;
+      quantity: number;
+      unitCost: number;
+    }[] = [];
+
+    const stockPayload = {
+      name: validated.data.name,
+      description: validated.data.description,
+      baseUnitId: validated.data.baseUnitId,
+      materialType: validated.data.materialType,
+      variants: validated.data.variants.map((v) => {
+        if (v.initialQuantity && v.initialQuantity > 0) {
+          openingItems.push({
+            variantName: v.name,
+            quantity: v.initialQuantity,
+            unitCost: v.initialUnitCost ?? 0,
+          });
+        }
+        return {
+          name: v.name,
+          sku: v.sku || undefined,
+          unitId: v.unitId,
+          conversionToBase: v.conversionToBase,
+          defaultCost: v.defaultCost,
+          barcode: v.barcode || undefined,
+          serialTracked: v.serialTracked,
+        };
+      }),
+    };
+
+    const created = (await apiClient.post(
+      inventoryUrl("/api/v1/stocks"),
+      stockPayload,
+    )) as Stock;
+
+    if (openingItems.length > 0 && created?.variants?.length) {
+      try {
+        const items = openingItems
+          .map((oi) => {
+            const variant = created.variants.find(
+              (v) => v.name.toLowerCase() === oi.variantName.toLowerCase(),
+            );
+            if (!variant) return null;
+            return {
+              stockVariantId: variant.id,
+              quantity: oi.quantity,
+              unitCost: oi.unitCost,
+            };
+          })
+          .filter(
+            (item): item is NonNullable<typeof item> => item !== null,
+          );
+
+        if (items.length > 0) {
+          const openingStock = (await apiClient.post(
+            inventoryUrl("/api/v1/opening-stocks"),
+            { locationType: "LOCATION", items },
+          )) as { id: string };
+
+          if (openingStock?.id) {
+            await apiClient.post(
+              inventoryUrl(
+                `/api/v1/opening-stocks/${openingStock.id}/confirm`,
+              ),
+              {},
+            );
+          }
+        }
+      } catch {
+        // Best-effort: stock created, opening stock failed silently
+      }
+    }
+
+    revalidatePath("/stock-variants");
+    redirect(`/stock-variants/${created.id}`);
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to create stock item",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function updateStock(
+  id: string,
+  stock: z.infer<typeof StockSchema>,
+  removedVariantIds?: string[],
+): Promise<FormResponse | void> {
+  const validated = StockSchema.safeParse(stock);
+
+  if (!validated.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all required fields",
+      error: new Error(validated.error.message),
+    });
+  }
+
+  try {
+    const apiClient = new ApiClient();
+
+    await apiClient.put(inventoryUrl(`/api/v1/stocks/${id}`), {
+      name: validated.data.name,
+      description: validated.data.description,
+      baseUnitId: validated.data.baseUnitId,
+      materialType: validated.data.materialType,
+    });
+
+    for (const variant of validated.data.variants) {
+      if (!variant.id) {
+        await apiClient.post(
+          inventoryUrl(`/api/v1/stocks/${id}/variants`),
+          {
+            name: variant.name,
+            sku: variant.sku || undefined,
+            unitId: variant.unitId,
+            conversionToBase: variant.conversionToBase,
+            defaultCost: variant.defaultCost,
+            barcode: variant.barcode || undefined,
+            serialTracked: variant.serialTracked,
+          },
+        );
+      }
+    }
+
+    for (const variant of validated.data.variants) {
+      if (variant.id) {
+        await apiClient.put(
+          inventoryUrl(`/api/v1/stocks/${id}/variants/${variant.id}`),
+          {
+            name: variant.name,
+            sku: variant.sku || undefined,
+            unitId: variant.unitId,
+            conversionToBase: variant.conversionToBase,
+            defaultCost: variant.defaultCost,
+          },
+        );
+      }
+    }
+
+    if (removedVariantIds?.length) {
+      for (const variantId of removedVariantIds) {
+        await apiClient.delete(
+          inventoryUrl(`/api/v1/stocks/${id}/variants/${variantId}`),
+        );
+      }
+    }
+
+    revalidatePath("/stock-variants");
+    redirect(`/stock-variants/${id}`);
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to update stock item",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function deleteStock(id: string): Promise<void> {
+  if (!id) throw new Error("Stock ID is required");
+  const apiClient = new ApiClient();
+  await apiClient.delete(inventoryUrl(`/api/v1/stocks/${id}`));
+  revalidatePath("/stock-variants");
+}
+
+export async function archiveStock(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stocks/${id}/archive`), {});
+  revalidatePath("/stock-variants");
+}
+
+export async function unarchiveStock(id: string): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl(`/api/v1/stocks/${id}/unarchive`), {});
+  revalidatePath("/stock-variants");
+}
+
+export async function bulkArchiveStocks(stockIds: string[]): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl("/api/v1/stocks/bulk-archive"), {
+    stockIds,
+  });
+  revalidatePath("/stock-variants");
+}
+
+export async function bulkAdjust(
+  items: {
+    stockVariantId: string;
+    quantityChange: number;
+    notes?: string;
+  }[],
+  category?: string,
+  reason?: string,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(inventoryUrl("/api/v1/stocks/bulk-adjust"), {
+    items,
+    category: category || "CORRECTION",
+    reason,
+  });
+  revalidatePath("/stock-variants");
+}
+
+// ── Stock Variant CRUD (standalone) ─────────────────────────────────
+
+export async function addStockVariant(
+  stockId: string,
+  variant: Record<string, unknown>,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(
+    inventoryUrl(`/api/v1/stocks/${stockId}/variants`),
+    variant,
+  );
+  revalidatePath("/stock-variants");
+}
+
+export async function updateStockVariant(
+  stockId: string,
+  variantId: string,
+  variant: Record<string, unknown>,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(`/api/v1/stocks/${stockId}/variants/${variantId}`),
+    variant,
+  );
+  revalidatePath("/stock-variants");
+}
+
+export async function deleteStockVariant(
+  stockId: string,
+  variantId: string,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.delete(
+    inventoryUrl(`/api/v1/stocks/${stockId}/variants/${variantId}`),
+  );
+  revalidatePath("/stock-variants");
+}
+
+export async function archiveStockVariant(
+  stockId: string,
+  variantId: string,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(
+    inventoryUrl(
+      `/api/v1/stocks/${stockId}/variants/${variantId}/archive`,
+    ),
+    {},
+  );
+  revalidatePath("/stock-variants");
+}
+
+export async function unarchiveStockVariant(
+  stockId: string,
+  variantId: string,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(
+    inventoryUrl(
+      `/api/v1/stocks/${stockId}/variants/${variantId}/unarchive`,
+    ),
+    {},
+  );
+  revalidatePath("/stock-variants");
+}
+
+// ── CSV Import (async, Java service) ────────────────────────────────
+
+export async function startStockImport(
+  fileContent: string,
+  fileName: string,
+): Promise<CsvImportJobResponse | FormResponse> {
+  try {
+    const apiClient = new ApiClient();
+    const blob = new Blob([fileContent], { type: "text/csv" });
+    const formData = new FormData();
+    formData.append("file", blob, fileName);
+
+    const result = await apiClient.post(
+      inventoryUrl("/api/v1/stocks/import-csv"),
+      formData,
+    );
+    return parseStringify(result) as CsvImportJobResponse;
+  } catch (error: any) {
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to start import",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function getImportJobStatus(
+  jobId: string,
+): Promise<CsvImportJobResponse | null> {
+  try {
+    const apiClient = new ApiClient();
+    const result = await apiClient.get(
+      inventoryUrl(`/api/v1/stocks/import-csv/${jobId}`),
+    );
+    return parseStringify(result) as CsvImportJobResponse;
+  } catch {
+    return null;
+  }
+}
+
+// ── CSV Export (local generation) ───────────────────────────────────
+
+export async function downloadStockCSV(): Promise<string> {
+  const stocks = await getStocks();
+  const headers = [
+    "Stock Name",
+    "Variant Name",
+    "Display Name",
+    "SKU",
+    "Unit",
+    "Conversion to Base",
+    "Default Cost",
+    "Barcode",
+    "Material Type",
+  ];
+
+  const rows = stocks.flatMap((stock) =>
+    stock.variants
+      .filter((v) => !v.archived)
+      .map((v) => [
+        stock.name,
+        v.name,
+        v.displayName,
+        v.sku || "",
+        v.unitAbbreviation,
+        String(v.conversionToBase),
+        v.defaultCost != null ? String(v.defaultCost) : "",
+        v.barcode || "",
+        stock.materialType,
+      ]),
+  );
+
+  const escape = (val: string) =>
+    val.includes(",") || val.includes('"')
+      ? `"${val.replace(/"/g, '""')}"`
+      : val;
+
+  return [headers.join(","), ...rows.map((r) => r.map(escape).join(","))].join(
+    "\n",
+  );
+}
+
+export { getStocks as fetchStock };
+
+// ── Reports (hits reports service) ──────────────────────────────────
+
+export async function stockHistory(): Promise<StockHistory | null> {
+  await getAuthenticatedUser();
+  try {
+    const apiClient = new ApiClient("reports");
+    const location = await getCurrentLocation();
+    const data = await apiClient.get(
+      `/api/reports/${location?.id}/stock/summary`,
+    );
+    return data as StockHistory;
+  } catch {
+    return null;
+  }
+}

@@ -1,35 +1,75 @@
-import { UUID } from "crypto"
-import { StockVariant } from "../stockVariant/type";
+import type { MaterialType } from "@/types/catalogue/enums";
 
-export declare interface Stock {
-    id: UUID,
-    name: string,
-    description: string,
-    unit: string,
-    status: boolean,
-    canDelete: boolean,
-    business: UUID,
-    location: UUID,
-    isArchived: boolean,
-    stockVariants: StockVariant[]
+export interface Stock {
+  id: string;
+  name: string;
+  description: string | null;
+  baseUnitId: string;
+  baseUnitName: string;
+  baseUnitAbbreviation: string;
+  archived: boolean;
+  materialType: MaterialType;
+  variants: StockVariant[];
+  createdAt: string;
+  updatedAt: string;
 }
 
-export declare interface StockHistory {
-    totalStockIntakes: number,
-    totalStockRemaining: number,
-    totalEstimatedProfit: number,
-    totalStockValue: number,
-    lowStockItems: lowStockItems[],
-    outOfStockItems: outOfStockItems[]
+export interface StockVariant {
+  id: string;
+  stockId: string;
+  name: string;
+  displayName: string;
+  sku: string | null;
+  unitId: string;
+  unitName: string;
+  unitAbbreviation: string;
+  conversionToBase: number;
+  defaultCost: number | null;
+  archived: boolean;
+  isDefault: boolean;
+  barcode: string | null;
+  serialTracked: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
-interface lowStockItems  {
-    stockName: string,
-    stockVariantName: string,
-    remainingAmount: number
+/** Stock enriched with aggregated inventory balance data */
+export interface StockWithBalance extends Stock {
+  totalQuantity: number;
+  totalValue: number;
+  lowStock: boolean;
+  outOfStock: boolean;
 }
 
-interface outOfStockItems{
-    stockName: string,
-    stockVariantName: string
+/** Response from the async CSV import job endpoint */
+export interface CsvImportJobResponse {
+  jobId: string;
+  status: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+  totalRows: number;
+  stocksCreated: number;
+  variantsCreated: number;
+  failureCount: number;
+  created: { id: string; name: string; variantCount: number }[];
+  errors: { row: number; message: string }[];
+  openingStockId: string | null;
+  openingStockReference: string | null;
+  openingStockItems: number;
+  startedAt: string | null;
+  completedAt: string | null;
+  errorMessage: string | null;
+}
+
+// ── Report types (from reports service) ──────────────────────────
+
+export interface StockHistory {
+  totalItems: number;
+  totalValue: number;
+  totalStockRemaining: number;
+  totalStockValue: number;
+  totalEstimatedProfit: number;
+  totalStockIntakes: number;
+  lowStockItems: any[];
+  outOfStockItems: any[];
+  topMovingItems: any[];
+  slowMovingItems: any[];
 }

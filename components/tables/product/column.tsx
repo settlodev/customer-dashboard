@@ -37,27 +37,25 @@ export const columns: ColumnDef<Product>[] = [
   {
     accessorKey: "name",
     enableHiding: false,
-    header: ({ column }) => {
-      return (
-        <Button
-          className="text-left p-0 font-semibold"
-          variant="ghost"
-          onClick={() =>
-            column.toggleSorting(column.getIsSorted() === "asc")
-          }
-        >
-          Product
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <Button
+        className="text-left p-0 font-semibold"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Product
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => {
-      const image = row.original.image;
+      const image = row.original.imageUrl;
       const isValidImageUrl =
         image &&
         (image.startsWith("http://") ||
           image.startsWith("https://") ||
           image.startsWith("/"));
+
+      const categoryName = row.original.categories?.[0]?.name;
 
       return (
         <div className="flex items-center gap-3 min-w-0">
@@ -79,9 +77,9 @@ export const columns: ColumnDef<Product>[] = [
             <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
               {row.original.name}
             </span>
-            {row.original.categoryName && (
+            {categoryName && (
               <span className="text-xs text-muted-foreground block truncate">
-                {row.original.categoryName}
+                {categoryName}
               </span>
             )}
           </div>
@@ -92,30 +90,27 @@ export const columns: ColumnDef<Product>[] = [
   {
     accessorKey: "departmentName",
     enableHiding: true,
-    header: () => (
-      <div className="hidden lg:block">Department</div>
-    ),
+    header: () => <div className="hidden lg:block">Department</div>,
     cell: ({ row }) => (
       <div className="hidden lg:block">
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          {row.original.departmentName || "—"}
+          {row.original.departmentName || "\u2014"}
         </span>
       </div>
     ),
   },
   {
-    accessorKey: "quantity",
+    id: "price",
+    header: () => <div className="hidden md:block">Price</div>,
     enableHiding: true,
-    header: () => (
-      <div className="hidden md:block">Stock</div>
-    ),
     cell: ({ row }) => {
-      const quantity = row.original.quantity;
-      const formatted = new Intl.NumberFormat("en-US").format(quantity);
+      const firstVariant = row.original.variants?.[0];
       return (
         <div className="hidden md:block">
           <span className="text-sm text-gray-900 dark:text-gray-100">
-            {formatted}
+            {firstVariant
+              ? `${firstVariant.price.toLocaleString()} ${firstVariant.nativeCurrency}`
+              : "\u2014"}
           </span>
         </div>
       );
@@ -123,27 +118,22 @@ export const columns: ColumnDef<Product>[] = [
   },
   {
     id: "variants",
-    header: () => (
-      <div className="hidden md:block">Variants</div>
-    ),
+    header: () => <div className="hidden md:block">Variants</div>,
     enableHiding: true,
-    cell: ({ row }) => {
-      const count = row.original.variants?.length ?? 0;
-      return (
-        <div className="hidden md:block">
-          <span className="text-sm text-gray-600 dark:text-gray-400">
-            {count}
-          </span>
-        </div>
-      );
-    },
+    cell: ({ row }) => (
+      <div className="hidden md:block">
+        <span className="text-sm text-gray-600 dark:text-gray-400">
+          {row.original.variants?.length ?? 0}
+        </span>
+      </div>
+    ),
   },
   {
     id: "status",
     header: "Status",
     enableHiding: true,
     cell: ({ row }) => {
-      const isActive = row.original.status;
+      const isActive = row.original.active;
       return (
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${

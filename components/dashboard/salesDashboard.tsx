@@ -1,12 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, RefreshCcw, Clock, CheckCircle, Package } from 'lucide-react';
-import DailyRevenueChart from './Charts/DailyRevenueChart';
+import { DollarSign, RefreshCcw, Clock, CheckCircle, Package, CreditCard } from 'lucide-react';
 import PaymentMethodsChart from './Charts/PaymentMethodsChart';
 import TopSellingItemsChart from './Charts/TopSellingItemsChart';
-import MonthlyCashflowChart from './Charts/MonthlyCashflowChart';
-import StaffPerformanceChart from './Charts/StaffPerformanceChart';
-import RecentTransactionsTable from './Charts/RecentTransactionsTable';
 
 const StatCard = ({
   label,
@@ -52,6 +48,10 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
     </span>
   );
 
+  const averageOrderValue = salesData?.totalOrders > 0
+    ? salesData.netSales / salesData.totalOrders
+    : 0;
+
   return (
     <div className="space-y-6">
       {/* Analysis Cards Row */}
@@ -84,14 +84,14 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
                 Expenses
               </p>
               <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
-                <CurrencyValue value={salesData?.totalExpenseRecordedAmount} />
+                <CurrencyValue value={salesData?.totalExpenseAmount} />
               </p>
               <div className="flex items-center gap-4 mt-3 text-xs">
                 <span className="text-emerald-600 font-medium">
-                  Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
+                  Paid: {formatAmount(salesData?.expensesPaidAmount)} TZS
                 </span>
                 <span className="text-amber-600 font-medium">
-                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)} TZS
+                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaid)} TZS
                 </span>
               </div>
             </CardContent>
@@ -150,14 +150,14 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
                 Expenses
               </p>
               <p className="text-4xl font-extrabold mt-2 text-gray-900 dark:text-gray-100">
-                <CurrencyValue value={salesData?.totalExpenseRecordedAmount} />
+                <CurrencyValue value={salesData?.totalExpenseAmount} />
               </p>
               <div className="flex items-center gap-4 mt-3 text-xs">
                 <span className="text-emerald-600 font-medium">
-                  Paid: {formatAmount(salesData?.totalExpensePaidAmount)} TZS
+                  Paid: {formatAmount(salesData?.expensesPaidAmount)} TZS
                 </span>
                 <span className="text-amber-600 font-medium">
-                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaidAmount)} TZS
+                  Unpaid: {formatAmount(salesData?.totalExpenseUnpaid)} TZS
                 </span>
               </div>
             </CardContent>
@@ -176,26 +176,32 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
           <div className="h-4 w-px bg-border hidden sm:block" />
           <div className="flex items-center gap-2">
             <CheckCircle className="h-4 w-4 text-emerald-500" />
-            <span className="text-sm text-muted-foreground">Completed Orders</span>
+            <span className="text-sm text-muted-foreground">Completed</span>
             <span className="text-sm font-bold">{salesData?.completedOrders || 0}</span>
           </div>
           <div className="h-4 w-px bg-border hidden sm:block" />
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-amber-500" />
-            <span className="text-sm text-muted-foreground">Ongoing Orders</span>
-            <span className="text-sm font-bold">{salesData?.ongoingOrders || 0}</span>
+            <span className="text-sm text-muted-foreground">Open</span>
+            <span className="text-sm font-bold">{salesData?.openOrders || 0}</span>
           </div>
           <div className="h-4 w-px bg-border hidden sm:block" />
           <div className="flex items-center gap-2">
             <RefreshCcw className="h-4 w-4 text-red-500" />
-            <span className="text-sm text-muted-foreground">Refunded Orders</span>
+            <span className="text-sm text-muted-foreground">Refunded</span>
             <span className="text-sm font-bold">{salesData?.refundedOrders || 0}</span>
           </div>
           <div className="h-4 w-px bg-border hidden sm:block" />
           <div className="flex items-center gap-2">
+            <CreditCard className="h-4 w-4 text-blue-500" />
+            <span className="text-sm text-muted-foreground">Unpaid</span>
+            <span className="text-sm font-bold">{salesData?.unpaidOrders || 0}</span>
+          </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
             <DollarSign className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Avg. Order Value</span>
-            <span className="text-sm font-bold">{formatCurrency(salesData?.averageOrderValue)}</span>
+            <span className="text-sm text-muted-foreground">Avg. Order</span>
+            <span className="text-sm font-bold">{formatCurrency(averageOrderValue)}</span>
           </div>
         </CardContent>
       </Card>
@@ -209,7 +215,7 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
           {variant === "staff" ? (
             <>
               <StatCard label="Points" value={loyaltyPoints?.toLocaleString() ?? "0"} icon={DollarSign} />
-              <StatCard label="Department" value={departmentName ?? "—"} icon={DollarSign} />
+              <StatCard label="Department" value={departmentName ?? "\u2014"} icon={DollarSign} />
             </>
           ) : (
             <>
@@ -223,26 +229,10 @@ const SalesDashboard = ({ salesData, variant = "location", loyaltyPoints, depart
       {/* Extra content (e.g. staff summary cards) */}
       {children}
 
-      {/* Charts Row 1: Daily Revenue + Payment Methods */}
-      <div className="flex flex-col lg:flex-row gap-4">
-        <div className="flex-1 min-w-0">
-          <DailyRevenueChart data={salesData?.dailyRevenueTrend} />
-        </div>
-        <div className="lg:w-auto lg:flex-shrink-0">
-          <PaymentMethodsChart data={salesData?.transactionsPerPaymentMethod} />
-        </div>
-      </div>
-
-      {/* Charts Row 2: Top Items + Monthly Cashflow */}
+      {/* Charts: Top Selling Items + Payment Methods */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopSellingItemsChart data={salesData?.topSellingItems} />
-        <MonthlyCashflowChart data={salesData?.monthlyCashflow} />
-      </div>
-
-      {/* Charts Row 3: Staff Performance + Recent Transactions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <StaffPerformanceChart data={salesData?.staffPerformance} />
-        <RecentTransactionsTable data={salesData?.recentTransactions} />
+        <PaymentMethodsChart data={salesData?.paymentMethodBreakdown} />
       </div>
 
     </div>

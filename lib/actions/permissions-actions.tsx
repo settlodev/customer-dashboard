@@ -2,12 +2,17 @@
 
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { Permission } from "@/types/permissions/type";
+import { Permission, PermissionListResponse } from "@/types/permissions/type";
+import { FormResponse } from "@/types/types";
+
+// ---------------------------------------------------------------------------
+// List (grouped by category)
+// ---------------------------------------------------------------------------
 
 export const fetchAllPermissions = async (
   category?: string,
   systemOnly?: boolean,
-): Promise<Permission[]> => {
+): Promise<PermissionListResponse> => {
   try {
     const apiClient = new ApiClient();
     const params = new URLSearchParams();
@@ -21,6 +26,10 @@ export const fetchAllPermissions = async (
   }
 };
 
+// ---------------------------------------------------------------------------
+// Get by ID / Key
+// ---------------------------------------------------------------------------
+
 export const getPermission = async (id: string): Promise<Permission> => {
   try {
     const apiClient = new ApiClient();
@@ -31,6 +40,20 @@ export const getPermission = async (id: string): Promise<Permission> => {
   }
 };
 
+export const getPermissionByKey = async (key: string): Promise<Permission> => {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(`/api/v1/permissions/by-key/${encodeURIComponent(key)}`);
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Categories
+// ---------------------------------------------------------------------------
+
 export const getPermissionCategories = async (): Promise<string[]> => {
   try {
     const apiClient = new ApiClient();
@@ -40,6 +63,10 @@ export const getPermissionCategories = async (): Promise<string[]> => {
     throw error;
   }
 };
+
+// ---------------------------------------------------------------------------
+// Filtered lists
+// ---------------------------------------------------------------------------
 
 export const getPosPermissions = async (): Promise<Permission[]> => {
   try {
@@ -61,7 +88,7 @@ export const getDashboardPermissions = async (): Promise<Permission[]> => {
   }
 };
 
-export const getPermissionDefaults = async (): Promise<Permission[]> => {
+export const getPermissionDefaults = async (): Promise<Record<string, Permission[]>> => {
   try {
     const apiClient = new ApiClient();
     apiClient.isPlain = true;
@@ -69,5 +96,31 @@ export const getPermissionDefaults = async (): Promise<Permission[]> => {
     return parseStringify(data);
   } catch (error) {
     throw error;
+  }
+};
+
+// ---------------------------------------------------------------------------
+// Create custom permission
+// ---------------------------------------------------------------------------
+
+export const createPermission = async (data: {
+  key: string;
+  name: string;
+  description?: string;
+}): Promise<FormResponse<Permission>> => {
+  try {
+    const apiClient = new ApiClient();
+    const response = await apiClient.post(`/api/v1/permissions`, data);
+    return {
+      responseType: "success",
+      message: "Permission created",
+      data: parseStringify(response),
+    };
+  } catch (error) {
+    return {
+      responseType: "error",
+      message: "Failed to create permission",
+      error: error instanceof Error ? error : new Error(String(error)),
+    };
   }
 };

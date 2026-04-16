@@ -1,8 +1,5 @@
 "use server";
 import { deleteActiveLocationCookie } from "@/lib/auth-utils";
-import ApiClient from "@/lib/settlo-api-client";
-import { parseStringify } from "@/lib/utils";
-import { ActiveSubscription } from "@/types/subscription/type";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
@@ -40,23 +37,3 @@ export const deleteActiveWarehouseCookie = async () => {
   console.log("Deleting current warehouse cookies");
 };
 
-export const getActiveSubscriptionForWarehouse = async (
-  locationId?: string | null,
-): Promise<ActiveSubscription> => {
-  let warehouse;
-  if (locationId) {
-    warehouse = { id: locationId };
-  } else {
-    warehouse = await getCurrentWarehouse();
-  }
-
-  try {
-    const apiClient = new ApiClient();
-    const response = await apiClient.get(
-      `/api/warehouse-subscriptions/${warehouse?.id}/last-active`,
-    );
-    return parseStringify(response);
-  } catch (error) {
-    throw error;
-  }
-};

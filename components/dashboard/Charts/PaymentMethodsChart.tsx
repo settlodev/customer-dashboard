@@ -3,7 +3,7 @@
 import React from "react";
 import { PieChart, Pie, Cell, Tooltip } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TransactionsByPaymentMethod } from "@/types/dashboard/type";
+import { PaymentMethodBreakdown } from "@/types/dashboard/type";
 
 const CHART_COLORS = ["#EB7F44", "#10B981", "#6366F1", "#F59E0B", "#EC4899", "#8B5CF6"];
 
@@ -21,7 +21,7 @@ const CustomTooltip = ({ active, payload }: any) => {
   );
 };
 
-export default function PaymentMethodsChart({ data }: { data: TransactionsByPaymentMethod[] }) {
+export default function PaymentMethodsChart({ data }: { data: PaymentMethodBreakdown[] }) {
   const chartData = data || [];
 
   if (!chartData.length) {

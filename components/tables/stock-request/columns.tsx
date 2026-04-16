@@ -6,7 +6,7 @@ import { ArrowUpDown } from "lucide-react";
 import { CellAction } from "@/components/tables/stock-request/cell-action";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { StockRequests } from "@/types/warehouse/purchase/request/type";
+import { StockRequests } from "@/types/stock-request/type";
 
 export const columns: ColumnDef<StockRequests>[] = [
   {

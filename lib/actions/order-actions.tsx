@@ -160,7 +160,7 @@ export const cashFlowReport = async (
 ): Promise<CashFlow | null> => {
   await getAuthenticatedUser();
   try {
-    const apiClient = new ApiClient();
+    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
     const params = {
       startDate,
@@ -186,7 +186,7 @@ export const creditReport = async (
 ): Promise<Credit | null> => {
   await getAuthenticatedUser();
   try {
-    const apiClient = new ApiClient();
+    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
     const params = {
       startDate,

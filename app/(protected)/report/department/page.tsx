@@ -27,11 +27,10 @@ import { toast } from "@/hooks/use-toast";
 import SubmitButton from "@/components/widgets/submit-button";
 import { cn } from "@/lib/utils";
 import {
-  DepartmentReport,
-  fectchAllDepartments,
+  departmentReport,
+  fetchAllDepartments,
 } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
-import { UUID } from "crypto";
 
 interface TopItems {
   name: string;
@@ -99,7 +98,7 @@ export default function DepartmentReportPage() {
   });
 
   useEffect(() => {
-    fectchAllDepartments()
+    fetchAllDepartments()
       .then(setDepartments)
       .catch(() =>
         toast({ variant: "destructive", title: "Failed to load departments" }),
@@ -212,8 +211,8 @@ export default function DepartmentReportPage() {
     setDateError(undefined);
     setLoading(true);
     try {
-      const data = await DepartmentReport(
-        selectedDepartment.id as unknown as UUID,
+      const data = await departmentReport(
+        selectedDepartment.id,
         formValues.startDate.toISOString(),
         formValues.endDate.toISOString(),
       );

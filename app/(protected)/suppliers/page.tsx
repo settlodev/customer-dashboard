@@ -5,8 +5,11 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/supplier/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import { searchSuppliers } from "@/lib/actions/supplier-actions";
-import { Supplier } from "@/types/supplier/type";
+import {
+  fetchAllSuppliers,
+  fetchSettloSuppliers,
+} from "@/lib/actions/supplier-actions";
+import { Supplier, SettloSupplier } from "@/types/supplier/type";
 import { Plus } from "lucide-react";
 
 const breadcrumbItems = [{ title: "Suppliers", link: "/suppliers" }];
@@ -19,22 +22,67 @@ type Params = {
   }>;
 };
 
+function mapSettloToSupplier(s: SettloSupplier): Supplier {
+  return {
+    id: s.id,
+    businessId: "",
+    name: s.name,
+    contactPersonName: s.contactPerson || "",
+    contactPersonPhone: s.phone || "",
+    phone: s.phone,
+    email: s.email,
+    address: s.address,
+    registrationNumber: s.registrationNumber,
+    tinNumber: s.tinNumber,
+    settloSupplierId: null,
+    settloSupplierName: null,
+    linkedToSettloSupplier: false,
+    archivedAt: null,
+    isSettloSupplier: true,
+    createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
+  };
+}
+
 export default async function Page({ searchParams }: Params) {
   const resolvedSearchParams = await searchParams;
 
   const q = resolvedSearchParams.search || "";
   const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit);
+  const pageLimit = Number(resolvedSearchParams.limit) || 10;
 
-  const responseData = await searchSuppliers(q, page, pageLimit);
+  const [userSuppliers, settloSuppliers] = await Promise.all([
+    fetchAllSuppliers(),
+    fetchSettloSuppliers(),
+  ]);
 
-  const data: Supplier[] = responseData.content;
-  const total = responseData.totalElements;
-  const pageCount = responseData.totalPages;
+  // Map and tag each source
+  const taggedUser: Supplier[] = userSuppliers.map((s) => ({
+    ...s,
+    isSettloSupplier: false,
+  }));
+  const taggedSettlo: Supplier[] = settloSuppliers.map(mapSettloToSupplier);
+
+  // Merge: Settlo first, then user suppliers, sorted by name within each group
+  const all = [
+    ...taggedSettlo.sort((a, b) => a.name.localeCompare(b.name)),
+    ...taggedUser.sort((a, b) => a.name.localeCompare(b.name)),
+  ];
+
+  // Server-side search filter
+  const filtered = q
+    ? all.filter((s) => s.name.toLowerCase().includes(q.toLowerCase()))
+    : all;
+
+  // Server-side pagination
+  const pageIndex = page > 0 ? page - 1 : 0;
+  const start = pageIndex * pageLimit;
+  const data = filtered.slice(start, start + pageLimit);
+  const total = filtered.length;
+  const pageCount = Math.ceil(total / pageLimit);
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
-      {/* Header row */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BreadcrumbsNav items={breadcrumbItems} />
 
@@ -48,7 +96,6 @@ export default async function Page({ searchParams }: Params) {
         </div>
       </div>
 
-      {/* Content */}
       {total > 0 || q !== "" ? (
         <Card>
           <CardContent className="px-2 sm:px-6 pt-6">

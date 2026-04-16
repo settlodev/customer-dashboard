@@ -38,7 +38,18 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
 
   const form = useForm<z.infer<typeof SupplierSchema>>({
     resolver: zodResolver(SupplierSchema),
-    defaultValues: item ? item : { status: true },
+    defaultValues: item
+      ? {
+          name: item.name,
+          contactPersonName: item.contactPersonName,
+          contactPersonPhone: item.contactPersonPhone,
+          phone: item.phone ?? "",
+          email: item.email ?? "",
+          address: item.address ?? "",
+          registrationNumber: item.registrationNumber ?? "",
+          tinNumber: item.tinNumber ?? "",
+        }
+      : {},
   });
 
   const onInvalid = useCallback(
@@ -131,6 +142,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                         <Input
                           placeholder="supplier@example.com"
                           {...field}
+                          value={field.value || ""}
                           disabled={isPending}
                         />
                       </FormControl>
@@ -141,7 +153,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
 
                 <FormField
                   control={form.control}
-                  name="phoneNumber"
+                  name="phone"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Phone Number</FormLabel>
@@ -149,6 +161,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                         <PhoneInput
                           placeholder="Enter phone number"
                           {...field}
+                          value={field.value || ""}
                           disabled={isPending}
                         />
                       </FormControl>
@@ -159,7 +172,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
 
                 <FormField
                   control={form.control}
-                  name="physicalAddress"
+                  name="address"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Physical Address</FormLabel>
@@ -204,23 +217,6 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="contactPersonTitle"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job Title</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Enter job title"
-                          {...field}
-                          disabled={isPending}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 <FormField
                   control={form.control}
@@ -240,61 +236,9 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="contactPersonEmail"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contact Email</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="contact@example.com"
-                          {...field}
-                          disabled={isPending}
-                          value={field.value || ""}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
             </div>
 
-            {/* Status (edit only) */}
-            {item && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Settings</h3>
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium cursor-pointer">
-                            Supplier Status
-                          </FormLabel>
-                          <p className="text-xs text-muted-foreground">
-                            {field.value
-                              ? "This supplier is currently active"
-                              : "This supplier is currently inactive"}
-                          </p>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
 

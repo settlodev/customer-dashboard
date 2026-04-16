@@ -1,35 +1,28 @@
-import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
-import { ApiResponse } from "@/types/types";
 import { Category } from "@/types/category/type";
 import { getCategory } from "@/lib/actions/category-actions";
 import CategoryForm from "@/components/forms/category_form";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 
 type Params = Promise<{ id: string }>;
-export default async function CategoryPage({
-  params,
-}: {
-  params: Params;
-}) {
+
+export default async function CategoryPage({ params }: { params: Params }) {
   const resolvedParams = await params;
   const isNewItem = resolvedParams.id === "new";
-  let item: ApiResponse<Category> | null = null;
+  let item: Category | null = null;
 
   if (!isNewItem) {
     try {
-      item = await getCategory(resolvedParams.id as UUID);
-      if (item.totalElements == 0) notFound();
-    } catch (error) {
-      console.log(error);
-      throw new Error("Failed to load category data");
+      item = await getCategory(resolvedParams.id);
+    } catch {
+      notFound();
     }
   }
 
   const breadcrumbItems = [
     { title: "Categories", link: "/categories" },
     {
-      title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
+      title: isNewItem ? "New" : item?.name || "Edit",
       link: "",
     },
   ];
@@ -51,7 +44,7 @@ export default async function CategoryPage({
           </p>
         </div>
 
-        <CategoryForm item={isNewItem ? null : item?.content[0]} />
+        <CategoryForm item={item} />
       </div>
     </div>
   );

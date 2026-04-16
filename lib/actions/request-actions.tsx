@@ -5,7 +5,7 @@ import { ApiResponse, FormResponse} from "@/types/types";
 import {getAuthenticatedUser} from "@/lib/auth-utils";
 import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
-import { StockRequests } from "@/types/warehouse/purchase/request/type";
+import { StockRequests } from "@/types/stock-request/type";
 import { getCurrentLocation } from "./business/get-current-business";
 import { StockRequestSchema } from "@/types/stock-request/schema";
 import { z } from "zod";

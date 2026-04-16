@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useCallback, useState, useTransition } from "react";
-import { verifyEmailCode, resendVerificationCode } from "@/lib/actions/auth-actions";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useState, useTransition } from "react";
+import { verifyEmailCode, verifyEmailToken, resendVerificationCode } from "@/lib/actions/auth-actions";
 import {
   Card,
   CardContent,
@@ -29,11 +29,40 @@ import {
 
 const VerificationPage = () => {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>("");
   const [success, setSuccess] = useState<string>("");
   const [verificationCode, setVerificationCode] = useState<string>("");
   const [codeSent, setCodeSent] = useState<boolean>(false);
+  const [isResending, setIsResending] = useState(false);
+  const [tokenHandled, setTokenHandled] = useState(false);
+
+  // Handle ?token= from email verification links
+  const token = searchParams.get("token");
+
+  useEffect(() => {
+    if (!token || tokenHandled) return;
+    setTokenHandled(true);
+
+    startTransition(async () => {
+      try {
+        const data = await verifyEmailToken(token);
+
+        if (data.responseType === "error") {
+          setError(data.message);
+          return;
+        }
+
+        setSuccess(data.message);
+        setTimeout(() => {
+          router.push("/login");
+        }, 2000);
+      } catch (err: any) {
+        setError(err?.message || "Verification failed. Please try again.");
+      }
+    });
+  }, [token, tokenHandled, router]);
 
   const handleVerify = useCallback(() => {
     if (verificationCode.length !== 6) {
@@ -73,25 +102,46 @@ const VerificationPage = () => {
     });
   }, [verificationCode, router]);
 
-  const handleResend = useCallback(() => {
+  const handleResend = useCallback(async () => {
     setError("");
     setCodeSent(false);
+    setIsResending(true);
 
-    startTransition(async () => {
-      try {
-        const resp = await resendVerificationCode();
+    try {
+      const resp = await resendVerificationCode();
 
-        if (resp.responseType === "error") {
-          setError(resp.message);
-        } else {
-          setCodeSent(true);
-          setSuccess("Verification code sent! Check your email.");
-        }
-      } catch {
-        setError("Failed to resend code. Please try again.");
+      if (resp.responseType === "error") {
+        setError(resp.message);
+      } else {
+        setCodeSent(true);
       }
-    });
+    } catch {
+      setError("Failed to resend code. Please try again.");
+    } finally {
+      setIsResending(false);
+    }
   }, []);
+
+  // Show loading state while processing token from email link
+  if (token && !error && !success) {
+    return (
+      <div className="flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="w-full max-w-md"
+        >
+          <Card className="border-0 shadow-2xl bg-white/80 backdrop-blur-sm">
+            <CardContent className="py-16 flex flex-col items-center gap-4">
+              <Loader2 className="w-10 h-10 animate-spin text-primary" />
+              <p className="text-gray-600">Verifying your email...</p>
+            </CardContent>
+          </Card>
+        </motion.div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center">
@@ -179,26 +229,21 @@ const VerificationPage = () => {
                 </Button>
               </div>
 
-              <div className="text-center space-y-3">
-                <p className="text-sm text-gray-600">
-                  Didn&#39;t receive the code? Check your spam folder.
-                </p>
-
+              <div className="text-center space-y-2">
                 {codeSent ? (
                   <FormSuccess message="Code sent! Check your inbox." />
                 ) : (
-                  <Button
-                    variant="outline"
-                    onClick={handleResend}
-                    disabled={isPending}
-                    className="w-full"
-                  >
-                    {isPending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      "Resend Verification Code"
-                    )}
-                  </Button>
+                  <p className="text-sm text-gray-500">
+                    Didn&#39;t receive the code?{" "}
+                    <button
+                      type="button"
+                      onClick={handleResend}
+                      disabled={isResending}
+                      className="text-primary hover:underline font-medium disabled:opacity-50"
+                    >
+                      {isResending ? "Sending..." : "Resend code"}
+                    </button>
+                  </p>
                 )}
               </div>
             </motion.div>

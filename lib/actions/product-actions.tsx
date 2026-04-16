@@ -3,19 +3,15 @@
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
 import {
+  getAuthenticatedUser,
   deleteActiveBusinessCookie,
   deleteActiveLocationCookie,
-  getAuthenticatedUser,
 } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { UUID } from "node:crypto";
-import {
-  getCurrentBusiness,
-  getCurrentLocation,
-} from "./business/get-current-business";
+import { getCurrentLocation } from "./business/get-current-business";
 import {
   Product,
   SoldItemsReport,
@@ -24,350 +20,455 @@ import {
 import { ProductSchema } from "@/types/product/schema";
 import { GoogleGenAI } from "@google/genai";
 import { LocationDetails } from "@/types/menu/type";
+import { inventoryUrl } from "./inventory-client";
 
-export const fectchAllProducts = async (): Promise<Product[]> => {
-  await getAuthenticatedUser();
+// ── Products CRUD (Inventory Service) ───────────────────────────────
 
+export async function fetchAllProducts(): Promise<Product[]> {
   try {
     const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    const data = await apiClient.get(`/api/products/${location?.id}`);
-
-    return parseStringify(data);
+    const data = await apiClient.get(inventoryUrl("/api/v1/products?size=200"));
+    const page = parseStringify(data) as ApiResponse<Product>;
+    return page.content;
   } catch (error) {
     throw error;
   }
-};
+}
 
-export const productSummary = async (): Promise<any> => {
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
-
-    const data = await apiClient.get(
-      `/api/reports/${location?.id}/products/summary`,
-    );
-
-    return parseStringify(data);
-  } catch (error) {
-    throw error;
-  }
-};
-export const searchProducts = async (
+export async function searchProducts(
   q: string,
   page: number,
   pageLimit: number,
-  locationId?: string,
-): Promise<ApiResponse<Product>> => {
-  await getAuthenticatedUser();
+): Promise<ApiResponse<Product>> {
+  try {
+    const apiClient = new ApiClient();
+    const params = new URLSearchParams();
+    if (q) params.set("name", q);
+    params.set("page", String(page ? page - 1 : 0));
+    params.set("size", String(pageLimit || 10));
+    params.set("sortBy", "createdAt");
+    params.set("sortDirection", "DESC");
+    params.set("active", "true");
+
+    const data = await apiClient.get(
+      inventoryUrl(`/api/v1/products?${params.toString()}`),
+    );
+    return parseStringify(data);
+  } catch (error) {
+    throw error;
+  }
+}
+
+export async function createProduct(
+  product: z.infer<typeof ProductSchema>,
+): Promise<FormResponse | void> {
+  const validData = ProductSchema.safeParse(product);
+
+  if (!validData.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all the required fields",
+      error: new Error(validData.error.message),
+    });
+  }
 
   try {
     const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
-      ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = (await getCurrentLocation()) || { id: locationId };
+    await apiClient.post(inventoryUrl("/api/v1/products"), {
+      locationType: "LOCATION",
+      name: validData.data.name,
+      description: validData.data.description,
+      categoryIds: validData.data.categoryIds,
+      departmentId: validData.data.departmentId,
+      brandId: validData.data.brandId,
+      imageUrl: validData.data.imageUrl,
+      sellOnline: validData.data.sellOnline,
+      trackStock: validData.data.trackStock,
+      taxInclusive: validData.data.taxInclusive,
+      taxClass: validData.data.taxClass,
+      tags: validData.data.tags,
+      variants: validData.data.variants.map((v) => ({
+        name: v.name,
+        sku: v.sku,
+        imageUrl: v.imageUrl,
+        pricingStrategy: v.pricingStrategy || "MANUAL",
+        price: v.price,
+        costPrice: v.costPrice,
+        markupPercentage: v.markupPercentage,
+        markupAmount: v.markupAmount,
+        unlimited: v.unlimited,
+        stockLinkType: v.stockLinkType,
+        stockVariantId: v.stockVariantId,
+        directQuantity: v.directQuantity,
+        consumptionRuleId: v.consumptionRuleId,
+      })),
+    });
 
-    const data = await apiClient.post(`/api/products/${location?.id}`, query);
+    revalidatePath("/products");
+    redirect("/products");
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to create product",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function getProduct(id: string): Promise<Product> {
+  const apiClient = new ApiClient();
+  const data = await apiClient.get(inventoryUrl(`/api/v1/products/${id}`));
+  return parseStringify(data);
+}
+
+export async function updateProduct(
+  productId: string,
+  product: z.infer<typeof ProductSchema>,
+  paginationState?: { pageIndex: number; pageSize: number } | null,
+): Promise<FormResponse | void> {
+  const validData = ProductSchema.safeParse(product);
+
+  if (!validData.success) {
+    return parseStringify({
+      responseType: "error",
+      message: "Please fill all the required fields",
+      error: new Error(validData.error.message),
+    });
+  }
+
+  try {
+    const apiClient = new ApiClient();
+
+    await apiClient.put(inventoryUrl(`/api/v1/products/${productId}`), {
+      name: validData.data.name,
+      description: validData.data.description,
+      categoryIds: validData.data.categoryIds,
+      departmentId: validData.data.departmentId,
+      brandId: validData.data.brandId,
+      imageUrl: validData.data.imageUrl,
+      sellOnline: validData.data.sellOnline,
+      trackStock: validData.data.trackStock,
+      taxInclusive: validData.data.taxInclusive,
+      taxClass: validData.data.taxClass,
+      tags: validData.data.tags,
+      active: validData.data.active,
+      lifecycleStatus: validData.data.lifecycleStatus,
+    });
+
+    revalidatePath("/products");
+
+    if (paginationState) {
+      const page = paginationState.pageIndex + 1;
+      const limit = paginationState.pageSize;
+      redirect(`/products?page=${page}&limit=${limit}`);
+    } else {
+      redirect("/products");
+    }
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
+      responseType: "error",
+      message: error?.message ?? "Failed to update product",
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  if (!id) throw new Error("Product ID is required");
+  const apiClient = new ApiClient();
+  await apiClient.delete(inventoryUrl(`/api/v1/products/${id}`));
+  revalidatePath("/products");
+}
+
+// ── Variants CRUD (nested under product) ────────────────────────────
+
+export async function createVariant(
+  productId: string,
+  variant: Record<string, unknown>,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.post(
+    inventoryUrl(`/api/v1/products/${productId}/variants`),
+    variant,
+  );
+  revalidatePath("/products");
+}
+
+export async function updateVariant(
+  productId: string,
+  variantId: string,
+  variant: Record<string, unknown>,
+): Promise<void> {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
+    variant,
+  );
+  revalidatePath("/products");
+}
+
+export async function deleteVariant(
+  productId: string,
+  variantId: string,
+): Promise<void> {
+  if (!productId || !variantId) throw new Error("Product and variant IDs are required");
+  const apiClient = new ApiClient();
+  await apiClient.delete(
+    inventoryUrl(`/api/v1/products/${productId}/variants/${variantId}`),
+  );
+  revalidatePath("/products");
+}
+
+// ── Modifier Groups CRUD (nested under product) ─────────────────────
+
+export async function getModifierGroups(productId: string) {
+  const apiClient = new ApiClient();
+  return apiClient.get(inventoryUrl(`/api/v1/products/${productId}/modifier-groups`));
+}
+
+export async function createModifierGroup(
+  productId: string,
+  data: Record<string, unknown>,
+) {
+  const apiClient = new ApiClient();
+  const result = await apiClient.post(
+    inventoryUrl(`/api/v1/products/${productId}/modifier-groups`),
+    data,
+  );
+  revalidatePath("/products");
+  return result;
+}
+
+export async function updateModifierGroup(
+  productId: string,
+  groupId: string,
+  data: Record<string, unknown>,
+) {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}`),
+    data,
+  );
+  revalidatePath("/products");
+}
+
+export async function deleteModifierGroup(productId: string, groupId: string) {
+  const apiClient = new ApiClient();
+  await apiClient.delete(
+    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}`),
+  );
+  revalidatePath("/products");
+}
+
+export async function createModifierOption(
+  productId: string,
+  groupId: string,
+  data: Record<string, unknown>,
+) {
+  const apiClient = new ApiClient();
+  await apiClient.post(
+    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}/options`),
+    data,
+  );
+  revalidatePath("/products");
+}
+
+export async function updateModifierOption(
+  productId: string,
+  groupId: string,
+  optionId: string,
+  data: Record<string, unknown>,
+) {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}/options/${optionId}`),
+    data,
+  );
+  revalidatePath("/products");
+}
+
+export async function deleteModifierOption(
+  productId: string,
+  groupId: string,
+  optionId: string,
+) {
+  const apiClient = new ApiClient();
+  await apiClient.delete(
+    inventoryUrl(`/api/v1/products/${productId}/modifier-groups/${groupId}/options/${optionId}`),
+  );
+  revalidatePath("/products");
+}
+
+// ── Addon Groups CRUD (nested under product) ────────────────────────
+
+export async function getAddonGroups(productId: string) {
+  const apiClient = new ApiClient();
+  return apiClient.get(inventoryUrl(`/api/v1/products/${productId}/addon-groups`));
+}
+
+export async function createAddonGroup(
+  productId: string,
+  data: Record<string, unknown>,
+) {
+  const apiClient = new ApiClient();
+  const result = await apiClient.post(
+    inventoryUrl(`/api/v1/products/${productId}/addon-groups`),
+    data,
+  );
+  revalidatePath("/products");
+  return result;
+}
+
+export async function updateAddonGroup(
+  productId: string,
+  groupId: string,
+  data: Record<string, unknown>,
+) {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}`),
+    data,
+  );
+  revalidatePath("/products");
+}
+
+export async function deleteAddonGroup(productId: string, groupId: string) {
+  const apiClient = new ApiClient();
+  await apiClient.delete(
+    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}`),
+  );
+  revalidatePath("/products");
+}
+
+export async function createAddonGroupItem(
+  productId: string,
+  groupId: string,
+  data: Record<string, unknown>,
+) {
+  const apiClient = new ApiClient();
+  await apiClient.post(
+    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}/items`),
+    data,
+  );
+  revalidatePath("/products");
+}
+
+export async function updateAddonGroupItem(
+  productId: string,
+  groupId: string,
+  itemId: string,
+  data: Record<string, unknown>,
+) {
+  const apiClient = new ApiClient();
+  await apiClient.put(
+    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}/items/${itemId}`),
+    data,
+  );
+  revalidatePath("/products");
+}
+
+export async function deleteAddonGroupItem(
+  productId: string,
+  groupId: string,
+  itemId: string,
+) {
+  const apiClient = new ApiClient();
+  await apiClient.delete(
+    inventoryUrl(`/api/v1/products/${productId}/addon-groups/${groupId}/items/${itemId}`),
+  );
+  revalidatePath("/products");
+}
+
+// ── Bulk Price Update ───────────────────────────────────────────────
+
+export async function bulkPriceUpdate(
+  updates: { productVariantId: string; price: number }[],
+) {
+  const apiClient = new ApiClient();
+  return apiClient.put(inventoryUrl("/api/v1/products/bulk-price"), { updates });
+}
+
+// ── Reports (kept — these hit a different service) ──────────────────
+
+export const productSummary = async (): Promise<any> => {
+  await getAuthenticatedUser();
+  try {
+    const apiClient = new ApiClient("reports");
+    const location = await getCurrentLocation();
+    const data = await apiClient.get(`/api/reports/${location?.id}/products/summary`);
     return parseStringify(data);
   } catch (error) {
     throw error;
   }
 };
 
-export const createProduct = async (
-  product: z.infer<typeof ProductSchema>,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
-  const validData = ProductSchema.safeParse(product);
-
-  if (!validData.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validData.error.message),
-    };
-    return parseStringify(formResponse);
-  }
-
-  const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
-
-  const payload = {
-    ...validData.data,
-    location: location?.id,
-    business: business?.id,
-  };
-
-  // console.log("The payload to create product", payload);
-
-  try {
-    const apiClient = new ApiClient();
-    await apiClient.post(`/api/products/${location?.id}/create`, payload);
-    formResponse = {
-      responseType: "success",
-      message: "Product created successfully",
-    };
-  } catch (error: any) {
-    const formattedError = await error;
-    console.error("Error creating product", formattedError);
-    formResponse = {
-      responseType: "error",
-      message:
-        error.message ??
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-
-  if (formResponse.responseType == "error") return parseStringify(formResponse);
-
-  revalidatePath("/products");
-  redirect("/products");
-};
-
-export const getProduct = async (id: UUID): Promise<ApiResponse<Product>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const response = await apiClient.post(`/api/products/${location?.id}`, query);
-  return parseStringify(response);
-};
-
-export const updateProduct = async (
-  productId: string,
-  product: z.infer<typeof ProductSchema>,
-  paginationState?: { pageIndex: number; pageSize: number } | null,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
-
-  // Validate the incoming data
-  const validData = ProductSchema.safeParse(product);
-
-  if (!validData.success) {
-    formResponse = {
-      responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validData.error.message),
-    };
-    return parseStringify(formResponse);
-  }
-
-  // Get current location and business context
-  const location = await getCurrentLocation();
-  const business = await getCurrentBusiness();
-
-  // Prepare the update payload
-  const payload = {
-    ...validData.data,
-    location: location?.id,
-    business: business?.id,
-  };
-
-  try {
-    const apiClient = new ApiClient();
-
-    // First, fetch the existing product to compare variants
-    const existingProduct = await getProduct(productId as UUID);
-
-    if (existingProduct.totalElements == 0) {
-      formResponse = {
-        responseType: "error",
-        message: "Error occurred while updating this product",
-      };
-      return parseStringify(formResponse);
-    }
-
-    const existingVariants = existingProduct.content[0].variants;
-
-    // Variants data
-    const variantsPayload: any[] = [];
-
-    // Create a map of existing variants based on original form positions
-    const existingVariantMap = new Map();
-    existingVariants.forEach((variant) => {
-      existingVariantMap.set(variant.id, variant);
-    });
-
-    // Process new/updated variants
-    payload.variants.forEach((newVariant) => {
-      if (newVariant.id && existingVariantMap.has(newVariant.id)) {
-        variantsPayload.push({
-          ...newVariant,
-          id: newVariant.id,
-        });
-        existingVariantMap.delete(newVariant.id);
-      } else {
-        variantsPayload.push(newVariant);
-      }
-    });
-
-    // Any variants still in the map should be deleted
-    const variantsToRemove = Array.from(existingVariantMap.keys());
-
-    // Handle variant deletions with error tracking
-    const deletionErrors: string[] = [];
-    for (const variantId of variantsToRemove) {
-      try {
-        await deleteVariant(productId as UUID, variantId as UUID);
-      } catch (error: any) {
-        console.error(`Failed to delete variant ${variantId}:`, error);
-        deletionErrors.push(variantId);
-
-        const failedVariant = existingVariantMap.get(variantId);
-        if (failedVariant) {
-          variantsPayload.push({
-            ...failedVariant,
-            id: variantId,
-          });
-        }
-      }
-    }
-
-    // Prepare final payload with properly categorized variants
-    const finalPayload = {
-      ...payload,
-      variants: variantsPayload,
-    };
-
-    // console.log("The final payload to update product", finalPayload);
-
-    // Update the product with new data
-    await apiClient.put(
-      `/api/products/${location?.id}/${productId}`,
-      finalPayload,
-    );
-
-    formResponse = {
-      responseType: "success",
-      message:
-        deletionErrors.length > 0
-          ? "Product updated successfully with some variants retained due to deletion failures"
-          : "Product updated successfully",
-    };
-  } catch (error: any) {
-    const formattedError = await error;
-    console.error("Error updating product - Full Details:", {
-      ...formattedError,
-      details: {
-        ...formattedError.details,
-        fieldErrors: JSON.stringify(
-          formattedError.details?.fieldErrors,
-          null,
-          2,
-        ),
-      },
-    });
-    console.error(
-      "Field Errors Detail:",
-      JSON.stringify(formattedError.details?.fieldErrors, null, 2),
-    );
-
-    formResponse = {
-      responseType: "error",
-      message:
-        error.message ??
-        "Something went wrong while processing your request, please try again",
-      error: error instanceof Error ? error : new Error(String(error)),
-    };
-  }
-
-  if (formResponse.responseType === "error")
-    return parseStringify(formResponse);
-
-  console.log("🔄 Preparing redirect with pagination state:", paginationState);
-  revalidatePath("/products");
-
-  if (
-    paginationState &&
-    typeof paginationState.pageIndex === "number" &&
-    typeof paginationState.pageSize === "number"
-  ) {
-    const page = paginationState.pageIndex + 1;
-    const limit = paginationState.pageSize;
-    console.log("↪️ Redirecting to:", `/products?page=${page}&limit=${limit}`);
-    redirect(`/products?page=${page}&limit=${limit}`);
-  } else {
-    console.log("↪️ Redirecting to default products page");
-    redirect("/products");
-  }
-};
-
-export const deleteVariant = async (
-  productId: UUID,
-  variantId: UUID,
-): Promise<void> => {
-  if (!productId)
-    throw new Error("Product ID is required to perform this request");
-  if (!variantId)
-    throw new Error("Variant ID is required to perform this request");
-
+export const topSellingProduct = async (
+  startDate?: Date,
+  endDate?: Date,
+  limit?: number,
+): Promise<TopSellingProduct | null> => {
   await getAuthenticatedUser();
-
   try {
-    const apiClient = new ApiClient();
-    await apiClient.delete(`/api/variants/${productId}/${variantId}`);
-  } catch (error) {
-    throw error;
-  }
-};
-
-export const deleteProduct = async (id: UUID): Promise<void> => {
-  if (!id) throw new Error("Product ID is required to perform this request");
-
-  await getAuthenticatedUser();
-
-  try {
-    const apiClient = new ApiClient();
-
+    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
-
-    await apiClient.delete(`/api/products/${location?.id}/${id}`);
-
-    revalidatePath("/products");
+    const topSelling = await apiClient.get(
+      `/api/reports/${location?.id}/products/top-selling`,
+      { params: { startDate, endDate, limit } },
+    );
+    return parseStringify(topSelling);
   } catch (error) {
     throw error;
   }
 };
+
+export const SoldItemsReports = async (
+  startDate?: Date,
+  endDate?: Date,
+): Promise<SoldItemsReport | null> => {
+  await getAuthenticatedUser();
+  try {
+    const apiClient = new ApiClient("reports");
+    const location = await getCurrentLocation();
+    const soldItems = await apiClient.get(
+      `/api/reports/${location?.id}/products/sold-items`,
+      { params: { startDate, endDate } },
+    );
+    return parseStringify(soldItems);
+  } catch (error) {
+    throw error;
+  }
+};
+
+// ── AI Description ──────────────────────────────────────────────────
+
+export const generateAIDescription = async (
+  name: string,
+  category: string,
+): Promise<string> => {
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+  const prompt = `Generate a concise product description for "${name}" in the ${category} category.
+Requirements:
+- Maximum 3-4 sentences
+- Focus on 2-3 key benefits/features only
+- Use simple, clear language
+- Start with what the product does
+- Keep it under 150 words`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+    return response.text ?? "No description generated";
+  } catch {
+    return "No description generated";
+  }
+};
+
+// ── CSV Upload/Download (kept — hits Rust service) ──────────────────
 
 export const uploadProductCSV = async ({
   fileData,
@@ -377,18 +478,7 @@ export const uploadProductCSV = async ({
   fileName: string;
 }): Promise<void> => {
   if (!fileName.endsWith(".csv")) {
-    throw new Error(
-      "Invalid file type. Please upload a CSV file with a .csv extension.",
-    );
-  }
-
-  const lines = fileData.split("\n");
-  const isCSVContent = lines.every((line) => line.split(",").length > 1);
-
-  if (!isCSVContent) {
-    throw new Error(
-      "Invalid file content. The file does not appear to have a CSV structure.",
-    );
+    throw new Error("Invalid file type. Please upload a CSV file.");
   }
 
   const formattedCSVData = fileData.replace(/\r\n/g, "\n");
@@ -400,204 +490,52 @@ export const uploadProductCSV = async ({
       `/rust/csv-uploading/upload-products-csv?location_id=${location?.id}`,
       formattedCSVData,
       {
-        headers: {
-          "Content-Type": "text/csv",
-        },
-        transformRequest: [(data) => data],
+        headers: { "Content-Type": "text/csv" },
+        transformRequest: [(data: string) => data],
       },
     );
   } catch (error: any) {
-    console.error("Error updating csv", error);
-    // Handle subscription limit exceeded error
-    if (
-      error.code === "FORBIDDEN" &&
-      error.status === 403 &&
-      error.message?.includes(
-        "beyond the limit of the current subscription package",
-      )
-    ) {
-      // Extract limit and wanted values from the message
+    if (error.code === "FORBIDDEN" && error.message?.includes("beyond the limit")) {
       const limitMatch = error.message.match(/limit is (\d+)/);
       const wantedMatch = error.message.match(/total of (\d+)/);
-
-      const limit = limitMatch ? limitMatch[1] : "100";
-      const wanted = wantedMatch ? wantedMatch[1] : "too many";
-
       throw new Error(
-        `Subscription limit exceeded. Your current plan allows up to ${limit} products, but you attempted to upload a total of ${wanted}. Please upgrade your subscription or reduce the number of products.`,
+        `Subscription limit exceeded. Your plan allows up to ${limitMatch?.[1] ?? "?"} products, but you attempted ${wantedMatch?.[1] ?? "too many"}.`,
       );
     }
-
-    // Handle other API errors with structured messages
-    if (error.message && typeof error.message === "string") {
-      throw new Error(`Failed to upload CSV: ${error.message}`);
-    }
-
-    // Handle generic errors - safely convert to string
-    if (error instanceof Error) {
-      throw new Error(`Failed to upload CSV file: ${error.message}`);
-    } else {
-      throw new Error(
-        `Failed to upload CSV file: Please check your file and try again.`,
-      );
-    }
+    throw new Error(`Failed to upload CSV: ${error?.message || "Please try again."}`);
   }
   revalidatePath("/products");
-  // redirect("/products");
 };
-
-export const topSellingProduct = async (
-  startDate?: Date,
-  endDate?: Date,
-  limit?: number,
-): Promise<TopSellingProduct | null> => {
-  await getAuthenticatedUser();
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const params = {
-      startDate,
-      endDate,
-      limit,
-    };
-    const topSelling = await apiClient.get(
-      `/api/reports/${location?.id}/products/top-selling`,
-      {
-        params,
-      },
-    );
-    // console.log("The products sold",topSelling )
-
-    return parseStringify(topSelling);
-  } catch (error) {
-    console.error("Error fetching top selling products report:", error);
-    throw error;
-  }
-};
-
-export const SoldItemsReports = async (
-  startDate?: Date,
-  endDate?: Date,
-): Promise<SoldItemsReport | null> => {
-  await getAuthenticatedUser();
-  try {
-    const apiClient = new ApiClient();
-    const location = await getCurrentLocation();
-    const params = {
-      startDate,
-      endDate,
-    };
-    const soldItems = await apiClient.get(
-      `/api/reports/${location?.id}/products/sold-items`,
-      {
-        params,
-      },
-    );
-
-    return parseStringify(soldItems);
-  } catch (error) {
-    console.error("Error fetching sold items report:", error);
-    throw error;
-  }
-};
-
-export const generateAIDescription = async (
-  name: string,
-  category: string,
-): Promise<string> => {
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-  });
-
-  const prompt = `Generate a concise product description for "${name}" in the ${category} category.
-
-        Requirements:
-        - Maximum 3-4 sentences
-        - Focus on 2-3 key benefits/features only
-        - Use simple, clear language
-        - Avoid marketing fluff and excessive adjectives
-        - Start with what the product does, not emotional language
-        - Include practical value proposition
-        - No bullet points or formatting
-        - Keep it under 150 words
-
-        Example format: "[Product] is a [category] that [main function]. It features [key benefit 1] and [key benefit 2]. Perfect for [target use case]."`;
-
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: prompt,
-    });
-
-    return response.text ?? "No description generated";
-  } catch (error) {
-    console.error("Error generating description:", error);
-    return "No description generated";
-  }
-};
-
-// export const generateAIImage = async (description: string, name: string): Promise<string> => {
-//     const ai = new GoogleGenAI({
-//         apiKey: process.env.GEMINI_API_KEY,
-//     });
-
-//     const prompt = `Generate an image for "${name}" based on the following description: "${description}"`;
-
-//     try {
-//         const response = await ai.models.generateContent({
-//             model: "gemini-2.0-flash-preview-image-generation",
-//             contents: prompt,
-//             config: {
-//                 responseModalities: [Modality.TEXT, Modality.IMAGE],
-//               },
-//         });
-
-//         console.log("Generated image URL:", response.url);
-
-//         return response.url ?? "No image generated";
-//     } catch (error) {
-//         console.error("Error generating image:", error);
-//         return "No image generated";
-//     }
-// }
 
 export const downloadProductsCSV = async (locationId?: string) => {
   const location = (await getCurrentLocation()) || { id: locationId };
-
   try {
     const apiClient = new ApiClient();
-    const response = await apiClient.get(
+    return await apiClient.get(
       `/rust/csv-downloading/download-products-csv?location_id=${location?.id}`,
     );
-
-    // console.log("CSV download response", response);
-
-    return response;
   } catch (error) {
-    console.error("Error downloading CSV file:", error);
     throw new Error(
-      `Failed to download CSV file: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to download CSV: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 };
+
+// ── Archive ─────────────────────────────────────────────────────────
 
 export const archiveProduct = async (ids: string | string[]) => {
   const apiClient = new ApiClient();
-  const location = await getCurrentLocation();
+  const productIds = Array.isArray(ids) ? ids : [ids];
 
-  try {
-    // Convert single ID to array for consistent handling
-    const productIds = Array.isArray(ids) ? ids : [ids];
-
-    // Process each product ID
-    await apiClient.put(`/api/products/${location?.id}/archive`, productIds);
-
-    revalidatePath("/products");
-  } catch (error) {
-    // console.error("Error archiving products:", error);
-    throw error;
+  // Archive = set active to false for each product
+  for (const id of productIds) {
+    await apiClient.put(inventoryUrl(`/api/v1/products/${id}`), { active: false });
   }
+
+  revalidatePath("/products");
 };
+
+// ── Menu (kept — different service) ─────────────────────────────────
 
 export const menuProducts = async (
   q: string,
@@ -609,64 +547,37 @@ export const menuProducts = async (
     const apiClient = new ApiClient();
     const query = {
       filters: [
-        {
-          key: "name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-        {
-          key: "isArchived",
-          operator: "EQUAL",
-          field_type: "BOOLEAN",
-          value: false,
-        },
+        { key: "name", operator: "LIKE", field_type: "STRING", value: q },
+        { key: "isArchived", operator: "EQUAL", field_type: "BOOLEAN", value: false },
       ],
-      sorts: [
-        {
-          key: "name",
-          direction: "ASC",
-        },
-      ],
+      sorts: [{ key: "name", direction: "ASC" }],
       page: Math.max(page ? page - 1 : 0, 0),
       size: pageLimit ? Math.min(pageLimit, 100) : 10,
     };
 
-    const location = { id: locationId };
-
     await deleteActiveBusinessCookie();
     await deleteActiveLocationCookie();
 
-    const data = await apiClient.post(`/api/menu/${location?.id}`, query, {
+    const data = await apiClient.post(`/api/menu/${locationId}`, query, {
       headers: {
-        "SETTLO-API-KEY":
-          "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a",
+        "SETTLO-API-KEY": "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a",
       },
     });
-
     return parseStringify(data);
   } catch (error) {
     throw error;
   }
 };
 
-export const locationMenuDetails = async (
-  locationId?: string,
-): Promise<LocationDetails> => {
+export const locationMenuDetails = async (locationId?: string): Promise<LocationDetails> => {
   try {
     const apiClient = new ApiClient();
-
-    const data = await apiClient.get<LocationDetails>(
-      `/api/menu/${locationId}`,
-      {
-        headers: {
-          "SETTLO-API-KEY":
-            "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a",
-        },
+    const data = await apiClient.get<LocationDetails>(`/api/menu/${locationId}`, {
+      headers: {
+        "SETTLO-API-KEY": "sk_menu_7f5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a5e3d1c9b7a",
       },
-    );
-
-    return parseStringify(data); // Should return LocationDetails
+    });
+    return parseStringify(data);
   } catch (error) {
     throw error;
   }

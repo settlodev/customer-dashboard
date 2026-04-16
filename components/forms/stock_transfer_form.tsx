@@ -1,6 +1,12 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import React, { useCallback, useState, useTransition } from "react";
+import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus, Trash2, ArrowRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
@@ -9,408 +15,191 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
+import { FormError } from "../widgets/form-error";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
-import { Separator } from "@/components/ui/separator";
-import { FormError } from "../widgets/form-error";
-import { FormSuccess } from "../widgets/form-success";
-import { fetchStock } from "@/lib/actions/stock-actions";
-import { Stock } from "@/types/stock/type";
-import { NumericFormat } from "react-number-format";
-import { Textarea } from "../ui/textarea";
-import { StockTransfer } from "@/types/stock-transfer/type";
-import { StockTransferSchema } from "@/types/stock-transfer/schema";
 import { createStockTransfer } from "@/lib/actions/stock-transfer-actions";
-import StaffSelectorWidget from "../widgets/staff_selector_widget";
-import { fetchAllLocations } from "@/lib/actions/location-actions";
-import { Location } from "@/types/location/type";
-import LocationSelector from "../widgets/location-selector";
+import { StockTransferSchema } from "@/types/stock-transfer/schema";
 import { FormResponse } from "@/types/types";
-import { useRouter, useSearchParams } from "next/navigation";
-import { StockVariant } from "@/types/stockVariant/type";
-import StockVariantSelector from "../widgets/stock-variant-selector";
-import { Card, CardContent } from "@/components/ui/card";
-import { Package, ArrowLeftRight, Hash, MessageSquare } from "lucide-react";
-import LocationDepartmentSelector from "@/components/widgets/location-department-selector";
+import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 
-function StockTransferForm({
-  item,
-}: {
-  item: StockTransfer | null | undefined;
-}) {
+export default function StockTransferForm() {
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | undefined>("");
-  const [success, setSuccess] = useState<string | undefined>("");
-  const [stocks, setStocks] = useState<Stock[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
-  const [, setResponse] = useState<FormResponse | undefined>();
-  const [selectedVariant, setSelectedVariant] = useState<StockVariant>();
+  const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
-  const router = useRouter();
-
-  const searchParams = useSearchParams();
-  const stockVariantId = searchParams.get("stockItem");
-
-  useEffect(() => {
-    const getData = async () => {
-      try {
-        const [stockResponse, locationResponse] = await Promise.all([
-          fetchStock(),
-          fetchAllLocations(),
-        ]);
-        setStocks(stockResponse);
-        setLocations(locationResponse || []);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load form data. Please refresh the page.",
-        });
-      }
-    };
-    getData();
-  }, [toast]);
 
   const form = useForm<z.infer<typeof StockTransferSchema>>({
     resolver: zodResolver(StockTransferSchema),
     defaultValues: {
-      ...item,
-      status: true,
-      ...(stockVariantId ? { stockVariant: stockVariantId } : {}),
+      destinationLocationType: "LOCATION",
+      destinationLocationId: "",
+      transferType: "SUPPLY",
+      notes: "",
+      items: [{ stockVariantId: "", quantity: 0 }],
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "items",
+  });
+
   const onInvalid = useCallback(
-    (errors: any) => {
-      const firstError = Object.values(errors)[0] as any;
-      toast({
-        variant: "destructive",
-        title: "Validation Error",
-        description:
-          firstError?.message || "Please check all required fields.",
-      });
+    (errors: FieldErrors) => {
+      toast({ variant: "destructive", title: "Validation failed", description: "Check your inputs." });
     },
     [toast],
   );
 
   const submitData = (values: z.infer<typeof StockTransferSchema>) => {
-    setError("");
-    setSuccess("");
-
+    setResponse(undefined);
     startTransition(() => {
-      if (item) {
-        console.log("Update logic for existing stock transfer");
-      } else {
-        createStockTransfer(values)
-          .then((data) => {
-            if (data) setResponse(data);
-            if (data && data.responseType === "success") {
-              setSuccess(data.message);
-              toast({
-                variant: "success",
-                title: "Success",
-                description: data.message,
-              });
-              router.push("/stock-transfers");
-            } else if (data && data.responseType === "error") {
-              setError(data.message);
-            }
-          })
-          .catch((err) => {
-            console.error("Error creating stock transfer:", err);
-            setError("An unexpected error occurred. Please try again.");
-            toast({
-              variant: "destructive",
-              title: "Error",
-              description: "Failed to create stock transfer.",
-            });
-          });
-      }
+      createStockTransfer(values).then((data) => {
+        if (data) setResponse(data);
+        if (data?.responseType === "success") {
+          toast({ variant: "success", title: "Success", description: data.message });
+        }
+      });
     });
   };
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(submitData, onInvalid)}
-        className="space-y-6"
-      >
-        {error && <FormError message={error} />}
-        {success && <FormSuccess message={success} />}
-
-        {/* Stock Item Selection */}
+      <FormError message={response?.message} />
+      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-4">
             <div className="flex items-center gap-2 mb-2">
-              <Package className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                Item Information
-              </h3>
+              <ArrowRight className="h-5 w-5 text-gray-400" />
+              <h3 className="text-lg font-medium">Transfer Details</h3>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="destinationLocationType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Destination Type <span className="text-red-500">*</span></FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        <SelectItem value="LOCATION">Location</SelectItem>
+                        <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
+                        <SelectItem value="STORE">Store</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="destinationLocationId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Destination <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Input placeholder="Destination ID" {...field} disabled={isPending} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <FormField
               control={form.control}
-              name="stockVariant"
+              name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>
-                    Stock Item <span className="text-red-500">*</span>
-                  </FormLabel>
+                  <FormLabel>Notes</FormLabel>
                   <FormControl>
-                    <StockVariantSelector
-                      {...field}
-                      value={field.value ?? ""}
-                      isDisabled={isPending || !!stockVariantId}
-                      onChange={(value) => {
-                        field.onChange(value);
-                        const variant = stocks.find((s) => s.id === value);
-                        if (variant) {
-                          setSelectedVariant(variant as any);
-                        }
-                      }}
-                    />
+                    <Textarea placeholder="Transfer notes" rows={2} {...field} value={field.value ?? ""} disabled={isPending} />
                   </FormControl>
-                  <FormMessage />
                 </FormItem>
               )}
             />
+          </CardContent>
+        </Card>
 
-            {selectedVariant && (
-              <div className="rounded-lg border bg-muted/50 p-4 space-y-1.5">
-                <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                  Current Stock
-                </p>
-                <div className="flex items-center gap-6 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Available: </span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                      {Intl.NumberFormat().format(
-                        selectedVariant.currentAvailable,
-                      )}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground">Value: </span>
-                    <span className="font-semibold text-gray-900 dark:text-gray-100">
-                      {Intl.NumberFormat("en-US").format(
-                        selectedVariant.currentTotalValue,
-                      )}{" "}
-                      TZS
-                    </span>
-                  </div>
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Transfer Items</h3>
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ stockVariantId: "", quantity: 0 })} disabled={isPending}>
+                <Plus className="w-4 h-4 mr-1" /> Add Item
+              </Button>
+            </div>
+
+            {fields.map((field, index) => (
+              <div key={field.id} className="border rounded-lg p-4 space-y-3 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Item {index + 1}</span>
+                  {fields.length > 1 && (
+                    <button type="button" onClick={() => remove(index)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Transfer quantity cannot exceed available quantity
-                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.stockVariantId`}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Stock Item <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <StockVariantSelector value={f.value} onChange={f.onChange} isDisabled={isPending} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.quantity`}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Quantity <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <NumericFormat
+                            className="flex h-10 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                            value={f.value}
+                            onValueChange={(v) => f.onChange(v.value ? Number(v.value) : 0)}
+                            thousandSeparator
+                            placeholder="0"
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
-            )}
+            ))}
           </CardContent>
         </Card>
 
-        {/* Transfer Details */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <ArrowLeftRight className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                Transfer Details
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <FormField
-                control={form.control}
-                name="fromLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      From Location <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <LocationSelector
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isRequired
-                        isDisabled={isPending}
-                        label="Location"
-                        placeholder="Select origin"
-                        locations={locations}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="toLocation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      To Location <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <LocationSelector
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isRequired
-                        isDisabled={isPending}
-                        label="To Location"
-                        placeholder="Select destination"
-                        locations={locations.filter(
-                          (location) =>
-                            location.id !== form.watch("fromLocation"),
-                        )}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="department"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Department</FormLabel>
-                    <FormControl>
-                      <LocationDepartmentSelector
-                        {...field}
-                        value={field.value ?? ""}
-                        locationId={form.watch("toLocation")}
-                        isDisabled={isPending || !form.watch("toLocation")}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quantity & Staff */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Hash className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                Quantity & Staff
-              </h3>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="quantity"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Quantity <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <NumericFormat
-                        className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                        value={field.value}
-                        disabled={isPending}
-                        placeholder="Enter transfer quantity"
-                        thousandSeparator={true}
-                        allowNegative={false}
-                        onValueChange={(values) => {
-                          const rawValue = Number(
-                            values.value.replace(/,/g, ""),
-                          );
-                          field.onChange(rawValue);
-                        }}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="staff"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>
-                      Responsible Staff{" "}
-                      <span className="text-red-500">*</span>
-                    </FormLabel>
-                    <FormControl>
-                      <StaffSelectorWidget
-                        value={field.value}
-                        onChange={field.onChange}
-                        onBlur={field.onBlur}
-                        isRequired
-                        isDisabled={isPending}
-                        label="Staff"
-                        placeholder="Select staff member"
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Comments */}
-        <Card className="rounded-xl shadow-sm">
-          <CardContent className="pt-6 space-y-4">
-            <div className="flex items-center gap-2 mb-2">
-              <MessageSquare className="h-4 w-4 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
-                Additional Notes
-              </h3>
-            </div>
-
-            <FormField
-              control={form.control}
-              name="comment"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Add any relevant notes about this transfer..."
-                      {...field}
-                      disabled={isPending}
-                      maxLength={400}
-                      className="min-h-[100px] resize-none"
-                    />
-                  </FormControl>
-                  <p className="text-xs text-muted-foreground text-right">
-                    {field.value?.length || 0}/400
-                  </p>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Actions */}
-        <div className="flex items-center gap-3 pt-2">
+        <div className="flex items-center gap-4 pt-2 pb-4">
           <CancelButton />
-          <SubmitButton
-            isPending={isPending}
-            label={item ? "Update Transfer" : "Create Transfer"}
-          />
+          <Separator orientation="vertical" className="h-5" />
+          <SubmitButton isPending={isPending} label="Create Transfer" />
         </div>
       </form>
     </Form>
   );
 }
-
-export default StockTransferForm;

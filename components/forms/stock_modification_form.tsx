@@ -1,286 +1,199 @@
 "use client";
 
-import { useForm } from "react-hook-form";
-import {
-    Form,
-    FormControl,
-    FormDescription,
-    FormField,
-    FormItem,
-    FormLabel,
-    FormMessage,
-} from "@/components/ui/form";
+import React, { useCallback, useState, useTransition } from "react";
+import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import React, { useCallback, useEffect, useState, useTransition } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { Textarea } from "@/components/ui/textarea";
+import { NumericFormat } from "react-number-format";
 import { useToast } from "@/hooks/use-toast";
+import { FormError } from "../widgets/form-error";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
-import { Separator } from "@/components/ui/separator";
-import { FormError } from "../widgets/form-error";
-import { FormSuccess } from "../widgets/form-success";
-import { fetchStock } from "@/lib/actions/stock-actions";
-import { Stock } from "@/types/stock/type";
-import { fetchAllStaff } from "@/lib/actions/staff-actions";
-import { NumericFormat } from "react-number-format";
-import { StockModification } from "@/types/stock-modification/type";
-import { StockModificationSchema } from "@/types/stock-modification/schema";
 import { createStockModification } from "@/lib/actions/stock-modification-actions";
-import { Textarea } from "../ui/textarea";
-import { reasonForStockModification } from "@/types/enums";
-import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
-import StaffSelectorWidget from "../widgets/staff_selector_widget";
+import { StockModificationSchema } from "@/types/stock-modification/schema";
+import { MODIFICATION_CATEGORY_OPTIONS } from "@/types/stock-modification/type";
 import { FormResponse } from "@/types/types";
-import { useRouter, useSearchParams } from "next/navigation";
-import StockVariantSelector from "../widgets/stock-variant-selector";
+import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 
-function StockModificationForm({ item }: { item: StockModification | null | undefined }) {
-    const [isPending, startTransition] = useTransition();
-    const [error] = useState<string | undefined>("");
-    const [success] = useState<string | undefined>("");
-    const [, setStocks] = useState<Stock[]>([]);
-    const [, setResponse] = useState<FormResponse | undefined>();
-    const { toast } = useToast();
-    const router = useRouter();
+export default function StockModificationForm() {
+  const [isPending, startTransition] = useTransition();
+  const [response, setResponse] = useState<FormResponse | undefined>();
+  const { toast } = useToast();
 
-    const searchParams = useSearchParams()
-    const stockVariantId = searchParams.get('stockItem')
+  const form = useForm<z.infer<typeof StockModificationSchema>>({
+    resolver: zodResolver(StockModificationSchema),
+    defaultValues: {
+      category: "CORRECTION",
+      reason: "",
+      notes: "",
+      items: [{ stockVariantId: "", quantityChange: 0 }],
+    },
+  });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "items",
+  });
 
-    const reasons: { id: string; label: string }[] = [
-        { id: reasonForStockModification.DAMAGE, label: "Damage" },
-        { id: reasonForStockModification.INTERNALUSE, label: "Internal Use" },
-        { id: reasonForStockModification.INVENTORYRECOUNT, label: "Inventory Recount" },
-        { id: reasonForStockModification.THEFT, label: "Theft" },
-    ];
+  const onInvalid = useCallback(
+    (errors: FieldErrors) => {
+      toast({ variant: "destructive", title: "Validation failed", description: "Check your inputs." });
+    },
+    [toast],
+  );
 
-
-    useEffect(() => {
-        const getData = async () => {
-            try {
-                const [stockResponse] = await Promise.all([
-                    fetchStock(),
-                    fetchAllStaff(),
-                ]);
-                setStocks(stockResponse);
-            } catch (error) {
-                console.error("Error fetching stocks:", error);
-            }
-        };
-        getData();
-    }, []);
-
-   
-
-    const form = useForm<z.infer<typeof StockModificationSchema>>({
-        resolver: zodResolver(StockModificationSchema),
-        defaultValues: {
-            ...item,
-            status: true,
-            reason: item?.reason || reasonForStockModification.DAMAGE,
-            ...(stockVariantId ? { stockVariant: stockVariantId } : {})
-        },
+  const submitData = (values: z.infer<typeof StockModificationSchema>) => {
+    setResponse(undefined);
+    startTransition(() => {
+      createStockModification(values).then((data) => {
+        if (data) setResponse(data);
+        if (data?.responseType === "success") {
+          toast({ variant: "success", title: "Success", description: data.message });
+        }
+      });
     });
+  };
 
-    const onInvalid = useCallback(
-        (errors: any) => {
-            
-            toast({
-                variant: "destructive",
-                title: "Uh oh! Something went wrong",
-                description: errors.message || "Please try again later.",
-            });
-        },
-        [toast]
-    );
-
-    const submitData = (values: z.infer<typeof StockModificationSchema>) => {
-
-        startTransition(() => {
-            if (item) {
-                console.log("Update logic for existing stock modification");
-            } else {
-                createStockModification(values)
-                    .then((data) => {
-                        if (data) setResponse(data);
-                        if (data && data.responseType === "success") {
-                            toast({
-                                variant: "success",
-                                title: "Success",
-                                description: data.message,
-                            });
-                            router.push("/stock-modifications");
-                        }
-                    })
-                    .catch((err) => {
-                        console.error("Error creating stock modification:", err);
-                    });
-            }
-        });
-    };
-
-    return (
-        <div className="grid auto-rows-max items-start gap-4 lg:col-span-2 lg:gap-8">
-            <div className="flex gap-10">
-                <div className="flex-1">
-                    <Form {...form}>
-                        <form
-                            onSubmit={form.handleSubmit(submitData, onInvalid)}
-                            className="gap-1"
-                        >
-                            <div>
-                                <FormError message={error} />
-                                <FormSuccess message={success} />
-
-                                <FormField
-                                    control={form.control}
-                                    name="stockVariant"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Stock Item</FormLabel>
-                                            <FormControl>
-                                            <StockVariantSelector
-                                                {...field}
-                                                value={field.value ?? ""}
-                                                isDisabled={isPending || false}
-                                                                />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-
-                                <div className="lg:grid grid-cols-2 items-center gap-4 mt-2">
-                                    <div className="mt-4 flex">
-                                        <div className="flex-1">
-                                            <FormField
-                                                control={form.control}
-                                                name="quantity"
-                                                render={({ field }) => (
-                                                    <FormItem>
-                                                        <FormLabel>Quantity</FormLabel>
-                                                        <FormControl>
-                                                            <FormControl>
-
-                                                            <NumericFormat
-                                                                className="w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 text-sm leading-4 text-gray-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black-2"
-                                                                value={field.value}
-                                                                disabled={isPending}
-                                                                placeholder="Enter stock quantity"
-                                                                thousandSeparator={true}
-                                                                allowNegative={false}
-                                                                onValueChange={(values) => {
-                                                                    const rawValue = Number(values.value.replace(/,/g, ""));
-                                                                    field.onChange(rawValue);
-                                                                }}
-                                                            />
-                                                            </FormControl>
-                                                        </FormControl>
-                                                        <FormMessage />
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* staff */}
-                                    <FormField
-                                        control={form.control}
-                                        name="staff"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Staff</FormLabel>
-                                                <FormControl>
-                                                    <StaffSelectorWidget
-                                                        value={field.value}
-                                                        onChange={field.onChange}
-                                                        onBlur={field.onBlur}
-                                                        isRequired
-                                                        isDisabled={isPending}
-                                                        label="staff"
-                                                        placeholder="Select staff"
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                   
-                                </div>
-
-                                <div className="mt-4 grid lg:grid-cols-2 gap-4">
-                            
-                                    {/* Reason for Modification */}
-                                   <FormField
-                                        control={form.control}
-                                        name="reason"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel className="text-base">Reason</FormLabel>
-                                                <FormDescription>
-                                                    Select the reason for stock modification
-                                                </FormDescription>
-                                                <FormControl>
-                                                    <RadioGroup
-                                                        value={field.value || ""}
-                                                        onValueChange={field.onChange}
-                                                        className="grid grid-cols-2 space-y-2 items-center justify-center"
-                                                    >
-                                                        {reasons.map((item: any) => (
-                                                            <FormItem
-                                                                key={item.id}
-                                                                className="flex items-center space-x-2"
-                                                            >
-                                                                <FormControl>
-                                                                    <RadioGroupItem value={item.id} />
-                                                                </FormControl>
-                                                                <FormLabel>{item.label}</FormLabel>
-                                                            </FormItem>
-                                                        ))}
-                                                    </RadioGroup>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-
-                                    {/* Comment */}
-                                    <FormField
-                                        control={form.control}
-                                        name="comment"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Comment</FormLabel>
-                                                <FormControl>
-                                                    <Textarea
-                                                        placeholder="Your comment"
-                                                        {...field}
-                                                        disabled={isPending}
-                                                        maxLength={400}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-
-                                {/* Submit Button */}
-                                <div className="flex items-center space-x-4 mt-4">
-                                    <CancelButton />
-                                    <Separator orientation="vertical" />
-                                    <SubmitButton
-                                        isPending={isPending}
-                                        label={item ? "Update Stock" : "Modify Stock"}
-                                    />
-                                </div>
-                            </div>
-                        </form>
-                    </Form>
-                </div>
+  return (
+    <Form {...form}>
+      <FormError message={response?.message} />
+      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category <span className="text-red-500">*</span></FormLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent>
+                        {MODIFICATION_CATEGORY_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="reason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reason <span className="text-red-500">*</span></FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Reason for modification" rows={2} {...field} disabled={isPending} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-        </div>
-    );
-}
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Additional notes" rows={2} {...field} value={field.value ?? ""} disabled={isPending} />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </CardContent>
+        </Card>
 
-export default StockModificationForm;
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium">Items</h3>
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ stockVariantId: "", quantityChange: 0 })} disabled={isPending}>
+                <Plus className="w-4 h-4 mr-1" /> Add Item
+              </Button>
+            </div>
+
+            {fields.map((field, index) => (
+              <div key={field.id} className="border rounded-lg p-4 space-y-3 bg-gray-50/50">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-gray-600">Item {index + 1}</span>
+                  {fields.length > 1 && (
+                    <button type="button" onClick={() => remove(index)} className="p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-500">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.stockVariantId`}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Stock Item <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <StockVariantSelector value={f.value} onChange={f.onChange} isDisabled={isPending} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.quantityChange`}
+                    render={({ field: f }) => (
+                      <FormItem>
+                        <FormLabel className="text-xs">Quantity Change <span className="text-red-500">*</span></FormLabel>
+                        <FormControl>
+                          <NumericFormat
+                            className="flex h-10 w-full rounded-md border-0 bg-white dark:bg-gray-800 px-3 py-2 text-sm"
+                            value={f.value}
+                            onValueChange={(v) => f.onChange(v.value ? Number(v.value) : 0)}
+                            thousandSeparator
+                            allowNegative
+                            placeholder="e.g. -5 or +10"
+                            disabled={isPending}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center gap-4 pt-2 pb-4">
+          <CancelButton />
+          <Separator orientation="vertical" className="h-5" />
+          <SubmitButton isPending={isPending} label="Create Modification" />
+        </div>
+      </form>
+    </Form>
+  );
+}

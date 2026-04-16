@@ -5,7 +5,7 @@ import React from "react";
 import {
   MoreVertical,
   Pencil as EditIcon,
-  Archive as ArchiveIcon,
+  Trash2 as DeleteIcon,
 } from "lucide-react";
 import { useDisclosure } from "@/hooks/use-disclosure";
 
@@ -32,21 +32,10 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
   const onDelete = async () => {
     try {
-      if (data) {
-        await deleteRole(data.id);
-        toast({
-          title: "Archived",
-          description: `${data.name} has been archived successfully.`,
-        });
-      }
+      await deleteRole(data.id);
+      toast({ title: "Deleted", description: `${data.name} has been deleted.` });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Uh oh! Something went wrong.",
-        description:
-          (error as Error).message ||
-          "There was an issue with your request, please try again later",
-      });
+      toast({ variant: "destructive", title: "Error", description: (error as Error).message });
     } finally {
       onOpenChange();
     }
@@ -61,34 +50,24 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem
-            onClick={() => router.push(`/roles/${data.id}/edit`)}
-          >
+          <DropdownMenuItem onClick={() => router.push(`/roles/${data.id}/edit`)}>
             <EditIcon className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
-          {data.canDelete && (
+          {!data.system && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={onOpen}
-                className="text-red-600 focus:text-red-600"
-              >
-                <ArchiveIcon className="mr-2 h-4 w-4" />
-                Archive
+              <DropdownMenuItem onClick={onOpen} className="text-red-600 focus:text-red-600">
+                <DeleteIcon className="mr-2 h-4 w-4" />
+                Delete
               </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {data.canDelete && (
-        <DeleteModal
-          isOpen={isOpen}
-          itemName={data.name}
-          onDelete={onDelete}
-          onOpenChange={onOpenChange}
-        />
+      {!data.system && (
+        <DeleteModal isOpen={isOpen} itemName={data.name} onDelete={onDelete} onOpenChange={onOpenChange} />
       )}
     </>
   );

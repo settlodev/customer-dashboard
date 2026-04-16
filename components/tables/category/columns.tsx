@@ -52,9 +52,9 @@ export const columns: ColumnDef<Category>[] = [
       );
     },
     cell: ({ row }) => {
-      const image = row.original.image;
+      const image = row.original.imageUrl;
       const name = row.original.name;
-      const parentName = row.original.parentCategoryName;
+      const parentName = row.original.parentName;
       const hasParent = !!parentName;
 
       const isValidImageUrl =
@@ -128,7 +128,7 @@ export const columns: ColumnDef<Category>[] = [
     header: "Status",
     enableHiding: true,
     cell: ({ row }) => {
-      const isActive = row.original.status;
+      const isActive = !row.original.archivedAt;
       return (
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -137,7 +137,7 @@ export const columns: ColumnDef<Category>[] = [
               : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
           }`}
         >
-          {isActive ? "Active" : "Inactive"}
+          {isActive ? "Active" : "Archived"}
         </span>
       );
     },

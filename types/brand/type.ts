@@ -1,10 +1,15 @@
-import { UUID } from "crypto";
+import type { DestinationType } from "@/types/catalogue/enums";
 
-export declare interface Brand {
-    id:UUID;
-    name:string;
-    location:string;
-    status:boolean;
-    canDelete:boolean;
-    isArchived:boolean
+export interface Brand {
+  id: string;
+  locationType: DestinationType;
+  locationId: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  imageUrl: string | null;
+  active: boolean;
+  archivedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
 }

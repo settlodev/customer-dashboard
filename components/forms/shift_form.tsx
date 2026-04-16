@@ -32,7 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Shift } from "@/types/shift/type";
 import { ShiftSchema } from "@/types/shift/schema";
 import { createShift, updateShift } from "@/lib/actions/shift-actions";
-import { fectchAllDepartments } from "@/lib/actions/department-actions";
+import { fetchAllDepartments } from "@/lib/actions/department-actions";
 import { Department } from "@/types/department/type";
 import { businessTimes } from "@/types/constants";
 import { useRouter } from "next/navigation";
@@ -49,7 +49,7 @@ function ShiftForm({ item }: { item: Shift | null | undefined }) {
   useEffect(() => {
     const getDepartments = async () => {
       try {
-        const response = await fectchAllDepartments();
+        const response = await fetchAllDepartments();
         setDepartments(response);
       } catch (error) {
         console.error("Error fetching departments", error);

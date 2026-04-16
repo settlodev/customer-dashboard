@@ -12,12 +12,12 @@ import {
 import { fetchAllLocations } from "@/lib/actions/location-actions";
 import { getCurrentWarehouse } from "@/lib/actions/warehouse/current-warehouse-action";
 import { BusinessPropsType } from "@/types/business/business-props-type";
-import { Business } from "@/types/business/type";
-import { Location as BusinessLocation } from "@/types/location/type";
 import { getAuthToken } from "@/lib/auth-utils";
-import { SubscriptionProvider } from "@/context/subscriptionContext";
 import { EntitlementProvider } from "@/context/entitlementContext";
 import { getEntitlements } from "@/lib/actions/entitlement-actions";
+import { SubscriptionBanner } from "@/components/subscription/SubscriptionBanner";
+import { ExpiredTopBar } from "@/components/subscription/ExpiredTopBar";
+import { getStoreCount } from "@/lib/actions/store-actions";
 
 export default async function RootLayout({
   children,
@@ -26,15 +26,12 @@ export default async function RootLayout({
 }) {
   const authToken = await getAuthToken();
 
-  let currentBusiness: Business | undefined;
-  let currentLocation: BusinessLocation | undefined;
-  let businessList: Business[] | undefined;
-  let locationList: BusinessLocation[] | null | undefined;
-  let currentWarehouse: any;
-  let entitlements: Awaited<ReturnType<typeof getEntitlements>> = null;
+  // When the location's subscription is expired/cancelled, show a minimal
+  // layout with just a top bar and logout — no sidebar, no full dashboard.
+  const isSubscriptionDead =
+    authToken?.subscriptionStatus === "EXPIRED" ||
+    authToken?.subscriptionStatus === "CANCELLED";
 
-  // Use allSettled so a single failed call (e.g., expired token) doesn't
-  // crash the entire layout. Each result is handled independently.
   const results = await Promise.allSettled([
     getCurrentBusiness(),
     getCurrentLocation(),
@@ -42,13 +39,20 @@ export default async function RootLayout({
     fetchAllLocations(),
     getCurrentWarehouse(),
     getEntitlements(),
+    getStoreCount(),
   ]);
-  currentBusiness = results[0].status === "fulfilled" ? results[0].value ?? undefined : undefined;
-  currentLocation = results[1].status === "fulfilled" ? results[1].value ?? undefined : undefined;
-  businessList = results[2].status === "fulfilled" ? results[2].value ?? undefined : undefined;
-  locationList = results[3].status === "fulfilled" ? results[3].value : undefined;
-  currentWarehouse = results[4].status === "fulfilled" ? results[4].value : undefined;
-  entitlements = results[5].status === "fulfilled" ? results[5].value : null;
+
+  const currentBusiness = results[0].status === "fulfilled" ? results[0].value ?? undefined : undefined;
+  const currentLocation = results[1].status === "fulfilled" ? results[1].value ?? undefined : undefined;
+  const businessList = results[2].status === "fulfilled" ? results[2].value ?? undefined : undefined;
+  const locationList = results[3].status === "fulfilled" ? results[3].value : undefined;
+  const currentWarehouse = results[4].status === "fulfilled" ? results[4].value : undefined;
+  const entitlements = results[5].status === "fulfilled" ? results[5].value : null;
+  const storeCountData = results[6].status === "fulfilled" ? results[6].value : null;
+
+  const locationCount = locationList?.length ?? 1;
+  const storeCount = storeCountData?.total ?? 0;
+  const hasMultipleDestinations = locationCount > 1 || storeCount > 0;
 
   const businessData: BusinessPropsType = {
     business: currentBusiness,
@@ -56,17 +60,39 @@ export default async function RootLayout({
     locationList: locationList || [],
     currentLocation: currentLocation,
     warehouse: currentWarehouse,
+    hasMultipleDestinations,
   };
 
+  // ── Expired / cancelled: minimal layout ───────────────────────────
+  if (isSubscriptionDead) {
+    return (
+      <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
+        <EntitlementProvider initialEntitlements={entitlements}>
+          <div className="flex h-screen flex-col bg-gray-50 dark:bg-gray-950">
+            <ExpiredTopBar
+              businessName={currentBusiness?.name}
+              locationName={currentLocation?.name}
+            />
+            <main className="flex-1 overflow-y-auto">
+              {children}
+            </main>
+            <Toaster />
+          </div>
+        </EntitlementProvider>
+      </SessionProvider>
+    );
+  }
+
+  // ── Active subscription: full dashboard layout ────────────────────
   return (
     <SessionProvider refetchInterval={0} refetchOnWindowFocus={false}>
-      <SubscriptionProvider initialStatus={authToken?.subscriptionStatus ?? null}>
       <EntitlementProvider initialEntitlements={entitlements}>
       <LoadingBarProvider>
         <div className="flex h-screen overflow-hidden bg-primary-light dark:bg-gray-950">
           <SidebarWrapper data={businessData} />
 
           <main className="flex h-screen flex-1 min-w-0 flex-col overflow-hidden">
+            <SubscriptionBanner />
             <div className="relative flex-1 overflow-y-auto">
               <Suspense
                 fallback={
@@ -92,7 +118,6 @@ export default async function RootLayout({
         </div>
       </LoadingBarProvider>
       </EntitlementProvider>
-      </SubscriptionProvider>
     </SessionProvider>
   );
 }

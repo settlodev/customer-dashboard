@@ -1,16 +1,28 @@
+// ---------------------------------------------------------------------------
+// Permission (matches PermissionResponse from Accounts Service)
+// ---------------------------------------------------------------------------
+
 export interface Permission {
   id: string;
+  accountId: string;
   key: string;
-  description: string;
-  category: string;
+  name: string;
+  description: string | null;
   system: boolean;
+  category: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface PermissionCategory {
-  name: string;
-  permissions: Permission[];
+// ---------------------------------------------------------------------------
+// Permission list response (grouped by category)
+// ---------------------------------------------------------------------------
+
+export interface PermissionListResponse {
+  totalCount: number;
+  byCategory: Record<string, Permission[]>;
+  all: Permission[];
 }
 
 // Permission keys follow the pattern: <resource>:<action>
-// Examples: "businesses:create", "staff:read", "roles:update"
 export type PermissionKey = string;

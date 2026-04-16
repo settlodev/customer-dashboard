@@ -337,6 +337,7 @@ export default async function RootLayout({
     <html
       lang="en"
       className="bg-primary-light"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning={true}
     >
       <head />

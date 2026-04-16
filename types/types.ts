@@ -10,8 +10,11 @@ export declare interface LoginResponse {
     refreshTokenExpiresAt: string;
     userId: string;
     accountId: string;
+    appId?: string;
     email: string;
     emailVerified: boolean;
+    systemAdmin?: boolean;
+    supportAgent?: boolean;
     verificationResendToken?: string;
     verificationResendTokenExpiresAt?: string;
     mfaRequired?: boolean;
@@ -57,7 +60,7 @@ export interface FormResponse<T = unknown> {
     data?: T;
 }
 
-export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "EXPIRED" | "SUSPENDED" | null;
+export type SubscriptionStatus = "TRIAL" | "ACTIVE" | "PAST_DUE" | "EXPIRED" | "SUSPENDED" | "CANCELLED" | null;
 
 export declare interface AuthToken {
     accessToken: string;
@@ -91,18 +94,14 @@ export type ExtendedUser = DefaultSession["user"] & {
     lastName: string;
     bio: string;
     avatar: string | null;
-    country: UUID;
-    role: UUID;
     phoneNumber: string;
     accessToken: string;
     refreshToken: string;
     emailVerified: Date | null;
-    phoneNumberVerified: Date | null;
     consent: boolean | null;
     theme: string | null;
     isBusinessRegistrationComplete: boolean;
     isLocationRegistrationComplete: boolean;
-    businessId: UUID | null;
     accountId: string;
     countryId: string;
     countryCode: string;
@@ -182,53 +181,7 @@ export declare interface ErrorResponseType {
     };
 }
 
-export declare interface PrivilegeItem{
-    id: UUID;
-    name: string;
-    code: string;
-    status: boolean;
-    canDelete: boolean;
-    isArchived: boolean;
-    privilegeActions: PrivilegeActionItem[];
-}
-
-export declare interface PrivilegeActionItem{
-    id: UUID;
-    privilegeSectionName: string;
-    action: string;
-    privilegeSection: UUID;
-    privilegeSectionCode: string;
-    status: boolean;
-    canDelete: boolean;
-    isArchived: boolean;
-}
-
-export declare interface FormPrivilegeActionItem{
-    id: UUID;
-}
-
 export declare interface StatusItem{
     name: string;
     value: boolean;
-}
-
-export declare interface WarehousePrivilegeItem{
-    id: UUID;
-    name: string;
-    code: string;
-    status: boolean;
-    canDelete: boolean;
-    isArchived: boolean;
-    warehousePrivilegeActions: WarehousePrivilegeActionItem[];
-}
-
-export declare interface WarehousePrivilegeActionItem{
-    id: UUID;
-    warehouseprivilegeSectionName: string;
-    action: string;
-    warehouseprivilegeSection: UUID;
-    warehouseprivilegeSectionCode: string;
-    status: boolean;
-    canDelete: boolean;
-    isArchived: boolean;
 }

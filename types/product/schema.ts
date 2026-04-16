@@ -3,58 +3,22 @@ import { VariantSchema } from "@/types/variant/schema";
 
 export const ProductSchema = object({
   name: string({ required_error: "Product name is required" }).min(
-    3,
-    "Product name is required",
+    2,
+    "Product name must be at least 2 characters",
   ),
-  category: string().uuid({ message: "Invalid category selected" }),
-  department: string()
-    .uuid({ message: "Invalid department selected" })
-    .optional()
-    .nullish(),
-  brand: string().nullable().optional(),
-  sku: string().nullable().optional(),
-  image: string().nullable().optional(),
   description: string().nullable().optional(),
-  color: string().nullable().optional(),
-  status: boolean(),
-  sellOnline: boolean(),
-  trackInventory: boolean(),
-  trackingType: string().optional().nullish(),
-  taxIncluded: boolean(),
+  categoryIds: array(string().uuid()).optional(),
+  departmentId: string().uuid().optional().nullish(),
+  brandId: string().nullable().optional(),
+  imageUrl: string().nullable().optional(),
+  sellOnline: boolean().default(true),
+  trackStock: boolean().default(false),
+  taxInclusive: boolean().default(false),
   taxClass: string().nullable().optional(),
-  slug: string().optional(),
-  variants: array(VariantSchema),
-}).superRefine((data, ctx) => {
-  if (data.trackInventory && data.trackingType) {
-    data.variants.forEach((variant, index) => {
-      // Validate based on trackingType
-      if (data.trackingType === "STOCK") {
-        if (!variant.stockItem) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Please select a stock item",
-            path: ["variants", index, "stockItem"],
-          });
-        }
-        // Also set trackItem for backward compatibility
-        if (variant.stockItem) {
-          (variant as any).trackItem = variant.stockItem;
-        }
-      }
-
-      if (data.trackingType === "RECIPE") {
-        if (!variant.recipeItem) {
-          ctx.addIssue({
-            code: "custom",
-            message: "Please select a recipe",
-            path: ["variants", index, "recipeItem"],
-          });
-        }
-        // Also set trackItem for backward compatibility
-        if (variant.recipeItem) {
-          (variant as any).trackItem = variant.recipeItem;
-        }
-      }
-    });
-  }
+  tags: array(string()).optional(),
+  lifecycleStatus: string().optional(),
+  active: boolean().default(true),
+  variants: array(VariantSchema).min(1, "At least one variant is required").default([
+    { name: "", price: 0, pricingStrategy: "MANUAL", unlimited: false },
+  ]),
 });

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { EntitlementResponse, EntitlementItem } from "@/lib/actions/entitlement-actions";
+import type { SubscriptionStatus } from "@/types/types";
 
 interface EntitlementContextType {
   entitlements: EntitlementResponse | null;
@@ -14,6 +15,16 @@ interface EntitlementContextType {
   isWithinLimit: (entityId: string, limitKey: string, currentCount: number) => boolean;
   /** Get the package name for an entity */
   getPackageName: (entityId: string) => string | null;
+
+  // Subscription status helpers
+  subscriptionStatus: SubscriptionStatus;
+  isActive: boolean;
+  isTrial: boolean;
+  isExpired: boolean;
+  isSuspended: boolean;
+  isPastDue: boolean;
+  /** Date the subscription is paid through (ISO string or null) */
+  paidThrough: string | null;
 }
 
 const EntitlementContext = createContext<EntitlementContextType>({
@@ -23,6 +34,13 @@ const EntitlementContext = createContext<EntitlementContextType>({
   hasFeature: () => true,
   isWithinLimit: () => true,
   getPackageName: () => null,
+  subscriptionStatus: null,
+  isActive: true,
+  isTrial: false,
+  isExpired: false,
+  isSuspended: false,
+  isPastDue: false,
+  paidThrough: null,
 });
 
 export function EntitlementProvider({
@@ -66,9 +84,32 @@ export function EntitlementProvider({
     return item?.packageName ?? null;
   };
 
+  // Derive status from entitlements
+  const status = entitlements?.subscriptionStatus ?? null;
+  const isActive = status === "ACTIVE" || status === "TRIAL" || status === "PAST_DUE" || status === null;
+  const isTrial = status === "TRIAL";
+  const isExpired = status === "EXPIRED";
+  const isSuspended = status === "SUSPENDED";
+  const isPastDue = status === "PAST_DUE";
+  const paidThrough = entitlements?.paidThrough ?? null;
+
   return (
     <EntitlementContext.Provider
-      value={{ entitlements, loading, getEntityItem, hasFeature, isWithinLimit, getPackageName }}
+      value={{
+        entitlements,
+        loading,
+        getEntityItem,
+        hasFeature,
+        isWithinLimit,
+        getPackageName,
+        subscriptionStatus: status,
+        isActive,
+        isTrial,
+        isExpired,
+        isSuspended,
+        isPastDue,
+        paidThrough,
+      }}
     >
       {children}
     </EntitlementContext.Provider>

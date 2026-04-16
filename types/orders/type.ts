@@ -1,6 +1,4 @@
 import { UUID } from "crypto"
-import { Modifier } from "../modifiers/type"
-import { Addon } from "../addon/type"
 
 export interface Orders {
     id: UUID

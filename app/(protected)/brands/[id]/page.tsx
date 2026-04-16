@@ -1,5 +1,3 @@
-import { ApiResponse } from "@/types/types";
-import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Brand } from "@/types/brand/type";
@@ -7,29 +5,24 @@ import { getBrand } from "@/lib/actions/brand-actions";
 import BrandForm from "@/components/forms/brand_form";
 
 type Params = Promise<{ id: string }>;
-export default async function BrandPage({
-  params,
-}: {
-  params: Params;
-}) {
+
+export default async function BrandPage({ params }: { params: Params }) {
   const resolvedParams = await params;
   const isNewItem = resolvedParams.id === "new";
-  let item: ApiResponse<Brand> | null = null;
+  let item: Brand | null = null;
 
   if (!isNewItem) {
     try {
-      item = await getBrand(resolvedParams.id as UUID);
-      if (item.totalElements == 0) notFound();
-    } catch (error) {
-      console.log(error);
-      throw new Error("Failed to load brand details");
+      item = await getBrand(resolvedParams.id);
+    } catch {
+      notFound();
     }
   }
 
   const breadcrumbItems = [
     { title: "Brands", link: "/brands" },
     {
-      title: isNewItem ? "New" : item?.content[0].name || "Edit",
+      title: isNewItem ? "New" : item?.name || "Edit",
       link: "",
     },
   ];
@@ -51,7 +44,7 @@ export default async function BrandPage({
           </p>
         </div>
 
-        <BrandForm item={isNewItem ? null : item?.content[0]} />
+        <BrandForm item={item} />
       </div>
     </div>
   );

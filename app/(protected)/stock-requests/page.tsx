@@ -7,7 +7,7 @@ import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/compo
 import NoItems from "@/components/layouts/no-items";
 import {DataTable} from "@/components/tables/data-table";
 import { searchStockRequests } from "@/lib/actions/request-actions";
-import { StockRequests } from "@/types/warehouse/purchase/request/type";
+import { StockRequests } from "@/types/stock-request/type";
 import { columns } from "@/components/tables/stock-request/columns";
 
 

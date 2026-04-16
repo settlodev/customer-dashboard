@@ -44,7 +44,7 @@ export default function StockModal({
                     Stock status
                   </span>
                   <span className="w-2/3 pl-2 text-sm">
-                    {data.status === true ? (
+                    {!data.archived ? (
                       <span className="bg-emerald-500 text-sm text-white rounded-sm p-1">
                         Yes
                       </span>
@@ -65,13 +65,13 @@ export default function StockModal({
             </CardContent>
           </Card>
 
-          {data.stockVariants && (
+          {data.variants && (
             <Card className="mt-3">
               <CardHeader>
                 <h4 className="text-md font-semibold">Variants</h4>
               </CardHeader>
               <CardContent>
-                {data.stockVariants.map((variant, index) => (
+                {data.variants.map((variant, index) => (
                   <div
                     key={index}
                     className="border border-gray-300 rounded-md mb-4"
@@ -87,28 +87,22 @@ export default function StockModal({
                       </div>
                       <div className="flex items-center p-2 border-b border-gray-300">
                         <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
-                          Starting Quantity
+                          Unit
                         </span>
                         <span className="w-2/3 pl-2 text-sm">
-                          {Intl.NumberFormat().format(variant.startingQuantity)}
+                          {variant.unitAbbreviation} (×{variant.conversionToBase})
                         </span>
                       </div>
-                      <div className="flex items-center p-2 border-b border-gray-300">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
-                          Starting Value
-                        </span>
-                        <span className="w-2/3 pl-2 text-sm">
-                          {Intl.NumberFormat().format(variant.startingValue)}
-                        </span>
-                      </div>
-                      <div className="flex items-center p-2 border-b border-gray-300">
-                        <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
-                          Alert Level
-                        </span>
-                        <span className="w-2/3 pl-2 text-sm">
-                          {Intl.NumberFormat().format(variant.alertLevel)}
-                        </span>
-                      </div>
+                      {variant.defaultCost != null && (
+                        <div className="flex items-center p-2 border-b border-gray-300">
+                          <span className="w-1/3 font-normal border-r border-gray-300 pr-2">
+                            Default Cost
+                          </span>
+                          <span className="w-2/3 pl-2 text-sm">
+                            {Intl.NumberFormat().format(variant.defaultCost)}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

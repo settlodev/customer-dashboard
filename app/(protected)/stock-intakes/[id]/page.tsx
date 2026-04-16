@@ -1,136 +1,49 @@
-// import {ApiResponse} from "@/types/types";
-// import {UUID} from "node:crypto";
-// import {notFound} from "next/navigation";
-// import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-// import {Card, CardContent, CardDescription, CardHeader, CardTitle} from "@/components/ui/card";
-// import { StockIntake } from "@/types/stock-intake/type";
-// import { getStockIntake } from "@/lib/actions/stock-intake-actions";
-// import StockIntakeForm from "@/components/forms/stock_intake_form";
-//
-// type Params = Promise<{ stockVariant:string,id:string}>
-// export default async function StockIntakePage({params}: {params: Params}){
-//
-//     const paramsData = await params
-//     const {stockVariant, id} = paramsData
-//     const isNewItem = id === "new";
-//     let item: ApiResponse<StockIntake> | null = null;
-//
-//     if(!isNewItem){
-//         try{
-//             item = await getStockIntake(id as UUID, stockVariant as UUID);
-//             if(item && item.totalElements === 0) notFound();
-//         }
-//         catch (error){
-//             console.log(error)
-//
-//             throw new Error("Failed to load stock intake details");
-//
-//         }
-//     }
-//
-//     const breadCrumbItems=[{title:"Stock Intake",link:"/stock-intakes"},
-//         {title: isNewItem ? "New":item?.content[0].id || "Edit",link:""}]
-//
-//     return(
-//         <div className="flex-1 space-y-4 p-4 pt-4 md:px-8 md:pt-6">
-//             <BreadcrumbsNav items={breadCrumbItems}/>
-//             <StockIntakeCard isNewItem={isNewItem} item={item?.content[0]}/>
-//         </div>
-//     )
-// }
-//
-// const StockIntakeCard =({isNewItem, item}:{
-//     isNewItem:boolean,
-//     item: StockIntake | null | undefined
-// }) =>(
-//     <Card>
-//        <CardHeader>
-//            <CardTitle>
-//                {isNewItem ? "Record Stock Intake" : "Edit stock intake"}
-//            </CardTitle>
-//            <CardDescription>
-//                {isNewItem ? "Record stock intake to your business location": "Edit stock intake details"}
-//            </CardDescription>
-//        </CardHeader>
-//         <CardContent>
-//             <StockIntakeForm item={item}/>
-//         </CardContent>
-//     </Card>
-// )
-
-// app/(dashboard)/stock-intakes/[stockVariant]/[id]/page.tsx
-
-import { ApiResponse } from "@/types/types";
-import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { StockIntake } from "@/types/stock-intake/type";
-import { getStockIntake } from "@/lib/actions/stock-intake-actions";
+import { getOpeningStock } from "@/lib/actions/opening-stock-actions";
 import StockIntakeForm from "@/components/forms/stock_intake_form";
-import StockIntakeTabs from "@/components/forms/stock-intake/tabs";
 
-type Params = Promise<{ stockVariant: string; id: string }>;
+type Params = Promise<{ id: string }>;
 
 export default async function StockIntakePage({ params }: { params: Params }) {
-  const paramsData = await params;
-  const { stockVariant, id } = paramsData;
-  const isNewItem = id === "new";
-  let item: ApiResponse<StockIntake> | null = null;
+  const resolvedParams = await params;
+  const isNewItem = resolvedParams.id === "new";
 
   if (!isNewItem) {
-    try {
-      item = await getStockIntake(id as UUID, stockVariant as UUID);
-      if (item && item.totalElements === 0) notFound();
-    } catch (error) {
-      console.log(error);
-      throw new Error("Failed to load stock intake details");
-    }
+    const item = await getOpeningStock(resolvedParams.id);
+    if (!item) notFound();
+
+    return (
+      <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
+        <div className="space-y-6">
+          <BreadcrumbsNav items={[
+            { title: "Stock Intake", link: "/stock-intakes" },
+            { title: item.referenceNumber, link: "" },
+          ]} />
+          <h1 className="text-2xl font-bold">{item.referenceNumber}</h1>
+          <p className="text-sm text-muted-foreground">
+            {item.totalItems} items &middot; Total value: {item.totalValue.toLocaleString()} &middot; {item.status}
+          </p>
+        </div>
+      </div>
+    );
   }
 
-  const breadCrumbItems = [
-    { title: "Stock Intake", link: "/stock-intakes" },
-    {
-      title: isNewItem ? "New" : item?.content[0].id || "Edit",
-      link: "",
-    },
-  ];
-
   return (
-    <div className="flex-1 space-y-4 p-4 pt-4 md:px-8 md:pt-6">
-      <BreadcrumbsNav items={breadCrumbItems} />
-      <StockIntakeCard isNewItem={isNewItem} item={item?.content[0]} />
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
+      <div className="space-y-6">
+        <div>
+          <div className="hidden sm:block mb-2">
+            <BreadcrumbsNav items={[
+              { title: "Stock Intake", link: "/stock-intakes" },
+              { title: "New", link: "" },
+            ]} />
+          </div>
+          <h1 className="text-2xl font-bold">Record Opening Stock</h1>
+          <p className="text-sm text-muted-foreground">Add initial stock quantities and costs</p>
+        </div>
+        <StockIntakeForm />
+      </div>
     </div>
   );
 }
-
-const StockIntakeCard = ({
-  isNewItem,
-  item,
-}: {
-  isNewItem: boolean;
-  item: StockIntake | null | undefined;
-}) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>
-        {isNewItem ? "Record Stock Intake" : "Edit Stock Intake"}
-      </CardTitle>
-      <CardDescription>
-        {isNewItem
-          ? "Record stock intake via manual entry, CSV upload, or from an LPO"
-          : "Edit stock intake details"}
-      </CardDescription>
-    </CardHeader>
-    <CardContent>
-      {/* Edit mode: skip tabs, go straight to the form */}
-      {!isNewItem ? <StockIntakeForm item={item} /> : <StockIntakeTabs />}
-    </CardContent>
-  </Card>
-);

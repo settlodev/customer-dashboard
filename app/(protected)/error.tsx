@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { AlertTriangle, Home, RotateCcw, Mail } from "lucide-react";
+import SessionExpired, { isSessionExpiredError } from "@/components/auth/session-expired";
 
 export default function Error({
   error,
@@ -11,6 +12,10 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  if (isSessionExpiredError(error)) {
+    return <SessionExpired />;
+  }
+
   return (
     <div className="flex min-h-[80vh] items-center justify-center px-4">
       <div className="w-full max-w-md text-center space-y-6">

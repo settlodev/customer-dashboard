@@ -1,5 +1,3 @@
-import { ApiResponse } from "@/types/types";
-import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Product } from "@/types/product/type";
@@ -7,22 +5,20 @@ import ProductForm from "@/components/forms/product_form";
 import { getProduct } from "@/lib/actions/product-actions";
 
 type Params = Promise<{ id: string }>;
+
 export default async function ProductEditPage({ params }: { params: Params }) {
   const resolvedParams = await params;
   const isNewItem = resolvedParams.id === "new";
-  let item: ApiResponse<Product> | null = null;
+  let product: Product | null = null;
 
   if (!isNewItem) {
     try {
-      item = await getProduct(resolvedParams.id as UUID);
-      if (item.totalElements == 0) notFound();
-    } catch (error) {
-      console.log(error);
+      product = await getProduct(resolvedParams.id);
+      if (!product) notFound();
+    } catch {
       throw new Error("Failed to load product details");
     }
   }
-
-  const product = isNewItem ? null : item?.content[0];
 
   const breadCrumbItems = isNewItem
     ? [
@@ -52,7 +48,7 @@ export default async function ProductEditPage({ params }: { params: Params }) {
           </p>
         </div>
 
-        <ProductForm item={product ?? null} />
+        <ProductForm item={product} />
       </div>
     </div>
   );

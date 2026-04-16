@@ -15,6 +15,7 @@ interface DeleteModalProps {
   onOpenChange: () => void;
   onDelete: () => void;
   itemName: string;
+  isLoading?: boolean;
 }
 
 export default function DeleteModal({
@@ -22,6 +23,7 @@ export default function DeleteModal({
   onOpenChange,
   onDelete,
   itemName,
+  isLoading = false,
 }: DeleteModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -67,12 +69,12 @@ export default function DeleteModal({
         </div>
 
         <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => onOpenChange()}>
+          <Button variant="outline" onClick={() => onOpenChange()} disabled={isLoading}>
             Cancel
           </Button>
-          <Button variant="destructive" onClick={onDelete}>
+          <Button variant="destructive" onClick={onDelete} disabled={isLoading}>
             <Archive className="h-4 w-4 mr-1.5" />
-            Yes, Archive
+            {isLoading ? "Archiving..." : "Yes, Archive"}
           </Button>
         </div>
       </DialogContent>

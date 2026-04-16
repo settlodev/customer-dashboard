@@ -2,8 +2,7 @@ import Loading from "@/components/ui/loading";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Card, CardContent, CardHeader} from "@/components/ui/card";
 import DepartmentReportPage from "@/components/widgets/department-report";
-import { DepartmentReport } from "@/lib/actions/department-actions";
-import { UUID } from "crypto";
+import { departmentReport } from "@/lib/actions/department-actions";
 import { Suspense } from "react";
 
 const OrderReceipt = async ({ 
@@ -17,8 +16,8 @@ const OrderReceipt = async ({
     const resolvedParams = await params;
     const resolvedSearchParams = await searchParams;
     
-    const report = await DepartmentReport(
-      resolvedParams.id as UUID,
+    const report = await departmentReport(
+      resolvedParams.id,
       resolvedSearchParams.startDate,
       resolvedSearchParams.endDate
     );

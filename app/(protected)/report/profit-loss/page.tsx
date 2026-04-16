@@ -10,8 +10,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { fetchSummaries } from "@/lib/actions/dashboard-action";
-import SummaryResponse from "@/types/dashboard/type";
+import { fetchOverview } from "@/lib/actions/dashboard-action";
+import OverviewResponse from "@/types/dashboard/type";
 import {
   getCurrentBusiness,
   getCurrentLocation,
@@ -109,7 +109,7 @@ const ProfitAndLossPage: React.FC = () => {
     return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0);
   });
   const [endDate, setEndDate] = useState(new Date());
-  const [summaries, setSummaries] = useState<SummaryResponse | null>(null);
+  const [summaries, setSummaries] = useState<OverviewResponse | null>(null);
   const [business, setBusiness] = useState<Business>();
   const [location, setLocation] = useState<Location>();
   const [isLoading, setIsLoading] = useState(true);
@@ -117,7 +117,7 @@ const ProfitAndLossPage: React.FC = () => {
 
   useEffect(() => {
     Promise.all([
-      fetchSummaries(
+      fetchOverview(
         format(startDate, "yyyy-MM-dd"),
         format(endDate, "yyyy-MM-dd"),
       ),
@@ -125,7 +125,7 @@ const ProfitAndLossPage: React.FC = () => {
       getCurrentBusiness(),
     ])
       .then(([summary, loc, biz]) => {
-        setSummaries(summary as SummaryResponse);
+        setSummaries(summary as OverviewResponse);
         setLocation(loc);
         setBusiness(biz);
       })
@@ -137,11 +137,11 @@ const ProfitAndLossPage: React.FC = () => {
   const handleFilter = async () => {
     setIsFiltering(true);
     try {
-      const summary = await fetchSummaries(
+      const summary = await fetchOverview(
         format(startDate, "yyyy-MM-dd"),
         format(endDate, "yyyy-MM-dd"),
       );
-      setSummaries(summary as SummaryResponse);
+      setSummaries(summary as OverviewResponse);
     } catch (e) {
       console.error(e);
     } finally {

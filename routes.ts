@@ -1,7 +1,6 @@
 export const publicRoutes = [
   "/",
   "/pricing",
-  "/verify-email",
   "/terms",
   "/receipt/[id]",
   "/contact-us",
@@ -13,7 +12,6 @@ export const publicRoutes = [
   "/email-verification",
   "/reset-password",
   "/auth-error",
-  "/update-password",
   "/item/[id]",
   "/reserve/[id]",
 ];
@@ -24,10 +22,12 @@ export const specialAuthRoutes = [
   "/business-registration",
   "/business-location",
   "/user-verification",
+  "/subscription",
+  "/account-suspended",
+  "/renew-subscription",
 ];
 
 export const apiAuthPrefix = "/api/auth";
-export const UPDATE_PASSWORD_URL = "/update-password";
 export const VERIFICATION_REDIRECT_URL = "/user-verification";
 export const EMAIL_VERIFICATION_URL = "/email-verification";
 export const DEFAULT_LOGIN_REDIRECT_URL = "/dashboard";

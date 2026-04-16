@@ -9,15 +9,15 @@ import {
   ArrowRight,
   Sparkles,
 } from "lucide-react";
-import { Subscriptions } from "@/types/subscription/type";
+import type { Package } from "@/types/billing/types";
 import { cn } from "@/lib/utils";
 
 interface SubscriptionPlanCardProps {
-  plan: Subscriptions;
+  plan: Package;
   isSelected: boolean;
   isCurrent: boolean;
   actionType: "upgrade" | "downgrade" | "renew" | "switch" | "subscribe";
-  onSelect: (plan: Subscriptions) => void;
+  onSelect: (plan: Package) => void;
 }
 
 const ACTION_CONFIG = {
@@ -48,7 +48,7 @@ const ACTION_CONFIG = {
   },
 };
 
-const isDiamond = (name: string) => name?.toLowerCase().includes("diamond");
+const isPremium = (name: string) => name?.toLowerCase().includes("diamond") || name?.toLowerCase().includes("premium");
 
 const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   plan,
@@ -57,9 +57,9 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
   actionType,
   onSelect,
 }) => {
-  const annualAmount = plan.amount * 12;
+  const annualAmount = plan.basePrice * 12;
   const config = ACTION_CONFIG[actionType];
-  const diamond = isDiamond(plan.packageName);
+  const diamond = isPremium(plan.name);
 
   return (
     <div
@@ -92,7 +92,7 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
       {/* Plan name + price */}
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-1">
-          {plan.packageName}
+          {plan.name}
         </h3>
         <div className="flex items-baseline gap-1">
           <span className="text-2xl font-bold text-gray-900">
@@ -101,30 +101,17 @@ const SubscriptionPlanCard: React.FC<SubscriptionPlanCardProps> = ({
           <span className="text-xs text-gray-400 font-normal">/year</span>
         </div>
         <p className="text-xs text-gray-400 mt-0.5">
-          TZS {plan.amount.toLocaleString()} / month
+          TZS {plan.basePrice.toLocaleString()} / month
         </p>
       </div>
 
       {/* Divider */}
       <div className="h-px bg-gray-100 mb-4" />
 
-      {/* Features */}
-      <ul className="flex-1 space-y-2 mb-5">
-        {plan.subscriptionFeatures.slice(0, 5).map((feature) => (
-          <li
-            key={feature.id}
-            className="flex items-start gap-2 text-sm text-gray-600"
-          >
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-            <span>{feature.name}</span>
-          </li>
-        ))}
-        {plan.subscriptionFeatures.length > 5 && (
-          <li className="text-xs text-gray-400 pl-5">
-            +{plan.subscriptionFeatures.length - 5} more features
-          </li>
-        )}
-      </ul>
+      {/* Description */}
+      {plan.description && (
+        <p className="text-xs text-gray-500 mb-4">{plan.description}</p>
+      )}
 
       {/* CTA */}
       <Button

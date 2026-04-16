@@ -9,43 +9,50 @@ export const getLocationId = async (): Promise<string | undefined> => {
   return location?.id;
 };
 
-export const fetchSummaries = async (startDate: string, endDate?: string) => {
+export const fetchOverview = async (
+  startDate: string,
+  endDate?: string,
+  staffId?: string,
+) => {
   try {
-    const apiClient = new ApiClient();
+    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
 
-    return await apiClient.get(`/reports/api/v1/reports/summary/location`, {
+    return await apiClient.get(`/api/v2/analytics/overview`, {
       params: {
         locationId: location?.id,
         startDate,
         endDate,
+        ...(staffId && { staffId }),
       },
     });
   } catch (error) {
-    console.error("Error fetching summaries:", error);
+    console.error("Error fetching overview:", error);
     throw error;
   }
 };
 
-export const fetchStaffSummary = async (
-  staffId: string,
-  startDate: string,
-  endDate?: string,
+export const fetchOverviewByFilter = async (
+  filter: string,
+  customStart?: string | null,
+  customEnd?: string | null,
+  staffId?: string,
 ) => {
   try {
-    const apiClient = new ApiClient();
+    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
 
-    return await apiClient.get(`/reports/api/v1/reports/summary/staff`, {
+    return await apiClient.get(`/api/v2/analytics/overview/by-filter`, {
       params: {
         locationId: location?.id,
-        staffId,
-        startDate,
-        endDate,
+        filter,
+        ...(customStart && { customStart }),
+        ...(customEnd && { customEnd }),
+        ...(staffId && { staffId }),
       },
     });
   } catch (error) {
-    console.error("Error fetching staff summary:", error);
+    console.error("Error fetching overview by filter:", error);
     throw error;
   }
 };
@@ -56,10 +63,10 @@ export const fetchProductSummary = async (
   endDate?: string,
 ): Promise<ProductSummaryResponse> => {
   try {
-    const apiClient = new ApiClient();
+    const apiClient = new ApiClient("reports");
     const location = await getCurrentLocation();
 
-    return await apiClient.get(`/reports/api/v1/reports/summary/product`, {
+    return await apiClient.get(`/api/v2/analytics/summary/product`, {
       params: {
         locationId: location?.id,
         productId,

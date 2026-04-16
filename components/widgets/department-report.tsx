@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format, parseISO } from 'date-fns';
 import { Building2, Calendar, ShoppingCart, TrendingUp, DollarSign, TrendingDown } from 'lucide-react';
-import { Report } from '@/types/department/type';
+import { DepartmentReport as Report } from '@/types/department/type';
 import { useRouter } from 'next/navigation';
 import { Button } from '../ui/button';
 import { DateTimeRange, DateTimeRangeSelect } from './date-range-select';

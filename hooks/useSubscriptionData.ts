@@ -1,31 +1,33 @@
-import { useState, useEffect } from 'react';
-import { getActiveSubscription, getAllSubscriptions } from '@/lib/actions/subscriptions';
-import { ActiveSubscription, Subscriptions } from '@/types/subscription/type';
+"use client";
 
-export const useSubscriptionData = (locationId?: string | null) => {
-  const [activeSubscription, setActiveSubscription] = useState<ActiveSubscription>();
-  const [subscriptionData, setSubscriptionData] = useState<Subscriptions[]>([]);
+import { useState, useEffect, useCallback } from "react";
+import { getCurrentSubscription, getPackages } from "@/lib/actions/billing-actions";
+import type { Subscription, Package } from "@/types/billing/types";
+
+export function useSubscriptionData() {
+  const [subscription, setSubscription] = useState<Subscription | null>(null);
+  const [packages, setPackages] = useState<Package[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetch = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [sub, pkgs] = await Promise.all([
+        getCurrentSubscription(),
+        getPackages(),
+      ]);
+      setSubscription(sub);
+      setPackages(pkgs);
+    } catch {
+      // Permissive — if billing service is down, show empty state
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const fetchSubscriptionData = async () => {
-      try {
-        const [activeSubs, subscriptions] = await Promise.all([
-          getActiveSubscription(locationId), 
-          getAllSubscriptions()
-        ]);
-        
-        setActiveSubscription(activeSubs);
-        setSubscriptionData(subscriptions);
-      } catch (error) {
-        console.error("Error fetching subscription data", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+    fetch();
+  }, [fetch]);
 
-    fetchSubscriptionData();
-  }, [locationId]); 
-
-  return { activeSubscription, subscriptionData, isLoading };
-};
+  return { subscription, packages, isLoading, refetch: fetch };
+}

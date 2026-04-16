@@ -2,142 +2,76 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
-import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import { UUID } from "node:crypto";
-import { getCurrentLocation } from "./business/get-current-business";
-import { console } from "node:inspector";
-import { StockModification } from "@/types/stock-modification/type";
+import { redirect } from "next/navigation";
+import type { StockModification } from "@/types/stock-modification/type";
 import { StockModificationSchema } from "@/types/stock-modification/schema";
+import { inventoryUrl } from "./inventory-client";
 
-export const fetchStockModification = async (): Promise<
-  StockModification[]
-> => {
-  await getAuthenticatedUser();
-
+export async function searchStockModifications(
+  page: number = 0,
+  size: number = 20,
+  category?: string,
+): Promise<ApiResponse<StockModification>> {
   try {
     const apiClient = new ApiClient();
-
-    const location = await getCurrentLocation();
+    const params = new URLSearchParams();
+    params.set("page", String(page));
+    params.set("size", String(size));
+    params.set("sortBy", "createdAt");
+    params.set("sortDirection", "desc");
+    if (category) params.set("category", category);
 
     const data = await apiClient.get(
-      `/api/stock-modifications/${location?.id}/all`,
+      inventoryUrl(`/api/v1/stock-modifications?${params.toString()}`),
     );
-    console.log("The list of Stock modifications in this location: ", data);
     return parseStringify(data);
   } catch (error) {
     throw error;
   }
-};
-export const searchStockModifications = async (
-  q: string,
-  page: number,
-  pageLimit: number,
-): Promise<ApiResponse<StockModification>> => {
-  await getAuthenticatedUser();
+}
 
+export async function getStockModification(id: string): Promise<StockModification | null> {
   try {
     const apiClient = new ApiClient();
-    const query = {
-      filters: [
-        {
-          key: "stockVariant.stock.name",
-          operator: "LIKE",
-          field_type: "STRING",
-          value: q,
-        },
-      ],
-      sorts: [
-        {
-          key: "dateCreated",
-          direction: "DESC",
-        },
-      ],
-      page: page ? page - 1 : 0,
-      size: pageLimit ? pageLimit : 10,
-    };
-    const location = await getCurrentLocation();
-    const data = await apiClient.post(
-      `/api/stock-modifications/${location?.id}`,
-      query,
-    );
-
+    const data = await apiClient.get(inventoryUrl(`/api/v1/stock-modifications/${id}`));
     return parseStringify(data);
-  } catch (error) {
-    throw error;
+  } catch {
+    return null;
   }
-};
-export const createStockModification = async (
+}
+
+export async function createStockModification(
   modification: z.infer<typeof StockModificationSchema>,
-): Promise<FormResponse | void> => {
-  let formResponse: FormResponse | null = null;
+): Promise<FormResponse | void> {
+  const validated = StockModificationSchema.safeParse(modification);
 
-  const validData = StockModificationSchema.safeParse(modification);
-
-  if (!validData.success) {
-    formResponse = {
+  if (!validated.success) {
+    return parseStringify({
       responseType: "error",
-      message: "Please fill all the required fields",
-      error: new Error(validData.error.message),
-    };
-    return parseStringify(formResponse);
+      message: "Please fill all required fields",
+      error: new Error(validated.error.message),
+    });
   }
-
-  const location = await getCurrentLocation();
-  const payload = {
-    ...validData.data,
-    location: location?.id,
-  };
 
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(
-      `/api/stock-modifications/${location?.id}/create`,
-      payload,
-    );
-    formResponse = {
-      responseType: "success",
-      message: "Stock modification created successfully",
-    };
-  } catch (error) {
-    console.error("Error creating product", error);
-    formResponse = {
+    await apiClient.post(inventoryUrl("/api/v1/stock-modifications"), {
+      locationType: "LOCATION",
+      ...validated.data,
+      modificationDate: validated.data.modificationDate || new Date().toISOString(),
+    });
+
+    revalidatePath("/stock-modifications");
+    redirect("/stock-modifications");
+  } catch (error: any) {
+    if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
+    return parseStringify({
       responseType: "error",
-      message:
-        "Something went wrong while processing your request, please try again",
+      message: error?.message ?? "Failed to create stock modification",
       error: error instanceof Error ? error : new Error(String(error)),
-    };
+    });
   }
-
-  revalidatePath("/stock-modifications");
-  return parseStringify(formResponse);
-};
-
-export const getStockModified = async (
-  id: UUID,
-  _stockVariant: UUID,
-): Promise<ApiResponse<StockModification>> => {
-  const apiClient = new ApiClient();
-  const query = {
-    filters: [
-      {
-        key: "id",
-        operator: "EQUAL",
-        field_type: "UUID_STRING",
-        value: id,
-      },
-    ],
-    sorts: [],
-    page: 0,
-    size: 1,
-  };
-  const location = await getCurrentLocation();
-  const response = await apiClient.post(
-    `/api/stock-modifications/${location?.id}/${id}`,
-    query,
-  );
-
-  return parseStringify(response);
-};
+}

@@ -61,8 +61,8 @@ export const LocationSwitcher = ({
     const fetchWarehouses = async () => {
       setLoadingWarehouses(true);
       try {
-        const result = await searchWarehouses("", 0, 20);
-        setWarehouseList(result?.content || []);
+        const result = await searchWarehouses();
+        setWarehouseList(result || []);
       } catch (error) {
         console.error("Failed to fetch warehouses:", error);
         setWarehouseList([]);

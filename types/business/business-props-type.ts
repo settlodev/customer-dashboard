@@ -8,4 +8,5 @@ export declare interface BusinessPropsType {
     locationList?: Location[] | null;
     currentLocation?: Location | undefined;
     warehouse?: any;
+    hasMultipleDestinations?: boolean;
 }

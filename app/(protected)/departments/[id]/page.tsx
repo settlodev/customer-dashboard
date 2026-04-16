@@ -1,43 +1,33 @@
-import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
-import { ApiResponse } from "@/types/types";
 import { Department } from "@/types/department/type";
 import { getDepartment } from "@/lib/actions/department-actions";
 import DepartmentForm from "@/components/forms/department_form";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 
 type Params = Promise<{ id: string }>;
-export default async function DepartmentPage({
-  params,
-}: {
-  params: Params;
-}) {
+
+export default async function DepartmentPage({ params }: { params: Params }) {
   const resolvedParams = await params;
   const isNewItem = resolvedParams.id === "new";
-  let item: ApiResponse<Department> | null = null;
+  let item: Department | null = null;
 
   if (!isNewItem) {
     try {
-      item = await getDepartment(resolvedParams.id as UUID);
-      if (item.totalElements == 0) notFound();
-    } catch (error) {
-      console.log(error);
+      item = await getDepartment(resolvedParams.id);
+      if (!item) notFound();
+    } catch {
       throw new Error("Failed to load department data");
     }
   }
 
   const breadcrumbItems = [
     { title: "Departments", link: "/departments" },
-    {
-      title: isNewItem ? "New" : item?.content[0]?.name || "Edit",
-      link: "",
-    },
+    { title: isNewItem ? "New" : item?.name || "Edit", link: "" },
   ];
 
   return (
     <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
       <div className="space-y-6">
-        {/* Header */}
         <div>
           <div className="hidden sm:block mb-2">
             <BreadcrumbsNav items={breadcrumbItems} />
@@ -46,14 +36,10 @@ export default async function DepartmentPage({
             {isNewItem ? "Add Department" : "Edit Department"}
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">
-            {isNewItem
-              ? "Create a new department for your business"
-              : "Update department details and settings"}
+            {isNewItem ? "Create a new department for your business" : "Update department details"}
           </p>
         </div>
-
-        {/* Form */}
-        <DepartmentForm item={isNewItem ? null : item?.content[0]} />
+        <DepartmentForm item={isNewItem ? null : item} />
       </div>
     </div>
   );

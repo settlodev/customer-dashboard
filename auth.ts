@@ -52,8 +52,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         session.user.bio = token.bio as string;
         session.user.avatar = token.avatar ? (token.avatar as string) : null;
         session.user.phoneNumber = token.phoneNumber as string;
-        session.user.accessToken = token.accessToken as string;
-        session.user.refreshToken = token.refreshToken as string;
+        // accessToken and refreshToken are read from the httpOnly authToken
+        // cookie by server actions — not stored in the session to avoid 431.
         session.user.emailVerified = token.emailVerified as Date;
         session.user.isBusinessRegistrationComplete =
           token.isBusinessRegistrationComplete as boolean;
@@ -82,8 +82,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         token.firstName = u.firstName;
         token.lastName = u.lastName;
         token.phoneNumber = u.phoneNumber;
-        token.accessToken = u.accessToken;
-        token.refreshToken = u.refreshToken;
+        // accessToken and refreshToken are NOT stored in the NextAuth JWT
+        // to keep the session cookie small (tokens are in the authToken cookie).
         token.emailVerified = u.emailVerified;
         token.isBusinessRegistrationComplete = u.isBusinessRegistrationComplete;
         token.isLocationRegistrationComplete = u.isLocationRegistrationComplete;

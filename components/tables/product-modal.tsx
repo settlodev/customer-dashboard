@@ -54,7 +54,7 @@ export default function ProductModal({ isOpen, onOpenChange, data }: ProductModa
                     <Tag className="h-4 w-4" />
                     Category
                   </div>
-                  <p className="font-medium">{data.categoryName}</p>
+                  <p className="font-medium">{data.categories?.[0]?.name || "\u2014"}</p>
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-1 text-sm text-gray-500">
@@ -75,17 +75,17 @@ export default function ProductModal({ isOpen, onOpenChange, data }: ProductModa
                     <Barcode className="h-4 w-4" />
                     SKU
                   </div>
-                  <p className="font-medium">{data.sku || "None"}</p>
+                  <p className="font-medium">{data.variants?.[0]?.sku || "None"}</p>
                 </div>
               </div>
 
               <div className="flex flex-wrap gap-2 mt-4">
                 <Badge
-                  variant={data.trackInventory ? "default" : "secondary"}
+                  variant={data.trackStock ? "default" : "secondary"}
                   className="flex items-center gap-1"
                 >
                   <ClipboardCheck className="h-3 w-3" />
-                  {data.trackInventory ? "Inventory Tracked" : "Not Tracked"}
+                  {data.trackStock ? "Inventory Tracked" : "Not Tracked"}
                 </Badge>
                 <Badge
                   variant={data.sellOnline ? "default" : "secondary"}
@@ -95,11 +95,11 @@ export default function ProductModal({ isOpen, onOpenChange, data }: ProductModa
                   {data.sellOnline ? "Sells Online" : "In-Store Only"}
                 </Badge>
                 <Badge
-                  variant={data.taxIncluded ? "default" : "secondary"}
+                  variant={data.taxInclusive ? "default" : "secondary"}
                   className="flex items-center gap-1"
                 >
                   <DollarSign className="h-3 w-3" />
-                  {data.taxIncluded ? "Tax Included" : "Tax Excluded"}
+                  {data.taxInclusive ? "Tax Included" : "Tax Excluded"}
                 </Badge>
               </div>
 
@@ -132,7 +132,7 @@ export default function ProductModal({ isOpen, onOpenChange, data }: ProductModa
                       <div className="flex items-center justify-between">
                         <h3 className="font-medium">{variant.name}</h3>
                         <Badge variant="outline" className="text-sm">
-                          Stock: {variant.availableStock}
+                          Stock: {variant.availableQuantity ?? (variant.unlimited ? "Unlimited" : 0)}
                         </Badge>
                       </div>
 
@@ -146,8 +146,8 @@ export default function ProductModal({ isOpen, onOpenChange, data }: ProductModa
                         <div className="space-y-1">
                           <p className="text-sm text-gray-500">Purchase Price</p>
                           <p className="font-medium">
-                            {variant.purchasingPrice
-                              ? formatCurrency(variant.purchasingPrice)
+                            {variant.costPrice
+                              ? formatCurrency(variant.costPrice)
                               : "Not set"}
                           </p>
                         </div>
@@ -157,19 +157,14 @@ export default function ProductModal({ isOpen, onOpenChange, data }: ProductModa
                             <p className="font-medium">{variant.sku}</p>
                           </div>
                         )}
-                        {variant.barcode && (
+                        {variant.sku && (
                           <div className="space-y-1">
                             <p className="text-sm text-gray-500">Barcode</p>
-                            <p className="font-medium">{variant.barcode}</p>
+                            <p className="font-medium">{variant.sku}</p>
                           </div>
                         )}
                       </div>
 
-                      {variant.description && (
-                        <div className="pt-2 border-t">
-                          <p className="text-sm text-gray-500">{variant.description}</p>
-                        </div>
-                      )}
                     </div>
                   </div>
                 ))}

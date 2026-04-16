@@ -1,45 +1,40 @@
 import { object, string, number, preprocess, boolean } from "zod";
 
+const toNumber = (val: unknown) => {
+  if (typeof val === "string" && val.trim() !== "") return parseFloat(val);
+  if (typeof val === "number") return val;
+  return undefined;
+};
+
 export const VariantSchema = object({
   id: string().uuid().optional().nullish(),
   name: string({ required_error: "Variant name is required" }).min(
-    2,
+    1,
     "Variant name is required",
   ),
+
+  // Pricing
+  pricingStrategy: string().default("MANUAL"),
   price: preprocess(
-    (val) => {
-      if (typeof val === "string" && val.trim() !== "") {
-        return parseInt(val);
-      }
-      return val;
-    },
+    toNumber,
     number({ message: "Price is required" })
-      .nonnegative({ message: "Price can not be negative" })
-      .gt(0, { message: "Price can not be zero" }),
+      .nonnegative({ message: "Price cannot be negative" }),
   ),
-  purchasingPrice: preprocess(
-    (val) => {
-      if (typeof val === "string" && val.trim() !== "") {
-        return parseFloat(val);
-      }
-      if (typeof val === "number") {
-        return val;
-      }
-      return 0;
-    },
-    number({ message: "Purchasing price is required" })
-      .nonnegative({ message: "Purchasing price can not be negative" })
-      .optional(),
-  ),
+  costPrice: preprocess(toNumber, number().nonnegative().optional()),
+  markupPercentage: preprocess(toNumber, number().positive().optional().nullish()),
+  markupAmount: preprocess(toNumber, number().positive().optional().nullish()),
+
+  // Identity
   sku: string().optional().nullish(),
-  barcode: string().nullable().optional(),
-  unit: string().nullable().optional(),
-  description: string().nullable().optional(),
-  image: string().nullable().optional(),
-  color: string().nullable().optional(),
-  trackInventory: boolean().default(false),
-  trackingType: string().optional().nullish(),
-  trackItem: string().optional().nullish(),
-  stockItem: string().nullable().optional(),
-  recipeItem: string().nullable().optional(),
+  imageUrl: string().optional().nullish(),
+
+  // Quantity
+  availableQuantity: preprocess(toNumber, number().nonnegative().optional().nullish()),
+  unlimited: boolean().default(false),
+
+  // Stock linking
+  stockLinkType: string().optional().nullish(),
+  stockVariantId: string().uuid().optional().nullish(),
+  directQuantity: preprocess(toNumber, number().positive().optional().nullish()),
+  consumptionRuleId: string().uuid().optional().nullish(),
 });

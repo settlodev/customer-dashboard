@@ -26,7 +26,6 @@ import {
   deleteActiveLocationCookie,
   deleteAuthCookie,
   getAuthToken,
-  getUser,
   storePendingVerification,
   getPendingVerification,
   clearPendingVerification,
@@ -101,6 +100,7 @@ export async function logout() {
 export const login = async (
   credentials: z.infer<typeof LoginSchema>,
   rememberMe: boolean = false,
+  mfaCode?: string,
 ): Promise<FormResponse> => {
   const validatedData = LoginSchema.safeParse(credentials);
   if (!validatedData.success) {
@@ -119,16 +119,21 @@ export const login = async (
   try {
     console.log("[LOGIN] Attempting login to:", `${AUTH_SERVICE_URL}/auth/login`);
 
+    const loginBody: Record<string, string> = {
+      email: validatedData.data.email,
+      password: validatedData.data.password,
+    };
+    if (mfaCode) {
+      loginBody.mfaCode = mfaCode;
+    }
+
     const response = await fetch(`${AUTH_SERVICE_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
       },
-      body: JSON.stringify({
-        email: validatedData.data.email,
-        password: validatedData.data.password,
-      }),
+      body: JSON.stringify(loginBody),
     });
 
     console.log("[LOGIN] Auth response status:", response.status);
@@ -164,6 +169,9 @@ export const login = async (
         accessToken: loginData.accessToken,
         refreshToken: loginData.refreshToken,
       });
+
+      // Create auth cookie so middleware sees isLoggedIn=true with emailVerified=false
+      await createAuthTokenFromLogin(loginData);
 
       return parseStringify({
         responseType: "needs_verification",
@@ -721,6 +729,9 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
         // Best-effort
       }
 
+      // Clear pending verification before setting new cookies to avoid 431
+      await clearPendingVerification();
+
       // Create auth token with full access
       await createAuthTokenFromLogin(
         {
@@ -780,8 +791,6 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
         redirect: false,
       });
 
-      await clearPendingVerification();
-
       return parseStringify({
         responseType: "success",
         message: "Email verified successfully!",
@@ -824,6 +833,88 @@ export const verifyEmailCode = async (code: string): Promise<FormResponse> => {
     });
   } catch (error: any) {
     console.error("[VERIFY_EMAIL] Caught error:", error?.message, error?.cause);
+    return parseStringify({
+      responseType: "error",
+      message: getUIErrorMessage(null, error?.message),
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+};
+
+export const verifyEmailToken = async (token: string): Promise<FormResponse> => {
+  try {
+    const response = await fetch(
+      `${AUTH_SERVICE_URL}/auth/verify/email/token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
+        body: JSON.stringify({ token }),
+      },
+    );
+
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      return parseStringify({
+        responseType: "error",
+        message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired verification link. Please request a new code."),
+        error: new Error(apiError.code || "Token verification failed"),
+      });
+    }
+
+    const data = await response.json();
+
+    // Auto-login after token verification: call login would require password.
+    // Instead, redirect to login with a success message.
+    return parseStringify({
+      responseType: "success",
+      message: "Email verified successfully! Please log in to continue.",
+      data: { userId: data.userId, email: data.email, requiresLogin: true },
+    });
+  } catch (error: any) {
+    console.error("[VERIFY_EMAIL_TOKEN] Caught error:", error?.message);
+    return parseStringify({
+      responseType: "error",
+      message: getUIErrorMessage(null, error?.message),
+      error: error instanceof Error ? error : new Error(String(error)),
+    });
+  }
+};
+
+export const verifyResetToken = async (token: string): Promise<FormResponse> => {
+  try {
+    const response = await fetch(
+      `${AUTH_SERVICE_URL}/auth/password/reset/verify/token`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+        },
+        body: JSON.stringify({ token }),
+      },
+    );
+
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      return parseStringify({
+        responseType: "error",
+        message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired reset link. Please request a new one."),
+        error: new Error(apiError.code || "Token verification failed"),
+      });
+    }
+
+    const data: ResetPasswordVerifyResponse = await response.json();
+
+    return parseStringify({
+      responseType: "success",
+      message: "Link verified. You can now set your new password.",
+      data: { resetToken: data.resetToken },
+    });
+  } catch (error: any) {
+    console.error("[VERIFY_RESET_TOKEN] Caught error:", error?.message);
     return parseStringify({
       responseType: "error",
       message: getUIErrorMessage(null, error?.message),
@@ -1051,17 +1142,45 @@ export const updateUser = async (
   }
 
   try {
-    const user = await getUser();
+    const authToken = await getAuthToken();
+    if (!authToken?.accountId) {
+      return parseStringify({
+        responseType: "error",
+        message: "Session expired, please login to proceed.",
+        error: new Error("No auth token or account ID"),
+      });
+    }
+
+    // Map frontend field names to Accounts Service field names
+    const payload: Record<string, unknown> = {
+      firstName: validatedData.data.firstName,
+      lastName: validatedData.data.lastName,
+    };
+    if (validatedData.data.bio !== undefined) payload.bio = validatedData.data.bio;
+    if (validatedData.data.email !== undefined) payload.email = validatedData.data.email;
+    if (validatedData.data.phoneNumber !== undefined) payload.phoneNumber = validatedData.data.phoneNumber;
+    if (validatedData.data.avatar !== undefined) payload.pictureUrl = validatedData.data.avatar;
+    if (validatedData.data.country !== undefined) payload.countryId = validatedData.data.country;
 
     const apiClient = new ApiClient();
-    await apiClient.put(`/api/users/${user?.id}`, validatedData.data);
+    await apiClient.put(`/api/v1/accounts/${authToken.accountId}`, payload);
+
+    // Update local auth token with new profile data
+    await updateAuthToken({
+      ...authToken,
+      firstName: validatedData.data.firstName,
+      lastName: validatedData.data.lastName,
+      ...(validatedData.data.avatar !== undefined && { pictureUrl: validatedData.data.avatar }),
+    });
+
+    revalidatePath("/", "layout");
 
     return parseStringify({
       responseType: "success",
-      message: "Profile updated successful",
+      message: "Profile updated successfully",
     });
   } catch (error) {
-    console.error("Error is: ", error);
+    console.error("[UPDATE_USER] Error:", error);
     return parseStringify({
       responseType: "error",
       message: "An unexpected error occurred. Please try again.",
@@ -1070,9 +1189,108 @@ export const updateUser = async (
   }
 };
 
-export const resendVerificationEmail = async (
-  _name: any,
-  _email: any,
+// ---------------------------------------------------------------------------
+// Staff-specific auth actions
+// ---------------------------------------------------------------------------
+
+export const staffResetPassword = async (
+  email: string,
 ): Promise<FormResponse> => {
-  return resendVerificationCode();
+  if (!email || !email.includes("@")) {
+    return parseStringify({ responseType: "error", message: "Please enter a valid email address.", error: new Error("Invalid email") });
+  }
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/auth/staff/password/reset/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}) },
+      body: JSON.stringify({ email }),
+    });
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      return parseStringify({ responseType: "error", message: getUIErrorMessage(apiError.code, apiError.message, "Failed to send reset code."), error: new Error(apiError.code || `HTTP ${response.status}`) });
+    }
+    const data = await response.json();
+    return parseStringify({ responseType: "success", message: "A password reset code has been sent to your email.", data: { userId: data.userId } });
+  } catch (error: any) {
+    return parseStringify({ responseType: "error", message: getUIErrorMessage(null, error?.message), error: error instanceof Error ? error : new Error(String(error)) });
+  }
 };
+
+export const staffVerifyResetCode = async (
+  userId: string,
+  code: string,
+): Promise<FormResponse> => {
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/auth/staff/password/reset/verify/code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}) },
+      body: JSON.stringify({ userId, code }),
+    });
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      return parseStringify({ responseType: "error", message: getUIErrorMessage(apiError.code, apiError.message, "Invalid or expired code."), error: new Error(apiError.code || "Code verification failed") });
+    }
+    const data = await response.json();
+    return parseStringify({ responseType: "success", message: "Code verified successfully.", data: { resetToken: data.resetToken } });
+  } catch (error: any) {
+    return parseStringify({ responseType: "error", message: getUIErrorMessage(null, error?.message), error: error instanceof Error ? error : new Error(String(error)) });
+  }
+};
+
+export const staffConfirmNewPassword = async (
+  staffId: string,
+  resetToken: string,
+  newPassword: string,
+): Promise<FormResponse> => {
+  const validatedPassword = NewPasswordSchema.safeParse({ password: newPassword });
+  if (!validatedPassword.success) {
+    return parseStringify({ responseType: "error", message: "Password must be at least 8 characters.", error: new Error(validatedPassword.error.message) });
+  }
+  try {
+    const response = await fetch(`${AUTH_SERVICE_URL}/auth/staff/password/reset/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}) },
+      body: JSON.stringify({ staffId, resetToken, newPassword: validatedPassword.data.password }),
+    });
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      return parseStringify({ responseType: "error", message: getUIErrorMessage(apiError.code, apiError.message, "Failed to reset password."), error: new Error(apiError.code || "Password reset failed") });
+    }
+    return parseStringify({ responseType: "success", message: "Password reset successfully! Please log in with your new password." });
+  } catch (error: any) {
+    return parseStringify({ responseType: "error", message: getUIErrorMessage(null, error?.message), error: error instanceof Error ? error : new Error(String(error)) });
+  }
+};
+
+export const staffSelectBusiness = async (
+  businessId: string,
+): Promise<FormResponse> => {
+  try {
+    const authToken = await getAuthToken();
+    if (!authToken?.accessToken) {
+      return parseStringify({ responseType: "error", message: "Session expired, please log in again.", error: new Error("No access token") });
+    }
+    const response = await fetch(`${AUTH_SERVICE_URL}/auth/staff/select-business`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${authToken.accessToken}`,
+        ...(WHITELABEL_CLIENT_ID ? { "X-Client-Id": WHITELABEL_CLIENT_ID } : {}),
+      },
+      body: JSON.stringify({ businessId }),
+    });
+    if (!response.ok) {
+      const apiError = await parseApiError(response);
+      return parseStringify({ responseType: "error", message: getUIErrorMessage(apiError.code, apiError.message, "Failed to switch business."), error: new Error(apiError.code || `HTTP ${response.status}`) });
+    }
+    const data: LoginResponse = await response.json();
+    await updateAuthToken({ ...authToken, accessToken: data.accessToken, refreshToken: data.refreshToken });
+    await deleteActiveBusinessCookie();
+    await deleteActiveLocationCookie();
+    await deleteActiveWarehouseCookie();
+    return parseStringify({ responseType: "success", message: "Business switched successfully.", data: { businessId } });
+  } catch (error: any) {
+    return parseStringify({ responseType: "error", message: getUIErrorMessage(null, error?.message), error: error instanceof Error ? error : new Error(String(error)) });
+  }
+};
+

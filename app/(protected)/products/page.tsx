@@ -6,10 +6,9 @@ import NoItems from "@/components/layouts/no-items";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/product/column";
 import { Product } from "@/types/product/type";
-import { productSummary, searchProducts } from "@/lib/actions/product-actions";
+import { searchProducts } from "@/lib/actions/product-actions";
 import { ProductCSVDialog } from "@/components/csv/CSVImport";
 import { Plus } from "lucide-react";
-import ProductSummary from "@/components/widgets/products/product-summary";
 import TableExport from "@/components/widgets/export";
 
 const breadCrumbItems = [{ title: "Products", link: "/products" }];
@@ -29,14 +28,9 @@ async function Page({ searchParams }: Params) {
   const page = Number(resolvedSearchParams.page) || 0;
   const pageLimit = Number(resolvedSearchParams.limit);
 
-  const [responseData, summaryData] = await Promise.all([
-    searchProducts(q, page, pageLimit),
-    productSummary(),
-  ]);
+  const responseData = await searchProducts(q, page, pageLimit);
 
-  const filteredData: Product[] = responseData.content.filter(
-    (product) => !product.isArchived,
-  );
+  const filteredData: Product[] = responseData.content;
 
   const total = responseData.totalElements;
   const pageCount = responseData.totalPages;
@@ -58,9 +52,6 @@ async function Page({ searchParams }: Params) {
           </Button>
         </div>
       </div>
-
-      {/* Summary */}
-      <ProductSummary data={summaryData} />
 
       {/* Content */}
       {total > 0 || q !== "" ? (

@@ -67,17 +67,17 @@ import { Gender } from "@/types/enums";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-interface ProductVariant {
+interface ProformaProductVariant {
   id: string;
   name?: string;
   price?: number;
   sellingPrice?: number;
 }
 
-interface Product {
+interface ProformaProduct {
   id: string;
   name: string;
-  variants: ProductVariant[];
+  variants: ProformaProductVariant[];
   quantity: number | null;
 }
 
@@ -795,7 +795,7 @@ function ProductVariantSearch({
   ) => Promise<void>;
 }) {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Product[]>([]);
+  const [results, setResults] = useState<ProformaProduct[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -817,10 +817,10 @@ function ProductVariantSearch({
     else setLoadingMore(true);
     try {
       const res = await searchProducts(q, pageNum, PRODUCT_PAGE_SIZE);
-      const content = res.content ?? [];
+      const content = (res.content ?? []) as unknown as ProformaProduct[];
       const total = res.totalElements ?? content.length;
       setTotalCount(total);
-      setResults((prev) => (append ? [...prev, ...content] : content));
+      setResults(append ? (prev: ProformaProduct[]) => [...prev, ...content] : content);
       setHasMore(pageNum * PRODUCT_PAGE_SIZE < total);
       setPage(pageNum);
     } catch {
@@ -857,7 +857,7 @@ function ProductVariantSearch({
       search(query, page + 1, true);
   }, [loadingMore, hasMore, query, page, search]);
 
-  const selectVariant = (p: Product, v: ProductVariant) => {
+  const selectVariant = (p: ProformaProduct, v: ProformaProductVariant) => {
     const unitPrice = v.sellingPrice ?? v.price ?? 0;
     setPending({
       variantId: v.id,
@@ -889,11 +889,11 @@ function ProductVariantSearch({
       minimumFractionDigits: 0,
     }).format(n);
 
-  const rows: { product: Product; variant: ProductVariant }[] = results.flatMap(
+  const rows: { product: ProformaProduct; variant: ProformaProductVariant }[] = results.flatMap(
     (p) =>
       p.variants && p.variants.length > 0
         ? p.variants.map((v) => ({ product: p, variant: v }))
-        : [{ product: p, variant: { id: p.id } as ProductVariant }],
+        : [{ product: p, variant: { id: p.id } as ProformaProductVariant }],
   );
 
   return (

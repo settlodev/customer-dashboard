@@ -26,11 +26,11 @@ import { Location } from "@/types/location/type";
 import { FormResponse } from "@/types/types";
 import { useRouter, useSearchParams } from "next/navigation";
 
-import { StockRequests } from "@/types/warehouse/purchase/request/type";
+import { StockRequests } from "@/types/stock-request/type";
 import { StockRequestSchema } from "@/types/stock-request/schema";
 import { createStockRequest, updateStockRequest } from "@/lib/actions/request-actions";
 import WarehouseSelector from "../widgets/warehouse-selector";
-import WarehouseStockVariantSelector from "../widgets/warehouse-stock-variant-selector";
+import StockVariantSelector from "../widgets/stock-variant-selector";
 import { Package, Plus,Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
@@ -332,7 +332,7 @@ function StockRequestForm({ item }: { item: StockRequests | null | undefined }) 
                                                 <FormItem>
                                                     <FormLabel>Stock Item *</FormLabel>
                                                     <FormControl>
-                                                        <WarehouseStockVariantSelector
+                                                        <StockVariantSelector
                                                             {...field}
                                                             value={field.value ?? ""}
                                                             isDisabled={isPending}

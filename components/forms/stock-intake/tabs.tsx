@@ -107,7 +107,7 @@ export default function StockIntakeTabs() {
       </div>
 
       <div>
-        {activeTab === "manual" && <StockIntakeForm item={null} />}
+        {activeTab === "manual" && <StockIntakeForm />}
         {activeTab === "csv" && <StockIntakeCsv />}
         {activeTab === "lpo" && <LpoPanel />}
       </div>

@@ -12,7 +12,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { StockRequests } from "@/types/warehouse/purchase/request/type";
+import { StockRequests } from "@/types/stock-request/type";
 interface CellActionProps {
   data: StockRequests;
 }

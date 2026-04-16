@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Trash2 } from "lucide-react";
-import { InvoiceItem } from "@/types/invoice/type";
+import { InvoiceItem } from "@/hooks/useInvoiceCalculation";
 
 interface InvoiceItemCardProps {
   item: InvoiceItem;

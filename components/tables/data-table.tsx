@@ -44,7 +44,6 @@ import {
 } from "@radix-ui/react-icons";
 import { ProductCSVDialog } from "../csv/CSVImport";
 import { CSVStockDialog } from "../csv/stockCsvImport";
-import { ProductWithStockCSVDialog } from "../csv/ProductWithStockCsvImport";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -59,7 +58,7 @@ import TableExport from "../widgets/export";
 import StockExport from "../widgets/export-stock";
 import StockIntakeExport from "../widgets/export-intake";
 import { BulkArchive } from "../widgets/bulk-archive";
-import { WarehouseBulkArchive } from "../widgets/warehouse/bulk-archive";
+// WarehouseBulkArchive removed — warehouse code rebuilt
 import { CSVStockIntakeDialog } from "@/components/csv/stockIntakeImport";
 
 // Define page-specific component mappings
@@ -74,14 +73,9 @@ const pageSpecificComponents = {
   },
   "/stock-variants": {
     entityType: "stock" as const,
-    importComponent: (
-      <>
-        <CSVStockDialog uploadType="location" />
-        <ProductWithStockCSVDialog />
-      </>
-    ),
+    importComponent: <CSVStockDialog uploadType="location" />,
     exportComponent: <StockExport filename="stock" exportType="location" />,
-    entityNames: { singular: "Stock Variant", plural: "Stock Variants" },
+    entityNames: { singular: "Stock Item", plural: "Stock Items" },
     allowArchive: true,
     isWarehouse: false,
   },
@@ -100,11 +94,11 @@ const pageSpecificComponents = {
     entityNames: { singular: "Staff Member", plural: "Staff Members" },
     isWarehouse: false,
   },
-  "/recipes": {
-    entityType: "recipe" as const,
+  "/consumption-rules": {
+    entityType: "consumption-rule" as const,
     importComponent: null,
     exportComponent: null,
-    entityNames: { singular: "Recipe", plural: "Recipes" },
+    entityNames: { singular: "Consumption Rule", plural: "Consumption Rules" },
     allowArchive: false,
     isWarehouse: false,
   },
@@ -377,11 +371,9 @@ export function DataTable<TData, TValue>({
 
     if (pageConfig.isWarehouse) {
       return (
-        <WarehouseBulkArchive
+        <BulkArchive
           selectedIds={selectedRowIds}
-          entityType={
-            pageConfig.entityType as "stock" | "stock-intake" | "supplier"
-          }
+          entityType={pageConfig.entityType as any}
           onSuccess={resetTableSelection}
           entityNameSingular={pageConfig.entityNames.singular}
           entityNamePlural={pageConfig.entityNames.plural}

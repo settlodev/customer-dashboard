@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/select";
 import { Department } from "@/types/department/type";
 import {
-  fetchDepartmentsByLocation,
+  fetchAllDepartments,
 } from "@/lib/actions/department-actions";
 
 interface LocationDepartmentSelectorProps {
@@ -44,7 +44,7 @@ const LocationDepartmentSelector: React.FC<LocationDepartmentSelectorProps> = ({
 
     try {
       setIsLoading(true);
-      const fetchedDepartments = await fetchDepartmentsByLocation(locationId);
+      const fetchedDepartments = await fetchAllDepartments();
       setDepartments(fetchedDepartments ?? []);
     } catch (error: any) {
       console.log("Error fetching departments:", error);

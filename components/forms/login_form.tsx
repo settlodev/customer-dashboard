@@ -32,18 +32,26 @@ import {
   Loader2,
   ArrowRight,
   Shield,
+  KeyRound,
 } from "lucide-react";
 import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
 import { motion } from "framer-motion";
 import { Checkbox } from "@/components/ui/checkbox";
 import { deleteAuthCookie } from "@/lib/auth-utils";
 import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 
 function LoginForm() {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [rememberMe, setRememberMe] = useState<boolean>(false);
+  const [mfaRequired, setMfaRequired] = useState<boolean>(false);
+  const [mfaCode, setMfaCode] = useState<string>("");
 
   useEffect(() => {
     deleteAuthCookie();
@@ -62,13 +70,23 @@ function LoginForm() {
       setError("");
       startTransition(async () => {
         try {
-          const data: FormResponse = await login(values, rememberMe);
+          const data: FormResponse = await login(
+            values,
+            rememberMe,
+            mfaRequired ? mfaCode : undefined,
+          );
           if (!data) return;
           if (data.responseType === "needs_verification") {
-            window.location.href = "/user-verification";
+            window.location.href = "/email-verification";
             return;
           }
           if (data.responseType === "error") {
+            if (data.data && (data.data as any).mfaRequired) {
+              setMfaRequired(true);
+              setMfaCode("");
+              setError("");
+              return;
+            }
             setError(data.message);
             return;
           }
@@ -80,7 +98,7 @@ function LoginForm() {
         }
       });
     },
-    [rememberMe],
+    [rememberMe, mfaRequired, mfaCode],
   );
 
   return (
@@ -189,6 +207,36 @@ function LoginForm() {
                     </FormItem>
                   )}
                 />
+
+                {mfaRequired && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className="space-y-3"
+                  >
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
+                      <KeyRound className="w-4 h-4 text-primary" />
+                      <span>Enter the code from your authenticator app</span>
+                    </div>
+                    <div className="flex justify-center">
+                      <InputOTP
+                        maxLength={6}
+                        value={mfaCode}
+                        onChange={(value) => setMfaCode(value)}
+                        disabled={isPending}
+                      >
+                        <InputOTPGroup>
+                          <InputOTPSlot index={0} />
+                          <InputOTPSlot index={1} />
+                          <InputOTPSlot index={2} />
+                          <InputOTPSlot index={3} />
+                          <InputOTPSlot index={4} />
+                          <InputOTPSlot index={5} />
+                        </InputOTPGroup>
+                      </InputOTP>
+                    </div>
+                  </motion.div>
+                )}
 
                 <div className="flex items-center space-x-2 pt-1">
                   <Checkbox

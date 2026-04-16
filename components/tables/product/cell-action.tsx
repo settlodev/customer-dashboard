@@ -67,7 +67,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <EditIcon className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
-          {data.canDelete && (
+          {true && (
             <>
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -83,7 +83,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       </DropdownMenu>
 
       {/* Archive Modal */}
-      {data.canDelete && (
+      {true && (
         <DeleteModal
           isOpen={isArchiveModalOpen}
           itemName={data.name}

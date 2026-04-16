@@ -1,77 +1,31 @@
-import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-
-import { Warehouses } from "@/types/warehouse/warehouse/type";
-import { getWarehouse } from "@/lib/actions/warehouse/list-warehouse";
 import { notFound } from "next/navigation";
-import WarehouseForm from "@/components/forms/warehouse/warehouse_form";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { getWarehouse } from "@/lib/actions/warehouse/list-warehouse";
+import WarehouseForm from "@/components/forms/warehouse_form";
+import EntitySubscriptionSetup from "@/components/subscription/EntitySubscriptionSetup";
 
-interface WarehousePageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default async function WarehousePage({ params }: WarehousePageProps) {
-  const paramsData = await params;
-  const isNewItem = paramsData.id === "new";
-  let item: Warehouses | null = null;
-
-  
-  if (!isNewItem) {
-    try {
-      item = await getWarehouse(paramsData.id); 
-      
-      
-      if (!item) {
-        notFound();
-      }
-    } catch (error) {
-      console.error("Failed to load warehouse details:", error);
-      throw new Error("Failed to load warehouse details");
-    }
-  }
-
-  const breadCrumbItems = [
-    { title: "Warehouses", link: "/warehouse-profiles" },
-    { 
-      title: isNewItem ? "New Warehouse" : item?.name || "Edit Warehouse",
-      link: ""
-    }
-  ];
-
+type Params = Promise<{ id: string }>;
+export default async function Page({ params }: { params: Params }) {
+  const { id } = await params;
+  const item = await getWarehouse(id);
+  if (!item) notFound();
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between mb-2">
-        <div className="relative flex-1">
-          <BreadcrumbsNav items={breadCrumbItems} />
-        </div>
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 mt-12">
+      <BreadcrumbsNav items={[{ title: "Warehouse Profile", link: "/warehouse-profile" }]} />
+      <h1 className="text-2xl font-bold mt-4">{item.name}</h1>
+      <p className="text-sm text-muted-foreground">{item.identifier} · {item.active ? "Active" : "Inactive"}</p>
+
+      <div className="mt-4">
+        <EntitySubscriptionSetup
+          entityType="WAREHOUSE"
+          entityId={item.id}
+          entityName={item.name}
+          businessId={item.businessId}
+          locationId={item.id}
+        />
       </div>
-      
-      <WarehouseCard isNewItem={isNewItem} item={item} />
+
+      <div className="mt-6"><WarehouseForm item={item} /></div>
     </div>
   );
 }
-
-interface WarehouseCardProps {
-  isNewItem: boolean;
-  item: Warehouses | null;
-}
-
-const WarehouseCard = ({ isNewItem, item }: WarehouseCardProps) => (
-  <Card>
-    <CardHeader>
-      <CardTitle>
-        {isNewItem ? "Add New Warehouse" : "Edit Warehouse Details"}
-      </CardTitle>
-      <CardDescription>
-        {isNewItem 
-          ? "Create a new warehouse for your business" 
-          : "Update warehouse information"
-        }
-      </CardDescription>
-    </CardHeader>
-    
-    <CardContent>
-      <WarehouseForm item={item} />
-    </CardContent>
-  </Card>
-);

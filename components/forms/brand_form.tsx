@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { FieldErrors, useForm } from "react-hook-form";
 import {
   Form,
@@ -25,19 +26,22 @@ import { createBrand, updateBrand } from "@/lib/actions/brand-actions";
 import { useRouter } from "next/navigation";
 import { Switch } from "../ui/switch";
 import { Card, CardContent } from "../ui/card";
+import UploadImageWidget from "../widgets/UploadImageWidget";
 
 function BrandForm({ item }: { item: Brand | null | undefined }) {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
+  const [imageUrl, setImageUrl] = useState<string>(item?.imageUrl || "");
   const { toast } = useToast();
   const router = useRouter();
 
   const form = useForm<z.infer<typeof BrandSchema>>({
     resolver: zodResolver(BrandSchema),
     defaultValues: {
-      ...item,
-      name: item ? item.name : "",
-      status: item ? item.status : true,
+      name: item?.name ?? "",
+      description: item?.description ?? "",
+      imageUrl: item?.imageUrl ?? "",
+      active: item?.active ?? true,
     },
   });
 
@@ -56,6 +60,8 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
   );
 
   const submitData = (values: z.infer<typeof BrandSchema>) => {
+    if (imageUrl) values.imageUrl = imageUrl;
+
     startTransition(() => {
       if (item) {
         updateBrand(item.id, values).then((data) => {
@@ -94,8 +100,20 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
       >
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-6">
-            <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="flex flex-col items-center">
+                <UploadImageWidget
+                  imagePath="brands"
+                  displayStyle="default"
+                  displayImage={true}
+                  showLabel={true}
+                  label="Brand image"
+                  setImage={setImageUrl}
+                  image={imageUrl}
+                />
+              </div>
+
+              <div className="lg:col-span-2 space-y-4">
                 <FormField
                   control={form.control}
                   name="name"
@@ -115,10 +133,28 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Brief description of the brand"
+                          rows={3}
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 
-            {/* Status (edit only) */}
             {item && (
               <>
                 <Separator />
@@ -126,7 +162,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
                   <h3 className="text-lg font-medium mb-4">Settings</h3>
                   <FormField
                     control={form.control}
-                    name="status"
+                    name="active"
                     render={({ field }) => (
                       <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
                         <div className="space-y-0.5">
@@ -155,7 +191,6 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
           </CardContent>
         </Card>
 
-        {/* Actions */}
         <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
           <CancelButton />
           <Separator orientation="vertical" className="h-5" />

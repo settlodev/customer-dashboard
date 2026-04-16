@@ -26,6 +26,6 @@ export function extractSubscriptionStatus(accessToken: string): SubscriptionStat
   if (!claims) return null;
   const status = claims.subscription_status as string | undefined;
   if (!status) return null;
-  const valid: SubscriptionStatus[] = ["TRIAL", "ACTIVE", "PAST_DUE", "EXPIRED", "SUSPENDED"];
+  const valid: SubscriptionStatus[] = ["TRIAL", "ACTIVE", "PAST_DUE", "EXPIRED", "SUSPENDED", "CANCELLED"];
   return valid.includes(status as SubscriptionStatus) ? (status as SubscriptionStatus) : null;
 }

@@ -26,17 +26,16 @@ import { FormResponse } from "@/types/types";
 import { CategorySchema } from "@/types/category/schema";
 import { FormError } from "@/components/widgets/form-error";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import UploadImageWidget from "@/components/widgets/UploadImageWidget";
-import ProductCategorySelector from "@/components/widgets/product-category-selector";
+import CategorySelector from "@/components/widgets/category-selector";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent } from "../ui/card";
 import { useRouter } from "next/navigation";
-import { Switch } from "../ui/switch";
-
 const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
-  const [imageUrl, setImageUrl] = useState<string>(item?.image || "");
+  const [imageUrl, setImageUrl] = useState<string>(item?.imageUrl || "");
   const [categories, setCategories] = useState<Category[] | null>([]);
 
   const { toast } = useToast();
@@ -44,8 +43,8 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
   useEffect(() => {
     const getData = async () => {
-      const categories = await fetchAllCategories();
-      setCategories(categories);
+      const cats = await fetchAllCategories();
+      setCategories(cats);
     };
     getData();
   }, []);
@@ -53,10 +52,12 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
   const form = useForm<z.infer<typeof CategorySchema>>({
     resolver: zodResolver(CategorySchema),
     defaultValues: {
-      ...item,
-      image: imageUrl || item?.image || "",
-      parentCategory: item?.parentCategory || "",
-      status: item ? item.status : false,
+      name: item?.name ?? "",
+      description: item?.description ?? "",
+      imageUrl: imageUrl || item?.imageUrl || "",
+      parentId: item?.parentId || "",
+      sortOrder: item?.sortOrder ?? 0,
+      active: item?.active ?? true,
     },
   });
 
@@ -76,17 +77,11 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
   const submitData = (values: z.infer<typeof CategorySchema>) => {
     setResponse(undefined);
-    if (imageUrl) values.image = imageUrl;
+    if (imageUrl) values.imageUrl = imageUrl;
 
     startTransition(() => {
       if (item) {
-        const updatedValues = {
-          ...values,
-          parentCategory:
-            values.parentCategory || item.parentCategory || "",
-        };
-
-        updateCategory(item.id, updatedValues, "category").then((data) => {
+        updateCategory(item.id, values, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
             toast({ variant: "success", title: "Success", description: data.message });
@@ -113,10 +108,10 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
       >
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-6">
-            <div>
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Image */}
-                <div className="flex flex-col items-center">
+            <div className="flex flex-col sm:flex-row gap-6">
+              {/* Image */}
+              <div className="flex-shrink-0 self-start">
+                <div className="w-[200px] h-[200px]">
                   <UploadImageWidget
                     imagePath="categories"
                     displayStyle="default"
@@ -127,17 +122,17 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                     image={imageUrl}
                   />
                 </div>
+              </div>
 
-                {/* Name & Parent */}
-                <div className="lg:col-span-2 space-y-4">
+              <div className="flex-1 min-w-0 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>
-                          Category Name{" "}
-                          <span className="text-red-500">*</span>
+                          Category name <span className="text-red-500">*</span>
                         </FormLabel>
                         <FormControl>
                           <Input
@@ -153,20 +148,41 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
                   <FormField
                     control={form.control}
-                    name="parentCategory"
+                    name="parentId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Parent Category</FormLabel>
+                        <FormLabel>Parent category</FormLabel>
                         <FormControl>
-                          <ProductCategorySelector
+                          <CategorySelector
+                            simple
+                            categories={categories}
                             onChange={field.onChange}
                             onBlur={field.onBlur}
-                            isRequired
                             isDisabled={isPending}
-                            label="Category"
-                            placeholder="Select parent category"
-                            categories={categories}
+                            placeholder="Select parent"
                             value={field.value || ""}
+                            showChildren={false}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="sortOrder"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Display order</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            placeholder="e.g. 1"
+                            {...field}
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                            disabled={isPending}
                           />
                         </FormControl>
                         <FormMessage />
@@ -174,47 +190,30 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                     )}
                   />
                 </div>
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Brief description"
+                          rows={5}
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
-
-            {/* Status (edit only) */}
-            {item && (
-              <>
-                <Separator />
-                <div>
-                  <h3 className="text-lg font-medium mb-4">Settings</h3>
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem className="flex justify-between items-center space-x-3 space-y-0 rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                          <FormLabel className="text-sm font-medium cursor-pointer">
-                            Category Status
-                          </FormLabel>
-                          <p className="text-xs text-muted-foreground">
-                            {field.value
-                              ? "This category is currently active and visible"
-                              : "This category is currently inactive and hidden"}
-                          </p>
-                        </div>
-                        <FormControl>
-                          <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            disabled={isPending}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </>
-            )}
           </CardContent>
         </Card>
 
-        {/* Actions */}
         <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
           <CancelButton />
           <Separator orientation="vertical" className="h-5" />

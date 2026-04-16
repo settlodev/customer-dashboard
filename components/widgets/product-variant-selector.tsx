@@ -19,7 +19,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Product } from "@/types/product/type";
-import { fectchAllProducts } from "@/lib/actions/product-actions";
+import { fetchAllProducts } from "@/lib/actions/product-actions";
 import { Variant } from "@/types/variant/type";
 
 interface Props {
@@ -53,7 +53,7 @@ const ProductVariantSelector: React.FC<Props> = ({
     async function loadProducts() {
         try {
             setIsLoading(true);
-            const fetchedProducts = await fectchAllProducts();
+            const fetchedProducts = await fetchAllProducts();
             setProducts(fetchedProducts);
         } catch (error: any) {
             console.log("Error fetching products:", error);

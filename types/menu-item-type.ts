@@ -1,9 +1,9 @@
 import {ReactNode} from "react";
-import { ActiveSubscription } from "./subscription/type";
 
 export declare interface MenuItemArgType {
     isCurrentItem: boolean | false,
     menuType?: MenuType;
+    hasMultipleDestinations?: boolean;
 }
 
 export type MenuType = 'normal' | 'warehouse';

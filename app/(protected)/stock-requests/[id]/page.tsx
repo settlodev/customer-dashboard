@@ -2,7 +2,7 @@ import {UUID} from "node:crypto";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import {Card, CardContent} from "@/components/ui/card";
 import { getStockRequest } from "@/lib/actions/request-actions";
-import { StockRequests } from "@/types/warehouse/purchase/request/type";
+import { StockRequests } from "@/types/stock-request/type";
 import StockRequestForm from "@/components/forms/stock_request_form";
 
 type Params = Promise<{id:string}>

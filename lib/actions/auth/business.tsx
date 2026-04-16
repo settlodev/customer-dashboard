@@ -48,6 +48,7 @@ interface BusinessWithLocationsPayload {
 interface ApiBusinessResponse {
   id: string;
   accountId: string;
+  identifier?: string;
   name: string;
   description?: string;
   phoneNumber?: string;
@@ -74,6 +75,7 @@ interface ApiLocationResponse {
   accountId: string;
   businessId: string;
   businessName: string;
+  identifier?: string;
   name: string;
   description?: string;
   phoneNumber?: string;
@@ -107,7 +109,7 @@ function mapApiBusinessToExisting(
   return {
     id: apiBusiness.id,
     accountId: apiBusiness.accountId,
-    identifier: apiBusiness.slug || "",
+    identifier: apiBusiness.identifier || apiBusiness.slug || "",
     name: apiBusiness.name,
     description: apiBusiness.description || "",
     phoneNumber: apiBusiness.phoneNumber || "",
@@ -141,7 +143,7 @@ function mapApiLocationToExisting(
     accountId: apiLocation.accountId,
     businessId: apiLocation.businessId,
     businessName: apiLocation.businessName,
-    identifier: "",
+    identifier: apiLocation.identifier || apiLocation.id,
     name: apiLocation.name,
     description: apiLocation.description || "",
     phoneNumber: apiLocation.phoneNumber || "",
@@ -354,25 +356,3 @@ export const createBusinessWithLocations = async (data: {
   }
 };
 
-// Keep legacy createBusiness for backward compatibility within the app
-export const createBusiness = async (
-  business: any,
-): Promise<FormResponse | void> => {
-  return createBusinessWithLocations({
-    businessName: business.name,
-    description: business.description,
-    phoneNumber: business.phoneNumber || business.phone,
-    email: business.email,
-    businessTypeId: business.businessType || business.businessTypeId,
-    countryId: business.country || business.countryId,
-    logoUrl: business.image || business.logoUrl,
-    locations: [
-      {
-        name: business.locationName || business.name || "Main Location",
-        region: business.city || business.region,
-        address: business.address,
-        operatingHours: business.operatingHours,
-      },
-    ],
-  });
-};

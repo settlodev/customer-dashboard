@@ -1,18 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import React from "react";
+import React, { useState } from "react";
 import {
   MoreVertical,
   Pencil as EditIcon,
   Archive as ArchiveIcon,
+  ArchiveRestore,
+  Trash2,
 } from "lucide-react";
-import { useDisclosure } from "@/hooks/use-disclosure";
 
 import DeleteModal from "@/components/tables/delete-modal";
 import { toast } from "@/hooks/use-toast";
 import { Supplier } from "@/types/supplier/type";
-import { deleteSupplier } from "@/lib/actions/supplier-actions";
+import {
+  archiveSupplier,
+  unarchiveSupplier,
+  deleteSupplier,
+} from "@/lib/actions/supplier-actions";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -21,6 +26,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface CellActionProps {
   data: Supplier;
@@ -28,27 +40,98 @@ interface CellActionProps {
 
 export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const [isArchiveModalOpen, setArchiveModalOpen] = useState(false);
+  const [isDeleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+  const [isUnarchiving, setIsUnarchiving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const onDelete = async () => {
+  // Settlo suppliers cannot be manipulated
+  if (data.isSettloSupplier) {
+    return null;
+  }
+
+  const handleArchive = async () => {
+    setIsArchiving(true);
     try {
-      if (data) {
-        await deleteSupplier(data.id);
+      const result = await archiveSupplier(data.id);
+      if (result.responseType === "success") {
         toast({
+          variant: "success",
           title: "Archived",
-          description: `${data.name} has been archived successfully.`,
+          description: `${data.name} has been archived.`,
+        });
+        router.refresh();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.message || "Failed to archive supplier",
         });
       }
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Uh oh! Something went wrong.",
+        title: "Error",
         description:
-          (error as Error).message ||
-          "There was an issue with your request, please try again later",
+          (error as Error).message || "Failed to archive supplier",
       });
     } finally {
-      onOpenChange();
+      setIsArchiving(false);
+      setArchiveModalOpen(false);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    setIsUnarchiving(true);
+    try {
+      const result = await unarchiveSupplier(data.id);
+      if (result.responseType === "success") {
+        toast({
+          variant: "success",
+          title: "Restored",
+          description: `${data.name} has been restored.`,
+        });
+        router.refresh();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: result.message || "Failed to restore supplier",
+        });
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          (error as Error).message || "Failed to restore supplier",
+      });
+    } finally {
+      setIsUnarchiving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteSupplier(data.id);
+      toast({
+        variant: "warning",
+        title: "Deleted",
+        description: `${data.name} has been permanently deleted.`,
+      });
+      router.refresh();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description:
+          (error as Error).message || "Failed to delete supplier",
+      });
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
     }
   };
 
@@ -67,29 +150,76 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
             <EditIcon className="mr-2 h-4 w-4" />
             Edit
           </DropdownMenuItem>
-          {data.canDelete && (
+          <DropdownMenuSeparator />
+          {!data.archivedAt ? (
+            <DropdownMenuItem
+              onClick={() => setArchiveModalOpen(true)}
+              className="text-red-600 focus:text-red-600"
+            >
+              <ArchiveIcon className="mr-2 h-4 w-4" />
+              Archive
+            </DropdownMenuItem>
+          ) : (
             <>
-              <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={onOpen}
+                onClick={handleUnarchive}
+                disabled={isUnarchiving}
+                className="text-green-600 focus:text-green-600"
+              >
+                <ArchiveRestore className="mr-2 h-4 w-4" />
+                {isUnarchiving ? "Restoring..." : "Unarchive"}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setDeleteModalOpen(true)}
                 className="text-red-600 focus:text-red-600"
               >
-                <ArchiveIcon className="mr-2 h-4 w-4" />
-                Archive
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete permanently
               </DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {data.canDelete && (
-        <DeleteModal
-          isOpen={isOpen}
-          itemName={data.name}
-          onDelete={onDelete}
-          onOpenChange={onOpenChange}
-        />
-      )}
+      {/* Archive confirmation */}
+      <DeleteModal
+        isOpen={isArchiveModalOpen}
+        itemName={data.name}
+        onDelete={handleArchive}
+        onOpenChange={() => setArchiveModalOpen(false)}
+        isLoading={isArchiving}
+      />
+
+      {/* Permanent delete confirmation */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader className="space-y-3">
+            <div className="mx-auto w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/30 flex items-center justify-center">
+              <Trash2 className="h-6 w-6 text-red-600 dark:text-red-400" />
+            </div>
+            <DialogTitle className="text-center">
+              Delete {data.name}?
+            </DialogTitle>
+            <DialogDescription className="text-center">
+              This action is permanent and cannot be undone. All associated data
+              will be removed.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setDeleteModalOpen(false)}
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={isDeleting}>
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              {isDeleting ? "Deleting..." : "Yes, Delete"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };

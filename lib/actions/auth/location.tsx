@@ -91,34 +91,30 @@ export const createStandaloneLocation = async (data: {
       };
       await updateAuthToken(updatedToken);
 
-      // Map API response to existing Location type and store cookie
-      const location = {
+      // Map API response to Location type
+      const location: import("@/types/location/type").Location = {
         id: apiResponse.id,
-        name: apiResponse.name,
-        phone: apiResponse.phoneNumber || "",
-        locationAccountNumber: "",
-        email: apiResponse.email || "",
-        city: apiResponse.region || "",
-        region: apiResponse.region || "",
-        street: apiResponse.address || "",
-        address: apiResponse.address || "",
-        description: apiResponse.description || "",
-        image: "",
-        openingTime: "",
-        closingTime: "",
-        status: apiResponse.active,
-        isArchived: false,
-        canDelete: false,
-        dateCreated: apiResponse.createdAt || "",
-        settings: "",
-        business: apiResponse.businessId,
+        accountId: apiResponse.accountId,
+        businessId: apiResponse.businessId,
         businessName: apiResponse.businessName || "",
-        locationBusinessType: "",
-        locationBusinessTypeName: "",
-        subscriptionStatus: "",
-        subscriptionStartDate: "",
-        subscriptionEndDate: "",
-        type: null,
+        identifier: apiResponse.id,
+        name: apiResponse.name,
+        description: apiResponse.description || "",
+        phoneNumber: apiResponse.phoneNumber || "",
+        email: apiResponse.email || "",
+        active: apiResponse.active,
+        countryId: apiResponse.countryId || "",
+        region: apiResponse.region || "",
+        district: apiResponse.district || "",
+        ward: apiResponse.ward || "",
+        address: apiResponse.address || "",
+        postalCode: apiResponse.postalCode || "",
+        latitude: apiResponse.latitude ?? null,
+        longitude: apiResponse.longitude ?? null,
+        timezone: apiResponse.timezone || "",
+        parentLocationId: null,
+        createdAt: apiResponse.createdAt || "",
+        updatedAt: apiResponse.updatedAt || "",
       };
 
       const cookieStore = await cookies();

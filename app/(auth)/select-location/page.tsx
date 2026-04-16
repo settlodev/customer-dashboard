@@ -40,10 +40,10 @@ export default async function SelectLocationPage({ searchParams }: Params) {
 
     const [businessLocations, warehouseList] = await Promise.all([
       fetchAllLocations(),
-      searchWarehouses(q, page, pageLimit),
+      searchWarehouses(),
     ]);
 
-    const warehouses: Warehouses[] = warehouseList?.content || [];
+    const warehouses: Warehouses[] = warehouseList || [];
 
     if (!businessLocations || businessLocations.length === 0) {
       redirect("/business-location");

@@ -59,8 +59,8 @@ export const CompaniesDropdown = ({ data }: { data: BusinessPropsType }) => {
           const q = "";
           const page = 0;
           const pageLimit = 10;
-          const warehouseLists = await searchWarehouses(q, page, pageLimit);
-          setWarehouseList(warehouseLists?.content || []);
+          const warehouseLists = await searchWarehouses();
+          setWarehouseList(warehouseLists || []);
         } catch (error) {
           console.error("Failed to fetch warehouses:", error);
           Sentry.captureException(error);

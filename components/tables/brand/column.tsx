@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { CellAction } from "@/components/tables/brand/cell-action";
 import { Brand } from "@/types/brand/type";
+import Image from "next/image";
 
 export const columns: ColumnDef<Brand>[] = [
   {
@@ -50,11 +51,39 @@ export const columns: ColumnDef<Brand>[] = [
         </Button>
       );
     },
-    cell: ({ row }) => (
-      <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
-        {row.original.name}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const image = row.original.imageUrl;
+      const name = row.original.name;
+      const initial = name?.charAt(0)?.toUpperCase() || "B";
+
+      const isValidImageUrl =
+        image &&
+        (image.startsWith("http://") ||
+          image.startsWith("https://") ||
+          image.startsWith("/"));
+
+      return (
+        <div className="flex items-center gap-3">
+          {isValidImageUrl ? (
+            <Image
+              src={image}
+              alt={name}
+              className="w-8 h-8 rounded-lg object-cover shrink-0"
+              width={32}
+              height={32}
+              loading="lazy"
+            />
+          ) : (
+            <div className="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-500 text-sm font-semibold shrink-0">
+              {initial}
+            </div>
+          )}
+          <span className="font-medium text-sm text-gray-900 dark:text-gray-100">
+            {name}
+          </span>
+        </div>
+      );
+    },
   },
   {
     id: "status",
@@ -62,7 +91,7 @@ export const columns: ColumnDef<Brand>[] = [
     header: "Status",
     enableHiding: true,
     cell: ({ row }) => {
-      const isActive = row.original.status;
+      const isActive = !row.original.archivedAt;
       return (
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -71,7 +100,7 @@ export const columns: ColumnDef<Brand>[] = [
               : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
           }`}
         >
-          {isActive ? "Active" : "Inactive"}
+          {isActive ? "Active" : "Archived"}
         </span>
       );
     },

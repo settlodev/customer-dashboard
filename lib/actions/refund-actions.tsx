@@ -96,11 +96,11 @@ export const GetRefundReport = async (
     startDate?: string,
     endDate?: string
 ): Promise<RefundReport> => {
-    
+
     await getAuthenticatedUser();
 
     try {
-        const apiClient = new ApiClient();
+        const apiClient = new ApiClient("reports");
         const location = await getCurrentLocation();
         const queryParams = new URLSearchParams();
         

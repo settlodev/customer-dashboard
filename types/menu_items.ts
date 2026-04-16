@@ -1,10 +1,8 @@
-// types/menu_items.ts - Updated version
+// types/menu_items.ts
 import { MenuItemArgType } from "@/types/menu-item-type";
-import { ActiveSubscription } from "./subscription/type";
-import { getFilteredMenuItems } from "@/lib/subscription-utils";
 
 export const menuItems = (
-  args?: MenuItemArgType & { subscription?: ActiveSubscription | null },
+  args?: MenuItemArgType,
 ) => {
   // Default to normal menu if not specified
   const menuType = args?.menuType || "normal";
@@ -17,7 +15,7 @@ export const menuItems = (
 };
 
 const getNormalMenuItems = (
-  args?: MenuItemArgType & { subscription?: ActiveSubscription | null },
+  args?: MenuItemArgType,
 ) => {
   return [
     // Analytics & Reporting
@@ -130,6 +128,12 @@ const getNormalMenuItems = (
           icon: "tag",
         },
         {
+          title: "Collections",
+          link: "/product-collections",
+          current: args?.isCurrentItem,
+          icon: "folder",
+        },
+        {
           title: "Suppliers",
           link: "/suppliers",
           current: args?.isCurrentItem,
@@ -164,36 +168,28 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        ...(args?.hasMultipleDestinations ? [
+          {
+            title: "Stock transfer",
+            link: "/stock-transfers",
+            current: args?.isCurrentItem,
+            icon: "cart",
+          },
+        ] : []),
         {
-          title: "Stock transfer",
-          link: "/stock-transfers",
+          title: "Consumption Rules",
+          link: "/consumption-rules",
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        {
-          title: "Recipes",
-          link: "/recipes",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Modifiers",
-          link: "/modifiers",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Addons",
-          link: "/addons",
-          current: args?.isCurrentItem,
-          icon: "cart",
-        },
-        {
-          title: "Stock request",
-          link: "/stock-requests",
-          current: args?.isCurrentItem,
-          icon: "truck-return",
-        },
+        ...(args?.hasMultipleDestinations ? [
+          {
+            title: "Stock request",
+            link: "/stock-requests",
+            current: args?.isCurrentItem,
+            icon: "truck-return",
+          },
+        ] : []),
         {
           title: "Purchase orders",
           link: "/stock-purchases",
@@ -275,10 +271,21 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
-        // { title: "Shifts", link: "/shifts", current: args?.isCurrentItem, icon: "cart" }, For later use
+        {
+          title: "Team",
+          link: "/team",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
         {
           title: "Roles",
           link: "/roles",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Shifts",
+          link: "/shifts",
           current: args?.isCurrentItem,
           icon: "cart",
         },
@@ -308,6 +315,12 @@ const getNormalMenuItems = (
         {
           title: "Reservations",
           link: "/reservations",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Stores",
+          link: "/stores",
           current: args?.isCurrentItem,
           icon: "cart",
         },

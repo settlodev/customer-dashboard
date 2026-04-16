@@ -1,180 +1,85 @@
-"use client";
-import { useEffect, useState } from "react";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { DataTable } from "@/components/tables/data-table";
-import { columns } from "@/components/tables/stock-intake-receivable/column";
-import { useToast } from "@/hooks/use-toast";
-import { searchStockIntakeReceived } from "@/lib/actions/stock-purchase-actions";
-import { Loader2, PackageOpen, Plus } from "lucide-react";
-import { StockReceipt } from "@/types/stock-intake-receipt/type";
-import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import NoItems from "@/components/layouts/no-items";
+import { getGrns } from "@/lib/actions/procurement-actions";
+import { Grn, GRN_STATUS_LABELS } from "@/types/procurement/type";
 import Link from "next/link";
 
-const breadCrumbItems = [
-  { title: "Goods Received", link: "/receivable-goods" },
-];
+const breadcrumbItems = [{ title: "Goods Received", link: "/goods-received" }];
 
 type Params = {
   searchParams: Promise<{
-    search?: string;
     page?: string;
     limit?: string;
   }>;
 };
 
-function Page({ searchParams }: Params) {
-  const [goodsReceived, setGoodsReceived] = useState<StockReceipt[]>([]);
-  const [total, setTotal] = useState<number>(0);
-  const [pageCount, setPageCount] = useState<number>(0);
-  const [resolvedParams, setResolvedParams] = useState<{
-    search?: string;
-    page?: string;
-    limit?: string;
-  } | null>(null);
-  const [initialLoading, setInitialLoading] = useState<boolean>(true);
+export default async function Page({ searchParams }: Params) {
+  const resolvedParams = await searchParams;
+  const page = Number(resolvedParams.page) || 0;
+  const pageLimit = Number(resolvedParams.limit) || 20;
 
-  const { toast } = useToast();
-
-  // Resolve search params
-  useEffect(() => {
-    const resolveParams = async () => {
-      const params = await searchParams;
-      setResolvedParams(params);
-    };
-    resolveParams();
-  }, [searchParams]);
-
-  // Extract values from resolved params
-  const q = resolvedParams?.search || "";
-  const page = Number(resolvedParams?.page) || 0;
-  const pageLimit = Number(resolvedParams?.limit);
-
-  useEffect(() => {
-    if (resolvedParams === null) return;
-
-    const fetchGoodsReceived = async () => {
-      if (initialLoading) {
-        setInitialLoading(true);
-      }
-
-      try {
-        const responseData = await searchStockIntakeReceived(
-          q,
-          page,
-          pageLimit,
-        );
-
-        const receivedOrders = responseData.content;
-        setGoodsReceived(receivedOrders);
-        setTotal(responseData.totalElements);
-        setPageCount(responseData.totalPages);
-      } catch (error) {
-        console.error("Error fetching goods received:", error);
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "Failed to load goods received. Please try again.",
-        });
-      } finally {
-        setInitialLoading(false);
-      }
-    };
-
-    fetchGoodsReceived();
-  }, [q, page, pageLimit, resolvedParams]);
-
-  // Show loading state while params are being resolved OR during initial load
-  if (resolvedParams === null || initialLoading) {
-    return (
-      <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
-        <div className={`flex items-center justify-between mb-2`}>
-          <div className={`relative flex-1 md:max-w-md`}>
-            <div className="h-6 w-48 bg-gray-200 animate-pulse rounded"></div>
-          </div>
-          <div className={`flex items-center space-x-2`}>
-            <div className="h-10 w-36 bg-gray-200 animate-pulse rounded"></div>
-          </div>
-        </div>
-
-        <Card x-chunk="data-table">
-          <CardHeader>
-            <CardTitle>Goods Received</CardTitle>
-            <CardDescription>
-              Track goods received from your suppliers
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex items-center justify-center py-12">
-            <div className="flex flex-col items-center gap-4">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-muted-foreground">Loading goods received...</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const responseData = await getGrns(page ? page - 1 : 0, pageLimit);
+  const data: Grn[] = responseData.content;
+  const total = responseData.totalElements;
 
   return (
-    <div className={`flex-1 space-y-4 md:p-8 pt-6 mt-10`}>
-      <div className={`flex items-center justify-between mb-2`}>
-        <div className={`relative flex-1 md:max-w-md`}>
-          <BreadcrumbsNav items={breadCrumbItems} />
-        </div>
+    <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <BreadcrumbsNav items={breadcrumbItems} />
       </div>
-      {total > 0 || q !== "" ? (
-        <Card x-chunk="data-table">
-          <CardHeader>
-            <CardTitle>Goods Received</CardTitle>
-            <CardDescription>
-              Track stock received from your suppliers
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DataTable
-              columns={columns}
-              data={goodsReceived}
-              searchKey=""
-              pageNo={page}
-              total={total}
-              pageCount={pageCount}
-            />
+
+      {total > 0 ? (
+        <Card>
+          <CardContent className="px-2 sm:px-6 pt-6">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-gray-50/60">
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">GRN Number</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Supplier</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Items</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Received</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {data.map((grn) => (
+                    <tr key={grn.id} className="hover:bg-gray-50/50">
+                      <td className="px-4 py-3">
+                        <Link href={`/goods-received/${grn.id}`} className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline">
+                          {grn.grnNumber}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{grn.supplierName || "\u2014"}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600">{grn.items?.length ?? 0}</td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
+                          grn.status === "RECEIVED" ? "bg-green-50 text-green-700" :
+                          grn.status === "CANCELLED" ? "bg-red-50 text-red-700" :
+                          "bg-amber-50 text-amber-700"
+                        }`}>
+                          {GRN_STATUS_LABELS[grn.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {new Date(grn.receivedDate).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-col items-center justify-center h-[calc(100vh-240px)] border border-dashed rounded-lg bg-muted/10">
-          <div className="flex flex-col items-center max-w-md text-center space-y-6 px-4">
-            <div className="p-4 bg-primary/10 rounded-full">
-              <PackageOpen className="h-12 w-12 text-primary" />
-            </div>
-
-            <div className="space-y-2">
-              <h3 className="text-2xl font-semibold tracking-tight">
-                No Goods Receivable at the moment
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                There are no goods received records found. Start by creating
-                your first local purchase now.
-              </p>
-            </div>
-
-            <Button asChild>
-              <Link href="/stock-purchases/new">
-                <Plus className="mr-2 h-4 w-4" />
-                Add Local Purchase
-              </Link>
-            </Button>
+        <div className="h-[calc(100vh-240px)] border border-dashed rounded-xl">
+          <div className="m-auto flex h-full w-full flex-col items-center justify-center gap-2">
+            <h1 className="text-lg font-bold">No goods received yet</h1>
+            <p className="text-sm text-muted-foreground">GRN records will appear here when you receive goods from suppliers.</p>
           </div>
         </div>
       )}
     </div>
   );
 }
-
-export default Page;

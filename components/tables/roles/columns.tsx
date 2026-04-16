@@ -15,9 +15,7 @@ export const columns: ColumnDef<Role>[] = [
         <Checkbox
           aria-label="Select all"
           checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) =>
-            table.toggleAllPageRowsSelected(!!value)
-          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         />
       </div>
     ),
@@ -36,43 +34,44 @@ export const columns: ColumnDef<Role>[] = [
   {
     accessorKey: "name",
     enableHiding: false,
-    header: ({ column }) => {
-      return (
-        <Button
-          className="text-left p-0 font-semibold"
-          variant="ghost"
-          onClick={() =>
-            column.toggleSorting(column.getIsSorted() === "asc")
-          }
-        >
-          Role Name
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <Button
+        className="text-left p-0 font-semibold"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Role Name
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => {
-      const name = row.original.name;
-      const description = row.original.description;
+      const { name, description } = row.original;
       return (
         <div className="min-w-0">
-          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
-            {name}
-          </span>
+          <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">{name}</span>
           {description && (
-            <span className="text-xs text-muted-foreground block truncate">
-              {description}
-            </span>
+            <span className="text-xs text-muted-foreground block truncate">{description}</span>
           )}
         </div>
       );
     },
   },
   {
+    id: "scope",
+    header: "Scope",
+    enableHiding: true,
+    cell: ({ row }) => (
+      <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 capitalize">
+        {row.original.scope.toLowerCase()}
+      </span>
+    ),
+  },
+  {
     id: "permissions",
     header: "Permissions",
     enableHiding: true,
     cell: ({ row }) => {
-      const count = row.original.privilegeActions?.length ?? 0;
+      const count = row.original.permissionCount ?? row.original.permissionKeys?.length ?? 0;
       return (
         <span className="text-sm text-gray-600 dark:text-gray-400">
           {count} {count === 1 ? "permission" : "permissions"}
@@ -81,52 +80,22 @@ export const columns: ColumnDef<Role>[] = [
     },
   },
   {
-    id: "access",
-    header: () => (
-      <div className="hidden lg:block">Access</div>
+    id: "type",
+    header: () => <div className="hidden lg:block">Type</div>,
+    enableHiding: true,
+    cell: ({ row }) => (
+      <div className="hidden lg:block">
+        {row.original.system ? (
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+            System
+          </span>
+        ) : (
+          <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
+            Custom
+          </span>
+        )}
+      </div>
     ),
-    enableHiding: true,
-    cell: ({ row }) => {
-      const pos = row.original.posAccess;
-      const dashboard = row.original.dashboardAccess;
-      return (
-        <div className="hidden lg:flex items-center gap-1.5">
-          {pos && (
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
-              POS
-            </span>
-          )}
-          {dashboard && (
-            <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400">
-              Dashboard
-            </span>
-          )}
-          {!pos && !dashboard && (
-            <span className="text-xs text-muted-foreground">None</span>
-          )}
-        </div>
-      );
-    },
-  },
-  {
-    id: "status",
-    accessorKey: "status",
-    header: "Status",
-    enableHiding: true,
-    cell: ({ row }) => {
-      const isActive = row.original.status;
-      return (
-        <span
-          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-            isActive
-              ? "bg-green-50 text-green-700 dark:bg-green-950/30 dark:text-green-400"
-              : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
-          }`}
-        >
-          {isActive ? "Active" : "Inactive"}
-        </span>
-      );
-    },
   },
   {
     id: "actions",

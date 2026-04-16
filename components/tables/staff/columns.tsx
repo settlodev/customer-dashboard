@@ -16,9 +16,7 @@ export const columns: ColumnDef<Staff>[] = [
         <Checkbox
           aria-label="Select all"
           checked={table.getIsAllPageRowsSelected()}
-          onCheckedChange={(value) =>
-            table.toggleAllPageRowsSelected(!!value)
-          }
+          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
         />
       </div>
     ),
@@ -37,98 +35,91 @@ export const columns: ColumnDef<Staff>[] = [
   {
     accessorKey: "firstName",
     enableHiding: false,
-    header: ({ column }) => {
-      return (
-        <Button
-          className="text-left p-0 font-semibold"
-          variant="ghost"
-          onClick={() =>
-            column.toggleSorting(column.getIsSorted() === "asc")
-          }
-        >
-          Staff Member
-          <ArrowUpDown className="ml-2 h-4 w-4" />
-        </Button>
-      );
-    },
+    header: ({ column }) => (
+      <Button
+        className="text-left p-0 font-semibold"
+        variant="ghost"
+        onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+      >
+        Staff Member
+        <ArrowUpDown className="ml-2 h-4 w-4" />
+      </Button>
+    ),
     cell: ({ row }) => {
-      const first = row.original.firstName;
-      const last = row.original.lastName;
-      const jobTitle = row.original.jobTitle;
+      const { firstName, lastName, jobTitle } = row.original;
       return (
         <div className="min-w-0">
           <span className="font-medium text-sm text-gray-900 dark:text-gray-100 block truncate">
-            {first} {last}
+            {firstName} {lastName}
           </span>
           {jobTitle && (
-            <span className="text-xs text-muted-foreground block truncate">
-              {jobTitle}
-            </span>
+            <span className="text-xs text-muted-foreground block truncate">{jobTitle}</span>
           )}
         </div>
       );
     },
   },
   {
-    accessorKey: "roleName",
-    enableHiding: true,
+    id: "roles",
     header: "Role",
-    cell: ({ row }) => (
-      <span className="text-sm text-gray-600 dark:text-gray-400">
-        {(row.original as any).roleName || "—"}
-      </span>
-    ),
-  },
-  {
-    accessorKey: "departmentName",
     enableHiding: true,
-    header: () => (
-      <div className="hidden lg:block">Department</div>
-    ),
-    cell: ({ row }) => (
-      <div className="hidden lg:block">
+    cell: ({ row }) => {
+      const roles = row.original.roles;
+      if (!roles || roles.length === 0) return <span className="text-sm text-muted-foreground">—</span>;
+      return (
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          {(row.original as any).departmentName || "—"}
+          {roles.map((r) => r.name).join(", ")}
         </span>
-      </div>
-    ),
+      );
+    },
   },
   {
-    accessorKey: "phone",
+    id: "department",
+    header: () => <div className="hidden lg:block">Department</div>,
     enableHiding: true,
-    header: () => (
-      <div className="hidden md:block">Phone</div>
-    ),
+    cell: ({ row }) => {
+      const { departmentName, departments } = row.original;
+      const display = departments?.length > 0
+        ? departments.map((d) => d.name).join(", ")
+        : departmentName || "—";
+      return (
+        <div className="hidden lg:block">
+          <span className="text-sm text-gray-600 dark:text-gray-400">{display}</span>
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "phoneNumber",
+    enableHiding: true,
+    header: () => <div className="hidden md:block">Phone</div>,
     cell: ({ row }) => (
       <div className="hidden md:block">
         <span className="text-sm text-gray-600 dark:text-gray-400">
-          {row.original.phone || "—"}
+          {row.original.phoneNumber || "—"}
         </span>
       </div>
     ),
   },
   {
     id: "access",
-    header: () => (
-      <div className="hidden lg:block">Access</div>
-    ),
+    header: () => <div className="hidden lg:block">Access</div>,
     enableHiding: true,
     cell: ({ row }) => {
-      const pos = row.original.posAccess;
-      const dashboard = row.original.dashboardAccess;
+      const { posAccess, dashboardAccess } = row.original;
       return (
         <div className="hidden lg:flex items-center gap-1.5">
-          {pos && (
+          {posAccess && (
             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400">
               POS
             </span>
           )}
-          {dashboard && (
+          {dashboardAccess && (
             <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 dark:bg-purple-950/30 dark:text-purple-400">
               Dashboard
             </span>
           )}
-          {!pos && !dashboard && (
+          {!posAccess && !dashboardAccess && (
             <span className="text-xs text-muted-foreground">None</span>
           )}
         </div>
@@ -141,8 +132,7 @@ export const columns: ColumnDef<Staff>[] = [
     enableHiding: true,
     cell: ({ row }) => {
       const points = row.original.loyaltyPoints;
-      if (points == null || points === 0)
-        return <div className="text-center"><span className="text-muted-foreground text-xs">0</span></div>;
+      if (!points) return <div className="text-center"><span className="text-muted-foreground text-xs">0</span></div>;
       return (
         <div className="text-center">
           <Badge variant="secondary" className="text-xs font-mono">
@@ -154,11 +144,11 @@ export const columns: ColumnDef<Staff>[] = [
   },
   {
     id: "status",
-    accessorKey: "status",
+    accessorKey: "active",
     header: "Status",
     enableHiding: true,
     cell: ({ row }) => {
-      const isActive = row.original.status;
+      const isActive = row.original.active;
       return (
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${

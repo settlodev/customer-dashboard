@@ -27,8 +27,8 @@ function WarehouseSelector({
         async function loadSuppliers() {
             try {
                 setIsLoading(true);
-                const fetchedWarehouses = await searchWarehouses("", 0, 10);
-                setWarehouses(fetchedWarehouses.content);
+                const fetchedWarehouses = await searchWarehouses();
+                setWarehouses(fetchedWarehouses);
             } catch (error: any) {
                 console.log("Error fetching warehouses:", error);
             } finally {

@@ -9,7 +9,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Brand } from "@/types/brand/type";
-import { fectchAllBrands } from "@/lib/actions/brand-actions";
+import { fetchAllBrands } from "@/lib/actions/brand-actions";
 
 interface Props {
     label?: string;
@@ -38,11 +38,11 @@ const BrandSelector: React.FC<Props> = ({
         async function loadBrands() {
             try {
                 setIsLoading(true);
-                const fetchedBrands = await fectchAllBrands();
+                const fetchedBrands = await fetchAllBrands();
 
                 const filteredBrands = showArchived
                     ? fetchedBrands
-                    : fetchedBrands.filter((brand: Brand) => !brand.isArchived);
+                    : fetchedBrands.filter((brand: Brand) => brand.active);
                 setBrands(filteredBrands);
             } catch (error: any) {
                 console.log("Error fetching brands:", error);
@@ -82,7 +82,7 @@ const BrandSelector: React.FC<Props> = ({
                             >
                                 <span>{brand.name}</span>
                                 <span className="text-sm text-gray-500">
-                                    {brand.location}
+                                    {brand.slug}
                                 </span>
                             </SelectItem>
                         ))

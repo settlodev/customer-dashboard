@@ -1,124 +1,159 @@
-import { UUID } from "node:crypto";
 import { Gender } from "@/types/enums";
-import {
-  boolean,
-  date,
-  nativeEnum,
-  object,
-  preprocess,
-  string,
-} from "zod";
+import { boolean, nativeEnum, object, preprocess, string, array, date, RefinementCtx } from "zod";
 import { isValidPhoneNumber } from "libphonenumber-js";
 
-export const StaffSchema = object({
-  firstName: string({ required_error: "Staff first name is required" }).min(
-    1,
-    "Please enter a valid first name"
-  ),
-  lastName: string({ required_error: "Staff last name is required" }).min(
-      1,
-      "Please enter a valid last name"
-  ),
-  color: preprocess((val) => (val === null ? "" : val), string().optional()),
-  email: string()
-    .min(1, "Please enter a valid email address")
-    .email("Please enter a valid email address")
-    .optional()
-    .nullish(),
-  phone: string({ required_error: "Phone number is required" }).refine(
-    isValidPhoneNumber,
-    {
-      message: "Invalid phone number",
-    }
-  ),
-  image: preprocess((val) => (val === null ? "" : val), string().optional()),
-  status: boolean(),
-  department: string({ message: "Staff department is required" }).uuid(
-    "Please select a valid department"
-  ),
-  salary: string({ message: "Salary is required" }).uuid(
-    "Please select a valid salary"
-  ).optional().nullish(),
-  role: string({ message: "Staff role is required" }).uuid(
-    "Please select a valid role"
-  ),
-  address: preprocess((val) => (val === null ? "" : val), string().optional()),
-  employeeNumber: string().optional().nullish(),
-  gender: nativeEnum(Gender),
-  dateOfBirth: preprocess((val) => {
-    if (val === null) return undefined;
-    if (typeof val === "string" && val.trim() !== "") {
-      return new Date(val);
-    }
+// ---------------------------------------------------------------------------
+// Nested info types returned inside StaffResponse
+// ---------------------------------------------------------------------------
 
-    return val;
-  }, date().optional()),
-  nationality: preprocess(
-    (val) => (val === null ? "" : val),
-    string().optional()
-  ),
-  joiningDate: preprocess((val) => {
-    if (val === null) return undefined;
-    if (typeof val === "string" && val.trim() !== "") {
-      return new Date(val);
-    }
-    return val;
-  }, date().optional()),
-  jobTitle: string({message:"Job title is required"}).min(3, "Please enter a valid job title"),
-  emergencyName: preprocess((val) => (val === null ? "" : val), string().optional()),
-  emergencyNumber: preprocess((val) => (val === null ? "" : val), string().optional()),
-  emergencyRelationship: preprocess((val) => (val === null ? "" : val), string().optional()),
-  notes: preprocess((val) => (val === null ? "" : val), string().optional()),
-  posAccess: boolean().optional(),
-  dashboardAccess: boolean().optional(),
-});
-
-export declare interface Staff {
-  id: UUID;
-  firstName: string;
-  lastName: string;
-  name?: string;
-  email?: string;
-  phone?: string;
-  image?: string;
-  passCode?: number;
-  color?: string;
-  salary: string;
-  role: string;
-  roleName?: string;
-  gender: Gender;
-  jobTitle: string;
-  business: string;
-  location: string;
-  employeeNumber?: string;
-  department?: UUID;
-  departmentName?: string;
-  address?: string;
-  notes?: string;
-  emergencyNumber?: string;
-  emergencyName?: string;
-  emergencyRelationship?: string;
-  posAccess: boolean;
-  dashboardAccess: boolean;
-  loyaltyPoints: number | null;
-  salaryAmount?: number | null;
-  nationalityName?: string;
-  userType?: string;
-  canDelete: boolean;
-  isArchived: boolean;
-  status: boolean;
-  dateOfBirth?: Date;
-  nationality?: string;
-  joiningDate: Date;
-  warehouseRole?: string;
+export interface DepartmentInfo {
+  id: string;
+  name: string;
+  color: string;
 }
 
-export declare interface StaffSummaryReport{
-  staffReports:staffReports[]
-} 
+export interface RoleInfo {
+  id: string;
+  name: string;
+  scope: string;
+}
 
-export declare interface staffReports {
-  id: UUID;
+// ---------------------------------------------------------------------------
+// Staff (matches StaffResponse from Accounts Service)
+// ---------------------------------------------------------------------------
+
+export interface Staff {
+  id: string;
+  accountId: string;
+  locationId: string;
+  authId: string | null;
+  identifier: string;
+  fullName: string;
+  firstName: string;
+  lastName: string;
+  active: boolean;
+  dashboardAccess: boolean;
+  posAccess: boolean;
+  color: string | null;
+  employeeNumber: string | null;
+  gender: Gender;
+  dateOfBirth: string | null;
+  joiningDate: string | null;
+  jobTitle: string | null;
+  emergencyNumber: string | null;
+  emergencyName: string | null;
+  emergencyRelationship: string | null;
+  phoneNumber: string | null;
+  email: string | null;
+  address: string | null;
+  notes: string | null;
+  nationalityId: string | null;
+  nationalityName: string | null;
+  departmentId: string;
+  departmentName: string | null;
+  departments: DepartmentInfo[];
+  roles: RoleInfo[];
+  loyaltyPoints: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Enriched staff (list view with gamification)
+// ---------------------------------------------------------------------------
+
+export interface StaffListEnriched {
+  staff: Staff;
+  gamificationSummary: {
+    totalXp: number;
+    currentLevel: number;
+    levelName: string;
+    badgeIcon: string;
+    currentStreak: number;
+    leaderboardRank: number;
+    activeChallenges: Array<{
+      challengeName: string;
+      challengeType: string;
+      currentValue: number;
+      targetValue: number;
+      completed: boolean;
+      leading: boolean;
+    }>;
+  } | null;
+  loyaltyPoints: number;
+}
+
+// ---------------------------------------------------------------------------
+// Staff detail (single view with gamification, loyalty, attendance)
+// ---------------------------------------------------------------------------
+
+export interface StaffDetail {
+  profile: Staff;
+  gamification: {
+    enabled: boolean;
+    totalXp: number;
+    currentLevel: number;
+    levelName: string;
+    badgeIcon: string;
+    xpToNextLevel: number;
+    currentStreak: number;
+    longestStreak: number;
+    leaderboardRank: number;
+    ordersToday: number;
+    activeChallenges: Array<{
+      challengeId: string;
+      challengeName: string;
+      currentValue: number;
+      targetValue: number;
+      progressPercentage: number;
+      completed: boolean;
+      distanceMessage: string;
+    }>;
+    recentXpTransactions: StaffXpTransaction[];
+  } | null;
+  loyalty: {
+    points: number;
+    carryOver: number;
+    redeemable: boolean;
+    minimumRedeemablePoints: number;
+  } | null;
+  attendance: {
+    recentSchedules: any[];
+    recentTimesheetEntries: any[];
+  } | null;
+}
+
+export interface StaffXpTransaction {
+  id: string;
+  staffId: string;
+  xpAmount: number;
+  xpSource: string;
+  referenceType: string;
+  referenceId: string;
+  description: string;
+  createdAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Staff count
+// ---------------------------------------------------------------------------
+
+export interface StaffCount {
+  total: number;
+  active: number;
+  inactive: number;
+}
+
+// ---------------------------------------------------------------------------
+// Staff summary report (from Reports Service)
+// ---------------------------------------------------------------------------
+
+export interface StaffSummaryReport {
+  staffReports: StaffReportItem[];
+}
+
+export interface StaffReportItem {
+  id: string;
   name: string;
   image: string;
   totalOrdersCompleted: number;
@@ -128,3 +163,50 @@ export declare interface staffReports {
   totalNetAmount: number;
   totalGrossProfit: number;
 }
+
+// ---------------------------------------------------------------------------
+// Schema for create/update staff form
+// ---------------------------------------------------------------------------
+
+export const StaffSchema = object({
+  firstName: string({ required_error: "First name is required" }).min(1, "Enter a valid first name"),
+  lastName: string({ required_error: "Last name is required" }).min(1, "Enter a valid last name"),
+  phoneNumber: string().optional().nullable(),
+  email: string().email("Enter a valid email").optional().nullable(),
+  gender: nativeEnum(Gender, { required_error: "Gender is required" }),
+  jobTitle: string({ required_error: "Job title is required" }).min(1, "Enter a job title"),
+  departmentId: string({ required_error: "Department is required" }).uuid("Select a department"),
+  departmentIds: array(string().uuid()).optional(),
+  roleIds: array(string().uuid()).optional(),
+  color: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  employeeNumber: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  dateOfBirth: preprocess((val) => {
+    if (!val || val === "") return undefined;
+    if (typeof val === "string") return new Date(val);
+    return val;
+  }, date().optional()),
+  joiningDate: preprocess((val) => {
+    if (!val || val === "") return undefined;
+    if (typeof val === "string") return new Date(val);
+    return val;
+  }, date().optional()),
+  nationalityId: preprocess((val) => (val === null || val === "" ? undefined : val), string().uuid().optional()),
+  address: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  notes: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  emergencyName: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  emergencyNumber: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  emergencyRelationship: preprocess((val) => (val === null || val === "" ? undefined : val), string().optional()),
+  posAccess: boolean().optional(),
+  dashboardAccess: boolean().optional(),
+  pin: preprocess((val) => (val === null || val === "" ? undefined : val), string().regex(/^\d{4,6}$/, "PIN must be 4-6 digits").optional()),
+  password: preprocess((val) => (val === null || val === "" ? undefined : val), string().min(8, "Password must be at least 8 characters").optional()),
+}).superRefine((data, ctx: RefinementCtx) => {
+  if (data.dashboardAccess) {
+    if (!data.email) {
+      ctx.addIssue({ code: "custom", path: ["email"], message: "Email is required for dashboard access" });
+    }
+    if (!data.password) {
+      ctx.addIssue({ code: "custom", path: ["password"], message: "Password is required for dashboard access" });
+    }
+  }
+});

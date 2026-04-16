@@ -1,4 +1,3 @@
-import { UUID } from "node:crypto";
 import { notFound } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import StaffForm from "@/components/forms/staff_form";
@@ -14,10 +13,9 @@ export default async function StaffEditPage({ params }: { params: Params }) {
 
   if (!isNewItem) {
     try {
-      staff = await getStaff(resolvedParams.id as UUID);
+      staff = await getStaff(resolvedParams.id);
       if (!staff) notFound();
-    } catch (error) {
-      console.log(error);
+    } catch {
       throw new Error("Failed to load staff data");
     }
   }

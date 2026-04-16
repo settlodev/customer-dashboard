@@ -2,7 +2,7 @@
 
 import React, { useState, useTransition } from "react";
 import { Loader2 } from "lucide-react";
-import { useGoogleLogin } from "@react-oauth/google";
+import { GoogleLogin, CredentialResponse } from "@react-oauth/google";
 import { oauthLogin } from "@/lib/actions/auth-actions";
 import { FormResponse } from "@/types/types";
 import { DEFAULT_LOGIN_REDIRECT_URL } from "@/routes";
@@ -14,25 +14,10 @@ interface SocialAuthButtonsProps {
   disabled?: boolean;
 }
 
-function GoogleIcon({ className }: { className?: string }) {
+function AppleIcon({ className }: { className?: string }) {
   return (
-    <svg className={className} viewBox="0 0 24 24">
-      <path
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
-        fill="#4285F4"
-      />
-      <path
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-        fill="#34A853"
-      />
-      <path
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-        fill="#FBBC05"
-      />
-      <path
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-        fill="#EA4335"
-      />
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
     </svg>
   );
 }
@@ -74,34 +59,84 @@ export default function SocialAuthButtons({
     });
   };
 
-  const googleLogin = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
-      handleOAuthResponse("GOOGLE", tokenResponse.access_token);
-    },
-    onError: () => {
-      onError?.("Google sign-in was cancelled or failed. Please try again.");
-    },
-    flow: "implicit",
-  });
+  const handleGoogleSuccess = (response: CredentialResponse) => {
+    if (response.credential) {
+      handleOAuthResponse("GOOGLE", response.credential);
+    } else {
+      onError?.("Google sign-in failed. No credential received.");
+    }
+  };
+
+  const handleAppleSignIn = async () => {
+    try {
+      // Apple Sign In uses the Apple JS SDK which must be loaded externally.
+      // The AppleID.auth.signIn() call returns an authorization object with
+      // an id_token in authorization.id_token.
+      const AppleID = (window as any).AppleID;
+      if (!AppleID) {
+        onError?.("Apple Sign-In is not available.");
+        return;
+      }
+
+      const response = await AppleID.auth.signIn();
+      if (response?.authorization?.id_token) {
+        handleOAuthResponse("APPLE", response.authorization.id_token);
+      } else {
+        onError?.("Apple sign-in failed. No token received.");
+      }
+    } catch {
+      // User cancelled or Apple JS SDK error
+      onError?.("Apple sign-in was cancelled or failed. Please try again.");
+    }
+  };
 
   const isLoading = isPending || disabled;
   const label = mode === "login" ? "Sign in" : "Sign up";
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const appleClientId = process.env.NEXT_PUBLIC_APPLE_CLIENT_ID;
 
   return (
-    <button
-      type="button"
-      onClick={() => googleLogin()}
-      disabled={isLoading}
-      className="w-full flex items-center justify-center gap-2 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-    >
-      {activeProvider === "GOOGLE" && isPending ? (
-        <Loader2 className="w-4 h-4 animate-spin" />
+    <div className="space-y-3">
+      {/* Google Sign-In — uses the One Tap / button credential flow which
+          returns a JWT id_token (not an access_token). */}
+      {googleClientId && (activeProvider === "GOOGLE" && isPending ? (
+        <div className="w-full flex items-center justify-center py-2">
+          <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+        </div>
       ) : (
-        <>
-          <GoogleIcon className="w-4 h-4" />
-          <span>{label} with Google</span>
-        </>
+        <div className="flex justify-center [&>div]:w-full">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={() =>
+              onError?.("Google sign-in was cancelled or failed. Please try again.")
+            }
+            text={mode === "login" ? "signin_with" : "signup_with"}
+            shape="rectangular"
+            width="400"
+            theme="outline"
+            size="large"
+          />
+        </div>
+      ))}
+
+      {/* Apple Sign-In — only shown if configured */}
+      {appleClientId && (
+        <button
+          type="button"
+          onClick={handleAppleSignIn}
+          disabled={isLoading}
+          className="w-full flex items-center justify-center gap-2 h-10 border border-gray-300 rounded-md bg-white text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {activeProvider === "APPLE" && isPending ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <>
+              <AppleIcon className="w-4 h-4" />
+              <span>{label} with Apple</span>
+            </>
+          )}
+        </button>
       )}
-    </button>
+    </div>
   );
 }

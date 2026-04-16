@@ -1,8 +1,8 @@
-import React, { useEffect, useState} from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"; // Adjust to match your UI library
+import React, { useEffect, useState } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import StockVariantSelector from "./stock-variant-selector";
 import { FormControl, FormField, FormItem, FormMessage } from "../ui/form";
-import RecipeSelector from "./recipe-selector";
+import ConsumptionRuleSelector from "./consumption-rule-selector";
 
 interface TrackingOptionsProps {
   onSelectionChange: (selection: {
@@ -12,11 +12,13 @@ interface TrackingOptionsProps {
   }) => void;
   initialItemType?: string | null;
   initialItemId?: string | null;
-  
 }
 
-const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange,initialItemType, 
-  initialItemId }) => {
+const TrackingOptions: React.FC<TrackingOptionsProps> = ({
+  onSelectionChange,
+  initialItemType,
+  initialItemId,
+}) => {
   const [trackingType, setTrackingType] = useState<string | null>(initialItemType || null);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(initialItemId || null);
   const [quantity] = useState<number>(1);
@@ -25,13 +27,13 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange,ini
     if (initialItemType && initialItemId) {
       setTrackingType(initialItemType);
       setSelectedItemId(initialItemId);
-      onSelectionChange({ 
-        itemType: initialItemType, 
-        itemId: initialItemId ,
-        quantity
+      onSelectionChange({
+        itemType: initialItemType,
+        itemId: initialItemId,
+        quantity,
       });
     }
-  }, [initialItemType, initialItemId, onSelectionChange,quantity]);
+  }, [initialItemType, initialItemId, onSelectionChange, quantity]);
 
   const handleTrackingTypeChange = (type: string | null) => {
     setTrackingType(type);
@@ -44,36 +46,37 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange,ini
     onSelectionChange({ itemType: trackingType!, quantity, itemId });
   };
 
-
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mt-2 mb-2">Select Tracking Type</label>
+        <label className="block text-sm font-medium text-gray-700 mt-2 mb-2">
+          Select Tracking Type
+        </label>
         <Select onValueChange={handleTrackingTypeChange} value={trackingType || ""}>
           <SelectTrigger className="w-full">
             <SelectValue placeholder="Choose tracking type" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="recipe">Recipe</SelectItem>
+            <SelectItem value="consumption-rule">Consumption Rule</SelectItem>
             <SelectItem value="stock">Stock</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      {trackingType === "recipe" && (
+      {trackingType === "consumption-rule" && (
         <div>
           <FormField
-            name="recipe"
+            name="consumptionRule"
             render={({ field }) => (
               <FormItem>
                 <FormControl>
-                  <RecipeSelector
-                    value={field.value || selectedItemId}
+                  <ConsumptionRuleSelector
+                    value={field.value || selectedItemId || ""}
                     onChange={(id) => {
                       field.onChange(id);
                       handleItemChange(id);
                     }}
-                    placeholder="Select recipe"
+                    placeholder="Select consumption rule"
                   />
                 </FormControl>
                 <FormMessage />
@@ -83,7 +86,7 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange,ini
         </div>
       )}
 
-{trackingType === "stock" && (
+      {trackingType === "stock" && (
         <div>
           <FormField
             name="stock"
@@ -91,7 +94,7 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange,ini
               <FormItem>
                 <FormControl>
                   <StockVariantSelector
-                    value={field.value || selectedItemId}
+                    value={field.value || selectedItemId || ""}
                     onChange={(id) => {
                       field.onChange(id);
                       handleItemChange(id);
@@ -105,7 +108,6 @@ const TrackingOptions: React.FC<TrackingOptionsProps> = ({ onSelectionChange,ini
           />
         </div>
       )}
-
     </div>
   );
 };

@@ -1,35 +1,20 @@
 "use client";
-import { fetchSubscriptions } from "@/lib/actions/subscriptions";
-import { Subscriptions, SubscriptionFeature } from "@/types/subscription/type";
+
+import { getPackages } from "@/lib/actions/billing-actions";
+import type { Package } from "@/types/billing/types";
 import { ArrowRight, CheckIcon, Sparkles } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 interface PricingCardProps {
-  sub: Subscriptions;
-  packageName: string;
-  amount: number;
-  discount: number;
-  packageCode: string;
-  subscriptionFeatures: string[];
+  plan: Package;
   isPopular?: boolean;
 }
 
-const PricingCard: React.FC<PricingCardProps> = ({
-  sub,
-  packageName,
-  amount,
-  subscriptionFeatures,
-  isPopular = false,
-}) => {
+const PricingCard: React.FC<PricingCardProps> = ({ plan, isPopular = false }) => {
   const router = useRouter();
-  const [showAll, setShowAll] = useState(false);
-  const shouldShowMoreButton = subscriptionFeatures.length > 10;
-  const displayedFeatures = showAll
-    ? subscriptionFeatures
-    : subscriptionFeatures.slice(0, 10);
 
-  const annualAmount = amount * 12;
+  const annualAmount = plan.basePrice * 12;
   const formattedAnnualAmount = annualAmount.toLocaleString("en-US", {
     style: "currency",
     currency: "TZS",
@@ -38,7 +23,7 @@ const PricingCard: React.FC<PricingCardProps> = ({
   });
 
   const handleGetStarted = () => {
-    router.push(`/register?package=${sub.id}`);
+    router.push(`/register?package=${plan.id}`);
   };
 
   return (
@@ -59,12 +44,8 @@ const PricingCard: React.FC<PricingCardProps> = ({
       )}
 
       <div className="mb-8">
-        <h3
-          className={`text-sm font-semibold uppercase tracking-wider mb-4 ${
-            isPopular ? "text-primary" : "text-primary"
-          }`}
-        >
-          {packageName}
+        <h3 className="text-sm font-semibold uppercase tracking-wider mb-4 text-primary">
+          {plan.name}
         </h3>
         <div className="flex items-baseline gap-1">
           <span
@@ -74,103 +55,58 @@ const PricingCard: React.FC<PricingCardProps> = ({
           >
             {formattedAnnualAmount}
           </span>
-          <span
-            className={`text-sm ${
-              isPopular ? "text-gray-400" : "text-gray-500"
-            }`}
-          >
+          <span className={`text-sm ${isPopular ? "text-gray-400" : "text-gray-500"}`}>
             /year
           </span>
         </div>
       </div>
 
-      <div
-        className={`h-px mb-6 ${
-          isPopular ? "bg-gray-700" : "bg-gray-100 dark:bg-gray-800"
-        }`}
-      />
+      <div className={`h-px mb-6 ${isPopular ? "bg-gray-700" : "bg-gray-100 dark:bg-gray-800"}`} />
 
-      <div className="flex-grow space-y-3.5 mb-8">
-        {displayedFeatures.map((feature, index) => (
-          <div key={index} className="flex items-start gap-3">
-            <div
-              className={`flex-shrink-0 rounded-full p-0.5 mt-0.5 ${
-                isPopular ? "bg-primary/20" : "bg-primary/10"
-              }`}
-            >
-              <CheckIcon
-                className={`w-3.5 h-3.5 ${
-                  isPopular ? "text-primary" : "text-primary"
-                }`}
-                strokeWidth={3}
-              />
-            </div>
-            <span
-              className={`text-sm leading-relaxed ${
-                isPopular ? "text-gray-300" : "text-gray-600 dark:text-gray-400"
-              }`}
-            >
-              {feature}
-            </span>
-          </div>
-        ))}
-      </div>
+      {plan.description && (
+        <p
+          className={`text-sm mb-6 leading-relaxed ${
+            isPopular ? "text-gray-300" : "text-gray-600 dark:text-gray-400"
+          }`}
+        >
+          {plan.description}
+        </p>
+      )}
 
-      <div className="mt-auto space-y-3">
-        {shouldShowMoreButton && !showAll ? (
-          <button
-            onClick={() => setShowAll(true)}
-            className={`w-full px-6 py-3 rounded-xl text-sm font-medium transition-colors duration-200 ${
-              isPopular
-                ? "text-gray-300 bg-gray-800 hover:bg-gray-700"
-                : "text-primary bg-primary/5 hover:bg-primary/10"
-            }`}
-          >
-            Show All Features
-          </button>
-        ) : (
-          <button
-            onClick={handleGetStarted}
-            className={`w-full px-6 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
-              isPopular
-                ? "bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/25"
-                : "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100"
-            }`}
-          >
-            Get Started
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        )}
+      <div className="mt-auto">
+        <button
+          onClick={handleGetStarted}
+          className={`w-full px-6 py-3.5 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 text-sm ${
+            isPopular
+              ? "bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/25"
+              : "bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100"
+          }`}
+        >
+          Get Started
+          <ArrowRight className="w-4 h-4" />
+        </button>
       </div>
     </div>
   );
 };
 
 export const Pricing: React.FC = () => {
-  const [subscriptions, setSubscriptions] = useState<Subscriptions[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
 
   useEffect(() => {
-    const getSubscriptions = async () => {
+    const fetchPlans = async () => {
       try {
-        const data = await fetchSubscriptions();
-        const filteredPlans = data.filter(
-          (plan) => !plan.packageName.toLowerCase().includes("trial"),
-        );
-        setSubscriptions(filteredPlans);
+        const data = await getPackages();
+        setPackages(data.filter((p) => p.isActive));
       } catch (error) {
-        console.error("Error fetching subscriptions:", error);
+        console.error("Error fetching packages:", error);
       }
     };
-    getSubscriptions();
+    fetchPlans();
   }, []);
-
-  const isPopularPackage = (subscription: Subscriptions): boolean => {
-    return subscription.amount === 25000;
-  };
 
   return (
     <section id="pricing" className="relative z-20 w-full overflow-hidden py-28 md:py-32">
-      {/* Background */}
       <div className="absolute inset-0 bg-white dark:bg-gray-950" />
 
       <div className="relative max-w-[85rem] mx-auto px-4">
@@ -191,19 +127,8 @@ export const Pricing: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 lg:gap-5">
-          {subscriptions.map((sub) => (
-            <PricingCard
-              key={sub.id}
-              sub={sub}
-              packageName={sub.packageName}
-              amount={sub.amount}
-              discount={sub.discount}
-              packageCode={sub.packageCode}
-              subscriptionFeatures={sub.subscriptionFeatures.map(
-                (feature) => (feature as SubscriptionFeature).name,
-              )}
-              isPopular={isPopularPackage(sub)}
-            />
+          {packages.map((plan) => (
+            <PricingCard key={plan.id} plan={plan} />
           ))}
         </div>
       </div>

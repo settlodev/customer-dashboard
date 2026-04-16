@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import { downloadStockCSV } from '@/lib/actions/stock-actions';
-import { StockVariant } from '@/types/stockVariant/type';
+import type { StockVariant } from "@/types/stock/type";
 
 interface TableExportProps {
   data?: StockVariant[];
@@ -27,32 +27,24 @@ const StockExport: React.FC<TableExportProps> = ({
     
     // Specific columns to export matching the endpoint format
     const headers = [
-      'Stock Name', 
-      'Stock Variant Name', 
-      'Starting Value', 
-      'Starting Quantity', 
-      'Alert Level', 
-      'Expiry Date'
+      'Name',
+      'Display Name',
+      'SKU',
+      'Unit',
+      'Conversion',
+      'Default Cost',
     ];
 
-    // Create CSV rows
     const csvRows = [
-      headers.join(','), // Header row
-      ...data.map(stock => {
-        // Format date if it exists
-        const expiryDate = stock.expiryDate 
-          ? new Date(stock.expiryDate).toISOString().split('T')[0] // Format as YYYY-MM-DD
-          : '';
-          
-        return [
-          stock.name || '', 
-          stock.stockName || '', 
-          stock.startingValue?.toString() || '0', 
-          stock.startingQuantity?.toString() || '0',  
-          stock.alertLevel?.toString() || '0', 
-          expiryDate 
-        ].map(escapeCSVValue).join(',');
-      })
+      headers.join(','),
+      ...data.map(stock => [
+        stock.name || '',
+        stock.displayName || '',
+        stock.sku || '',
+        stock.unitAbbreviation || '',
+        stock.conversionToBase?.toString() || '1',
+        stock.defaultCost?.toString() || '',
+      ].map(escapeCSVValue).join(',')),
     ];
     
     return csvRows.join('\n');
@@ -90,7 +82,7 @@ const StockExport: React.FC<TableExportProps> = ({
   const handleEndpointDownload = async () => {
     try {
       setIsLoading(true);
-      const response = await downloadStockCSV(exportType);
+      const response = await downloadStockCSV();
       let csvData;
       
       if (response) {

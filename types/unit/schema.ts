@@ -1,7 +1,7 @@
-import { boolean, object, string} from "zod";
+import { object, string } from "zod";
 
 export const UnitSchema = object({
-    name: string({ message: "Unit name is required" }).min(3,"Please enter a valid unit name"),
-    symbol: string({ message: "Unit symbol is required" }).min(3,"Please enter a valid unit symbol"),
-    status: boolean().optional(),
+  name: string({ required_error: "Unit name is required" }).min(1, "Unit name is required"),
+  abbreviation: string({ required_error: "Abbreviation is required" }).min(1, "Abbreviation is required"),
+  unitType: string({ required_error: "Unit type is required" }),
 });

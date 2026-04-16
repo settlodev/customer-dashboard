@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import SummaryResponse from "@/types/dashboard/type";
+import OverviewResponse from "@/types/dashboard/type";
 import { Business } from "@/types/business/type";
 import { Location } from "@/types/location/type";
 import ReportLetterhead from "@/components/widgets/report-letterhead";
@@ -24,7 +24,7 @@ const ProfitLossStatement = ({
   business,
   location,
 }: {
-  salesData: SummaryResponse;
+  salesData: OverviewResponse;
   business: Business;
   location: Location;
 }) => {
@@ -408,7 +408,7 @@ const ProfitLossStatement = ({
                   Less: Refunds
                 </span>
                 <span className="tabular-nums text-muted-foreground">
-                  ({fmt(salesData.refundsAmount)})
+                  ({fmt(salesData.totalRefundedAmount)})
                 </span>
               </div>
             </div>
@@ -461,7 +461,7 @@ const ProfitLossStatement = ({
                   Total expenses
                 </span>
                 <span className="tabular-nums font-medium text-amber-600 dark:text-amber-400">
-                  {fmt(salesData.totalExpensePaidAmount)}
+                  {fmt(salesData.expensesPaidAmount)}
                 </span>
               </div>
             </div>
@@ -703,7 +703,7 @@ const ProfitLossStatement = ({
             />
             <Row
               label="Less: Refunds"
-              value={`(${fmt(salesData.refundsAmount)})`}
+              value={`(${fmt(salesData.totalRefundedAmount)})`}
               indent
               muted
             />
@@ -724,7 +724,7 @@ const ProfitLossStatement = ({
             <SectionTitle>Operating expenses</SectionTitle>
             <Row
               label="Total operating expenses"
-              value={fmt(salesData.totalExpensePaidAmount)}
+              value={fmt(salesData.expensesPaidAmount)}
             />
 
             {/* Double line */}

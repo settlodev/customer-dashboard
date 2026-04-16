@@ -83,9 +83,8 @@ const ExpenseCategorySelector = ({
             const response = await createCategory(
                 {
                     name: newCategoryName,
-                    status: true,
-                    image: imageUrl,
-                    
+                    active: true,
+                    imageUrl: imageUrl,
                 },
                 pathname,
             );

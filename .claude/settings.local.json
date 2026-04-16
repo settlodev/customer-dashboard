@@ -41,7 +41,23 @@
       "Bash(grep -l \"reservation\" /Users/Peter/Settlo/Customer-Dashboard/components/forms/*.tsx)",
       "Bash(npx next build)",
       "Bash(/Users/Peter/.nvm/versions/node/v22.12.0/bin/npx next build)",
-      "Bash(npx next lint)"
+      "Bash(npx next lint)",
+      "Bash(npx tsc:*)",
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(npx next:*)",
+      "Bash(grep -n \"\\\\.unit\\\\`\\\\}\" /Users/Peter/Settlo/Customer-Dashboard/components/forms/product_form.tsx)",
+      "Bash(ls -la /Users/Peter/Settlo/Customer-Dashboard/lib/actions/store-settings*)",
+      "Bash(grep -n \"searchStock\\\\|searchBrand\\\\|searchSupplier\" /Users/Peter/Settlo/Customer-Dashboard/lib/actions/*.tsx /Users/Peter/Settlo/Customer-Dashboard/lib/actions/warehouse/*.tsx)",
+      "Bash(ls /Users/Peter/Settlo/Customer-Dashboard/components/widgets/warehouse*)",
+      "Bash(xargs rm:*)",
+      "Bash(find /Users/Peter/Settlo/Customer-Dashboard/types/warehouse -type d -empty -delete)",
+      "Bash(rm -v archive-service.tsx purchases-action.tsx register-action.tsx request-actions.tsx roles-action.tsx stock-actions.tsx stock-intake-actions.tsx stock-modification-actions.tsx stock-variant-actions.tsx subscription.tsx supplier-actions.tsx supplier-credit-actions.tsx)",
+      "Bash(rm -v /Users/Peter/Settlo/Customer-Dashboard/components/widgets/warehouse-stock-variant-selector.tsx)",
+      "Bash(rm -rv /Users/Peter/Settlo/Customer-Dashboard/components/widgets/warehouse/)",
+      "Bash(xargs ls:*)",
+      "Bash(grep -r \"TODO\\\\|STUB\\\\|FIXME\\\\|WIP\" /Users/Peter/Settlo/Customer-Dashboard/lib/actions/*location* /Users/Peter/Settlo/Customer-Dashboard/lib/actions/*store* /Users/Peter/Settlo/Customer-Dashboard/lib/actions/*staff* /Users/Peter/Settlo/Customer-Dashboard/lib/actions/warehouse/)",
+      "Bash(grep -E \"\\\\.tsx?$\")",
+      "Bash(awk '{print $NF}')"
     ]
   }
 }

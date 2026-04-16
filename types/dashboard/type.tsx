@@ -1,13 +1,18 @@
-export default interface SummaryResponse {
+export default interface OverviewResponse {
   locationId: string;
+  staffId: string | null;
   locationName: string;
   startDate: string;
   endDate: string;
 
-  closingBalance: number;
-  transactionsAmount: number;
-  refundsAmount: number;
-  expensesPaidAmount: number;
+  totalOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  refundedOrders: number;
+  openOrders: number;
+  fullyPaidOrders: number;
+  partiallyPaidOrders: number;
+  unpaidOrders: number;
 
   grossSales: number;
   netSales: number;
@@ -15,78 +20,40 @@ export default interface SummaryResponse {
   totalCost: number;
   grossProfit: number;
 
-  expenseCount: number;
-  totalExpenseRecordedAmount: number;
-  totalExpensePaidAmount: number;
-  totalExpenseUnpaidAmount: number;
-  totalTips: number;
+  transactionsAmount: number;
+  complimentaryAmount: number;
+  signedBillAmount: number;
+  expensesPaidAmount: number;
+  closingBalance: number;
 
-  totalOrders: number;
-  completedOrders: number;
-  cancelledOrders: number;
-  ongoingOrders: number;
-  refundedOrders: number;
-  averageOrderValue: number;
+  totalExpenses: number;
+  totalExpenseAmount: number;
+  totalExpenseUnpaid: number;
 
   totalRefundCount: number;
   totalRefundedAmount: number;
 
-  uniqueCustomers: number;
-
-  transactionsPerPaymentMethod: TransactionsByPaymentMethod[];
-  recentTransactions: RecentTransaction[];
+  paymentMethodBreakdown: PaymentMethodBreakdown[];
   topSellingItems: TopSellingItem[];
-  dailyRevenueTrend: DailyRevenue[];
-  monthlyCashflow: MonthlyCashflow[];
-  staffPerformance: StaffPerformance[];
 }
 
-export interface TransactionsByPaymentMethod {
+export interface PaymentMethodBreakdown {
   acceptedPaymentMethodType: string;
   acceptedPaymentMethodTypeName: string;
+  paymentType: string;
   transactionCount: number;
   totalAmount: number;
   percentage: number;
 }
 
-export interface RecentTransaction {
-  id: string;
-  transactionId: string;
-  orderNumber: string;
-  acceptedPaymentMethodTypeName: string;
-  amount: number;
-  staffName: string;
-  createdAt: string;
-}
-
 export interface TopSellingItem {
   productId: string;
+  variantId: string;
   itemName: string;
+  imageUrl: string | null;
   departmentName: string;
   quantitySold: number;
   grossSales: number;
   netSales: number;
   grossProfit: number;
-}
-
-export interface DailyRevenue {
-  date: string;
-  revenue: number;
-  expenses: number;
-  ordersCount: number;
-}
-
-export interface MonthlyCashflow {
-  month: string;
-  transactionsTotal: number;
-  transactionsCount: number;
-  expensesTotal: number;
-  expensesCount: number;
-}
-
-export interface StaffPerformance {
-  staffId: string;
-  staffName: string;
-  ordersCount: number;
-  ordersValue: number;
 }

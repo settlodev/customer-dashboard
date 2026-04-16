@@ -1,26 +1,29 @@
-import {UUID} from "node:crypto";
-import {PrivilegeActionItem, WarehousePrivilegeActionItem} from "@/types/types";
+// ---------------------------------------------------------------------------
+// Role scope — determines where the role applies
+// ---------------------------------------------------------------------------
 
-export declare interface Role {
-    id: UUID;
-    name: string;
-    description: string;
-    business: UUID;
-    canDelete: boolean;
-    status: boolean;
-    posAccess: boolean;
-    dashboardAccess: boolean;
-    privilegeActions: PrivilegeActionItem[];
+export enum RoleScope {
+  ACCOUNT = "ACCOUNT",
+  BUSINESS = "BUSINESS",
+  LOCATION = "LOCATION",
+  STORE = "STORE",
+  WAREHOUSE = "WAREHOUSE",
 }
 
-export declare interface WarehouseRole {
-    id: UUID;
-    name: string;
-    description: string;
-    business: UUID;
-    canDelete: boolean;
-    status: boolean;
-    posAccess: boolean;
-    dashboardAccess: boolean;
-    warehousePrivilegeActions: WarehousePrivilegeActionItem[];
+// ---------------------------------------------------------------------------
+// Role (matches RoleResponse from Accounts Service)
+// ---------------------------------------------------------------------------
+
+export interface Role {
+  id: string;
+  accountId: string;
+  name: string;
+  description: string | null;
+  scope: RoleScope;
+  scopeId: string | null;
+  system: boolean;
+  permissionKeys: string[];
+  permissionCount: number;
+  createdAt: string;
+  updatedAt: string;
 }
