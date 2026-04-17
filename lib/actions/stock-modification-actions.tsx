@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import ApiClient from "@/lib/settlo-api-client";
+import { getAuthToken } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
@@ -56,16 +57,33 @@ export async function createStockModification(
     });
   }
 
+  const token = await getAuthToken();
+  if (!token?.userId) {
+    return parseStringify({
+      responseType: "error",
+      message: "Your session has expired. Please log in again.",
+      error: new Error("Missing userId in auth token"),
+    });
+  }
+
+  let createdId: string | null = null;
   try {
     const apiClient = new ApiClient();
-    await apiClient.post(inventoryUrl("/api/v1/stock-modifications"), {
-      locationType: "LOCATION",
-      ...validated.data,
-      modificationDate: validated.data.modificationDate || new Date().toISOString(),
-    });
+    const created = (await apiClient.post(
+      inventoryUrl("/api/v1/stock-modifications"),
+      {
+        locationType: "LOCATION",
+        performedBy: token.userId,
+        modificationDate: validated.data.modificationDate || new Date().toISOString(),
+        category: validated.data.category,
+        reason: validated.data.reason,
+        notes: validated.data.notes,
+        items: validated.data.items,
+      },
+    )) as StockModification;
 
+    createdId = created?.id ?? null;
     revalidatePath("/stock-modifications");
-    redirect("/stock-modifications");
   } catch (error: any) {
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
@@ -74,4 +92,6 @@ export async function createStockModification(
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
+
+  redirect(createdId ? `/stock-modifications/${createdId}` : "/stock-modifications");
 }

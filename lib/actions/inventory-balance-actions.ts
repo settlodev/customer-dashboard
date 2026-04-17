@@ -4,6 +4,20 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
 import { inventoryUrl } from "./inventory-client";
+import { getCurrentLocation } from "@/lib/actions/business/get-current-business";
+
+/**
+ * Resolve the inventory balance for a variant at the user's current location.
+ * Returns null when the location can't be resolved or the variant has no
+ * balance row yet (treated as zero on hand by callers).
+ */
+export async function getCurrentLocationBalance(
+  variantId: string,
+): Promise<InventoryBalance | null> {
+  const location = await getCurrentLocation();
+  if (!location?.id) return null;
+  return getBalance(location.id, variantId);
+}
 
 export async function getBalancesByLocation(
   locationId: string,

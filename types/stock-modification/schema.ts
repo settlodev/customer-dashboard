@@ -8,7 +8,16 @@ const toNumber = (val: unknown) => {
 
 export const StockModificationItemSchema = object({
   stockVariantId: string({ required_error: "Stock item is required" }).uuid(),
-  quantityChange: preprocess(toNumber, number({ required_error: "Quantity is required" })),
+  quantityChange: preprocess(
+    toNumber,
+    number({ required_error: "Quantity is required" }).refine(
+      (n) => n !== 0,
+      "Quantity change cannot be zero",
+    ),
+  ),
+  // Optional override cost (e.g. insurance valuation), in the location's base
+  // currency. If absent, the backend uses the variant's average cost.
+  unitCost: preprocess(toNumber, number().nonnegative("Cannot be negative").optional()),
   notes: string().optional(),
 });
 

@@ -12,6 +12,14 @@ export declare interface StockPurchaseItem {
   margin?: number;
   code?: string;
   id?: string;
+  /** Settlement currency — matches the location's base currency. */
+  currency?: string | null;
+  /** Supplier invoice currency prior to conversion. */
+  originalCurrency?: string | null;
+  /** Supplier per-unit price in `originalCurrency`. */
+  originalUnitCost?: number | null;
+  /** Exchange rate captured at receive time. */
+  rateUsed?: number | null;
 }
 
 export interface StockReceipt {
@@ -37,5 +45,7 @@ export interface StockReceipt {
   status?: "DRAFT" | "COMPLETED" | "CANCELLED" | "PARTIAL";
   condition?: "GOOD" | "DAMAGED" | "PARTIAL";
   notes?: string;
+  /** Settlement currency for the whole receipt (location base). */
+  currency?: string | null;
   items: StockPurchaseItem[];
 }

@@ -1,22 +1,22 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Check, X } from "lucide-react";
-import { confirmOpeningStock, cancelOpeningStock } from "@/lib/actions/opening-stock-actions";
+import { confirmStockIntakeRecord, cancelStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
 import { useToast } from "@/hooks/use-toast";
 
-export default function OpeningStockActions({ id }: { id: string }) {
+export default function StockIntakeRecordActions({ id }: { id: string }) {
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
 
   const handleConfirm = () => {
     startTransition(async () => {
       try {
-        await confirmOpeningStock(id);
-        toast({ variant: "success", title: "Confirmed", description: "Opening stock has been confirmed and inventory updated." });
+        await confirmStockIntakeRecord(id);
+        toast({ variant: "success", title: "Confirmed", description: "Stock intake has been confirmed and inventory updated." });
       } catch {
-        toast({ variant: "destructive", title: "Error", description: "Failed to confirm opening stock." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to confirm stock intake." });
       }
     });
   };
@@ -24,10 +24,10 @@ export default function OpeningStockActions({ id }: { id: string }) {
   const handleCancel = () => {
     startTransition(async () => {
       try {
-        await cancelOpeningStock(id);
-        toast({ variant: "success", title: "Cancelled", description: "Opening stock has been cancelled." });
+        await cancelStockIntakeRecord(id);
+        toast({ variant: "success", title: "Cancelled", description: "Stock intake has been cancelled." });
       } catch {
-        toast({ variant: "destructive", title: "Error", description: "Failed to cancel opening stock." });
+        toast({ variant: "destructive", title: "Error", description: "Failed to cancel stock intake." });
       }
     });
   };

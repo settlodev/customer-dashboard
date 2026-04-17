@@ -8,7 +8,7 @@ export default async function Page({ params }: { params: Params }) {
   return (
     <div className="flex-1 px-4 pt-4 pb-8 md:px-8 mt-12">
       <BreadcrumbsNav items={[{ title: "Stock Intake", link: "/warehouse-stock-intakes" }, { title: isNew ? "New" : "Detail", link: "" }]} />
-      <h1 className="text-2xl font-bold mt-4">{isNew ? "Record Opening Stock" : "Intake Detail"}</h1>
+      <h1 className="text-2xl font-bold mt-4">{isNew ? "Record Stock Intake" : "Intake Detail"}</h1>
       {isNew && <div className="mt-4"><StockIntakeForm /></div>}
     </div>
   );

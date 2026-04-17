@@ -1,11 +1,11 @@
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { getOpeningStock } from "@/lib/actions/opening-stock-actions";
+import { getStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
 import { notFound } from "next/navigation";
 
 type Params = Promise<{ id: string }>;
 export default async function Page({ params }: { params: Params }) {
   const { id } = await params;
-  const item = await getOpeningStock(id);
+  const item = await getStockIntakeRecord(id);
   if (!item) notFound();
   return (
     <div className="flex-1 px-4 pt-4 pb-8 md:px-8 mt-12">

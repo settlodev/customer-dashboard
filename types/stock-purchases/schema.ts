@@ -14,6 +14,13 @@ export const StockPurchaseItemSchema = z.object({
       .nonnegative({ message: "Quantity can not be negative" })
       .gt(0, { message: "Quantity can not be zero" }),
   ),
+  // Optional ISO 4217 code of the supplier's quoted price. When omitted the
+  // backend treats the amount as the location's base currency.
+  currency: z
+    .string()
+    .length(3, { message: "Use a 3-letter ISO currency code" })
+    .optional()
+    .nullish(),
 });
 
 export const StockPurchaseSchema = z.object({

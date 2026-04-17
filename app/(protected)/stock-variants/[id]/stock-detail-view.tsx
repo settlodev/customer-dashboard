@@ -41,6 +41,7 @@ import { RISK_LEVEL_CONFIG, ABC_CONFIG } from "@/types/inventory-analytics/type"
 import type { StockBatch } from "@/types/stock-batch/type";
 import { BATCH_STATUS_CONFIG } from "@/types/stock-batch/type";
 import type { ItemSalesAggregate } from "@/types/item-sales/type";
+import { Money } from "@/components/widgets/money";
 
 interface Props {
   stock: Stock;
@@ -61,6 +62,8 @@ interface Props {
   totalAvailable: number;
   worstRisk: StockoutForecastItem | null;
   avgTurnover: number;
+  /** Location base currency — labels all cost/value displays inside this view. */
+  currency: string;
 }
 
 const TABS = [
@@ -99,6 +102,7 @@ export function StockDetailView({
   totalAvailable,
   worstRisk,
   avgTurnover,
+  currency,
 }: Props) {
   const [tab, setTab] = useState<TabKey>("overview");
 
@@ -133,10 +137,7 @@ export function StockDetailView({
         <SummaryCard
           icon={<DollarSign className="h-4 w-4" />}
           label="Total Value"
-          value={totalValue.toLocaleString(undefined, {
-            minimumFractionDigits: 0,
-            maximumFractionDigits: 0,
-          })}
+          value={<Money amount={totalValue} currency={currency} />}
         />
         <SummaryCard
           icon={<ShieldCheck className="h-4 w-4" />}
@@ -234,16 +235,19 @@ export function StockDetailView({
         <OverviewTab
           stock={stock}
           balanceMap={balanceMap}
-          variantSummaryMap={variantSummaryMap}
-          forecasts={forecasts}
-          abc={abc}
+          currency={currency}
         />
       )}
       {tab === "batches" && (
-        <BatchesTab stock={stock} batchMap={batchMap} expiringCount={expiringBatchCount} />
+        <BatchesTab
+          stock={stock}
+          batchMap={batchMap}
+          expiringCount={expiringBatchCount}
+          currency={currency}
+        />
       )}
       {tab === "movements" && (
-        <MovementsTab movements={movements} movementSummary={movementSummary} />
+        <MovementsTab movements={movements} movementSummary={movementSummary} currency={currency} />
       )}
       {tab === "sales" && (
         <SalesTab salesItems={salesItems} stock={stock} />
@@ -272,7 +276,7 @@ function SummaryCard({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  value: React.ReactNode;
   valueClass?: string;
   subtitle?: string;
   subtitleClass?: string;
@@ -304,19 +308,12 @@ function SummaryCard({
 function OverviewTab({
   stock,
   balanceMap,
-  variantSummaryMap,
-  forecasts,
-  abc,
+  currency,
 }: {
   stock: Stock;
   balanceMap: Record<string, InventoryBalance>;
-  variantSummaryMap: Record<string, StockMovementSummary>;
-  forecasts: StockoutForecastItem[];
-  abc: AbcAnalysisItem[];
+  currency: string;
 }) {
-  const forecastMap = new Map(forecasts.map((f) => [f.stockVariantId, f]));
-  const abcMap = new Map(abc.map((a) => [a.stockVariantId, a]));
-
   return (
     <Card>
       <CardContent className="pt-6">
@@ -336,25 +333,16 @@ function OverviewTab({
                 <TableHead className="text-right">Reserved</TableHead>
                 <TableHead className="text-right">In Transit</TableHead>
                 <TableHead className="text-right">Avg Cost</TableHead>
-                <TableHead className="text-right">Batch Cost</TableHead>
                 <TableHead className="text-right">Value</TableHead>
-                <TableHead className="text-right">30d In/Out</TableHead>
-                <TableHead>Risk</TableHead>
-                <TableHead>ABC</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {stock.variants.map((v) => {
                 const bal = balanceMap[v.id];
-                const fc = forecastMap.get(v.id);
-                const abcItem = abcMap.get(v.id);
-                const ms = variantSummaryMap[v.id];
                 const qty = bal?.quantityOnHand ?? 0;
                 const cost = bal?.averageCost ?? 0;
                 const value = qty * cost;
-                const riskCfg = fc ? RISK_LEVEL_CONFIG[fc.riskLevel] : null;
-                const abcCfg = abcItem ? ABC_CONFIG[abcItem.classification] : null;
 
                 return (
                   <TableRow
@@ -447,71 +435,10 @@ function OverviewTab({
                       )}
                     </TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
-                      {cost > 0
-                        ? cost.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })
-                        : "\u2014"}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {bal?.currentBatchCost != null && bal.currentBatchCost > 0
-                        ? bal.currentBatchCost.toLocaleString(undefined, {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })
-                        : "\u2014"}
+                      {cost > 0 ? <Money amount={cost} currency={currency} /> : "\u2014"}
                     </TableCell>
                     <TableCell className="text-right text-sm">
-                      {value > 0
-                        ? value.toLocaleString(undefined, {
-                            minimumFractionDigits: 0,
-                            maximumFractionDigits: 0,
-                          })
-                        : "\u2014"}
-                    </TableCell>
-                    <TableCell className="text-right text-sm">
-                      {ms ? (
-                        <div className="flex items-center justify-end gap-1">
-                          <span className="text-green-600 dark:text-green-400">
-                            +{ms.totalQuantityIn.toLocaleString()}
-                          </span>
-                          <span className="text-muted-foreground">/</span>
-                          <span className="text-red-600 dark:text-red-400">
-                            -{ms.totalQuantityOut.toLocaleString()}
-                          </span>
-                        </div>
-                      ) : (
-                        "\u2014"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {riskCfg ? (
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${riskCfg.bgColor} ${riskCfg.color}`}
-                        >
-                          {fc!.daysUntilStockout >= 0
-                            ? `${fc!.daysUntilStockout}d`
-                            : riskCfg.label}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          \u2014
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {abcCfg ? (
-                        <span
-                          className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${abcCfg.bgColor} ${abcCfg.color}`}
-                        >
-                          {abcItem!.classification}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          \u2014
-                        </span>
-                      )}
+                      {value > 0 ? <Money amount={value} currency={currency} /> : "\u2014"}
                     </TableCell>
                     <TableCell>
                       <span
@@ -541,10 +468,12 @@ function BatchesTab({
   stock,
   batchMap,
   expiringCount,
+  currency,
 }: {
   stock: Stock;
   batchMap: Record<string, StockBatch[]>;
   expiringCount: number;
+  currency: string;
 }) {
   const allBatches = Object.values(batchMap).flat();
 
@@ -610,10 +539,7 @@ function BatchesTab({
               <span className="text-xs font-medium">Batch Value</span>
             </div>
             <p className="text-xl font-bold">
-              {totalBatchValue.toLocaleString(undefined, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}
+              <Money amount={totalBatchValue} currency={currency} />
             </p>
           </CardContent>
         </Card>
@@ -745,18 +671,30 @@ function BatchesTab({
                       </TableCell>
                       <TableCell className="text-right text-sm text-muted-foreground">
                         {b.unitCost != null
-                          ? b.unitCost.toLocaleString(undefined, {
-                              minimumFractionDigits: 2,
-                              maximumFractionDigits: 2,
-                            })
+                          ? (
+                            <div className="flex flex-col items-end">
+                              <Money amount={b.unitCost} currency={b.currency || currency} />
+                              {b.originalCurrency &&
+                                b.originalCurrency !== (b.currency || currency) &&
+                                b.originalUnitCost != null && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    orig{" "}
+                                    <Money
+                                      amount={b.originalUnitCost}
+                                      currency={b.originalCurrency}
+                                    />
+                                    {b.rateUsed != null && b.rateUsed !== 1
+                                      ? ` @ ${b.rateUsed.toLocaleString(undefined, { maximumFractionDigits: 6 })}`
+                                      : ""}
+                                  </span>
+                                )}
+                            </div>
+                          )
                           : "\u2014"}
                       </TableCell>
                       <TableCell className="text-right text-sm">
                         {batchValue > 0
-                          ? batchValue.toLocaleString(undefined, {
-                              minimumFractionDigits: 0,
-                              maximumFractionDigits: 0,
-                            })
+                          ? <Money amount={batchValue} currency={b.currency || currency} />
                           : "\u2014"}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
@@ -789,9 +727,11 @@ function BatchesTab({
 function MovementsTab({
   movements,
   movementSummary,
+  currency,
 }: {
   movements: StockMovement[];
   movementSummary: StockMovementSummary;
+  currency: string;
 }) {
   return (
     <div className="space-y-6">
@@ -846,10 +786,7 @@ function MovementsTab({
               <span className="text-xs font-medium">Cost In</span>
             </div>
             <p className="text-xl font-bold text-green-600 dark:text-green-400">
-              {movementSummary.totalCostIn.toLocaleString(undefined, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}
+              <Money amount={movementSummary.totalCostIn} currency={currency} />
             </p>
           </CardContent>
         </Card>
@@ -860,10 +797,7 @@ function MovementsTab({
               <span className="text-xs font-medium">Cost Out</span>
             </div>
             <p className="text-xl font-bold text-red-600 dark:text-red-400">
-              {movementSummary.totalCostOut.toLocaleString(undefined, {
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0,
-              })}
+              <Money amount={movementSummary.totalCostOut} currency={currency} />
             </p>
           </CardContent>
         </Card>
@@ -986,18 +920,12 @@ function MovementsTab({
                         </TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
                           {m.unitCost != null
-                            ? m.unitCost.toLocaleString(undefined, {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2,
-                              })
+                            ? <Money amount={m.unitCost} currency={m.currency || currency} />
                             : "\u2014"}
                         </TableCell>
                         <TableCell className="text-right text-sm text-muted-foreground">
                           {m.totalCost != null && m.totalCost > 0
-                            ? m.totalCost.toLocaleString(undefined, {
-                                minimumFractionDigits: 0,
-                                maximumFractionDigits: 0,
-                              })
+                            ? <Money amount={m.totalCost} currency={m.currency || currency} />
                             : "\u2014"}
                         </TableCell>
                       </TableRow>

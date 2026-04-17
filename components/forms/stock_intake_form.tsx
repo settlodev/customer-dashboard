@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useState, useTransition } from "react";
+import React, { useCallback, useEffect, useState, useTransition } from "react";
 import { useForm, useFieldArray, FieldErrors } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -23,33 +23,46 @@ import { useToast } from "@/hooks/use-toast";
 import { FormError } from "../widgets/form-error";
 import CancelButton from "../widgets/cancel-button";
 import { SubmitButton } from "../widgets/submit-button";
-import { createOpeningStock } from "@/lib/actions/opening-stock-actions";
-import { OpeningStockSchema } from "@/types/opening-stock/schema";
+import { createStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
+import { StockIntakeRecordSchema } from "@/types/stock-intake-record/schema";
 import { FormResponse } from "@/types/types";
 import StockVariantSelector from "@/components/widgets/stock-variant-selector";
 import type { VariantMeta } from "@/components/widgets/stock-variant-selector";
 import SupplierSelector from "@/components/widgets/supplier-selector";
+import CurrencySelector from "@/components/widgets/currency-selector";
+import { useLocationCurrency } from "@/hooks/use-location-currency";
 
 export default function StockIntakeForm() {
   const [isPending, startTransition] = useTransition();
   const [response, setResponse] = useState<FormResponse | undefined>();
   const { toast } = useToast();
+  const locationCurrency = useLocationCurrency();
 
   // Track serial-tracked state per item index
   const [serialTrackedMap, setSerialTrackedMap] = useState<Record<number, boolean>>({});
   // Track serial number inputs per item index
   const [serialInputs, setSerialInputs] = useState<Record<number, string[]>>({});
 
-  const form = useForm<z.infer<typeof OpeningStockSchema>>({
-    resolver: zodResolver(OpeningStockSchema),
+  const form = useForm<z.infer<typeof StockIntakeRecordSchema>>({
+    resolver: zodResolver(StockIntakeRecordSchema),
     defaultValues: {
       notes: "",
       orderedDate: "",
       receivedDate: "",
       supplierId: "",
-      items: [{ stockVariantId: "", quantity: 0, unitCost: 0 }],
+      items: [{ stockVariantId: "", quantity: 0, unitCost: 0, currency: locationCurrency }],
     },
   });
+
+  // Back-fill any items that were added before the location currency resolved.
+  useEffect(() => {
+    const items = form.getValues("items") ?? [];
+    items.forEach((item, index) => {
+      if (!item?.currency) {
+        form.setValue(`items.${index}.currency`, locationCurrency, { shouldDirty: false });
+      }
+    });
+  }, [locationCurrency, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -95,7 +108,7 @@ export default function StockIntakeForm() {
     }));
   }, []);
 
-  const submitData = (values: z.infer<typeof OpeningStockSchema>) => {
+  const submitData = (values: z.infer<typeof StockIntakeRecordSchema>) => {
     // Validate serial numbers for serial-tracked items
     for (let i = 0; i < values.items.length; i++) {
       if (serialTrackedMap[i]) {
@@ -120,6 +133,7 @@ export default function StockIntakeForm() {
       receivedDate: values.receivedDate || undefined,
       items: values.items.map((item, i) => ({
         ...item,
+        currency: item.currency ? item.currency.toUpperCase() : locationCurrency,
         serialNumbers: serialTrackedMap[i]
           ? (serialInputs[i] || []).filter((s) => s.trim() !== "")
           : undefined,
@@ -128,7 +142,7 @@ export default function StockIntakeForm() {
 
     setResponse(undefined);
     startTransition(() => {
-      createOpeningStock(payload).then((data) => {
+      createStockIntakeRecord(payload).then((data) => {
         if (data) setResponse(data);
         if (data?.responseType === "success") {
           toast({ variant: "success", title: "Success", description: data.message });
@@ -214,7 +228,7 @@ export default function StockIntakeForm() {
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={() => append({ stockVariantId: "", quantity: 0, unitCost: 0 })}
+                onClick={() => append({ stockVariantId: "", quantity: 0, unitCost: 0, currency: locationCurrency })}
                 disabled={isPending}
               >
                 <Plus className="w-4 h-4 mr-1" /> Add Item
@@ -236,7 +250,7 @@ export default function StockIntakeForm() {
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                   <FormField
                     control={form.control}
                     name={`items.${index}.stockVariantId`}
@@ -296,6 +310,37 @@ export default function StockIntakeForm() {
                         <FormMessage />
                       </FormItem>
                     )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name={`items.${index}.currency`}
+                    render={({ field: f }) => {
+                      const active = (f.value || locationCurrency).toUpperCase();
+                      const isForeign = active !== locationCurrency.toUpperCase();
+                      return (
+                        <FormItem>
+                          <FormLabel className="text-xs">Currency</FormLabel>
+                          <FormControl>
+                            <CurrencySelector
+                              value={active}
+                              onChange={f.onChange}
+                              isDisabled={isPending}
+                            />
+                          </FormControl>
+                          {isForeign ? (
+                            <p className="text-[11px] text-amber-600">
+                              Will convert to {locationCurrency} at confirm time.
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground">
+                              Location base currency.
+                            </p>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      );
+                    }}
                   />
                 </div>
 
