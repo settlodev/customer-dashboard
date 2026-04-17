@@ -21,10 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { FormError } from "../widgets/form-error";
 import { Supplier } from "@/types/supplier/type";
 import { SupplierSchema } from "@/types/supplier/schema";
-import {
-  createSupplier,
-  updateSupplier,
-} from "@/lib/actions/supplier-actions";
+import { createSupplier, updateSupplier } from "@/lib/actions/supplier-actions";
 import { PhoneInput } from "../ui/phone-input";
 import { Switch } from "../ui/switch";
 import { Card, CardContent } from "../ui/card";
@@ -72,7 +69,11 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
         updateSupplier(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: data.message,
+            });
             router.push("/suppliers");
           }
         });
@@ -81,7 +82,11 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
           .then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
-              toast({ variant: "success", title: "Success", description: data.message });
+              toast({
+                variant: "success",
+                title: "Success",
+                description: data.message,
+              });
               router.push("/suppliers");
             }
           })
@@ -98,7 +103,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
+      {/*<FormError message={response?.message} />*/}
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className="space-y-6"
@@ -107,9 +112,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
           <CardContent className="pt-6 space-y-6">
             {/* Supplier Information */}
             <div>
-              <h3 className="text-lg font-medium mb-4">
-                Supplier Information
-              </h3>
+              <h3 className="text-lg font-medium mb-4">Supplier Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -117,8 +120,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>
-                        Supplier Name{" "}
-                        <span className="text-red-500">*</span>
+                        Supplier Name <span className="text-red-500">*</span>
                       </FormLabel>
                       <FormControl>
                         <Input
@@ -195,9 +197,7 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
 
             {/* Contact Person */}
             <div>
-              <h3 className="text-lg font-medium mb-4">
-                Contact Person
-              </h3>
+              <h3 className="text-lg font-medium mb-4">Contact Person</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -217,7 +217,6 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                   )}
                 />
 
-
                 <FormField
                   control={form.control}
                   name="contactPersonPhone"
@@ -235,10 +234,8 @@ function SupplierForm({ item }: { item: Supplier | null | undefined }) {
                     </FormItem>
                   )}
                 />
-
               </div>
             </div>
-
           </CardContent>
         </Card>
 

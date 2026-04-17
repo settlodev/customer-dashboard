@@ -84,14 +84,22 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
         updateCategory(item.id, values, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: data.message,
+            });
           }
         });
       } else {
         createCategory(values, "category").then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: data.message,
+            });
             router.push("/categories");
           }
         });
@@ -101,7 +109,7 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
+      {/*<FormError message={response?.message} />*/}
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className="space-y-6"
@@ -181,7 +189,13 @@ const CategoryForm = ({ item }: { item: Category | null | undefined }) => {
                             placeholder="e.g. 1"
                             {...field}
                             value={field.value ?? ""}
-                            onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                            onChange={(e) =>
+                              field.onChange(
+                                e.target.value === ""
+                                  ? undefined
+                                  : Number(e.target.value),
+                              )
+                            }
                             disabled={isPending}
                           />
                         </FormControl>

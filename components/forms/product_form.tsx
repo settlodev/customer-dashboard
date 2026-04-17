@@ -76,8 +76,12 @@ export default function ProductForm({ item }: ProductFormProps) {
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [imageUrl, setImageUrl] = useState(item?.imageUrl || "");
   const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
-  const [collapsedVariants, setCollapsedVariants] = useState<Record<number, boolean>>({});
-  const [archiveVariantIndex, setArchiveVariantIndex] = useState<number | null>(null);
+  const [collapsedVariants, setCollapsedVariants] = useState<
+    Record<number, boolean>
+  >({});
+  const [archiveVariantIndex, setArchiveVariantIndex] = useState<number | null>(
+    null,
+  );
   const { toast } = useToast();
 
   const isEditing = !!item;
@@ -133,7 +137,10 @@ export default function ProductForm({ item }: ProductFormProps) {
     if (!isMultiVariant && !isEditing) {
       const currentVariantName = form.getValues("variants.0.name");
       // Only sync if variant name is empty or was previously synced
-      if (!currentVariantName || currentVariantName === form.getValues("name")) {
+      if (
+        !currentVariantName ||
+        currentVariantName === form.getValues("name")
+      ) {
         // This will be set on next render via the watched value
       }
     }
@@ -143,6 +150,7 @@ export default function ProductForm({ item }: ProductFormProps) {
 
   const onInvalid = useCallback(
     (errors: FieldErrors) => {
+      console.log(errors);
       toast({
         variant: "destructive",
         title: "Form validation failed",
@@ -154,6 +162,10 @@ export default function ProductForm({ item }: ProductFormProps) {
 
   const handleAddVariant = () => {
     const trackStock = form.getValues("trackStock");
+
+    if (fields.length === 1 && !form.getValues("variants.0.name")) {
+      form.setValue("variants.0.name", form.getValues("name"));
+    }
     append({
       name: "",
       price: 0,
@@ -201,7 +213,11 @@ export default function ProductForm({ item }: ProductFormProps) {
     const name = form.getValues("name");
     const categoryIds = form.getValues("categoryIds");
     if (!name || !categoryIds?.length) {
-      toast({ variant: "destructive", title: "Missing Information", description: "Enter a product name and select a category first." });
+      toast({
+        variant: "destructive",
+        title: "Missing Information",
+        description: "Enter a product name and select a category first.",
+      });
       return;
     }
     setIsGeneratingDescription(true);
@@ -209,7 +225,11 @@ export default function ProductForm({ item }: ProductFormProps) {
       const desc = await generateAIDescription(name, categoryIds[0]);
       form.setValue("description", desc);
     } catch {
-      toast({ variant: "destructive", title: "Failed", description: "Unable to generate description." });
+      toast({
+        variant: "destructive",
+        title: "Failed",
+        description: "Unable to generate description.",
+      });
     } finally {
       setIsGeneratingDescription(false);
     }
@@ -236,7 +256,11 @@ export default function ProductForm({ item }: ProductFormProps) {
 
     const result = ProductSchema.safeParse(values);
     if (!result.success) {
-      toast({ variant: "destructive", title: "Validation failed", description: "Check your inputs." });
+      toast({
+        variant: "destructive",
+        title: "Validation failed",
+        description: "Check your inputs.",
+      });
       return;
     }
 
@@ -251,24 +275,45 @@ export default function ProductForm({ item }: ProductFormProps) {
         updateProduct(item.id, productData, paginationState).then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: "Product updated." });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: "Product updated.",
+            });
           }
         });
       } else {
         createProduct(productData).then((data) => {
           if (data) setResponse(data);
           if (data?.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: "Product created." });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: "Product created.",
+            });
           }
         });
       }
     });
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Sync single-variant name before validation fires
+    if (!isMultiVariant) {
+      form.setValue("variants.0.name", form.getValues("name"));
+    }
+
+    // Now trigger RHF validation + submitData
+    form.handleSubmit(submitData, onInvalid)();
+  };
+
   // ── Render helpers ────────────────────────────────────────────────
 
   const renderPricingFields = (index: number) => {
-    const strategy = form.watch(`variants.${index}.pricingStrategy`) || "MANUAL";
+    const strategy =
+      form.watch(`variants.${index}.pricingStrategy`) || "MANUAL";
 
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -279,7 +324,10 @@ export default function ProductForm({ item }: ProductFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Pricing</FormLabel>
-              <Select value={field.value || "MANUAL"} onValueChange={field.onChange}>
+              <Select
+                value={field.value || "MANUAL"}
+                onValueChange={field.onChange}
+              >
                 <FormControl>
                   <SelectTrigger>
                     <SelectValue />
@@ -302,7 +350,10 @@ export default function ProductForm({ item }: ProductFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>
-                Selling Price {strategy === "MANUAL" && <span className="text-red-500">*</span>}
+                Selling Price{" "}
+                {strategy === "MANUAL" && (
+                  <span className="text-red-500">*</span>
+                )}
               </FormLabel>
               <FormControl>
                 <div className="relative">
@@ -335,7 +386,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                   <NumericFormat
                     className={numericInputClass}
                     value={field.value ?? ""}
-                    onValueChange={(v) => field.onChange(v.value ? Number(v.value) : undefined)}
+                    onValueChange={(v) =>
+                      field.onChange(v.value ? Number(v.value) : undefined)
+                    }
                     thousandSeparator
                     placeholder="0"
                     disabled={isPending}
@@ -358,7 +411,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                   <NumericFormat
                     className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
                     value={field.value ?? ""}
-                    onValueChange={(v) => field.onChange(v.value ? Number(v.value) : undefined)}
+                    onValueChange={(v) =>
+                      field.onChange(v.value ? Number(v.value) : undefined)
+                    }
                     suffix="%"
                     placeholder="25%"
                     disabled={isPending}
@@ -383,7 +438,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                     <NumericFormat
                       className={numericInputClass}
                       value={field.value ?? ""}
-                      onValueChange={(v) => field.onChange(v.value ? Number(v.value) : undefined)}
+                      onValueChange={(v) =>
+                        field.onChange(v.value ? Number(v.value) : undefined)
+                      }
                       thousandSeparator
                       placeholder="0"
                       disabled={isPending}
@@ -405,7 +462,13 @@ export default function ProductForm({ item }: ProductFormProps) {
               <FormControl>
                 <div className="relative">
                   <Hash className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                  <Input className="pl-10" placeholder="Auto-generated" {...field} value={field.value ?? ""} disabled={isPending} />
+                  <Input
+                    className="pl-10"
+                    placeholder="Auto-generated"
+                    {...field}
+                    value={field.value ?? ""}
+                    disabled={isPending}
+                  />
                 </div>
               </FormControl>
             </FormItem>
@@ -435,7 +498,10 @@ export default function ProductForm({ item }: ProductFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-xs">Link Type</FormLabel>
-                  <Select value={field.value || ""} onValueChange={field.onChange}>
+                  <Select
+                    value={field.value || ""}
+                    onValueChange={field.onChange}
+                  >
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select link type" />
@@ -443,9 +509,15 @@ export default function ProductForm({ item }: ProductFormProps) {
                     </FormControl>
                     <SelectContent>
                       <SelectItem value="DIRECT">Direct Stock Item</SelectItem>
-                      <SelectItem value="FIXED">Consumption Rule (Fixed)</SelectItem>
-                      <SelectItem value="SCALED">Consumption Rule (Scaled)</SelectItem>
-                      <SelectItem value="FORMULA">Consumption Rule (Formula)</SelectItem>
+                      <SelectItem value="FIXED">
+                        Consumption Rule (Fixed)
+                      </SelectItem>
+                      <SelectItem value="SCALED">
+                        Consumption Rule (Scaled)
+                      </SelectItem>
+                      <SelectItem value="FORMULA">
+                        Consumption Rule (Formula)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </FormItem>
@@ -482,7 +554,9 @@ export default function ProductForm({ item }: ProductFormProps) {
                         <NumericFormat
                           className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
                           value={field.value ?? 1}
-                          onValueChange={(v) => field.onChange(v.value ? Number(v.value) : 1)}
+                          onValueChange={(v) =>
+                            field.onChange(v.value ? Number(v.value) : 1)
+                          }
                           placeholder="1"
                           disabled={isPending}
                         />
@@ -494,7 +568,9 @@ export default function ProductForm({ item }: ProductFormProps) {
             )}
 
             {/* Consumption Rule (for FIXED/SCALED/FORMULA) */}
-            {(stockLinkType === "FIXED" || stockLinkType === "SCALED" || stockLinkType === "FORMULA") && (
+            {(stockLinkType === "FIXED" ||
+              stockLinkType === "SCALED" ||
+              stockLinkType === "FORMULA") && (
               <FormField
                 control={form.control}
                 name={`variants.${index}.consumptionRuleId`}
@@ -534,10 +610,14 @@ export default function ProductForm({ item }: ProductFormProps) {
                 <NumericFormat
                   className="flex h-10 w-full rounded-md border-0 bg-muted px-3 py-2 text-sm"
                   value={field.value ?? ""}
-                  onValueChange={(v) => field.onChange(v.value ? Number(v.value) : undefined)}
+                  onValueChange={(v) =>
+                    field.onChange(v.value ? Number(v.value) : undefined)
+                  }
                   thousandSeparator
                   placeholder="0"
-                  disabled={isPending || form.watch(`variants.${index}.unlimited`)}
+                  disabled={
+                    isPending || form.watch(`variants.${index}.unlimited`)
+                  }
                 />
               </FormControl>
             </FormItem>
@@ -549,7 +629,11 @@ export default function ProductForm({ item }: ProductFormProps) {
           render={({ field }) => (
             <FormItem className="flex items-end gap-3 pb-2">
               <FormControl>
-                <Switch checked={field.value} onCheckedChange={field.onChange} disabled={isPending} />
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isPending}
+                />
               </FormControl>
               <FormLabel className="text-xs flex items-center gap-1 cursor-pointer mb-0">
                 <Infinity className="h-3 w-3" />
@@ -567,7 +651,7 @@ export default function ProductForm({ item }: ProductFormProps) {
   return (
     <Form {...form}>
       <FormError message={response?.message} />
-      <form onSubmit={form.handleSubmit(submitData, onInvalid)} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {/* ── Section 1: Product Details ──────────────────────────── */}
         <Card className="rounded-xl shadow-sm">
           <CardContent className="pt-6 space-y-6">
@@ -592,9 +676,15 @@ export default function ProductForm({ item }: ProductFormProps) {
                   name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Product Name <span className="text-red-500">*</span></FormLabel>
+                      <FormLabel>
+                        Product Name <span className="text-red-500">*</span>
+                      </FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter product name" {...field} disabled={isPending} />
+                        <Input
+                          placeholder="Enter product name"
+                          {...field}
+                          disabled={isPending}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -608,13 +698,28 @@ export default function ProductForm({ item }: ProductFormProps) {
                     <FormItem>
                       <div className="flex items-center justify-between">
                         <FormLabel>Description</FormLabel>
-                        <Button type="button" variant="ghost" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDescription || isPending} className="text-xs h-7 gap-1.5">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleGenerateDescription}
+                          disabled={isGeneratingDescription || isPending}
+                          className="text-xs h-7 gap-1.5"
+                        >
                           <Sparkles className="w-3.5 h-3.5" />
-                          {isGeneratingDescription ? "Generating..." : "AI Generate"}
+                          {isGeneratingDescription
+                            ? "Generating..."
+                            : "AI Generate"}
                         </Button>
                       </div>
                       <FormControl>
-                        <Textarea {...field} value={field.value ?? ""} placeholder="Describe your product" disabled={isPending} className="resize-none h-20" />
+                        <Textarea
+                          {...field}
+                          value={field.value ?? ""}
+                          placeholder="Describe your product"
+                          disabled={isPending}
+                          className="resize-none h-20"
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -632,50 +737,110 @@ export default function ProductForm({ item }: ProductFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Category</FormLabel>
-                    <CategorySelector placeholder="Select category" value={field.value?.[0] || ""} onChange={(val) => field.onChange(val ? [val] : [])} onBlur={field.onBlur} />
+                    <CategorySelector
+                      placeholder="Select category"
+                      value={field.value?.[0] || ""}
+                      onChange={(val) => field.onChange(val ? [val] : [])}
+                      onBlur={field.onBlur}
+                    />
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <FormField control={form.control} name="departmentId" render={({ field }) => (
-                <FormItem><FormLabel>Department</FormLabel><DepartmentSelector {...field} value={field.value ?? ""} /><FormMessage /></FormItem>
-              )} />
-              <FormField control={form.control} name="brandId" render={({ field }) => (
-                <FormItem><FormLabel>Brand</FormLabel><BrandSelector {...field} value={field.value ?? ""} /><FormMessage /></FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="departmentId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <DepartmentSelector {...field} value={field.value ?? ""} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="brandId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Brand</FormLabel>
+                    <BrandSelector {...field} value={field.value ?? ""} />
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
 
             <Separator />
 
             {/* Settings row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <FormField control={form.control} name="sellOnline" render={({ field }) => (
-                <FormItem className="flex justify-between items-center rounded-lg border p-3 space-y-0">
-                  <FormLabel className="text-sm cursor-pointer">Sell Online</FormLabel>
-                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="sellOnline"
+                render={({ field }) => (
+                  <FormItem className="flex justify-between items-center rounded-lg border p-3 space-y-0">
+                    <FormLabel className="text-sm cursor-pointer">
+                      Sell Online
+                    </FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
-              <FormField control={form.control} name="trackStock" render={({ field }) => (
-                <FormItem className="flex justify-between items-center rounded-lg border p-3 space-y-0">
-                  <FormLabel className="text-sm cursor-pointer">Track Stock</FormLabel>
-                  <FormControl><Switch checked={field.value} onCheckedChange={(v) => handleTrackStockToggle(v as boolean)} /></FormControl>
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="trackStock"
+                render={({ field }) => (
+                  <FormItem className="flex justify-between items-center rounded-lg border p-3 space-y-0">
+                    <FormLabel className="text-sm cursor-pointer">
+                      Track Stock
+                    </FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={(v) =>
+                          handleTrackStockToggle(v as boolean)
+                        }
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
-              <FormField control={form.control} name="taxInclusive" render={({ field }) => (
-                <FormItem className="flex justify-between items-center rounded-lg border p-3 space-y-0">
-                  <FormLabel className="text-sm cursor-pointer">Tax Inclusive</FormLabel>
-                  <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="taxInclusive"
+                render={({ field }) => (
+                  <FormItem className="flex justify-between items-center rounded-lg border p-3 space-y-0">
+                    <FormLabel className="text-sm cursor-pointer">
+                      Tax Inclusive
+                    </FormLabel>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
 
-              <FormField control={form.control} name="taxClass" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Tax Class</FormLabel>
-                  <TaxClassSelector {...field} value={field.value ?? ""} />
-                </FormItem>
-              )} />
+              <FormField
+                control={form.control}
+                name="taxClass"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tax Class</FormLabel>
+                    <TaxClassSelector {...field} value={field.value ?? ""} />
+                  </FormItem>
+                )}
+              />
             </div>
           </CardContent>
         </Card>
@@ -690,17 +855,33 @@ export default function ProductForm({ item }: ProductFormProps) {
                   {isMultiVariant ? "Product Variants" : "Pricing"}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  {isMultiVariant ? "Manage variants for this product" : "Set the price for your product"}
+                  {isMultiVariant
+                    ? "Manage variants for this product"
+                    : "Set the price for your product"}
                 </p>
               </div>
               {!isMultiVariant && (
-                <Button type="button" variant="outline" size="sm" onClick={handleAddVariant} disabled={isPending} className="h-8 text-xs">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddVariant}
+                  disabled={isPending}
+                  className="h-8 text-xs"
+                >
                   <Plus className="w-3.5 h-3.5 mr-1" />
                   Add Variant
                 </Button>
               )}
               {isMultiVariant && (
-                <Button type="button" variant="outline" size="sm" onClick={handleAddVariant} disabled={isPending} className="h-8 text-xs">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddVariant}
+                  disabled={isPending}
+                  className="h-8 text-xs"
+                >
                   <Plus className="w-3.5 h-3.5 mr-1" />
                   Add Variant
                 </Button>
@@ -709,11 +890,18 @@ export default function ProductForm({ item }: ProductFormProps) {
 
             <div className="space-y-4">
               {fields.map((field, index) => {
-                const variantName = form.watch(`variants.${index}.name`) || `Variant ${index + 1}`;
+                const variantName =
+                  form.watch(`variants.${index}.name`) ||
+                  `Variant ${index + 1}`;
                 const isCollapsed = collapsedVariants[index] ?? false;
 
                 return (
-                  <div key={field.id} className={isMultiVariant ? "border rounded-xl overflow-hidden" : ""}>
+                  <div
+                    key={field.id}
+                    className={
+                      isMultiVariant ? "border rounded-xl overflow-hidden" : ""
+                    }
+                  >
                     {/* Variant header (multi-variant only) */}
                     {isMultiVariant && (
                       <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b">
@@ -721,8 +909,16 @@ export default function ProductForm({ item }: ProductFormProps) {
                           {variantName}
                         </span>
                         <div className="flex items-center gap-1">
-                          <button type="button" onClick={() => toggleCollapse(index)} className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400">
-                            {isCollapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+                          <button
+                            type="button"
+                            onClick={() => toggleCollapse(index)}
+                            className="p-1.5 rounded-md hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400"
+                          >
+                            {isCollapsed ? (
+                              <ChevronDown className="w-4 h-4" />
+                            ) : (
+                              <ChevronUp className="w-4 h-4" />
+                            )}
                           </button>
                           <button
                             type="button"
@@ -730,7 +926,11 @@ export default function ProductForm({ item }: ProductFormProps) {
                             disabled={fields.length === 1 || isPending}
                             className="p-1.5 rounded-md hover:bg-amber-50 text-gray-400 hover:text-amber-600 disabled:opacity-40 disabled:pointer-events-none"
                           >
-                            {item ? <Archive className="w-4 h-4" /> : <Trash2 className="w-4 h-4" />}
+                            {item ? (
+                              <Archive className="w-4 h-4" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </div>
@@ -738,7 +938,11 @@ export default function ProductForm({ item }: ProductFormProps) {
 
                     {/* Variant body */}
                     {!isCollapsed && (
-                      <div className={isMultiVariant ? "p-5 space-y-4" : "space-y-4"}>
+                      <div
+                        className={
+                          isMultiVariant ? "p-5 space-y-4" : "space-y-4"
+                        }
+                      >
                         {/* Variant name (multi-variant only) */}
                         {isMultiVariant && (
                           <FormField
@@ -746,11 +950,19 @@ export default function ProductForm({ item }: ProductFormProps) {
                             name={`variants.${index}.name`}
                             render={({ field: nameField }) => (
                               <FormItem>
-                                <FormLabel>Variant Name <span className="text-red-500">*</span></FormLabel>
+                                <FormLabel>
+                                  Variant Name{" "}
+                                  <span className="text-red-500">*</span>
+                                </FormLabel>
                                 <FormControl>
                                   <div className="relative">
                                     <Tag className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                                    <Input className="pl-10" placeholder="e.g. Small, Regular, Large" {...nameField} disabled={isPending} />
+                                    <Input
+                                      className="pl-10"
+                                      placeholder="e.g. Small, Regular, Large"
+                                      {...nameField}
+                                      disabled={isPending}
+                                    />
                                   </div>
                                 </FormControl>
                                 <FormMessage />
@@ -779,29 +991,59 @@ export default function ProductForm({ item }: ProductFormProps) {
             <CardContent className="pt-6 space-y-4">
               <h3 className="text-lg font-medium">Status</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField control={form.control} name="active" render={({ field }) => (
-                  <FormItem className="flex justify-between items-center rounded-lg border p-4 space-y-0">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-sm cursor-pointer">Active</FormLabel>
-                      <p className="text-xs text-muted-foreground">{field.value ? "Product is visible" : "Product is hidden"}</p>
-                    </div>
-                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="active"
+                  render={({ field }) => (
+                    <FormItem className="flex justify-between items-center rounded-lg border p-4 space-y-0">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm cursor-pointer">
+                          Active
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          {field.value
+                            ? "Product is visible"
+                            : "Product is hidden"}
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
 
-                <FormField control={form.control} name="lifecycleStatus" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Lifecycle Status</FormLabel>
-                    <Select value={field.value || "ACTIVE"} onValueChange={field.onChange}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="ACTIVE">Active</SelectItem>
-                        <SelectItem value="DISCONTINUED">Discontinued</SelectItem>
-                        <SelectItem value="END_OF_LIFE">End of Life</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </FormItem>
-                )} />
+                <FormField
+                  control={form.control}
+                  name="lifecycleStatus"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Lifecycle Status</FormLabel>
+                      <Select
+                        value={field.value || "ACTIVE"}
+                        onValueChange={field.onChange}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="ACTIVE">Active</SelectItem>
+                          <SelectItem value="DISCONTINUED">
+                            Discontinued
+                          </SelectItem>
+                          <SelectItem value="END_OF_LIFE">
+                            End of Life
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
               </div>
             </CardContent>
           </Card>
@@ -811,7 +1053,10 @@ export default function ProductForm({ item }: ProductFormProps) {
         <div className="flex items-center gap-4 pt-2 pb-4 sm:pb-0">
           <CancelButton />
           <Separator orientation="vertical" className="h-5" />
-          <SubmitButton isPending={isPending} label={item ? "Update product" : "Create product"} />
+          <SubmitButton
+            isPending={isPending}
+            label={item ? "Update product" : "Create product"}
+          />
         </div>
       </form>
 

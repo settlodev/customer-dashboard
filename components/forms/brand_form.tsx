@@ -66,7 +66,11 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
         updateBrand(item.id, values).then((data) => {
           if (data) setResponse(data);
           if (data && data.responseType === "success") {
-            toast({ variant: "success", title: "Success", description: data.message });
+            toast({
+              variant: "success",
+              title: "Success",
+              description: data.message,
+            });
             router.push("/brands");
           }
         });
@@ -75,7 +79,11 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
           .then((data) => {
             if (data) setResponse(data);
             if (data && data.responseType === "success") {
-              toast({ variant: "success", title: "Success", description: data.message });
+              toast({
+                variant: "success",
+                title: "Success",
+                description: data.message,
+              });
               router.push("/brands");
             }
           })
@@ -92,7 +100,7 @@ function BrandForm({ item }: { item: Brand | null | undefined }) {
 
   return (
     <Form {...form}>
-      <FormError message={response?.message} />
+      {/*<FormError message={response?.message} />*/}
       <form
         onSubmit={form.handleSubmit(submitData, onInvalid)}
         className="space-y-6"

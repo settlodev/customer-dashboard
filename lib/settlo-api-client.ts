@@ -34,7 +34,10 @@ const sharedHttpsAgent = new https.Agent({
 // ── Module-level refresh lock ───────────────────────────────────────
 // Prevents concurrent token refreshes across ApiClient instances within
 // the same server-action invocation.
-let refreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
+let refreshPromise: Promise<{
+  accessToken: string;
+  refreshToken: string;
+}> | null = null;
 
 async function refreshAccessToken(currentRefreshToken: string): Promise<{
   accessToken: string;
@@ -45,7 +48,9 @@ async function refreshAccessToken(currentRefreshToken: string): Promise<{
 
   refreshPromise = (async () => {
     try {
-      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
       const clientId = process.env.NEXT_PUBLIC_WHITELABEL_CLIENT_ID;
       if (clientId) headers["X-Client-Id"] = clientId;
 
@@ -83,7 +88,7 @@ function decodeJwtExp(token: string): number | null {
 /** Returns true if the token expires within `marginSec` seconds. */
 function isTokenExpiringSoon(token: string, marginSec = 30): boolean {
   const exp = decodeJwtExp(token);
-  if (exp === null) return true; // Can't read exp → treat as expired
+  if (exp === null) return true;
   return Date.now() / 1000 > exp - marginSec;
 }
 
@@ -108,7 +113,9 @@ const METHOD_COLORS: Record<string, string> = {
   DELETE: ANSI.red,
 };
 
-function sanitizeHeaders(headers: Record<string, unknown>): Record<string, string> {
+function sanitizeHeaders(
+  headers: Record<string, unknown>,
+): Record<string, string> {
   const safe: Record<string, string> = {};
   for (const [key, val] of Object.entries(headers)) {
     if (!val) continue;
@@ -150,7 +157,9 @@ function logRequest(config: InternalAxiosRequestConfig) {
   }
 
   if (config.data) {
-    console.log(`${ANSI.dim}    body: ${truncate(config.data, 300)}${ANSI.reset}`);
+    console.log(
+      `${ANSI.dim}    body: ${truncate(config.data, 300)}${ANSI.reset}`,
+    );
   }
 }
 
@@ -160,7 +169,8 @@ function logResponse(response: AxiosResponse, durationMs: number) {
   const url = response.config.url || "";
   const shortUrl = url.replace(/^https?:\/\/[^/]+/, "");
 
-  const statusColor = status < 300 ? ANSI.green : status < 400 ? ANSI.yellow : ANSI.red;
+  const statusColor =
+    status < 300 ? ANSI.green : status < 400 ? ANSI.yellow : ANSI.red;
 
   console.log(
     `${ANSI.dim}◀──${ANSI.reset} ${statusColor}${ANSI.bold}${status}${ANSI.reset} ${ANSI.dim}${method} ${shortUrl}${ANSI.reset} ${ANSI.blue}${durationMs}ms${ANSI.reset}`,
@@ -186,7 +196,9 @@ function logResponseError(error: AxiosError, durationMs: number) {
     const preview = truncate(error.response.data, 400);
     console.log(`${ANSI.red}    error: ${preview}${ANSI.reset}`);
   } else if (error.message) {
-    console.log(`${ANSI.red}    ${error.code || "NETWORK"}: ${error.message}${ANSI.reset}`);
+    console.log(
+      `${ANSI.red}    ${error.code || "NETWORK"}: ${error.message}${ANSI.reset}`,
+    );
   }
 }
 
@@ -225,9 +237,12 @@ class ApiClient {
     if (typeof service === "boolean") {
       this.baseURL = service ? AUTH_SERVICE_URL : ACCOUNTS_SERVICE_URL;
     } else {
-      this.baseURL = service === "auth" ? AUTH_SERVICE_URL
-        : service === "reports" ? REPORTS_SERVICE_URL
-        : ACCOUNTS_SERVICE_URL;
+      this.baseURL =
+        service === "auth"
+          ? AUTH_SERVICE_URL
+          : service === "reports"
+            ? REPORTS_SERVICE_URL
+            : ACCOUNTS_SERVICE_URL;
     }
     this.isPlain = false;
 
@@ -268,7 +283,9 @@ class ApiClient {
                 ...token,
                 accessToken: refreshed.accessToken,
                 refreshToken: refreshed.refreshToken,
-                subscriptionStatus: extractSubscriptionStatus(refreshed.accessToken),
+                subscriptionStatus: extractSubscriptionStatus(
+                  refreshed.accessToken,
+                ),
               });
             } catch {
               // Cookie update may fail outside Server Actions
@@ -371,7 +388,9 @@ class ApiClient {
                 ...token,
                 accessToken: refreshed.accessToken,
                 refreshToken: refreshed.refreshToken,
-                subscriptionStatus: extractSubscriptionStatus(refreshed.accessToken),
+                subscriptionStatus: extractSubscriptionStatus(
+                  refreshed.accessToken,
+                ),
               });
             } catch {
               // Cookie update may fail outside Server Actions
@@ -383,7 +402,8 @@ class ApiClient {
               );
             }
 
-            originalRequest.headers["Authorization"] = `Bearer ${refreshed.accessToken}`;
+            originalRequest.headers["Authorization"] =
+              `Bearer ${refreshed.accessToken}`;
             return this.instance(originalRequest);
           } catch {
             // Refresh failed — session is unrecoverable

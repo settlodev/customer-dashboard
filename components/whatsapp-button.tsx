@@ -26,7 +26,11 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function buildMessage({ userName, businessName, locationName }: WhatsAppButtonProps): string {
+function buildMessage({
+  userName,
+  businessName,
+  locationName,
+}: WhatsAppButtonProps): string {
   if (userName && businessName && locationName) {
     return `Hello Settlo, my name is ${userName} from ${businessName} (${locationName}). I need help with`;
   }
@@ -43,12 +47,20 @@ function sanitizePhone(phone: string): string {
   return phone.replace(/[\s\-()+ ]/g, "").replace(/^0/, "255");
 }
 
-export default function WhatsAppButton({ userName, businessName, locationName, phoneNumber, customMessage, hideOnReserve }: WhatsAppButtonProps) {
+export default function WhatsAppButton({
+  userName,
+  businessName,
+  locationName,
+  phoneNumber,
+  customMessage,
+  hideOnReserve,
+}: WhatsAppButtonProps) {
   const pathname = usePathname();
 
   if (hideOnReserve && pathname.startsWith("/reserve")) return null;
 
-  const message = customMessage || buildMessage({ userName, businessName, locationName });
+  const message =
+    customMessage || buildMessage({ userName, businessName, locationName });
   const phone = phoneNumber ? sanitizePhone(phoneNumber) : SETTLO_PHONE;
   const href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 

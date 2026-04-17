@@ -6,7 +6,11 @@ import { getAuthenticatedUser } from "@/lib/auth-utils";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import { Department, DepartmentCount, DepartmentReport } from "@/types/department/type";
+import {
+  Department,
+  DepartmentCount,
+  DepartmentReport,
+} from "@/types/department/type";
 import { DepartmentSchema } from "@/types/department/schema";
 
 // ---------------------------------------------------------------------------
@@ -37,18 +41,24 @@ export const searchDepartment = async (
       page: String(page ? page - 1 : 0),
       size: String(pageLimit || 10),
     });
-    const data = await apiClient.get(`/api/v1/departments?${params.toString()}`);
+    const data = await apiClient.get(
+      `/api/v1/departments?${params.toString()}`,
+    );
     return parseStringify(data);
   } catch (error) {
     throw error;
   }
 };
 
-export const searchDepartmentByName = async (query: string): Promise<Department[]> => {
+export const searchDepartmentByName = async (
+  query: string,
+): Promise<Department[]> => {
   await getAuthenticatedUser();
   try {
     const apiClient = new ApiClient();
-    const data = await apiClient.get(`/api/v1/departments/search?query=${encodeURIComponent(query)}`);
+    const data = await apiClient.get(
+      `/api/v1/departments/search?query=${encodeURIComponent(query)}`,
+    );
     return parseStringify(data);
   } catch (error) {
     throw error;
@@ -63,7 +73,8 @@ export const getDepartmentList = async (
   try {
     const apiClient = new ApiClient();
     const params = new URLSearchParams();
-    if (activeOnly !== undefined) params.append("activeOnly", String(activeOnly));
+    if (activeOnly !== undefined)
+      params.append("activeOnly", String(activeOnly));
     if (ordered !== undefined) params.append("ordered", String(ordered));
     const query = params.toString() ? `?${params.toString()}` : "";
     const data = await apiClient.get(`/api/v1/departments/list${query}`);
@@ -115,8 +126,12 @@ export const createDepartment = async (
 
   try {
     const apiClient = new ApiClient();
-    const response = await apiClient.post(`/api/v1/departments`, validatedData.data);
+    const response = await apiClient.post(
+      `/api/v1/departments`,
+      validatedData.data,
+    );
     revalidatePath("/departments");
+    console.log("The departments created is", response);
     return parseStringify({
       responseType: "success",
       message: "Department created successfully",
@@ -152,7 +167,10 @@ export const updateDepartment = async (
     const apiClient = new ApiClient();
     await apiClient.put(`/api/v1/departments/${id}`, validatedData.data);
     revalidatePath("/departments");
-    return parseStringify({ responseType: "success", message: "Department updated successfully" });
+    return parseStringify({
+      responseType: "success",
+      message: "Department updated successfully",
+    });
   } catch (error: any) {
     return parseStringify({
       responseType: "error",
@@ -181,7 +199,9 @@ export const deleteDepartment = async (id: string): Promise<void> => {
 // Deactivate / Reactivate
 // ---------------------------------------------------------------------------
 
-export const deactivateDepartment = async (id: string): Promise<FormResponse> => {
+export const deactivateDepartment = async (
+  id: string,
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/departments/${id}/deactivate`, {});
@@ -196,7 +216,9 @@ export const deactivateDepartment = async (id: string): Promise<FormResponse> =>
   }
 };
 
-export const reactivateDepartment = async (id: string): Promise<FormResponse> => {
+export const reactivateDepartment = async (
+  id: string,
+): Promise<FormResponse> => {
   try {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/departments/${id}/reactivate`, {});
@@ -227,7 +249,9 @@ export const departmentReport = async (
     if (startDate) params.append("startDate", startDate);
     if (endDate) params.append("endDate", endDate);
     const query = params.toString() ? `?${params.toString()}` : "";
-    const data = await apiClient.get(`/api/reports/${id}/department/summary${query}`);
+    const data = await apiClient.get(
+      `/api/reports/${id}/department/summary${query}`,
+    );
     return parseStringify(data);
   } catch (error) {
     throw error;
