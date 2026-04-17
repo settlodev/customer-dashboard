@@ -1,10 +1,12 @@
 import { notFound } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
-import { getOpeningStock, confirmOpeningStock, cancelOpeningStock } from "@/lib/actions/opening-stock-actions";
-import { OPENING_STOCK_STATUS_LABELS } from "@/types/opening-stock/type";
+import { getStockIntakeRecord } from "@/lib/actions/stock-intake-record-actions";
+import { STOCK_INTAKE_RECORD_STATUS_LABELS } from "@/types/stock-intake-record/type";
 import StockIntakeForm from "@/components/forms/stock_intake_form";
 import { Card, CardContent } from "@/components/ui/card";
-import OpeningStockActions from "@/components/widgets/opening-stock-actions";
+import StockIntakeRecordActions from "@/components/widgets/stock-intake-record-actions";
+import { DEFAULT_CURRENCY } from "@/lib/helpers";
+import { Money } from "@/components/widgets/money";
 
 type Params = Promise<{ id: string }>;
 
@@ -32,13 +34,20 @@ export default async function StockIntakePage({ params }: { params: Params }) {
     );
   }
 
-  const item = await getOpeningStock(resolvedParams.id);
+  const item = await getStockIntakeRecord(resolvedParams.id);
   if (!item) notFound();
 
   const statusColor =
     item.status === "CONFIRMED" ? "bg-green-50 text-green-700" :
     item.status === "CANCELLED" ? "bg-red-50 text-red-700" :
     "bg-amber-50 text-amber-700";
+
+  const currency = item.currency || DEFAULT_CURRENCY;
+  const hasForeignLine = item.items?.some(
+    (line) =>
+      line.originalCurrency &&
+      line.originalCurrency !== (line.currency || currency),
+  );
 
   return (
     <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
@@ -54,12 +63,12 @@ export default async function StockIntakePage({ params }: { params: Params }) {
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold">{item.referenceNumber}</h1>
               <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColor}`}>
-                {OPENING_STOCK_STATUS_LABELS[item.status]}
+                {STOCK_INTAKE_RECORD_STATUS_LABELS[item.status]}
               </span>
             </div>
             {item.notes && <p className="text-sm text-muted-foreground mt-1">{item.notes}</p>}
           </div>
-          {item.status === "DRAFT" && <OpeningStockActions id={item.id} />}
+          {item.status === "DRAFT" && <StockIntakeRecordActions id={item.id} />}
         </div>
 
         {/* Summary cards */}
@@ -79,7 +88,9 @@ export default async function StockIntakePage({ params }: { params: Params }) {
           <Card>
             <CardContent className="pt-4 pb-3">
               <p className="text-xs font-medium text-gray-400 uppercase">Total Value</p>
-              <p className="text-2xl font-bold mt-1">{item.totalValue.toLocaleString()}</p>
+              <p className="text-2xl font-bold mt-1">
+                <Money amount={item.totalValue} currency={currency} />
+              </p>
             </CardContent>
           </Card>
           <Card>
@@ -96,7 +107,13 @@ export default async function StockIntakePage({ params }: { params: Params }) {
         {item.items && item.items.length > 0 && (
           <Card>
             <CardContent className="px-2 sm:px-6 pt-6">
-              <h3 className="text-lg font-medium mb-4">Stock Items</h3>
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <h3 className="text-lg font-medium">Stock Items</h3>
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">Settlement currency:</span>
+                  <span className="font-mono font-semibold bg-gray-100 px-2 py-0.5 rounded">{currency}</span>
+                </div>
+              </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -106,22 +123,53 @@ export default async function StockIntakePage({ params }: { params: Params }) {
                       <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Unit Cost</th>
                       <th className="px-4 py-3 text-right text-xs font-semibold text-gray-400 uppercase">Total</th>
+                      {hasForeignLine && (
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Originally</th>
+                      )}
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Batch</th>
                       <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Expiry</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
-                    {item.items.map((line) => (
-                      <tr key={line.id} className="hover:bg-gray-50/50">
-                        <td className="px-4 py-3 font-medium text-gray-900">{line.stockVariantName}</td>
-                        <td className="px-4 py-3 text-gray-500">{line.stockVariantSku || "—"}</td>
-                        <td className="px-4 py-3 text-right">{line.quantity.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right">{line.unitCost.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-right font-medium">{line.totalCost.toLocaleString()}</td>
-                        <td className="px-4 py-3 text-gray-500">{line.batchNumber || "—"}</td>
-                        <td className="px-4 py-3 text-gray-500">{line.expiryDate || "—"}</td>
-                      </tr>
-                    ))}
+                    {item.items.map((line) => {
+                      const lineCurrency = line.currency || currency;
+                      const isForeign =
+                        line.originalCurrency && line.originalCurrency !== lineCurrency;
+                      return (
+                        <tr key={line.id} className="hover:bg-gray-50/50">
+                          <td className="px-4 py-3 font-medium text-gray-900">{line.stockVariantName}</td>
+                          <td className="px-4 py-3 text-gray-500">{line.stockVariantSku || "—"}</td>
+                          <td className="px-4 py-3 text-right">{line.quantity.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-right">
+                            <Money amount={line.unitCost} currency={lineCurrency} />
+                          </td>
+                          <td className="px-4 py-3 text-right font-medium">
+                            <Money amount={line.totalCost} currency={lineCurrency} />
+                          </td>
+                          {hasForeignLine && (
+                            <td className="px-4 py-3 text-xs text-muted-foreground">
+                              {isForeign ? (
+                                <div className="flex flex-col">
+                                  <Money
+                                    amount={line.originalUnitCost ?? 0}
+                                    currency={line.originalCurrency}
+                                  />
+                                  {line.rateUsed != null && line.rateUsed !== 1 && (
+                                    <span className="text-[10px]">
+                                      @ {line.rateUsed.toLocaleString(undefined, { maximumFractionDigits: 6 })}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                "—"
+                              )}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-gray-500">{line.batchNumber || "—"}</td>
+                          <td className="px-4 py-3 text-gray-500">{line.expiryDate || "—"}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

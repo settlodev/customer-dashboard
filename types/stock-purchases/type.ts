@@ -9,6 +9,9 @@ export declare interface StockPurchaseItem {
   stockName: string;
   stockVariant: string;
   unitCost: number;
+  /** Supplier-quoted currency for this line. Preserved from creation and
+   *  re-applied at GRN receive time when converting to location base currency. */
+  currency?: string | null;
 }
 
 export declare interface StockPurchase {

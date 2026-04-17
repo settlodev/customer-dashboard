@@ -37,6 +37,8 @@ export interface StockTransfer {
   declinedAt: string | null;
   declineReason: string | null;
   returnedAt: string | null;
+  /** Currency of item costs — source location's base currency. */
+  currency: string | null;
   items: StockTransferItem[];
   createdAt: string;
   updatedAt: string;
@@ -49,6 +51,8 @@ export interface StockTransferItem {
   quantity: number;
   unitCost: number | null;
   receivedQuantity: number | null;
+  /** Inherited from the parent transfer (source location currency). */
+  currency: string | null;
 }
 
 export const TRANSFER_STATUS_LABELS: Record<TransferStatus, string> = {

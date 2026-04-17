@@ -16,6 +16,7 @@ import {
 } from "@/lib/actions/inventory-analytics-actions";
 import { getBatchesByVariant } from "@/lib/actions/stock-batch-actions";
 import { getItemSalesSummary } from "@/lib/actions/item-sales-actions";
+import { getLocationCurrency } from "@/lib/actions/currency-actions";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
 import type {
   StockMovement,
@@ -44,9 +45,10 @@ export default async function StockDetailPage({
   params: Params;
 }) {
   const { id } = await params;
-  const [stock, location] = await Promise.all([
+  const [stock, location, currency] = await Promise.all([
     getStock(id),
     getCurrentLocation(),
+    getLocationCurrency(),
   ]);
 
   if (!stock) notFound();
@@ -249,6 +251,7 @@ export default async function StockDetailPage({
         totalAvailable={totalAvailable}
         worstRisk={worstRisk}
         avgTurnover={avgTurnover}
+        currency={currency}
       />
     </div>
   );

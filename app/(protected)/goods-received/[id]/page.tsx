@@ -4,6 +4,8 @@ import { UUID } from "node:crypto";
 import { getStockIntakeReceipt } from "@/lib/actions/stock-purchase-actions";
 import { StockReceipt } from "@/types/stock-intake-receipt/type";
 import { GRNDownloadButton } from "@/components/widgets/grn-download-button";
+import { DEFAULT_CURRENCY } from "@/lib/helpers";
+import { Money } from "@/components/widgets/money";
 
 const PRIMARY = "#EB7F44";
 const SECONDARY = "#EAEAE5";
@@ -24,6 +26,10 @@ interface EnhancedStockPurchaseItem {
   sellingPrice?: number;
   margin?: number;
   code?: string;
+  currency?: string | null;
+  originalCurrency?: string | null;
+  originalUnitCost?: number | null;
+  rateUsed?: number | null;
 }
 
 export default async function StockReceiptPage({ params }: { params: Params }) {
@@ -44,6 +50,16 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
 
   const totalQty = items.reduce((s, i) => s + (i.quantityReceived || 0), 0);
   const totalValue = items.reduce((s, i) => s + (i.totalCost || 0), 0);
+
+  // Settlement currency — prefer the receipt header, fall back to the first
+  // item's settlement currency, then to location default TZS.
+  const currency =
+    receiptData.currency ||
+    items.find((i) => i.currency)?.currency ||
+    DEFAULT_CURRENCY;
+  const hasForeignLine = items.some(
+    (i) => i.originalCurrency && i.originalCurrency !== (i.currency || currency),
+  );
 
   const formatCurrency = (v: number) =>
     v.toLocaleString("en-US", {
@@ -177,9 +193,25 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                       Total Value:
                     </td>
                     <td className="py-2 font-bold text-right">
-                      TZS {formatCurrency(totalValue)}
+                      <Money amount={totalValue} currency={currency} />
                     </td>
                   </tr>
+                  {hasForeignLine && (
+                    <tr>
+                      <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
+                        Invoice Currency:
+                      </td>
+                      <td className="py-2 text-right text-xs text-amber-700">
+                        {Array.from(
+                          new Set(
+                            items
+                              .map((i) => i.originalCurrency)
+                              .filter((c): c is string => !!c),
+                          ),
+                        ).join(", ")} · converted @ receive
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -250,7 +282,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                           : "—"}
                     </td>
                     <td className="px-3 py-3 text-right font-semibold text-gray-900">
-                      TZS {formatCurrency(item.totalCost || 0)}
+                      <Money amount={item.totalCost || 0} currency={item.currency || currency} />
                     </td>
                   </tr>
                 ))}
@@ -268,7 +300,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                   </td>
                   <td colSpan={2} />
                   <td className="px-3 py-3 text-right font-bold">
-                    TZS {formatCurrency(totalValue)}
+                    <Money amount={totalValue} currency={currency} />
                   </td>
                 </tr>
               </tbody>
@@ -308,7 +340,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                       )}
                   </div>
                   <p className="text-sm font-bold whitespace-nowrap">
-                    TZS {formatCurrency(item.totalCost || 0)}
+                    <Money amount={item.totalCost || 0} currency={item.currency || currency} />
                   </p>
                 </div>
                 <div className="grid grid-cols-2 gap-3 text-xs">
@@ -325,7 +357,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                       Total Amount
                     </p>
                     <p className="font-bold">
-                      TZS {formatCurrency(item.totalCost || 0)}
+                      <Money amount={item.totalCost || 0} currency={item.currency || currency} />
                     </p>
                   </div>
                   <div>
@@ -356,7 +388,7 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
             {/* Mobile total */}
             <div className="flex justify-between items-center px-4 py-3 rounded-lg font-semibold text-sm">
               <span>Total ({totalQty.toLocaleString()} units)</span>
-              <span>TZS {formatCurrency(totalValue)}</span>
+              <Money amount={totalValue} currency={currency} />
             </div>
           </div>
 
@@ -369,18 +401,18 @@ export default async function StockReceiptPage({ params }: { params: Params }) {
                   style={{ borderBottom: `1px solid ${SECONDARY}` }}
                 >
                   <span>Net Amount:</span>
-                  <span>TZS {formatCurrency(totalValue)}</span>
+                  <Money amount={totalValue} currency={currency} />
                 </div>
                 <div
                   className="flex justify-between text-sm text-gray-600 py-2"
                   style={{ borderBottom: `1px solid ${SECONDARY}` }}
                 >
                   <span>VAT Amount:</span>
-                  <span>TZS 0.00</span>
+                  <Money amount={0} currency={currency} />
                 </div>
                 <div className="flex justify-between font-bold py-3 mt-1 rounded px-3">
-                  <span>Total Amount (TZS):</span>
-                  <span>TZS {formatCurrency(totalValue)}</span>
+                  <span>Total Amount:</span>
+                  <Money amount={totalValue} currency={currency} />
                 </div>
               </div>
             </div>

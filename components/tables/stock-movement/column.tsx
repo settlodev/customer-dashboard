@@ -2,6 +2,7 @@
 
 import { ColumnDef } from "@tanstack/react-table";
 import { StockMovement, MOVEMENT_TYPE_LABELS } from "@/types/stock-movement/type";
+import { Money } from "@/components/widgets/money";
 
 const TYPE_COLORS: Record<string, string> = {
   PURCHASE: "bg-green-50 text-green-700",
@@ -59,9 +60,22 @@ export const columns: ColumnDef<StockMovement>[] = [
     accessorKey: "unitCost",
     header: "Unit Cost",
     cell: ({ row }) => (
-      <span className="text-sm text-gray-600">
-        {row.original.unitCost != null ? row.original.unitCost.toLocaleString() : "\u2014"}
-      </span>
+      <Money
+        amount={row.original.unitCost}
+        currency={row.original.currency}
+        className="text-sm text-gray-600"
+      />
+    ),
+  },
+  {
+    accessorKey: "totalCost",
+    header: "Total Cost",
+    cell: ({ row }) => (
+      <Money
+        amount={row.original.totalCost}
+        currency={row.original.currency}
+        className="text-sm font-medium text-gray-700"
+      />
     ),
   },
   {

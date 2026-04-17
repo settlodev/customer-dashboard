@@ -22,6 +22,8 @@ export interface StockModification {
   performedByName: string | null;
   modificationDate: string;
   notes: string | null;
+  /** Location base currency — applies to any cost on the items below. */
+  currency: string | null;
   items: StockModificationItem[];
   createdAt: string;
   updatedAt: string;
@@ -36,6 +38,14 @@ export interface StockModificationItem {
   newQuantity: number;
   unitCost: number | null;
   notes: string | null;
+  /** Settlement currency of `unitCost` (location base currency). */
+  currency: string | null;
+  /** User-supplied original currency (null when cost was taken from inventory). */
+  originalCurrency: string | null;
+  /** Original cost in `originalCurrency` prior to conversion. */
+  originalUnitCost: number | null;
+  /** Exchange rate captured at write time. */
+  rateUsed: number | null;
 }
 
 export const MODIFICATION_CATEGORY_OPTIONS: { value: ModificationCategory; label: string }[] = [

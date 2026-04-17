@@ -69,6 +69,8 @@ export interface LpoItem {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  /** Supplier-quoted currency for this line (preserved from LPO creation). */
+  currency: string | null;
 }
 
 // ── Goods Received Note (GRN) ───────────────────────────────────────
@@ -109,6 +111,14 @@ export interface GrnItem {
   expiryDate: string | null;
   inspectionStatus: string | null;
   inspectionNotes: string | null;
+  /** Settlement currency — matches the location's base currency. */
+  currency: string | null;
+  /** Supplier invoice currency at the time of receipt. */
+  originalCurrency: string | null;
+  /** Per-unit supplier price in `originalCurrency` before conversion. */
+  originalUnitCost: number | null;
+  /** Exchange rate captured when the GRN was received. */
+  rateUsed: number | null;
 }
 
 // ── Supplier Order ──────────────────────────────────────────────────

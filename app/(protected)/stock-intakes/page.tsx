@@ -3,13 +3,15 @@ import Link from "next/link";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
-import { searchOpeningStocks } from "@/lib/actions/opening-stock-actions";
+import { searchStockIntakeRecords } from "@/lib/actions/stock-intake-record-actions";
 import { getGrns } from "@/lib/actions/procurement-actions";
 import { Plus } from "lucide-react";
-import type { OpeningStock } from "@/types/opening-stock/type";
-import { OPENING_STOCK_STATUS_LABELS } from "@/types/opening-stock/type";
+import type { StockIntakeRecord } from "@/types/stock-intake-record/type";
+import { STOCK_INTAKE_RECORD_STATUS_LABELS } from "@/types/stock-intake-record/type";
 import type { Grn } from "@/types/procurement/type";
 import { GRN_STATUS_LABELS } from "@/types/procurement/type";
+import { DEFAULT_CURRENCY } from "@/lib/helpers";
+import { Money } from "@/components/widgets/money";
 
 const breadcrumbItems = [{ title: "Stock Received", link: "/stock-intakes" }];
 
@@ -22,6 +24,7 @@ type StockReceivedRow = {
   itemCount: number;
   totalQty: number;
   totalValue: number;
+  currency: string;
   supplier: string | null;
   status: string;
   statusColor: string;
@@ -29,23 +32,24 @@ type StockReceivedRow = {
   detailHref: string;
 };
 
-function fromOpeningStock(os: OpeningStock): StockReceivedRow {
-  const names = os.items?.map((i) => i.stockVariantName) ?? [];
-  const statusDone = os.status === "CONFIRMED";
-  const statusBad = os.status === "CANCELLED";
+function fromStockIntakeRecord(si: StockIntakeRecord): StockReceivedRow {
+  const names = si.items?.map((i) => i.stockVariantName) ?? [];
+  const statusDone = si.status === "CONFIRMED";
+  const statusBad = si.status === "CANCELLED";
   return {
-    id: os.id,
+    id: si.id,
     source: "STOCK_INTAKE",
-    reference: os.referenceNumber,
+    reference: si.referenceNumber,
     itemNames: names,
-    itemCount: os.totalItems,
-    totalQty: os.totalQuantity,
-    totalValue: os.totalValue,
+    itemCount: si.totalItems,
+    totalQty: si.totalQuantity,
+    totalValue: si.totalValue,
+    currency: si.currency || DEFAULT_CURRENCY,
     supplier: null,
-    status: OPENING_STOCK_STATUS_LABELS[os.status],
+    status: STOCK_INTAKE_RECORD_STATUS_LABELS[si.status],
     statusColor: statusDone ? "bg-green-50 text-green-700" : statusBad ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700",
-    date: os.createdAt,
-    detailHref: `/stock-intakes/${os.id}`,
+    date: si.createdAt,
+    detailHref: `/stock-intakes/${si.id}`,
   };
 }
 
@@ -55,6 +59,7 @@ function fromGrn(grn: Grn): StockReceivedRow {
   const totalValue = grn.items?.reduce((sum, i) => sum + (i.totalCost ?? i.receivedQuantity * i.unitCost), 0) ?? 0;
   const statusDone = grn.status === "RECEIVED";
   const statusBad = grn.status === "CANCELLED";
+  const firstItemCurrency = (grn.items?.[0] as unknown as { currency?: string })?.currency;
   return {
     id: grn.id,
     source: "GRN",
@@ -63,6 +68,7 @@ function fromGrn(grn: Grn): StockReceivedRow {
     itemCount: grn.items?.length ?? 0,
     totalQty,
     totalValue,
+    currency: firstItemCurrency || DEFAULT_CURRENCY,
     supplier: grn.supplierName ?? null,
     status: GRN_STATUS_LABELS[grn.status],
     statusColor: statusDone ? "bg-green-50 text-green-700" : statusBad ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700",
@@ -84,15 +90,15 @@ export default async function Page({ searchParams }: Params) {
   const pageLimit = Number(resolvedParams.limit) || 50;
 
   // Fetch both sources in parallel
-  const [osData, grnData] = await Promise.all([
-    searchOpeningStocks(page ? page - 1 : 0, pageLimit),
+  const [intakeData, grnData] = await Promise.all([
+    searchStockIntakeRecords(page ? page - 1 : 0, pageLimit),
     getGrns(page ? page - 1 : 0, pageLimit),
   ]);
 
   // Normalize and merge
-  const osRows = (osData.content as OpeningStock[]).map(fromOpeningStock);
+  const intakeRows = (intakeData.content as StockIntakeRecord[]).map(fromStockIntakeRecord);
   const grnRows = (grnData.content as Grn[]).map(fromGrn);
-  const rows = [...osRows, ...grnRows].sort(
+  const rows = [...intakeRows, ...grnRows].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
   const total = rows.length;
@@ -159,7 +165,9 @@ export default async function Page({ searchParams }: Params) {
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600">{row.supplier || "\u2014"}</td>
                       <td className="px-4 py-3 text-sm text-gray-600 text-right">{row.totalQty?.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">{row.totalValue?.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900 text-right">
+                        <Money amount={row.totalValue ?? 0} currency={row.currency} />
+                      </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${row.statusColor}`}>
                           {row.status}

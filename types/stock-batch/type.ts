@@ -17,6 +17,14 @@ export interface StockBatch {
   receivedDate: string;
   status: BatchStatus;
   notes: string | null;
+  /** Settlement currency — matches the location's base currency. */
+  currency: string | null;
+  /** Supplier's invoice currency (null for batches created before multi-currency). */
+  originalCurrency: string | null;
+  /** Supplier's per-unit price in `originalCurrency`. */
+  originalUnitCost: number | null;
+  /** Exchange rate locked at receive time. */
+  rateUsed: number | null;
   createdAt: string;
   updatedAt: string;
 }

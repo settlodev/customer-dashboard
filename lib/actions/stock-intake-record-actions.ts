@@ -6,15 +6,15 @@ import { parseStringify } from "@/lib/utils";
 import { ApiResponse, FormResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import type { OpeningStock } from "@/types/opening-stock/type";
-import { OpeningStockSchema } from "@/types/opening-stock/schema";
+import type { StockIntakeRecord } from "@/types/stock-intake-record/type";
+import { StockIntakeRecordSchema } from "@/types/stock-intake-record/schema";
 import { inventoryUrl } from "./inventory-client";
 
-export async function searchOpeningStocks(
+export async function searchStockIntakeRecords(
   page: number = 0,
   size: number = 20,
   status?: string,
-): Promise<ApiResponse<OpeningStock>> {
+): Promise<ApiResponse<StockIntakeRecord>> {
   try {
     const apiClient = new ApiClient();
     const params = new URLSearchParams();
@@ -25,7 +25,7 @@ export async function searchOpeningStocks(
     if (status) params.set("status", status);
 
     const data = await apiClient.get(
-      inventoryUrl(`/api/v1/opening-stocks?${params.toString()}`),
+      inventoryUrl(`/api/v1/stock-intakes?${params.toString()}`),
     );
     return parseStringify(data);
   } catch (error) {
@@ -33,20 +33,20 @@ export async function searchOpeningStocks(
   }
 }
 
-export async function getOpeningStock(id: string): Promise<OpeningStock | null> {
+export async function getStockIntakeRecord(id: string): Promise<StockIntakeRecord | null> {
   try {
     const apiClient = new ApiClient();
-    const data = await apiClient.get(inventoryUrl(`/api/v1/opening-stocks/${id}`));
+    const data = await apiClient.get(inventoryUrl(`/api/v1/stock-intakes/${id}`));
     return parseStringify(data);
   } catch {
     return null;
   }
 }
 
-export async function createOpeningStock(
-  openingStock: z.infer<typeof OpeningStockSchema>,
+export async function createStockIntakeRecord(
+  stockIntake: z.infer<typeof StockIntakeRecordSchema>,
 ): Promise<FormResponse | void> {
-  const validated = OpeningStockSchema.safeParse(openingStock);
+  const validated = StockIntakeRecordSchema.safeParse(stockIntake);
 
   if (!validated.success) {
     return parseStringify({
@@ -59,15 +59,15 @@ export async function createOpeningStock(
   try {
     const apiClient = new ApiClient();
 
-    // Create opening stock (DRAFT)
+    // Create intake (DRAFT)
     const created = (await apiClient.post(
-      inventoryUrl("/api/v1/opening-stocks"),
+      inventoryUrl("/api/v1/stock-intakes"),
       { locationType: "LOCATION", ...validated.data },
-    )) as OpeningStock;
+    )) as StockIntakeRecord;
 
-    // Immediately confirm — creates movements, batches, and updates balances
+    // Immediately confirm — creates PURCHASE movements, batches, and updates balances
     await apiClient.post(
-      inventoryUrl(`/api/v1/opening-stocks/${created.id}/confirm`),
+      inventoryUrl(`/api/v1/stock-intakes/${created.id}/confirm`),
       {},
     );
 
@@ -77,22 +77,22 @@ export async function createOpeningStock(
     if (error?.digest?.startsWith("NEXT_REDIRECT")) throw error;
     return parseStringify({
       responseType: "error",
-      message: error?.message ?? "Failed to create opening stock",
+      message: error?.message ?? "Failed to create stock intake",
       error: error instanceof Error ? error : new Error(String(error)),
     });
   }
 }
 
-export async function confirmOpeningStock(id: string): Promise<void> {
+export async function confirmStockIntakeRecord(id: string): Promise<void> {
   const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl(`/api/v1/opening-stocks/${id}/confirm`), {});
+  await apiClient.post(inventoryUrl(`/api/v1/stock-intakes/${id}/confirm`), {});
   revalidatePath("/stock-intakes");
   revalidatePath(`/stock-intakes/${id}`);
 }
 
-export async function cancelOpeningStock(id: string): Promise<void> {
+export async function cancelStockIntakeRecord(id: string): Promise<void> {
   const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl(`/api/v1/opening-stocks/${id}/cancel`), {});
+  await apiClient.post(inventoryUrl(`/api/v1/stock-intakes/${id}/cancel`), {});
   revalidatePath("/stock-intakes");
   revalidatePath(`/stock-intakes/${id}`);
 }
