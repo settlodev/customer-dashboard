@@ -428,7 +428,7 @@ const SoldItemsDashboard = () => {
       </div>
     );
 
-  const totalProfit = soldData?.totalProfit ?? 0;
+  const totalProfit = soldData?.netProfit ?? 0;
   const isProfit = totalProfit >= 0;
 
   return (
@@ -620,7 +620,7 @@ const SoldItemsDashboard = () => {
                   {paginatedItems.map((item, index) => {
                     const gi = (currentPage - 1) * itemsPerPage + index;
                     const isOpen = expandedRows.has(gi);
-                    const itemProfit = item.profit ?? 0;
+                    const itemProfit = item.netProfit ?? 0;
                     return (
                       <React.Fragment key={gi}>
                         <tr className="hover:bg-muted/30 transition-colors">
