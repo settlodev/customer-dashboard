@@ -14,6 +14,8 @@ export interface InventoryBalance {
   expectedQuantity: number;
   averageCost: number | null;
   currentBatchCost: number | null;
+  /** Location base currency — applies to cost fields above. */
+  currency: string | null;
   lowStockThreshold: number | null;
   lowStockAlertSent: boolean;
   lowStock: boolean;

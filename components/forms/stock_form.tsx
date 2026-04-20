@@ -23,6 +23,9 @@ import {
   Loader2,
   Wand2,
   ArrowRightLeft,
+  SlidersHorizontal,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +66,7 @@ import type { UnitOfMeasure } from "@/types/unit/type";
 import { StockSchema } from "@/types/stock/schema";
 import type { FormResponse } from "@/types/types";
 import UnitSelector from "@/components/widgets/unit-selector";
+import SupplierSelector from "@/components/widgets/supplier-selector";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
 
 interface StockFormProps {
@@ -81,6 +85,11 @@ const DEFAULT_VARIANT = {
   archived: false,
   initialQuantity: 0,
   initialUnitCost: 0,
+  reorderPoint: undefined as number | undefined,
+  reorderQuantity: undefined as number | undefined,
+  preferredSupplierId: "",
+  lowStockThreshold: undefined as number | undefined,
+  overstockThreshold: undefined as number | undefined,
 };
 
 /** Format a conversion as a readable label using whole numbers where possible */
@@ -102,6 +111,7 @@ export default function StockForm({ item, balances }: StockFormProps) {
   const [response, setResponse] = useState<FormResponse | undefined>();
   const [archivingIndex, setArchivingIndex] = useState<number | null>(null);
   const [generatingBarcode, setGeneratingBarcode] = useState<number | null>(null);
+  const [reorderOpen, setReorderOpen] = useState<Record<number, boolean>>({});
   const [units, setUnits] = useState<UnitOfMeasure[]>([]);
   const { toast } = useToast();
 
@@ -136,6 +146,11 @@ export default function StockForm({ item, balances }: StockFormProps) {
             initialQuantity: 0,
             initialUnitCost: 0,
             serialNumbers: [] as string[],
+            reorderPoint: undefined as number | undefined,
+            reorderQuantity: undefined as number | undefined,
+            preferredSupplierId: "",
+            lowStockThreshold: undefined as number | undefined,
+            overstockThreshold: undefined as number | undefined,
           }))
         : [DEFAULT_VARIANT],
     },
@@ -522,6 +537,184 @@ export default function StockForm({ item, balances }: StockFormProps) {
                             <FormMessage />
                           </FormItem>
                         )} />
+                      );
+                    })()}
+
+                    {/* ── Reorder config (create mode only; post-create edits live on the variant detail page) ── */}
+                    {!isEditing && (() => {
+                      const isOpen = reorderOpen[index] ?? false;
+                      const row = watchedVariants?.[index];
+                      const hasAnyValue =
+                        row?.reorderPoint != null ||
+                        row?.reorderQuantity != null ||
+                        (row?.preferredSupplierId && row.preferredSupplierId.length > 0) ||
+                        row?.lowStockThreshold != null ||
+                        row?.overstockThreshold != null;
+                      const variantUnit = unitMap.get(row?.unitId ?? "");
+                      const unitAbbr = variantUnit?.abbreviation ?? "";
+
+                      return (
+                        <div className="border-t pt-3 mt-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReorderOpen((prev) => ({ ...prev, [index]: !isOpen }))
+                            }
+                            className="flex items-center gap-2 text-xs font-medium text-gray-700 hover:text-gray-900"
+                          >
+                            {isOpen ? (
+                              <ChevronDown className="h-3 w-3" />
+                            ) : (
+                              <ChevronRight className="h-3 w-3" />
+                            )}
+                            <SlidersHorizontal className="h-3 w-3" />
+                            Reorder &amp; alert config
+                            <span className="font-normal text-muted-foreground">
+                              ({hasAnyValue ? "set" : "optional"})
+                            </span>
+                          </button>
+
+                          {isOpen && (
+                            <div className="mt-3 space-y-3 rounded-md border bg-gray-50/50 p-3">
+                              <p className="text-[11px] text-muted-foreground">
+                                Tells the system when to alert and auto-generate an LPO.
+                                Safe to leave empty — you can set these any time from the
+                                stock detail page.
+                              </p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <FormField
+                                  control={form.control}
+                                  name={`variants.${index}.reorderPoint`}
+                                  render={({ field: f }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-xs">Reorder point</FormLabel>
+                                      <FormControl>
+                                        <NumericFormat
+                                          className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                                          value={f.value ?? ""}
+                                          onValueChange={(v) =>
+                                            f.onChange(v.value === "" ? undefined : Number(v.value))
+                                          }
+                                          thousandSeparator
+                                          decimalScale={6}
+                                          allowNegative={false}
+                                          placeholder="e.g. 20"
+                                          disabled={isPending}
+                                          suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
+                                        />
+                                      </FormControl>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        Fires an LPO when available ≤ this.
+                                      </p>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`variants.${index}.reorderQuantity`}
+                                  render={({ field: f }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-xs">Reorder quantity</FormLabel>
+                                      <FormControl>
+                                        <NumericFormat
+                                          className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                                          value={f.value ?? ""}
+                                          onValueChange={(v) =>
+                                            f.onChange(v.value === "" ? undefined : Number(v.value))
+                                          }
+                                          thousandSeparator
+                                          decimalScale={6}
+                                          allowNegative={false}
+                                          placeholder="e.g. 100"
+                                          disabled={isPending}
+                                          suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
+                                        />
+                                      </FormControl>
+                                      <p className="text-[11px] text-muted-foreground">
+                                        How much the LPO orders.
+                                      </p>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              <FormField
+                                control={form.control}
+                                name={`variants.${index}.preferredSupplierId`}
+                                render={({ field: f }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-xs">Preferred supplier</FormLabel>
+                                    <FormControl>
+                                      <SupplierSelector
+                                        label="Preferred supplier"
+                                        placeholder="Optional — drives the auto-generated LPO"
+                                        value={f.value ?? ""}
+                                        onChange={f.onChange}
+                                        onBlur={() => {}}
+                                        isDisabled={isPending}
+                                      />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <FormField
+                                  control={form.control}
+                                  name={`variants.${index}.lowStockThreshold`}
+                                  render={({ field: f }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-xs">Low-stock threshold</FormLabel>
+                                      <FormControl>
+                                        <NumericFormat
+                                          className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                                          value={f.value ?? ""}
+                                          onValueChange={(v) =>
+                                            f.onChange(v.value === "" ? undefined : Number(v.value))
+                                          }
+                                          thousandSeparator
+                                          decimalScale={6}
+                                          allowNegative={false}
+                                          placeholder="e.g. 10"
+                                          disabled={isPending}
+                                          suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={form.control}
+                                  name={`variants.${index}.overstockThreshold`}
+                                  render={({ field: f }) => (
+                                    <FormItem>
+                                      <FormLabel className="text-xs">Overstock threshold</FormLabel>
+                                      <FormControl>
+                                        <NumericFormat
+                                          className="flex h-10 w-full rounded-md border-0 bg-white px-3 py-2 text-sm"
+                                          value={f.value ?? ""}
+                                          onValueChange={(v) =>
+                                            f.onChange(v.value === "" ? undefined : Number(v.value))
+                                          }
+                                          thousandSeparator
+                                          decimalScale={6}
+                                          allowNegative={false}
+                                          placeholder="e.g. 500"
+                                          disabled={isPending}
+                                          suffix={unitAbbr ? ` ${unitAbbr}` : undefined}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       );
                     })()}
                   </div>

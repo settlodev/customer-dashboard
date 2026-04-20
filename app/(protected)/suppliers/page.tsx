@@ -1,99 +1,94 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/supplier/columns";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import {
-  fetchAllSuppliers,
-  fetchSettloSuppliers,
-} from "@/lib/actions/supplier-actions";
-import { Supplier, SettloSupplier } from "@/types/supplier/type";
-import { Plus } from "lucide-react";
+import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
 
 const breadcrumbItems = [{ title: "Suppliers", link: "/suppliers" }];
 
-type Params = {
+type Props = {
   searchParams: Promise<{
     search?: string;
     page?: string;
     limit?: string;
+    filter?: "active" | "archived" | "all";
   }>;
 };
 
-function mapSettloToSupplier(s: SettloSupplier): Supplier {
-  return {
-    id: s.id,
-    businessId: "",
-    name: s.name,
-    contactPersonName: s.contactPerson || "",
-    contactPersonPhone: s.phone || "",
-    phone: s.phone,
-    email: s.email,
-    address: s.address,
-    registrationNumber: s.registrationNumber,
-    tinNumber: s.tinNumber,
-    settloSupplierId: null,
-    settloSupplierName: null,
-    linkedToSettloSupplier: false,
-    archivedAt: null,
-    isSettloSupplier: true,
-    createdAt: s.createdAt,
-    updatedAt: s.updatedAt,
-  };
-}
+export default async function SuppliersPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const filter = params.filter ?? "active";
+  const q = (params.search ?? "").trim().toLowerCase();
+  const page = Number(params.page) || 0;
+  const pageLimit = Number(params.limit) || 25;
 
-export default async function Page({ searchParams }: Params) {
-  const resolvedSearchParams = await searchParams;
+  const all = await fetchAllSuppliers();
 
-  const q = resolvedSearchParams.search || "";
-  const page = Number(resolvedSearchParams.page) || 0;
-  const pageLimit = Number(resolvedSearchParams.limit) || 10;
+  const active = all.filter((s) => !s.archivedAt);
+  const archived = all.filter((s) => !!s.archivedAt);
 
-  const [userSuppliers, settloSuppliers] = await Promise.all([
-    fetchAllSuppliers(),
-    fetchSettloSuppliers(),
-  ]);
+  const scope =
+    filter === "archived" ? archived : filter === "all" ? all : active;
 
-  // Map and tag each source
-  const taggedUser: Supplier[] = userSuppliers.map((s) => ({
-    ...s,
-    isSettloSupplier: false,
-  }));
-  const taggedSettlo: Supplier[] = settloSuppliers.map(mapSettloToSupplier);
-
-  // Merge: Settlo first, then user suppliers, sorted by name within each group
-  const all = [
-    ...taggedSettlo.sort((a, b) => a.name.localeCompare(b.name)),
-    ...taggedUser.sort((a, b) => a.name.localeCompare(b.name)),
-  ];
-
-  // Server-side search filter
   const filtered = q
-    ? all.filter((s) => s.name.toLowerCase().includes(q.toLowerCase()))
-    : all;
+    ? scope.filter((s) =>
+        [s.name, s.contactPersonName, s.email, s.phone]
+          .filter(Boolean)
+          .some((v) => v!.toLowerCase().includes(q)),
+      )
+    : scope;
 
-  // Server-side pagination
+  const sorted = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
   const pageIndex = page > 0 ? page - 1 : 0;
   const start = pageIndex * pageLimit;
-  const data = filtered.slice(start, start + pageLimit);
-  const total = filtered.length;
-  const pageCount = Math.ceil(total / pageLimit);
+  const data = sorted.slice(start, start + pageLimit);
+  const total = sorted.length;
+  const pageCount = Math.max(1, Math.ceil(total / pageLimit));
+
+  const tabs = [
+    { key: "active", label: "Active", count: active.length },
+    { key: "archived", label: "Archived", count: archived.length },
+    { key: "all", label: "All", count: all.length },
+  ] as const;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BreadcrumbsNav items={breadcrumbItems} />
+        <Button asChild>
+          <Link href="/suppliers/new">
+            <Plus className="mr-1.5 h-4 w-4" />
+            Add supplier
+          </Link>
+        </Button>
+      </div>
 
-        <div className="flex items-center gap-2">
-          <Button asChild>
-            <Link href="/suppliers/new">
-              <Plus className="mr-1.5 h-4 w-4" />
-              Add Supplier
+      <div className="inline-flex items-center gap-1 bg-muted p-1 rounded-lg">
+        {tabs.map((t) => {
+          const href =
+            t.key === "active"
+              ? "/suppliers"
+              : `/suppliers?filter=${t.key}`;
+          const isActive = filter === t.key;
+          return (
+            <Link
+              key={t.key}
+              href={href}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                isActive
+                  ? "bg-background shadow-sm font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {t.label}
+              <span className="ml-1.5 text-xs opacity-60">{t.count}</span>
             </Link>
-          </Button>
-        </div>
+          );
+        })}
       </div>
 
       {total > 0 || q !== "" ? (
@@ -106,6 +101,7 @@ export default async function Page({ searchParams }: Params) {
               pageNo={page}
               searchKey="name"
               total={total}
+              rowClickBasePath="/suppliers"
             />
           </CardContent>
         </Card>

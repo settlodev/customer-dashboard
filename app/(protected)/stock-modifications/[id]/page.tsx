@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { Money } from "@/components/widgets/money";
 import { MODIFICATION_CATEGORY_OPTIONS } from "@/types/stock-modification/type";
+import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 
 type Params = Promise<{ id: string }>;
 
@@ -142,6 +143,12 @@ export default async function StockModificationPage({ params }: { params: Params
               </CardContent>
             </Card>
           )}
+
+          <AttachmentsPanel
+            entityType="STOCK_MODIFICATION"
+            entityId={item.id}
+            description="Claim forms, damage photos, theft reports, recount audit evidence. Max 10 MB per file."
+          />
 
           {item.notes && (
             <Card>

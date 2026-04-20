@@ -8,7 +8,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type {
   Stock,
-  StockHistory,
   CsvImportJobResponse,
 } from "@/types/stock/type";
 import { getCurrentLocation } from "./business/get-current-business";
@@ -68,6 +67,17 @@ export async function createStock(
         serialTracked: v.serialTracked,
         startingQuantity: v.initialQuantity && v.initialQuantity > 0 ? v.initialQuantity : undefined,
         startingUnitCost: v.initialQuantity && v.initialQuantity > 0 ? (v.initialUnitCost ?? 0) : undefined,
+        // Optional reorder / alert config — only forwarded when the user set
+        // them. The backend skips the InventoryBalance upsert when all five
+        // are null.
+        reorderPoint: v.reorderPoint,
+        reorderQuantity: v.reorderQuantity,
+        preferredSupplierId:
+          v.preferredSupplierId && v.preferredSupplierId.length > 0
+            ? v.preferredSupplierId
+            : undefined,
+        lowStockThreshold: v.lowStockThreshold,
+        overstockThreshold: v.overstockThreshold,
       })),
     };
 
@@ -357,19 +367,3 @@ export async function downloadStockCSV(): Promise<string> {
 }
 
 export { getStocks as fetchStock };
-
-// ── Reports (hits reports service) ──────────────────────────────────
-
-export async function stockHistory(): Promise<StockHistory | null> {
-  await getAuthenticatedUser();
-  try {
-    const apiClient = new ApiClient("reports");
-    const location = await getCurrentLocation();
-    const data = await apiClient.get(
-      `/api/reports/${location?.id}/stock/summary`,
-    );
-    return data as StockHistory;
-  } catch {
-    return null;
-  }
-}

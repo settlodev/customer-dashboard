@@ -4,7 +4,7 @@ import ApiClient from "@/lib/settlo-api-client";
 import { parseStringify } from "@/lib/utils";
 import { ApiResponse } from "@/types/types";
 import { revalidatePath } from "next/cache";
-import type { PurchaseRequisition, Lpo, Grn, SupplierOrder } from "@/types/procurement/type";
+import type { PurchaseRequisition, SupplierOrder } from "@/types/procurement/type";
 import { inventoryUrl } from "./inventory-client";
 
 // ── Purchase Requisitions ───────────────────────────────────────────
@@ -67,97 +67,6 @@ export async function cancelRequisition(id: string): Promise<void> {
   const apiClient = new ApiClient();
   await apiClient.post(inventoryUrl(`/api/v1/purchase-requisitions/${id}/cancel`), {});
   revalidatePath("/stock-purchases");
-}
-
-// ── Local Purchase Orders (LPO) ─────────────────────────────────────
-
-export async function getLpos(
-  page: number = 0,
-  size: number = 20,
-  status?: string,
-): Promise<ApiResponse<Lpo>> {
-  const params = new URLSearchParams();
-  params.set("page", String(page));
-  params.set("size", String(size));
-  params.set("sortBy", "createdAt");
-  params.set("sortDirection", "desc");
-  if (status) params.set("status", status);
-
-  const apiClient = new ApiClient();
-  const data = await apiClient.get(inventoryUrl(`/api/v1/lpos?${params.toString()}`));
-  return parseStringify(data);
-}
-
-export async function getLpo(id: string): Promise<Lpo | null> {
-  try {
-    const apiClient = new ApiClient();
-    const data = await apiClient.get(inventoryUrl(`/api/v1/lpos/${id}`));
-    return parseStringify(data);
-  } catch {
-    return null;
-  }
-}
-
-export async function createLpo(data: Record<string, unknown>): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl("/api/v1/lpos"), data);
-  revalidatePath("/stock-purchases");
-}
-
-export async function updateLpoStatus(id: string, status: string): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.put(inventoryUrl(`/api/v1/lpos/${id}/status`), { status });
-  revalidatePath("/stock-purchases");
-}
-
-export async function deleteLpo(id: string): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.delete(inventoryUrl(`/api/v1/lpos/${id}`));
-  revalidatePath("/stock-purchases");
-}
-
-// ── Goods Received Notes (GRN) ──────────────────────────────────────
-
-export async function getGrns(
-  page: number = 0,
-  size: number = 20,
-): Promise<ApiResponse<Grn>> {
-  const apiClient = new ApiClient();
-  const data = await apiClient.get(
-    inventoryUrl(`/api/v1/grns?page=${page}&size=${size}&sortBy=createdAt&sortDirection=desc`),
-  );
-  return parseStringify(data);
-}
-
-export async function getGrn(id: string): Promise<Grn | null> {
-  try {
-    const apiClient = new ApiClient();
-    const data = await apiClient.get(inventoryUrl(`/api/v1/grns/${id}`));
-    return parseStringify(data);
-  } catch {
-    return null;
-  }
-}
-
-export async function createGrn(data: Record<string, unknown>): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl("/api/v1/grns"), {
-    locationType: "LOCATION",
-    ...data,
-  });
-  revalidatePath("/goods-received");
-}
-
-export async function receiveGrn(id: string): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl(`/api/v1/grns/${id}/receive`), {});
-  revalidatePath("/goods-received");
-}
-
-export async function cancelGrn(id: string): Promise<void> {
-  const apiClient = new ApiClient();
-  await apiClient.post(inventoryUrl(`/api/v1/grns/${id}/cancel`), {});
-  revalidatePath("/goods-received");
 }
 
 // ── Supplier Orders ─────────────────────────────────────────────────

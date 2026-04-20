@@ -26,6 +26,37 @@ export const StockVariantSchema = object({
   initialQuantity: preprocess(toNumber, number().nonnegative().default(0)),
   initialUnitCost: preprocess(toNumber, number().nonnegative().default(0)),
   serialNumbers: array(string()).optional(),
+
+  // Optional reorder / alert config, applied to the InventoryBalance row the
+  // stock creation flow creates. Left undefined → backend doesn't touch them.
+  reorderPoint: preprocess(toNumber, number().nonnegative().optional()),
+  reorderQuantity: preprocess(toNumber, number().positive().optional()),
+  preferredSupplierId: string().uuid().optional().or(string().length(0)),
+  lowStockThreshold: preprocess(toNumber, number().nonnegative().optional()),
+  overstockThreshold: preprocess(toNumber, number().nonnegative().optional()),
+}).superRefine((val, ctx) => {
+  if (
+    val.lowStockThreshold != null &&
+    val.overstockThreshold != null &&
+    val.overstockThreshold < val.lowStockThreshold
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["overstockThreshold"],
+      message: "Overstock must be greater than low-stock threshold",
+    });
+  }
+  if (
+    val.reorderPoint != null &&
+    val.lowStockThreshold != null &&
+    val.reorderPoint < val.lowStockThreshold
+  ) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["reorderPoint"],
+      message: "Reorder point should be at or above the low-stock threshold",
+    });
+  }
 });
 
 export const StockSchema = object({

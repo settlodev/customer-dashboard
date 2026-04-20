@@ -1,4 +1,4 @@
-import { Bell, Building2, CalendarClock, CalendarOff, CreditCard, Link2, MapPin, Palette, Printer, Receipt, Settings2, Smartphone, Star, Sun, UtensilsCrossed } from "lucide-react";
+import { ArrowLeftRight, Bell, Boxes, Building2, CalendarClock, CalendarOff, Calculator, CreditCard, Link2, MapPin, Monitor, Palette, Printer, Receipt, RotateCcw, ShoppingBag, Smartphone, Star, Sun, UtensilsCrossed } from "lucide-react";
 
 export const taxClasses=
     [
@@ -76,94 +76,29 @@ export const ItemStatuses = [
 ];
 
 export const settingsNavItems = [
-    {
-        id: 'business',
-        label: 'Business',
-        icon: Building2,
-        description: 'Business details & info'
-    },
-    {
-        id: 'business-settings',
-        label: 'Business Settings',
-        icon: Palette,
-        description: 'Branding, defaults & operations'
-    },
-    {
-        id: 'location',
-        label: 'Location',
-        icon: MapPin,
-        description: 'Location details & hours'
-    },
-    {
-        id: 'location-settings',
-        label: 'Location Settings',
-        icon: Settings2,
-        description: 'Operations, POS, orders & tax'
-    },
-    {
-        id: 'day-sessions',
-        label: 'Day Sessions',
-        icon: Sun,
-        description: 'Open & close daily operations'
-    },
-    {
-        id: 'closure-dates',
-        label: 'Closure Dates',
-        icon: CalendarOff,
-        description: 'Scheduled closures & holidays'
-    },
-    {
-        id: 'printing',
-        label: 'Printing & Receipts',
-        icon: Printer,
-        description: 'Dockets, receipts & invoices'
-    },
-    {
-        id: 'notifications',
-        label: 'Notifications',
-        icon: Bell,
-        description: 'Email, SMS & push alerts'
-    },
-    {
-        id: 'loyalty-points',
-        label: 'Loyalty Points',
-        icon: Star,
-        description: 'Customer & staff rewards'
-    },
-    {
-        id: 'efd',
-        label: 'EFD',
-        icon: Receipt,
-        description: 'Tax & fiscal compliance'
-    },
-    {
-        id: 'reservations',
-        label: 'Reservations',
-        icon: CalendarClock,
-        description: 'Booking rules & questions'
-    },
-    {
-        id: 'digital-menu',
-        label: 'Digital Menu',
-        icon: UtensilsCrossed,
-        description: 'Online ordering menus'
-    },
-    {
-        id: 'payments',
-        label: 'Payments',
-        icon: CreditCard,
-        description: 'Accepted payment methods'
-    },
-    {
-        id: 'devices',
-        label: 'Devices',
-        icon: Smartphone,
-        description: 'Linked devices & access'
-    },
-    {
-        id: 'integrations',
-        label: 'Integrations',
-        icon: Link2,
-        description: 'Payment & service integrations'
-    },
+    // Business-level (not location scope)
+    { id: 'business', label: 'Business', icon: Building2, description: 'Business details & info' },
+    { id: 'business-settings', label: 'Business Settings', icon: Palette, description: 'Branding & business-wide defaults' },
+
+    // Location-level — rebuilt against new Accounts Service location settings API
+    { id: 'location', label: 'Location profile', icon: MapPin, description: 'Location details, currency, operating hours' },
+    { id: 'orders-pos', label: 'Orders & POS', icon: ShoppingBag, description: 'How orders behave on the POS' },
+    { id: 'dockets', label: 'Dockets & tickets', icon: Monitor, description: 'Kitchen / bar ticket formatting' },
+    { id: 'receipts', label: 'Receipts & invoicing', icon: Printer, description: 'Receipts, invoices, tax' },
+    { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email, SMS & push alerts' },
+    { id: 'loyalty-points', label: 'Loyalty & rewards', icon: Star, description: 'Customer and staff points' },
+    { id: 'stock-inventory', label: 'Stock & inventory', icon: Boxes, description: 'Deduction timing & inventory flags' },
+    { id: 'day-sessions', label: 'Day sessions', icon: Sun, description: 'Open, close, settlement' },
+    { id: 'closure-dates', label: 'Closure dates', icon: CalendarOff, description: 'Scheduled closures & holidays' },
+    { id: 'accounting', label: 'Accounting mappings', icon: Calculator, description: 'Payment methods → GL & product revenue routing' },
+    { id: 'exchange-rates', label: 'Exchange rates', icon: ArrowLeftRight, description: 'Manual rate overrides for multi-currency' },
+    { id: 'danger-zone', label: 'Danger zone', icon: RotateCcw, description: 'Reset all location settings' },
+
+    // Not in scope of this rebuild but still accessible
+    { id: 'efd', label: 'EFD', icon: Receipt, description: 'Tax & fiscal compliance' },
+    { id: 'reservations', label: 'Reservations', icon: CalendarClock, description: 'Booking rules & questions' },
+    { id: 'digital-menu', label: 'Digital menu', icon: UtensilsCrossed, description: 'Online ordering menus' },
+    { id: 'payments', label: 'Payment methods', icon: CreditCard, description: 'Accepted payment methods' },
+    { id: 'devices', label: 'Devices', icon: Smartphone, description: 'Linked devices & access' },
+    { id: 'integrations', label: 'Integrations', icon: Link2, description: 'Service integrations' },
 ];

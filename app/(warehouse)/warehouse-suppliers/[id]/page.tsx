@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { getSupplier } from "@/lib/actions/supplier-actions";
-import SupplierForm from "@/components/forms/supplier_form";
+import SupplierForm from "@/components/forms/supplier-form";
 
 type Params = Promise<{ id: string }>;
 export default async function Page({ params }: { params: Params }) {

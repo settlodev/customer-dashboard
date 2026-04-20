@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock/column";
 import { getStocks } from "@/lib/actions/stock-actions";
@@ -9,7 +7,8 @@ import { getBalancesByLocation } from "@/lib/actions/inventory-balance-actions";
 import type { StockWithBalance } from "@/types/stock/type";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import NoItems from "@/components/layouts/no-items";
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { StockVariantsHeaderActions } from "@/components/widgets/inventory/stock-variants-header-actions";
 
 const breadcrumbItems = [{ title: "Stock Items", link: "/stock-variants" }];
 
@@ -74,12 +73,7 @@ export default async function Page({ searchParams }: Props) {
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <BreadcrumbsNav items={breadcrumbItems} />
-        <Button asChild>
-          <Link href="/stock-variants/new">
-            <Plus className="mr-1.5 h-4 w-4" />
-            Add Stock
-          </Link>
-        </Button>
+        <StockVariantsHeaderActions />
       </div>
 
       {/* Filter tabs */}

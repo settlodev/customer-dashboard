@@ -95,6 +95,30 @@ export const RISK_LEVEL_CONFIG: Record<
   },
 };
 
+export interface AgingBucketItem {
+  variantId: string;
+  displayName: string;
+  batchNumber: string | null;
+  quantity: number;
+  unitCost: number | null;
+  value: number;
+  daysSinceReceipt: number;
+}
+
+export interface AgingBucket {
+  range: string;
+  itemCount: number;
+  totalQuantity: number;
+  totalValue: number;
+  items: AgingBucketItem[];
+}
+
+export interface StockAging {
+  locationId: string;
+  currency: string;
+  buckets: AgingBucket[];
+}
+
 export const ABC_CONFIG: Record<
   "A" | "B" | "C",
   { label: string; description: string; color: string; bgColor: string }

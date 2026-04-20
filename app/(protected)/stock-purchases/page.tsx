@@ -1,18 +1,31 @@
-import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
-import { getLpos } from "@/lib/actions/procurement-actions";
-import { Lpo, LPO_STATUS_LABELS } from "@/types/procurement/type";
-import { Plus } from "lucide-react";
+import { DataTable } from "@/components/tables/data-table";
+import { columns, LpoRow } from "@/components/tables/lpo/columns";
+import { getLpos } from "@/lib/actions/lpo-actions";
+import { fetchAllSuppliers } from "@/lib/actions/supplier-actions";
+import type { LpoStatus } from "@/types/lpo/type";
 
 const breadcrumbItems = [{ title: "Purchase Orders", link: "/stock-purchases" }];
+
+const STATUS_VALUES: LpoStatus[] = [
+  "DRAFT",
+  "SUBMITTED",
+  "APPROVED",
+  "PARTIALLY_RECEIVED",
+  "RECEIVED",
+  "CANCELLED",
+];
 
 type Params = {
   searchParams: Promise<{
     page?: string;
     limit?: string;
+    status?: string;
   }>;
 };
 
@@ -20,10 +33,21 @@ export default async function Page({ searchParams }: Params) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 0;
   const pageLimit = Number(resolvedParams.limit) || 20;
+  const status = STATUS_VALUES.find((s) => s === resolvedParams.status);
 
-  const responseData = await getLpos(page ? page - 1 : 0, pageLimit);
-  const data: Lpo[] = responseData.content;
-  const total = responseData.totalElements;
+  const [responseData, suppliers] = await Promise.all([
+    getLpos(page ? page - 1 : 0, pageLimit, status),
+    fetchAllSuppliers(),
+  ]);
+
+  const supplierMap = Object.fromEntries(suppliers.map((s) => [s.id, s.name]));
+
+  const data: LpoRow[] = (responseData.content ?? []).map((l) => ({
+    ...l,
+    supplierName: supplierMap[l.supplierId] ?? null,
+  }));
+  const total = responseData.totalElements ?? 0;
+  const pageCount = responseData.totalPages ?? 0;
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-4">
@@ -32,57 +56,25 @@ export default async function Page({ searchParams }: Params) {
         <Button asChild>
           <Link href="/stock-purchases/new">
             <Plus className="mr-1.5 h-4 w-4" />
-            New Purchase Order
+            New LPO
           </Link>
         </Button>
       </div>
 
-      {total > 0 ? (
+      {total > 0 || status ? (
         <Card>
           <CardContent className="px-2 sm:px-6 pt-6">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-gray-50/60">
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">LPO Number</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Supplier</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Items</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Total</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-400 uppercase">Date</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {data.map((lpo) => (
-                    <tr key={lpo.id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3">
-                        <Link href={`/stock-purchases/${lpo.id}`} className="font-mono text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded hover:underline">
-                          {lpo.lpoNumber}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{lpo.supplierName || "\u2014"}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{lpo.items?.length ?? 0}</td>
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {lpo.totalAmount.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                          lpo.status === "RECEIVED" ? "bg-green-50 text-green-700" :
-                          lpo.status === "CANCELLED" ? "bg-red-50 text-red-700" :
-                          lpo.status === "SENT" ? "bg-blue-50 text-blue-700" :
-                          "bg-amber-50 text-amber-700"
-                        }`}>
-                          {LPO_STATUS_LABELS[lpo.status]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {new Date(lpo.createdAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataTable
+              columns={columns}
+              data={data}
+              searchKey="lpoNumber"
+              pageNo={page}
+              total={total}
+              pageCount={pageCount}
+              disableArchive
+              filterKey="status"
+              filterOptions={STATUS_VALUES.map((s) => ({ value: s, label: s.replace("_", " ") }))}
+            />
           </CardContent>
         </Card>
       ) : (

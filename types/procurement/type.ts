@@ -43,84 +43,6 @@ export interface RequisitionItem {
   notes: string | null;
 }
 
-// ── Local Purchase Order (LPO) ──────────────────────────────────────
-
-export type LpoStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "SENT" | "PARTIALLY_RECEIVED" | "RECEIVED" | "CANCELLED";
-
-export interface Lpo {
-  id: string;
-  lpoNumber: string;
-  locationType: DestinationType;
-  locationId: string;
-  supplierId: string;
-  supplierName: string | null;
-  status: LpoStatus;
-  totalAmount: number;
-  notes: string | null;
-  items: LpoItem[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface LpoItem {
-  id: string;
-  stockVariantId: string;
-  variantName: string;
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-  /** Supplier-quoted currency for this line (preserved from LPO creation). */
-  currency: string | null;
-}
-
-// ── Goods Received Note (GRN) ───────────────────────────────────────
-
-export type GrnStatus = "DRAFT" | "PENDING_INSPECTION" | "INSPECTED" | "RECEIVED" | "CANCELLED";
-
-export interface Grn {
-  id: string;
-  grnNumber: string;
-  lpoId: string | null;
-  supplierId: string;
-  supplierName: string | null;
-  locationType: DestinationType;
-  locationId: string;
-  locationName: string | null;
-  receivedBy: string;
-  receivedByName: string | null;
-  receivedDate: string;
-  status: GrnStatus;
-  notes: string | null;
-  deliveryPersonName: string | null;
-  deliveryPersonPhone: string | null;
-  deliveryPersonEmail: string | null;
-  items: GrnItem[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface GrnItem {
-  id: string;
-  stockVariantId: string;
-  variantName: string;
-  orderedQuantity: number | null;
-  receivedQuantity: number;
-  unitCost: number;
-  totalCost: number;
-  batchNumber: string | null;
-  expiryDate: string | null;
-  inspectionStatus: string | null;
-  inspectionNotes: string | null;
-  /** Settlement currency — matches the location's base currency. */
-  currency: string | null;
-  /** Supplier invoice currency at the time of receipt. */
-  originalCurrency: string | null;
-  /** Per-unit supplier price in `originalCurrency` before conversion. */
-  originalUnitCost: number | null;
-  /** Exchange rate captured when the GRN was received. */
-  rateUsed: number | null;
-}
-
 // ── Supplier Order ──────────────────────────────────────────────────
 
 export type SupplierOrderStatus = "DRAFT" | "SUBMITTED" | "CONFIRMED" | "IN_TRANSIT" | "DELIVERED" | "CANCELLED";
@@ -162,20 +84,3 @@ export const REQUISITION_STATUS_LABELS: Record<RequisitionStatus, string> = {
   CANCELLED: "Cancelled",
 };
 
-export const LPO_STATUS_LABELS: Record<LpoStatus, string> = {
-  DRAFT: "Draft",
-  SUBMITTED: "Submitted",
-  APPROVED: "Approved",
-  SENT: "Sent to Supplier",
-  PARTIALLY_RECEIVED: "Partially Received",
-  RECEIVED: "Received",
-  CANCELLED: "Cancelled",
-};
-
-export const GRN_STATUS_LABELS: Record<GrnStatus, string> = {
-  DRAFT: "Draft",
-  PENDING_INSPECTION: "Pending Inspection",
-  INSPECTED: "Inspected",
-  RECEIVED: "Received",
-  CANCELLED: "Cancelled",
-};

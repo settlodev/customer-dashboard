@@ -1,7 +1,7 @@
 "use server";
 
 import { cache } from "react";
-import { fetchLocationSettings } from "./settings-actions";
+import { getLocationSettings } from "./location-settings-actions";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 
 /**
@@ -13,7 +13,7 @@ import { DEFAULT_CURRENCY } from "@/lib/helpers";
  */
 export const getLocationCurrency = cache(async (): Promise<string> => {
   try {
-    const settings = await fetchLocationSettings();
+    const settings = await getLocationSettings();
     const currency =
       typeof settings?.currency === "string" && settings.currency.trim() !== ""
         ? settings.currency.trim().toUpperCase()

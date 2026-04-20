@@ -26,6 +26,9 @@ import {
   Clock,
   ShoppingCart,
   RefreshCw,
+  History,
+  LineChart as LineChartIcon,
+  User,
 } from "lucide-react";
 import type { Stock } from "@/types/stock/type";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
@@ -42,6 +45,21 @@ import type { StockBatch } from "@/types/stock-batch/type";
 import { BATCH_STATUS_CONFIG } from "@/types/stock-batch/type";
 import type { ItemSalesAggregate } from "@/types/item-sales/type";
 import { Money } from "@/components/widgets/money";
+import {
+  ReorderConfigDialog,
+  ReorderConfigSummary,
+} from "@/components/widgets/inventory/reorder-config-dialog";
+import { BarcodeManager } from "@/components/widgets/barcode-manager";
+import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
+import type { AuditLogEntry } from "@/types/audit-log/type";
+import { AUDIT_ACTION_LABELS } from "@/types/audit-log/type";
+import type { RsMovementSummary } from "@/types/reports-analytics/type";
+import {
+  MovementMixChart,
+  MovementTypeBreakdownChart,
+  QtyOnHandChart,
+  StockValueChart,
+} from "@/components/widgets/inventory/stock-item-charts";
 
 interface Props {
   stock: Stock;
@@ -64,14 +82,28 @@ interface Props {
   avgTurnover: number;
   /** Location base currency — labels all cost/value displays inside this view. */
   currency: string;
+  /** Current location id — required by per-variant reorder config writes. */
+  locationId: string | null;
+  /** Drives the in-dialog warning banner when auto-reorder is off. */
+  autoReorderEnabled: boolean;
+  /** Per-variant daily snapshots (last ~90 days). */
+  variantSnapshotMap: Record<string, InventorySnapshot[]>;
+  /** Snapshots rolled up to the stock level — feeds the default charts tab. */
+  stockSnapshots: InventorySnapshot[];
+  /** Audit trail for this stock (entity-scoped). */
+  auditEntries: AuditLogEntry[];
+  /** Aggregated Reports Service movement summary across all variants. */
+  rsSummary: RsMovementSummary | null;
 }
 
 const TABS = [
   { key: "overview", label: "Overview", icon: Package },
+  { key: "charts", label: "Charts", icon: LineChartIcon },
   { key: "batches", label: "Batches", icon: Layers },
   { key: "movements", label: "Movements", icon: Activity },
   { key: "sales", label: "Sales", icon: ShoppingCart },
   { key: "analytics", label: "Analytics", icon: BarChart3 },
+  { key: "audit", label: "Audit", icon: History },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -103,6 +135,12 @@ export function StockDetailView({
   worstRisk,
   avgTurnover,
   currency,
+  locationId,
+  autoReorderEnabled,
+  variantSnapshotMap,
+  stockSnapshots,
+  auditEntries,
+  rsSummary,
 }: Props) {
   const [tab, setTab] = useState<TabKey>("overview");
 
@@ -236,6 +274,17 @@ export function StockDetailView({
           stock={stock}
           balanceMap={balanceMap}
           currency={currency}
+          locationId={locationId}
+          autoReorderEnabled={autoReorderEnabled}
+        />
+      )}
+      {tab === "charts" && (
+        <ChartsTab
+          stock={stock}
+          stockSnapshots={stockSnapshots}
+          variantSnapshotMap={variantSnapshotMap}
+          rsSummary={rsSummary}
+          currency={currency}
         />
       )}
       {tab === "batches" && (
@@ -247,7 +296,12 @@ export function StockDetailView({
         />
       )}
       {tab === "movements" && (
-        <MovementsTab movements={movements} movementSummary={movementSummary} currency={currency} />
+        <MovementsTab
+          movements={movements}
+          movementSummary={movementSummary}
+          currency={currency}
+          rsSummary={rsSummary}
+        />
       )}
       {tab === "sales" && (
         <SalesTab salesItems={salesItems} stock={stock} />
@@ -260,6 +314,7 @@ export function StockDetailView({
           reorder={reorder}
         />
       )}
+      {tab === "audit" && <AuditTab entries={auditEntries} />}
     </div>
   );
 }
@@ -309,10 +364,14 @@ function OverviewTab({
   stock,
   balanceMap,
   currency,
+  locationId,
+  autoReorderEnabled,
 }: {
   stock: Stock;
   balanceMap: Record<string, InventoryBalance>;
   currency: string;
+  locationId: string | null;
+  autoReorderEnabled: boolean;
 }) {
   return (
     <Card>
@@ -334,6 +393,7 @@ function OverviewTab({
                 <TableHead className="text-right">In Transit</TableHead>
                 <TableHead className="text-right">Avg Cost</TableHead>
                 <TableHead className="text-right">Value</TableHead>
+                <TableHead>Reorder</TableHead>
                 <TableHead>Status</TableHead>
               </TableRow>
             </TableHeader>
@@ -399,8 +459,14 @@ function OverviewTab({
                           );
                         })()}
                     </TableCell>
-                    <TableCell className="text-sm font-mono text-muted-foreground">
-                      {v.barcode || "\u2014"}
+                    <TableCell className="text-sm">
+                      <BarcodeManager
+                        variantId={v.id}
+                        variantName={v.displayName}
+                        barcode={v.barcode}
+                        sku={v.sku}
+                        disabled={v.archived}
+                      />
                     </TableCell>
                     <TableCell
                       className={`text-right text-sm font-medium ${
@@ -439,6 +505,25 @@ function OverviewTab({
                     </TableCell>
                     <TableCell className="text-right text-sm">
                       {value > 0 ? <Money amount={value} currency={currency} /> : "\u2014"}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <ReorderConfigSummary
+                          balance={bal}
+                          unitAbbreviation={v.unitAbbreviation}
+                        />
+                        {locationId && !v.archived && (
+                          <ReorderConfigDialog
+                            locationId={locationId}
+                            variantId={v.id}
+                            variantName={v.displayName}
+                            unitAbbreviation={v.unitAbbreviation}
+                            balance={bal ?? null}
+                            autoReorderEnabled={autoReorderEnabled}
+                            compact
+                          />
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <span
@@ -728,11 +813,32 @@ function MovementsTab({
   movements,
   movementSummary,
   currency,
+  rsSummary,
 }: {
   movements: StockMovement[];
   movementSummary: StockMovementSummary;
   currency: string;
+  rsSummary: RsMovementSummary | null;
 }) {
+  // Prefer Reports Service totals when available — materialised views are the
+  // canonical source for aggregations. Falls back to the inventory sum otherwise.
+  const summary = rsSummary
+    ? {
+        ...movementSummary,
+        totalMovements: rsSummary.totalMovements,
+        totalQuantityIn: rsSummary.totalQuantityIn,
+        totalQuantityOut: rsSummary.totalQuantityOut,
+        netQuantityChange: rsSummary.netQuantityChange,
+        totalCostIn: rsSummary.totalCostIn,
+        totalCostOut: rsSummary.totalCostOut,
+        byType: rsSummary.byType.map((t) => ({
+          movementType: t.movementType,
+          count: t.count,
+          totalQuantity: t.totalQuantity,
+          totalCost: t.totalCost,
+        })),
+      }
+    : movementSummary;
   return (
     <div className="space-y-6">
       {/* Movement summary cards */}
@@ -744,7 +850,7 @@ function MovementsTab({
               <span className="text-xs font-medium">Qty In (30d)</span>
             </div>
             <p className="text-xl font-bold text-green-600 dark:text-green-400">
-              +{movementSummary.totalQuantityIn.toLocaleString()}
+              +{summary.totalQuantityIn.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -755,7 +861,7 @@ function MovementsTab({
               <span className="text-xs font-medium">Qty Out (30d)</span>
             </div>
             <p className="text-xl font-bold text-red-600 dark:text-red-400">
-              -{movementSummary.totalQuantityOut.toLocaleString()}
+              -{summary.totalQuantityOut.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -767,15 +873,15 @@ function MovementsTab({
             </div>
             <p
               className={`text-xl font-bold ${
-                movementSummary.netQuantityChange > 0
+                summary.netQuantityChange > 0
                   ? "text-green-600 dark:text-green-400"
-                  : movementSummary.netQuantityChange < 0
+                  : summary.netQuantityChange < 0
                     ? "text-red-600 dark:text-red-400"
                     : ""
               }`}
             >
-              {movementSummary.netQuantityChange > 0 ? "+" : ""}
-              {movementSummary.netQuantityChange.toLocaleString()}
+              {summary.netQuantityChange > 0 ? "+" : ""}
+              {summary.netQuantityChange.toLocaleString()}
             </p>
           </CardContent>
         </Card>
@@ -786,7 +892,7 @@ function MovementsTab({
               <span className="text-xs font-medium">Cost In</span>
             </div>
             <p className="text-xl font-bold text-green-600 dark:text-green-400">
-              <Money amount={movementSummary.totalCostIn} currency={currency} />
+              <Money amount={summary.totalCostIn} currency={currency} />
             </p>
           </CardContent>
         </Card>
@@ -797,21 +903,21 @@ function MovementsTab({
               <span className="text-xs font-medium">Cost Out</span>
             </div>
             <p className="text-xl font-bold text-red-600 dark:text-red-400">
-              <Money amount={movementSummary.totalCostOut} currency={currency} />
+              <Money amount={summary.totalCostOut} currency={currency} />
             </p>
           </CardContent>
         </Card>
       </div>
 
       {/* Movement type breakdown */}
-      {movementSummary.byType.length > 0 && (
+      {summary.byType.length > 0 && (
         <Card>
           <CardContent className="pt-6">
             <h3 className="text-sm font-semibold mb-3">
               Movement Breakdown (30 days)
             </h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {movementSummary.byType.map((s) => {
+              {summary.byType.map((s) => {
                 const isIn = INBOUND_TYPES.has(s.movementType);
                 return (
                   <div
@@ -1438,5 +1544,172 @@ function AnalyticsTab({
         </Card>
       )}
     </div>
+  );
+}
+
+// ── Charts tab ──────────────────────────────────────────────────────
+
+function ChartsTab({
+  stock,
+  stockSnapshots,
+  variantSnapshotMap,
+  rsSummary,
+  currency,
+}: {
+  stock: Stock;
+  stockSnapshots: InventorySnapshot[];
+  variantSnapshotMap: Record<string, InventorySnapshot[]>;
+  rsSummary: RsMovementSummary | null;
+  currency: string;
+}) {
+  const activeVariants = stock.variants.filter((v) => !v.archived);
+  const [variantId, setVariantId] = useState<string>("__all__");
+  const snapshots =
+    variantId === "__all__"
+      ? stockSnapshots
+      : variantSnapshotMap[variantId] ?? [];
+
+  return (
+    <div className="space-y-6">
+      {/* Variant scope picker */}
+      {activeVariants.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Scope
+          </span>
+          <div className="inline-flex items-center gap-1 bg-muted p-1 rounded-lg">
+            <button
+              onClick={() => setVariantId("__all__")}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                variantId === "__all__"
+                  ? "bg-background shadow-sm font-medium text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              All variants
+            </button>
+            {activeVariants.map((v) => (
+              <button
+                key={v.id}
+                onClick={() => setVariantId(v.id)}
+                className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                  variantId === v.id
+                    ? "bg-background shadow-sm font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {v.displayName}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {snapshots.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <LineChartIcon className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground">
+              No daily snapshots yet for the last 90 days. Charts populate once
+              end-of-day snapshots have been captured.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <QtyOnHandChart snapshots={snapshots} />
+          <StockValueChart snapshots={snapshots} currency={currency} />
+          <div className="lg:col-span-2">
+            <MovementMixChart snapshots={snapshots} />
+          </div>
+        </div>
+      )}
+
+      {/* Movement volume by type — Reports Service */}
+      {rsSummary && rsSummary.byType.length > 0 && (
+        <MovementTypeBreakdownChart breakdown={rsSummary.byType} />
+      )}
+    </div>
+  );
+}
+
+// ── Audit tab ───────────────────────────────────────────────────────
+
+function AuditTab({ entries }: { entries: AuditLogEntry[] }) {
+  if (entries.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center">
+          <History className="h-8 w-8 mx-auto text-muted-foreground mb-3" />
+          <p className="text-sm text-muted-foreground">
+            No audit trail yet. Changes to this stock — edits, archives,
+            deletes, and linked workflows — show up here.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <h3 className="text-sm font-semibold mb-3">Recent changes</h3>
+        <div className="rounded-md border overflow-auto max-h-[600px]">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>When</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Entity</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Details</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {entries.map((entry) => (
+                <TableRow key={entry.id}>
+                  <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
+                    {new Date(entry.createdAt).toLocaleString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300">
+                      {AUDIT_ACTION_LABELS[entry.action] ?? entry.action}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-xs font-mono text-muted-foreground">
+                    {entry.entityType}
+                  </TableCell>
+                  <TableCell className="text-sm">
+                    {entry.staffName ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        {entry.staffName}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-xs text-muted-foreground max-w-[360px]">
+                    {entry.details ? (
+                      <span className="line-clamp-2 whitespace-pre-wrap">
+                        {entry.details}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

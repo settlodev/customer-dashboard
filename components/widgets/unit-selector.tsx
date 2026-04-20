@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback, useRef } from "react";
-import { Check, ChevronsUpDown, Loader2 } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -87,13 +87,15 @@ const UnitSelector = ({
 
   const grouped = useMemo(() => {
     const term = search.toLowerCase();
+    // Archived custom units shouldn't be assignable to new stock variants.
+    const selectable = units.filter((u) => !u.archivedAt);
     const filtered = term
-      ? units.filter(
+      ? selectable.filter(
           (u) =>
             u.name.toLowerCase().includes(term) ||
             u.abbreviation.toLowerCase().includes(term),
         )
-      : units;
+      : selectable;
 
     const groups: Record<string, UnitOfMeasure[]> = {};
     for (const u of filtered) {
@@ -191,7 +193,12 @@ const UnitSelector = ({
                           value === unit.id ? "opacity-100" : "opacity-0",
                         )}
                       />
-                      <span>{unit.name}</span>
+                      <span className="flex items-center gap-1.5">
+                        {unit.name}
+                        {unit.systemGenerated && (
+                          <ShieldCheck className="h-3 w-3 text-emerald-600 shrink-0" />
+                        )}
+                      </span>
                       <span className="text-xs text-muted-foreground ml-auto">
                         {unit.abbreviation}
                       </span>

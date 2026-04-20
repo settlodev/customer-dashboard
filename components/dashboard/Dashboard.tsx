@@ -8,6 +8,7 @@ import {
 import OverviewResponse from "@/types/dashboard/type";
 import { Skeleton } from "@/components/ui/skeleton";
 import SalesDashboard from "./salesDashboard";
+import StockHealthCard from "./StockHealthCard";
 
 const Dashboard: React.FC = () => {
   const [overview, setOverview] = useState<OverviewResponse | null>(null);
@@ -61,7 +62,10 @@ const Dashboard: React.FC = () => {
       {isLoading ? (
         <DashboardSkeleton />
       ) : (
-        <SalesDashboard salesData={overview} />
+        <>
+          <SalesDashboard salesData={overview} />
+          <StockHealthCard />
+        </>
       )}
     </div>
   );

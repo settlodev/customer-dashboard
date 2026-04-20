@@ -7,6 +7,10 @@ import { DataTable } from "@/components/tables/data-table";
 import { columns } from "@/components/tables/stock-modification/column";
 import { searchStockModifications } from "@/lib/actions/stock-modification-actions";
 import { Plus } from "lucide-react";
+import {
+  MODIFICATION_CATEGORY_OPTIONS,
+  ModificationCategory,
+} from "@/types/stock-modification/type";
 
 const breadcrumbItems = [{ title: "Stock Modifications", link: "/stock-modifications" }];
 
@@ -14,6 +18,7 @@ type Params = {
   searchParams: Promise<{
     page?: string;
     limit?: string;
+    category?: string;
   }>;
 };
 
@@ -21,8 +26,17 @@ export default async function Page({ searchParams }: Params) {
   const resolvedParams = await searchParams;
   const page = Number(resolvedParams.page) || 0;
   const pageLimit = Number(resolvedParams.limit) || 20;
+  const category = MODIFICATION_CATEGORY_OPTIONS.some(
+    (o) => o.value === resolvedParams.category,
+  )
+    ? (resolvedParams.category as ModificationCategory)
+    : undefined;
 
-  const responseData = await searchStockModifications(page ? page - 1 : 0, pageLimit);
+  const responseData = await searchStockModifications(
+    page ? page - 1 : 0,
+    pageLimit,
+    category,
+  );
 
   const data = responseData.content;
   const total = responseData.totalElements;
@@ -40,7 +54,7 @@ export default async function Page({ searchParams }: Params) {
         </Button>
       </div>
 
-      {total > 0 ? (
+      {total > 0 || category ? (
         <Card>
           <CardContent className="px-2 sm:px-6 pt-6">
             <DataTable
@@ -50,6 +64,11 @@ export default async function Page({ searchParams }: Params) {
               pageNo={page}
               total={total}
               pageCount={pageCount}
+              filterKey="category"
+              filterOptions={MODIFICATION_CATEGORY_OPTIONS.map((o) => ({
+                label: o.label,
+                value: o.value,
+              }))}
             />
           </CardContent>
         </Card>

@@ -58,17 +58,3 @@ export interface CsvImportJobResponse {
   errorMessage: string | null;
 }
 
-// ── Report types (from reports service) ──────────────────────────
-
-export interface StockHistory {
-  totalItems: number;
-  totalValue: number;
-  totalStockRemaining: number;
-  totalStockValue: number;
-  totalEstimatedProfit: number;
-  totalStockIntakes: number;
-  lowStockItems: any[];
-  outOfStockItems: any[];
-  topMovingItems: any[];
-  slowMovingItems: any[];
-}

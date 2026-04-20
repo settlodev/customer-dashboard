@@ -4,12 +4,12 @@ import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
 import { Card, CardContent } from "@/components/ui/card";
 import NoItems from "@/components/layouts/no-items";
 import { searchStockIntakeRecords } from "@/lib/actions/stock-intake-record-actions";
-import { getGrns } from "@/lib/actions/procurement-actions";
+import { getGrns } from "@/lib/actions/grn-actions";
 import { Plus } from "lucide-react";
 import type { StockIntakeRecord } from "@/types/stock-intake-record/type";
 import { STOCK_INTAKE_RECORD_STATUS_LABELS } from "@/types/stock-intake-record/type";
-import type { Grn } from "@/types/procurement/type";
-import { GRN_STATUS_LABELS } from "@/types/procurement/type";
+import type { Grn } from "@/types/grn/type";
+import { GRN_STATUS_LABELS } from "@/types/grn/type";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { Money } from "@/components/widgets/money";
 
@@ -55,11 +55,11 @@ function fromStockIntakeRecord(si: StockIntakeRecord): StockReceivedRow {
 
 function fromGrn(grn: Grn): StockReceivedRow {
   const names = grn.items?.map((i) => i.variantName) ?? [];
-  const totalQty = grn.items?.reduce((sum, i) => sum + i.receivedQuantity, 0) ?? 0;
-  const totalValue = grn.items?.reduce((sum, i) => sum + (i.totalCost ?? i.receivedQuantity * i.unitCost), 0) ?? 0;
+  const totalQty = grn.items?.reduce((sum, i) => sum + Number(i.receivedQuantity || 0), 0) ?? 0;
+  const totalValue =
+    grn.items?.reduce((sum, i) => sum + Number(i.receivedQuantity || 0) * Number(i.unitCost || 0), 0) ?? 0;
   const statusDone = grn.status === "RECEIVED";
   const statusBad = grn.status === "CANCELLED";
-  const firstItemCurrency = (grn.items?.[0] as unknown as { currency?: string })?.currency;
   return {
     id: grn.id,
     source: "GRN",
@@ -68,7 +68,7 @@ function fromGrn(grn: Grn): StockReceivedRow {
     itemCount: grn.items?.length ?? 0,
     totalQty,
     totalValue,
-    currency: firstItemCurrency || DEFAULT_CURRENCY,
+    currency: grn.currency || grn.items?.[0]?.currency || DEFAULT_CURRENCY,
     supplier: grn.supplierName ?? null,
     status: GRN_STATUS_LABELS[grn.status],
     statusColor: statusDone ? "bg-green-50 text-green-700" : statusBad ? "bg-red-50 text-red-700" : "bg-amber-50 text-amber-700",

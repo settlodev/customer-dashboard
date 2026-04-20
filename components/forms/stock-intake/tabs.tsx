@@ -1,21 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  ClipboardList,
-  FileSpreadsheet,
-  ShoppingCart,
-  Loader2,
-} from "lucide-react";
+import { useState } from "react";
+import { ClipboardList, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { StockPurchase } from "@/types/stock-purchases/type";
-import { searchStockPurchases } from "@/lib/actions/stock-purchase-actions";
 import StockIntakeForm from "@/components/forms/stock_intake_form";
 import StockIntakeCsv from "@/components/forms/stock-intake/stock-intake-csv";
-import StockIntakeLpoForm from "@/components/forms/stock-intake/lpo-form";
 
-type TabId = "manual" | "csv" | "lpo";
+type TabId = "manual" | "csv";
 
 const TABS: {
   id: TabId;
@@ -24,42 +16,7 @@ const TABS: {
 }[] = [
   { id: "manual", label: "Normal Entry", icon: ClipboardList },
   { id: "csv", label: "CSV Upload", icon: FileSpreadsheet },
-  { id: "lpo", label: "From LPO", icon: ShoppingCart },
 ];
-
-function LpoPanel() {
-  const [lpos, setLpos] = useState<StockPurchase[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  useEffect(() => {
-    searchStockPurchases("", 1, 100)
-      .then((res) => {
-        setLpos(res.content.filter((l) => l.status === "ACCEPTED"));
-      })
-      .catch(() => setFetchError("Failed to load purchase orders."))
-      .finally(() => setLoading(false));
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-16 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin mr-2.5" />
-        <span className="text-sm">Loading local purchase orders…</span>
-      </div>
-    );
-  }
-
-  if (fetchError) {
-    return (
-      <div className="py-12 text-center">
-        <p className="text-sm text-destructive font-medium">{fetchError}</p>
-      </div>
-    );
-  }
-
-  return <StockIntakeLpoForm lpos={lpos} />;
-}
 
 export default function StockIntakeTabs() {
   const [activeTab, setActiveTab] = useState<TabId>("manual");
@@ -97,7 +54,6 @@ export default function StockIntakeTabs() {
                   isActive ? "text-orange-500" : "text-gray-400",
                 )}
               />
-              {/* On mobile: tiny label under icon. On sm+: normal inline label */}
               <span className="text-xs sm:text-sm leading-none">
                 {tab.label}
               </span>
@@ -109,7 +65,6 @@ export default function StockIntakeTabs() {
       <div>
         {activeTab === "manual" && <StockIntakeForm />}
         {activeTab === "csv" && <StockIntakeCsv />}
-        {activeTab === "lpo" && <LpoPanel />}
       </div>
     </div>
   );

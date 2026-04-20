@@ -6,6 +6,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TRANSFER_STATUS_LABELS } from "@/types/stock-transfer/type";
 import { DEFAULT_CURRENCY } from "@/lib/helpers";
 import { Money } from "@/components/widgets/money";
+import { StockTransferStatusActions } from "@/components/widgets/stock-transfer/status-actions";
+import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
 
 type Params = Promise<{ id: string }>;
 
@@ -37,9 +39,12 @@ export default async function StockTransferPage({ params }: { params: Params }) 
                 {item.sourceLocationName} &rarr; {item.destinationLocationName} — {TRANSFER_STATUS_LABELS[item.status] ?? item.status}
               </p>
             </div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="text-muted-foreground">Source currency:</span>
-              <span className="font-mono font-semibold bg-gray-100 px-2 py-0.5 rounded">{currency}</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">Source currency:</span>
+                <span className="font-mono font-semibold bg-gray-100 px-2 py-0.5 rounded">{currency}</span>
+              </div>
+              <StockTransferStatusActions transfer={item} />
             </div>
           </div>
 
@@ -117,6 +122,12 @@ export default async function StockTransferPage({ params }: { params: Params }) 
               </CardContent>
             </Card>
           )}
+
+          <AttachmentsPanel
+            entityType="STOCK_TRANSFER"
+            entityId={item.id}
+            description="Gate passes, carrier proofs, damage photos, signed receipts. Max 10 MB per file."
+          />
 
           {item.notes && (
             <Card>

@@ -17,6 +17,10 @@ import {
 import { getBatchesByVariant } from "@/lib/actions/stock-batch-actions";
 import { getItemSalesSummary } from "@/lib/actions/item-sales-actions";
 import { getLocationCurrency } from "@/lib/actions/currency-actions";
+import { getLocationConfig } from "@/lib/actions/location-config-actions";
+import { getVariantSnapshotHistory } from "@/lib/actions/inventory-snapshot-actions";
+import { getAuditLogByEntity } from "@/lib/actions/audit-log-actions";
+import { getMovementSummaryForVariant } from "@/lib/actions/reports-analytics-actions";
 import type { InventoryBalance } from "@/types/inventory-balance/type";
 import type {
   StockMovement,
@@ -31,6 +35,9 @@ import type {
 } from "@/types/inventory-analytics/type";
 import type { StockBatch } from "@/types/stock-batch/type";
 import type { ItemSalesAggregate } from "@/types/item-sales/type";
+import type { InventorySnapshot } from "@/types/inventory-snapshot/type";
+import type { AuditLogEntry } from "@/types/audit-log/type";
+import type { RsMovementSummary } from "@/types/reports-analytics/type";
 import { MATERIAL_TYPE_OPTIONS } from "@/types/catalogue/enums";
 import { Button } from "@/components/ui/button";
 import { Pencil } from "lucide-react";
@@ -45,10 +52,11 @@ export default async function StockDetailPage({
   params: Params;
 }) {
   const { id } = await params;
-  const [stock, location, currency] = await Promise.all([
+  const [stock, location, currency, locationConfig] = await Promise.all([
     getStock(id),
     getCurrentLocation(),
     getLocationCurrency(),
+    getLocationConfig(),
   ]);
 
   if (!stock) notFound();
@@ -62,6 +70,11 @@ export default async function StockDetailPage({
 
   const variantIds = new Set(stock.variants.map((v) => v.id));
 
+  // 90-day window for chart time-series; keeps the ledger view anchored on 30d.
+  const ninetyDaysAgo = new Date(now);
+  ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+  const chartFromDate = ninetyDaysAgo.toISOString().split("T")[0];
+
   // Parallel: all data fetching
   const [
     allBalances,
@@ -73,6 +86,9 @@ export default async function StockDetailPage({
     reorderSuggestions,
     batchArrays,
     salesSummary,
+    snapshotArrays,
+    auditPage,
+    rsMovementSummaries,
   ] = await Promise.all([
     locationId ? getBalancesByLocation(locationId) : Promise.resolve([]),
     Promise.all(
@@ -97,6 +113,19 @@ export default async function StockDetailPage({
     locationId
       ? getItemSalesSummary(locationId, fromDate, toDate)
       : Promise.resolve(null),
+    Promise.all(
+      stock.variants.map((v) =>
+        getVariantSnapshotHistory(v.id, chartFromDate, toDate),
+      ),
+    ),
+    getAuditLogByEntity("STOCK", id, 0, 50),
+    locationId
+      ? Promise.all(
+          stock.variants.map((v) =>
+            getMovementSummaryForVariant(locationId, v.id, fromDate, toDate),
+          ),
+        )
+      : Promise.resolve([] as (RsMovementSummary | null)[]),
   ]);
 
   // Balance map keyed by variant ID
@@ -150,6 +179,24 @@ export default async function StockDetailPage({
   // Filter sales data to this stock's variants (sales are by product variant ID,
   // which may differ from stock variant ID — include all for now, the view filters)
   const salesItems: ItemSalesAggregate[] = salesSummary?.items ?? [];
+
+  // Per-variant snapshot map, plus a summed-by-date series for stock-level charts.
+  const variantSnapshotMap: Record<string, InventorySnapshot[]> = {};
+  stock.variants.forEach((v, i) => {
+    variantSnapshotMap[v.id] = snapshotArrays[i] ?? [];
+  });
+  const stockSnapshots = collapseSnapshots(
+    snapshotArrays.flat(),
+  );
+
+  // Audit log — entity-scoped to this stock. Variant-level mutations are often
+  // captured here too via the StockService entry point.
+  const auditEntries: AuditLogEntry[] = auditPage.content ?? [];
+
+  // Reports Service summary — preferred source for movement volumes.
+  const rsSummary = mergeRsSummaries(
+    rsMovementSummaries.filter((s): s is RsMovementSummary => s !== null),
+  );
 
   // Aggregates
   let totalQty = 0;
@@ -252,9 +299,86 @@ export default async function StockDetailPage({
         worstRisk={worstRisk}
         avgTurnover={avgTurnover}
         currency={currency}
+        locationId={locationId ?? null}
+        autoReorderEnabled={locationConfig?.autoReorderEnabled ?? false}
+        variantSnapshotMap={variantSnapshotMap}
+        stockSnapshots={stockSnapshots}
+        auditEntries={auditEntries}
+        rsSummary={rsSummary}
       />
     </div>
   );
+}
+
+/**
+ * Flatten per-variant daily snapshots into a single time-series keyed by date.
+ * Quantities and values sum across variants; costs pick the weighted average so
+ * the stock-level chart stays meaningful for multi-variant stocks.
+ */
+function collapseSnapshots(rows: InventorySnapshot[]): InventorySnapshot[] {
+  const byDate = new Map<string, InventorySnapshot>();
+  for (const r of rows) {
+    const existing = byDate.get(r.snapshotDate);
+    if (!existing) {
+      byDate.set(r.snapshotDate, { ...r });
+      continue;
+    }
+    existing.openingQuantity += Number(r.openingQuantity ?? 0);
+    existing.closingQuantity += Number(r.closingQuantity ?? 0);
+    existing.openingValue += Number(r.openingValue ?? 0);
+    existing.closingValue += Number(r.closingValue ?? 0);
+    existing.purchaseQuantity += Number(r.purchaseQuantity ?? 0);
+    existing.saleQuantity += Number(r.saleQuantity ?? 0);
+    existing.transferInQuantity += Number(r.transferInQuantity ?? 0);
+    existing.transferOutQuantity += Number(r.transferOutQuantity ?? 0);
+    existing.adjustmentQuantity += Number(r.adjustmentQuantity ?? 0);
+    existing.damageQuantity += Number(r.damageQuantity ?? 0);
+    existing.returnQuantity += Number(r.returnQuantity ?? 0);
+    existing.recipeUsageQuantity += Number(r.recipeUsageQuantity ?? 0);
+    existing.openingBalanceQuantity += Number(r.openingBalanceQuantity ?? 0);
+    existing.reservedQuantity += Number(r.reservedQuantity ?? 0);
+    existing.inTransitQuantity += Number(r.inTransitQuantity ?? 0);
+  }
+  return Array.from(byDate.values()).sort((a, b) =>
+    a.snapshotDate.localeCompare(b.snapshotDate),
+  );
+}
+
+function mergeRsSummaries(summaries: RsMovementSummary[]): RsMovementSummary | null {
+  if (summaries.length === 0) return null;
+  const base: RsMovementSummary = {
+    locationId: summaries[0].locationId,
+    startDate: summaries[0].startDate,
+    endDate: summaries[0].endDate,
+    totalMovements: 0,
+    totalQuantityIn: 0,
+    totalQuantityOut: 0,
+    netQuantityChange: 0,
+    totalCostIn: 0,
+    totalCostOut: 0,
+    byType: [],
+  };
+  const typeMap = new Map<string, RsMovementSummary["byType"][number]>();
+  for (const s of summaries) {
+    base.totalMovements += Number(s.totalMovements ?? 0);
+    base.totalQuantityIn += Number(s.totalQuantityIn ?? 0);
+    base.totalQuantityOut += Number(s.totalQuantityOut ?? 0);
+    base.netQuantityChange += Number(s.netQuantityChange ?? 0);
+    base.totalCostIn += Number(s.totalCostIn ?? 0);
+    base.totalCostOut += Number(s.totalCostOut ?? 0);
+    for (const t of s.byType ?? []) {
+      const prev = typeMap.get(t.movementType);
+      if (prev) {
+        prev.count += Number(t.count ?? 0);
+        prev.totalQuantity += Number(t.totalQuantity ?? 0);
+        prev.totalCost += Number(t.totalCost ?? 0);
+      } else {
+        typeMap.set(t.movementType, { ...t });
+      }
+    }
+  }
+  base.byType = Array.from(typeMap.values()).sort((a, b) => b.count - a.count);
+  return base;
 }
 
 function mergeBreakdowns(summaries: StockMovementSummary[]): MovementTypeBreakdown[] {

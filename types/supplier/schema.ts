@@ -10,10 +10,16 @@ export const SupplierSchema = object({
     .max(150, "Contact name cannot exceed 150 characters"),
   contactPersonPhone: string({ required_error: "Contact phone is required" })
     .refine(isValidPhoneNumber, { message: "Invalid phone number" }),
-  phone: string().optional().nullish(),
-  email: string().email("Not a valid email").optional().nullish(),
-  address: string().optional().nullish(),
+  phone: string()
+    .optional()
+    .nullish()
+    .refine(
+      (v) => !v || v === "" || isValidPhoneNumber(v),
+      "Invalid phone number",
+    ),
+  email: string().email("Not a valid email").optional().nullish().or(string().length(0)),
+  address: string().max(500).optional().nullish(),
   registrationNumber: string().max(50).optional().nullish(),
   tinNumber: string().max(50).optional().nullish(),
-  settloSupplierId: string().uuid().optional().nullish(),
+  settloSupplierId: string().uuid().optional().nullish().or(string().length(0)),
 });

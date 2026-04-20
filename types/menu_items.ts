@@ -168,6 +168,18 @@ const getNormalMenuItems = (
           current: args?.isCurrentItem,
           icon: "cart",
         },
+        {
+          title: "Stock take",
+          link: "/stock-takes",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Traceability",
+          link: "/traceability",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
         ...(args?.hasMultipleDestinations ? [
           {
             title: "Stock transfer",
@@ -191,6 +203,18 @@ const getNormalMenuItems = (
           },
         ] : []),
         {
+          title: "Purchase requisitions",
+          link: "/purchase-requisitions",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "RFQs",
+          link: "/rfqs",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
           title: "Purchase orders",
           link: "/stock-purchases",
           current: args?.isCurrentItem,
@@ -199,6 +223,12 @@ const getNormalMenuItems = (
         {
           title: "Goods received",
           link: "/goods-received",
+          current: args?.isCurrentItem,
+          icon: "cart",
+        },
+        {
+          title: "Supplier returns",
+          link: "/supplier-returns",
           current: args?.isCurrentItem,
           icon: "cart",
         },

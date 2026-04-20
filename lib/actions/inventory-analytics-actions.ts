@@ -11,6 +11,7 @@ import type {
   ReorderSuggestion,
   DeadStockItem,
   InventoryValuationItem,
+  StockAging,
 } from "@/types/inventory-analytics/type";
 
 // Maps server field names (variantId/displayName) to client names (stockVariantId/variantName)
@@ -132,6 +133,16 @@ export async function getAbcAnalysis(
     return items.map(mapVariantFields);
   } catch {
     return [];
+  }
+}
+
+export async function getStockAging(): Promise<StockAging | null> {
+  try {
+    const apiClient = new ApiClient();
+    const data = await apiClient.get(inventoryUrl("/api/v1/reports/aging"));
+    return parseStringify(data) as StockAging;
+  } catch {
+    return null;
   }
 }
 

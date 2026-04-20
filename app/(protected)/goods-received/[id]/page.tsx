@@ -1,611 +1,377 @@
-import { format } from "date-fns";
 import { notFound } from "next/navigation";
-import { UUID } from "node:crypto";
-import { getStockIntakeReceipt } from "@/lib/actions/stock-purchase-actions";
-import { StockReceipt } from "@/types/stock-intake-receipt/type";
-import { GRNDownloadButton } from "@/components/widgets/grn-download-button";
-import { DEFAULT_CURRENCY } from "@/lib/helpers";
+import Link from "next/link";
+import BreadcrumbsNav from "@/components/layouts/breadcrumbs-nav";
+import { Card, CardContent } from "@/components/ui/card";
 import { Money } from "@/components/widgets/money";
-
-const PRIMARY = "#EB7F44";
-const SECONDARY = "#EAEAE5";
+import { DEFAULT_CURRENCY } from "@/lib/helpers";
+import { getGrn, getLandedCosts } from "@/lib/actions/grn-actions";
+import { getLocationConfig } from "@/lib/actions/location-config-actions";
+import {
+  GRN_STATUS_LABELS,
+  GRN_STATUS_TONES,
+  INSPECTION_STATUS_LABELS,
+  INSPECTION_STATUS_TONES,
+} from "@/types/grn/type";
+import { GrnStatusActions } from "@/components/widgets/grn/status-actions";
+import { InspectionPanel } from "@/components/widgets/grn/inspection-panel";
+import { LandedCostsPanel } from "@/components/widgets/grn/landed-costs-panel";
+import { AttachmentsPanel } from "@/components/widgets/attachments-panel";
+import { FileText } from "lucide-react";
 
 type Params = Promise<{ id: string }>;
 
-interface EnhancedStockPurchaseItem {
-  id?: string;
-  stock: string;
-  stockName: string;
-  stockVariant: string;
-  stockVariantName: string;
-  quantityReceived: number;
-  bonusQuantity?: number;
-  totalCost: number;
-  previousCostPerItem: number;
-  lastCostPerItem?: number;
-  sellingPrice?: number;
-  margin?: number;
-  code?: string;
-  currency?: string | null;
-  originalCurrency?: string | null;
-  originalUnitCost?: number | null;
-  rateUsed?: number | null;
-}
+const formatDate = (iso: string | null | undefined) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
-export default async function StockReceiptPage({ params }: { params: Params }) {
-  const paramsData = await params;
-  const { id } = paramsData;
+const formatOnlyDate = (iso: string | null | undefined) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+};
+
+export default async function GrnDetailPage({ params }: { params: Params }) {
+  const { id } = await params;
   if (id === "new") notFound();
 
-  let receiptData: StockReceipt;
-  try {
-    receiptData = await getStockIntakeReceipt(id as UUID);
-    if (!receiptData) notFound();
-  } catch (error) {
-    console.error(error);
-    notFound();
-  }
+  const [grn, config] = await Promise.all([getGrn(id), getLocationConfig()]);
+  if (!grn) notFound();
 
-  const items = (receiptData.items || []) as EnhancedStockPurchaseItem[];
+  const landedCostsEnabled = config?.landedCostTrackingEnabled ?? false;
+  const qualityInspectionEnabled = config?.qualityInspectionEnabled ?? false;
 
-  const totalQty = items.reduce((s, i) => s + (i.quantityReceived || 0), 0);
-  const totalValue = items.reduce((s, i) => s + (i.totalCost || 0), 0);
+  // Keep already-existing costs visible even if the feature was turned off
+  // later; only new-adds are gated by the flag.
+  const costs = await getLandedCosts(id);
 
-  // Settlement currency — prefer the receipt header, fall back to the first
-  // item's settlement currency, then to location default TZS.
-  const currency =
-    receiptData.currency ||
-    items.find((i) => i.currency)?.currency ||
-    DEFAULT_CURRENCY;
-  const hasForeignLine = items.some(
-    (i) => i.originalCurrency && i.originalCurrency !== (i.currency || currency),
+  const currency = grn.currency || grn.items?.[0]?.currency || DEFAULT_CURRENCY;
+  const totalQty = grn.items.reduce(
+    (sum, item) => sum + Number(item.receivedQuantity || 0),
+    0,
+  );
+  const itemsTotal = grn.items.reduce(
+    (sum, item) =>
+      sum + Number(item.receivedQuantity || 0) * Number(item.unitCost || 0),
+    0,
+  );
+  const landedTotal = costs.reduce(
+    (sum, cost) => sum + Number(cost.amount || 0),
+    0,
+  );
+  const grandTotal = itemsTotal + landedTotal;
+  const hasForeignLine = grn.items.some(
+    (item) =>
+      item.originalCurrency && item.originalCurrency !== (item.currency || currency),
   );
 
-  const formatCurrency = (v: number) =>
-    v.toLocaleString("en-US", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
+  const breadcrumbItems = [
+    { title: "Goods Received", link: "/goods-received" },
+    { title: grn.grnNumber, link: "" },
+  ];
 
-  const formatDate = (d: string | Date) => format(new Date(d), "dd MMM yyyy");
-
-  const formatDateTime = (d: string | Date) =>
-    format(new Date(d), "dd MMM yyyy, hh:mm a");
+  const inspectionActive =
+    grn.status === "INSPECTION_HOLD" && qualityInspectionEnabled;
+  const landedCostsLocked = grn.status === "CANCELLED" || !landedCostsEnabled;
+  const showLandedCostsPanel = landedCostsEnabled || costs.length > 0;
 
   return (
-    <div className="min-h-screen py-8 px-4 sm:px-6">
-      <div className="max-w-4xl mx-auto">
-        <div
-          id="grn-content"
-          className="bg-white rounded-lg shadow-sm mx-auto overflow-hidden"
-          style={{ maxWidth: "794px", border: `1px solid ${SECONDARY}` }}
-        >
-          <div className="px-6 lg:px-10 pt-8 pb-6 flex flex-col lg:flex-row justify-between items-start gap-6">
-            <div className="flex items-center gap-4">
-              {(receiptData as any).locationLogo ? (
-                <img
-                  src={(receiptData as any).locationLogo}
-                  alt={`${receiptData.businessName} logo`}
-                  className="h-16 w-auto object-contain flex-shrink-0 rounded"
-                  style={{ border: `1px solid ${SECONDARY}` }}
-                />
-              ) : (
-                <div className="h-14 w-14 rounded-lg flex items-center justify-center text-white text-xl font-bold flex-shrink-0"></div>
+    <div className="flex-1 px-4 pt-4 pb-8 md:px-8 md:pt-6 md:pb-8 mt-12">
+      <div className="space-y-6">
+        <BreadcrumbsNav items={breadcrumbItems} />
+
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">{grn.grnNumber}</h1>
+              <span
+                className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${GRN_STATUS_TONES[grn.status]}`}
+              >
+                {GRN_STATUS_LABELS[grn.status]}
+              </span>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {grn.supplierName || "Unknown supplier"} · Received{" "}
+              {formatOnlyDate(grn.receivedDate)}
+              {grn.lpoId && (
+                <>
+                  {" · "}
+                  <Link
+                    href={`/stock-purchases/${grn.lpoId}`}
+                    className="text-primary hover:underline"
+                  >
+                    View LPO
+                  </Link>
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-muted-foreground">Currency:</span>
+              <span className="font-mono font-semibold bg-gray-100 px-2 py-0.5 rounded">
+                {currency}
+              </span>
+            </div>
+            <GrnStatusActions grn={grn} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Meta label="Items" value={String(grn.items.length)} />
+          <Meta
+            label="Total quantity"
+            value={totalQty.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+          />
+          <Meta
+            label="Line value"
+            value={itemsTotal.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            trailing={currency}
+          />
+          <Meta
+            label="Landed cost"
+            value={landedTotal.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            trailing={currency}
+          />
+        </div>
+
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="pt-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <Field label="Received by" value={grn.receivedByName || "—"} />
+            <Field label="Location" value={grn.locationName || "—"} />
+            <Field label="Delivery person" value={grn.deliveryPersonName || "—"} />
+            <Field
+              label="Delivery contact"
+              value={
+                grn.deliveryPersonPhone || grn.deliveryPersonEmail
+                  ? [grn.deliveryPersonPhone, grn.deliveryPersonEmail]
+                      .filter(Boolean)
+                      .join(" · ")
+                  : "—"
+              }
+            />
+            <Field label="Created" value={formatDate(grn.createdAt)} />
+            <Field label="Last updated" value={formatDate(grn.updatedAt)} />
+          </CardContent>
+        </Card>
+
+        {/* ── Items ── */}
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="px-2 sm:px-6 pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">Items</h3>
+              {hasForeignLine && (
+                <span className="text-xs text-amber-700">
+                  Some lines were invoiced in a foreign currency — converted at
+                  receive time.
+                </span>
               )}
             </div>
-
-            <div className="lg:text-right">
-              <h2
-                className="text-3xl lg:text-4xl font-light tracking-wide mb-2"
-                style={{ color: PRIMARY }}
-              >
-                GOODS RECEIVED NOTE
-              </h2>
-              <div className="text-sm text-gray-600 space-y-0.5">
-                <p className="font-semibold text-gray-800">
-                  {receiptData.businessName}
-                </p>
-                {receiptData.locationAddress && (
-                  <p>{receiptData.locationAddress}</p>
-                )}
-                {receiptData.locationName && <p>{receiptData.locationName}</p>}
-                {receiptData.locationPhone && (
-                  <p>Phone number: {receiptData.locationPhone}</p>
-                )}
-                {receiptData.locationEmail && (
-                  <p>{receiptData.locationEmail}</p>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div
-            className="mx-6 lg:mx-10"
-            style={{ height: 1, backgroundColor: SECONDARY }}
-          />
-
-          {/* ── SUPPLIER + META TABLE ── */}
-          <div className="px-6 lg:px-10 py-6 flex flex-col lg:flex-row justify-between gap-6">
-            {/* Left: Supplier */}
-            <div className="flex-1">
-              <p className="text-xs uppercase tracking-widest text-gray-400 mb-2">
-                Supplier
-              </p>
-              <div className="text-sm text-gray-700 space-y-0.5">
-                <p className="font-semibold text-gray-900">
-                  {receiptData.supplierName}
-                </p>
-                {receiptData.supplierPhoneNumber && (
-                  <p>Phone number: {receiptData.supplierPhoneNumber}</p>
-                )}
-                {receiptData.supplierEmail && (
-                  <p>Email: {receiptData.supplierEmail}</p>
-                )}
-                {receiptData.supplierPhysicalAddress && (
-                  <p>Physical address: {receiptData.supplierPhysicalAddress}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Right: GRN meta — fixed label width so nothing wraps */}
-            <div className="w-full lg:w-80">
+            <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <tbody>
-                  <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
-                    <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
-                      GRN Number:
-                    </td>
-                    <td className="py-2 text-gray-900 text-right font-mono text-xs">
-                      {receiptData.receiptNumber}
-                    </td>
+                <thead>
+                  <tr className="border-b bg-gray-50/60">
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Item</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Batch</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Expiry</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Qty</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Unit Cost</th>
+                    <th className="px-3 py-2 text-right text-xs font-semibold text-gray-400 uppercase">Line Total</th>
+                    <th className="px-3 py-2 text-left text-xs font-semibold text-gray-400 uppercase">Inspection</th>
                   </tr>
-                  {receiptData.purchaseOrderNumber && (
-                    <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
-                      <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
-                        PO Reference:
-                      </td>
-                      <td className="py-2 text-gray-900 text-right text-xs break-all">
-                        {receiptData.purchaseOrderNumber}
-                      </td>
-                    </tr>
-                  )}
-                  <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
-                    <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
-                      Date Received:
-                    </td>
-                    <td className="py-2 text-gray-900 text-right">
-                      {receiptData.receivedAt
-                        ? formatDate(receiptData.receivedAt)
-                        : formatDate(new Date())}
-                    </td>
-                  </tr>
-                  <tr style={{ borderBottom: `1px solid ${SECONDARY}` }}>
-                    <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
-                      Prepared By:
-                    </td>
-                    <td className="py-2 text-gray-900 text-right">
-                      {receiptData.staffFirstName} {receiptData.staffLastName}
-                    </td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
-                      Total Value:
-                    </td>
-                    <td className="py-2 font-bold text-right">
-                      <Money amount={totalValue} currency={currency} />
-                    </td>
-                  </tr>
-                  {hasForeignLine && (
-                    <tr>
-                      <td className="py-2 font-semibold text-gray-700 whitespace-nowrap pr-6">
-                        Invoice Currency:
-                      </td>
-                      <td className="py-2 text-right text-xs text-amber-700">
-                        {Array.from(
-                          new Set(
-                            items
-                              .map((i) => i.originalCurrency)
-                              .filter((c): c is string => !!c),
-                          ),
-                        ).join(", ")} · converted @ receive
-                      </td>
-                    </tr>
-                  )}
+                </thead>
+                <tbody className="divide-y">
+                  {grn.items.map((item) => {
+                    const lineCurrency = item.currency || currency;
+                    const isForeign =
+                      item.originalCurrency &&
+                      item.originalCurrency !== lineCurrency;
+                    const total =
+                      Number(item.receivedQuantity || 0) * Number(item.unitCost || 0);
+                    const status = item.inspectionStatus ?? "PENDING";
+                    return (
+                      <tr key={item.id} className="hover:bg-gray-50/40">
+                        <td className="px-3 py-2 font-medium text-gray-900">
+                          {item.variantName}
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          <div className="space-y-0.5">
+                            <span className="font-mono">
+                              {item.batchNumber || "—"}
+                            </span>
+                            {item.supplierBatchReference && (
+                              <div className="text-[10px]">
+                                Supplier ref: {item.supplierBatchReference}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">
+                          {formatOnlyDate(item.expiryDate)}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          {Number(item.receivedQuantity).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2 text-right">
+                          <Money amount={Number(item.unitCost)} currency={lineCurrency} />
+                          {isForeign && item.originalUnitCost != null && (
+                            <div className="text-[10px] text-muted-foreground">
+                              {Number(item.originalUnitCost).toLocaleString()}{" "}
+                              {item.originalCurrency}
+                              {item.rateUsed != null &&
+                                Number(item.rateUsed) !== 1 && (
+                                  <> @ {Number(item.rateUsed).toLocaleString(undefined, { maximumFractionDigits: 6 })}</>
+                                )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-right font-semibold">
+                          <Money amount={total} currency={lineCurrency} />
+                        </td>
+                        <td className="px-3 py-2">
+                          <span
+                            className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${INSPECTION_STATUS_TONES[status]}`}
+                          >
+                            {INSPECTION_STATUS_LABELS[status]}
+                          </span>
+                          {status === "PARTIAL" && (
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
+                              {Number(item.inspectedQuantity ?? 0).toLocaleString()} inspected
+                              {" · "}
+                              {Number(item.rejectedQuantity ?? 0).toLocaleString()} rejected
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
+                <tfoot>
+                  <tr className="bg-gray-50/60 font-semibold">
+                    <td colSpan={3} className="px-3 py-2 text-right">
+                      Totals
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      {totalQty.toLocaleString()}
+                    </td>
+                    <td />
+                    <td className="px-3 py-2 text-right">
+                      <Money amount={itemsTotal} currency={currency} />
+                    </td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             </div>
-          </div>
+          </CardContent>
+        </Card>
 
-          {/* ── ITEMS TABLE — desktop ── */}
-          <div className="hidden lg:block px-10 mb-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ backgroundColor: PRIMARY }}>
-                  <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white w-8">
-                    #
-                  </th>
-                  <th className="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wider text-white">
-                    Item / Variant
-                  </th>
-                  <th className="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wider text-white w-24">
-                    Qty
-                  </th>
-                  <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white w-32">
-                    Prev. Cost
-                  </th>
-                  <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white w-32">
-                    New Cost
-                  </th>
-                  <th className="px-3 py-3 text-right text-xs font-semibold uppercase tracking-wider text-white w-36">
-                    Total Amount
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, index) => (
-                  <tr
-                    key={item.id || index}
-                    style={{
-                      backgroundColor:
-                        index % 2 === 0 ? "#ffffff" : `${SECONDARY}40`,
-                      borderBottom: `1px solid ${SECONDARY}`,
-                    }}
-                  >
-                    <td className="px-3 py-3 text-sm text-gray-500 text-center">
-                      {index + 1}
-                    </td>
-                    <td className="px-3 py-3">
-                      <p className="font-medium text-gray-900">
-                        {item.stockName}
-                      </p>
-                      {item.stockVariantName &&
-                        item.stockVariantName !== item.stockName && (
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {item.stockVariantName}
-                          </p>
-                        )}
-                    </td>
-                    <td className="px-3 py-3 text-center font-bold text-gray-800">
-                      {item.quantityReceived?.toLocaleString()}
-                    </td>
-                    <td className="px-3 py-3 text-right text-gray-500">
-                      {item.previousCostPerItem != null
-                        ? formatCurrency(item.previousCostPerItem)
-                        : "—"}
-                    </td>
-                    <td className="px-3 py-3 text-right font-medium text-gray-800">
-                      {item.lastCostPerItem != null
-                        ? formatCurrency(item.lastCostPerItem)
-                        : item.previousCostPerItem != null
-                          ? formatCurrency(item.previousCostPerItem)
-                          : "—"}
-                    </td>
-                    <td className="px-3 py-3 text-right font-semibold text-gray-900">
-                      <Money amount={item.totalCost || 0} currency={item.currency || currency} />
-                    </td>
-                  </tr>
-                ))}
-                {/* Total row */}
-                <tr>
-                  <td
-                    colSpan={2}
-                    className="px-3 py-3 text-sm font-semibold text-right"
-                  >
-                    Total — {items.length}{" "}
-                    {items.length === 1 ? "line" : "lines"}
-                  </td>
-                  <td className="px-3 py-3 text-center font-bold">
-                    {totalQty.toLocaleString()}
-                  </td>
-                  <td colSpan={2} />
-                  <td className="px-3 py-3 text-right font-bold">
-                    <Money amount={totalValue} currency={currency} />
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        {inspectionActive && (
+          <InspectionPanel grnId={grn.id} items={grn.items} />
+        )}
 
-          {/* ── ITEMS CARDS — mobile ── */}
-          <div className="lg:hidden px-4 mb-6 space-y-3">
-            <div
-              className="flex justify-between items-center px-4 py-2 rounded-t-lg text-white text-xs font-semibold uppercase tracking-wider"
-              style={{ backgroundColor: PRIMARY }}
-            >
-              <span>Item</span>
-              <span>Total</span>
-            </div>
-            {items.map((item, index) => (
-              <div
-                key={item.id || index}
-                className="rounded-lg p-4"
-                style={{
-                  border: `1px solid ${SECONDARY}`,
-                  backgroundColor:
-                    index % 2 === 0 ? "#ffffff" : `${SECONDARY}20`,
-                }}
-              >
-                <div className="flex justify-between items-start gap-3 mb-3">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">
-                      <span className="text-gray-400 mr-1">{index + 1}.</span>
-                      {item.stockName}
-                    </p>
-                    {item.stockVariantName &&
-                      item.stockVariantName !== item.stockName && (
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {item.stockVariantName}
-                        </p>
-                      )}
-                  </div>
-                  <p className="text-sm font-bold whitespace-nowrap">
-                    <Money amount={item.totalCost || 0} currency={item.currency || currency} />
-                  </p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <p className="text-gray-400 uppercase tracking-wider mb-0.5">
-                      Qty Received
-                    </p>
-                    <p className="font-bold text-gray-800">
-                      {item.quantityReceived?.toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 uppercase tracking-wider mb-0.5">
-                      Total Amount
-                    </p>
-                    <p className="font-bold">
-                      <Money amount={item.totalCost || 0} currency={item.currency || currency} />
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 uppercase tracking-wider mb-0.5">
-                      Prev. Cost
-                    </p>
-                    <p className="font-semibold text-gray-600">
-                      {item.previousCostPerItem != null
-                        ? formatCurrency(item.previousCostPerItem)
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-400 uppercase tracking-wider mb-0.5">
-                      New Cost
-                    </p>
-                    <p className="font-semibold text-gray-800">
-                      {item.lastCostPerItem != null
-                        ? formatCurrency(item.lastCostPerItem)
-                        : item.previousCostPerItem != null
-                          ? formatCurrency(item.previousCostPerItem)
-                          : "—"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-            {/* Mobile total */}
-            <div className="flex justify-between items-center px-4 py-3 rounded-lg font-semibold text-sm">
-              <span>Total ({totalQty.toLocaleString()} units)</span>
-              <Money amount={totalValue} currency={currency} />
-            </div>
-          </div>
-
-          {/* ── INVOICE SUMMARY ── */}
-          <div className="px-6 lg:px-10 mb-6">
-            <div className="flex justify-end">
-              <div className="w-full lg:max-w-xs">
-                <div
-                  className="flex justify-between text-sm text-gray-600 py-2"
-                  style={{ borderBottom: `1px solid ${SECONDARY}` }}
-                >
-                  <span>Net Amount:</span>
-                  <Money amount={totalValue} currency={currency} />
-                </div>
-                <div
-                  className="flex justify-between text-sm text-gray-600 py-2"
-                  style={{ borderBottom: `1px solid ${SECONDARY}` }}
-                >
-                  <span>VAT Amount:</span>
-                  <Money amount={0} currency={currency} />
-                </div>
-                <div className="flex justify-between font-bold py-3 mt-1 rounded px-3">
-                  <span>Total Amount:</span>
-                  <Money amount={totalValue} currency={currency} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* ── SIGNATURES ── */}
-          <div
-            className="px-6 lg:px-10 py-6"
-            style={{ borderTop: `1px solid ${SECONDARY}` }}
-          >
-            <p className="text-xs uppercase tracking-widest mb-5 font-semibold">
-              Authorisation & Signatures
-            </p>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
-              {[
-                {
-                  label: "Prepared By",
-                  value: `${receiptData.staffFirstName} ${receiptData.staffLastName}`,
-                },
-                { label: "Checked By", value: "" },
-                { label: "Authorised By", value: "" },
-                { label: "Accounts", value: "" },
-              ].map(({ label, value }) => (
-                <div key={label} className="flex flex-col items-center">
-                  <div className="h-10 flex items-end justify-center pb-1 w-full">
-                    {value && (
-                      <span className="text-xs font-semibold text-gray-700 truncate">
-                        {value}
-                      </span>
-                    )}
-                  </div>
-                  <div
-                    className="w-full mb-1.5"
-                    style={{ borderBottom: "2px solid #d1d5db" }}
-                  />
-                  <p className="text-xs text-gray-400 text-center">{label}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Approval + VAT tables */}
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Approval table */}
-              <div>
-                <p className="text-xs uppercase tracking-widest mb-2 font-semibold">
-                  Approval
-                </p>
-                <table
-                  className="w-full text-xs"
-                  style={{ border: `1px solid ${SECONDARY}`, borderRadius: 8 }}
-                >
-                  <thead>
-                    <tr style={{ backgroundColor: `${SECONDARY}80` }}>
-                      {["Approved By", "Date", "Amount"].map((h) => (
-                        <th
-                          key={h}
-                          className="py-2.5 px-3 font-semibold text-gray-600 text-center"
-                          style={{ borderBottom: `1px solid ${SECONDARY}` }}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[1, 2].map((r) => (
-                      <tr
-                        key={r}
-                        style={{ borderTop: `1px solid ${SECONDARY}` }}
-                      >
-                        <td className="py-5" />
-                        <td
-                          className="py-5"
-                          style={{ borderLeft: `1px solid ${SECONDARY}` }}
-                        />
-                        <td
-                          className="py-5"
-                          style={{ borderLeft: `1px solid ${SECONDARY}` }}
-                        />
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* VAT summary */}
-              <div>
-                <p className="text-xs uppercase tracking-widest mb-2 font-semibold">
-                  VAT Summary
-                </p>
-                <table
-                  className="w-full text-xs"
-                  style={{ border: `1px solid ${SECONDARY}` }}
-                >
-                  <thead>
-                    <tr style={{ backgroundColor: `${SECONDARY}80` }}>
-                      {["Type", "VAT", "Goods Value"].map((h, i) => (
-                        <th
-                          key={h}
-                          className={`py-2.5 px-3 font-semibold text-gray-600 ${i === 0 ? "text-left" : "text-right"}`}
-                          style={{ borderBottom: `1px solid ${SECONDARY}` }}
-                        >
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {[
-                      {
-                        type: "VAT",
-                        vat: "0.00",
-                        goods: formatCurrency(totalValue),
-                      },
-                      { type: "EXEMPT", vat: "0.00", goods: "0.00" },
-                    ].map(({ type, vat, goods }, i) => (
-                      <tr
-                        key={type}
-                        style={{
-                          borderTop: `1px solid ${SECONDARY}`,
-                          backgroundColor:
-                            i % 2 === 0 ? "#ffffff" : `${SECONDARY}30`,
-                        }}
-                      >
-                        <td className="py-3 px-3 font-semibold text-gray-700">
-                          {type}
-                        </td>
-                        <td className="py-3 px-3 text-right text-gray-500">
-                          {vat}
-                        </td>
-                        <td className="py-3 px-3 text-right font-semibold text-gray-800">
-                          {goods}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-
-          {/* ── NOTES ── */}
-          {receiptData.notes && (
-            <div
-              className="px-6 lg:px-10 pb-6"
-              style={{ borderTop: `1px solid ${SECONDARY}` }}
-            >
-              <p
-                className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold"
-                style={{ color: PRIMARY }}
-              >
-                Notes
-              </p>
-              <p
-                className="text-sm text-gray-600 p-4 rounded-lg leading-relaxed"
-                style={{
-                  backgroundColor: `${SECONDARY}40`,
-                  border: `1px solid ${SECONDARY}`,
-                }}
-              >
-                {receiptData.notes}
-              </p>
-            </div>
-          )}
-
-          {/* ── FOOTER ── */}
-          <div
-            className="px-6 lg:px-10 py-6 flex  justify-center items-center gap-4"
-            style={{ borderTop: `1px solid ${SECONDARY}` }}
-          >
-            <div className="flex justify-center items-center gap-4">
-              <div className="text-center flex-shrink-0">
-                <p className="text-xs lg:text-sm text-gray-400 font-semibold">
-                  Thank you for your business and continued support
-                </p>
-                <p className="text-xs text-gray-400 mt-0.5">
-                  Powered by Settlo Technologies
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Action Buttons ── */}
-        <div className="hidden lg:flex w-full justify-center items-center mt-6 mb-4 gap-3">
-          <GRNDownloadButton
-            receiptData={receiptData}
-            items={items}
-            totalQuantityReceived={totalQty}
-            totalValue={totalValue}
+        {showLandedCostsPanel && (
+          <LandedCostsPanel
+            grnId={grn.id}
+            costs={costs}
+            currency={currency}
+            disabled={landedCostsLocked}
           />
-        </div>
+        )}
+
+        {costs.length > 0 && (
+          <Card className="rounded-xl shadow-sm">
+            <CardContent className="pt-4 pb-4 flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">
+                Grand total (items + landed)
+              </span>
+              <span className="font-mono text-base font-semibold">
+                <Money amount={grandTotal} currency={currency} />
+              </span>
+            </CardContent>
+          </Card>
+        )}
+
+        <AttachmentsPanel
+          entityType="GRN"
+          entityId={grn.id}
+          description="Delivery notes, invoice scans, inspection photos. Max 10 MB per file."
+        />
+
+        {grn.notes && (
+          <Card className="rounded-xl shadow-sm">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-start gap-2">
+                <FileText className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-gray-400 uppercase">Notes</p>
+                  <p className="text-sm mt-1 whitespace-pre-wrap">{grn.notes}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
 }
+
+function Meta({
+  label,
+  value,
+  trailing,
+}: {
+  label: string;
+  value: string;
+  trailing?: string;
+}) {
+  return (
+    <Card className="rounded-xl shadow-sm">
+      <CardContent className="py-4">
+        <p className="text-[11px] uppercase tracking-wide text-gray-400">
+          {label}
+        </p>
+        <p className="mt-1 text-base font-semibold">
+          {value}
+          {trailing && (
+            <span className="ml-1 text-xs text-muted-foreground font-medium">
+              {trailing}
+            </span>
+          )}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] uppercase tracking-wide text-gray-400">
+        {label}
+      </span>
+      <span className="font-medium text-gray-900">{value}</span>
+    </div>
+  );
+}
+
