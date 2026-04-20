@@ -63,6 +63,7 @@ export interface SoldItemsReport {
   totalCost: number | null;
   totalProfit: number;
   averageMargin: number;
+  netProfit: number;
 }
 export interface SoldItem {
   productName: string;
