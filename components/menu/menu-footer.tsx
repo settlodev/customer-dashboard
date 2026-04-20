@@ -23,9 +23,7 @@ export function MenuFooter({ business, primaryColor }: MenuFooterProps) {
     .filter(Boolean)
     .join(", ");
 
-  const socials = Object.entries(business.socials).filter(
-    ([, url]) => url,
-  );
+  const socials = Object.entries(business.socials).filter(([, url]) => url);
 
   return (
     <footer className="border-t bg-white pb-24">
