@@ -1,6 +1,6 @@
 "use client";
 
-import { useForm, useFieldArray } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import {
   Form,
   FormControl,
@@ -30,11 +30,8 @@ import {
   Copy,
   Plus,
   Trash2,
-  CheckCircle,
   ArrowLeft,
-  Printer,
   Building2,
-  Phone,
   Mail,
   User,
   MapPin,
@@ -62,6 +59,7 @@ import {
 import { createStockPurchase } from "@/lib/actions/stock-purchase-actions";
 import { createSupplier } from "@/lib/actions/supplier-actions";
 import { format } from "date-fns";
+import { PhoneInput } from "@/components/ui/phone-input";
 
 const PRIMARY = "#EB7F44";
 const PRIMARY_LIGHT = "#fde8d8";
@@ -81,16 +79,13 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
     register,
     handleSubmit,
     reset,
+    control,
     formState: { errors },
   } = useForm<SupplierFormValues>({
     resolver: zodResolver(SupplierSchema),
   });
 
-  const onSubmit = async (
-    values: SupplierFormValues,
-    e?: React.BaseSyntheticEvent,
-  ) => {
-    e?.stopPropagation();
+  const onSubmit = async (values: SupplierFormValues) => {
     setServerError(null);
     setLoading(true);
     try {
@@ -181,7 +176,13 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
             <p className="text-xs text-gray-400">Closing automatically…</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-1">
+          <form
+            onSubmit={(e) => {
+              e.stopPropagation();
+              handleSubmit(onSubmit)(e);
+            }}
+            className="space-y-5 mt-1"
+          >
             {serverError && (
               <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2.5">
                 {serverError}
@@ -194,6 +195,7 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
                 Company Information
               </p>
               <div className="space-y-3">
+                {/* Supplier Name */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-gray-700">
                     Supplier Name <span className="text-red-400">*</span>
@@ -214,6 +216,7 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
+                  {/* Company Email */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-gray-700">
                       Email <span className="text-red-400">*</span>
@@ -233,18 +236,24 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
                       </p>
                     )}
                   </div>
+
+                  {/* Company Phone — PhoneInput via Controller */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-gray-700">
                       Phone <span className="text-red-400">*</span>
                     </Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        placeholder="+255 712 345 678"
-                        {...register("phoneNumber")}
-                        className={`pl-9 ${inputClass(!!errors.phoneNumber)}`}
-                      />
-                    </div>
+                    <Controller
+                      control={control}
+                      name="phoneNumber"
+                      render={({ field }) => (
+                        <PhoneInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={loading}
+                          className={inputClass(!!errors.phoneNumber)}
+                        />
+                      )}
+                    />
                     {errors.phoneNumber && (
                       <p className="text-xs text-red-500">
                         {errors.phoneNumber.message}
@@ -253,6 +262,7 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
                   </div>
                 </div>
 
+                {/* Physical Address */}
                 <div className="space-y-1.5">
                   <Label className="text-xs font-medium text-gray-700">
                     Physical Address{" "}
@@ -286,6 +296,7 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
               </p>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
+                  {/* Contact Name */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-gray-700">
                       Full Name <span className="text-red-400">*</span>
@@ -304,6 +315,8 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
                       </p>
                     )}
                   </div>
+
+                  {/* Contact Title */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-gray-700">
                       Title{" "}
@@ -328,24 +341,31 @@ function CreateSupplierModal({ onCreated }: { onCreated: () => void }) {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
+                  {/* Contact Phone — PhoneInput via Controller */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-gray-700">
                       Phone <span className="text-red-400">*</span>
                     </Label>
-                    <div className="relative">
-                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                      <Input
-                        placeholder="+255 712 345 678"
-                        {...register("contactPersonPhone")}
-                        className={`pl-9 ${inputClass(!!errors.contactPersonPhone)}`}
-                      />
-                    </div>
+                    <Controller
+                      control={control}
+                      name="contactPersonPhone"
+                      render={({ field }) => (
+                        <PhoneInput
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={loading}
+                          className={inputClass(!!errors.contactPersonPhone)}
+                        />
+                      )}
+                    />
                     {errors.contactPersonPhone && (
                       <p className="text-xs text-red-500">
                         {errors.contactPersonPhone.message}
                       </p>
                     )}
                   </div>
+
+                  {/* Contact Email */}
                   <div className="space-y-1.5">
                     <Label className="text-xs font-medium text-gray-700">
                       Email{" "}
@@ -424,7 +444,6 @@ function StockPurchaseForm({
   const [purchaseData, setPurchaseData] = useState<any>();
   const { toast } = useToast();
   const router = useRouter();
-  // key used to force-remount the SupplierSelector after a new supplier is added
   const [supplierSelectorKey, setSupplierSelectorKey] = useState(0);
 
   const searchParams = useSearchParams();
@@ -866,38 +885,6 @@ function StockPurchaseForm({
             )}
 
             <div
-              className="px-6 lg:px-10 pb-6"
-              style={{ borderTop: `1px solid ${SECONDARY}` }}
-            >
-              <p
-                className="text-xs uppercase tracking-widest mt-5 mb-2 font-semibold"
-                style={{ color: PRIMARY }}
-              >
-                Terms & Conditions
-              </p>
-              <ol
-                className="space-y-1.5 list-decimal list-inside text-xs text-gray-500 leading-relaxed p-4 rounded-lg"
-                style={{
-                  backgroundColor: `${SECONDARY}40`,
-                  border: `1px solid ${SECONDARY}`,
-                }}
-              >
-                {[
-                  "Please confirm receipt of this purchase order within 24 hours.",
-                  "Delivery must be made on or before the specified delivery date.",
-                  "All items must meet the specified quality standards and match the descriptions provided.",
-                  "Invoice should reference the purchase order number for processing.",
-                  "Goods received are subject to inspection and approval.",
-                  "Payment terms: Net 30 days from date of invoice.",
-                ].map((term, i) => (
-                  <li key={i} className="pl-1">
-                    {term}
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <div
               className="px-6 lg:px-10 py-6 flex justify-center items-center gap-4"
               style={{ borderTop: `1px solid ${SECONDARY}` }}
             >
@@ -954,8 +941,7 @@ function StockPurchaseForm({
 
   // ── Form ──────────────────────────────────────────────────────────────────
   return (
-    <div className="w-full  mx-auto px-4 sm:px-6 py-6">
-      {/* ── Page header — matches modal DialogTitle style ── */}
+    <div className="w-full mx-auto px-4 sm:px-6 py-6">
       <div className="flex items-center gap-2.5 mb-6">
         <div
           className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
@@ -975,7 +961,6 @@ function StockPurchaseForm({
         </div>
       </div>
 
-      {/* ── White card — same feel as the modal DialogContent ── */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
         <Form {...form}>
           <form
@@ -985,7 +970,7 @@ function StockPurchaseForm({
             {error && <FormError message={error} />}
             {success && <FormSuccess message={success} />}
 
-            {/* ── ORDER SUMMARY section header ─────────────────────────────── */}
+            {/* ── ORDER SUMMARY ─────────────────────────────────────────────── */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
                 Order Summary
@@ -1068,7 +1053,7 @@ function StockPurchaseForm({
 
             <Separator />
 
-            {/* ── STOCK ITEMS section ───────────────────────────────────────── */}
+            {/* ── STOCK ITEMS ───────────────────────────────────────────────── */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
                 Stock Items <span className="text-red-400 normal-case">*</span>
@@ -1080,7 +1065,6 @@ function StockPurchaseForm({
                     key={field.id}
                     className="grid grid-cols-1 md:grid-cols-12 gap-3 p-4 rounded-xl border border-gray-200 bg-white hover:border-gray-300 transition-colors"
                   >
-                    {/* Numbered badge */}
                     <div className="hidden md:flex md:col-span-1 items-center justify-center pt-6">
                       <span
                         className="w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold text-white shrink-0"
@@ -1160,7 +1144,6 @@ function StockPurchaseForm({
                 ))}
               </div>
 
-              {/* Ghost add-row button */}
               <button
                 type="button"
                 onClick={addStockItem}
@@ -1173,14 +1156,13 @@ function StockPurchaseForm({
 
             <Separator />
 
-            {/* ── SUPPLIER & DELIVERY section ───────────────────────────────── */}
+            {/* ── SUPPLIER & DELIVERY ───────────────────────────────────────── */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
                 Supplier & Delivery
               </p>
 
               <div className="space-y-3">
-                {/* Supplier row — selector + add button side by side */}
                 <FormField
                   control={form.control}
                   name="supplier"
@@ -1217,7 +1199,6 @@ function StockPurchaseForm({
                   )}
                 />
 
-                {/* Delivery date */}
                 <FormField
                   control={form.control}
                   name="deliveryDate"
@@ -1247,7 +1228,7 @@ function StockPurchaseForm({
 
             <Separator />
 
-            {/* ── NOTES section ─────────────────────────────────────────────── */}
+            {/* ── NOTES ─────────────────────────────────────────────────────── */}
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
                 Special Instructions
@@ -1258,7 +1239,7 @@ function StockPurchaseForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-xs font-medium text-gray-700">
-                      Notes{""} <span className="text-red-500">*</span>
+                      Notes <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
                       <Textarea
