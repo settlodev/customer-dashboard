@@ -261,6 +261,22 @@ const SalesDashboard = ({
               {formatCurrency(salesData?.totalCost)}
             </span>
           </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Paid amount</span>
+            <span className="text-sm font-bold">
+              {formatCurrency(salesData?.paidAmount)}
+            </span>
+          </div>
+          <div className="h-4 w-px bg-border hidden sm:block" />
+          <div className="flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Unpaid amount</span>
+            <span className="text-sm font-bold">
+              {formatCurrency(salesData?.unpaidAmount)}
+            </span>
+          </div>
         </CardContent>
       </Card>
 

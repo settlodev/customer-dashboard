@@ -50,6 +50,12 @@ export const searchExpenses = async (
           field_type: "STRING",
           value: q,
         },
+        {
+          key: "isArchived",
+          operator: "EQUAL",
+          field_type: "BOOLEAN",
+          value: false,
+        },
       ],
       sorts: [
         {
@@ -193,7 +199,6 @@ export const getExpense = async (id: UUID): Promise<ApiResponse<Expense>> => {
     `/api/expenses/${location?.id}`,
     query,
   );
-
   return parseStringify(expenseData);
 };
 
