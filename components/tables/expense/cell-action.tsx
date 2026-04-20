@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, Edit, MoreHorizontal } from "lucide-react";
+import { CreditCard, Edit, MoreHorizontal, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
@@ -14,6 +14,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -26,7 +27,7 @@ import {
 } from "@/components/ui/form";
 import { Expense } from "@/types/expense/type";
 import { toast } from "@/hooks/use-toast";
-import { payExpense } from "@/lib/actions/expense-actions";
+import { deleteExpense, payExpense } from "@/lib/actions/expense-actions";
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,8 @@ import { Label } from "@/components/ui/label";
 import DateTimePicker from "@/components/widgets/datetimepicker";
 import { PayableExpenseSchema } from "@/types/expense/schema";
 import { Input } from "@/components/ui/input";
+import { useDisclosure } from "@/hooks/use-disclosure";
+import DeleteModal from "@/components/tables/delete-modal";
 
 interface CellActionProps {
   data: Expense;
@@ -48,8 +51,8 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   const router = useRouter();
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  // React Hook Form setup
   const form = useForm<z.infer<typeof PayableExpenseSchema>>({
     resolver: zodResolver(PayableExpenseSchema),
     defaultValues: {
@@ -67,7 +70,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   } = form;
   const watchedAmount = watch("amount");
 
-  // Listen for payment dialog events from the Pay button
   useEffect(() => {
     const handlePaymentDialog = (event: CustomEvent) => {
       if (event.detail.purchase.id === data.id) {
@@ -87,7 +89,6 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     };
   }, [data.id]);
 
-  // Reset form when dialog opens
   useEffect(() => {
     if (isPaymentDialogOpen) {
       reset({
@@ -103,20 +104,14 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
     currentDate: Date,
   ) => {
     const newDate = new Date(currentDate);
-
-    if (type === "hour") {
-      newDate.setHours(Number(value));
-    } else if (type === "minutes") {
-      newDate.setMinutes(Number(value));
-    }
-
+    if (type === "hour") newDate.setHours(Number(value));
+    else if (type === "minutes") newDate.setMinutes(Number(value));
     return newDate;
   };
 
   const onSubmit = async (formData: z.infer<typeof PayableExpenseSchema>) => {
     const { amount, paymentDate } = formData;
 
-    // Additional business logic validation
     if (amount > data.unpaidAmount) {
       toast({
         title: "Amount Too High",
@@ -138,13 +133,11 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       if (response) {
         setIsPaymentDialogOpen(false);
         reset();
-
         toast({
           title: "Payment Successful",
           description: `Payment of ${Intl.NumberFormat().format(amount)} processed successfully`,
           variant: "success",
         });
-
         router.refresh();
       }
     } catch (error) {
@@ -156,6 +149,27 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
       });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const onDelete = async () => {
+    try {
+      await deleteExpense(data.id);
+      toast({
+        title: "Deleted",
+        description: `${data.name} has been deleted successfully.`,
+      });
+      router.refresh();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Uh oh! Something went wrong.",
+        description:
+          (error as Error).message ||
+          "There was an issue with your request, please try again later",
+      });
+    } finally {
+      onOpenChange();
     }
   };
 
@@ -172,7 +186,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
   return (
     <>
       <div className="flex items-center gap-2">
-        {/* Payment Button - Prominent display */}
+        {/* Payment Button */}
         {(data.paymentStatus === "NOT_PAID" ||
           data.paymentStatus === "PARTIAL") && (
           <Button
@@ -202,13 +216,29 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
               className="cursor-pointer hover:bg-blue-50"
             >
               <Edit className="mr-2 h-4 w-4 text-blue-600" />
-              <span>Update</span>
+              <span>Edit</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={onOpen}
+              className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              <span>Archive</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {/* Enhanced Payment Dialog with React Hook Form */}
+      {/* Delete Confirmation Modal */}
+      <DeleteModal
+        isOpen={isOpen}
+        itemName={data.name}
+        onDelete={onDelete}
+        onOpenChange={onOpenChange}
+      />
+
+      {/* Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader className="space-y-3">
@@ -224,21 +254,19 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
 
           <Form {...form}>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
-              {/* Unpaid Amount Display */}
+              {/* Outstanding Amount */}
               <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-sm font-medium text-gray-700">
-                      Outstanding Amount:
-                    </Label>
-                  </div>
+                  <Label className="text-sm font-medium text-gray-700">
+                    Outstanding Amount:
+                  </Label>
                   <div className="text-lg font-bold text-gray-900">
                     {Intl.NumberFormat().format(data.unpaidAmount)}
                   </div>
                 </div>
               </div>
 
-              {/* Payment Amount Input */}
+              {/* Payment Amount */}
               <FormField
                 control={control}
                 name="amount"
@@ -248,17 +276,15 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                       Payment Amount *
                     </FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          min="0"
-                          max={data.unpaidAmount}
-                          placeholder="0.00"
-                          className="pl-10 text-right font-mono text-lg border-gray-300 focus:border-green-500 focus:ring-green-500"
-                          {...field}
-                          onChange={(e) => field.onChange(e.target.value)}
-                        />
-                      </div>
+                      <Input
+                        type="number"
+                        min="0"
+                        max={data.unpaidAmount}
+                        placeholder="0.00"
+                        className="pl-10 text-right font-mono text-lg border-gray-300 focus:border-green-500 focus:ring-green-500"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
                     </FormControl>
                     {watchedAmount &&
                       !isNaN(watchedAmount) &&
@@ -273,7 +299,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                 )}
               />
 
-              {/* Payment Date Input */}
+              {/* Payment Date */}
               <FormField
                 control={control}
                 name="paymentDate"
@@ -283,32 +309,28 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                       Payment Date & Time *
                     </FormLabel>
                     <FormControl>
-                      <div className="relative">
-                        <div>
-                          <DateTimePicker
-                            field={{
-                              ...field,
-                              value:
-                                field.value?.toISOString() ||
-                                new Date().toISOString(),
-                              onChange: (value: string) =>
-                                field.onChange(new Date(value)),
-                            }}
-                            date={field.value}
-                            setDate={field.onChange}
-                            handleTimeChange={(type, value) => {
-                              const newDate = handleTimeChange(
-                                type,
-                                value,
-                                field.value || new Date(),
-                              );
-                              field.onChange(newDate);
-                            }}
-                            onDateSelect={field.onChange}
-                            maxDate={new Date()}
-                          />
-                        </div>
-                      </div>
+                      <DateTimePicker
+                        field={{
+                          ...field,
+                          value:
+                            field.value?.toISOString() ||
+                            new Date().toISOString(),
+                          onChange: (value: string) =>
+                            field.onChange(new Date(value)),
+                        }}
+                        date={field.value}
+                        setDate={field.onChange}
+                        handleTimeChange={(type, value) => {
+                          const newDate = handleTimeChange(
+                            type,
+                            value,
+                            field.value || new Date(),
+                          );
+                          field.onChange(newDate);
+                        }}
+                        onDateSelect={field.onChange}
+                        maxDate={new Date()}
+                      />
                     </FormControl>
                     <FormMessage className="text-red-500 text-xs" />
                   </FormItem>
@@ -337,7 +359,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
                 >
                   {isProcessing ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                       Processing...
                     </div>
                   ) : (
