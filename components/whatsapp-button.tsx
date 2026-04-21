@@ -26,7 +26,11 @@ const WhatsAppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function buildMessage({ userName, businessName, locationName }: WhatsAppButtonProps): string {
+function buildMessage({
+  userName,
+  businessName,
+  locationName,
+}: WhatsAppButtonProps): string {
   if (userName && businessName && locationName) {
     return `Hello Settlo, my name is ${userName} from ${businessName} (${locationName}). I need help with`;
   }
@@ -43,12 +47,20 @@ function sanitizePhone(phone: string): string {
   return phone.replace(/[\s\-()+ ]/g, "").replace(/^0/, "255");
 }
 
-export default function WhatsAppButton({ userName, businessName, locationName, phoneNumber, customMessage, hideOnReserve }: WhatsAppButtonProps) {
+export default function WhatsAppButton({
+  userName,
+  businessName,
+  locationName,
+  phoneNumber,
+  customMessage,
+  hideOnReserve,
+}: WhatsAppButtonProps) {
   const pathname = usePathname();
 
   if (hideOnReserve && pathname.startsWith("/reserve")) return null;
 
-  const message = customMessage || buildMessage({ userName, businessName, locationName });
+  const message =
+    customMessage || buildMessage({ userName, businessName, locationName });
   const phone = phoneNumber ? sanitizePhone(phoneNumber) : SETTLO_PHONE;
   const href = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
 
@@ -58,7 +70,7 @@ export default function WhatsAppButton({ userName, businessName, locationName, p
       target="_blank"
       rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
-      className="fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] shadow-lg transition-transform hover:scale-110 active:scale-95"
+      className="fixed bottom-24 lg:bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] shadow-lg transition-transform hover:scale-110 active:scale-95"
     >
       <WhatsAppIcon className="h-7 w-7" />
     </Link>
