@@ -212,7 +212,7 @@ export const CellAction: React.FC<CellActionProps> = ({ data }) => {
               Actions
             </DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => router.push(`/expenses/${data.id}`)}
+              onClick={() => router.push(`/expenses/${data.id}/edit`)}
               className="cursor-pointer hover:bg-blue-50"
             >
               <Edit className="mr-2 h-4 w-4 text-blue-600" />
