@@ -10,10 +10,7 @@ const KEYS = [
   "receiptHeaderImageUrl",
   "receiptNumberPrefix",
   "receiptNumberSuffix",
-  "receiptBusinessName",
-  "receiptHeaderText",
   "receiptFooterText",
-  "receiptPaymentDetails",
   "physicalReceiptPaymentDetails",
   "digitalReceiptPaymentDetails",
   "includePaymentDetailsOnReceipt",
@@ -23,7 +20,6 @@ const KEYS = [
   "showStaffOnReceipt",
   "showCustomerOnReceipt",
   "showQrCodeOnReceipt",
-  "receiptQrCodeUrl",
   "showImageOnReceipt",
   "showAdditionalDetailsOnPhysicalReceipt",
   "showAdditionalDetailsOnDigitalReceipt",
@@ -32,8 +28,6 @@ const KEYS = [
   "autoSmsReceipt",
   "invoiceNumberPrefix",
   "includeDateInInvoiceNumber",
-  "companyRegistrationNumber",
-  "taxIdentificationNumber",
   "defaultPaymentTerms",
   "defaultInvoiceDueDays",
   "pricesIncludeTax",
@@ -55,20 +49,12 @@ export function ReceiptsInvoicingPanel({
     <div className="space-y-6">
       <SettingsSection
         title="Receipt header & footer"
-        description="Everything above the line items and the closing message."
+        description="Header logo and the closing message. Business name and primary header now come from your business profile."
         onSave={p.save}
         isPending={p.isPending}
         isDirty={p.isDirty}
       >
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Business name on receipt">
-            <Input
-              maxLength={200}
-              value={v.receiptBusinessName ?? ""}
-              onChange={(e) => p.setField("receiptBusinessName", e.target.value)}
-              disabled={p.isPending}
-            />
-          </Field>
           <Field label="Header logo URL">
             <Input
               maxLength={500}
@@ -94,14 +80,6 @@ export function ReceiptsInvoicingPanel({
             />
           </Field>
         </div>
-        <Field label="Header text">
-          <Textarea
-            rows={2}
-            value={v.receiptHeaderText ?? ""}
-            onChange={(e) => p.setField("receiptHeaderText", e.target.value)}
-            disabled={p.isPending}
-          />
-        </Field>
         <Field label="Footer text">
           <Textarea
             rows={2}
@@ -114,7 +92,7 @@ export function ReceiptsInvoicingPanel({
 
       <SettingsSection
         title="Receipt content"
-        description="What prints (or emails) on each receipt line."
+        description="What prints (or emails) on each receipt line. The QR code is generated per receipt automatically."
         onSave={p.save}
         isPending={p.isPending}
         isDirty={p.isDirty}
@@ -126,16 +104,6 @@ export function ReceiptsInvoicingPanel({
         <SettingsSwitchRow label="Show customer name" checked={!!v.showCustomerOnReceipt} onChange={(x) => p.setField("showCustomerOnReceipt", x)} disabled={p.isPending} />
         <SettingsSwitchRow label="Show item images" checked={!!v.showImageOnReceipt} onChange={(x) => p.setField("showImageOnReceipt", x)} disabled={p.isPending} />
         <SettingsSwitchRow label="Show QR code" checked={!!v.showQrCodeOnReceipt} onChange={(x) => p.setField("showQrCodeOnReceipt", x)} disabled={p.isPending} />
-        {v.showQrCodeOnReceipt && (
-          <Field label="QR code URL">
-            <Input
-              maxLength={500}
-              value={v.receiptQrCodeUrl ?? ""}
-              onChange={(e) => p.setField("receiptQrCodeUrl", e.target.value)}
-              disabled={p.isPending}
-            />
-          </Field>
-        )}
         <SettingsSwitchRow label="Extra details on physical receipts" checked={!!v.showAdditionalDetailsOnPhysicalReceipt} onChange={(x) => p.setField("showAdditionalDetailsOnPhysicalReceipt", x)} disabled={p.isPending} />
         <SettingsSwitchRow label="Extra details on digital receipts" checked={!!v.showAdditionalDetailsOnDigitalReceipt} onChange={(x) => p.setField("showAdditionalDetailsOnDigitalReceipt", x)} disabled={p.isPending} />
       </SettingsSection>
@@ -153,17 +121,8 @@ export function ReceiptsInvoicingPanel({
           onChange={(x) => p.setField("includePaymentDetailsOnReceipt", x)}
           disabled={p.isPending}
         />
-        <Field label="Generic payment details (fallback)">
-          <Textarea
-            rows={3}
-            placeholder="Bank: … Acc: … MNO: …"
-            value={v.receiptPaymentDetails ?? ""}
-            onChange={(e) => p.setField("receiptPaymentDetails", e.target.value)}
-            disabled={p.isPending}
-          />
-        </Field>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Physical receipt payment details" hint="Overrides the generic text on printed receipts.">
+          <Field label="Physical receipt payment details" hint="Bank / MNO details printed on physical receipts.">
             <Textarea
               rows={3}
               value={v.physicalReceiptPaymentDetails ?? ""}
@@ -171,7 +130,7 @@ export function ReceiptsInvoicingPanel({
               disabled={p.isPending}
             />
           </Field>
-          <Field label="Digital receipt payment details" hint="Overrides the generic text on emailed / SMS receipts.">
+          <Field label="Digital receipt payment details" hint="Shown on emailed / SMS receipts.">
             <Textarea
               rows={3}
               value={v.digitalReceiptPaymentDetails ?? ""}
@@ -196,7 +155,7 @@ export function ReceiptsInvoicingPanel({
 
       <SettingsSection
         title="Invoices"
-        description="Configuration for invoice numbering and legal fields."
+        description="Invoice numbering and payment terms. Legal identifiers (TIN, registration number) live on the business profile."
         onSave={p.save}
         isPending={p.isPending}
         isDirty={p.isDirty}
@@ -213,12 +172,6 @@ export function ReceiptsInvoicingPanel({
               onChange={(e) => p.setField("defaultInvoiceDueDays", e.target.value === "" ? null : Number(e.target.value))}
               disabled={p.isPending}
             />
-          </Field>
-          <Field label="Company registration number">
-            <Input maxLength={100} value={v.companyRegistrationNumber ?? ""} onChange={(e) => p.setField("companyRegistrationNumber", e.target.value)} disabled={p.isPending} />
-          </Field>
-          <Field label="Tax identification number (TIN)">
-            <Input maxLength={100} value={v.taxIdentificationNumber ?? ""} onChange={(e) => p.setField("taxIdentificationNumber", e.target.value)} disabled={p.isPending} />
           </Field>
           <Field label="Default payment terms">
             <Input maxLength={100} value={v.defaultPaymentTerms ?? ""} onChange={(e) => p.setField("defaultPaymentTerms", e.target.value)} disabled={p.isPending} />

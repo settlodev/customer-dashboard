@@ -18,7 +18,7 @@ export interface Location {
   latitude: number | null;
   longitude: number | null;
   timezone: string;
-  parentLocationId: string | null;
+  website: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -33,6 +33,8 @@ import ReservationSettings from "@/components/settings/reservations";
 // New — rebuilt panels
 import { LocationProfilePanel } from "@/components/settings/panels/location-profile-panel";
 import { OrdersPosPanel } from "@/components/settings/panels/orders-pos-panel";
+import { OrderChannelsPanel } from "@/components/settings/panels/order-channels-panel";
+import { PaymentOpsPanel } from "@/components/settings/panels/payment-ops-panel";
 import { DocketsPanel } from "@/components/settings/panels/dockets-panel";
 import { ReceiptsInvoicingPanel } from "@/components/settings/panels/receipts-panel";
 import { NotificationsPanel } from "@/components/settings/panels/notifications-panel";
@@ -43,18 +45,28 @@ import { ClosureDatesPanel } from "@/components/settings/panels/closure-dates-pa
 import { AccountingMappingsPanel } from "@/components/settings/panels/accounting-mappings-panel";
 import { ExchangeRatesPanel } from "@/components/settings/panels/exchange-rates-panel";
 import { DangerZonePanel } from "@/components/settings/panels/danger-zone-panel";
+import { BrandSocialPanel } from "@/components/settings/panels/brand-social-panel";
+import { CustomerPanel } from "@/components/settings/panels/customer-panel";
+import { StaffHrPanel } from "@/components/settings/panels/staff-hr-panel";
+import { DigitalMenuConfigPanel } from "@/components/settings/panels/digital-menu-config-panel";
 
 type TabId =
   | "business"
   | "business-settings"
   | "location"
+  | "brand-social"
   | "orders-pos"
+  | "order-channels"
+  | "payment-ops"
   | "dockets"
   | "receipts"
   | "notifications"
+  | "customer"
   | "loyalty-points"
+  | "staff-hr"
   | "stock-inventory"
   | "day-sessions"
+  | "digital-menu-config"
   | "closure-dates"
   | "accounting"
   | "exchange-rates"
@@ -205,9 +217,18 @@ function SettingsLayout({
       case "location":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <LocationProfilePanel settings={settings} onSaved={onSettingsSaved} />;
+      case "brand-social":
+        if (!settings) return <EmptyState label="Location settings unavailable" />;
+        return <BrandSocialPanel settings={settings} onSaved={onSettingsSaved} />;
       case "orders-pos":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <OrdersPosPanel settings={settings} onSaved={onSettingsSaved} />;
+      case "order-channels":
+        if (!settings) return <EmptyState label="Location settings unavailable" />;
+        return <OrderChannelsPanel settings={settings} onSaved={onSettingsSaved} />;
+      case "payment-ops":
+        if (!settings) return <EmptyState label="Location settings unavailable" />;
+        return <PaymentOpsPanel settings={settings} onSaved={onSettingsSaved} />;
       case "dockets":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <DocketsPanel settings={settings} onSaved={onSettingsSaved} />;
@@ -217,15 +238,24 @@ function SettingsLayout({
       case "notifications":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <NotificationsPanel settings={settings} onSaved={onSettingsSaved} />;
+      case "customer":
+        if (!settings) return <EmptyState label="Location settings unavailable" />;
+        return <CustomerPanel settings={settings} onSaved={onSettingsSaved} />;
       case "loyalty-points":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <LoyaltyRewardsPanel settings={settings} onSaved={onSettingsSaved} />;
+      case "staff-hr":
+        if (!settings) return <EmptyState label="Location settings unavailable" />;
+        return <StaffHrPanel settings={settings} onSaved={onSettingsSaved} />;
       case "stock-inventory":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <StockInventoryPanel settings={settings} onSaved={onSettingsSaved} />;
       case "day-sessions":
         if (!settings) return <EmptyState label="Location settings unavailable" />;
         return <DaySessionsPanel settings={settings} onSaved={onSettingsSaved} />;
+      case "digital-menu-config":
+        if (!settings) return <EmptyState label="Location settings unavailable" />;
+        return <DigitalMenuConfigPanel settings={settings} onSaved={onSettingsSaved} />;
       case "closure-dates":
         return <ClosureDatesPanel />;
       case "accounting":

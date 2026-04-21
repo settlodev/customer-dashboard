@@ -40,13 +40,13 @@ export interface LocationSettings {
   enableSmsNotifications: boolean;
   enablePushNotifications: boolean;
 
-  // Docket / ticket
+  // Docket / ticket (renamed from ticket → docket)
   showAmountOnDockets: boolean;
   printEachDocketItem: boolean;
   showDocketCount: boolean;
-  singleTicketPrint: boolean;
-  showPriceOnTicket: boolean;
-  autoPrintTickets: boolean;
+  singleDocketPrint: boolean;
+  showPriceOnDocket: boolean;
+  autoPrintDockets: boolean;
   allowDuplicateDocketPrinting: boolean;
 
   // Stock deduction
@@ -68,7 +68,6 @@ export interface LocationSettings {
   // Operational
   useShifts: boolean;
   usePasscodes: boolean;
-  enableDigitalMenu: boolean;
 
   // Currency
   currency: string;
@@ -116,17 +115,26 @@ export interface LocationSettings {
   autoOpenDay: boolean;
   autoCloseDay: boolean;
 
+  // 24/7 operation
+  continuousOperation: boolean;
+  dailyCutoffTime: string | null; // HH:mm
+  closeGraceMinutes: number;
+
   // Inventory feature flags (mirrored onto Inventory Service LocationConfig)
   batchTrackingEnabled: boolean;
   qualityInspectionEnabled: boolean;
   autoReorderEnabled: boolean;
   autoClosingEnabled: boolean;
-  warehouseManagementEnabled: boolean;
   cycleCountingEnabled: boolean;
-  consumptionRulesEnabled: boolean;
   expiryAlertDays: number | null;
   reservationExpiryMinutes: number | null;
   rfqEnabled: boolean;
+
+  // Inventory policy
+  enableLowStockAlerts: boolean;
+  defaultLowStockThreshold: number | null;
+  allowNegativeStock: boolean;
+  trackExpiryDates: boolean;
 
   // Order naming
   orderNamePrefix: string | null;
@@ -139,9 +147,6 @@ export interface LocationSettings {
   receiptHeaderImageUrl: string | null;
   receiptNumberPrefix: string | null;
   receiptNumberSuffix: string | null;
-  receiptBusinessName: string | null;
-  receiptHeaderText: string | null;
-  receiptPaymentDetails: string | null;
   physicalReceiptPaymentDetails: string | null;
   digitalReceiptPaymentDetails: string | null;
   receiptFooterText: string | null;
@@ -152,7 +157,6 @@ export interface LocationSettings {
   showStaffOnReceipt: boolean;
   showCustomerOnReceipt: boolean;
   showQrCodeOnReceipt: boolean;
-  receiptQrCodeUrl: string | null;
   autoPrintReceipt: boolean;
   autoEmailReceipt: boolean;
   autoSmsReceipt: boolean;
@@ -160,8 +164,6 @@ export interface LocationSettings {
   // Invoice
   invoiceNumberPrefix: string | null;
   includeDateInInvoiceNumber: boolean;
-  companyRegistrationNumber: string | null;
-  taxIdentificationNumber: string | null;
   defaultPaymentTerms: string | null;
   defaultInvoiceDueDays: number | null;
 
@@ -183,6 +185,71 @@ export interface LocationSettings {
 
   // Operating hours
   operatingHours: OperatingHours[];
+
+  // ── New on backend ────────────────────────────────────────────────
+
+  // Brand identity (per location)
+  primaryColor: string | null;
+  secondaryColor: string | null;
+  logoSquareUrl: string | null;
+  logoWideUrl: string | null;
+  faviconUrl: string | null;
+  bannerImageUrl: string | null;
+  fontFamily: string | null;
+  shareImageUrl: string | null;
+
+  // Social media (per location)
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  twitterUrl: string | null;
+  tiktokUrl: string | null;
+  linkedinUrl: string | null;
+  youtubeUrl: string | null;
+  whatsappNumber: string | null;
+
+  // Locale
+  defaultLanguage: string | null;
+  defaultTimezone: string | null;
+
+  // Customer
+  enableCustomerAccounts: boolean;
+  enableCustomerReviews: boolean;
+
+  // Order channels
+  enableOnlineOrdering: boolean;
+  enableDelivery: boolean;
+  defaultDeliveryFee: number | null;
+  minimumDeliveryOrderAmount: number | null;
+  enablePickup: boolean;
+  enableDineIn: boolean;
+  defaultPrepTimeMinutes: number | null;
+  acceptScheduledOrders: boolean;
+  maxScheduleDaysAhead: number | null;
+
+  // Payment ops
+  defaultPaymentInstructions: string | null;
+  enableSplitPayments: boolean;
+  enablePartialPayments: boolean;
+
+  // Approvals
+  requireApprovalForVoids: boolean;
+  requireApprovalForDiscounts: boolean;
+
+  // Staff HR
+  enableShiftManagement: boolean;
+  enableTimeTracking: boolean;
+  enablePerformanceTracking: boolean;
+
+  // Digital menu config
+  digitalMenuDomain: string | null;
+  enableDigitalMenuOrdering: boolean;
+  showPricesOnDigitalMenu: boolean;
+  showStockOnDigitalMenu: boolean;
+  digitalMenuWelcomeMessage: string | null;
+
+  // SEO
+  seoTitle: string | null;
+  seoDescription: string | null;
 
   createdAt: string;
   updatedAt: string;

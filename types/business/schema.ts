@@ -1,44 +1,88 @@
-import {boolean, object, string,} from "zod";
+import { isValidPhoneNumber } from "libphonenumber-js";
+import { boolean, number, object, string, z } from "zod";
 
-export const BusinessSchema= object({
-    id: string().uuid().optional(),
-    name: string().min(2, 'Business must be at least 2 characters').max(255, 'Business can not be more than 255 characters'),
-    identificationNumber: string().nullable().optional(),
-    certificateOfIncorporation: string().nullable().optional(),
-    businessIdentificationDocument: string().nullable().optional(),
-    businessLicense: string().nullable().optional(),
-    memarts: string().nullable().optional(),
-    description: string().optional().nullish(),
-    vrn: string().nullable().optional(),
-    serial: string().nullable().optional(),
-    uin: string().nullable().optional(),
-    businessType: string(),
-    receiptPrefix: string().max(50).nullable().optional(),
-    receiptSuffix: string().max(50).nullable().optional(),
-    image: string().nullable().optional(),
-    receiptImage: string().nullable().optional(),
-    logo: string().nullable().optional(),
-    notificationPhone: string().nullable().optional(),
-    notificationEmailAddress: string({ message: "Notification email address is required" }).email({ message: "Invalid email address" }).optional(),
-    website: string().nullish().optional(),
-    facebook: string().nullish().optional(),
-    instagram: string().nullish().optional(),
-    twitter: string().nullish().optional(),
-    linkedin: string().nullish().optional(),
-    youtube: string().nullish().optional(),
-    tiktok: string().nullish().optional(),
-    country: string(),
-    phoneNumber: string().optional(),
-    email: string().optional(),
-    address: string().optional(),
-    vfdRegistrationState: boolean().optional(),
-    status: boolean().optional(),
-    primaryColor: string().max(20).nullable().optional(),
-    secondaryColor: string().max(20).nullable().optional(),
-    bannerImageUrl: string().max(500).nullable().optional(),
-    faviconUrl: string().max(500).nullable().optional(),
-    fontFamily: string().max(100).nullable().optional(),
-    metaTitle: string().max(200).nullable().optional(),
-    metaDescription: string().max(500).nullable().optional(),
-    shareImageUrl: string().max(500).nullable().optional(),
-})
+const currencyCode = string()
+  .regex(/^[A-Za-z]{3}$/, "Currency must be a 3-letter ISO code")
+  .transform((v) => v.toUpperCase());
+
+const optionalUrl = string().url("Must be a valid URL").max(500).optional().or(z.literal(""));
+
+/**
+ * BusinessSchema — write payload for the business entity itself
+ * (mirrors UpdateBusinessRequest on the backend).
+ */
+export const BusinessSchema = object({
+  id: string().uuid().optional(),
+  name: string({ required_error: "Business name is required" })
+    .min(2, "Business must be at least 2 characters")
+    .max(255, "Business can not be more than 255 characters"),
+  description: string().max(2000).nullable().optional(),
+  phoneNumber: string({ required_error: "Phone number is required" })
+    .refine(isValidPhoneNumber, { message: "Invalid phone number" }),
+  email: string({ required_error: "Email address is required" }).email("Invalid email address"),
+  website: string().max(500).nullable().optional(),
+  active: boolean().optional(),
+  countryId: string({ required_error: "Country is required" }).uuid(),
+  businessTypeId: string({ required_error: "Business type is required" }).uuid(),
+  region: string().max(100).nullable().optional(),
+  district: string().max(100).nullable().optional(),
+  ward: string().max(100).nullable().optional(),
+  address: string().max(500).nullable().optional(),
+  postalCode: string().max(20).nullable().optional(),
+  logoUrl: string().max(500).nullable().optional(),
+  baseCurrency: currencyCode.optional(),
+});
+
+export type BusinessUpdate = z.infer<typeof BusinessSchema>;
+
+/**
+ * BusinessSettingsSchema — write payload for `/api/v1/businesses/{id}/settings`
+ * (mirrors UpdateBusinessSettingsRequest). Every field is optional on the wire;
+ * the form picks the section it edits.
+ */
+export const BusinessSettingsSchema = object({
+  // Legal entity
+  businessLicenseNumber: string().max(100).optional(),
+  companyRegistrationNumber: string().max(100).optional(),
+  taxIdentificationNumber: string().max(100).optional(),
+  establishedYear: number().int().min(1800).max(new Date().getFullYear()).optional(),
+
+  // EFD
+  efdSerialNumber: string().max(100).optional(),
+  vatRegistrationNumber: string().max(100).optional(),
+  uniqueIdentificationNumber: string().max(100).optional(),
+  enableVirtualEfd: boolean().optional(),
+  efdStatus: z.enum(["REQUESTED", "APPROVED", "REJECTED"]).optional(),
+
+  // Social media (parent company)
+  facebookUrl: optionalUrl,
+  instagramUrl: optionalUrl,
+  twitterUrl: optionalUrl,
+  tiktokUrl: optionalUrl,
+  linkedinUrl: optionalUrl,
+  youtubeUrl: optionalUrl,
+  whatsappNumber: string().max(20).optional(),
+
+  // Template
+  defaultCurrency: currencyCode.optional(),
+
+  // Consolidated reports
+  notificationEmail: string().email("Invalid email").max(255).optional().or(z.literal("")),
+  notificationPhone: string().max(20).optional(),
+  sendConsolidatedDailyReport: boolean().optional(),
+  sendConsolidatedWeeklyReport: boolean().optional(),
+  sendConsolidatedMonthlyReport: boolean().optional(),
+
+  // Procurement
+  requirePurchaseRequisitionApproval: boolean().optional(),
+  supplierPerformanceTrackingEnabled: boolean().optional(),
+  landedCostTrackingEnabled: boolean().optional(),
+  locationToLocationTransferEnabled: boolean().optional(),
+
+  // Legal text
+  termsAndConditions: string().optional(),
+  privacyPolicy: string().optional(),
+  returnPolicy: string().optional(),
+});
+
+export type BusinessSettingsUpdate = z.infer<typeof BusinessSettingsSchema>;

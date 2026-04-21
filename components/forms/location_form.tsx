@@ -20,7 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "../ui/button";
 import { LocationSchema } from "@/types/location/schema";
-import { Building2, Clock, Loader2Icon, Mail, MapPin } from "lucide-react";
+import { Building2, Clock, Globe, Loader2Icon, Mail, MapPin } from "lucide-react";
 import { Location } from "@/types/location/type";
 import { createLocation, updateLocation } from "@/lib/actions/location-actions";
 import { toast } from "@/hooks/use-toast";
@@ -81,6 +81,7 @@ export const LocationForm = ({
       city: item?.region ?? "",
       region: item?.region ?? "",
       street: item?.address ?? "",
+      website: item?.website ?? "",
       openingTime: undefined,
       closingTime: undefined,
       status: item ? item.active : true,
@@ -220,6 +221,29 @@ export const LocationForm = ({
                               disabled={isPending}
                               type="email"
                               placeholder="Enter email"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="website"
+                    render={({ field }) => (
+                      <FormItem className="sm:col-span-2">
+                        <FormLabel>Website</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 pointer-events-none" />
+                            <Input
+                              className="pl-10"
+                              {...field}
+                              value={field.value || ""}
+                              disabled={isPending}
+                              placeholder="https://example.com"
                             />
                           </div>
                         </FormControl>

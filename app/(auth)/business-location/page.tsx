@@ -219,6 +219,7 @@ export default function BusinessLocationPage() {
                     <CountrySelector
                       value={countryId}
                       onChange={setCountryId}
+                      defaultCode="TZ"
                       isDisabled={isPending}
                       placeholder="Select country"
                     />

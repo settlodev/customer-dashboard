@@ -21,6 +21,8 @@ const currencyCode = z
   .transform((v) => v.toUpperCase());
 
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Must be HH:mm");
+const optionalUrl = z.string().url("Must be a valid URL").max(500).optional().or(z.literal(""));
+const optionalEmail = z.string().email("Invalid email").max(255).optional().or(z.literal(""));
 
 export const OperatingHoursSchema = z.object({
   dayOfWeek: z.enum([
@@ -46,6 +48,29 @@ export const LocationSettingsSchema = z.object({
   currency: currencyCode.optional(),
   operatingHours: z.array(OperatingHoursSchema).optional(),
 
+  // Brand identity (per-location)
+  primaryColor: z.string().max(20).optional(),
+  secondaryColor: z.string().max(20).optional(),
+  logoSquareUrl: z.string().max(500).optional(),
+  logoWideUrl: z.string().max(500).optional(),
+  faviconUrl: z.string().max(500).optional(),
+  bannerImageUrl: z.string().max(500).optional(),
+  fontFamily: z.string().max(100).optional(),
+  shareImageUrl: z.string().max(500).optional(),
+
+  // Social media (per-location)
+  facebookUrl: optionalUrl,
+  instagramUrl: optionalUrl,
+  twitterUrl: optionalUrl,
+  tiktokUrl: optionalUrl,
+  linkedinUrl: optionalUrl,
+  youtubeUrl: optionalUrl,
+  whatsappNumber: z.string().max(20).optional(),
+
+  // Locale
+  defaultLanguage: z.string().max(10).optional(),
+  defaultTimezone: z.string().max(64).optional(),
+
   // Orders & POS
   orderingMode: z.enum(["STANDARD", "TABLE_MANAGEMENT"]).optional(),
   enableTableManagement: z.boolean().optional(),
@@ -57,7 +82,6 @@ export const LocationSettingsSchema = z.object({
   showPosProductQuantity: z.boolean().optional(),
   useShifts: z.boolean().optional(),
   usePasscodes: z.boolean().optional(),
-  enableDigitalMenu: z.boolean().optional(),
   ecommerceEnabled: z.boolean().optional(),
   autoOpenCashDrawer: z.boolean().optional(),
   autoCloseOrderWhenFullyPaid: z.boolean().optional(),
@@ -67,6 +91,26 @@ export const LocationSettingsSchema = z.object({
   discountApprovalThreshold: z.preprocess(toNumber, z.number().min(0).max(100).optional()),
   receiptCopies: z.preprocess(toInt, z.number().int().min(1).max(10).optional()),
 
+  // Order channels
+  enableOnlineOrdering: z.boolean().optional(),
+  enableDelivery: z.boolean().optional(),
+  defaultDeliveryFee: z.preprocess(toNumber, z.number().min(0).optional()),
+  minimumDeliveryOrderAmount: z.preprocess(toNumber, z.number().min(0).optional()),
+  enablePickup: z.boolean().optional(),
+  enableDineIn: z.boolean().optional(),
+  defaultPrepTimeMinutes: z.preprocess(toInt, z.number().int().min(0).optional()),
+  acceptScheduledOrders: z.boolean().optional(),
+  maxScheduleDaysAhead: z.preprocess(toInt, z.number().int().min(0).max(365).optional()),
+
+  // Payment ops
+  defaultPaymentInstructions: z.string().optional(),
+  enableSplitPayments: z.boolean().optional(),
+  enablePartialPayments: z.boolean().optional(),
+
+  // Approvals
+  requireApprovalForVoids: z.boolean().optional(),
+  requireApprovalForDiscounts: z.boolean().optional(),
+
   // Order naming
   orderNamePrefix: z.string().max(50).optional(),
   includeDateInOrderName: z.boolean().optional(),
@@ -74,13 +118,13 @@ export const LocationSettingsSchema = z.object({
   orderNumberPadding: z.preprocess(toInt, z.number().int().min(1).max(10).optional()),
   showOrderNumberPrefix: z.boolean().optional(),
 
-  // Dockets
+  // Dockets (renamed from ticket → docket)
   showAmountOnDockets: z.boolean().optional(),
   printEachDocketItem: z.boolean().optional(),
   showDocketCount: z.boolean().optional(),
-  singleTicketPrint: z.boolean().optional(),
-  showPriceOnTicket: z.boolean().optional(),
-  autoPrintTickets: z.boolean().optional(),
+  singleDocketPrint: z.boolean().optional(),
+  showPriceOnDocket: z.boolean().optional(),
+  autoPrintDockets: z.boolean().optional(),
   allowDuplicateDocketPrinting: z.boolean().optional(),
   orderPrintsCountEnabled: z.boolean().optional(),
 
@@ -88,9 +132,6 @@ export const LocationSettingsSchema = z.object({
   receiptHeaderImageUrl: z.string().max(500).optional(),
   receiptNumberPrefix: z.string().max(50).optional(),
   receiptNumberSuffix: z.string().max(50).optional(),
-  receiptBusinessName: z.string().max(200).optional(),
-  receiptHeaderText: z.string().optional(),
-  receiptPaymentDetails: z.string().optional(),
   physicalReceiptPaymentDetails: z.string().optional(),
   digitalReceiptPaymentDetails: z.string().optional(),
   receiptFooterText: z.string().optional(),
@@ -101,7 +142,6 @@ export const LocationSettingsSchema = z.object({
   showStaffOnReceipt: z.boolean().optional(),
   showCustomerOnReceipt: z.boolean().optional(),
   showQrCodeOnReceipt: z.boolean().optional(),
-  receiptQrCodeUrl: z.string().max(500).optional(),
   showImageOnReceipt: z.boolean().optional(),
   showAdditionalDetailsOnPhysicalReceipt: z.boolean().optional(),
   showAdditionalDetailsOnDigitalReceipt: z.boolean().optional(),
@@ -112,8 +152,6 @@ export const LocationSettingsSchema = z.object({
   // Invoice
   invoiceNumberPrefix: z.string().max(50).optional(),
   includeDateInInvoiceNumber: z.boolean().optional(),
-  companyRegistrationNumber: z.string().max(100).optional(),
-  taxIdentificationNumber: z.string().max(100).optional(),
   defaultPaymentTerms: z.string().max(100).optional(),
   defaultInvoiceDueDays: z.preprocess(toInt, z.number().int().min(0).optional()),
 
@@ -126,11 +164,15 @@ export const LocationSettingsSchema = z.object({
   enableEmailNotifications: z.boolean().optional(),
   enableSmsNotifications: z.boolean().optional(),
   enablePushNotifications: z.boolean().optional(),
-  lowStockAlertEmail: z.string().email("Invalid email").max(255).optional().or(z.literal("")),
-  dailyReportEmail: z.string().email("Invalid email").max(255).optional().or(z.literal("")),
+  lowStockAlertEmail: optionalEmail,
+  dailyReportEmail: optionalEmail,
   alertPhoneNumber: z.string().max(20).optional(),
   sendDailySalesEmail: z.boolean().optional(),
   sendWeeklySalesEmail: z.boolean().optional(),
+
+  // Customer
+  enableCustomerAccounts: z.boolean().optional(),
+  enableCustomerReviews: z.boolean().optional(),
 
   // Loyalty
   enableLoyaltyProgram: z.boolean().optional(),
@@ -149,7 +191,11 @@ export const LocationSettingsSchema = z.object({
   enablePointExpiration: z.boolean().optional(),
   pointExpirationDays: z.preprocess(toInt, z.number().int().min(1).max(3650).optional()),
 
-  // Stock / inventory flags
+  // Stock / inventory policy
+  enableLowStockAlerts: z.boolean().optional(),
+  defaultLowStockThreshold: z.preprocess(toNumber, z.number().min(0).optional()),
+  allowNegativeStock: z.boolean().optional(),
+  trackExpiryDates: z.boolean().optional(),
   deductStockOnItemChange: z.boolean().optional(),
   deductStockOnOrderClose: z.boolean().optional(),
   deductStockOnPartialPay: z.boolean().optional(),
@@ -157,19 +203,36 @@ export const LocationSettingsSchema = z.object({
   qualityInspectionEnabled: z.boolean().optional(),
   autoReorderEnabled: z.boolean().optional(),
   autoClosingEnabled: z.boolean().optional(),
-  warehouseManagementEnabled: z.boolean().optional(),
   cycleCountingEnabled: z.boolean().optional(),
-  consumptionRulesEnabled: z.boolean().optional(),
   expiryAlertDays: z.preprocess(toInt, z.number().int().min(1).max(365).optional()),
   reservationExpiryMinutes: z.preprocess(toInt, z.number().int().min(1).max(1440).optional()),
   rfqEnabled: z.boolean().optional(),
 
-  // Day sessions
+  // Staff / HR
+  enableShiftManagement: z.boolean().optional(),
+  enableTimeTracking: z.boolean().optional(),
+  enablePerformanceTracking: z.boolean().optional(),
+
+  // Digital menu config
+  digitalMenuDomain: z.string().max(255).optional(),
+  enableDigitalMenuOrdering: z.boolean().optional(),
+  showPricesOnDigitalMenu: z.boolean().optional(),
+  showStockOnDigitalMenu: z.boolean().optional(),
+  digitalMenuWelcomeMessage: z.string().optional(),
+
+  // SEO
+  seoTitle: z.string().max(200).optional(),
+  seoDescription: z.string().max(500).optional(),
+
+  // Day sessions (incl. 24/7)
   enableDaySessions: z.boolean().optional(),
   autoOpenDay: z.boolean().optional(),
   autoCloseDay: z.boolean().optional(),
   autoCloseBusinessDays: z.boolean().optional(),
   minimumSettlementAmount: z.preprocess(toNumber, z.number().min(0).optional()),
+  continuousOperation: z.boolean().optional(),
+  dailyCutoffTime: hhmm.optional().nullable(),
+  closeGraceMinutes: z.preprocess(toInt, z.number().int().min(0).max(1440).optional()),
 });
 
 /** Writable payload shape — equivalent to UpdateLocationSettingsRequest. */

@@ -28,6 +28,14 @@ export async function getLocationSettings(): Promise<LocationSettings | null> {
   }
 }
 
+/**
+ * Partial update against the LocationSettings endpoint. Only fields that are
+ * explicitly present on `input` are sent — anything `undefined` is omitted so
+ * the backend keeps its current value. Empty strings are also stripped to
+ * avoid blanking fields users haven't intentionally cleared. Pass `null`
+ * explicitly for fields where `null` is the intended value (e.g.
+ * `dailyCutoffTime` when `continuousOperation` is being turned off).
+ */
 export async function updateLocationSettings(
   input: LocationSettingsUpdate,
 ): Promise<FormResponse<LocationSettings>> {
@@ -45,8 +53,8 @@ export async function updateLocationSettings(
     };
   }
 
-  // Strip empty strings so we don't overwrite backend values with "" when
-  // the user intended to leave a field untouched.
+  // Strip undefined and empty strings so we don't overwrite backend values
+  // with "" when the user left a field untouched. `null` is preserved.
   const payload: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(validated.data)) {
     if (v === undefined) continue;
@@ -63,10 +71,11 @@ export async function updateLocationSettings(
       message: "Settings saved",
       data: parseStringify(data),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to save settings";
     return {
       responseType: "error",
-      message: error?.message ?? "Failed to save settings",
+      message,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }
@@ -89,10 +98,11 @@ export async function resetLocationSettings(): Promise<FormResponse<LocationSett
       message: "Settings reset to defaults",
       data: parseStringify(data),
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Failed to reset settings";
     return {
       responseType: "error",
-      message: error?.message ?? "Failed to reset settings",
+      message,
       error: error instanceof Error ? error : new Error(String(error)),
     };
   }

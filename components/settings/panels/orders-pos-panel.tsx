@@ -24,7 +24,6 @@ const KEYS = [
   "showPosProductQuantity",
   "useShifts",
   "usePasscodes",
-  "enableDigitalMenu",
   "ecommerceEnabled",
   "autoOpenCashDrawer",
   "autoCloseOrderWhenFullyPaid",
@@ -138,12 +137,6 @@ export function OrdersPosPanel({
             label="Require passcodes for staff actions"
             checked={!!v.usePasscodes}
             onChange={(x) => panel.setField("usePasscodes", x)}
-            disabled={panel.isPending}
-          />
-          <SettingsSwitchRow
-            label="Digital menu"
-            checked={!!v.enableDigitalMenu}
-            onChange={(x) => panel.setField("enableDigitalMenu", x)}
             disabled={panel.isPending}
           />
           <SettingsSwitchRow

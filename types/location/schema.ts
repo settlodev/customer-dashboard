@@ -22,6 +22,7 @@ export const LocationSchema = object({
   latitude: number().nullable().optional(),
   longitude: number().nullable().optional(),
   timezone: string().optional(),
+  website: string().max(500).nullable().optional(),
   openingTime: string().optional(),
   closingTime: string().optional(),
   status: boolean().optional(),

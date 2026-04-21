@@ -225,6 +225,20 @@ export function LocationDetailClient({ location }: LocationDetailClientProps) {
                 </div>
               )}
 
+              {location.website && (
+                <div className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                  <Globe className="w-4 h-4 text-gray-600 flex-shrink-0" />
+                  <a
+                    href={location.website}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-medium text-blue-600 hover:underline truncate"
+                  >
+                    {location.website}
+                  </a>
+                </div>
+              )}
+
               {(location.address ||
                 location.region) && (
                 <div className="flex items-start gap-3 p-3 rounded-lg border hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">

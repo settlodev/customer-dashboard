@@ -31,6 +31,7 @@ interface ApiLocationResponse {
   latitude?: number;
   longitude?: number;
   timezone?: string;
+  website?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -112,7 +113,7 @@ export const createStandaloneLocation = async (data: {
         latitude: apiResponse.latitude ?? null,
         longitude: apiResponse.longitude ?? null,
         timezone: apiResponse.timezone || "",
-        parentLocationId: null,
+        website: apiResponse.website || "",
         createdAt: apiResponse.createdAt || "",
         updatedAt: apiResponse.updatedAt || "",
       };

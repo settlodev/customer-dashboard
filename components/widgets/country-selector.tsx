@@ -20,6 +20,11 @@ interface Props {
   description?: string;
   onChange: (value: string) => void;
   valueKey?: keyof Country;
+  /**
+   * ISO country code to auto-select once the country list loads if the caller
+   * hasn't already set a value. Example: `"TZ"` to default to Tanzania.
+   */
+  defaultCode?: string;
 }
 
 const CountrySelector: React.FC<Props> = ({
@@ -30,6 +35,7 @@ const CountrySelector: React.FC<Props> = ({
   description,
   onChange,
   valueKey = "id",
+  defaultCode,
 }) => {
   const [countries, setCountries] = useState<Country[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -48,6 +54,17 @@ const CountrySelector: React.FC<Props> = ({
     }
     loadCountries();
   }, []);
+
+  // When `defaultCode` is supplied and the caller hasn't picked a value yet,
+  // auto-select the matching country as soon as the list loads. Never
+  // overwrites an existing selection.
+  useEffect(() => {
+    if (value || !defaultCode || countries.length === 0) return;
+    const match = countries.find(
+      (c) => c.code?.toUpperCase() === defaultCode.toUpperCase(),
+    );
+    if (match) onChange(String(match[valueKey]));
+  }, [countries, defaultCode, value, valueKey, onChange]);
 
   return (
     <div className="space-y-2">

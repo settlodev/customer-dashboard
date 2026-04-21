@@ -1,32 +1,30 @@
 "use client";
 
-import React, { useEffect, useState, useTransition } from "react";
+import React, { useEffect, useMemo, useState, useTransition } from "react";
+
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import Loading from "@/components/ui/loading";
-import { Loader2Icon, RotateCcw } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+
 import {
-  BusinessSettings,
   getBusinessSettings,
   updateBusinessSettings,
-  resetBusinessSettings,
+  type UpdateBusinessSettingsRequest,
 } from "@/lib/actions/business-settings-actions";
-import { Business } from "@/types/business/type";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import type { Business } from "@/types/business/type";
+import type { BusinessSettings, EfdStatus } from "@/types/business/type";
 
-// --- Section component for consistent styling ---
+// ──────────────────────────────────────────────────────────────────────
+// Small primitives
+// ──────────────────────────────────────────────────────────────────────
+
 const SettingsSection = ({
   title,
   description,
@@ -65,11 +63,15 @@ const ToggleRow = ({
       <p className="text-sm font-medium">{label}</p>
       <p className="text-xs text-muted-foreground">{description}</p>
     </div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
+    <Switch
+      checked={checked}
+      onCheckedChange={onCheckedChange}
+      disabled={disabled}
+    />
   </div>
 );
 
-const FieldInput = ({
+const TextField = ({
   label,
   value,
   onChange,
@@ -79,34 +81,27 @@ const FieldInput = ({
   description,
   min,
   max,
-  step,
 }: {
   label: string;
-  value: string | number;
-  onChange: (val: string | number) => void;
+  value: string;
+  onChange: (val: string) => void;
   placeholder?: string;
   disabled: boolean;
   type?: string;
   description?: string;
   min?: number;
   max?: number;
-  step?: number;
 }) => (
   <div className="space-y-2">
     <label className="text-sm font-medium">{label}</label>
     <Input
       type={type}
-      value={value ?? ""}
-      onChange={(e) =>
-        type === "number"
-          ? onChange(e.target.value === "" ? 0 : parseFloat(e.target.value) || 0)
-          : onChange(e.target.value)
-      }
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       disabled={disabled}
       min={min}
       max={max}
-      step={step}
     />
     {description && (
       <p className="text-xs text-muted-foreground">{description}</p>
@@ -114,7 +109,73 @@ const FieldInput = ({
   </div>
 );
 
-// --- Main component ---
+const TextAreaField = ({
+  label,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  description,
+  rows = 5,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  disabled: boolean;
+  description?: string;
+  rows?: number;
+}) => (
+  <div className="space-y-2">
+    <label className="text-sm font-medium">{label}</label>
+    <Textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      disabled={disabled}
+      rows={rows}
+      className="resize-y"
+    />
+    {description && (
+      <p className="text-xs text-muted-foreground">{description}</p>
+    )}
+  </div>
+);
+
+const EfdStatusPill = ({ status }: { status: EfdStatus | null }) => {
+  if (!status) {
+    return (
+      <Badge variant="outline" className="text-muted-foreground">
+        Not requested
+      </Badge>
+    );
+  }
+  const map: Record<EfdStatus, { label: string; className: string }> = {
+    REQUESTED: {
+      label: "Requested",
+      className: "bg-yellow-100 text-yellow-800 border-yellow-200",
+    },
+    APPROVED: {
+      label: "Approved",
+      className: "bg-green-100 text-green-800 border-green-200",
+    },
+    REJECTED: {
+      label: "Rejected",
+      className: "bg-red-100 text-red-800 border-red-200",
+    },
+  };
+  const { label, className } = map[status];
+  return (
+    <Badge variant="outline" className={className}>
+      {label}
+    </Badge>
+  );
+};
+
+// ──────────────────────────────────────────────────────────────────────
+// Main panel
+// ──────────────────────────────────────────────────────────────────────
+
 const BusinessSettingsPanel = ({
   business,
 }: {
@@ -123,61 +184,60 @@ const BusinessSettingsPanel = ({
   const [settings, setSettings] = useState<BusinessSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPending, startTransition] = useTransition();
-  const [showResetDialog, setShowResetDialog] = useState(false);
-  const [dirtyFields, setDirtyFields] = useState<Partial<BusinessSettings>>({});
+  const [dirty, setDirty] = useState<UpdateBusinessSettingsRequest>({});
 
   useEffect(() => {
     if (!business?.id) return;
-    const load = async () => {
+    let cancelled = false;
+    (async () => {
       try {
         setIsLoading(true);
         const data = await getBusinessSettings(business.id);
-        setSettings(data);
-      } catch (error) {
-        console.error("Failed to load business settings:", error);
+        if (!cancelled) setSettings(data);
+      } catch (err) {
+        console.error("Failed to load business settings:", err);
+        if (!cancelled) {
+          toast({
+            variant: "destructive",
+            title: "Couldn't load business settings",
+            description:
+              err instanceof Error ? err.message : "Please try again later.",
+          });
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
+    })();
+    return () => {
+      cancelled = true;
     };
-    load();
   }, [business?.id]);
 
-  const handleToggle = (key: string, value: boolean) => {
-    setDirtyFields((prev) => ({ ...prev, [key]: value }));
-    setSettings((prev) => (prev ? { ...prev, [key]: value } : prev));
-  };
+  // Generic setter that updates both the in-memory copy + the dirty patch.
+  function setField<K extends keyof UpdateBusinessSettingsRequest>(
+    key: K,
+    value: UpdateBusinessSettingsRequest[K],
+  ) {
+    setSettings((prev) => (prev ? ({ ...prev, [key]: value } as BusinessSettings) : prev));
+    setDirty((prev) => ({ ...prev, [key]: value }));
+  }
 
-  const handleChange = (key: string, value: string | number) => {
-    setDirtyFields((prev) => ({ ...prev, [key]: value }));
-    setSettings((prev) => (prev ? { ...prev, [key]: value } : prev));
-  };
+  const dirtyCount = useMemo(() => Object.keys(dirty).length, [dirty]);
 
   const handleSave = () => {
-    if (!business?.id || Object.keys(dirtyFields).length === 0) return;
+    if (!business?.id || dirtyCount === 0) return;
     startTransition(async () => {
-      const result = await updateBusinessSettings(business.id, dirtyFields);
+      const result = await updateBusinessSettings(business.id, dirty);
       if (result.responseType === "success") {
-        toast({ title: "Settings Updated", description: result.message });
-        setDirtyFields({});
+        toast({ title: "Settings updated", description: result.message });
+        setDirty({});
       } else {
-        toast({ variant: "destructive", title: "Error", description: result.message });
+        toast({
+          variant: "destructive",
+          title: "Couldn't save settings",
+          description: result.message,
+        });
       }
-    });
-  };
-
-  const handleReset = () => {
-    if (!business?.id) return;
-    startTransition(async () => {
-      const result = await resetBusinessSettings(business.id);
-      if (result.responseType === "success") {
-        toast({ title: "Settings Reset", description: result.message });
-        const data = await getBusinessSettings(business.id);
-        setSettings(data);
-        setDirtyFields({});
-      } else {
-        toast({ variant: "destructive", title: "Error", description: result.message });
-      }
-      setShowResetDialog(false);
     });
   };
 
@@ -185,11 +245,17 @@ const BusinessSettingsPanel = ({
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Business Settings</h2>
-          <p className="text-muted-foreground mt-1 text-sm">Loading business settings...</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Business Settings
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Loading business settings…
+          </p>
         </div>
         <Card className="rounded-xl border shadow-sm">
-          <CardContent className="p-6 flex items-center justify-center"><Loading /></CardContent>
+          <CardContent className="p-6 flex items-center justify-center">
+            <Loading />
+          </CardContent>
         </Card>
       </div>
     );
@@ -199,8 +265,12 @@ const BusinessSettingsPanel = ({
     return (
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Business Settings</h2>
-          <p className="text-muted-foreground mt-1 text-sm">No settings found for this business.</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            Business Settings
+          </h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            No settings found for this business.
+          </p>
         </div>
       </div>
     );
@@ -208,82 +278,190 @@ const BusinessSettingsPanel = ({
 
   const s = settings;
   const d = isPending;
+  const enableVirtualEfd = Boolean(s.enableVirtualEfd);
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Business Settings</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Configure branding, operational defaults, and business-wide settings
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => setShowResetDialog(true)} disabled={d}>
-          <RotateCcw className="h-4 w-4 mr-2" />
-          Reset to Defaults
-        </Button>
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+          Business Settings
+        </h2>
+        <p className="text-muted-foreground mt-1 text-sm">
+          Parent-company defaults shared across every location for{" "}
+          <span className="font-medium text-foreground">
+            {business?.name ?? "this business"}
+          </span>
+          .
+        </p>
       </div>
 
-      {/* Branding */}
+      {/* 2 — Legal & fiscal */}
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Branding & SEO" description="Colors, logos, visual identity, and search engine optimization">
+          <SettingsSection
+            title="Legal & fiscal"
+            description="Registration numbers and identifiers for the legal entity"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Primary Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={(s.primaryColor as string) || "#6C63FF"}
-                    onChange={(e) => handleChange("primaryColor", e.target.value)}
-                    className="h-10 w-10 rounded border cursor-pointer"
+              <TextField
+                label="Business license number"
+                value={s.businessLicenseNumber ?? ""}
+                onChange={(v) => setField("businessLicenseNumber", v || null)}
+                placeholder="License number"
+                disabled={d}
+              />
+              <TextField
+                label="Company registration number"
+                value={s.companyRegistrationNumber ?? ""}
+                onChange={(v) => setField("companyRegistrationNumber", v || null)}
+                placeholder="Registration number"
+                disabled={d}
+              />
+              <TextField
+                label="Tax identification number (TIN)"
+                value={s.taxIdentificationNumber ?? ""}
+                onChange={(v) => setField("taxIdentificationNumber", v || null)}
+                placeholder="e.g. 123-456-789"
+                disabled={d}
+              />
+              <TextField
+                label="Established year"
+                value={s.establishedYear != null ? String(s.establishedYear) : ""}
+                onChange={(v) => {
+                  const trimmed = v.trim();
+                  if (trimmed === "") {
+                    setField("establishedYear", null);
+                    return;
+                  }
+                  const parsed = Number.parseInt(trimmed, 10);
+                  if (Number.isFinite(parsed)) setField("establishedYear", parsed);
+                }}
+                placeholder="e.g. 2020"
+                type="number"
+                min={1800}
+                max={new Date().getFullYear()}
+                disabled={d}
+              />
+            </div>
+          </SettingsSection>
+        </CardContent>
+      </Card>
+
+      <Separator />
+
+      {/* 3 — EFD (Virtual Fiscal Device) */}
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <SettingsSection
+            title="Virtual Fiscal Device (EFD)"
+            description="Request and configure a virtual EFD for this business"
+          >
+            <div className="space-y-3">
+              <ToggleRow
+                label="Enable Virtual EFD"
+                description="Request virtual EFD registration for this business"
+                checked={enableVirtualEfd}
+                onCheckedChange={(v) => setField("enableVirtualEfd", v)}
+                disabled={d}
+              />
+            </div>
+
+            {enableVirtualEfd && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  <TextField
+                    label="EFD serial number"
+                    value={s.efdSerialNumber ?? ""}
+                    onChange={(v) => setField("efdSerialNumber", v || null)}
+                    placeholder="EFD serial"
                     disabled={d}
                   />
-                  <Input
-                    value={(s.primaryColor as string) || ""}
-                    onChange={(e) => handleChange("primaryColor", e.target.value)}
-                    placeholder="#6C63FF"
+                  <TextField
+                    label="VAT registration number (VRN)"
+                    value={s.vatRegistrationNumber ?? ""}
+                    onChange={(v) => setField("vatRegistrationNumber", v || null)}
+                    placeholder="VRN"
+                    disabled={d}
+                  />
+                  <TextField
+                    label="Unique identification number (UIN)"
+                    value={s.uniqueIdentificationNumber ?? ""}
+                    onChange={(v) =>
+                      setField("uniqueIdentificationNumber", v || null)
+                    }
+                    placeholder="UIN"
                     disabled={d}
                   />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Secondary Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={(s.secondaryColor as string) || "#333333"}
-                    onChange={(e) => handleChange("secondaryColor", e.target.value)}
-                    className="h-10 w-10 rounded border cursor-pointer"
-                    disabled={d}
-                  />
-                  <Input
-                    value={(s.secondaryColor as string) || ""}
-                    onChange={(e) => handleChange("secondaryColor", e.target.value)}
-                    placeholder="#333333"
-                    disabled={d}
-                  />
+                <div className="flex items-center gap-2 pt-1">
+                  <span className="text-sm font-medium">EFD status:</span>
+                  <EfdStatusPill status={s.efdStatus} />
                 </div>
-              </div>
-              <FieldInput label="Font Family" value={s.fontFamily ?? ""} onChange={(v) => handleChange("fontFamily", v)} placeholder="e.g. Inter" disabled={d} />
-              <FieldInput label="Square Logo URL" value={s.logoSquareUrl ?? ""} onChange={(v) => handleChange("logoSquareUrl", v)} placeholder="https://..." disabled={d} />
-              <FieldInput label="Wide Logo URL" value={s.logoWideUrl ?? ""} onChange={(v) => handleChange("logoWideUrl", v)} placeholder="https://..." disabled={d} />
-              <FieldInput label="Favicon URL" value={s.faviconUrl ?? ""} onChange={(v) => handleChange("faviconUrl", v)} placeholder="https://..." disabled={d} />
-              <FieldInput label="Banner Image URL" value={s.bannerImageUrl ?? ""} onChange={(v) => handleChange("bannerImageUrl", v)} placeholder="https://..." disabled={d} />
-              <FieldInput label="Share Image URL" value={s.shareImageUrl ?? ""} onChange={(v) => handleChange("shareImageUrl", v)} placeholder="https://..." disabled={d} />
-              <FieldInput label="SEO Title" value={s.seoTitle ?? ""} onChange={(v) => handleChange("seoTitle", v)} placeholder="Your business title for search engines" description="Max 200 characters" disabled={d} />
-              <div className="space-y-2">
-                <label className="text-sm font-medium">SEO Description</label>
-                <Textarea
-                  value={(s.seoDescription as string) ?? ""}
-                  onChange={(e) => handleChange("seoDescription", e.target.value)}
-                  placeholder="Brief description of your business for search results..."
-                  disabled={d}
-                  className="min-h-[80px]"
-                />
-                <p className="text-xs text-muted-foreground">Max 500 characters</p>
-              </div>
+              </>
+            )}
+          </SettingsSection>
+        </CardContent>
+      </Card>
+
+      <Separator />
+
+      {/* 4 — Social media (company) */}
+      <Card>
+        <CardContent className="pt-6 space-y-4">
+          <SettingsSection
+            title="Social media"
+            description="Parent-company social profiles & contact channels"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <TextField
+                label="Facebook"
+                value={s.facebookUrl ?? ""}
+                onChange={(v) => setField("facebookUrl", v || null)}
+                placeholder="https://facebook.com/…"
+                disabled={d}
+              />
+              <TextField
+                label="Instagram"
+                value={s.instagramUrl ?? ""}
+                onChange={(v) => setField("instagramUrl", v || null)}
+                placeholder="https://instagram.com/…"
+                disabled={d}
+              />
+              <TextField
+                label="X / Twitter"
+                value={s.twitterUrl ?? ""}
+                onChange={(v) => setField("twitterUrl", v || null)}
+                placeholder="https://x.com/…"
+                disabled={d}
+              />
+              <TextField
+                label="TikTok"
+                value={s.tiktokUrl ?? ""}
+                onChange={(v) => setField("tiktokUrl", v || null)}
+                placeholder="https://tiktok.com/@…"
+                disabled={d}
+              />
+              <TextField
+                label="LinkedIn"
+                value={s.linkedinUrl ?? ""}
+                onChange={(v) => setField("linkedinUrl", v || null)}
+                placeholder="https://linkedin.com/company/…"
+                disabled={d}
+              />
+              <TextField
+                label="YouTube"
+                value={s.youtubeUrl ?? ""}
+                onChange={(v) => setField("youtubeUrl", v || null)}
+                placeholder="https://youtube.com/@…"
+                disabled={d}
+              />
+              <TextField
+                label="WhatsApp number"
+                value={s.whatsappNumber ?? ""}
+                onChange={(v) => setField("whatsappNumber", v || null)}
+                placeholder="+255712345678"
+                disabled={d}
+              />
             </div>
           </SettingsSection>
         </CardContent>
@@ -291,58 +469,56 @@ const BusinessSettingsPanel = ({
 
       <Separator />
 
-      {/* Business Information */}
+      {/* 5 — Consolidated reporting */}
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Business Information" description="Registration numbers, tax IDs, and business identifiers">
+          <SettingsSection
+            title="Consolidated reporting"
+            description="Parent-level notifications aggregated across all locations"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FieldInput label="Registration Number" value={s.registrationNumber ?? ""} onChange={(v) => handleChange("registrationNumber", v)} placeholder="Business registration number" disabled={d} />
-              <FieldInput label="Tax Identification Number (TIN)" value={s.taxIdentificationNumber ?? ""} onChange={(v) => handleChange("taxIdentificationNumber", v)} placeholder="e.g. 123-456-789" disabled={d} />
-              <FieldInput label="VAT Registration Number" value={s.vatRegistrationNumber ?? ""} onChange={(v) => handleChange("vatRegistrationNumber", v)} placeholder="VAT number" disabled={d} />
-              <FieldInput label="EFD Serial Number" value={s.efdSerialNumber ?? ""} onChange={(v) => handleChange("efdSerialNumber", v)} placeholder="EFD serial" disabled={d} />
-              <FieldInput label="Unique Identification Number" value={s.uniqueIdentificationNumber ?? ""} onChange={(v) => handleChange("uniqueIdentificationNumber", v)} placeholder="UIN" disabled={d} />
-              <FieldInput label="Business License Number" value={s.businessLicenseNumber ?? ""} onChange={(v) => handleChange("businessLicenseNumber", v)} placeholder="License number" disabled={d} />
-              <FieldInput label="Industry" value={s.industry ?? ""} onChange={(v) => handleChange("industry", v)} placeholder="e.g. Food & Beverage" disabled={d} />
-              <FieldInput label="Established Year" value={s.establishedYear ?? ""} onChange={(v) => handleChange("establishedYear", v)} placeholder="e.g. 2020" type="number" min={1800} max={2100} disabled={d} />
-            </div>
-          </SettingsSection>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Social Media */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Social Media" description="Social media profiles and contact channels">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FieldInput label="Facebook" value={s.facebookUrl ?? ""} onChange={(v) => handleChange("facebookUrl", v)} placeholder="https://facebook.com/..." disabled={d} />
-              <FieldInput label="Instagram" value={s.instagramUrl ?? ""} onChange={(v) => handleChange("instagramUrl", v)} placeholder="https://instagram.com/..." disabled={d} />
-              <FieldInput label="Twitter / X" value={s.twitterUrl ?? ""} onChange={(v) => handleChange("twitterUrl", v)} placeholder="https://x.com/..." disabled={d} />
-              <FieldInput label="TikTok" value={s.tiktokUrl ?? ""} onChange={(v) => handleChange("tiktokUrl", v)} placeholder="https://tiktok.com/..." disabled={d} />
-              <FieldInput label="LinkedIn" value={s.linkedinUrl ?? ""} onChange={(v) => handleChange("linkedinUrl", v)} placeholder="https://linkedin.com/..." disabled={d} />
-              <FieldInput label="YouTube" value={s.youtubeUrl ?? ""} onChange={(v) => handleChange("youtubeUrl", v)} placeholder="https://youtube.com/..." disabled={d} />
-              <FieldInput label="WhatsApp Number" value={s.whatsappNumber ?? ""} onChange={(v) => handleChange("whatsappNumber", v)} placeholder="+255712345678" disabled={d} />
-            </div>
-          </SettingsSection>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Operational Defaults */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Operational Defaults" description="Default currency, language, timezone, and tax settings">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FieldInput label="Default Currency" value={s.defaultCurrency ?? "TZS"} onChange={(v) => handleChange("defaultCurrency", v)} placeholder="TZS" description="3-letter ISO 4217 currency code" disabled={d} />
-              <FieldInput label="Default Language" value={s.defaultLanguage ?? "en"} onChange={(v) => handleChange("defaultLanguage", v)} placeholder="en" description="ISO 639-1 language code" disabled={d} />
-              <FieldInput label="Default Timezone" value={s.defaultTimezone ?? "Africa/Dar_es_Salaam"} onChange={(v) => handleChange("defaultTimezone", v)} placeholder="Africa/Dar_es_Salaam" disabled={d} />
-              <FieldInput label="Default Tax Rate (%)" value={s.defaultTaxRate ?? 18.0} onChange={(v) => handleChange("defaultTaxRate", v)} placeholder="18.0" type="number" min={0} max={100} step={0.01} disabled={d} />
-              <FieldInput label="Default Tax Label" value={s.defaultTaxLabel ?? "VAT"} onChange={(v) => handleChange("defaultTaxLabel", v)} placeholder="VAT" disabled={d} />
+              <TextField
+                label="Notification email"
+                value={s.notificationEmail ?? ""}
+                onChange={(v) => setField("notificationEmail", v || null)}
+                placeholder="reports@business.com"
+                type="email"
+                disabled={d}
+              />
+              <TextField
+                label="Notification phone"
+                value={s.notificationPhone ?? ""}
+                onChange={(v) => setField("notificationPhone", v || null)}
+                placeholder="+255712345678"
+                disabled={d}
+              />
             </div>
             <div className="space-y-3 mt-2">
-              <ToggleRow label="Prices Include Tax" description="Whether displayed prices include tax by default" checked={Boolean(s.defaultPricesIncludeTax)} onCheckedChange={(v) => handleToggle("defaultPricesIncludeTax", v)} disabled={d} />
+              <ToggleRow
+                label="Daily report"
+                description="Send a consolidated daily sales report"
+                checked={Boolean(s.sendConsolidatedDailyReport)}
+                onCheckedChange={(v) => setField("sendConsolidatedDailyReport", v)}
+                disabled={d}
+              />
+              <ToggleRow
+                label="Weekly report"
+                description="Send a consolidated weekly sales report"
+                checked={Boolean(s.sendConsolidatedWeeklyReport)}
+                onCheckedChange={(v) =>
+                  setField("sendConsolidatedWeeklyReport", v)
+                }
+                disabled={d}
+              />
+              <ToggleRow
+                label="Monthly report"
+                description="Send a consolidated monthly sales report"
+                checked={Boolean(s.sendConsolidatedMonthlyReport)}
+                onCheckedChange={(v) =>
+                  setField("sendConsolidatedMonthlyReport", v)
+                }
+                disabled={d}
+              />
             </div>
           </SettingsSection>
         </CardContent>
@@ -350,58 +526,48 @@ const BusinessSettingsPanel = ({
 
       <Separator />
 
-      {/* Inventory Defaults */}
+      {/* 6 — Procurement controls */}
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Inventory Defaults" description="Business-wide inventory settings">
+          <SettingsSection
+            title="Procurement controls"
+            description="Approval workflows and tracking across locations"
+          >
             <div className="space-y-3">
-              <ToggleRow label="Low Stock Alerts" description="Get alerts when stock is running low" checked={Boolean(s.enableLowStockAlerts)} onCheckedChange={(v) => handleToggle("enableLowStockAlerts", v)} disabled={d} />
-              <ToggleRow label="Allow Negative Stock" description="Allow stock quantities to go below zero" checked={Boolean(s.allowNegativeStock)} onCheckedChange={(v) => handleToggle("allowNegativeStock", v)} disabled={d} />
-            </div>
-            {s.enableLowStockAlerts && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                <FieldInput label="Default Low Stock Threshold" value={s.defaultLowStockThreshold ?? 10} onChange={(v) => handleChange("defaultLowStockThreshold", v)} placeholder="10" type="number" min={0} disabled={d} />
-              </div>
-            )}
-          </SettingsSection>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Customer Settings */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Customer Settings" description="Customer accounts and reviews">
-            <div className="space-y-3">
-              <ToggleRow label="Customer Accounts" description="Enable customer accounts and profiles" checked={Boolean(s.enableCustomerAccounts)} onCheckedChange={(v) => handleToggle("enableCustomerAccounts", v)} disabled={d} />
-              <ToggleRow label="Customer Reviews" description="Allow customers to leave reviews" checked={Boolean(s.enableCustomerReviews)} onCheckedChange={(v) => handleToggle("enableCustomerReviews", v)} disabled={d} />
-            </div>
-          </SettingsSection>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Payments */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Payment Defaults" description="Business-wide payment settings">
-            <div className="space-y-3">
-              <ToggleRow label="Split Payments" description="Allow splitting payments across methods" checked={Boolean(s.enableSplitPayments)} onCheckedChange={(v) => handleToggle("enableSplitPayments", v)} disabled={d} />
-              <ToggleRow label="Partial Payments" description="Allow partial payment on orders" checked={Boolean(s.enablePartialPayments)} onCheckedChange={(v) => handleToggle("enablePartialPayments", v)} disabled={d} />
-            </div>
-            <div className="grid grid-cols-1 gap-4 mt-2">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Default Payment Instructions</label>
-                <Textarea
-                  value={(s.defaultPaymentInstructions as string) ?? ""}
-                  onChange={(e) => handleChange("defaultPaymentInstructions", e.target.value)}
-                  placeholder="Payment instructions shown to customers..."
-                  disabled={d}
-                  className="min-h-[80px]"
-                />
-              </div>
+              <ToggleRow
+                label="Require purchase requisition approval"
+                description="Manager must approve purchase requisitions before they proceed"
+                checked={Boolean(s.requirePurchaseRequisitionApproval)}
+                onCheckedChange={(v) =>
+                  setField("requirePurchaseRequisitionApproval", v)
+                }
+                disabled={d}
+              />
+              <ToggleRow
+                label="Supplier performance tracking"
+                description="Track and rate supplier performance over time"
+                checked={Boolean(s.supplierPerformanceTrackingEnabled)}
+                onCheckedChange={(v) =>
+                  setField("supplierPerformanceTrackingEnabled", v)
+                }
+                disabled={d}
+              />
+              <ToggleRow
+                label="Landed cost tracking"
+                description="Capture freight, duty, and other costs to compute landed cost"
+                checked={Boolean(s.landedCostTrackingEnabled)}
+                onCheckedChange={(v) => setField("landedCostTrackingEnabled", v)}
+                disabled={d}
+              />
+              <ToggleRow
+                label="Location-to-location transfers"
+                description="Allow stock transfers between locations of this business"
+                checked={Boolean(s.locationToLocationTransferEnabled)}
+                onCheckedChange={(v) =>
+                  setField("locationToLocationTransferEnabled", v)
+                }
+                disabled={d}
+              />
             </div>
           </SettingsSection>
         </CardContent>
@@ -409,56 +575,27 @@ const BusinessSettingsPanel = ({
 
       <Separator />
 
-      {/* Notifications */}
+      {/* Default currency for new locations */}
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Notifications" description="Business-level notification preferences">
+          <SettingsSection
+            title="Defaults for new locations"
+            description="Seed values applied when creating a new location"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <FieldInput label="Notification Email" value={s.notificationEmail ?? ""} onChange={(v) => handleChange("notificationEmail", v)} placeholder="admin@business.com" disabled={d} />
-              <FieldInput label="Notification Phone" value={s.notificationPhone ?? ""} onChange={(v) => handleChange("notificationPhone", v)} placeholder="+255712345678" disabled={d} />
-            </div>
-            <div className="space-y-3 mt-2">
-              <ToggleRow label="Daily Report" description="Send consolidated daily sales report" checked={Boolean(s.sendConsolidatedDailyReport)} onCheckedChange={(v) => handleToggle("sendConsolidatedDailyReport", v)} disabled={d} />
-              <ToggleRow label="Weekly Report" description="Send consolidated weekly sales report" checked={Boolean(s.sendConsolidatedWeeklyReport)} onCheckedChange={(v) => handleToggle("sendConsolidatedWeeklyReport", v)} disabled={d} />
-              <ToggleRow label="Monthly Report" description="Send consolidated monthly sales report" checked={Boolean(s.sendConsolidatedMonthlyReport)} onCheckedChange={(v) => handleToggle("sendConsolidatedMonthlyReport", v)} disabled={d} />
-            </div>
-          </SettingsSection>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Staff Management */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Staff Management" description="Shift management, time tracking, and approval workflows">
-            <div className="space-y-3">
-              <ToggleRow label="Shift Management" description="Enable shift scheduling and management" checked={Boolean(s.enableShiftManagement)} onCheckedChange={(v) => handleToggle("enableShiftManagement", v)} disabled={d} />
-              <ToggleRow label="Time Tracking" description="Track staff working hours" checked={Boolean(s.enableTimeTracking)} onCheckedChange={(v) => handleToggle("enableTimeTracking", v)} disabled={d} />
-              <ToggleRow label="Performance Tracking" description="Track staff performance metrics" checked={Boolean(s.enablePerformanceTracking)} onCheckedChange={(v) => handleToggle("enablePerformanceTracking", v)} disabled={d} />
-              <ToggleRow label="Require Approval for Voids" description="Manager approval needed to void items" checked={Boolean(s.requireApprovalForVoids)} onCheckedChange={(v) => handleToggle("requireApprovalForVoids", v)} disabled={d} />
-              <ToggleRow label="Require Approval for Discounts" description="Manager approval needed for discounts" checked={Boolean(s.requireApprovalForDiscounts)} onCheckedChange={(v) => handleToggle("requireApprovalForDiscounts", v)} disabled={d} />
-            </div>
-            {s.requireApprovalForDiscounts && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                <FieldInput label="Discount Approval Threshold (%)" value={s.discountApprovalThreshold ?? 20} onChange={(v) => handleChange("discountApprovalThreshold", v)} type="number" min={0} max={100} description="Discounts above this % require approval" disabled={d} />
-              </div>
-            )}
-          </SettingsSection>
-        </CardContent>
-      </Card>
-
-      <Separator />
-
-      {/* Procurement */}
-      <Card>
-        <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Procurement" description="Purchasing, supplier tracking, and transfers">
-            <div className="space-y-3">
-              <ToggleRow label="Purchase Requisition Approval" description="Require approval for purchase requisitions" checked={Boolean(s.requirePurchaseRequisitionApproval)} onCheckedChange={(v) => handleToggle("requirePurchaseRequisitionApproval", v)} disabled={d} />
-              <ToggleRow label="Supplier Performance Tracking" description="Track and rate supplier performance" checked={Boolean(s.supplierPerformanceTrackingEnabled)} onCheckedChange={(v) => handleToggle("supplierPerformanceTrackingEnabled", v)} disabled={d} />
-              <ToggleRow label="Landed Cost Tracking" description="Track total landed cost of goods" checked={Boolean(s.landedCostTrackingEnabled)} onCheckedChange={(v) => handleToggle("landedCostTrackingEnabled", v)} disabled={d} />
-              <ToggleRow label="Location-to-Location Transfer" description="Enable stock transfers between locations" checked={Boolean(s.locationToLocationTransferEnabled)} onCheckedChange={(v) => handleToggle("locationToLocationTransferEnabled", v)} disabled={d} />
+              <TextField
+                label="Default currency"
+                value={s.defaultCurrency ?? ""}
+                onChange={(v) =>
+                  setField(
+                    "defaultCurrency",
+                    v ? v.trim().toUpperCase().slice(0, 3) : null,
+                  )
+                }
+                placeholder="TZS"
+                description="3-letter ISO 4217 currency code"
+                disabled={d}
+              />
             </div>
           </SettingsSection>
         </CardContent>
@@ -466,64 +603,63 @@ const BusinessSettingsPanel = ({
 
       <Separator />
 
-      {/* Virtual EFD */}
+      {/* 7 — Legal documents */}
       <Card>
         <CardContent className="pt-6 space-y-4">
-          <SettingsSection title="Virtual EFD" description="Electronic Fiscal Device settings at business level">
-            <div className="space-y-3">
-              <ToggleRow label="Enable Virtual EFD" description="Request virtual EFD registration for this business" checked={Boolean(s.enableVirtualEfd)} onCheckedChange={(v) => handleToggle("enableVirtualEfd", v)} disabled={d} />
+          <SettingsSection
+            title="Legal documents"
+            description="Customer-facing legal text shown on receipts, menus, and the website"
+          >
+            <div className="space-y-4">
+              <TextAreaField
+                label="Terms & conditions"
+                value={s.termsAndConditions ?? ""}
+                onChange={(v) => setField("termsAndConditions", v || null)}
+                placeholder="Terms & conditions text…"
+                disabled={d}
+                rows={6}
+              />
+              <TextAreaField
+                label="Privacy policy"
+                value={s.privacyPolicy ?? ""}
+                onChange={(v) => setField("privacyPolicy", v || null)}
+                placeholder="Privacy policy text…"
+                disabled={d}
+                rows={6}
+              />
+              <TextAreaField
+                label="Return policy"
+                value={s.returnPolicy ?? ""}
+                onChange={(v) => setField("returnPolicy", v || null)}
+                placeholder="Return policy text…"
+                disabled={d}
+                rows={6}
+              />
             </div>
-            {s.efdStatus && (
-              <div className="mt-2 text-sm">
-                <span className="font-medium">Status: </span>
-                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                  s.efdStatus === "ACTIVE" ? "bg-green-100 text-green-800" :
-                  s.efdStatus === "AWAITING_CONFIRMATION" ? "bg-blue-100 text-blue-800" :
-                  "bg-yellow-100 text-yellow-800"
-                }`}>
-                  {s.efdStatus === "ACTIVE" ? "Active" :
-                   s.efdStatus === "AWAITING_CONFIRMATION" ? "Awaiting Confirmation" :
-                   s.efdStatus === "REQUESTED" ? "Requested" : s.efdStatus}
-                </span>
-              </div>
-            )}
           </SettingsSection>
         </CardContent>
       </Card>
 
-      {/* Save */}
-      <div className="flex justify-end">
-        {isPending ? (
-          <Button disabled>
-            <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
-            Saving...
-          </Button>
-        ) : (
-          <Button onClick={handleSave} disabled={Object.keys(dirtyFields).length === 0}>
-            Save Changes
-          </Button>
-        )}
-      </div>
-
-      {/* Reset Confirmation Dialog */}
-      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Reset Business Settings</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to reset all business settings to their default values?
-              This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResetDialog(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleReset} disabled={isPending}>
-              {isPending ? <Loader2Icon className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Reset Settings
+      {/* Sticky save bar */}
+      <div className="sticky bottom-0 z-10 bg-gradient-to-t from-background via-background/95 to-background/0 pt-4 pb-2 -mx-4 px-4 md:-mx-0 md:px-0">
+        <div className="flex items-center justify-end gap-3">
+          <span className="text-xs text-muted-foreground">
+            {dirtyCount === 0
+              ? "No unsaved changes"
+              : `${dirtyCount} unsaved change${dirtyCount === 1 ? "" : "s"}`}
+          </span>
+          {isPending ? (
+            <Button disabled>
+              <Loader2Icon className="w-4 h-4 mr-2 animate-spin" />
+              Saving…
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          ) : (
+            <Button onClick={handleSave} disabled={dirtyCount === 0}>
+              Save changes
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

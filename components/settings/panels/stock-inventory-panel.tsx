@@ -13,12 +13,14 @@ const KEYS = [
   "qualityInspectionEnabled",
   "autoReorderEnabled",
   "autoClosingEnabled",
-  "warehouseManagementEnabled",
   "cycleCountingEnabled",
-  "consumptionRulesEnabled",
   "rfqEnabled",
   "expiryAlertDays",
   "reservationExpiryMinutes",
+  "enableLowStockAlerts",
+  "defaultLowStockThreshold",
+  "allowNegativeStock",
+  "trackExpiryDates",
 ] as const;
 
 export function StockInventoryPanel({
@@ -64,6 +66,52 @@ export function StockInventoryPanel({
       </SettingsSection>
 
       <SettingsSection
+        title="Inventory policy"
+        description="Day-to-day rules: alerts, negative balances, and expiry tracking."
+        onSave={p.save}
+        isPending={p.isPending}
+        isDirty={p.isDirty}
+      >
+        <SettingsSwitchRow
+          label="Low-stock alerts"
+          description="Notify when on-hand falls below the threshold."
+          checked={!!v.enableLowStockAlerts}
+          onChange={(x) => p.setField("enableLowStockAlerts", x)}
+          disabled={p.isPending}
+        />
+        {v.enableLowStockAlerts && (
+          <Field label="Default low-stock threshold">
+            <Input
+              type="number"
+              min={0}
+              value={v.defaultLowStockThreshold ?? ""}
+              onChange={(e) =>
+                p.setField(
+                  "defaultLowStockThreshold",
+                  e.target.value === "" ? null : Number(e.target.value),
+                )
+              }
+              disabled={p.isPending}
+            />
+          </Field>
+        )}
+        <SettingsSwitchRow
+          label="Allow negative stock"
+          description="Let staff sell items even when on-hand reaches zero."
+          checked={!!v.allowNegativeStock}
+          onChange={(x) => p.setField("allowNegativeStock", x)}
+          disabled={p.isPending}
+        />
+        <SettingsSwitchRow
+          label="Track expiry dates"
+          description="Capture and act on expiry per stock batch."
+          checked={!!v.trackExpiryDates}
+          onChange={(x) => p.setField("trackExpiryDates", x)}
+          disabled={p.isPending}
+        />
+      </SettingsSection>
+
+      <SettingsSection
         title="Inventory features"
         description="Unlock advanced inventory workflows in the dashboard. Some are gated by your plan."
         onSave={p.save}
@@ -71,8 +119,8 @@ export function StockInventoryPanel({
         isDirty={p.isDirty}
       >
         <SettingsSwitchRow
-          label="Batch & expiry tracking"
-          description="Track batches, consume FEFO/FIFO, surface expiry alerts."
+          label="Batch tracking"
+          description="Track batches, consume FEFO/FIFO, surface batch-level history."
           checked={!!v.batchTrackingEnabled}
           onChange={(x) => p.setField("batchTrackingEnabled", x)}
           disabled={p.isPending}
@@ -99,23 +147,9 @@ export function StockInventoryPanel({
           disabled={p.isPending}
         />
         <SettingsSwitchRow
-          label="Warehouse management"
-          description="Enables zones, bins, and putaway workflows."
-          checked={!!v.warehouseManagementEnabled}
-          onChange={(x) => p.setField("warehouseManagementEnabled", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
           label="Cycle counting / stock takes"
           checked={!!v.cycleCountingEnabled}
           onChange={(x) => p.setField("cycleCountingEnabled", x)}
-          disabled={p.isPending}
-        />
-        <SettingsSwitchRow
-          label="Consumption rules (recipes)"
-          description="Deduct ingredients via recipes instead of direct variant stock."
-          checked={!!v.consumptionRulesEnabled}
-          onChange={(x) => p.setField("consumptionRulesEnabled", x)}
           disabled={p.isPending}
         />
         <SettingsSwitchRow

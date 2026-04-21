@@ -19,7 +19,7 @@ export declare interface Business {
   address: string;
   postalCode: string;
   logoUrl: string;
-  timezone: string;
+  baseCurrency: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,3 +40,67 @@ export declare interface BusinessWithLocationType {
   business: Business;
   locations: Location[];
 }
+
+// ── BusinessSettings ────────────────────────────────────────────────
+// Mirrors the backend BusinessSettingsResponse + UpdateBusinessSettingsRequest
+// from Settlo Accounts Service (`/api/v1/businesses/{businessId}/settings`).
+
+export type EfdStatus = "REQUESTED" | "APPROVED" | "REJECTED";
+
+export interface BusinessSettings {
+  id: string;
+  accountId: string;
+  businessId: string;
+
+  // Legal entity
+  businessLicenseNumber: string | null;
+  companyRegistrationNumber: string | null;
+  taxIdentificationNumber: string | null;
+  establishedYear: number | null;
+
+  // EFD
+  efdSerialNumber: string | null;
+  vatRegistrationNumber: string | null;
+  uniqueIdentificationNumber: string | null;
+  enableVirtualEfd: boolean;
+  efdStatus: EfdStatus | null;
+
+  // Social media (parent company)
+  facebookUrl: string | null;
+  instagramUrl: string | null;
+  twitterUrl: string | null;
+  tiktokUrl: string | null;
+  linkedinUrl: string | null;
+  youtubeUrl: string | null;
+  whatsappNumber: string | null;
+
+  // Template
+  defaultCurrency: string | null;
+
+  // Consolidated reports
+  notificationEmail: string | null;
+  notificationPhone: string | null;
+  sendConsolidatedDailyReport: boolean;
+  sendConsolidatedWeeklyReport: boolean;
+  sendConsolidatedMonthlyReport: boolean;
+
+  // Procurement
+  requirePurchaseRequisitionApproval: boolean;
+  supplierPerformanceTrackingEnabled: boolean;
+  landedCostTrackingEnabled: boolean;
+  locationToLocationTransferEnabled: boolean;
+
+  // Legal text
+  termsAndConditions: string | null;
+  privacyPolicy: string | null;
+  returnPolicy: string | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const EFD_STATUS_OPTIONS: { value: EfdStatus; label: string }[] = [
+  { value: "REQUESTED", label: "Requested" },
+  { value: "APPROVED", label: "Approved" },
+  { value: "REJECTED", label: "Rejected" },
+];

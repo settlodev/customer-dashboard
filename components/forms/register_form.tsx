@@ -61,7 +61,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { BusinessSchema } from "@/types/business/schema";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import BusinessTypeSelector from "@/components/widgets/business-type-selector";
@@ -81,46 +80,31 @@ import {
 import SocialAuthButtons from "@/components/widgets/social-auth-buttons";
 import Link from "next/link";
 
+// Fallback country ISO code when no DEFAULT_COUNTRY env UUID is configured.
+// CountrySelector resolves this ISO to the matching country's UUID once the
+// country list loads.
+const DEFAULT_COUNTRY_CODE = "TZ";
 const defaultCountry = process.env.DEFAULT_COUNTRY;
 
-// Simplified schema for step 3 — no separate locationName needed
-const BusinessSetupSchema = BusinessSchema.omit({
-  id: true,
-  identificationNumber: true,
-  certificateOfIncorporation: true,
-  businessIdentificationDocument: true,
-  businessLicense: true,
-  memarts: true,
-  vrn: true,
-  serial: true,
-  uin: true,
-  receiptPrefix: true,
-  receiptSuffix: true,
-  receiptImage: true,
-  logo: true,
-  notificationPhone: true,
-  notificationEmailAddress: true,
-  website: true,
-  facebook: true,
-  instagram: true,
-  twitter: true,
-  linkedin: true,
-  youtube: true,
-  tiktok: true,
-  vfdRegistrationState: true,
-  status: true,
-  primaryColor: true,
-  secondaryColor: true,
-  bannerImageUrl: true,
-  faviconUrl: true,
-  fontFamily: true,
-  metaTitle: true,
-  metaDescription: true,
-  shareImageUrl: true,
-}).extend({
-  city: z.string().optional(),
-  address: z.string().optional(),
-  phone: z.string().optional(),
+// Simplified schema for step 3 — only name/businessTypeId/countryId are required.
+// Everything else is optional and can be filled later in the dashboard.
+const BusinessSetupSchema = z.object({
+  name: z
+    .string({ required_error: "Business name is required" })
+    .min(2, "Business name must be at least 2 characters")
+    .max(255, "Business name can not be more than 255 characters"),
+  businessTypeId: z
+    .string({ required_error: "Business type is required" })
+    .uuid("Business type is required"),
+  countryId: z
+    .string({ required_error: "Country is required" })
+    .uuid("Country is required"),
+  description: z.string().max(2000).optional(),
+  phoneNumber: z.string().optional(),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  website: z.string().optional(),
+  region: z.string().max(100).optional(),
+  address: z.string().max(500).optional(),
 });
 
 // ── Operating hours defaults ──────────────────────────────────────
@@ -151,8 +135,13 @@ interface LocationFormEntry {
   name: string;
   city: string;
   address: string;
+  phone: string;
+  email: string;
+  website: string;
   operatingHours: OperatingHoursEntry[];
   hoursExpanded: boolean;
+  continuousOperation: boolean;
+  dailyCutoffTime: string;
 }
 
 function createEmptyLocation(): LocationFormEntry {
@@ -161,8 +150,13 @@ function createEmptyLocation(): LocationFormEntry {
     name: "",
     city: "",
     address: "",
+    phone: "",
+    email: "",
+    website: "",
     operatingHours: getDefaultOperatingHours(),
     hoursExpanded: false,
+    continuousOperation: false,
+    dailyCutoffTime: "04:00",
   };
 }
 
@@ -251,6 +245,9 @@ function RegisterForm({ step }: { step: string }) {
   const [businessImageUrl, setBusinessImageUrl] = useState("");
   const [multipleLocations, setMultipleLocations] = useState(false);
   const [singleLocationHours, setSingleLocationHours] = useState<OperatingHoursEntry[]>(getDefaultOperatingHours);
+  const [singleContinuous, setSingleContinuous] = useState(false);
+  const [singleCutoffTime, setSingleCutoffTime] = useState("04:00");
+  const [contactDetailsExpanded, setContactDetailsExpanded] = useState(false);
   const [locations, setLocations] = useState<LocationFormEntry[]>([createEmptyLocation()]);
 
   const router = useRouter();
@@ -288,11 +285,31 @@ function RegisterForm({ step }: { step: string }) {
   const businessForm = useForm<z.infer<typeof BusinessSetupSchema>>({
     resolver: zodResolver(BusinessSetupSchema),
     defaultValues: {
-      name: "", email: session?.data?.user.email ?? "",
-      phone: session?.data?.user.phoneNumber ?? "",
-      description: "", city: "", address: "",
+      name: "",
+      businessTypeId: "",
+      countryId: defaultCountry ?? "",
+      email: session?.data?.user.email ?? "",
+      phoneNumber: session?.data?.user.phoneNumber ?? "",
+      description: "",
+      region: "",
+      address: "",
+      website: "",
     },
   });
+
+  // Session resolves asynchronously — when it lands, backfill email/phone on
+  // the business form if the user hasn't already typed over them. Uses the
+  // account they just signed up with as the sensible business default.
+  useEffect(() => {
+    const user = session?.data?.user;
+    if (!user) return;
+    if (!businessForm.getValues("email") && user.email) {
+      businessForm.setValue("email", user.email);
+    }
+    if (!businessForm.getValues("phoneNumber") && user.phoneNumber) {
+      businessForm.setValue("phoneNumber", user.phoneNumber);
+    }
+  }, [session?.data?.user, businessForm]);
 
   // ── Helpers ─────────────────────────────────────────────────────
 
@@ -383,26 +400,50 @@ function RegisterForm({ step }: { step: string }) {
         const invalid = locations.find((l) => !l.name.trim());
         if (invalid) { setError("Each location must have a name."); return; }
         // Validate operating hours — at least one day must be open per location
-        const allClosed = locations.find((l) => l.operatingHours.every((h) => h.closed));
+        // (only when not in continuous-operation mode)
+        const allClosed = locations.find(
+          (l) => !l.continuousOperation && l.operatingHours.every((h) => h.closed),
+        );
         if (allClosed) { setError(`"${allClosed.name || "A location"}" must be open at least one day of the week.`); return; }
+        // Validate that 24h locations have a cutoff time
+        const missingCutoff = locations.find((l) => l.continuousOperation && !l.dailyCutoffTime);
+        if (missingCutoff) { setError(`"${missingCutoff.name || "A 24-hour location"}" needs a daily cutoff time.`); return; }
+
         locationsList = locations.map((l) => ({
           name: l.name,
-          region: l.city || undefined,
-          address: l.address || undefined,
-          operatingHours: l.operatingHours,
+          // Implicit inheritance: empty per-location contact fields fall back to business
+          phoneNumber: l.phone || values.phoneNumber || undefined,
+          email: l.email || values.email || undefined,
+          website: l.website || values.website || undefined,
+          region: l.city || values.region || undefined,
+          address: l.address || values.address || undefined,
+          continuousOperation: l.continuousOperation,
+          dailyCutoffTime: l.continuousOperation ? l.dailyCutoffTime : undefined,
+          operatingHours: l.continuousOperation ? undefined : l.operatingHours,
         }));
       } else {
         // Validate operating hours — at least one day must be open
-        if (singleLocationHours.every((h) => h.closed)) {
+        // (only when not in continuous-operation mode)
+        if (!singleContinuous && singleLocationHours.every((h) => h.closed)) {
           setError("Your business must be open at least one day of the week.");
           return;
         }
-        // Single location: use business name as location name
+        if (singleContinuous && !singleCutoffTime) {
+          setError("Please pick a daily cutoff time for the 24-hour operation.");
+          return;
+        }
+
+        // Single location: share ALL business-level identity fields into the location
         locationsList = [{
           name: values.name,
-          region: values.city || undefined,
+          phoneNumber: values.phoneNumber || undefined,
+          email: values.email || undefined,
+          website: values.website || undefined,
+          region: values.region || undefined,
           address: values.address || undefined,
-          operatingHours: singleLocationHours,
+          continuousOperation: singleContinuous,
+          dailyCutoffTime: singleContinuous ? singleCutoffTime : undefined,
+          operatingHours: singleContinuous ? undefined : singleLocationHours,
         }];
       }
 
@@ -411,10 +452,13 @@ function RegisterForm({ step }: { step: string }) {
           const response = await createBusinessWithLocations({
             businessName: values.name,
             description: values.description || undefined,
-            phoneNumber: values.phone,
+            phoneNumber: values.phoneNumber,
             email: values.email,
-            businessTypeId: values.businessType,
-            countryId: values.country,
+            website: values.website || undefined,
+            businessTypeId: values.businessTypeId,
+            countryId: values.countryId,
+            region: values.region || undefined,
+            address: values.address || undefined,
             logoUrl: businessImageUrl || undefined,
             locations: locationsList,
           });
@@ -426,7 +470,15 @@ function RegisterForm({ step }: { step: string }) {
         }
       });
     },
-    [businessImageUrl, multipleLocations, locations, singleLocationHours, router],
+    [
+      businessImageUrl,
+      multipleLocations,
+      locations,
+      singleLocationHours,
+      singleContinuous,
+      singleCutoffTime,
+      router,
+    ],
   );
 
   // ── Render ──────────────────────────────────────────────────────
@@ -495,7 +547,7 @@ function RegisterForm({ step }: { step: string }) {
                         <FormItem><FormLabel className="text-sm text-gray-700">Phone number</FormLabel><FormControl><PhoneInput placeholder="Enter phone number" {...field} disabled={isPending} /></FormControl><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="countryId" render={({ field }) => (
-                        <FormItem><FormLabel className="text-sm text-gray-700">Country</FormLabel><FormControl><CountrySelector {...field} isDisabled={isPending} placeholder="Select country" /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="text-sm text-gray-700">Country</FormLabel><FormControl><CountrySelector {...field} defaultCode={DEFAULT_COUNTRY_CODE} isDisabled={isPending} placeholder="Select country" /></FormControl><FormMessage /></FormItem>
                       )} />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -579,7 +631,7 @@ function RegisterForm({ step }: { step: string }) {
                 <Form {...businessForm}>
                   <form className="space-y-6 mt-4" onSubmit={businessForm.handleSubmit(submitBusinessData, onInvalid)}>
 
-                    {/* ── Business info ─────────────────── */}
+                    {/* ── Required fields: name, type, country ─────────────────── */}
                     <div className="flex flex-col sm:flex-row gap-5">
                       <div className="shrink-0">
                         <div className="w-24 h-24 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-center overflow-hidden">
@@ -587,34 +639,25 @@ function RegisterForm({ step }: { step: string }) {
                         </div>
                       </div>
                       <div className="flex-1 space-y-4">
+                        <FormField control={businessForm.control} name="name" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm text-gray-700">Business name <span className="text-red-500">*</span></FormLabel>
+                            <FormControl><Input placeholder={`e.g. ${session?.data?.user?.firstName || "Your"}'s Business`} {...field} disabled={isPending} className="h-11" /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <FormField control={businessForm.control} name="name" render={({ field }) => (
+                          <FormField control={businessForm.control} name="businessTypeId" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm text-gray-700">Business name</FormLabel>
-                              <FormControl><Input placeholder={`e.g. ${session?.data?.user?.firstName || "Your"}'s Business`} {...field} disabled={isPending} className="h-11" /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
-                          <FormField control={businessForm.control} name="businessType" render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm text-gray-700">Business type</FormLabel>
+                              <FormLabel className="text-sm text-gray-700">Business type <span className="text-red-500">*</span></FormLabel>
                               <FormControl><BusinessTypeSelector value={field.value} onChange={field.onChange} onBlur={field.onBlur} isRequired isDisabled={isPending} label="Business Type" placeholder="Select type" /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <FormField control={businessForm.control} name="phone" render={({ field }) => (
+                          <FormField control={businessForm.control} name="countryId" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="text-sm text-gray-700">Phone</FormLabel>
-                              <FormControl><PhoneInput placeholder="Phone number" {...field} disabled={isPending} value={field.value || ""} onChange={(v) => field.onChange(v)} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
-                          <FormField control={businessForm.control} name="email" render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm text-gray-700">Email</FormLabel>
-                              <FormControl><Input {...field} disabled={isPending} type="email" value={field.value || ""} placeholder="info@yourbusiness.com" className="h-11" /></FormControl>
+                              <FormLabel className="text-sm text-gray-700">Country <span className="text-red-500">*</span></FormLabel>
+                              <FormControl><CountrySelector {...field} defaultCode={DEFAULT_COUNTRY_CODE} isDisabled={isPending} placeholder="Select country" /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -622,14 +665,63 @@ function RegisterForm({ step }: { step: string }) {
                       </div>
                     </div>
 
-                    <FormField control={businessForm.control} name="description" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-sm text-gray-700">Description <span className="text-gray-400 font-normal">(optional)</span></FormLabel>
-                        <FormControl><Textarea placeholder="Briefly describe what your business does..." {...field} disabled={isPending} className="min-h-[100px] resize-none" maxLength={200} value={field.value || ""} /></FormControl>
-                        <FormDescription className="text-xs text-gray-400">{field.value?.length || 0}/200</FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
+                    {/* ── Optional contact details (collapsible) ─────────── */}
+                    <div className="rounded-lg border border-gray-200 overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setContactDetailsExpanded((v) => !v)}
+                        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="text-left">
+                          <p className="text-sm font-medium text-gray-700">Add contact details</p>
+                          <p className="text-xs text-gray-400">Phone, email, address, description (optional — you can fill these later)</p>
+                        </div>
+                        {contactDetailsExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                      </button>
+                      {contactDetailsExpanded && (
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 space-y-4 border-t border-gray-100">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={businessForm.control} name="phoneNumber" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm text-gray-700">Phone</FormLabel>
+                                <FormControl><PhoneInput placeholder="Phone number" {...field} disabled={isPending} value={field.value || ""} onChange={(v) => field.onChange(v)} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                            <FormField control={businessForm.control} name="email" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-sm text-gray-700">Email</FormLabel>
+                                <FormControl><Input {...field} disabled={isPending} type="email" value={field.value || ""} placeholder="info@yourbusiness.com" className="h-11" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                          </div>
+                          <FormField control={businessForm.control} name="website" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-gray-700">Website</FormLabel>
+                              <FormControl><Input {...field} disabled={isPending} value={field.value || ""} placeholder="https://yourbusiness.com" className="h-11" /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={businessForm.control} name="region" render={({ field }) => (
+                              <FormItem><FormLabel className="text-sm text-gray-700">City / Region</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. Dar es Salaam" className="h-11" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <FormField control={businessForm.control} name="address" render={({ field }) => (
+                              <FormItem><FormLabel className="text-sm text-gray-700">Street address</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. 123 Uhuru Street" className="h-11" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                          </div>
+                          <FormField control={businessForm.control} name="description" render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm text-gray-700">Description</FormLabel>
+                              <FormControl><Textarea placeholder="Briefly describe what your business does..." {...field} disabled={isPending} className="min-h-[80px] resize-none" maxLength={200} value={field.value || ""} /></FormControl>
+                              <FormDescription className="text-xs text-gray-400">{field.value?.length || 0}/200</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )} />
+                        </motion.div>
+                      )}
+                    </div>
 
                     {/* ── Location mode toggle ─────────── */}
                     <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 px-4 py-3">
@@ -644,27 +736,40 @@ function RegisterForm({ step }: { step: string }) {
                       />
                     </div>
 
-                    {/* ── Single location (default) ────── */}
+                    {/* ── Single location (default): just operating hours / 24h ────── */}
                     {!multipleLocations && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <FormField control={businessForm.control} name="country" render={({ field }) => (
-                            <FormItem><FormLabel className="text-sm text-gray-700">Country</FormLabel><FormControl><CountrySelector {...field} isDisabled={isPending} placeholder="Select country" /></FormControl><FormMessage /></FormItem>
-                          )} />
-                          <FormField control={businessForm.control} name="city" render={({ field }) => (
-                            <FormItem><FormLabel className="text-sm text-gray-700">City / Region</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. Dar es Salaam" className="h-11" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
-                          )} />
-                        </div>
-                        <FormField control={businessForm.control} name="address" render={({ field }) => (
-                          <FormItem><FormLabel className="text-sm text-gray-700">Street address</FormLabel><FormControl><Input {...field} disabled={isPending} placeholder="e.g. 123 Uhuru Street" className="h-11" value={field.value || ""} /></FormControl><FormMessage /></FormItem>
-                        )} />
-
                         <div className="pt-1">
                           <div className="flex items-center gap-2 mb-3">
                             <Clock className="w-4 h-4 text-primary" />
                             <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Operating Hours</span>
                           </div>
-                          <OperatingHoursTable hours={singleLocationHours} onChange={setSingleLocationHours} disabled={isPending} />
+
+                          {/* 24-hour switch */}
+                          <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 mb-3">
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">This location is open 24 hours</p>
+                              <p className="text-xs text-gray-400">Toggle on for round-the-clock operations</p>
+                            </div>
+                            <Switch
+                              checked={singleContinuous}
+                              onCheckedChange={setSingleContinuous}
+                              disabled={isPending}
+                            />
+                          </div>
+
+                          {singleContinuous ? (
+                            <div className="rounded-lg border border-gray-200 p-4">
+                              <label className="text-xs font-medium text-gray-600 mb-1 block">Daily cutoff time <span className="text-red-500">*</span></label>
+                              <Select value={singleCutoffTime} onValueChange={setSingleCutoffTime} disabled={isPending}>
+                                <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="e.g. 04:00 — quiet hour when we roll over the business day" /></SelectTrigger>
+                                <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
+                              </Select>
+                              <p className="text-xs text-gray-400 mt-2">e.g. 04:00 — quiet hour when we roll over the business day</p>
+                            </div>
+                          ) : (
+                            <OperatingHoursTable hours={singleLocationHours} onChange={setSingleLocationHours} disabled={isPending} />
+                          )}
                         </div>
                       </motion.div>
                     )}
@@ -677,6 +782,9 @@ function RegisterForm({ step }: { step: string }) {
                           <span className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Locations</span>
                           <span className="ml-auto text-xs text-gray-400">{locations.length} location{locations.length !== 1 ? "s" : ""}</span>
                         </div>
+                        <p className="text-xs text-gray-400 -mt-2">
+                          Empty contact fields on a location will inherit from the business above.
+                        </p>
 
                         {locations.map((loc, idx) => (
                           <div key={loc.id} className="rounded-xl border border-gray-200 bg-white overflow-hidden">
@@ -708,20 +816,60 @@ function RegisterForm({ step }: { step: string }) {
                                 <label className="text-xs font-medium text-gray-600 mb-1 block">Street address</label>
                                 <Input value={loc.address} onChange={(e) => updateLocation(loc.id, "address", e.target.value)} placeholder="e.g. 123 Uhuru Street" disabled={isPending} className="h-10" />
                               </div>
-                              {loc.hoursExpanded && (
-                                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-1">
-                                  <OperatingHoursTable
-                                    hours={loc.operatingHours}
-                                    onChange={(h) => updateLocation(loc.id, "operatingHours", h)}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600 mb-1 block">Phone <span className="text-gray-400">(inherits from business)</span></label>
+                                  <PhoneInput placeholder="Leave empty to inherit" value={loc.phone || ""} onChange={(v) => updateLocation(loc.id, "phone", v || "")} disabled={isPending} />
+                                </div>
+                                <div>
+                                  <label className="text-xs font-medium text-gray-600 mb-1 block">Email <span className="text-gray-400">(inherits from business)</span></label>
+                                  <Input type="email" value={loc.email} onChange={(e) => updateLocation(loc.id, "email", e.target.value)} placeholder="Leave empty to inherit" disabled={isPending} className="h-10" />
+                                </div>
+                              </div>
+
+                              {/* 24-hour toggle per location */}
+                              <div className="flex items-center justify-between rounded-lg bg-gray-50 border border-gray-100 px-3 py-2">
+                                <div>
+                                  <p className="text-xs font-medium text-gray-700">Open 24 hours</p>
+                                </div>
+                                <Switch
+                                  checked={loc.continuousOperation}
+                                  onCheckedChange={(checked) => updateLocation(loc.id, "continuousOperation", checked)}
+                                  disabled={isPending}
+                                />
+                              </div>
+
+                              {loc.continuousOperation ? (
+                                <div className="rounded-lg border border-gray-200 p-3">
+                                  <label className="text-xs font-medium text-gray-600 mb-1 block">Daily cutoff time *</label>
+                                  <Select
+                                    value={loc.dailyCutoffTime}
+                                    onValueChange={(v) => updateLocation(loc.id, "dailyCutoffTime", v)}
                                     disabled={isPending}
-                                  />
-                                </motion.div>
-                              )}
-                              {!loc.hoursExpanded && (
-                                <p className="text-xs text-gray-400 flex items-center gap-1">
-                                  <Clock size={12} /> Monday-Saturday 8:00 AM - 9:00 PM, Sunday Closed
-                                  <button type="button" onClick={() => updateLocation(loc.id, "hoursExpanded", true)} className="ml-1 text-primary hover:underline">Edit</button>
-                                </p>
+                                  >
+                                    <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="e.g. 04:00" /></SelectTrigger>
+                                    <SelectContent>{businessTimes.map((t: BusinessTimeType, i: number) => (<SelectItem key={i} value={t.name}>{t.label}</SelectItem>))}</SelectContent>
+                                  </Select>
+                                  <p className="text-xs text-gray-400 mt-2">Quiet hour when we roll over the business day</p>
+                                </div>
+                              ) : (
+                                <>
+                                  {loc.hoursExpanded && (
+                                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-1">
+                                      <OperatingHoursTable
+                                        hours={loc.operatingHours}
+                                        onChange={(h) => updateLocation(loc.id, "operatingHours", h)}
+                                        disabled={isPending}
+                                      />
+                                    </motion.div>
+                                  )}
+                                  {!loc.hoursExpanded && (
+                                    <p className="text-xs text-gray-400 flex items-center gap-1">
+                                      <Clock size={12} /> Monday-Saturday 8:00 AM - 9:00 PM, Sunday Closed
+                                      <button type="button" onClick={() => updateLocation(loc.id, "hoursExpanded", true)} className="ml-1 text-primary hover:underline">Edit</button>
+                                    </p>
+                                  )}
+                                </>
                               )}
                             </div>
                           </div>

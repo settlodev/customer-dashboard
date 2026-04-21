@@ -8,9 +8,9 @@ const KEYS = [
   "showAmountOnDockets",
   "printEachDocketItem",
   "showDocketCount",
-  "singleTicketPrint",
-  "showPriceOnTicket",
-  "autoPrintTickets",
+  "singleDocketPrint",
+  "showPriceOnDocket",
+  "autoPrintDockets",
   "allowDuplicateDocketPrinting",
   "orderPrintsCountEnabled",
 ] as const;
@@ -27,7 +27,7 @@ export function DocketsPanel({
 
   return (
     <SettingsSection
-      title="Kitchen dockets & tickets"
+      title="Kitchen dockets"
       description="What goes on the paper that reaches the kitchen or bar."
       onSave={p.save}
       isPending={p.isPending}
@@ -36,9 +36,9 @@ export function DocketsPanel({
       <SettingsSwitchRow label="Show amount on dockets" checked={!!v.showAmountOnDockets} onChange={(x) => p.setField("showAmountOnDockets", x)} disabled={p.isPending} />
       <SettingsSwitchRow label="Print each item on its own docket" checked={!!v.printEachDocketItem} onChange={(x) => p.setField("printEachDocketItem", x)} disabled={p.isPending} />
       <SettingsSwitchRow label="Show docket count" checked={!!v.showDocketCount} onChange={(x) => p.setField("showDocketCount", x)} disabled={p.isPending} />
-      <SettingsSwitchRow label="Single-ticket print (per order)" checked={!!v.singleTicketPrint} onChange={(x) => p.setField("singleTicketPrint", x)} disabled={p.isPending} />
-      <SettingsSwitchRow label="Show price on kitchen ticket" checked={!!v.showPriceOnTicket} onChange={(x) => p.setField("showPriceOnTicket", x)} disabled={p.isPending} />
-      <SettingsSwitchRow label="Auto-print tickets" checked={!!v.autoPrintTickets} onChange={(x) => p.setField("autoPrintTickets", x)} disabled={p.isPending} />
+      <SettingsSwitchRow label="Single-docket print (per order)" checked={!!v.singleDocketPrint} onChange={(x) => p.setField("singleDocketPrint", x)} disabled={p.isPending} />
+      <SettingsSwitchRow label="Show price on kitchen docket" checked={!!v.showPriceOnDocket} onChange={(x) => p.setField("showPriceOnDocket", x)} disabled={p.isPending} />
+      <SettingsSwitchRow label="Auto-print dockets" checked={!!v.autoPrintDockets} onChange={(x) => p.setField("autoPrintDockets", x)} disabled={p.isPending} />
       <SettingsSwitchRow label="Allow duplicate docket prints" checked={!!v.allowDuplicateDocketPrinting} onChange={(x) => p.setField("allowDuplicateDocketPrinting", x)} disabled={p.isPending} />
       <SettingsSwitchRow label="Count order prints" description="Tracks how many times each order has been printed." checked={!!v.orderPrintsCountEnabled} onChange={(x) => p.setField("orderPrintsCountEnabled", x)} disabled={p.isPending} />
     </SettingsSection>

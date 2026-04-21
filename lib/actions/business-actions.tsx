@@ -77,16 +77,12 @@ export const createBusiness = async (
     return parseStringify(formResponse);
   }
 
-  const payload = {
-    ...validatedData.data,
-  };
-
   try {
     const apiClient = new ApiClient();
 
     const response = await apiClient.post(
       `/api/v1/businesses`,
-      payload,
+      validatedData.data,
     );
 
     return {
@@ -130,37 +126,30 @@ export const updateBusiness = async (
     return parseStringify(formResponse);
   }
 
-  //
-
-  const payload = {
-    ...validatedData.data,
-  };
-
   try {
-    await apiClient.put(`/api/v1/businesses/${id}`, payload);
+    await apiClient.put(`/api/v1/businesses/${id}`, validatedData.data);
 
     formResponse = {
       responseType: "success",
       message: "Business updated successfully",
     };
-  } catch (error: any) {
-    const formattedError = await error;
-    console.error("Error updating product - Full Details:", {
+  } catch (error: unknown) {
+    const formattedError = error as Record<string, unknown> & {
+      message?: string;
+      details?: { fieldErrors?: unknown };
+    };
+    console.error("Error updating business - Full Details:", {
       ...formattedError,
       details: {
         ...formattedError.details,
-        fieldErrors: JSON.stringify(
-          formattedError.details?.fieldErrors,
-          null,
-          2,
-        ),
+        fieldErrors: JSON.stringify(formattedError.details?.fieldErrors, null, 2),
       },
     });
 
     formResponse = {
       responseType: "error",
       message:
-        error.message ??
+        formattedError.message ??
         "Something went wrong while processing your request, please try again",
       error: error instanceof Error ? error : new Error(String(error)),
     };
@@ -168,7 +157,6 @@ export const updateBusiness = async (
 
   revalidatePath("/business");
   redirect("/business");
-  // return parseStringify(formResponse);
 };
 
 export const getSingleBusiness = async (id: UUID): Promise<Business> => {
@@ -198,7 +186,10 @@ export const deactivateBusiness = async (id: UUID): Promise<FormResponse> => {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/businesses/${id}/deactivate`, {});
     revalidatePath("/business");
-    return { responseType: "success", message: "Business deactivated successfully" };
+    return {
+      responseType: "success",
+      message: "Business deactivated successfully",
+    };
   } catch (error) {
     return {
       responseType: "error",
@@ -214,7 +205,10 @@ export const reactivateBusiness = async (id: UUID): Promise<FormResponse> => {
     const apiClient = new ApiClient();
     await apiClient.post(`/api/v1/businesses/${id}/reactivate`, {});
     revalidatePath("/business");
-    return { responseType: "success", message: "Business reactivated successfully" };
+    return {
+      responseType: "success",
+      message: "Business reactivated successfully",
+    };
   } catch (error) {
     return {
       responseType: "error",
@@ -224,7 +218,11 @@ export const reactivateBusiness = async (id: UUID): Promise<FormResponse> => {
   }
 };
 
-export const getBusinessCount = async (): Promise<{ total: number; active: number; inactive: number }> => {
+export const getBusinessCount = async (): Promise<{
+  total: number;
+  active: number;
+  inactive: number;
+}> => {
   try {
     const apiClient = new ApiClient();
     const data = await apiClient.get(`/api/v1/businesses/count`);

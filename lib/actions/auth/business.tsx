@@ -19,11 +19,16 @@ interface BusinessWithLocationsPayload {
     description?: string;
     phoneNumber?: string;
     email?: string;
+    website?: string;
     countryId?: string;
     businessTypeId?: string;
     region?: string;
+    district?: string;
+    ward?: string;
     address?: string;
+    postalCode?: string;
     logoUrl?: string;
+    baseCurrency?: string;
   };
   businessSettings?: Record<string, unknown>;
   locations: Array<{
@@ -31,8 +36,16 @@ interface BusinessWithLocationsPayload {
     description?: string;
     phoneNumber?: string;
     email?: string;
+    website?: string;
     region?: string;
+    district?: string;
+    ward?: string;
     address?: string;
+    postalCode?: string;
+    latitude?: number;
+    longitude?: number;
+    timezone?: string;
+    businessTypeId?: string;
     settings?: {
       operatingHours?: Array<{
         dayOfWeek: string;
@@ -40,6 +53,9 @@ interface BusinessWithLocationsPayload {
         closeTime: string;
         closed: boolean;
       }>;
+      continuousOperation?: boolean;
+      dailyCutoffTime?: string | null;
+      closeGraceMinutes?: number;
     };
   }>;
 }
@@ -64,7 +80,7 @@ interface ApiBusinessResponse {
   address?: string;
   postalCode?: string;
   logoUrl?: string;
-  timezone?: string;
+  baseCurrency?: string;
   slug?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -80,6 +96,7 @@ interface ApiLocationResponse {
   description?: string;
   phoneNumber?: string;
   email?: string;
+  website?: string;
   active: boolean;
   countryId?: string;
   region?: string;
@@ -125,7 +142,7 @@ function mapApiBusinessToExisting(
     address: apiBusiness.address || "",
     postalCode: apiBusiness.postalCode || "",
     logoUrl: apiBusiness.logoUrl || "",
-    timezone: apiBusiness.timezone || "",
+    baseCurrency: apiBusiness.baseCurrency || "",
     createdAt: apiBusiness.createdAt || "",
     updatedAt: apiBusiness.updatedAt || "",
   };
@@ -158,7 +175,7 @@ function mapApiLocationToExisting(
     latitude: apiLocation.latitude ?? null,
     longitude: apiLocation.longitude ?? null,
     timezone: apiLocation.timezone || "",
-    parentLocationId: null,
+    website: apiLocation.website || "",
     createdAt: apiLocation.createdAt || "",
     updatedAt: apiLocation.updatedAt || "",
   };
@@ -173,12 +190,24 @@ export interface OperatingHoursEntry {
 
 export interface LocationInput {
   name: string;
+  description?: string;
   phoneNumber?: string;
   email?: string;
+  website?: string;
   region?: string;
+  district?: string;
+  ward?: string;
   address?: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
   countryId?: string;
+  businessTypeId?: string;
   operatingHours?: OperatingHoursEntry[];
+  continuousOperation?: boolean;
+  dailyCutoffTime?: string | null;
+  closeGraceMinutes?: number;
 }
 
 export const createBusinessWithLocations = async (data: {
@@ -186,9 +215,16 @@ export const createBusinessWithLocations = async (data: {
   description?: string;
   phoneNumber?: string;
   email?: string;
+  website?: string;
   businessTypeId?: string;
   countryId?: string;
+  region?: string;
+  district?: string;
+  ward?: string;
+  address?: string;
+  postalCode?: string;
   logoUrl?: string;
+  baseCurrency?: string;
   locations: LocationInput[];
 }): Promise<FormResponse> => {
   try {
@@ -207,20 +243,50 @@ export const createBusinessWithLocations = async (data: {
         description: data.description,
         phoneNumber: data.phoneNumber,
         email: data.email,
+        website: data.website,
         countryId: data.countryId || authToken.countryId,
         businessTypeId: data.businessTypeId,
+        region: data.region,
+        district: data.district,
+        ward: data.ward,
+        address: data.address,
+        postalCode: data.postalCode,
         logoUrl: data.logoUrl,
+        baseCurrency: data.baseCurrency,
       },
-      locations: data.locations.map((loc) => ({
-        name: loc.name,
-        phoneNumber: loc.phoneNumber || data.phoneNumber,
-        email: loc.email || data.email,
-        region: loc.region,
-        address: loc.address,
-        settings: loc.operatingHours?.length
-          ? { operatingHours: loc.operatingHours }
-          : undefined,
-      })),
+      locations: data.locations.map((loc) => {
+        // Build settings: prefer continuousOperation when true (omit operatingHours);
+        // otherwise include operatingHours (omit continuousOperation/dailyCutoffTime).
+        const settings: NonNullable<BusinessWithLocationsPayload["locations"][number]["settings"]> = {};
+        if (loc.continuousOperation) {
+          settings.continuousOperation = true;
+          if (loc.dailyCutoffTime) settings.dailyCutoffTime = loc.dailyCutoffTime;
+        } else {
+          if (loc.operatingHours?.length) settings.operatingHours = loc.operatingHours;
+          if (typeof loc.closeGraceMinutes === "number") {
+            settings.closeGraceMinutes = loc.closeGraceMinutes;
+          }
+        }
+        const hasSettings = Object.keys(settings).length > 0;
+
+        return {
+          name: loc.name,
+          description: loc.description,
+          phoneNumber: loc.phoneNumber || data.phoneNumber,
+          email: loc.email || data.email,
+          website: loc.website || data.website,
+          region: loc.region,
+          district: loc.district,
+          ward: loc.ward,
+          address: loc.address,
+          postalCode: loc.postalCode,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          timezone: loc.timezone,
+          businessTypeId: loc.businessTypeId || data.businessTypeId,
+          settings: hasSettings ? settings : undefined,
+        };
+      }),
     };
 
     const apiClient = new ApiClient();
